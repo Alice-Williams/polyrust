@@ -6,6 +6,8 @@
 
 # Generated proof-of-concept packages
 /generated/
+/.ci-cache/
+/ci-manifest/
 node_modules/
 
 # Editors and operating systems

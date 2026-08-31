@@ -75,6 +75,7 @@ genrule(
     ],
     cmd = "$(location :generate) $(RULEDIR)/generated",
     tools = [":generate"],
+    visibility = ["//visibility:public"],
 )
 
 sh_test(

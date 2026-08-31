@@ -1,0 +1,30 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+sh_test(
+    name = "policy_test",
+    srcs = ["policy_test.sh"],
+    data = [
+        "policy.py",
+        "//:Cargo.lock",
+        "//:MODULE.bazel",
+        "//.devcontainer:Dockerfile",
+        "//:documentation",
+        "//examples/models-and-validation:generate_packages",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "failure_injection_test",
+    srcs = ["failure_injection_test.sh"],
+    data = ["policy.py"],
+    visibility = ["//visibility:public"],
+)
+
+exports_files(
+    [
+        "release_gate.sh",
+        "windows_contract.ps1",
+    ],
+    visibility = ["//visibility:public"],
+)

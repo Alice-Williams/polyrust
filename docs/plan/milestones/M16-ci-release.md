@@ -1,6 +1,6 @@
 # M16 — Add CI matrix, determinism benchmark, and release gate
 
-- Status: planned
+- Status: in-progress
 - Phase: 5
 - Depends on: M01, M09, M10, M11, M12, M13, M14, M15
 

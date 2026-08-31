@@ -1,7 +1,12 @@
 load("@buildifier_prebuilt//:rules.bzl", "buildifier", "buildifier_test")
 load("@rules_rust//rust:defs.bzl", "rust_clippy_test", "rustfmt_test")
 
-exports_files(["conformance/v0/evaluator-vectors.json"])
+exports_files([
+    ".github/workflows/ci.yml",
+    "Cargo.lock",
+    "MODULE.bazel",
+    "conformance/v0/evaluator-vectors.json",
+])
 
 filegroup(
     name = "documentation",
@@ -20,6 +25,7 @@ rust_clippy_test(
         "//crates/backend-rust:portable_backend_rust",
         "//crates/backend-rust:portable_backend_rust_test",
         "//crates/backend-typescript:portable_backend_typescript",
+        "//crates/benchmark:generation_benchmark",
         "//crates/build:portable_build",
         "//crates/check:portable_check_test",
         "//crates/cli:polyrust",
@@ -50,6 +56,7 @@ rustfmt_test(
         "//crates/backend-rust:portable_backend_rust",
         "//crates/backend-rust:portable_backend_rust_test",
         "//crates/backend-typescript:portable_backend_typescript",
+        "//crates/benchmark:generation_benchmark",
         "//crates/build:portable_build",
         "//crates/check:portable_check_test",
         "//crates/cli:polyrust",
@@ -93,4 +100,20 @@ buildifier_test(
     mode = "diff",
     no_sandbox = True,
     workspace = "//:MODULE.bazel",
+)
+
+test_suite(
+    name = "release_gate",
+    tests = [
+        ":buildifier_test",
+        ":rust_clippy_test",
+        ":rustfmt_test",
+        "//crates/benchmark:generation_benchmark_test",
+        "//crates/conformance:all_targets_test",
+        "//examples/models-and-validation:all",
+        "//tools/dependency-boundaries:dependency_boundaries_test",
+        "//tools/release:failure_injection_test",
+        "//tools/release:policy_test",
+    ],
+    visibility = ["//visibility:public"],
 )

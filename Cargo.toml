@@ -4,6 +4,7 @@ members = [
     "crates/backend-python",
     "crates/backend-rust",
     "crates/backend-typescript",
+    "crates/benchmark",
     "crates/build",
     "crates/check",
     "crates/cli",

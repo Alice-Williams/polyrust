@@ -1,0 +1,7 @@
+exports_files(
+    [
+        "Dockerfile",
+        "devcontainer.json",
+    ],
+    visibility = ["//visibility:public"],
+)

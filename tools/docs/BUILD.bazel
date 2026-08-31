@@ -5,6 +5,8 @@ sh_test(
     srcs = ["documentation_test.sh"],
     data = [
         "check_links.py",
+        "//:.github/workflows/ci.yml",
+        "//.devcontainer:Dockerfile",
         "//:documentation",
         "//examples/external-backend:Cargo.toml",
         "//examples/external-backend:src/lib.rs",
