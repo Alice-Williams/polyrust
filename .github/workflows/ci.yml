@@ -22,7 +22,7 @@ jobs:
     name: Windows host/container contract
     runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Validate pinned Linux development contract from Windows
         shell: pwsh
         run: ./tools/release/windows_contract.ps1
@@ -31,7 +31,7 @@ jobs:
     name: Fast PR checks
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Reclaim runner disk
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
@@ -54,7 +54,7 @@ jobs:
       matrix:
         toolchain: ["1.98.0", stable]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Build pinned development image
         run: docker build --tag "$IMAGE" --file .devcontainer/Dockerfile .
       - name: Test workspace with selected Rust
@@ -71,7 +71,7 @@ jobs:
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Build pinned development image
         run: docker build --tag "$IMAGE" --file .devcontainer/Dockerfile .
       - name: Generate normalized manifests from a clean directory
@@ -80,7 +80,7 @@ jobs:
           mkdir ci-manifest
           docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" \
             bazelisk --batch run //examples/models-and-validation:generate -- /workspace/ci-manifest
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: manifests-${{ matrix.os }}
           path: ci-manifest
@@ -91,11 +91,11 @@ jobs:
     needs: deterministic-manifests
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: manifests-ubuntu-22.04
           path: first
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: manifests-ubuntu-24.04
           path: second
@@ -106,58 +106,60 @@ jobs:
     name: Cold and warm release gates
     needs: [windows-contract, fast, rust-compatibility, compare-manifests]
     runs-on: ubuntu-24.04
+    env:
+      CI_CACHE: ${{ runner.temp }}/polyrust-cache
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Reclaim runner disk
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
           df -h /
       - name: Restore non-semantic caches
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
-            .ci-cache/bazelisk
-            .ci-cache/bazel-repository
-            .ci-cache/bazel-disk
-            .ci-cache/cargo-registry
-            .ci-cache/cargo-git
-            .ci-cache/cargo-tools
-          key: polyrust-v1-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'MODULE.bazel.lock', '.devcontainer/Dockerfile') }}
+            ${{ runner.temp }}/polyrust-cache/bazelisk
+            ${{ runner.temp }}/polyrust-cache/bazel-repository
+            ${{ runner.temp }}/polyrust-cache/bazel-disk
+            ${{ runner.temp }}/polyrust-cache/cargo-registry
+            ${{ runner.temp }}/polyrust-cache/cargo-git
+            ${{ runner.temp }}/polyrust-cache/cargo-tools
+          key: polyrust-v2-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'MODULE.bazel.lock', '.devcontainer/Dockerfile') }}
       - name: Build pinned development image
         run: docker build --tag "$IMAGE" --file .devcontainer/Dockerfile .
       - name: Install pinned advisory checker
         run: |
-          mkdir -p .ci-cache/{bazelisk,bazel-repository,bazel-disk,cargo-registry,cargo-git,cargo-tools}
-          if [[ ! -x .ci-cache/cargo-tools/bin/cargo-audit ]]; then
+          mkdir -p "$CI_CACHE"/{bazelisk,bazel-repository,bazel-disk,cargo-registry,cargo-git,cargo-tools}
+          if [[ ! -x "$CI_CACHE/cargo-tools/bin/cargo-audit" ]]; then
             docker run --rm \
-              -v "$PWD/.ci-cache/cargo-registry:/usr/local/cargo/registry" \
-              -v "$PWD/.ci-cache/cargo-git:/usr/local/cargo/git" \
-              -v "$PWD/.ci-cache/cargo-tools:/cargo-tools" \
+              -v "$CI_CACHE/cargo-registry:/usr/local/cargo/registry" \
+              -v "$CI_CACHE/cargo-git:/usr/local/cargo/git" \
+              -v "$CI_CACHE/cargo-tools:/cargo-tools" \
               -e CARGO_INSTALL_ROOT=/cargo-tools \
               "$IMAGE" cargo install cargo-audit --locked --version "$CARGO_AUDIT_VERSION"
           fi
       - name: Cache-cold complete gate
         run: |
-          rm -rf .ci-cache/bazelisk/* .ci-cache/bazel-repository/* .ci-cache/bazel-disk/*
+          rm -rf "$CI_CACHE/bazelisk"/* "$CI_CACHE/bazel-repository"/* "$CI_CACHE/bazel-disk"/*
           docker run --rm \
             -v "$PWD:/workspace" \
-            -v "$PWD/.ci-cache/bazelisk:/root/.cache/bazelisk" \
-            -v "$PWD/.ci-cache/bazel-repository:/root/.cache/bazel-repository" \
-            -v "$PWD/.ci-cache/bazel-disk:/root/.cache/bazel-disk" \
-            -v "$PWD/.ci-cache/cargo-registry:/usr/local/cargo/registry" \
-            -v "$PWD/.ci-cache/cargo-git:/usr/local/cargo/git" \
-            -v "$PWD/.ci-cache/cargo-tools:/cargo-tools" \
+            -v "$CI_CACHE/bazelisk:/root/.cache/bazelisk" \
+            -v "$CI_CACHE/bazel-repository:/root/.cache/bazel-repository" \
+            -v "$CI_CACHE/bazel-disk:/root/.cache/bazel-disk" \
+            -v "$CI_CACHE/cargo-registry:/usr/local/cargo/registry" \
+            -v "$CI_CACHE/cargo-git:/usr/local/cargo/git" \
+            -v "$CI_CACHE/cargo-tools:/cargo-tools" \
             -e PATH=/cargo-tools/bin:/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin \
             -w /workspace "$IMAGE" bash tools/release/release_gate.sh
       - name: Cache-warm complete gate
         run: |
           docker run --rm \
             -v "$PWD:/workspace" \
-            -v "$PWD/.ci-cache/bazelisk:/root/.cache/bazelisk" \
-            -v "$PWD/.ci-cache/bazel-repository:/root/.cache/bazel-repository" \
-            -v "$PWD/.ci-cache/bazel-disk:/root/.cache/bazel-disk" \
-            -v "$PWD/.ci-cache/cargo-registry:/usr/local/cargo/registry" \
-            -v "$PWD/.ci-cache/cargo-git:/usr/local/cargo/git" \
-            -v "$PWD/.ci-cache/cargo-tools:/cargo-tools" \
+            -v "$CI_CACHE/bazelisk:/root/.cache/bazelisk" \
+            -v "$CI_CACHE/bazel-repository:/root/.cache/bazel-repository" \
+            -v "$CI_CACHE/bazel-disk:/root/.cache/bazel-disk" \
+            -v "$CI_CACHE/cargo-registry:/usr/local/cargo/registry" \
+            -v "$CI_CACHE/cargo-git:/usr/local/cargo/git" \
+            -v "$CI_CACHE/cargo-tools:/cargo-tools" \
             -e PATH=/cargo-tools/bin:/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin \
             -w /workspace "$IMAGE" bash tools/release/release_gate.sh
