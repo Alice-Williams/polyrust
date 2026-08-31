@@ -64,7 +64,7 @@ contract as every other target.
 
 ### Phase 4 — Cross-language proof
 
-- [M14 — Differential conformance](milestones/M14-conformance.md) — planned
+- [M14 — Differential conformance](milestones/M14-conformance.md) — complete
 
 ### Phase 5 — Usability and release
 

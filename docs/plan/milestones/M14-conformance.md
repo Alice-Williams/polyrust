@@ -1,6 +1,6 @@
 # M14 — Build four-target differential conformance harness
 
-- Status: planned
+- Status: complete
 - Phase: 4
 - Depends on: M05, M10, M11, M12, M13
 
@@ -58,3 +58,19 @@ Core capability maps to at least one case ID.
 
 Performance equivalence, cross-language ABI calls, fuzzing arbitrary native
 programs, and non-required targets.
+
+## Exit evidence
+
+- The versioned target-neutral corpus contains 50 stable case IDs spanning
+  fixed-width boundaries, exact floats, Unicode, bytes, immutable/nested lists,
+  option/result tags, empty values, and contract dispatch. Canonical values
+  round-trip byte-stably through `polyrust.canonical.v0`.
+- The evaluator passes every declared portable test. The aggregate Bazel target
+  executes the generated Rust, TypeScript, Python, and Go native suites; both
+  CLI modes report four-target deterministic manifests and complete coverage.
+- Arithmetic, Unicode, and enum-tag fault injections are detected, and the
+  mismatch snapshot contains case, function, input, oracle, target, and first
+  difference.
+- Cargo tests, Rustfmt, and warning-denied Clippy passed. The authoritative
+  `bazel test //...` gate passed all 26 tests across 57 targets, including all
+  four pinned native toolchains and repository linters.

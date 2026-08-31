@@ -16,7 +16,9 @@ portable_backend_python.workspace = true
 portable_backend_rust.workspace = true
 portable_backend_typescript.workspace = true
 portable_codegen.workspace = true
+portable_check.workspace = true
 portable_eval.workspace = true
+portable_ir.workspace = true
 
 [lints]
 workspace = true

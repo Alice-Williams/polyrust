@@ -110,8 +110,10 @@ dependencies = [
  "polyrust-backend-python",
  "polyrust-backend-rust",
  "polyrust-backend-typescript",
+ "polyrust-check",
  "polyrust-codegen",
  "polyrust-eval",
+ "polyrust-ir",
 ]
 
 [[package]]

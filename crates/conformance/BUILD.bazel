@@ -1,10 +1,14 @@
-load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 
 exports_files(["Cargo.toml"])
 
 rust_library(
     name = "portable_conformance",
-    srcs = glob(["src/**/*.rs"]),
+    srcs = glob(
+        ["src/**/*.rs"],
+        exclude = ["src/main.rs"],
+    ),
+    compile_data = ["//crates/build:testdata/registration.poly.json"],
     crate_name = "portable_conformance",
     edition = "2024",
     visibility = ["//visibility:public"],
@@ -13,7 +17,36 @@ rust_library(
         "//crates/backend-python:portable_backend_python",
         "//crates/backend-rust:portable_backend_rust",
         "//crates/backend-typescript:portable_backend_typescript",
+        "//crates/check:portable_check",
         "//crates/codegen:portable_codegen",
         "//crates/eval:portable_eval",
+        "//crates/ir:portable_ir",
     ],
+)
+
+rust_test(
+    name = "portable_conformance_test",
+    crate = ":portable_conformance",
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "polyrust-conformance",
+    srcs = ["src/main.rs"],
+    crate_name = "polyrust_conformance_cli",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [":portable_conformance"],
+)
+
+test_suite(
+    name = "all_targets_test",
+    tests = [
+        ":portable_conformance_test",
+        "//crates/backend-go:generated_v0_native_test",
+        "//crates/backend-python:generated_v0_native_test",
+        "//crates/backend-rust:generated_v0_native_test",
+        "//crates/backend-typescript:generated_v0_native_test",
+    ],
+    visibility = ["//visibility:public"],
 )
