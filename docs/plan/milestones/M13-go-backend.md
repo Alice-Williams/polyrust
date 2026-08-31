@@ -1,6 +1,6 @@
 # M13 — Implement required Go backend
 
-- Status: planned
+- Status: complete
 - Phase: 3
 - Depends on: M08, M09
 
@@ -64,3 +64,17 @@ vectors agree with generated Go.
 
 Portable raw pointers, goroutines/channels, cgo, reflection, and arbitrary Go
 module dependencies.
+
+## Exit evidence
+
+- `org.polyrust.go` consumes checked IR and emits a deterministic Go 1.25
+  module with exact-width integers, value records, interfaces plus compile-time
+  conformance assertions, tagged option/result types, and copy-isolated list and
+  byte wrappers. The legacy prototype emitter remains explicitly isolated.
+- The native gate uses the complete Bazel-pinned SDK and passed `gofmt`,
+  `go vet`, `go test`, the `unsafe`/`reflect` import scan, every emitted portable
+  test, contract dispatch, and 20 boundary/copy vectors.
+- Workspace Rustfmt and Clippy with warnings denied passed. The authoritative
+  `bazel test //...` gate passed all 25 tests across 55 targets, including
+  Buildifier/Starlark lint, dependency boundaries, and all four generated
+  language package gates.

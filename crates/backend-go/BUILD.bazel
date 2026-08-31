@@ -1,10 +1,12 @@
-load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 exports_files(["Cargo.toml"])
 
 rust_library(
     name = "portable_backend_go",
     srcs = glob(["src/**/*.rs"]),
+    compile_data = ["src/runtime.go"],
     crate_name = "portable_backend_go",
     edition = "2024",
     visibility = ["//visibility:public"],
@@ -13,4 +15,52 @@ rust_library(
         "//crates/codegen:portable_codegen",
         "//crates/ir:portable_ir",
     ],
+)
+
+rust_test(
+    name = "portable_backend_go_test",
+    compile_data = ["//crates/build:testdata/registration.poly.json"],
+    crate = ":portable_backend_go",
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "generate_v0_fixture",
+    srcs = ["examples/generate_v0.rs"],
+    crate_name = "generate_go_v0_fixture",
+    edition = "2024",
+    deps = [
+        ":portable_backend_go",
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+        "//crates/ir:portable_ir",
+    ],
+)
+
+genrule(
+    name = "generate_v0_package",
+    srcs = ["//crates/build:testdata/registration.poly.json"],
+    outs = [
+        "test-generated/conformance_test.go",
+        "test-generated/generated.go",
+        "test-generated/generated_test.go",
+        "test-generated/go.mod",
+        "test-generated/runtime.go",
+    ],
+    cmd = "$(location :generate_v0_fixture) $(location //crates/build:testdata/registration.poly.json) $(@D)/test-generated",
+    tools = [":generate_v0_fixture"],
+)
+
+sh_test(
+    name = "generated_v0_native_test",
+    srcs = ["test_generated.sh"],
+    data = [
+        ":test-generated/conformance_test.go",
+        ":test-generated/generated.go",
+        ":test-generated/generated_test.go",
+        ":test-generated/go.mod",
+        ":test-generated/runtime.go",
+        "@go_sdk//:files",
+    ],
+    visibility = ["//visibility:public"],
 )

@@ -1,7 +1,10 @@
 #![forbid(unsafe_code)]
 
-//! Go source backend for the executable prototype.
+mod v0;
 
+pub use v0::GoV0Backend;
+
+/// Legacy Go source backend for the executable prototype.
 use portable_check::CheckedModule;
 use portable_codegen::legacy::{Backend, GeneratedFile, GeneratedPackage};
 use portable_ir::{Expression, Function, Module, Type, Value};

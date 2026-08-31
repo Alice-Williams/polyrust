@@ -456,6 +456,9 @@ fn default_registry() -> BackendRegistry {
         .register(Arc::new(portable_backend_python::PythonBackend))
         .expect("Python target is unique");
     registry
+        .register(Arc::new(portable_backend_go::GoV0Backend))
+        .expect("Go target is unique");
+    registry
 }
 
 struct InspectionBackend {
@@ -622,7 +625,7 @@ mod tests {
         );
         let targets = invoke(vec!["targets".into()], default_registry());
         assert_eq!(targets.0, 0);
-        assert!(targets.1.starts_with(
+        assert!(targets.1.contains(
             "org.polyrust.inspect\tBuilt-in inspection backend\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n"
         ));
         assert!(

@@ -60,7 +60,7 @@ contract as every other target.
 - [M10 — Rust backend](milestones/M10-rust-backend.md) — complete
 - [M11 — TypeScript backend](milestones/M11-typescript-backend.md) — complete
 - [M12 — Python backend](milestones/M12-python-backend.md) — complete
-- [M13 — Go backend](milestones/M13-go-backend.md) — planned
+- [M13 — Go backend](milestones/M13-go-backend.md) — complete
 
 ### Phase 4 — Cross-language proof
 
