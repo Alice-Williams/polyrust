@@ -2,6 +2,9 @@
 
 //! Resolution and type checking for the prototype portable model.
 
+/// Resolver, type checker, and capability analysis for versioned portable IR.
+pub mod v0;
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use portable_ir::{Contract, Expression, Function, MethodSignature, Module, Record, Type, Value};

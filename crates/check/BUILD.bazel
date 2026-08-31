@@ -8,11 +8,15 @@ rust_library(
     crate_name = "portable_check",
     edition = "2024",
     visibility = ["//visibility:public"],
-    deps = ["//crates/ir:portable_ir"],
+    deps = [
+        "//crates/diagnostics:portable_diagnostics",
+        "//crates/ir:portable_ir",
+    ],
 )
 
 rust_test(
     name = "portable_check_test",
     crate = ":portable_check",
+    data = ["//crates/ir:src/v0/testdata/every-node.poly.json"],
     visibility = ["//visibility:public"],
 )

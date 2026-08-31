@@ -28,12 +28,22 @@ importing the terminal renderer module or any terminal UI dependency.
 | Code | Variant | Short explanation |
 | --- | --- | --- |
 | `P0001` | `UnsupportedIrMajor` | unsupported IR major version |
+| `P0002` | `InvalidStructure` | invalid IR structure |
+| `P0003` | `ExcessiveComplexity` | checking complexity limit exceeded |
+| `P0100` | `InvalidIdentifier` | invalid portable identifier |
+| `P0101` | `UnresolvedReference` | unresolved reference |
 | `P0102` | `DuplicateDeclaration` | duplicate declaration |
+| `P0103` | `AliasCycle` | recursive type alias |
 | `P0207` | `TypeMismatch` | type mismatch |
+| `P0208` | `InvalidInvocation` | invalid invocation |
+| `P0209` | `InvalidControlFlow` | invalid control flow |
 | `P0214` | `NonExhaustiveMatch` | non-exhaustive match |
+| `P0215` | `UnreachablePattern` | unreachable or duplicate pattern |
 | `P0220` | `ContractNonconformance` | contract implementation does not conform |
+| `P0221` | `InvalidContractPosition` | contract type in an invalid position |
 | `P0230` | `InvalidPortableTest` | invalid portable test |
 | `P0301` | `ImpureOperation` | impure operation |
+| `P0302` | `RecursiveCall` | recursion is not portable in v0 |
 | `P0404` | `UnsupportedCapability` | target capability unsupported |
 | `P0502` | `UnsafeOutputPath` | unsafe output path |
 

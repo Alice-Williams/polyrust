@@ -1,0 +1,13 @@
+load("@rules_rust//rust:defs.bzl", "rust_test")
+
+rust_test(
+    name = "checker_consumer_test",
+    srcs = ["consumer_test.rs"],
+    crate_name = "checker_consumer_test",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//crates/check:portable_check",
+        "//crates/ir:portable_ir",
+    ],
+)

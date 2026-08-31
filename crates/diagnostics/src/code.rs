@@ -6,12 +6,22 @@ use serde::{Serialize, Serializer};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DiagnosticCode {
     UnsupportedIrMajor,
+    InvalidStructure,
+    ExcessiveComplexity,
+    InvalidIdentifier,
+    UnresolvedReference,
     DuplicateDeclaration,
+    AliasCycle,
     TypeMismatch,
+    InvalidInvocation,
+    InvalidControlFlow,
     NonExhaustiveMatch,
+    UnreachablePattern,
     ContractNonconformance,
+    InvalidContractPosition,
     InvalidPortableTest,
     ImpureOperation,
+    RecursiveCall,
     UnsupportedCapability,
     UnsafeOutputPath,
 }
@@ -25,14 +35,24 @@ pub struct Explanation {
 }
 
 impl DiagnosticCode {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 19] = [
         Self::UnsupportedIrMajor,
+        Self::InvalidStructure,
+        Self::ExcessiveComplexity,
+        Self::InvalidIdentifier,
+        Self::UnresolvedReference,
         Self::DuplicateDeclaration,
+        Self::AliasCycle,
         Self::TypeMismatch,
+        Self::InvalidInvocation,
+        Self::InvalidControlFlow,
         Self::NonExhaustiveMatch,
+        Self::UnreachablePattern,
         Self::ContractNonconformance,
+        Self::InvalidContractPosition,
         Self::InvalidPortableTest,
         Self::ImpureOperation,
+        Self::RecursiveCall,
         Self::UnsupportedCapability,
         Self::UnsafeOutputPath,
     ];
@@ -40,12 +60,22 @@ impl DiagnosticCode {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::UnsupportedIrMajor => "P0001",
+            Self::InvalidStructure => "P0002",
+            Self::ExcessiveComplexity => "P0003",
+            Self::InvalidIdentifier => "P0100",
+            Self::UnresolvedReference => "P0101",
             Self::DuplicateDeclaration => "P0102",
+            Self::AliasCycle => "P0103",
             Self::TypeMismatch => "P0207",
+            Self::InvalidInvocation => "P0208",
+            Self::InvalidControlFlow => "P0209",
             Self::NonExhaustiveMatch => "P0214",
+            Self::UnreachablePattern => "P0215",
             Self::ContractNonconformance => "P0220",
+            Self::InvalidContractPosition => "P0221",
             Self::InvalidPortableTest => "P0230",
             Self::ImpureOperation => "P0301",
+            Self::RecursiveCall => "P0302",
             Self::UnsupportedCapability => "P0404",
             Self::UnsafeOutputPath => "P0502",
         }
@@ -74,25 +104,70 @@ pub fn explain(code: DiagnosticCode) -> Explanation {
             short: "unsupported IR major version",
             long: "The document uses an IR major generation this reader cannot interpret safely.",
         },
+        DiagnosticCode::InvalidStructure => Explanation {
+            code,
+            short: "invalid IR structure",
+            long: "The unchecked document has invalid or duplicate structural node identities.",
+        },
+        DiagnosticCode::ExcessiveComplexity => Explanation {
+            code,
+            short: "checking complexity limit exceeded",
+            long: "The unchecked program exceeds a bounded checker depth or work limit.",
+        },
+        DiagnosticCode::InvalidIdentifier => Explanation {
+            code,
+            short: "invalid portable identifier",
+            long: "A declaration, member, parameter, or local name is not a portable identifier.",
+        },
+        DiagnosticCode::UnresolvedReference => Explanation {
+            code,
+            short: "unresolved reference",
+            long: "A type, declaration, member, function, method, field, or local reference does not resolve.",
+        },
         DiagnosticCode::DuplicateDeclaration => Explanation {
             code,
             short: "duplicate declaration",
             long: "Two declarations compete for the same portable name or identity in one scope.",
+        },
+        DiagnosticCode::AliasCycle => Explanation {
+            code,
+            short: "recursive type alias",
+            long: "A type alias directly or indirectly refers back to itself.",
         },
         DiagnosticCode::TypeMismatch => Explanation {
             code,
             short: "type mismatch",
             long: "An expression's inferred portable type differs from the type required at this location.",
         },
+        DiagnosticCode::InvalidInvocation => Explanation {
+            code,
+            short: "invalid invocation",
+            long: "A function, method, intrinsic, or constructor has the wrong receiver, arity, or argument types.",
+        },
+        DiagnosticCode::InvalidControlFlow => Explanation {
+            code,
+            short: "invalid control flow",
+            long: "A block has an invalid return path, unreachable statement, or incompatible branch result.",
+        },
         DiagnosticCode::NonExhaustiveMatch => Explanation {
             code,
             short: "non-exhaustive match",
             long: "A match does not cover every value admitted by its portable input type.",
         },
+        DiagnosticCode::UnreachablePattern => Explanation {
+            code,
+            short: "unreachable or duplicate pattern",
+            long: "A match arm is duplicated or appears after a pattern that already covers it.",
+        },
         DiagnosticCode::ContractNonconformance => Explanation {
             code,
             short: "contract implementation does not conform",
             long: "An explicit record implementation is missing or mismatches a required contract method.",
+        },
+        DiagnosticCode::InvalidContractPosition => Explanation {
+            code,
+            short: "contract type in an invalid position",
+            long: "A contract view is used outside its restricted direct-parameter position.",
         },
         DiagnosticCode::InvalidPortableTest => Explanation {
             code,
@@ -103,6 +178,11 @@ pub fn explain(code: DiagnosticCode) -> Explanation {
             code,
             short: "impure operation",
             long: "The program requests an operation outside the pure v0 semantic model.",
+        },
+        DiagnosticCode::RecursiveCall => Explanation {
+            code,
+            short: "recursion is not portable in v0",
+            long: "The function or method call graph contains a direct or indirect recursive cycle.",
         },
         DiagnosticCode::UnsupportedCapability => Explanation {
             code,

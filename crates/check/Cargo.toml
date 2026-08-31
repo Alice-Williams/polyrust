@@ -11,6 +11,7 @@ publish.workspace = true
 name = "portable_check"
 
 [dependencies]
+portable_diagnostics.workspace = true
 portable_ir.workspace = true
 
 [lints]

@@ -1,7 +1,10 @@
 load("@crates//:defs.bzl", "aliases", "all_crate_deps")
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
-exports_files(["Cargo.toml"])
+exports_files([
+    "Cargo.toml",
+    "src/v0/testdata/every-node.poly.json",
+])
 
 rust_library(
     name = "portable_ir",
