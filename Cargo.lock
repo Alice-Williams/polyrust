@@ -78,8 +78,13 @@ dependencies = [
  "polyrust-backend-rust",
  "polyrust-backend-typescript",
  "polyrust-build",
+ "polyrust-check",
  "polyrust-codegen",
  "polyrust-conformance",
+ "polyrust-diagnostics",
+ "polyrust-ir",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

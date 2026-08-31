@@ -271,6 +271,16 @@ impl BackendRegistry {
         program: &CheckedProgram,
         options: &BackendOptions,
     ) -> Result<OutputManifest, BackendError> {
+        let backend = self.preflight_target(target, program, options)?;
+        backend.generate(program, options)
+    }
+
+    pub fn preflight_target(
+        &self,
+        target: &TargetId,
+        program: &CheckedProgram,
+        options: &BackendOptions,
+    ) -> Result<&Arc<dyn Backend>, BackendError> {
         let backend = self
             .backends
             .get(target)
@@ -293,7 +303,7 @@ impl BackendRegistry {
         if !diagnostics.is_empty() {
             return Err(BackendError::UnsupportedCapabilities(diagnostics));
         }
-        backend.generate(program, options)
+        Ok(backend)
     }
 }
 

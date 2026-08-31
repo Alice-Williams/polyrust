@@ -1,7 +1,10 @@
 //! Command-line composition root.
-//!
-//! Argument parsing, backend registration, and safe output arrive in M09.
 
 #![forbid(unsafe_code)]
 
-fn main() {}
+fn main() {
+    let arguments: Vec<String> = std::env::args().skip(1).collect();
+    let mut stdout = std::io::stdout().lock();
+    let mut stderr = std::io::stderr().lock();
+    std::process::exit(portable_cli::run(&arguments, &mut stdout, &mut stderr));
+}

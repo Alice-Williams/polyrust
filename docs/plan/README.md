@@ -53,7 +53,7 @@ contract as every other target.
 
 - [M07 — Structured document writer](milestones/M07-document-writer.md) — complete
 - [M08 — Backend API and manifests](milestones/M08-backend-api.md) — complete
-- [M09 — CLI and safe output](milestones/M09-cli-output.md) — planned
+- [M09 — CLI and safe output](milestones/M09-cli-output.md) — complete
 
 ### Phase 3 — Required target backends
 

@@ -1,11 +1,14 @@
-load("@rules_rust//rust:defs.bzl", "rust_binary")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 
 exports_files(["Cargo.toml"])
 
-rust_binary(
-    name = "polyrust",
-    srcs = ["src/main.rs"],
-    crate_name = "polyrust",
+rust_library(
+    name = "portable_cli",
+    srcs = glob(
+        ["src/**/*.rs"],
+        exclude = ["src/main.rs"],
+    ),
+    crate_name = "portable_cli",
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = [
@@ -14,7 +17,27 @@ rust_binary(
         "//crates/backend-rust:portable_backend_rust",
         "//crates/backend-typescript:portable_backend_typescript",
         "//crates/build:portable_build",
+        "//crates/check:portable_check",
         "//crates/codegen:portable_codegen",
         "//crates/conformance:portable_conformance",
+        "//crates/diagnostics:portable_diagnostics",
+        "//crates/ir:portable_ir",
+        "@crates//:serde",
+        "@crates//:serde_json",
     ],
+)
+
+rust_binary(
+    name = "polyrust",
+    srcs = ["src/main.rs"],
+    crate_name = "polyrust",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [":portable_cli"],
+)
+
+rust_test(
+    name = "portable_cli_test",
+    crate = ":portable_cli",
+    visibility = ["//visibility:public"],
 )
