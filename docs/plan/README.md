@@ -68,5 +68,5 @@ contract as every other target.
 
 ### Phase 5 — Usability and release
 
-- [M15 — Examples and extension proof](milestones/M15-examples-extensions.md) — planned
-- [M16 — CI and release gate](milestones/M16-ci-release.md) — planned
+- [M15 — Examples and extension proof](milestones/M15-examples-extensions.md) — complete
+- [M16 — CI and release gate](milestones/M16-ci-release.md) — complete

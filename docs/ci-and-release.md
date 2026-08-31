@@ -5,21 +5,23 @@ It has five independent layers:
 
 - a Windows Server 2025 checkout validates the exact pinned Linux development
   container contract without running toolchains on the Windows host;
-- a fast Ubuntu 24.04 job runs Cargo and Bazel Rustfmt/Clippy, Buildifier, and
-  Rust core tests;
+- a fast Ubuntu 24.04 job runs Cargo Rustfmt, warning-denied Clippy, workspace
+  tests, Bazel Buildifier, and the dependency-boundary linter;
 - Rust 1.98.0 (MSRV) and current stable each run the complete Cargo workspace;
 - Ubuntu 22.04 and 24.04 generate clean four-target trees which a dependent job
   compares byte-for-byte; and
 - the final Ubuntu job can run only after every prior job succeeds, installs
   pinned `cargo-audit` 0.22.2, and runs the entire release gate first with empty
-  Bazel caches and then with the warmed caches.
+  Bazel caches and then with the warmed caches. That complete gate includes the
+  Bazel Rustfmt and Clippy aspects plus every native generated-code test.
 
 Toolchains used for generation are pinned by the
 [development image](../.devcontainer/Dockerfile) and `MODULE.bazel`; Go is
 downloaded by Bazel rather than inherited from a runner. Caches contain only
-downloads and action results. Generation, native tests, conformance, policy,
-and determinism commands still run on every gate and cannot be converted into
-allowed skips.
+downloads and action results, are mounted from `RUNNER_TEMP` outside the
+checkout, and therefore cannot become Bazel packages. Generation, native tests,
+conformance, policy, and determinism commands still run on every gate and
+cannot be converted into allowed skips.
 
 ## Local release command
 
@@ -49,4 +51,3 @@ then record the immutable run URL and both cross-host manifest artifact names in
 the [release checklist](release-checklist-v0.1.md). A failed or cancelled job is
 not release evidence. The candidate must also have a clean local cold and warm
 run using the checked-in container.
-

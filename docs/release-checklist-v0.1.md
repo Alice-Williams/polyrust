@@ -36,9 +36,9 @@ anything. Every required item is release-blocking.
 | [M13](plan/milestones/M13-go-backend.md) | Generated Go native gate | Pass |
 | [M14](plan/milestones/M14-conformance.md) | 50 vectors, faults, mismatch and determinism | Pass |
 | [M15](plan/milestones/M15-examples-extensions.md) | Clean contributor walkthrough and extension proof | Pass |
-| [M16](plan/milestones/M16-ci-release.md) | Local/hosted cold-warm matrix and policies | Pending hosted CI |
+| [M16](plan/milestones/M16-ci-release.md) | Local/hosted cold-warm matrix and policies | Pass |
 
-## Candidate evidence
+## Release evidence
 
 - Local focused M16 policies: pass, including all six deliberate failures.
 - Local benchmark: pass; exact measurement is in the benchmark report.
@@ -48,6 +48,12 @@ anything. Every required item is release-blocking.
   complete Cargo workspace and doctests.
 - RustSec advisory scan: pass against 1,233 current advisories and all 26 locked
   crate dependencies.
-- Hosted workflow run: pending candidate push.
-- Cross-host artifacts: `manifests-ubuntu-22.04` and
-  `manifests-ubuntu-24.04`, pending hosted comparison.
+- [Hosted workflow run 33447798324](https://github.com/Alice-Williams/polyrust/actions/runs/33447798324):
+  pass at `0257f559dbc22ca97dbd49c78e29fa42c13428c1`. Windows contract,
+  fast lint/tests, MSRV, stable, cross-host determinism, and cold/warm release
+  jobs all passed.
+- Cross-host artifacts: `manifests-ubuntu-22.04` (artifact 9778717397) and
+  `manifests-ubuntu-24.04` (artifact 9778714315), 28,893 bytes each; the
+  dependent byte-for-byte comparison passed.
+- Hosted cache-cold complete gate: pass in four minutes. The immediately
+  following cache-warm complete gate: pass in 42 seconds.
