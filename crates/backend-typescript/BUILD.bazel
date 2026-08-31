@@ -1,10 +1,12 @@
-load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 exports_files(["Cargo.toml"])
 
 rust_library(
     name = "portable_backend_typescript",
     srcs = glob(["src/**/*.rs"]),
+    compile_data = ["src/runtime.ts"],
     crate_name = "portable_backend_typescript",
     edition = "2024",
     visibility = ["//visibility:public"],
@@ -12,5 +14,59 @@ rust_library(
         "//crates/check:portable_check",
         "//crates/codegen:portable_codegen",
         "//crates/ir:portable_ir",
+        "@crates//:serde_json",
     ],
+)
+
+rust_test(
+    name = "portable_backend_typescript_test",
+    compile_data = ["//crates/build:testdata/registration.poly.json"],
+    crate = ":portable_backend_typescript",
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "generate_v0_fixture",
+    srcs = ["examples/generate_v0.rs"],
+    crate_name = "generate_typescript_v0_fixture",
+    edition = "2024",
+    deps = [
+        ":portable_backend_typescript",
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+        "//crates/ir:portable_ir",
+    ],
+)
+
+genrule(
+    name = "generate_v0_package",
+    srcs = ["//crates/build:testdata/registration.poly.json"],
+    outs = [
+        "test-generated/package.json",
+        "test-generated/tsconfig.json",
+        "test-generated/src/conformance.test.ts",
+        "test-generated/src/generated.test.ts",
+        "test-generated/src/index.ts",
+        "test-generated/src/node-shims.d.ts",
+        "test-generated/src/runtime.ts",
+        "test-generated/tests/invalid-types.ts",
+    ],
+    cmd = "$(location :generate_v0_fixture) $(location //crates/build:testdata/registration.poly.json) $(@D)/test-generated",
+    tools = [":generate_v0_fixture"],
+)
+
+sh_test(
+    name = "generated_v0_native_test",
+    srcs = ["test_generated.sh"],
+    data = [
+        ":test-generated/package.json",
+        ":test-generated/src/conformance.test.ts",
+        ":test-generated/src/generated.test.ts",
+        ":test-generated/src/index.ts",
+        ":test-generated/src/node-shims.d.ts",
+        ":test-generated/src/runtime.ts",
+        ":test-generated/tests/invalid-types.ts",
+        ":test-generated/tsconfig.json",
+    ],
+    visibility = ["//visibility:public"],
 )

@@ -1,6 +1,6 @@
 # M11 — Implement required TypeScript backend
 
-- Status: planned
+- Status: complete
 - Phase: 3
 - Depends on: M08, M09
 
@@ -62,3 +62,19 @@ least 20 evaluator vectors agree with generated TypeScript.
 
 Plain JavaScript output, CommonJS, browser bundling, DOM APIs, async, and arbitrary
 npm dependencies.
+
+## Exit evidence
+
+- `org.polyrust.typescript` consumes only `CheckedProgram`, declares every v0
+  capability, and emits a deterministic dependency-free strict ESM package.
+- Generated API declarations use readonly records/lists, explicit contract
+  `implements` clauses, discriminated `Option`/value-`Result`, and `bigint` for
+  every `i64`; the embedded checked document stringifies wide integer/float
+  bits before JavaScript parsing.
+- The generated native gate passed Prettier 3.9.6, strict TypeScript 7.0.2,
+  TypeScript compilation, Node 24.20.0 tests, the invalid-tag negative fixture,
+  one native test per portable test, and 20 semantic boundary vectors.
+- `cargo fmt --all -- --check` and workspace Clippy with warnings denied passed.
+  The authoritative `bazel test //...` gate passed all 21 tests across 47
+  targets, including Rust/Bazel linters, dependency boundaries, all earlier
+  gates, backend unit tests, and native generated-package execution.

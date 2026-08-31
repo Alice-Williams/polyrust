@@ -6,6 +6,7 @@
 
 # Generated proof-of-concept packages
 /generated/
+node_modules/
 
 # Editors and operating systems
 .DS_Store

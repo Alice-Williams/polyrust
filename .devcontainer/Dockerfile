@@ -6,6 +6,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH=/usr/local/cargo/bin:${PATH}
 
 ARG BAZELISK_VERSION=1.29.0
+ARG NODE_VERSION=24.20.0
+ARG TYPESCRIPT_VERSION=7.0.2
+ARG PRETTIER_VERSION=3.9.6
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -21,10 +24,32 @@ RUN apt-get update \
         python3 \
         unzip \
         vim-tiny \
+        xz-utils \
         zip \
     && rm -rf /var/lib/apt/lists/*
 
 RUN rustup component add clippy rustfmt
+
+RUN set -eux; \
+    curl --fail --silent --show-error --location \
+        --output /tmp/node.tar.xz \
+        "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz"; \
+    curl --fail --silent --show-error --location \
+        --output /tmp/node-shasums.txt \
+        "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt"; \
+    expected_checksum=$(awk -v file="node-v${NODE_VERSION}-linux-x64.tar.xz" '$2 == file { print $1 }' /tmp/node-shasums.txt); \
+    actual_checksum=$(sha256sum /tmp/node.tar.xz | cut -d ' ' -f 1); \
+    test -n "$expected_checksum"; \
+    test "$expected_checksum" = "$actual_checksum"; \
+    tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1; \
+    npm install --global --ignore-scripts \
+        "typescript@${TYPESCRIPT_VERSION}" \
+        "prettier@${PRETTIER_VERSION}"; \
+    node --version; \
+    npm --version; \
+    tsc --version; \
+    prettier --version; \
+    rm -f /tmp/node.tar.xz /tmp/node-shasums.txt
 
 RUN set -eux; \
     curl --fail --silent --show-error --location \
