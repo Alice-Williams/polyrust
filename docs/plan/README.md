@@ -46,7 +46,7 @@ contract as every other target.
 - [M02 — Portable IR](milestones/M02-portable-ir.md) — complete
 - [M03 — Diagnostics](milestones/M03-diagnostics.md) — complete
 - [M04 — Resolver and checker](milestones/M04-checker.md) — complete
-- [M05 — Reference evaluator](milestones/M05-evaluator.md) — planned
+- [M05 — Reference evaluator](milestones/M05-evaluator.md) — complete
 - [M06 — Rust builder frontend](milestones/M06-rust-builder.md) — planned
 
 ### Phase 2 — Backend platform

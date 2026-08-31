@@ -1,6 +1,8 @@
 load("@buildifier_prebuilt//:rules.bzl", "buildifier", "buildifier_test")
 load("@rules_rust//rust:defs.bzl", "rust_clippy_test", "rustfmt_test")
 
+exports_files(["conformance/v0/evaluator-vectors.json"])
+
 rust_clippy_test(
     name = "rust_clippy_test",
     targets = [

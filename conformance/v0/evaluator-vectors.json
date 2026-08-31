@@ -1,0 +1,25 @@
+{
+  "protocol": "polyrust.evaluator-vectors.v0",
+  "vectors": [
+    {"id":"bool_not","operation":"bool_not","arguments":[{"type":"bool","value":true}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"value","value":{"type":"bool","value":false}}},
+    {"id":"checked_add","operation":"int_add_checked","arguments":[{"type":"i64","value":"20"},{"type":"i64","value":"22"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"value","value":{"type":"i64","value":"42"}}},
+    {"id":"checked_overflow","operation":"int_add_checked","arguments":[{"type":"i64","value":"9223372036854775807"},{"type":"i64","value":"1"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"error","error":{"code":"checked_overflow","operation":"add"}}},
+    {"id":"division_by_zero","operation":"int_div_checked","arguments":[{"type":"i32","value":"1"},{"type":"i32","value":"0"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"error","error":{"code":"division_by_zero"}}},
+    {"id":"wrapping_add","operation":"int_add_wrapping","arguments":[{"type":"i32","value":"2147483647"},{"type":"i32","value":"1"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"value","value":{"type":"i32","value":"-2147483648"}}},
+    {"id":"unicode_astral_length","operation":"string_scalar_length","arguments":[{"type":"string","value":"a🦀"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"value","value":{"type":"i64","value":"2"}}},
+    {"id":"unicode_combining_length","operation":"string_scalar_length","arguments":[{"type":"string","value":"é"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"value","value":{"type":"i64","value":"2"}}},
+    {"id":"bytes_concat","operation":"bytes_concat","arguments":[{"type":"bytes","hex":"0001"},{"type":"bytes","hex":"feff"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"value","value":{"type":"bytes","hex":"0001feff"}}},
+    {"id":"list_get","operation":"list_get_checked","arguments":[{"type":"list","values":[{"type":"string","value":"first"}]},{"type":"i64","value":"0"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"value","value":{"type":"string","value":"first"}}},
+    {"id":"list_oob","operation":"list_get_checked","arguments":[{"type":"list","values":[]},{"type":"i64","value":"0"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"error","error":{"code":"index_out_of_bounds","index":"0","length":"0"}}},
+    {"id":"option_some","operation":"option_is_some","arguments":[{"type":"option","variant":"some","value":{"type":"i64","value":"1"}}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"value","value":{"type":"bool","value":true}}},
+    {"id":"option_none","operation":"option_is_none","arguments":[{"type":"option","variant":"none"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"value","value":{"type":"bool","value":true}}},
+    {"id":"result_ok","operation":"result_is_ok","arguments":[{"type":"result","variant":"ok","value":{"type":"i64","value":"1"}}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"value","value":{"type":"bool","value":true}}},
+    {"id":"result_err","operation":"result_is_err","arguments":[{"type":"result","variant":"err","value":{"type":"string","value":"error"}}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"value","value":{"type":"bool","value":true}}},
+    {"id":"float_negative_zero","operation":"float_neg","arguments":[{"type":"f64","bits":"0000000000000000"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"value","value":{"type":"f64","bits":"8000000000000000"}}},
+    {"id":"float_nan_equality","operation":"equal","arguments":[{"type":"f64","bits":"7ff8000000000000"},{"type":"f64","bits":"7ff8000000000000"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"value","value":{"type":"bool","value":false}}},
+    {"id":"narrow_out_of_range","operation":"narrow_i64_to_i32_checked","arguments":[{"type":"i64","value":"9223372036854775807"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"error","error":{"code":"narrowing_out_of_range","value":"9223372036854775807"}}},
+    {"id":"invalid_utf8","operation":"string_from_utf8_checked","arguments":[{"type":"bytes","hex":"ff"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"error","error":{"code":"invalid_utf8"}}},
+    {"id":"string_contains","operation":"string_contains","arguments":[{"type":"string","value":"x🦀y"},{"type":"string","value":"🦀"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"value","value":{"type":"bool","value":true}}},
+    {"id":"list_append","operation":"list_append","arguments":[{"type":"list","values":[{"type":"i64","value":"1"}]},{"type":"i64","value":"2"}],"expected":{"protocol":"polyrust.canonical.v0","outcome":"value","value":{"type":"list","values":[{"type":"i64","value":"1"},{"type":"i64","value":"2"}]}}}
+  ]
+}

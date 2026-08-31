@@ -5,11 +5,13 @@ exports_files(["Cargo.toml"])
 rust_library(
     name = "portable_eval",
     srcs = glob(["src/**/*.rs"]),
+    compile_data = ["//:conformance/v0/evaluator-vectors.json"],
     crate_name = "portable_eval",
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = [
         "//crates/check:portable_check",
         "//crates/ir:portable_ir",
+        "@crates//:serde_json",
     ],
 )

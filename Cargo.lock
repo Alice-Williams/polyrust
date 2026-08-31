@@ -113,6 +113,7 @@ version = "0.1.0"
 dependencies = [
  "polyrust-check",
  "polyrust-ir",
+ "serde_json",
 ]
 
 [[package]]
