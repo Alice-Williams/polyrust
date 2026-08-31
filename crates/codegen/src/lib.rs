@@ -2,6 +2,10 @@
 
 //! Backend boundary and deterministic in-memory artifact manifest.
 
+mod document;
+
+pub use document::*;
+
 use portable_check::CheckedModule;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

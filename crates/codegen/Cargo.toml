@@ -15,3 +15,7 @@ portable_check.workspace = true
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "document"
+harness = false

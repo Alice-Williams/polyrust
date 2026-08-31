@@ -508,7 +508,7 @@
           "FILE:@@//crates/check/Cargo.toml bf75bbf9c2442ca027d6bd0aff9542bad1bace3e638ca7bdcdef86ddb05ef0a0",
           "FILE:@@//crates/diagnostics/Cargo.toml 184ba98b4c1999e614b27b2c8ae999a03702ba9f4f0b90f4510eff25c3920adf",
           "FILE:@@//crates/ir/Cargo.toml b2cce53d8a47ea2a476d0545331a6ed02cc1908922e9ce47f3634241c3e7c01f",
-          "FILE:@@//crates/codegen/Cargo.toml 187bdd182ed2871114efddc85e3473f36f251ec95dd0201f4c6be4bf65fef1a4",
+          "FILE:@@//crates/codegen/Cargo.toml 784a500e65dfe7669669769c91ab35be615fae016d9faa6e28f82659a33081ef",
           "FILE:@@//crates/backend-python/Cargo.toml 3a234e28bd698908451ad80c1d74c8cd68c1bc9eb8b28823e02c5c457b2deb78",
           "FILE:@@//crates/backend-rust/Cargo.toml 779bc70804ff309e2faca861f79e99cc5742d4ebc4aebdd6cab752dbfd472e40",
           "FILE:@@//crates/backend-typescript/Cargo.toml 30ca7f954494302ba7924cc84e3ff8e52ff40ea442e29f3950d660e2c611f39c",

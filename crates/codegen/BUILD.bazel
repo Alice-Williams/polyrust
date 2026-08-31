@@ -1,4 +1,4 @@
-load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
 exports_files(["Cargo.toml"])
 
@@ -9,4 +9,9 @@ rust_library(
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = ["//crates/check:portable_check"],
+)
+
+rust_test(
+    name = "portable_codegen_test",
+    crate = ":portable_codegen",
 )

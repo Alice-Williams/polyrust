@@ -51,7 +51,7 @@ contract as every other target.
 
 ### Phase 2 — Backend platform
 
-- [M07 — Structured document writer](milestones/M07-document-writer.md) — planned
+- [M07 — Structured document writer](milestones/M07-document-writer.md) — complete
 - [M08 — Backend API and manifests](milestones/M08-backend-api.md) — planned
 - [M09 — CLI and safe output](milestones/M09-cli-output.md) — planned
 
