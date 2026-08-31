@@ -2,6 +2,9 @@
 
 //! Target-independent syntax model for the executable prototype.
 
+/// Complete, versioned v0 unchecked IR and canonical JSON representation.
+pub mod v0;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Type {
     Bool,

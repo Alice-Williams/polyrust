@@ -43,7 +43,7 @@ contract as every other target.
 ### Phase 1 — Semantic spine
 
 - [M01 — Workspace boundaries](milestones/M01-workspace.md) — complete
-- [M02 — Portable IR](milestones/M02-portable-ir.md) — planned
+- [M02 — Portable IR](milestones/M02-portable-ir.md) — complete
 - [M03 — Diagnostics](milestones/M03-diagnostics.md) — planned
 - [M04 — Resolver and checker](milestones/M04-checker.md) — planned
 - [M05 — Reference evaluator](milestones/M05-evaluator.md) — planned

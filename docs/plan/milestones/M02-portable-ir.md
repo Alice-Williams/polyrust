@@ -1,6 +1,6 @@
 # M02 — Define versioned portable IR and canonical serialization
 
-- Status: planned
+- Status: complete
 - Phase: 1
 - Depends on: M01
 
@@ -49,6 +49,34 @@ cargo test -p polyrust-ir --all-features
 The exhaustive fixture round-trips, determinism/property tests pass, the schema
 is documented, public types have rustdoc examples, and target backends can depend
 on the model without pulling parser/CLI dependencies.
+
+### Completion evidence
+
+Completed in the pinned Linux development image on 2026-08-31:
+
+- `cargo test -p polyrust-ir` and
+  `cargo test -p polyrust-ir --all-features` passed 10 unit/property tests and
+  the public v0 rustdoc example.
+- `bazel test //...` passed all 10 repository tests across 30 analyzed targets,
+  including the hermetic IR test, Rustfmt, Clippy, Buildifier, dependency
+  boundaries, and native generated Rust/Go tests.
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings` and
+  `cargo fmt --all --check` passed.
+- The 6.7 KiB `every-node.poly.json` golden fixture covers every declaration
+  category, all Core types, a contract, implementation, restricted contract
+  parameter, and typed portable test outcome.
+- Dedicated tests round-trip every expression, statement, pattern, constant,
+  value, intrinsic, invocation, outcome, and source-reference variant.
+- Deterministic shuffles prove declaration and metadata insertion order cannot
+  change canonical bytes; parse/serialize/parse equality is asserted.
+- Strict-schema tests reject root and nested unknown fields and incompatible
+  majors with structured error kinds. Structural tests reject zero/duplicate
+  `NodeId` values.
+- Byte, depth, structural-node, and string limits each have rejection tests;
+  512 deterministic malformed byte inputs are caught as errors without panic.
+- `docs/ir-v0.md` is the normative schema. The IR Cargo package depends only on
+  locked Serde/Serde JSON plus the standard library and does not depend on a
+  parser, CLI, checker, or backend.
 
 ## Scope boundary
 

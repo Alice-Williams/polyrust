@@ -34,6 +34,7 @@ targets.
 - [Feasibility study](docs/plan/analysis.md)
 - [Technical architecture](docs/architecture.md)
 - [Portable language/functionality map](docs/portable-language.md)
+- [Normative v0 IR schema](docs/ir-v0.md)
 - [Engineering plan](docs/plan/README.md)
 - [Development environment](docs/DEVELOPMENT.md)
 - [Dependency inventory](docs/dependencies.md)

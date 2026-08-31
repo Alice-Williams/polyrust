@@ -1,8 +1,20 @@
 # Dependency inventory
 
 This inventory records dependencies that are downloaded or executed by the
-project. M01 has no third-party Rust runtime/library dependencies: Cargo uses
-only checked-in workspace path dependencies.
+project. M01 had no third-party Rust runtime/library dependencies. M02 adds the
+two audited serialization dependencies below; Cargo and Bazel lock their full
+transitive graphs.
+
+## Rust library dependencies
+
+| Dependency | Locked version | Purpose | License |
+| --- | --- | --- | --- |
+| `serde` | 1.0.229 | Strict derives for the versioned IR schema | Apache-2.0 OR MIT |
+| `serde_json` | 1.0.151 | Bounded JSON decoding and deterministic compact encoding | Apache-2.0 OR MIT |
+
+Neither dependency exposes filesystem, network, process, or target-language
+behavior. Their transitive packages and checksums are recorded in `Cargo.lock`
+and imported into Bazel through `rules_rust` crate universe.
 
 ## Build and development dependencies
 
