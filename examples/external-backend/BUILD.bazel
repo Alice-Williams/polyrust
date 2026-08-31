@@ -1,0 +1,23 @@
+load("@rules_rust//rust:defs.bzl", "rust_test")
+
+exports_files(
+    [
+        "Cargo.toml",
+        "src/lib.rs",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "external_backend_test",
+    srcs = ["src/lib.rs"],
+    crate_name = "external_backend_test",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//crates/build:portable_build",
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+        "//crates/ir:portable_ir",
+    ],
+)

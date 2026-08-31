@@ -30,6 +30,9 @@ targets.
 
 ## Documents
 
+- [Author guide](docs/author-guide.md)
+- [Backend author guide](docs/backend-author-guide.md)
+- [Generated-code review guide](docs/generated-code-review.md)
 - [Product charter](docs/charter.md)
 - [Feasibility study](docs/plan/analysis.md)
 - [Technical architecture](docs/architecture.md)

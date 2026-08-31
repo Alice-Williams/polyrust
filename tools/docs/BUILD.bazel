@@ -1,0 +1,16 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+sh_test(
+    name = "documentation_test",
+    srcs = ["documentation_test.sh"],
+    data = [
+        "check_links.py",
+        "//:documentation",
+        "//examples/external-backend:Cargo.toml",
+        "//examples/external-backend:src/lib.rs",
+        "//examples/models-and-validation:Cargo.toml",
+        "//examples/models-and-validation:native_test.sh",
+        "//examples/models-and-validation:src/lib.rs",
+    ],
+    visibility = ["//visibility:public"],
+)

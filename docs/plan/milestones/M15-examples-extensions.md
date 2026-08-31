@@ -1,6 +1,6 @@
 # M15 — Deliver examples, author guide, and external backend proof
 
-- Status: planned
+- Status: complete
 - Phase: 5
 - Depends on: M06, M10, M11, M12, M13, M14
 
@@ -53,3 +53,25 @@ required for correctness.
 
 Publishing packages, production SDK generation, IDE plugins, and alternative
 authoring syntax.
+
+## Exit evidence
+
+- `//examples/models-and-validation:generate` builds one checked Rust-authored
+  module and emits 23 files across fresh Rust, TypeScript, Python, and Go
+  packages. The model includes a constant, two records, a restricted contract
+  and implementation, concrete and abstract dispatch, and ten portable tests.
+- `//examples/models-and-validation:all` passed all five proofs: the reference
+  evaluator, every generated native test framework and linter, byte-identical
+  deletion/regeneration, the external backend contract, and documentation/link
+  checks. The literal clean generation walkthrough also produced all 23 files.
+- The separately rooted `examples/external-backend` package depends only on
+  public versioned crates and proves registration, explicit preflight, manifest
+  emission, and `check_backend_contract` without a core target-name branch.
+- The author, backend-author, and generated-review guides cover builder use,
+  semantics, diagnostics, capabilities, unsupported features, regeneration,
+  extension requirements, and all four targets' public API conventions. The
+  guide explicitly separates Rust host, PolyRust portable, and generated Rust
+  code, and its links and required command snippets are tested.
+- Cargo Rustfmt and warning-denied Clippy passed. The authoritative
+  `bazelisk test //...` gate passed all 31 tests across 66 targets, including
+  Buildifier, Bazel Rustfmt/Clippy, and all pinned native toolchains.

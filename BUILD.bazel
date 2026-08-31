@@ -3,6 +3,15 @@ load("@rules_rust//rust:defs.bzl", "rust_clippy_test", "rustfmt_test")
 
 exports_files(["conformance/v0/evaluator-vectors.json"])
 
+filegroup(
+    name = "documentation",
+    srcs = [
+        "CONTRIBUTING.md",
+        "README.md",
+    ] + glob(["docs/**/*.md"]),
+    visibility = ["//visibility:public"],
+)
+
 rust_clippy_test(
     name = "rust_clippy_test",
     targets = [
@@ -21,6 +30,10 @@ rust_clippy_test(
         "//crates/eval:portable_eval",
         "//crates/ir:portable_ir_test",
         "//examples/registration:generate",
+        "//examples/external-backend:external_backend_test",
+        "//examples/models-and-validation:generate",
+        "//examples/models-and-validation:model",
+        "//examples/models-and-validation:model_test",
         "//generated-fixtures/rust:generated_rust_test",
         "//smoke/checker:checker_consumer_test",
         "//smoke/diagnostics:diagnostics_consumer_test",
@@ -47,6 +60,10 @@ rustfmt_test(
         "//crates/eval:portable_eval",
         "//crates/ir:portable_ir_test",
         "//examples/registration:generate",
+        "//examples/external-backend:external_backend_test",
+        "//examples/models-and-validation:generate",
+        "//examples/models-and-validation:model",
+        "//examples/models-and-validation:model_test",
         "//generated-fixtures/rust:generated_rust_test",
         "//smoke/checker:checker_consumer_test",
         "//smoke/diagnostics:diagnostics_consumer_test",

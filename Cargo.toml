@@ -12,6 +12,7 @@ members = [
     "crates/diagnostics",
     "crates/eval",
     "crates/ir",
+    "examples/models-and-validation",
     "examples/registration",
 ]
 resolver = "3"
