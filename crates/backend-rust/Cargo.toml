@@ -15,5 +15,8 @@ portable_check.workspace = true
 portable_codegen.workspace = true
 portable_ir.workspace = true
 
+[dev-dependencies]
+portable_eval.workspace = true
+
 [lints]
 workspace = true

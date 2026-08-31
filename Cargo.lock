@@ -38,6 +38,7 @@ version = "0.1.0"
 dependencies = [
  "polyrust-check",
  "polyrust-codegen",
+ "polyrust-eval",
  "polyrust-ir",
 ]
 

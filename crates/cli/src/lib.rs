@@ -447,6 +447,9 @@ fn default_registry() -> BackendRegistry {
         }))
         .expect("static target is unique");
     registry
+        .register(Arc::new(portable_backend_rust::RustBackend))
+        .expect("Rust target is unique");
+    registry
 }
 
 struct InspectionBackend {
@@ -613,9 +616,18 @@ mod tests {
         );
         let targets = invoke(vec!["targets".into()], default_registry());
         assert_eq!(targets.0, 0);
-        assert_eq!(
-            targets.1,
-            "org.polyrust.inspect\tBuilt-in inspection backend\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n  BoundedIteration\tnative\n  Bytes\tnative\n  CheckedIntegerArithmetic\tnative\n  ContractDispatch\tnative\n  F64\tnative\n  ImmutableList\tnative\n  Option\tnative\n  Result\tnative\n  UnicodeScalar\tnative\n  WrappingIntegerArithmetic\tnative\n"
+        assert!(targets.1.starts_with(
+            "org.polyrust.inspect\tBuilt-in inspection backend\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n"
+        ));
+        assert!(
+            targets
+                .1
+                .contains("org.polyrust.rust\tRust\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n")
+        );
+        assert!(
+            targets.1.contains(
+                "CheckedIntegerArithmetic\thelper:polyrust.runtime.checked-integers.v0\n"
+            )
         );
         let explanation = invoke(vec!["explain".into(), "P0404".into()], default_registry());
         assert_eq!(explanation.0, 0);

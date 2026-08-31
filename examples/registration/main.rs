@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
 use portable_backend_go::GoBackend;
-use portable_backend_rust::RustBackend;
+use portable_backend_rust::LegacyRustBackend;
 use portable_check::{CheckedModule, check};
 use portable_codegen::legacy::{Backend, GeneratedPackage};
 use portable_ir::{
@@ -15,7 +15,7 @@ fn main() {
         .unwrap_or_else(|| panic!("expected one of: rust-source, go-source, go-test"));
     let module = registration_module();
     let package = match artifact.as_str() {
-        "rust-source" => RustBackend.emit(&module),
+        "rust-source" => LegacyRustBackend.emit(&module),
         "go-source" | "go-test" => GoBackend.emit(&module),
         other => panic!("unknown artifact `{other}`"),
     };

@@ -1,6 +1,9 @@
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
-exports_files(["Cargo.toml"])
+exports_files([
+    "Cargo.toml",
+    "testdata/registration.poly.json",
+])
 
 rust_library(
     name = "portable_build",

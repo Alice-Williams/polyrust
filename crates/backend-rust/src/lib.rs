@@ -2,13 +2,17 @@
 
 //! Rust source backend for the executable prototype.
 
+mod v0;
+
+pub use v0::RustBackend;
+
 use portable_check::CheckedModule;
 use portable_codegen::legacy::{Backend, GeneratedFile, GeneratedPackage};
 use portable_ir::{Expression, Function, Module, Type, Value};
 
-pub struct RustBackend;
+pub struct LegacyRustBackend;
 
-impl Backend for RustBackend {
+impl Backend for LegacyRustBackend {
     fn target_name(&self) -> &'static str {
         "rust"
     }

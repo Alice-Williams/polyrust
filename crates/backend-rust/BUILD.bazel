@@ -1,4 +1,5 @@
-load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 exports_files(["Cargo.toml"])
 
@@ -13,4 +14,67 @@ rust_library(
         "//crates/codegen:portable_codegen",
         "//crates/ir:portable_ir",
     ],
+)
+
+rust_test(
+    name = "portable_backend_rust_test",
+    compile_data = ["//crates/build:testdata/registration.poly.json"],
+    crate = ":portable_backend_rust",
+    visibility = ["//visibility:public"],
+    deps = ["//crates/eval:portable_eval"],
+)
+
+sh_test(
+    name = "generated_v0_native_test",
+    srcs = ["test_generated.sh"],
+    data = [
+        ":test-generated/Cargo.toml",
+        ":test-generated/src/conformance.rs",
+        ":test-generated/src/lib.rs",
+        ":test-generated/src/polyrust_runtime.rs",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "generate_v0_fixture",
+    srcs = ["examples/generate_v0.rs"],
+    crate_name = "generate_v0_fixture",
+    edition = "2024",
+    deps = [
+        ":portable_backend_rust",
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+        "//crates/ir:portable_ir",
+    ],
+)
+
+genrule(
+    name = "generate_v0_package",
+    srcs = ["//crates/build:testdata/registration.poly.json"],
+    outs = [
+        "test-generated/Cargo.toml",
+        "test-generated/src/conformance.rs",
+        "test-generated/src/lib.rs",
+        "test-generated/src/polyrust_runtime.rs",
+    ],
+    cmd = "$(location :generate_v0_fixture) $(location //crates/build:testdata/registration.poly.json) $(@D)/test-generated",
+    tools = [":generate_v0_fixture"],
+)
+
+rust_library(
+    name = "generated_v0_rust",
+    srcs = [
+        ":test-generated/src/conformance.rs",
+        ":test-generated/src/lib.rs",
+        ":test-generated/src/polyrust_runtime.rs",
+    ],
+    crate_name = "generated_v0_rust",
+    edition = "2024",
+)
+
+rust_test(
+    name = "generated_v0_rust_test",
+    crate = ":generated_v0_rust",
+    visibility = ["//visibility:public"],
 )

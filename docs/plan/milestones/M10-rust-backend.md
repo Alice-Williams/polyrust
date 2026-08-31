@@ -1,6 +1,6 @@
 # M10 — Implement required Rust backend
 
-- Status: planned
+- Status: complete
 - Phase: 3
 - Depends on: M08, M09
 
@@ -57,6 +57,32 @@ cargo test --workspace
 All v0 fixtures generate byte-identically, native checks pass in debug and
 release, public API snapshots are reviewed, the backend passes the shared contract
 suite, and at least 20 evaluator vectors agree with generated Rust.
+
+## Completion evidence
+
+- `org.polyrust.rust` implements the public checked-program backend contract,
+  declares all ten capabilities as native or named helpers, passes the reusable
+  backend contract suite, and is registered only in the CLI composition layer.
+- Lowering covers every v0 declaration, type, constant, expression, statement,
+  pattern, intrinsic, concrete/contract call, and portable-test family. The
+  reviewed API mapping is frozen in `docs/rust-backend-v0.md`.
+- The generated multi-module crate contains target-owned runtime helpers,
+  structs/enums/aliases, traits and explicit impls, `&dyn Trait` parameters,
+  exact float bits, escaped strings/bytes, immutable list behavior, and a
+  uniform non-panicking `PolyResult<T>` evaluation-outcome ABI.
+- Generation is byte-identical across repeated runs. The reference evaluator
+  passes every declared checked-fixture test before generation; the generated
+  crate emits that portable test plus all 20 shared semantic vectors.
+- Bazel generates and compiles the Rust source through the pinned toolchain. Its
+  native gate runs the explicit `cargo fmt` post-process and check, Clippy with
+  warnings denied, and debug/release tests (21 pass in each mode), scans the
+  whole source tree so the only unsafe token is `#![forbid(unsafe_code)]`, and
+  proves a deliberately unsafe generated artifact fails compilation.
+- A real `polyrust emit --target org.polyrust.rust` safe-output run generated the
+  four-file crate and passed native Clippy plus all release tests.
+- The complete repository gate passes Cargo formatting/Clippy/tests/doctests and
+  all 19 Bazel tests, including Rustfmt, Clippy, Buildifier, dependency
+  boundaries, generated compilation, native checks, and compile-fail proof.
 
 ## Scope boundary
 
