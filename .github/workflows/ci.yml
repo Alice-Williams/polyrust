@@ -22,7 +22,7 @@ jobs:
     name: Windows host/container contract
     runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Validate pinned Linux development contract from Windows
         shell: pwsh
         run: ./tools/release/windows_contract.ps1
@@ -31,15 +31,20 @@ jobs:
     name: Fast PR checks
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - name: Reclaim runner disk
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h /
       - name: Build pinned development image
         run: docker build --tag "$IMAGE" --file .devcontainer/Dockerfile .
-      - name: Rust and Bazel linters plus core tests
+      - name: Rust and Bazel linters plus workspace tests
         run: |
           docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" bash -lc '
             cargo fmt --all -- --check &&
             cargo clippy --workspace --all-targets --all-features -- -D warnings &&
-            bazelisk --batch test //:buildifier_test //:rustfmt_test //:rust_clippy_test //crates/...'
+            cargo test --workspace --all-features &&
+            bazelisk --batch test //:buildifier_test //tools/dependency-boundaries:dependency_boundaries_test'
 
   rust-compatibility:
     name: Rust ${{ matrix.toolchain }}
@@ -49,7 +54,7 @@ jobs:
       matrix:
         toolchain: ["1.98.0", stable]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build pinned development image
         run: docker build --tag "$IMAGE" --file .devcontainer/Dockerfile .
       - name: Test workspace with selected Rust
@@ -66,7 +71,7 @@ jobs:
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build pinned development image
         run: docker build --tag "$IMAGE" --file .devcontainer/Dockerfile .
       - name: Generate normalized manifests from a clean directory
@@ -102,7 +107,11 @@ jobs:
     needs: [windows-contract, fast, rust-compatibility, compare-manifests]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - name: Reclaim runner disk
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h /
       - name: Restore non-semantic caches
         uses: actions/cache@v4
         with:
