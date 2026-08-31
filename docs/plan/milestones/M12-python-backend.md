@@ -1,6 +1,6 @@
 # M12 — Implement required Python backend
 
-- Status: planned
+- Status: complete
 - Phase: 3
 - Depends on: M08, M09
 
@@ -62,3 +62,17 @@ reviewed, and at least 20 evaluator vectors agree with generated Python.
 Supporting the currently installed Python 3.7 unless selected by the explicit
 compatibility policy, runtime metaprogramming, async, and third-party data-model
 frameworks.
+
+## Exit evidence
+
+- `org.polyrust.python` consumes only checked IR and emits a deterministic,
+  dependency-free Python 3.13 package with fully annotated public functions,
+  frozen records/variants, protocols, tagged option/result values, immutable
+  bytes/tuples, and fixed-width integer helpers.
+- The native generated-package gate passed compileall, Ruff 0.16.5 format/lint,
+  mypy 2.3.1 strict checking, pytest 9.1.1, the expected-failure invalid-option
+  type fixture, every portable test, and 20 semantic boundary vectors.
+- Workspace Rustfmt and Clippy with warnings denied passed. The authoritative
+  `bazel test //...` gate passed all 23 repository tests across 51 targets,
+  including Buildifier/Starlark lint, dependency boundaries, and all earlier
+  generated-language gates.

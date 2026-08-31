@@ -28,6 +28,10 @@ and imported into Bazel through `rules_rust` crate universe.
 | npm | 11.19.0 (bundled with Node) | TypeScript package-manager contract | Artistic-2.0 |
 | TypeScript | 7.0.2 | Strict generated-package type checking | Apache-2.0 |
 | Prettier | 3.9.6 | Explicit generated TypeScript formatting post-process | MIT |
+| Python | 3.13.5 | Executes and compiles generated Python packages | PSF-2.0 |
+| Ruff | 0.16.5 | Formats and lints generated Python | MIT |
+| mypy | 2.3.1 | Strict generated-Python type checking | MIT |
+| pytest | 9.1.1 | Generated Python native test runner | MIT |
 | `rules_rust` | 0.74.0 | Hermetic Bazel Rust rules and toolchain | Apache-2.0 |
 | `rules_go` | 0.63.0 | Hermetic Bazel Go rules and toolchain | Apache-2.0 |
 | `rules_shell` | 0.8.0 | Runs repository policy tests under Bazel | Apache-2.0 |

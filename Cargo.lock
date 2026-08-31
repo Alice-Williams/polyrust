@@ -30,6 +30,7 @@ dependencies = [
  "polyrust-check",
  "polyrust-codegen",
  "polyrust-ir",
+ "serde_json",
 ]
 
 [[package]]

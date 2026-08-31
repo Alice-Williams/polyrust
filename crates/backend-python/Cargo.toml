@@ -14,6 +14,7 @@ name = "portable_backend_python"
 portable_check.workspace = true
 portable_codegen.workspace = true
 portable_ir.workspace = true
+serde_json.workspace = true
 
 [lints]
 workspace = true

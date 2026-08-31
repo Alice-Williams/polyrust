@@ -9,6 +9,9 @@ ARG BAZELISK_VERSION=1.29.0
 ARG NODE_VERSION=24.20.0
 ARG TYPESCRIPT_VERSION=7.0.2
 ARG PRETTIER_VERSION=3.9.6
+ARG RUFF_VERSION=0.16.5
+ARG MYPY_VERSION=2.3.1
+ARG PYTEST_VERSION=9.1.1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -22,6 +25,7 @@ RUN apt-get update \
         less \
         pkg-config \
         python3 \
+        python3-venv \
         unzip \
         vim-tiny \
         xz-utils \
@@ -29,6 +33,15 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN rustup component add clippy rustfmt
+
+RUN python3 -m venv /opt/polyrust-python-tools \
+    && /opt/polyrust-python-tools/bin/pip install --no-cache-dir \
+        "ruff==${RUFF_VERSION}" \
+        "mypy==${MYPY_VERSION}" \
+        "pytest==${PYTEST_VERSION}" \
+    && ln -s /opt/polyrust-python-tools/bin/ruff /usr/local/bin/ruff \
+    && ln -s /opt/polyrust-python-tools/bin/mypy /usr/local/bin/mypy \
+    && ln -s /opt/polyrust-python-tools/bin/pytest /usr/local/bin/pytest
 
 RUN set -eux; \
     curl --fail --silent --show-error --location \

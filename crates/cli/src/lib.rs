@@ -453,6 +453,9 @@ fn default_registry() -> BackendRegistry {
         .register(Arc::new(portable_backend_typescript::TypeScriptBackend))
         .expect("TypeScript target is unique");
     registry
+        .register(Arc::new(portable_backend_python::PythonBackend))
+        .expect("Python target is unique");
+    registry
 }
 
 struct InspectionBackend {
