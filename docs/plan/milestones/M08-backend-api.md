@@ -1,6 +1,6 @@
 # M08 — Implement backend API, registry, preflight, and manifests
 
-- Status: planned
+- Status: complete
 - Phase: 2
 - Depends on: M02, M03, M04, M07
 
@@ -49,6 +49,28 @@ The public contract has rustdoc examples, the reusable contract suite passes for
 the mock backend, dependency boundaries remain clean, all malicious paths are
 rejected, and an architecture review freezes the v0 backend API sufficiently for
 M10–M13 to proceed.
+
+## Completion evidence
+
+- The root `Backend` API accepts only `CheckedProgram`; a compile-fail rustdoc
+  proves unchecked `Document` values cannot be supplied. Pre-M08 emitters are
+  isolated in a hidden legacy adapter pending their replacement in M10/M13.
+- `TargetId` accepts validated open namespaced text, and registry tests register
+  a previously unknown external target without core changes and reject duplicate
+  IDs.
+- The mock contract suite covers deterministic descriptors, support tables,
+  schemas and repeated manifests; unsupported capability, invalid option, and
+  incompatible IR tests prove `generate` is not called, while a deliberate
+  backend error remains structured.
+- Capability diagnostics include stable target context and requiring node IDs.
+  An architecture grep found no concrete target-name branches in core crates.
+- The path corpus rejects traversal, rooted, drive, UNC, mixed separator,
+  control text, Windows device, reserved metadata, duplicate, ASCII-case, and
+  Unicode-case collisions. A sentinel test proves manifest construction does
+  not touch the filesystem.
+- `cargo fmt --all --check`, Clippy with warnings denied, all workspace tests and
+  doctests, dependency boundaries, Buildifier, Rust/Bazel lint targets, and all
+  15 Bazel tests pass in the pinned Linux development container.
 
 ## Scope boundary
 

@@ -3,7 +3,7 @@
 //! Rust source backend for the executable prototype.
 
 use portable_check::CheckedModule;
-use portable_codegen::{Backend, GeneratedFile, GeneratedPackage};
+use portable_codegen::legacy::{Backend, GeneratedFile, GeneratedPackage};
 use portable_ir::{Expression, Function, Module, Type, Value};
 
 pub struct RustBackend;

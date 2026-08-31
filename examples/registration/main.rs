@@ -3,7 +3,7 @@
 use portable_backend_go::GoBackend;
 use portable_backend_rust::RustBackend;
 use portable_check::{CheckedModule, check};
-use portable_codegen::{Backend, GeneratedPackage};
+use portable_codegen::legacy::{Backend, GeneratedPackage};
 use portable_ir::{
     Contract, Expression, Field, Function, Implementation, MethodSignature, Module, Parameter,
     PortableTest, Record, Type, Value,

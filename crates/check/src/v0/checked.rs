@@ -52,6 +52,12 @@ impl CapabilityReport {
         self.nodes.get(&node)
     }
 
+    pub fn nodes(&self) -> impl Iterator<Item = (NodeId, &BTreeSet<Capability>)> {
+        self.nodes
+            .iter()
+            .map(|(node, capabilities)| (*node, capabilities))
+    }
+
     pub(crate) fn empty() -> Self {
         Self {
             program: BTreeSet::new(),

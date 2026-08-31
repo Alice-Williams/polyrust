@@ -8,10 +8,17 @@ rust_library(
     crate_name = "portable_codegen",
     edition = "2024",
     visibility = ["//visibility:public"],
-    deps = ["//crates/check:portable_check"],
+    deps = [
+        "//crates/check:portable_check",
+        "//crates/diagnostics:portable_diagnostics",
+        "//crates/ir:portable_ir",
+        "@crates//:serde",
+        "@crates//:serde_json",
+    ],
 )
 
 rust_test(
     name = "portable_codegen_test",
     crate = ":portable_codegen",
+    deps = ["//crates/build:portable_build"],
 )

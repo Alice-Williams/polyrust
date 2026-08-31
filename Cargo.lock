@@ -86,7 +86,12 @@ dependencies = [
 name = "polyrust-codegen"
 version = "0.1.0"
 dependencies = [
+ "polyrust-build",
  "polyrust-check",
+ "polyrust-diagnostics",
+ "polyrust-ir",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
