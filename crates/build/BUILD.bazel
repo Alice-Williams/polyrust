@@ -1,15 +1,26 @@
-load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
 exports_files(["Cargo.toml"])
 
 rust_library(
     name = "portable_build",
     srcs = glob(["src/**/*.rs"]),
+    compile_data = glob(["testdata/**"]),
     crate_name = "portable_build",
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = [
         "//crates/check:portable_check",
+        "//crates/diagnostics:portable_diagnostics",
         "//crates/ir:portable_ir",
+    ],
+)
+
+rust_test(
+    name = "portable_build_test",
+    crate = ":portable_build",
+    deps = [
+        "//crates/eval:portable_eval",
+        "@crates//:serde_json",
     ],
 )

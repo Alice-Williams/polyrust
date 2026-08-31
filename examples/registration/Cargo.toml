@@ -14,9 +14,9 @@ path = "main.rs"
 [dependencies]
 portable_backend_go.workspace = true
 portable_backend_rust.workspace = true
-portable_build.workspace = true
 portable_check.workspace = true
 portable_codegen.workspace = true
+portable_ir.workspace = true
 
 [lints]
 workspace = true

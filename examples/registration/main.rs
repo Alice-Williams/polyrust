@@ -2,11 +2,12 @@
 
 use portable_backend_go::GoBackend;
 use portable_backend_rust::RustBackend;
-use portable_build::{
-    Contract, Expression, Field, Function, Implementation, MethodSignature, ModuleBuilder,
-    Parameter, PortableTest, Record, Type, Value,
-};
+use portable_check::{CheckedModule, check};
 use portable_codegen::{Backend, GeneratedPackage};
+use portable_ir::{
+    Contract, Expression, Field, Function, Implementation, MethodSignature, Module, Parameter,
+    PortableTest, Record, Type, Value,
+};
 
 fn main() {
     let artifact = std::env::args()
@@ -36,21 +37,33 @@ fn print_artifact(package: &GeneratedPackage, path: &str) {
     );
 }
 
-fn registration_module() -> portable_check::CheckedModule {
-    let mut builder = ModuleBuilder::new("registration");
-    builder.constant("adult_age", Type::I64, Value::I64(18));
-    builder.record(Record {
+fn registration_module() -> CheckedModule {
+    let mut builder = Module {
+        name: "registration".into(),
+        constants: vec![],
+        records: vec![],
+        contracts: vec![],
+        implementations: vec![],
+        functions: vec![],
+        tests: vec![],
+    };
+    builder.constants.push(portable_ir::Constant {
+        name: "adult_age".into(),
+        ty: Type::I64,
+        value: Value::I64(18),
+    });
+    builder.records.push(Record {
         name: "User".into(),
         fields: vec![
             Field::new("name", Type::String),
             Field::new("age", Type::I64),
         ],
     });
-    builder.record(Record {
+    builder.records.push(Record {
         name: "AgeValidator".into(),
         fields: vec![Field::new("minimum", Type::I64)],
     });
-    builder.contract(Contract {
+    builder.contracts.push(Contract {
         name: "Validator".into(),
         methods: vec![MethodSignature {
             name: "accepts".into(),
@@ -58,7 +71,7 @@ fn registration_module() -> portable_check::CheckedModule {
             return_type: Type::Bool,
         }],
     });
-    builder.implementation(Implementation {
+    builder.implementations.push(Implementation {
         contract: "Validator".into(),
         record: "AgeValidator".into(),
         methods: vec![Function {
@@ -71,7 +84,7 @@ fn registration_module() -> portable_check::CheckedModule {
             ),
         }],
     });
-    builder.function(Function {
+    builder.functions.push(Function {
         name: "can_register".into(),
         parameters: vec![
             Parameter::new("validator", Type::named("Validator")),
@@ -84,7 +97,7 @@ fn registration_module() -> portable_check::CheckedModule {
             [Expression::local("user")],
         ),
     });
-    builder.function(Function {
+    builder.functions.push(Function {
         name: "is_adult".into(),
         parameters: vec![Parameter::new("user", Type::named("User"))],
         return_type: Type::Bool,
@@ -123,7 +136,7 @@ fn registration_module() -> portable_check::CheckedModule {
         false,
     );
 
-    builder.finish().unwrap_or_else(|diagnostics| {
+    check(builder).unwrap_or_else(|diagnostics| {
         let rendered = diagnostics
             .iter()
             .map(|item| format!("{}: {}", item.code, item.message))
@@ -134,13 +147,13 @@ fn registration_module() -> portable_check::CheckedModule {
 }
 
 fn add_test(
-    builder: &mut ModuleBuilder,
+    builder: &mut portable_ir::Module,
     name: &str,
     function: &str,
     arguments: Vec<Value>,
     expected: bool,
 ) {
-    builder.portable_test(PortableTest {
+    builder.tests.push(PortableTest {
         name: name.into(),
         function: function.into(),
         arguments,

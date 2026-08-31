@@ -11,8 +11,8 @@ rust_binary(
     deps = [
         "//crates/backend-go:portable_backend_go",
         "//crates/backend-rust:portable_backend_rust",
-        "//crates/build:portable_build",
         "//crates/check:portable_check",
         "//crates/codegen:portable_codegen",
+        "//crates/ir:portable_ir",
     ],
 )

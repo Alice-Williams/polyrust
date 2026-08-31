@@ -12,7 +12,12 @@ name = "portable_build"
 
 [dependencies]
 portable_check.workspace = true
+portable_diagnostics.workspace = true
 portable_ir.workspace = true
+
+[dev-dependencies]
+portable_eval.workspace = true
+serde_json.workspace = true
 
 [lints]
 workspace = true

@@ -55,7 +55,10 @@ name = "polyrust-build"
 version = "0.1.0"
 dependencies = [
  "polyrust-check",
+ "polyrust-diagnostics",
+ "polyrust-eval",
  "polyrust-ir",
+ "serde_json",
 ]
 
 [[package]]
@@ -130,9 +133,9 @@ version = "0.1.0"
 dependencies = [
  "polyrust-backend-go",
  "polyrust-backend-rust",
- "polyrust-build",
  "polyrust-check",
  "polyrust-codegen",
+ "polyrust-ir",
 ]
 
 [[package]]
