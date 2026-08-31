@@ -1,0 +1,47 @@
+load("@buildifier_prebuilt//:rules.bzl", "buildifier", "buildifier_test")
+load("@rules_rust//rust:defs.bzl", "rust_clippy_test", "rustfmt_test")
+
+rust_clippy_test(
+    name = "rust_clippy_test",
+    targets = [
+        "//crates/check:portable_check_test",
+        "//examples/registration:generate",
+        "//generated-fixtures/rust:generated_rust_test",
+        "//smoke/rust:rust_smoke_test",
+    ],
+    transitive = True,
+)
+
+rustfmt_test(
+    name = "rustfmt_test",
+    targets = [
+        "//crates/check:portable_check_test",
+        "//examples/registration:generate",
+        "//generated-fixtures/rust:generated_rust_test",
+        "//smoke/rust:rust_smoke_test",
+    ],
+    transitive = True,
+)
+
+buildifier(
+    name = "buildifier_fix",
+    exclude_patterns = [
+        "./.git/*",
+        "./bazel-*/*",
+    ],
+    lint_mode = "fix",
+    mode = "fix",
+    tags = ["manual"],
+)
+
+buildifier_test(
+    name = "buildifier_test",
+    exclude_patterns = [
+        "./.git/*",
+        "./bazel-*/*",
+    ],
+    lint_mode = "warn",
+    mode = "diff",
+    no_sandbox = True,
+    workspace = "//:MODULE.bazel",
+)

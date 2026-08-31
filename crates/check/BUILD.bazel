@@ -1,0 +1,16 @@
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+rust_library(
+    name = "portable_check",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "portable_check",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = ["//crates/ir:portable_ir"],
+)
+
+rust_test(
+    name = "portable_check_test",
+    crate = ":portable_check",
+    visibility = ["//visibility:public"],
+)

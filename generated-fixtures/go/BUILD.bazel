@@ -1,0 +1,27 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+genrule(
+    name = "generate_go_source",
+    outs = ["generated.go"],
+    cmd = "$(location //examples/registration:generate) go-source > $@",
+    tools = ["//examples/registration:generate"],
+)
+
+genrule(
+    name = "generate_go_test",
+    outs = ["generated_test.go"],
+    cmd = "$(location //examples/registration:generate) go-test > $@",
+    tools = ["//examples/registration:generate"],
+)
+
+go_library(
+    name = "generated_go",
+    srcs = [":generated.go"],
+    importpath = "github.com/Alice-Williams/polyrust/generated/registration",
+)
+
+go_test(
+    name = "generated_go_test",
+    srcs = [":generated_test.go"],
+    embed = [":generated_go"],
+)

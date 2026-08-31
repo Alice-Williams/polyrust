@@ -1,0 +1,14 @@
+# Rust/Cargo
+/target/
+
+# Bazel convenience symlinks and local output
+/bazel-*
+
+# Generated proof-of-concept packages
+/generated/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp

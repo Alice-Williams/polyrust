@@ -1,0 +1,15 @@
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+rust_library(
+    name = "rust_smoke",
+    srcs = ["lib.rs"],
+    crate_name = "rust_smoke",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "rust_smoke_test",
+    crate = ":rust_smoke",
+    visibility = ["//visibility:public"],
+)

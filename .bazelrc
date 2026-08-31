@@ -1,0 +1,8 @@
+common --enable_bzlmod
+common --repository_cache=/root/.cache/bazel-repository
+build --disk_cache=/root/.cache/bazel-disk
+build --verbose_failures
+# rules_rust defaults to GNU gold, which Debian Trixie no longer ships.
+build --@rules_rust//rust/settings:extra_rustc_flags=-Clink-arg=-fuse-ld=bfd
+test --test_output=errors
+test --@rules_rust//rust/settings:clippy_flag=-Dwarnings

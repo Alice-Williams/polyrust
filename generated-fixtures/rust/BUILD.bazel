@@ -1,0 +1,21 @@
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+genrule(
+    name = "generate_rust",
+    outs = ["generated.rs"],
+    cmd = "$(location //examples/registration:generate) rust-source > $@",
+    tools = ["//examples/registration:generate"],
+)
+
+rust_library(
+    name = "generated_rust",
+    srcs = [":generated.rs"],
+    crate_name = "generated_registration",
+    edition = "2024",
+)
+
+rust_test(
+    name = "generated_rust_test",
+    crate = ":generated_rust",
+    visibility = ["//visibility:public"],
+)

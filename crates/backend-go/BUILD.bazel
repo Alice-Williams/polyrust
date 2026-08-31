@@ -1,0 +1,14 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+rust_library(
+    name = "portable_backend_go",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "portable_backend_go",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+        "//crates/ir:portable_ir",
+    ],
+)
