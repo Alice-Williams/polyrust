@@ -1,7 +1,15 @@
-//! Stable diagnostic codes, source references, and presentation-independent
-//! diagnostic data.
-//!
-//! Concrete diagnostic types arrive in M03. This crate exists in M01 to make
-//! the intended inward dependency boundary explicit.
+//! Stable structured diagnostics with terminal and JSON renderers.
 
 #![forbid(unsafe_code)]
+
+pub mod code;
+pub mod model;
+pub mod render;
+
+pub use code::*;
+pub use model::*;
+pub use portable_ir::v0::{FileSpan, LogicalSource, SourceRef};
+pub use render::*;
+
+#[cfg(test)]
+mod tests;

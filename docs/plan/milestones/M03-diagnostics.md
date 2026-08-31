@@ -1,6 +1,6 @@
 # M03 — Implement structured diagnostics and source references
 
-- Status: planned
+- Status: complete
 - Phase: 1
 - Depends on: M01
 
@@ -45,6 +45,32 @@ cargo test -p polyrust-diagnostics
 All renderers pass snapshots on Windows and Unix newline modes, every registered
 code has a short and long explanation, and another crate can construct and test a
 diagnostic without depending on terminal UI code.
+
+### Completion evidence
+
+Completed in the pinned Linux development image on 2026-08-31:
+
+- `cargo test -p polyrust-diagnostics` passed 9 unit, golden, schema,
+  determinism, and generated-input tests plus doc tests.
+- `bazel test //...` passed all 12 repository tests across 32 analyzed targets,
+  including the hermetic diagnostics and downstream-consumer tests, Rustfmt,
+  Clippy, Buildifier, dependency boundaries, and native generated Rust/Go tests.
+- Plain and ANSI terminal goldens cover Unicode text, notes, hints, and target
+  context. Additional goldens cover multiple labels, related locations, logical
+  builder paths, and unavailable source content.
+- The stable JSON snapshot asserts every top-level field and contains no raw ANSI
+  escape bytes. `docs/diagnostics.md` records the JSON shape and initial code
+  registry.
+- LF and CRLF render modes are compared for identical normalized content.
+- Unicode, zero-width, reversed, mid-scalar, oversized, and `u64::MAX` spans
+  are clamped before slicing. A deterministic generated-input test renders 2,048
+  arbitrary span pairs without panic.
+- Diagnostics are tested to sort by source and then code. The centralized
+  registry test rejects duplicate strings and requires distinct non-empty short
+  and long explanations for every registered code.
+- `//smoke/diagnostics:diagnostics_consumer_test` imports only the public code,
+  model, and source-reference API to construct and test a diagnostic from a
+  separate crate; the diagnostics package has no terminal UI dependency.
 
 ## Scope boundary
 

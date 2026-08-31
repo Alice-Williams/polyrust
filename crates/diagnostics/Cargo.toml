@@ -10,5 +10,10 @@ publish.workspace = true
 [lib]
 name = "portable_diagnostics"
 
+[dependencies]
+portable_ir.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
 [lints]
 workspace = true
