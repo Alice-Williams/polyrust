@@ -106,8 +106,6 @@ jobs:
     name: Cold and warm release gates
     needs: [windows-contract, fast, rust-compatibility, compare-manifests]
     runs-on: ubuntu-24.04
-    env:
-      CI_CACHE: ${{ runner.temp }}/polyrust-cache
     steps:
       - uses: actions/checkout@v7
       - name: Reclaim runner disk
@@ -129,37 +127,37 @@ jobs:
         run: docker build --tag "$IMAGE" --file .devcontainer/Dockerfile .
       - name: Install pinned advisory checker
         run: |
-          mkdir -p "$CI_CACHE"/{bazelisk,bazel-repository,bazel-disk,cargo-registry,cargo-git,cargo-tools}
-          if [[ ! -x "$CI_CACHE/cargo-tools/bin/cargo-audit" ]]; then
+          mkdir -p "$RUNNER_TEMP/polyrust-cache"/{bazelisk,bazel-repository,bazel-disk,cargo-registry,cargo-git,cargo-tools}
+          if [[ ! -x "$RUNNER_TEMP/polyrust-cache/cargo-tools/bin/cargo-audit" ]]; then
             docker run --rm \
-              -v "$CI_CACHE/cargo-registry:/usr/local/cargo/registry" \
-              -v "$CI_CACHE/cargo-git:/usr/local/cargo/git" \
-              -v "$CI_CACHE/cargo-tools:/cargo-tools" \
+              -v "$RUNNER_TEMP/polyrust-cache/cargo-registry:/usr/local/cargo/registry" \
+              -v "$RUNNER_TEMP/polyrust-cache/cargo-git:/usr/local/cargo/git" \
+              -v "$RUNNER_TEMP/polyrust-cache/cargo-tools:/cargo-tools" \
               -e CARGO_INSTALL_ROOT=/cargo-tools \
               "$IMAGE" cargo install cargo-audit --locked --version "$CARGO_AUDIT_VERSION"
           fi
       - name: Cache-cold complete gate
         run: |
-          rm -rf "$CI_CACHE/bazelisk"/* "$CI_CACHE/bazel-repository"/* "$CI_CACHE/bazel-disk"/*
+          rm -rf "$RUNNER_TEMP/polyrust-cache/bazelisk"/* "$RUNNER_TEMP/polyrust-cache/bazel-repository"/* "$RUNNER_TEMP/polyrust-cache/bazel-disk"/*
           docker run --rm \
             -v "$PWD:/workspace" \
-            -v "$CI_CACHE/bazelisk:/root/.cache/bazelisk" \
-            -v "$CI_CACHE/bazel-repository:/root/.cache/bazel-repository" \
-            -v "$CI_CACHE/bazel-disk:/root/.cache/bazel-disk" \
-            -v "$CI_CACHE/cargo-registry:/usr/local/cargo/registry" \
-            -v "$CI_CACHE/cargo-git:/usr/local/cargo/git" \
-            -v "$CI_CACHE/cargo-tools:/cargo-tools" \
+            -v "$RUNNER_TEMP/polyrust-cache/bazelisk:/root/.cache/bazelisk" \
+            -v "$RUNNER_TEMP/polyrust-cache/bazel-repository:/root/.cache/bazel-repository" \
+            -v "$RUNNER_TEMP/polyrust-cache/bazel-disk:/root/.cache/bazel-disk" \
+            -v "$RUNNER_TEMP/polyrust-cache/cargo-registry:/usr/local/cargo/registry" \
+            -v "$RUNNER_TEMP/polyrust-cache/cargo-git:/usr/local/cargo/git" \
+            -v "$RUNNER_TEMP/polyrust-cache/cargo-tools:/cargo-tools" \
             -e PATH=/cargo-tools/bin:/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin \
             -w /workspace "$IMAGE" bash tools/release/release_gate.sh
       - name: Cache-warm complete gate
         run: |
           docker run --rm \
             -v "$PWD:/workspace" \
-            -v "$CI_CACHE/bazelisk:/root/.cache/bazelisk" \
-            -v "$CI_CACHE/bazel-repository:/root/.cache/bazel-repository" \
-            -v "$CI_CACHE/bazel-disk:/root/.cache/bazel-disk" \
-            -v "$CI_CACHE/cargo-registry:/usr/local/cargo/registry" \
-            -v "$CI_CACHE/cargo-git:/usr/local/cargo/git" \
-            -v "$CI_CACHE/cargo-tools:/cargo-tools" \
+            -v "$RUNNER_TEMP/polyrust-cache/bazelisk:/root/.cache/bazelisk" \
+            -v "$RUNNER_TEMP/polyrust-cache/bazel-repository:/root/.cache/bazel-repository" \
+            -v "$RUNNER_TEMP/polyrust-cache/bazel-disk:/root/.cache/bazel-disk" \
+            -v "$RUNNER_TEMP/polyrust-cache/cargo-registry:/usr/local/cargo/registry" \
+            -v "$RUNNER_TEMP/polyrust-cache/cargo-git:/usr/local/cargo/git" \
+            -v "$RUNNER_TEMP/polyrust-cache/cargo-tools:/cargo-tools" \
             -e PATH=/cargo-tools/bin:/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin \
             -w /workspace "$IMAGE" bash tools/release/release_gate.sh
