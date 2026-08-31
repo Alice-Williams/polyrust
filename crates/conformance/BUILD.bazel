@@ -1,0 +1,19 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+exports_files(["Cargo.toml"])
+
+rust_library(
+    name = "portable_conformance",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "portable_conformance",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//crates/backend-go:portable_backend_go",
+        "//crates/backend-python:portable_backend_python",
+        "//crates/backend-rust:portable_backend_rust",
+        "//crates/backend-typescript:portable_backend_typescript",
+        "//crates/codegen:portable_codegen",
+        "//crates/eval:portable_eval",
+    ],
+)

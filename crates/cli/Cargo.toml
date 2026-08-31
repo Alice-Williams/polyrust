@@ -1,0 +1,24 @@
+[package]
+name = "polyrust-cli"
+description = "Command-line composition root for portable program generation"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "polyrust"
+path = "src/main.rs"
+
+[dependencies]
+portable_backend_go.workspace = true
+portable_backend_python.workspace = true
+portable_backend_rust.workspace = true
+portable_backend_typescript.workspace = true
+portable_build.workspace = true
+portable_codegen.workspace = true
+portable_conformance.workspace = true
+
+[lints]
+workspace = true

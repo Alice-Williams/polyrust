@@ -1,6 +1,6 @@
 # M01 — Scaffold workspace and quality baseline
 
-- Status: planned
+- Status: complete
 - Phase: 1
 - Depends on: M00
 
@@ -47,6 +47,26 @@ concrete backend dependency.
 All commands pass from a fresh checkout/workspace, crate-level documentation
 states each responsibility, MSRV is tested, dependency inventory is reviewed,
 and no placeholder test is the only test in any non-empty crate.
+
+### Completion evidence
+
+Completed in the pinned Linux development image on 2026-08-31:
+
+- `bazel test //...` passed all 9 tests across 29 analyzed targets, including
+  Buildifier, Rustfmt, Clippy with warnings denied, dependency-boundary policy,
+  and native generated Rust and Go tests.
+- `cargo fmt --all --check` passed.
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings`
+  passed for all 13 workspace packages.
+- `cargo test --workspace --all-features` passed, including the existing checker
+  behavior test; intentionally API-empty M01 boundary crates contain no
+  placeholder tests.
+- `cargo metadata --format-version 1` resolved only internal Cargo path
+  dependencies and reported Rust 1.98.0 as every package's MSRV.
+- `//tools/dependency-boundaries:dependency_boundaries_test` enforces that core
+  Cargo manifests cannot depend on concrete backends, conformance, or CLI.
+- `docs/dependencies.md` records all pinned build dependencies and confirms that
+  M01 adds no third-party Rust runtime dependencies.
 
 ## Scope boundary
 

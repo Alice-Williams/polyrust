@@ -3,16 +3,18 @@ load("@rules_rust//rust:defs.bzl", "rust_binary")
 exports_files(["Cargo.toml"])
 
 rust_binary(
-    name = "generate",
-    srcs = ["main.rs"],
-    crate_name = "generate_registration",
+    name = "polyrust",
+    srcs = ["src/main.rs"],
+    crate_name = "polyrust",
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = [
         "//crates/backend-go:portable_backend_go",
+        "//crates/backend-python:portable_backend_python",
         "//crates/backend-rust:portable_backend_rust",
+        "//crates/backend-typescript:portable_backend_typescript",
         "//crates/build:portable_build",
-        "//crates/check:portable_check",
         "//crates/codegen:portable_codegen",
+        "//crates/conformance:portable_conformance",
     ],
 )

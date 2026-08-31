@@ -1,0 +1,22 @@
+[package]
+name = "polyrust-conformance"
+description = "Differential evaluator and native-target conformance harness"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+name = "portable_conformance"
+
+[dependencies]
+portable_backend_go.workspace = true
+portable_backend_python.workspace = true
+portable_backend_rust.workspace = true
+portable_backend_typescript.workspace = true
+portable_codegen.workspace = true
+portable_eval.workspace = true
+
+[lints]
+workspace = true

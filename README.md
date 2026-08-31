@@ -36,6 +36,8 @@ targets.
 - [Portable language/functionality map](docs/portable-language.md)
 - [Engineering plan](docs/plan/README.md)
 - [Development environment](docs/DEVELOPMENT.md)
+- [Dependency inventory](docs/dependencies.md)
+- [Contributing](CONTRIBUTING.md)
 - [Architecture decisions](docs/adr/0000-template.md)
 
 ## Development

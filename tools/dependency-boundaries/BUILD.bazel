@@ -1,0 +1,14 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+sh_test(
+    name = "dependency_boundaries_test",
+    srcs = ["check.sh"],
+    data = [
+        "//crates/build:Cargo.toml",
+        "//crates/check:Cargo.toml",
+        "//crates/codegen:Cargo.toml",
+        "//crates/diagnostics:Cargo.toml",
+        "//crates/eval:Cargo.toml",
+        "//crates/ir:Cargo.toml",
+    ],
+)

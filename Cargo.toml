@@ -1,0 +1,43 @@
+[workspace]
+members = [
+    "crates/backend-go",
+    "crates/backend-python",
+    "crates/backend-rust",
+    "crates/backend-typescript",
+    "crates/build",
+    "crates/check",
+    "crates/cli",
+    "crates/codegen",
+    "crates/conformance",
+    "crates/diagnostics",
+    "crates/eval",
+    "crates/ir",
+    "examples/registration",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98.0"
+repository = "https://github.com/Alice-Williams/polyrust"
+publish = false
+
+[workspace.dependencies]
+portable_backend_go = { package = "polyrust-backend-go", path = "crates/backend-go" }
+portable_backend_python = { package = "polyrust-backend-python", path = "crates/backend-python" }
+portable_backend_rust = { package = "polyrust-backend-rust", path = "crates/backend-rust" }
+portable_backend_typescript = { package = "polyrust-backend-typescript", path = "crates/backend-typescript" }
+portable_build = { package = "polyrust-build", path = "crates/build" }
+portable_check = { package = "polyrust-check", path = "crates/check" }
+portable_codegen = { package = "polyrust-codegen", path = "crates/codegen" }
+portable_conformance = { package = "polyrust-conformance", path = "crates/conformance" }
+portable_diagnostics = { package = "polyrust-diagnostics", path = "crates/diagnostics" }
+portable_eval = { package = "polyrust-eval", path = "crates/eval" }
+portable_ir = { package = "polyrust-ir", path = "crates/ir" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
