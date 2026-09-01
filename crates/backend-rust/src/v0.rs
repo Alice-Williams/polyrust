@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use portable_check::v0::{Capability, CheckedProgram};
 use portable_codegen::{
@@ -6,7 +6,8 @@ use portable_codegen::{
     DeclaredDependency, Document as CodeDocument, FileGroup, FileGroupId, FileRole, FinalNewline,
     ImportGroup, ImportSet, InjectedHelper, IrVersionRange, LanguageFile, LanguageFragment,
     LanguagePackage, LanguagePlugin, LanguageRenderer, LanguageSourceFile, OptionsSchema,
-    OutputManifest, RawText, RenderOptions, TargetId, generate_with_plugin, render,
+    OutputManifest, RawText, RenderOptions, RuntimeHelper, RuntimeHelperGraph, TargetId,
+    generate_with_plugin, render,
 };
 use portable_ir::v0::{
     Block, ConstantExpression, Declaration, EnumVariant, ExpectedOutcome, Expression, Intrinsic,
@@ -61,10 +62,55 @@ impl Backend for RustBackend {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[doc(hidden)]
-pub enum RustImport {
-    Module { name: &'static str, test_only: bool },
-    Use { path: &'static str, public: bool },
+pub struct RustImport {
+    kind: RustImportKind,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum RustImportKind {
+    Module { name: String, test_only: bool },
+    Use { path: String, public: bool },
+}
+
+impl RustImport {
+    pub fn module(name: &str, test_only: bool) -> Result<Self, String> {
+        if !rust_path_segment(name) {
+            return Err(format!("invalid Rust module name {name:?}"));
+        }
+        Ok(Self {
+            kind: RustImportKind::Module {
+                name: name.to_owned(),
+                test_only,
+            },
+        })
+    }
+
+    pub fn use_path(path: &str, public: bool) -> Result<Self, String> {
+        let segments = path.split("::").collect::<Vec<_>>();
+        let valid = !segments.is_empty()
+            && segments.iter().enumerate().all(|(index, segment)| {
+                (*segment == "*" && index + 1 == segments.len())
+                    || matches!(*segment, "crate" | "self" | "super")
+                    || rust_path_segment(segment)
+            });
+        if !valid {
+            return Err(format!("invalid Rust use path {path:?}"));
+        }
+        Ok(Self {
+            kind: RustImportKind::Use {
+                path: path.to_owned(),
+                public,
+            },
+        })
+    }
+}
+
+fn rust_path_segment(segment: &str) -> bool {
+    let mut characters = segment.chars();
+    characters
+        .next()
+        .is_some_and(|first| first == '_' || first.is_ascii_alphabetic())
+        && characters.all(|character| character == '_' || character.is_ascii_alphanumeric())
 }
 
 #[doc(hidden)]
@@ -75,20 +121,101 @@ impl LanguageRenderer<RustImport> for RustRenderer {
         let mut lines = Vec::new();
         for (_, imports) in imports.groups() {
             for import in imports {
-                match import {
-                    RustImport::Module { name, test_only } => {
+                match &import.kind {
+                    RustImportKind::Module { name, test_only } => {
                         if *test_only {
                             lines.push("#[cfg(test)]".to_owned());
                         }
                         lines.push(format!("mod {name};"));
                     }
-                    RustImport::Use { path, public } => {
+                    RustImportKind::Use { path, public } => {
                         lines.push(format!("{}use {path};", if *public { "pub " } else { "" }))
                     }
                 }
             }
         }
         Ok(CodeDocument::raw_text(RawText::new(lines.join("\n"))))
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct RustCode {
+    text: String,
+    imports: BTreeSet<(ImportGroup, RustImport)>,
+    helper_roots: BTreeSet<String>,
+}
+
+impl RustCode {
+    fn new(text: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            ..Self::default()
+        }
+    }
+
+    fn with_import(mut self, import: RustImport) -> Self {
+        self.imports.insert((rust_import_group(), import));
+        self
+    }
+
+    fn with_helper_root(mut self, helper: impl Into<String>) -> Self {
+        self.helper_roots.insert(helper.into());
+        self
+    }
+
+    fn sequence(fragments: impl IntoIterator<Item = Self>) -> Self {
+        fragments
+            .into_iter()
+            .fold(Self::default(), |mut combined, fragment| {
+                combined.text.push_str(&fragment.text);
+                combined.imports.extend(fragment.imports);
+                combined.helper_roots.extend(fragment.helper_roots);
+                combined
+            })
+    }
+
+    fn joined(fragments: impl IntoIterator<Item = Self>, separator: &str) -> Self {
+        let mut fragments = fragments.into_iter();
+        let Some(first) = fragments.next() else {
+            return Self::default();
+        };
+        fragments.fold(first, |mut combined, fragment| {
+            combined.text.push_str(separator);
+            combined.text.push_str(&fragment.text);
+            combined.imports.extend(fragment.imports);
+            combined.helper_roots.extend(fragment.helper_roots);
+            combined
+        })
+    }
+
+    fn map_text(mut self, map: impl FnOnce(String) -> String) -> Self {
+        self.text = map(self.text);
+        self
+    }
+
+    fn with_text_from(mut self, dependencies: impl IntoIterator<Item = Self>) -> Self {
+        for dependency in dependencies {
+            self.imports.extend(dependency.imports);
+            self.helper_roots.extend(dependency.helper_roots);
+        }
+        self
+    }
+
+    fn into_fragment(self) -> LanguageFragment<RustImport> {
+        let mut fragment = LanguageFragment::new(CodeDocument::raw_text(RawText::new(self.text)));
+        for (group, import) in self.imports {
+            fragment.require_import(group, import);
+        }
+        for helper in self.helper_roots {
+            fragment = fragment.with_helper_root(helper);
+        }
+        fragment
+    }
+}
+
+impl std::fmt::Display for RustCode {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&self.text)
     }
 }
 
@@ -128,11 +255,7 @@ impl LanguagePlugin for RustBackend {
                 .map_err(rust_generation_error)?,
                 FileGroup::new(
                     rust_group("runtime")?,
-                    vec![LanguageFile::text(
-                        "src/polyrust_runtime.rs",
-                        FileRole::Runtime,
-                        RUNTIME,
-                    )],
+                    vec![LanguageFile::source(rust_runtime_file(program)?)],
                 )
                 .map_err(rust_generation_error)?,
                 FileGroup::new(
@@ -171,18 +294,142 @@ fn rust_import_group() -> ImportGroup {
     ImportGroup::new(10, "modules-and-uses").expect("static import group is valid")
 }
 
+fn rust_runtime_file(
+    program: &CheckedProgram,
+) -> Result<LanguageSourceFile<RustImport>, BackendError> {
+    let (graph, mut roots) = rust_runtime_helper_graph()?;
+    for (operation, root) in [
+        (Intrinsic::StringReplaceMany, "feature.string-replace-many"),
+        (Intrinsic::BytesReplaceAll, "feature.bytes-replace-all"),
+        (
+            Intrinsic::StringTruncateUtf8Bytes,
+            "feature.string-truncate-utf8",
+        ),
+    ] {
+        if portable_ir::v0::module_uses_intrinsic(program.module(), |used| used == operation) {
+            roots.push(root.to_owned());
+        }
+    }
+    if portable_ir::v0::module_uses_intrinsic(program.module(), |operation| {
+        matches!(
+            operation,
+            Intrinsic::IntShiftLeftChecked | Intrinsic::IntShiftRightChecked
+        )
+    }) {
+        roots.push("feature.checked-shift".to_owned());
+    }
+
+    let mut file = LanguageSourceFile::new("src/polyrust_runtime.rs", FileRole::Runtime);
+    file.set_body(graph.resolve(&roots).map_err(rust_generation_error)?);
+    Ok(file)
+}
+
+fn rust_runtime_helper_graph() -> Result<(RuntimeHelperGraph<RustImport>, Vec<String>), BackendError>
+{
+    const BEGIN: &str = "// POLYRUST-BEGIN ";
+    const END: &str = "// POLYRUST-END ";
+
+    let mut helpers = Vec::new();
+    let mut common_roots = Vec::new();
+    let mut common_index = 0_u16;
+    let mut order = 0_u16;
+    let mut active: Option<String> = None;
+    let mut source = String::new();
+    let emit = |id: String,
+                source: &mut String,
+                order: &mut u16,
+                helpers: &mut Vec<RuntimeHelper<RustImport>>| {
+        if source.trim().is_empty() {
+            source.clear();
+            return false;
+        }
+        helpers.push(RuntimeHelper::new(
+            id,
+            *order,
+            RustCode::new(std::mem::take(source)).into_fragment(),
+        ));
+        *order = order
+            .checked_add(1)
+            .expect("Rust runtime helper order fits u16");
+        true
+    };
+
+    for line in RUNTIME.split_inclusive('\n') {
+        let marker = line.trim().trim_end_matches('\r');
+        if let Some(id) = marker.strip_prefix(BEGIN) {
+            if active.is_some() {
+                return Err(rust_generation_error(format!(
+                    "nested Rust runtime helper marker {id:?}"
+                )));
+            }
+            let common_id = format!("runtime.common.{common_index:03}");
+            if emit(common_id.clone(), &mut source, &mut order, &mut helpers) {
+                common_roots.push(common_id);
+                common_index += 1;
+            }
+            active = Some(id.to_owned());
+        } else if let Some(id) = marker.strip_prefix(END) {
+            let Some(open) = active.take() else {
+                return Err(rust_generation_error(format!(
+                    "unmatched Rust runtime helper end marker {id:?}"
+                )));
+            };
+            if open != id {
+                return Err(rust_generation_error(format!(
+                    "Rust runtime helper marker {open:?} closed by {id:?}"
+                )));
+            }
+            if !emit(open, &mut source, &mut order, &mut helpers) {
+                return Err(rust_generation_error(format!(
+                    "empty Rust runtime helper {id:?}"
+                )));
+            }
+        } else {
+            source.push_str(line);
+        }
+    }
+    if let Some(open) = active {
+        return Err(rust_generation_error(format!(
+            "unclosed Rust runtime helper marker {open:?}"
+        )));
+    }
+    let common_id = format!("runtime.common.{common_index:03}");
+    if emit(common_id.clone(), &mut source, &mut order, &mut helpers) {
+        common_roots.push(common_id);
+    }
+
+    for (index, (id, dependency)) in [
+        ("feature.string-replace-many", "string-replace-many"),
+        ("feature.bytes-replace-all", "bytes-replace-all"),
+        ("feature.string-truncate-utf8", "string-truncate-utf8"),
+        ("feature.checked-shift", "checked-shift"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        helpers.push(RuntimeHelper::new(
+            id,
+            u16::MAX - 8 + u16::try_from(index).expect("feature count fits u16"),
+            RustCode::default()
+                .with_helper_root(dependency)
+                .into_fragment(),
+        ));
+    }
+    Ok((
+        RuntimeHelperGraph::new(helpers).map_err(rust_generation_error)?,
+        common_roots,
+    ))
+}
+
 fn rust_conformance_file() -> LanguageSourceFile<RustImport> {
     let mut file = LanguageSourceFile::new("src/conformance.rs", FileRole::Conformance);
-    let mut body =
-        LanguageFragment::new(CodeDocument::raw_text(RawText::new(render_conformance())));
-    body.require_import(
-        rust_import_group(),
-        RustImport::Use {
-            path: "super::*",
-            public: false,
-        },
+    file.set_body(
+        render_conformance()
+            .with_import(
+                RustImport::use_path("super::*", false).expect("static Rust use path is valid"),
+            )
+            .into_fragment(),
     );
-    file.set_body(body);
     file
 }
 
@@ -206,58 +453,63 @@ impl<'a> Generator<'a> {
 
     fn source_file(&self) -> Result<LanguageSourceFile<RustImport>, BackendError> {
         let mut file = LanguageSourceFile::new("src/lib.rs", FileRole::Source);
-        file.set_preamble(LanguageFragment::new(CodeDocument::raw_text(RawText::new(
-            "#![forbid(unsafe_code)]\n#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]\n#![allow(clippy::unnecessary_wraps)]\n\n// Generated by PolyRust from checked IR v0.",
-        ))));
-        let mut body_unit = LanguageFragment::new(CodeDocument::empty());
-        body_unit.require_import(
-            rust_import_group(),
-            RustImport::Module {
-                name: "polyrust_runtime",
-                test_only: false,
-            },
+        file.set_preamble(
+            RustCode::new(
+                "#![forbid(unsafe_code)]\n#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]\n#![allow(clippy::unnecessary_wraps)]\n\n// Generated by PolyRust from checked IR v0.",
+            )
+            .into_fragment(),
         );
-        body_unit.require_import(
-            rust_import_group(),
-            RustImport::Use {
-                path: "polyrust_runtime::*",
-                public: true,
-            },
-        );
-        body_unit.require_import(
-            rust_import_group(),
-            RustImport::Module {
-                name: "conformance",
-                test_only: true,
-            },
-        );
-        let mut source = String::new();
+        let dependencies = RustCode::default()
+            .with_import(
+                RustImport::module("polyrust_runtime", false).expect("static Rust module is valid"),
+            )
+            .with_import(
+                RustImport::use_path("polyrust_runtime::*", true)
+                    .expect("static Rust use path is valid"),
+            )
+            .with_import(
+                RustImport::module("conformance", true).expect("static Rust module is valid"),
+            );
+        let mut declaration_fragments = Vec::new();
 
         let mut declarations: Vec<_> = self.program.module().declarations.iter().collect();
         declarations.sort_by_key(|declaration| declaration.header().node.id);
         for declaration in declarations {
+            let mut source = String::new();
+            let mut requirements = Vec::new();
             match declaration {
                 Declaration::Constant(constant) => {
-                    self.documentation(&mut source, &constant.header.documentation, 0);
+                    let documentation = self.documentation(&constant.header.documentation, 0);
+                    source.push_str(&documentation.text);
+                    requirements.push(documentation);
+                    let ty = self.ty(&constant.ty);
+                    let body = self.constant_body(&constant.value, 0);
                     source.push_str(&format!(
                         "{}fn {}() -> PolyResult<{}> {}\n\n",
                         visibility(constant.header.visibility),
                         value_name(&constant.header.name),
-                        self.ty(&constant.ty),
-                        self.constant_body(&constant.value, 0),
+                        ty,
+                        body,
                     ));
+                    requirements.extend([ty, body]);
                 }
                 Declaration::Alias(alias) => {
-                    self.documentation(&mut source, &alias.header.documentation, 0);
+                    let documentation = self.documentation(&alias.header.documentation, 0);
+                    source.push_str(&documentation.text);
+                    requirements.push(documentation);
+                    let target = self.ty(&alias.target);
                     source.push_str(&format!(
                         "{}type {} = {};\n\n",
                         visibility(alias.header.visibility),
                         type_name(&alias.header.name),
-                        self.ty(&alias.target),
+                        target,
                     ));
+                    requirements.push(target);
                 }
                 Declaration::Record(record) => {
-                    self.documentation(&mut source, &record.header.documentation, 0);
+                    let documentation = self.documentation(&record.header.documentation, 0);
+                    source.push_str(&documentation.text);
+                    requirements.push(documentation);
                     source.push_str("#[derive(Clone, Debug, PartialEq)]\n");
                     source.push_str(&format!(
                         "{}struct {} {{\n",
@@ -265,17 +517,23 @@ impl<'a> Generator<'a> {
                         type_name(&record.header.name)
                     ));
                     for field in &record.fields {
-                        self.documentation(&mut source, &field.header.documentation, 1);
+                        let documentation = self.documentation(&field.header.documentation, 1);
+                        source.push_str(&documentation.text);
+                        requirements.push(documentation);
+                        let ty = self.ty(&field.ty);
                         source.push_str(&format!(
                             "    pub {}: {},\n",
                             value_name(&field.header.name),
-                            self.ty(&field.ty)
+                            ty
                         ));
+                        requirements.push(ty);
                     }
                     source.push_str("}\n\n");
                 }
                 Declaration::Enum(enumeration) => {
-                    self.documentation(&mut source, &enumeration.header.documentation, 0);
+                    let documentation = self.documentation(&enumeration.header.documentation, 0);
+                    source.push_str(&documentation.text);
+                    requirements.push(documentation);
                     source.push_str("#[derive(Clone, Debug, PartialEq)]\n");
                     source.push_str(&format!(
                         "{}enum {} {{\n",
@@ -283,18 +541,22 @@ impl<'a> Generator<'a> {
                         type_name(&enumeration.header.name)
                     ));
                     for variant in &enumeration.variants {
-                        self.documentation(&mut source, &variant.header.documentation, 1);
+                        let documentation = self.documentation(&variant.header.documentation, 1);
+                        source.push_str(&documentation.text);
+                        requirements.push(documentation);
                         source.push_str(&format!("    {}", type_name(&variant.header.name)));
                         if variant.fields.is_empty() {
                             source.push_str(",\n");
                         } else {
                             source.push_str(" {\n");
                             for field in &variant.fields {
+                                let ty = self.ty(&field.ty);
                                 source.push_str(&format!(
                                     "        {}: {},\n",
                                     value_name(&field.header.name),
-                                    self.ty(&field.ty)
+                                    ty
                                 ));
+                                requirements.push(ty);
                             }
                             source.push_str("    },\n");
                         }
@@ -302,20 +564,27 @@ impl<'a> Generator<'a> {
                     source.push_str("}\n\n");
                 }
                 Declaration::Contract(contract) => {
-                    self.documentation(&mut source, &contract.header.documentation, 0);
+                    let documentation = self.documentation(&contract.header.documentation, 0);
+                    source.push_str(&documentation.text);
+                    requirements.push(documentation);
                     source.push_str(&format!(
                         "{}trait {} {{\n",
                         visibility(contract.header.visibility),
                         type_name(&contract.header.name)
                     ));
                     for method in &contract.methods {
-                        self.documentation(&mut source, &method.header.documentation, 1);
+                        let documentation = self.documentation(&method.header.documentation, 1);
+                        source.push_str(&documentation.text);
+                        requirements.push(documentation);
+                        let parameters = self.parameters(&method.parameters, true);
+                        let return_type = self.ty(&method.return_type);
                         source.push_str(&format!(
                             "    fn {}(&self{}) -> PolyResult<{}>;\n",
                             value_name(&method.header.name),
-                            self.parameters(&method.parameters, true),
-                            self.ty(&method.return_type)
+                            parameters,
+                            return_type
                         ));
+                        requirements.extend([parameters, return_type]);
                     }
                     source.push_str("}\n\n");
                 }
@@ -328,33 +597,47 @@ impl<'a> Generator<'a> {
                         type_name(record)
                     ));
                     for method in &implementation.methods {
-                        self.documentation(&mut source, &method.header.documentation, 1);
+                        let documentation = self.documentation(&method.header.documentation, 1);
+                        source.push_str(&documentation.text);
+                        requirements.push(documentation);
+                        let parameters = self.parameters(&method.parameters, true);
+                        let return_type = self.ty(&method.return_type);
+                        let body = self.block(&method.body, 1);
                         source.push_str(&format!(
                             "    fn {}(&self{}) -> PolyResult<{}> {}\n",
                             value_name(&method.header.name),
-                            self.parameters(&method.parameters, true),
-                            self.ty(&method.return_type),
-                            self.block(&method.body, 1),
+                            parameters,
+                            return_type,
+                            body,
                         ));
+                        requirements.extend([parameters, return_type, body]);
                     }
                     source.push_str("}\n\n");
                 }
                 Declaration::Function(function) => {
-                    self.documentation(&mut source, &function.header.documentation, 0);
+                    let documentation = self.documentation(&function.header.documentation, 0);
+                    source.push_str(&documentation.text);
+                    requirements.push(documentation);
+                    let parameters = self.parameters(&function.parameters, false);
+                    let return_type = self.ty(&function.return_type);
+                    let body = self.block(&function.body, 0);
                     source.push_str(&format!(
                         "{}fn {}({}) -> PolyResult<{}> {}\n\n",
                         visibility(function.header.visibility),
                         value_name(&function.header.name),
-                        self.parameters(&function.parameters, false),
-                        self.ty(&function.return_type),
-                        self.block(&function.body, 0),
+                        parameters,
+                        return_type,
+                        body,
                     ));
+                    requirements.extend([parameters, return_type, body]);
                 }
                 Declaration::Test(_) => {}
             }
+            declaration_fragments.push(RustCode::new(source).with_text_from(requirements));
         }
-        self.tests(&mut source);
-        let document = CodeDocument::raw_text(RawText::new(source));
+        let tests = self.tests();
+        let source = RustCode::sequence([RustCode::sequence(declaration_fragments), tests]);
+        let document = CodeDocument::raw_text(RawText::new(&source.text));
         let body = render(
             &document,
             RenderOptions {
@@ -365,60 +648,72 @@ impl<'a> Generator<'a> {
         .map_err(|error| BackendError::Generation {
             message: format!("Rust document rendering failed: {error}"),
         })?;
-        body_unit = body_unit.map_document(|_| CodeDocument::raw_text(RawText::new(body)));
-        file.set_body(body_unit);
+        file.set_body(
+            RustCode::sequence([dependencies, RustCode::new(body).with_text_from([source])])
+                .into_fragment(),
+        );
         Ok(file)
     }
 
-    fn documentation(&self, output: &mut String, paragraphs: &[String], indent: usize) {
+    fn documentation(&self, paragraphs: &[String], indent: usize) -> RustCode {
         let prefix = "    ".repeat(indent);
+        let mut output = String::new();
         for paragraph in paragraphs {
             for line in paragraph.lines() {
                 output.push_str(&format!("{prefix}/// {line}\n"));
             }
         }
+        RustCode::new(output)
     }
 
-    fn parameters(&self, parameters: &[Parameter], leading_comma: bool) -> String {
-        if parameters.is_empty() {
-            return String::new();
-        }
-        let rendered = parameters
-            .iter()
-            .map(|parameter| {
+    fn parameters(&self, parameters: &[Parameter], leading_comma: bool) -> RustCode {
+        let rendered = RustCode::joined(
+            parameters.iter().map(|parameter| {
                 let ty = match &parameter.ty {
                     TypeRef::Contract(id) => {
-                        format!("&dyn {}", type_name(self.declaration_name(*id)))
+                        RustCode::new(format!("&dyn {}", type_name(self.declaration_name(*id))))
                     }
                     other => self.ty(other),
                 };
-                format!("{}: {ty}", value_name(&parameter.header.name))
-            })
-            .collect::<Vec<_>>()
-            .join(", ");
+                ty.map_text(|ty| format!("{}: {ty}", value_name(&parameter.header.name)))
+            }),
+            ", ",
+        );
         if leading_comma {
-            format!(", {rendered}")
+            rendered.map_text(|rendered| {
+                if rendered.is_empty() {
+                    rendered
+                } else {
+                    format!(", {rendered}")
+                }
+            })
         } else {
             rendered
         }
     }
 
-    fn ty(&self, ty: &TypeRef) -> String {
+    fn ty(&self, ty: &TypeRef) -> RustCode {
         match ty {
-            TypeRef::Unit => "()".to_owned(),
-            TypeRef::Bool => "bool".to_owned(),
-            TypeRef::I32 => "i32".to_owned(),
-            TypeRef::I64 => "i64".to_owned(),
-            TypeRef::F64 => "f64".to_owned(),
-            TypeRef::Char => "char".to_owned(),
-            TypeRef::String => "String".to_owned(),
-            TypeRef::Bytes => "Vec<u8>".to_owned(),
-            TypeRef::List(element) => format!("Vec<{}>", self.ty(element)),
-            TypeRef::Option(inner) => format!("Option<{}>", self.ty(inner)),
+            TypeRef::Unit => RustCode::new("()"),
+            TypeRef::Bool => RustCode::new("bool"),
+            TypeRef::I32 => RustCode::new("i32"),
+            TypeRef::I64 => RustCode::new("i64"),
+            TypeRef::F64 => RustCode::new("f64"),
+            TypeRef::Char => RustCode::new("char"),
+            TypeRef::String => RustCode::new("String"),
+            TypeRef::Bytes => RustCode::new("Vec<u8>"),
+            TypeRef::List(element) => self
+                .ty(element)
+                .map_text(|element| format!("Vec<{element}>")),
+            TypeRef::Option(inner) => self.ty(inner).map_text(|inner| format!("Option<{inner}>")),
             TypeRef::Result { ok, error } => {
-                format!("Result<{}, {}>", self.ty(ok), self.ty(error))
+                let ok = self.ty(ok);
+                let error = self.ty(error);
+                RustCode::new(format!("Result<{ok}, {error}>")).with_text_from([ok, error])
             }
-            TypeRef::Named(id) | TypeRef::Contract(id) => type_name(self.declaration_name(*id)),
+            TypeRef::Named(id) | TypeRef::Contract(id) => {
+                RustCode::new(type_name(self.declaration_name(*id)))
+            }
         }
     }
 
@@ -523,10 +818,11 @@ fn test_name(name: &str, id: NodeId) -> String {
 }
 
 impl Generator<'_> {
-    fn block(&self, block: &Block, indent: usize) -> String {
+    fn block(&self, block: &Block, indent: usize) -> RustCode {
         let prefix = "    ".repeat(indent);
         let inner = "    ".repeat(indent + 1);
         let mut output = String::from("{\n");
+        let mut dependencies = Vec::new();
         for statement in &block.statements {
             match statement {
                 Statement::Let {
@@ -535,14 +831,17 @@ impl Generator<'_> {
                     value,
                     ..
                 } => {
-                    let annotation = annotation
-                        .as_ref()
-                        .map_or_else(String::new, |ty| format!(": {}", self.ty(ty)));
+                    let annotation = annotation.as_ref().map_or_else(RustCode::default, |ty| {
+                        self.ty(ty).map_text(|ty| format!(": {ty}"))
+                    });
+                    let value = self.expr(value, indent + 1);
                     output.push_str(&format!(
                         "{inner}let {}{annotation} = ({})?;\n",
                         value_name(name),
-                        self.expr(value, indent + 1)
+                        value
                     ));
+                    dependencies.push(annotation);
+                    dependencies.push(value);
                 }
                 Statement::ForEach {
                     binding,
@@ -550,37 +849,49 @@ impl Generator<'_> {
                     body,
                     ..
                 } => {
+                    let iterable = self.expr(iterable, indent + 1);
+                    let body = self.block(body, indent + 1);
                     output.push_str(&format!(
                         "{inner}for {} in ({})? {}\n",
                         value_name(binding),
-                        self.expr(iterable, indent + 1),
-                        self.block(body, indent + 1)
+                        iterable,
+                        body
                     ));
+                    dependencies.push(iterable);
+                    dependencies.push(body);
                 }
                 Statement::Return { value, .. } => match value {
-                    Some(value) => output.push_str(&format!(
-                        "{inner}return {};\n",
-                        self.expr(value, indent + 1)
-                    )),
+                    Some(value) => {
+                        let value = self.expr(value, indent + 1);
+                        output.push_str(&format!("{inner}return {value};\n"));
+                        dependencies.push(value);
+                    }
                     None => output.push_str(&format!("{inner}return Ok(());\n")),
                 },
-                Statement::Expression { value, .. } => output.push_str(&format!(
-                    "{inner}let _ = ({})?;\n",
-                    self.expr(value, indent + 1)
-                )),
+                Statement::Expression { value, .. } => {
+                    let value = self.expr(value, indent + 1);
+                    output.push_str(&format!("{inner}let _ = ({value})?;\n"));
+                    dependencies.push(value);
+                }
             }
         }
         match &block.result {
-            Some(result) => output.push_str(&format!("{inner}{}\n", self.expr(result, indent + 1))),
+            Some(result) => {
+                let result = self.expr(result, indent + 1);
+                output.push_str(&format!("{inner}{result}\n"));
+                dependencies.push(result);
+            }
             None => output.push_str(&format!("{inner}Ok(())\n")),
         }
         output.push_str(&format!("{prefix}}}"));
-        output
+        RustCode::new(output).with_text_from(dependencies)
     }
 
-    fn expr(&self, expression: &Expression, indent: usize) -> String {
+    fn expr(&self, expression: &Expression, indent: usize) -> RustCode {
         match expression {
-            Expression::Literal { value, .. } => format!("Ok({})", self.value(value)),
+            Expression::Literal { value, .. } => {
+                self.value(value).map_text(|value| format!("Ok({value})"))
+            }
             Expression::Local { node, name } => {
                 let value = value_name(name);
                 if self
@@ -588,32 +899,34 @@ impl Generator<'_> {
                     .expression_type(node.id)
                     .is_some_and(|ty| self.is_copy(ty))
                 {
-                    format!("Ok({value})")
+                    RustCode::new(format!("Ok({value})"))
                 } else {
-                    format!("Ok({value}.clone())")
+                    RustCode::new(format!("Ok({value}.clone())"))
                 }
             }
-            Expression::Constant { declaration, .. } => {
-                format!("{}()", value_name(self.declaration_name(*declaration)))
-            }
-            Expression::SelfValue { .. } => "Ok(self.clone())".to_owned(),
+            Expression::Constant { declaration, .. } => RustCode::new(format!(
+                "{}()",
+                value_name(self.declaration_name(*declaration))
+            )),
+            Expression::SelfValue { .. } => RustCode::new("Ok(self.clone())"),
             Expression::ConstructRecord {
                 declaration,
                 fields,
                 ..
-            } => format!(
-                "Ok({} {{ {} }})",
-                type_name(self.declaration_name(*declaration)),
-                fields
-                    .iter()
-                    .map(|field| format!(
-                        "{}: ({})?",
-                        value_name(self.field_name(field.field)),
-                        self.expr(&field.value, indent)
-                    ))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
+            } => RustCode::joined(
+                fields.iter().map(|field| {
+                    self.expr(&field.value, indent).map_text(|value| {
+                        format!("{}: ({value})?", value_name(self.field_name(field.field)))
+                    })
+                }),
+                ", ",
+            )
+            .map_text(|fields| {
+                format!(
+                    "Ok({} {{ {fields} }})",
+                    type_name(self.declaration_name(*declaration))
+                )
+            }),
             Expression::ConstructEnum {
                 declaration,
                 variant,
@@ -626,57 +939,57 @@ impl Generator<'_> {
                         variant.header.name.as_str()
                     });
                 if fields.is_empty() {
-                    format!(
+                    RustCode::new(format!(
                         "Ok({}::{})",
                         type_name(self.declaration_name(*declaration)),
                         type_name(variant_name)
-                    )
+                    ))
                 } else {
-                    format!(
-                        "Ok({}::{} {{ {} }})",
-                        type_name(self.declaration_name(*declaration)),
-                        type_name(variant_name),
-                        fields
-                            .iter()
-                            .map(|field| format!(
-                                "{}: ({})?",
-                                value_name(self.field_name(field.field)),
-                                self.expr(&field.value, indent)
-                            ))
-                            .collect::<Vec<_>>()
-                            .join(", ")
+                    RustCode::joined(
+                        fields.iter().map(|field| {
+                            self.expr(&field.value, indent).map_text(|value| {
+                                format!("{}: ({value})?", value_name(self.field_name(field.field)))
+                            })
+                        }),
+                        ", ",
                     )
+                    .map_text(|fields| {
+                        format!(
+                            "Ok({}::{} {{ {fields} }})",
+                            type_name(self.declaration_name(*declaration)),
+                            type_name(variant_name)
+                        )
+                    })
                 }
             }
-            Expression::ConstructSome { value, .. } => {
-                format!("Ok(Some(({})?))", self.expr(value, indent))
-            }
-            Expression::ConstructNone { .. } => "Ok(None)".to_owned(),
-            Expression::ConstructOk { value, .. } => {
-                format!("Ok(Ok(({})?))", self.expr(value, indent))
-            }
-            Expression::ConstructErr { value, .. } => {
-                format!("Ok(Err(({})?))", self.expr(value, indent))
-            }
-            Expression::ConstructList { elements, .. } => format!(
-                "Ok(vec![{}])",
-                elements
-                    .iter()
-                    .map(|element| format!("({})?", self.expr(element, indent)))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
+            Expression::ConstructSome { value, .. } => self
+                .expr(value, indent)
+                .map_text(|value| format!("Ok(Some(({value})?))")),
+            Expression::ConstructNone { .. } => RustCode::new("Ok(None)"),
+            Expression::ConstructOk { value, .. } => self
+                .expr(value, indent)
+                .map_text(|value| format!("Ok(Ok(({value})?))")),
+            Expression::ConstructErr { value, .. } => self
+                .expr(value, indent)
+                .map_text(|value| format!("Ok(Err(({value})?))")),
+            Expression::ConstructList { elements, .. } => RustCode::joined(
+                elements.iter().map(|element| {
+                    self.expr(element, indent)
+                        .map_text(|value| format!("({value})?"))
+                }),
+                ", ",
+            )
+            .map_text(|elements| format!("Ok(vec![{elements}])")),
             Expression::Field { base, field, .. } => {
-                let access = format!(
-                    "(({})?).{}",
-                    self.expr(base, indent),
-                    value_name(self.field_name(*field))
-                );
-                if self.field_type(*field).is_some_and(|ty| self.is_copy(ty)) {
-                    format!("Ok({access})")
-                } else {
-                    format!("Ok({access}.clone())")
-                }
+                let copied = self.field_type(*field).is_some_and(|ty| self.is_copy(ty));
+                self.expr(base, indent).map_text(|base| {
+                    let access = format!("(({base})?).{}", value_name(self.field_name(*field)));
+                    if copied {
+                        format!("Ok({access})")
+                    } else {
+                        format!("Ok({access}.clone())")
+                    }
+                })
             }
             Expression::Call {
                 function,
@@ -716,20 +1029,23 @@ impl Generator<'_> {
                 then_block,
                 else_block,
                 ..
-            } => format!(
-                "if ({})? {} else {}",
-                self.expr(condition, indent),
-                self.block(then_block, indent),
-                self.block(else_block, indent)
-            ),
-            Expression::Match { value, arms, .. } => format!(
-                "match ({})? {{\n{}{} }}",
-                self.expr(value, indent),
-                arms.iter()
-                    .map(|arm| self.match_arm(arm, indent + 1))
-                    .collect::<String>(),
-                "    ".repeat(indent)
-            ),
+            } => {
+                let condition = self.expr(condition, indent);
+                let then_block = self.block(then_block, indent);
+                let else_block = self.block(else_block, indent);
+                RustCode::new(format!("if ({condition})? {then_block} else {else_block}"))
+                    .with_text_from([condition, then_block, else_block])
+            }
+            Expression::Match { value, arms, .. } => {
+                let value = self.expr(value, indent);
+                let arms =
+                    RustCode::sequence(arms.iter().map(|arm| self.match_arm(arm, indent + 1)));
+                RustCode::new(format!(
+                    "match ({value})? {{\n{arms}{} }}",
+                    "    ".repeat(indent)
+                ))
+                .with_text_from([value, arms])
+            }
             Expression::Block(block) => self.block(block, indent),
         }
     }
@@ -740,23 +1056,23 @@ impl Generator<'_> {
         receiver: Option<String>,
         arguments: &[Expression],
         indent: usize,
-    ) -> String {
+    ) -> RustCode {
         let mut output = String::from("{ ");
+        let mut dependencies = Vec::new();
         if let Some(receiver) = receiver {
             output.push_str(&format!("let __receiver = ({receiver})?; "));
         }
         for (index, argument) in arguments.iter().enumerate() {
-            output.push_str(&format!(
-                "let __argument_{index} = ({})?; ",
-                self.expr(argument, indent)
-            ));
+            let argument = self.expr(argument, indent);
+            output.push_str(&format!("let __argument_{index} = ({argument})?; "));
+            dependencies.push(argument);
         }
         let args = (0..arguments.len())
             .map(|index| format!("__argument_{index}"))
             .collect::<Vec<_>>()
             .join(", ");
         output.push_str(&format!("{callable}({args}) }}"));
-        output
+        RustCode::new(output).with_text_from(dependencies)
     }
 
     fn method_call(
@@ -765,14 +1081,14 @@ impl Generator<'_> {
         dispatch: &MethodDispatch,
         arguments: &[Expression],
         indent: usize,
-    ) -> String {
+    ) -> RustCode {
         let receiver_result = self.expr(receiver, indent);
         let mut prefix = format!("{{ let __receiver = ({receiver_result})?; ");
+        let mut dependencies = vec![receiver_result];
         for (index, argument) in arguments.iter().enumerate() {
-            prefix.push_str(&format!(
-                "let __argument_{index} = ({})?; ",
-                self.expr(argument, indent)
-            ));
+            let argument = self.expr(argument, indent);
+            prefix.push_str(&format!("let __argument_{index} = ({argument})?; "));
+            dependencies.push(argument);
         }
         let args = (0..arguments.len())
             .map(|index| format!("__argument_{index}"))
@@ -804,26 +1120,26 @@ impl Generator<'_> {
         };
         prefix.push_str(&call);
         prefix.push_str(" }");
-        prefix
+        RustCode::new(prefix).with_text_from(dependencies)
     }
 
-    fn match_arm(&self, arm: &MatchArm, indent: usize) -> String {
-        format!(
-            "{}{} => {},\n",
-            "    ".repeat(indent),
-            self.pattern(&arm.pattern),
-            self.block(&arm.body, indent)
-        )
+    fn match_arm(&self, arm: &MatchArm, indent: usize) -> RustCode {
+        let pattern = self.pattern(&arm.pattern);
+        let body = self.block(&arm.body, indent);
+        RustCode::new(format!("{}{pattern} => {body},\n", "    ".repeat(indent)))
+            .with_text_from([pattern, body])
     }
 
-    fn pattern(&self, pattern: &Pattern) -> String {
+    fn pattern(&self, pattern: &Pattern) -> RustCode {
         match pattern {
-            Pattern::Wildcard { .. } => "_".to_owned(),
-            Pattern::Bool { value, .. } => value.to_string(),
-            Pattern::None { .. } => "None".to_owned(),
-            Pattern::Some { binding, .. } => format!("Some({})", value_name(binding)),
-            Pattern::Ok { binding, .. } => format!("Ok({})", value_name(binding)),
-            Pattern::Err { binding, .. } => format!("Err({})", value_name(binding)),
+            Pattern::Wildcard { .. } => RustCode::new("_"),
+            Pattern::Bool { value, .. } => RustCode::new(value.to_string()),
+            Pattern::None { .. } => RustCode::new("None"),
+            Pattern::Some { binding, .. } => {
+                RustCode::new(format!("Some({})", value_name(binding)))
+            }
+            Pattern::Ok { binding, .. } => RustCode::new(format!("Ok({})", value_name(binding))),
+            Pattern::Err { binding, .. } => RustCode::new(format!("Err({})", value_name(binding))),
             Pattern::EnumVariant {
                 declaration,
                 variant,
@@ -836,13 +1152,13 @@ impl Generator<'_> {
                         variant.header.name.as_str()
                     });
                 if bindings.is_empty() {
-                    format!(
+                    RustCode::new(format!(
                         "{}::{}",
                         type_name(self.declaration_name(*declaration)),
                         type_name(variant_name)
-                    )
+                    ))
                 } else {
-                    format!(
+                    RustCode::new(format!(
                         "{}::{} {{ {} }}",
                         type_name(self.declaration_name(*declaration)),
                         type_name(variant_name),
@@ -855,7 +1171,7 @@ impl Generator<'_> {
                             ))
                             .collect::<Vec<_>>()
                             .join(", ")
-                    )
+                    ))
                 }
             }
         }
@@ -943,33 +1259,38 @@ impl Generator<'_> {
 }
 
 impl Generator<'_> {
-    fn constant_body(&self, expression: &ConstantExpression, _indent: usize) -> String {
-        format!("{{ {} }}", self.constant_expr(expression))
+    fn constant_body(&self, expression: &ConstantExpression, _indent: usize) -> RustCode {
+        self.constant_expr(expression)
+            .map_text(|expression| format!("{{ {expression} }}"))
     }
 
-    fn constant_expr(&self, expression: &ConstantExpression) -> String {
+    fn constant_expr(&self, expression: &ConstantExpression) -> RustCode {
         match expression {
-            ConstantExpression::Literal { value, .. } => format!("Ok({})", self.value(value)),
-            ConstantExpression::Reference { declaration, .. } => {
-                format!("{}()", value_name(self.declaration_name(*declaration)))
+            ConstantExpression::Literal { value, .. } => {
+                self.value(value).map_text(|value| format!("Ok({value})"))
             }
+            ConstantExpression::Reference { declaration, .. } => RustCode::new(format!(
+                "{}()",
+                value_name(self.declaration_name(*declaration))
+            )),
             ConstantExpression::Record {
                 declaration,
                 fields,
                 ..
-            } => format!(
-                "Ok({} {{ {} }})",
-                type_name(self.declaration_name(*declaration)),
-                fields
-                    .iter()
-                    .map(|field| format!(
-                        "{}: ({})?",
-                        value_name(self.field_name(field.field)),
-                        self.constant_expr(&field.value)
-                    ))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
+            } => RustCode::joined(
+                fields.iter().map(|field| {
+                    self.constant_expr(&field.value).map_text(|value| {
+                        format!("{}: ({value})?", value_name(self.field_name(field.field)))
+                    })
+                }),
+                ", ",
+            )
+            .map_text(|fields| {
+                format!(
+                    "Ok({} {{ {fields} }})",
+                    type_name(self.declaration_name(*declaration))
+                )
+            }),
             ConstantExpression::Enum {
                 declaration,
                 variant,
@@ -982,46 +1303,47 @@ impl Generator<'_> {
                         variant.header.name.as_str()
                     });
                 if fields.is_empty() {
-                    format!(
+                    RustCode::new(format!(
                         "Ok({}::{})",
                         type_name(self.declaration_name(*declaration)),
                         type_name(variant_name)
-                    )
+                    ))
                 } else {
-                    format!(
-                        "Ok({}::{} {{ {} }})",
-                        type_name(self.declaration_name(*declaration)),
-                        type_name(variant_name),
-                        fields
-                            .iter()
-                            .map(|field| format!(
-                                "{}: ({})?",
-                                value_name(self.field_name(field.field)),
-                                self.constant_expr(&field.value)
-                            ))
-                            .collect::<Vec<_>>()
-                            .join(", ")
+                    RustCode::joined(
+                        fields.iter().map(|field| {
+                            self.constant_expr(&field.value).map_text(|value| {
+                                format!("{}: ({value})?", value_name(self.field_name(field.field)))
+                            })
+                        }),
+                        ", ",
                     )
+                    .map_text(|fields| {
+                        format!(
+                            "Ok({}::{} {{ {fields} }})",
+                            type_name(self.declaration_name(*declaration)),
+                            type_name(variant_name)
+                        )
+                    })
                 }
             }
-            ConstantExpression::Some { value, .. } => {
-                format!("Ok(Some(({})?))", self.constant_expr(value))
-            }
-            ConstantExpression::None { .. } => "Ok(None)".to_owned(),
-            ConstantExpression::Ok { value, .. } => {
-                format!("Ok(Ok(({})?))", self.constant_expr(value))
-            }
-            ConstantExpression::Err { value, .. } => {
-                format!("Ok(Err(({})?))", self.constant_expr(value))
-            }
-            ConstantExpression::List { elements, .. } => format!(
-                "Ok(vec![{}])",
-                elements
-                    .iter()
-                    .map(|element| format!("({})?", self.constant_expr(element)))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
+            ConstantExpression::Some { value, .. } => self
+                .constant_expr(value)
+                .map_text(|value| format!("Ok(Some(({value})?))")),
+            ConstantExpression::None { .. } => RustCode::new("Ok(None)"),
+            ConstantExpression::Ok { value, .. } => self
+                .constant_expr(value)
+                .map_text(|value| format!("Ok(Ok(({value})?))")),
+            ConstantExpression::Err { value, .. } => self
+                .constant_expr(value)
+                .map_text(|value| format!("Ok(Err(({value})?))")),
+            ConstantExpression::List { elements, .. } => RustCode::joined(
+                elements.iter().map(|element| {
+                    self.constant_expr(element)
+                        .map_text(|value| format!("({value})?"))
+                }),
+                ", ",
+            )
+            .map_text(|elements| format!("Ok(vec![{elements}])")),
             ConstantExpression::Intrinsic {
                 operation,
                 arguments,
@@ -1045,20 +1367,22 @@ impl Generator<'_> {
     fn intrinsic(
         &self,
         operation: Intrinsic,
-        arguments: Vec<String>,
+        arguments: Vec<RustCode>,
         first_type: Option<&TypeRef>,
-    ) -> String {
+    ) -> RustCode {
         if operation == Intrinsic::BoolAnd {
-            return format!(
+            return RustCode::new(format!(
                 "{{ let __argument_0 = ({})?; if !__argument_0 {{ Ok(false) }} else {{ {} }} }}",
                 arguments[0], arguments[1]
-            );
+            ))
+            .with_text_from(arguments);
         }
         if operation == Intrinsic::BoolOr {
-            return format!(
+            return RustCode::new(format!(
                 "{{ let __argument_0 = ({})?; if __argument_0 {{ Ok(true) }} else {{ {} }} }}",
                 arguments[0], arguments[1]
-            );
+            ))
+            .with_text_from(arguments);
         }
         let mut output = String::from("{ ");
         for (index, argument) in arguments.iter().enumerate() {
@@ -1183,7 +1507,20 @@ impl Generator<'_> {
         };
         output.push_str(&expression);
         output.push_str(" }");
-        output
+        let mut code = RustCode::new(output).with_text_from(arguments);
+        let helper = match operation {
+            Intrinsic::StringReplaceMany => Some("feature.string-replace-many"),
+            Intrinsic::BytesReplaceAll => Some("feature.bytes-replace-all"),
+            Intrinsic::StringTruncateUtf8Bytes => Some("feature.string-truncate-utf8"),
+            Intrinsic::IntShiftLeftChecked | Intrinsic::IntShiftRightChecked => {
+                Some("feature.checked-shift")
+            }
+            _ => None,
+        };
+        if let Some(helper) = helper {
+            code = code.with_helper_root(helper);
+        }
+        code
     }
 
     fn constant_type(&self, expression: &ConstantExpression) -> Option<TypeRef> {
@@ -1299,51 +1636,48 @@ impl Generator<'_> {
         }
     }
 
-    fn value(&self, value: &Value) -> String {
+    fn value(&self, value: &Value) -> RustCode {
         match value {
-            Value::Unit => "()".to_owned(),
-            Value::Bool(value) => value.to_string(),
-            Value::I32(value) => format!("{value}_i32"),
-            Value::I64(value) => format!("{value}_i64"),
-            Value::F64(value) => format!("f64::from_bits(0x{:016x})", value.0),
-            Value::Char(value) => format!("{value:?}"),
-            Value::String(value) => format!("String::from({value:?})"),
-            Value::Bytes(value) => format!(
+            Value::Unit => RustCode::new("()"),
+            Value::Bool(value) => RustCode::new(value.to_string()),
+            Value::I32(value) => RustCode::new(format!("{value}_i32")),
+            Value::I64(value) => RustCode::new(format!("{value}_i64")),
+            Value::F64(value) => RustCode::new(format!("f64::from_bits(0x{:016x})", value.0)),
+            Value::Char(value) => RustCode::new(format!("{value:?}")),
+            Value::String(value) => RustCode::new(format!("String::from({value:?})")),
+            Value::Bytes(value) => RustCode::new(format!(
                 "vec![{}]",
                 value
                     .iter()
                     .map(|byte| format!("0x{byte:02x}_u8"))
                     .collect::<Vec<_>>()
                     .join(", ")
-            ),
-            Value::List(values) => format!(
-                "vec![{}]",
-                values
-                    .iter()
-                    .map(|value| self.value(value))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
-            Value::None => "None".to_owned(),
-            Value::Some(value) => format!("Some({})", self.value(value)),
-            Value::Ok(value) => format!("Ok({})", self.value(value)),
-            Value::Err(value) => format!("Err({})", self.value(value)),
+            )),
+            Value::List(values) => {
+                RustCode::joined(values.iter().map(|value| self.value(value)), ", ")
+                    .map_text(|values| format!("vec![{values}]"))
+            }
+            Value::None => RustCode::new("None"),
+            Value::Some(value) => self.value(value).map_text(|value| format!("Some({value})")),
+            Value::Ok(value) => self.value(value).map_text(|value| format!("Ok({value})")),
+            Value::Err(value) => self.value(value).map_text(|value| format!("Err({value})")),
             Value::Record {
                 declaration,
                 fields,
-            } => format!(
-                "{} {{ {} }}",
-                type_name(self.declaration_name(*declaration)),
-                fields
-                    .iter()
-                    .map(|field| format!(
-                        "{}: {}",
-                        value_name(self.field_name(field.field)),
-                        self.value(&field.value)
-                    ))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
+            } => RustCode::joined(
+                fields.iter().map(|field| {
+                    self.value(&field.value).map_text(|value| {
+                        format!("{}: {value}", value_name(self.field_name(field.field)))
+                    })
+                }),
+                ", ",
+            )
+            .map_text(|fields| {
+                format!(
+                    "{} {{ {fields} }}",
+                    type_name(self.declaration_name(*declaration))
+                )
+            }),
             Value::Enum {
                 declaration,
                 variant,
@@ -1355,26 +1689,27 @@ impl Generator<'_> {
                         variant.header.name.as_str()
                     });
                 if fields.is_empty() {
-                    format!(
+                    RustCode::new(format!(
                         "{}::{}",
                         type_name(self.declaration_name(*declaration)),
                         type_name(variant_name)
-                    )
+                    ))
                 } else {
-                    format!(
-                        "{}::{} {{ {} }}",
-                        type_name(self.declaration_name(*declaration)),
-                        type_name(variant_name),
-                        fields
-                            .iter()
-                            .map(|field| format!(
-                                "{}: {}",
-                                value_name(self.field_name(field.field)),
-                                self.value(&field.value)
-                            ))
-                            .collect::<Vec<_>>()
-                            .join(", ")
+                    RustCode::joined(
+                        fields.iter().map(|field| {
+                            self.value(&field.value).map_text(|value| {
+                                format!("{}: {value}", value_name(self.field_name(field.field)))
+                            })
+                        }),
+                        ", ",
                     )
+                    .map_text(|fields| {
+                        format!(
+                            "{}::{} {{ {fields} }}",
+                            type_name(self.declaration_name(*declaration)),
+                            type_name(variant_name)
+                        )
+                    })
                 }
             }
         }
@@ -1382,7 +1717,9 @@ impl Generator<'_> {
 }
 
 impl Generator<'_> {
-    fn tests(&self, output: &mut String) {
+    fn tests(&self) -> RustCode {
+        let mut output = String::new();
+        let mut dependencies = Vec::new();
         let mut tests: Vec<_> = self
             .program
             .module()
@@ -1410,13 +1747,17 @@ impl Generator<'_> {
                         Some(Declaration::Function(function)) => &function.parameters,
                         _ => &[],
                     };
-                    self.test_arguments(output, arguments);
+                    let setup = self.test_arguments(arguments);
+                    output.push_str(&setup.text);
+                    dependencies.push(setup);
+                    let argument_list = self.test_argument_list(arguments, parameters);
+                    let call = format!(
+                        "{}({argument_list})",
+                        value_name(self.declaration_name(*function))
+                    );
+                    dependencies.push(argument_list);
                     (
-                        format!(
-                            "{}({})",
-                            value_name(self.declaration_name(*function)),
-                            self.test_argument_list(arguments, parameters)
-                        ),
+                        call,
                         match self.declaration(*function) {
                             Some(Declaration::Function(function)) => function.return_type.clone(),
                             _ => TypeRef::Unit,
@@ -1433,7 +1774,9 @@ impl Generator<'_> {
                         "        let receiver = {};\n",
                         self.value(&receiver.value)
                     ));
-                    self.test_arguments(output, arguments);
+                    let setup = self.test_arguments(arguments);
+                    output.push_str(&setup.text);
+                    dependencies.push(setup);
                     let (contract, record, method_name) =
                         self.implementation_method(*implementation, *method);
                     let parameters = match self.declaration(*implementation) {
@@ -1459,11 +1802,12 @@ impl Generator<'_> {
                         _ => TypeRef::Unit,
                     };
                     let arguments = self.test_argument_list(arguments, parameters);
-                    let suffix = if arguments.is_empty() {
+                    let suffix = if arguments.text.is_empty() {
                         String::new()
                     } else {
                         format!(", {arguments}")
                     };
+                    dependencies.push(arguments);
                     (
                         format!(
                             "<{} as {}>::{}(&receiver{suffix})",
@@ -1480,7 +1824,9 @@ impl Generator<'_> {
                     output.push_str(&format!(
                         "        let actual = {call}.expect(\"portable test expected a value\");\n"
                     ));
-                    output.push_str(&self.test_assertions("actual", &return_type, &expected.value));
+                    let assertions = self.test_assertions("actual", &return_type, &expected.value);
+                    output.push_str(&assertions.text);
+                    dependencies.push(assertions);
                 }
                 ExpectedOutcome::Error(expected) => {
                     let code = match &expected.value {
@@ -1494,51 +1840,52 @@ impl Generator<'_> {
             }
             output.push_str("    }\n\n");
         }
+        RustCode::new(output).with_text_from(dependencies)
     }
 
-    fn test_arguments(&self, output: &mut String, arguments: &[TypedValue]) {
-        for (index, argument) in arguments.iter().enumerate() {
-            output.push_str(&format!(
-                "        let argument_{index} = {};\n",
-                self.value(&argument.value)
-            ));
-        }
+    fn test_arguments(&self, arguments: &[TypedValue]) -> RustCode {
+        RustCode::sequence(arguments.iter().enumerate().map(|(index, argument)| {
+            self.value(&argument.value)
+                .map_text(|value| format!("        let argument_{index} = {value};\n"))
+        }))
     }
 
-    fn test_argument_list(&self, arguments: &[TypedValue], parameters: &[Parameter]) -> String {
-        arguments
-            .iter()
-            .enumerate()
-            .map(|(index, _)| {
-                if parameters
-                    .get(index)
-                    .is_some_and(|parameter| matches!(parameter.ty, TypeRef::Contract(_)))
-                {
-                    format!("&argument_{index}")
-                } else {
-                    format!("argument_{index}")
-                }
-            })
-            .collect::<Vec<_>>()
-            .join(", ")
+    fn test_argument_list(&self, arguments: &[TypedValue], parameters: &[Parameter]) -> RustCode {
+        RustCode::new(
+            arguments
+                .iter()
+                .enumerate()
+                .map(|(index, _)| {
+                    if parameters
+                        .get(index)
+                        .is_some_and(|parameter| matches!(parameter.ty, TypeRef::Contract(_)))
+                    {
+                        format!("&argument_{index}")
+                    } else {
+                        format!("argument_{index}")
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(", "),
+        )
     }
 
-    fn test_assertions(&self, actual: &str, ty: &TypeRef, expected: &Value) -> String {
+    fn test_assertions(&self, actual: &str, ty: &TypeRef, expected: &Value) -> RustCode {
         match (ty, expected) {
             (TypeRef::Bool, Value::Bool(true)) => {
-                format!("        assert!({actual});\n")
+                RustCode::new(format!("        assert!({actual});\n"))
             }
             (TypeRef::Bool, Value::Bool(false)) => {
-                format!("        assert!(!{actual});\n")
+                RustCode::new(format!("        assert!(!{actual});\n"))
             }
             (TypeRef::F64, Value::F64(value)) => {
                 if f64::from_bits(value.0).is_nan() {
-                    format!("        assert!({actual}.is_nan());\n")
+                    RustCode::new(format!("        assert!({actual}.is_nan());\n"))
                 } else {
-                    format!(
+                    RustCode::new(format!(
                         "        assert_eq!({actual}.to_bits(), 0x{:016x});\n",
                         value.0
-                    )
+                    ))
                 }
             }
             (
@@ -1549,27 +1896,28 @@ impl Generator<'_> {
                 },
             ) => {
                 let Some(Declaration::Record(record)) = self.declaration(*declaration) else {
-                    return format!("        assert_eq!({actual}, {});\n", self.value(expected));
+                    return self.value(expected).map_text(|expected| {
+                        format!("        assert_eq!({actual}, {expected});\n")
+                    });
                 };
-                fields
-                    .iter()
-                    .map(|field| {
-                        let Some(member) = record
-                            .fields
-                            .iter()
-                            .find(|member| member.header.node.id == field.field)
-                        else {
-                            return String::new();
-                        };
-                        self.test_assertions(
-                            &format!("{actual}.{}", value_name(&member.header.name)),
-                            &member.ty,
-                            &field.value,
-                        )
-                    })
-                    .collect()
+                RustCode::sequence(fields.iter().map(|field| {
+                    let Some(member) = record
+                        .fields
+                        .iter()
+                        .find(|member| member.header.node.id == field.field)
+                    else {
+                        return RustCode::default();
+                    };
+                    self.test_assertions(
+                        &format!("{actual}.{}", value_name(&member.header.name)),
+                        &member.ty,
+                        &field.value,
+                    )
+                }))
             }
-            _ => format!("        assert_eq!({actual}, {});\n", self.value(expected)),
+            _ => self
+                .value(expected)
+                .map_text(|expected| format!("        assert_eq!({actual}, {expected});\n")),
         }
     }
 }
@@ -1601,6 +1949,7 @@ impl PolyRuntimeError {
 
 pub type PolyResult<T> = Result<T, PolyRuntimeError>;
 
+// POLYRUST-BEGIN string-replace-many
 #[doc(hidden)]
 pub fn _poly_string_replace_many(
     source: String,
@@ -1636,7 +1985,9 @@ pub fn _poly_string_replace_many(
     }
     Ok(output)
 }
+// POLYRUST-END string-replace-many
 
+// POLYRUST-BEGIN bytes-replace-all
 #[doc(hidden)]
 pub fn _poly_bytes_replace_all(
     source: Vec<u8>,
@@ -1664,7 +2015,9 @@ pub fn _poly_bytes_replace_all(
     }
     Ok(output)
 }
+// POLYRUST-END bytes-replace-all
 
+// POLYRUST-BEGIN string-truncate-utf8
 #[doc(hidden)]
 pub fn _poly_string_truncate_utf8_bytes(
     source: String,
@@ -1682,7 +2035,9 @@ pub fn _poly_string_truncate_utf8_bytes(
     }
     Ok(source)
 }
+// POLYRUST-END string-truncate-utf8
 
+// POLYRUST-BEGIN checked-shift
 #[doc(hidden)]
 pub trait PolyShift: Sized {
     fn poly_checked_shl(self, amount: u32) -> Option<Self>;
@@ -1716,6 +2071,7 @@ pub fn _poly_shift_right<T: PolyShift>(value: T, amount: i64, width: u8) -> Poly
         value.poly_checked_shr(amount as u32).ok_or(PolyRuntimeError::InvalidShift { amount, width })
     }
 }
+// POLYRUST-END checked-shift
 
 #[doc(hidden)]
 pub fn _poly_list_get<T: Clone>(values: Vec<T>, index: i64) -> PolyResult<T> {
@@ -1725,8 +2081,9 @@ pub fn _poly_list_get<T: Clone>(values: Vec<T>, index: i64) -> PolyResult<T> {
 }
 "#;
 
-fn render_conformance() -> String {
-    r#"#[test] fn vector_01_bool_not() { let result = !std::hint::black_box(true); assert!(!result); }
+fn render_conformance() -> RustCode {
+    RustCode::new(
+        r#"#[test] fn vector_01_bool_not() { let result = !std::hint::black_box(true); assert!(!result); }
 #[test] fn vector_02_checked_add() { assert_eq!(20_i64.checked_add(22).unwrap(), 42); }
 #[test] fn vector_03_checked_overflow() { assert_eq!(i64::MAX.checked_add(1).ok_or(PolyRuntimeError::CheckedOverflow { operation: "add" }).unwrap_err().code(), "checked_overflow"); }
 #[test] fn vector_04_division_by_zero() { let divisor = std::hint::black_box(0_i32); let result: PolyResult<i32> = if divisor == 0 { Err(PolyRuntimeError::DivisionByZero) } else { Ok(1 / divisor) }; assert_eq!(result.unwrap_err().code(), "division_by_zero"); }
@@ -1746,7 +2103,8 @@ fn render_conformance() -> String {
 #[test] fn vector_18_invalid_utf8() { assert_eq!(String::from_utf8(std::hint::black_box(vec![0xff])).map_err(|_| PolyRuntimeError::InvalidUtf8).unwrap_err().code(), "invalid_utf8"); }
 #[test] fn vector_19_string_contains() { assert!("x🦀y".contains("🦀")); }
 #[test] fn vector_20_list_append_non_aliasing() { let original = vec![1_i64]; let mut appended = original.clone(); appended.push(2); assert_eq!(original, vec![1]); assert_eq!(appended, vec![1, 2]); }
-"#.to_owned()
+"#,
+    )
 }
 
 #[cfg(test)]
@@ -1814,7 +2172,11 @@ mod tests {
         let second = RustBackend
             .generate(&program, &BackendOptions::default())
             .unwrap();
+        let third = RustBackend
+            .generate(&program, &BackendOptions::default())
+            .unwrap();
         assert_eq!(first.canonical_json(), second.canonical_json());
+        assert_eq!(second.canonical_json(), third.canonical_json());
         assert_eq!(
             first
                 .files()
@@ -1852,6 +2214,98 @@ mod tests {
     }
 
     #[test]
+    fn rust_imports_and_nested_types_are_validated_fragments() {
+        assert!(RustImport::module("polyrust_runtime", false).is_ok());
+        assert!(RustImport::use_path("polyrust_runtime::*", true).is_ok());
+        assert!(RustImport::use_path("super::*", false).is_ok());
+        for module in ["", "bad-name", "crate::runtime", "mod runtime"] {
+            assert!(RustImport::module(module, false).is_err(), "{module}");
+        }
+        for path in ["", "::root", "bad-path::*", "runtime::*::item", "use x;"] {
+            assert!(RustImport::use_path(path, false).is_err(), "{path}");
+        }
+
+        let program = fixture();
+        let nested = Generator::new(&program).ty(&TypeRef::Result {
+            ok: Box::new(TypeRef::Option(Box::new(TypeRef::List(Box::new(
+                TypeRef::I64,
+            ))))),
+            error: Box::new(TypeRef::String),
+        });
+        assert_eq!(nested.text, "Result<Option<Vec<i64>>, String>");
+        assert!(nested.imports.is_empty());
+        assert!(nested.helper_roots.is_empty());
+    }
+
+    #[test]
+    fn rust_runtime_helper_matrix_is_exact_and_mapping_local() {
+        let (graph, common) = rust_runtime_helper_graph().unwrap();
+        let minimal = render_runtime(&graph.resolve(&common).unwrap());
+        assert!(minimal.contains("_poly_list_get"));
+        assert!(!minimal.contains("POLYRUST-"));
+        for token in [
+            "_poly_string_replace_many",
+            "_poly_bytes_replace_all",
+            "_poly_string_truncate_utf8_bytes",
+            "trait PolyShift",
+        ] {
+            assert!(!minimal.contains(token), "{token} in minimal runtime");
+        }
+        for (root, present, absent) in [
+            (
+                "feature.string-replace-many",
+                "_poly_string_replace_many",
+                "_poly_bytes_replace_all",
+            ),
+            (
+                "feature.bytes-replace-all",
+                "_poly_bytes_replace_all",
+                "_poly_string_truncate_utf8_bytes",
+            ),
+            (
+                "feature.string-truncate-utf8",
+                "_poly_string_truncate_utf8_bytes",
+                "trait PolyShift",
+            ),
+            (
+                "feature.checked-shift",
+                "trait PolyShift",
+                "_poly_string_replace_many",
+            ),
+        ] {
+            let mut roots = common.clone();
+            roots.push(root.to_owned());
+            let runtime = render_runtime(&graph.resolve(&roots).unwrap());
+            assert!(runtime.contains(present), "{root} lacks {present}");
+            assert!(!runtime.contains(absent), "{root} includes {absent}");
+            assert!(!runtime.contains("POLYRUST-"));
+        }
+
+        let program = fixture();
+        let generator = Generator::new(&program);
+        for (operation, root) in [
+            (Intrinsic::StringReplaceMany, "feature.string-replace-many"),
+            (Intrinsic::BytesReplaceAll, "feature.bytes-replace-all"),
+            (
+                Intrinsic::StringTruncateUtf8Bytes,
+                "feature.string-truncate-utf8",
+            ),
+            (Intrinsic::IntShiftLeftChecked, "feature.checked-shift"),
+        ] {
+            let code = generator.intrinsic(
+                operation,
+                vec![
+                    RustCode::new("Ok(String::new())"),
+                    RustCode::new("Ok(String::new())"),
+                    RustCode::new("Ok(String::new())"),
+                ],
+                None,
+            );
+            assert!(code.helper_roots.contains(root), "{operation:?}");
+        }
+    }
+
+    #[test]
     fn names_literals_and_runtime_helpers_are_target_owned_and_safe() {
         assert_eq!(rust_identifier("match"), "r#match");
         assert_eq!(rust_identifier("self"), "self_");
@@ -1859,21 +2313,40 @@ mod tests {
         let program = fixture();
         let generator = Generator::new(&program);
         assert_eq!(
-            generator.value(&Value::I64(i64::MIN)),
+            generator.value(&Value::I64(i64::MIN)).text,
             "-9223372036854775808_i64"
         );
         assert_eq!(
-            generator.value(&Value::F64(portable_ir::v0::F64Bits(0x8000_0000_0000_0000))),
+            generator
+                .value(&Value::F64(
+                    portable_ir::v0::F64Bits(0x8000_0000_0000_0000,)
+                ))
+                .text,
             "f64::from_bits(0x8000000000000000)"
         );
         assert_eq!(
-            generator.value(&Value::String("\"\\\n🦀".into())),
+            generator.value(&Value::String("\"\\\n🦀".into())).text,
             "String::from(\"\\\"\\\\\\n🦀\")"
         );
         assert_eq!(
-            generator.value(&Value::Bytes(vec![0, 255])),
+            generator.value(&Value::Bytes(vec![0, 255])).text,
             "vec![0x00_u8, 0xff_u8]"
         );
+    }
+
+    fn render_runtime(fragment: &LanguageFragment<RustImport>) -> String {
+        let mut file = LanguageSourceFile::new("src/polyrust_runtime.rs", FileRole::Runtime);
+        file.set_body(fragment.clone());
+        let group = FileGroup::new(
+            FileGroupId::parse("test").unwrap(),
+            vec![LanguageFile::source(file)],
+        )
+        .unwrap();
+        let package =
+            LanguagePackage::new(vec![group], Vec::<DeclaredDependency>::new(), Vec::new())
+                .unwrap();
+        let manifest = portable_codegen::render_language_package(&package, &RustRenderer).unwrap();
+        generated_text(&manifest, "src/polyrust_runtime.rs").to_owned()
     }
 
     #[test]
@@ -1881,11 +2354,15 @@ mod tests {
         let program = fixture();
         let generator = Generator::new(&program);
         assert_eq!(
-            generator.test_assertions("actual", &TypeRef::Bool, &Value::Bool(true)),
+            generator
+                .test_assertions("actual", &TypeRef::Bool, &Value::Bool(true))
+                .text,
             "        assert!(actual);\n"
         );
         assert_eq!(
-            generator.test_assertions("actual", &TypeRef::Bool, &Value::Bool(false)),
+            generator
+                .test_assertions("actual", &TypeRef::Bool, &Value::Bool(false))
+                .text,
             "        assert!(!actual);\n"
         );
     }

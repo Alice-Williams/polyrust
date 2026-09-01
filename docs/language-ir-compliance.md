@@ -13,7 +13,7 @@ not an accepted exception.
 | Surface | Structured renderer | Mapping-local fragments | Helper graph/minimal runtime | Source-role closure | No repair scan | Baseline result |
 | --- | --- | --- | --- | --- | --- | --- |
 | Shared codegen | Pass: renderer sees `ImportSet` only | Pass: associative `LanguageFragment` composition closes immutable units | Pass: deterministic closure rejects invalid, duplicate, missing, and cyclic helper graphs | Partial: source roles can still use raw `Text` | Pass: closed units expose no document/dependency repair API | **Fail** |
-| Rust | Pass: `RustImport` renderer | Fail: declarations build one `String` | Fail: complete `RUNTIME` is copied as text | Fail: runtime uses `LanguageFile::text` | Partial: source imports are attached at file-unit scope | **Fail** |
+| Rust | Pass: validated module/use IR; renderer alone spells directives | Pass: `RustCode` composes every syntax mapping and portable test | Pass: exact common/replacement/truncation/shift helper closure | Pass: every generated Rust source role uses a source file | Pass: intrinsic mappings directly own helper roots | **Pass** |
 | TypeScript | Pass: validated default/named/type-only/export IR; renderer alone spells directives | Pass: paired `EcmaCode` composes types, declarations, and tests | Pass: exact intrinsic-selected paired helper closure | Pass: every generated TypeScript source role uses a source file | Pass: mapping-local fragments replace file-wide attachment | **Pass** |
 | JavaScript | Pass: the same validated `EcmaImport` IR with type-only erasure | Pass: erased syntax comes from the same `EcmaCode` traversal | Pass: compiler-derived runtime has the same helper IDs and roots | Pass: every generated JavaScript source role uses a source file | Pass: no parallel declaration or dependency scan remains | **Pass** |
 | Python | Pass: validated future/module/from IR; renderer alone spells imports | Pass: `PythonCode` composes types, values, declarations, and portable tests | Pass: exact common and optional F64 helper closure | Pass: every generated Python source role uses a source file | Pass: dependency repair walks are deleted | **Pass** |
@@ -30,7 +30,7 @@ not prove dependency completeness or minimality.
 
 - Shared mutable unit and source-role bypass APIs:
   `crates/codegen/src/language.rs`.
-- Rust monolithic runtime/source assembly:
+- Rust fragments and helper-closure implementation:
   `crates/backend-rust/src/v0.rs`.
 - TypeScript/JavaScript paired fragments and helper closure:
   `crates/backend-typescript/src/lib.rs`.
@@ -136,3 +136,24 @@ all generated packages remain functionally equivalent, and hosted CI is green.
 - Three-generation determinism, Prettier, strict `tsc`, Node TypeScript and
   standalone JavaScript tests, derivation parity, and all 130 real-world tests
   pass.
+
+### Rust fragments and runtime (M30-04D)
+
+- `RustCode` composes syntax, validated imports, and helper roots through
+  nested types, values, constants, expressions, blocks, calls, patterns,
+  declarations, documentation, and portable tests. Only identifier/package
+  allocation and test-only rendering helpers return strings.
+- `RustImport` privately stores validated module or use-path data with
+  test-only/public policy. Invalid identifiers, malformed paths, and rendered
+  directives are rejected; only `RustRenderer` spells `mod` and `use`.
+- Runtime replacement, byte replacement, UTF-8 truncation, and checked-shift
+  helpers are stable nodes. Intrinsic mappings own their exact roots, and
+  deterministic closure retains only the permanent error/result/list-get core
+  plus selected helpers.
+- Minimal and one-feature helper matrices, nested list/option/result type
+  composition, mapping-local root assertions, and marker-free output are
+  executable tests. Runtime, source, test, and conformance roles are closed
+  source files.
+- Three-generation determinism, generated-crate Rustfmt/Clippy,
+  debug/release/native and negative-compilation gates, and all 130 real-world
+  tests pass.
