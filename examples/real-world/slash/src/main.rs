@@ -15,7 +15,7 @@ fn main() {
         }
     }
     println!(
-        "generated slash for rust, typescript, javascript, python, go, and java in {}",
+        "generated slash for rust, typescript, javascript, python, go, java, and C++ in {}",
         output.display()
     );
 }

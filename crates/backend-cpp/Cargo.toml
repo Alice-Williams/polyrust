@@ -1,0 +1,20 @@
+[package]
+name = "polyrust-backend-cpp"
+description = "C++20 source backend for checked portable programs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+name = "portable_backend_cpp"
+
+[dependencies]
+portable_check.workspace = true
+portable_codegen.workspace = true
+portable_ir.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

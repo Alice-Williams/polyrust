@@ -4,6 +4,7 @@
 
 use std::sync::Arc;
 
+use portable_backend_cpp::CppBackend;
 use portable_backend_go::GoV0Backend;
 use portable_backend_java::JavaBackend;
 use portable_backend_python::PythonBackend;
@@ -67,16 +68,17 @@ pub fn program() -> CheckedProgram {
         .unwrap_or_else(|diagnostics| panic!("slash did not check: {diagnostics:#?}"))
 }
 
-/// Generates all six required target packages from one checked program.
+/// Generates all seven required target packages from one checked program.
 pub fn manifests() -> Vec<(&'static str, OutputManifest)> {
     let program = program();
-    let backends: [(&str, Arc<dyn Backend>); 6] = [
+    let backends: [(&str, Arc<dyn Backend>); 7] = [
         ("rust", Arc::new(RustBackend)),
         ("typescript", Arc::new(TypeScriptBackend)),
         ("javascript", Arc::new(JavaScriptBackend)),
         ("python", Arc::new(PythonBackend)),
         ("go", Arc::new(GoV0Backend)),
         ("java", Arc::new(JavaBackend)),
+        ("cpp", Arc::new(CppBackend)),
     ];
     backends
         .into_iter()
@@ -132,11 +134,11 @@ mod tests {
     }
 
     #[test]
-    fn all_six_manifests_are_nonempty_and_repeatable() {
+    fn all_seven_manifests_are_nonempty_and_repeatable() {
         let first = manifests();
         let second = manifests();
         assert_eq!(first, second);
-        assert_eq!(first.len(), 6);
+        assert_eq!(first.len(), 7);
         assert!(
             first
                 .iter()

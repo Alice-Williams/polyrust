@@ -51,8 +51,8 @@ discard information needed for maintainable high-level source.
   and Java packages.
 - Format and statically check/compile all generated packages.
 - Execute shared conformance vectors against a reference evaluator and all
-  six targets.
-- Prove that all six outputs work through the same public core interfaces.
+  all required targets.
+- Prove that all required outputs work through the same public core interfaces.
 - Produce actionable diagnostics with codes, source paths, and suggestions.
 
 ## Non-goals for v0.1
@@ -71,7 +71,7 @@ discard information needed for maintainable high-level source.
 Rust, TypeScript, JavaScript, Python, Go, and Java are release-blocking targets. Rust is
 implemented first as the reference source backend, but it uses the same
 `Backend` interface, capability checks, file manifest, snapshots, and conformance
-suite as the others. A feature is not complete unless all six required
+suite as the others. A feature is not complete unless all required
 backends implement it or the feature is explicitly moved out of v0.1.
 
 ## Functional requirements
@@ -173,7 +173,7 @@ core switches on its target name.
   before v0.1 release.
 - **Dependency transparency:** manifest and CLI report injected runtime helpers
   and package dependencies.
-- **Testability:** every IR feature has checker, evaluator, and six-output
+- **Testability:** every IR feature has checker, evaluator, and all-target
   coverage.
 
 ## Proposed user experience
@@ -241,7 +241,7 @@ A proposed IR feature is accepted only when it has:
 
 ## Success measures
 
-- One non-trivial example generates all six required packages without
+- One non-trivial example generates all required packages without
   hand-editing.
 - The example includes constants, a contract and implementation, concrete and
   contract-dispatched functions, and at least ten portable tests.

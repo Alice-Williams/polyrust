@@ -1,7 +1,8 @@
 # v0.1 generation benchmark
 
 The release benchmark builds and checks 1,000 public alias declarations, then
-generates Rust, TypeScript, JavaScript, Python, Go, and Java manifests in one process. The enforced
+generates Rust, TypeScript, JavaScript, Python, Go, Java, and C++ manifests in
+one process. The enforced
 PRD limits are generation under 2,000 ms and peak process memory under 512 MiB.
 
 Run it in the pinned Linux development container:
@@ -12,17 +13,17 @@ bazelisk test //crates/benchmark:generation_benchmark_test --test_output=all
 
 The Bazel test launches `generation_benchmark`, measures child peak RSS with
 Linux `getrusage`, records wall time and platform information, verifies exactly
-1,000 declarations and six targets, and fails either limit. It prints one
+1,000 declarations and seven targets, and fails either limit. It prints one
 canonical JSON measurement suitable for attaching to CI evidence.
 
 ## Baseline measurement
 
 - Tool: `polyrust-v0.1`, Rust/Bazel toolchain 1.98.0/9.2.0
 - Host: Linux 6.18.33.2 Microsoft WSL2 x86_64, glibc 2.41
-- Fixture: 1,000 declarations, six targets, 34 files, 1,708,562 output bytes
-- Generation time: 277 ms (280 ms measured process wall time)
-- Peak RSS: 11.22 MiB
-- Result: pass; 1,723 ms and 500.78 MiB below the PRD limits
+- Fixture: 1,000 declarations, seven targets, 40 files, 2,064,858 output bytes
+- Generation time: 744 ms (760 ms measured process wall time)
+- Peak RSS: 11.42 MiB
+- Result: pass; 1,256 ms and 500.58 MiB below the PRD limits
 
 This is a local feasibility baseline, not a promise of identical timing on other
 machines. CI enforces the same limits and records its own host-specific line.

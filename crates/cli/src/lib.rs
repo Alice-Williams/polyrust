@@ -465,6 +465,9 @@ fn default_registry() -> BackendRegistry {
         .register(Arc::new(portable_backend_java::JavaBackend))
         .expect("Java target is unique");
     registry
+        .register(Arc::new(portable_backend_cpp::CppBackend))
+        .expect("C++ target is unique");
+    registry
 }
 
 struct InspectionBackend {
@@ -648,6 +651,11 @@ mod tests {
             targets
                 .1
                 .contains("org.polyrust.java\tJava\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n")
+        );
+        assert!(
+            targets
+                .1
+                .contains("org.polyrust.cpp\tC++\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n")
         );
         assert!(
             targets.1.contains(

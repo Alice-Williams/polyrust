@@ -29,7 +29,7 @@ emission targets.
 
 ## PolyRust target strategy
 
-After M21, PolyRust covers six general-purpose ecosystems:
+After M22A, PolyRust covers seven general-purpose ecosystems:
 
 - Rust
 - TypeScript
@@ -37,11 +37,11 @@ After M21, PolyRust covers six general-purpose ecosystems:
 - Python
 - Go
 - Java
+- C++
 
 M22 commits the next two targets:
 
-1. C++, using modern value types and RAII.
-2. C, with an explicit ABI, allocation, ownership, and monomorphization design.
+1. C, with an explicit ABI, allocation, ownership, and monomorphization design.
 
 Recommended order after M22:
 

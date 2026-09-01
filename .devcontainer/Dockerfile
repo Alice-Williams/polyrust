@@ -12,6 +12,8 @@ ARG PRETTIER_VERSION=3.9.6
 ARG RUFF_VERSION=0.16.5
 ARG MYPY_VERSION=2.3.1
 ARG PYTEST_VERSION=9.1.1
+ARG GCC_VERSION=14.2.0
+ARG GCC_PACKAGE_VERSION=14.2.0-19
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -22,6 +24,7 @@ RUN apt-get update \
         curl \
         file \
         git \
+        g++-14="${GCC_PACKAGE_VERSION}" \
         less \
         pkg-config \
         python3 \
@@ -31,6 +34,9 @@ RUN apt-get update \
         xz-utils \
         zip \
     && rm -rf /var/lib/apt/lists/*
+
+RUN test "$(g++ -dumpfullversion)" = "${GCC_VERSION}" \
+    && test "$(dpkg-query -W -f='${Version}' g++-14)" = "${GCC_PACKAGE_VERSION}"
 
 RUN rustup component add clippy rustfmt
 

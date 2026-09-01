@@ -1,6 +1,6 @@
 # M22 — Add C++ and C outputs
 
-- Status: planned
+- Status: in-progress
 - Phase: 7
 - Depends on: M21
 
@@ -11,9 +11,9 @@ independent C++ and C backends. C++ uses modern value types and RAII. C uses a
 documented generated ABI, explicit ownership, concrete generated container
 types, and fallible operations without hidden exceptions.
 
-Zig may be evaluated later as a ninth direct backend or as a hermetic C/C++
-compiler driver. It is not an intermediate source language: Zig's supported
-translation direction is C to Zig, not general Zig to C or C++.
+Zig is used as the pinned hermetic C/C++ compiler driver. It is not an
+intermediate source language: Zig's supported translation direction is C to
+Zig, not general Zig to C or C++.
 
 ## Implementation checklist
 

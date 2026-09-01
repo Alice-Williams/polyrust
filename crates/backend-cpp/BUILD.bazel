@@ -1,0 +1,126 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+exports_files(["Cargo.toml"])
+
+rust_library(
+    name = "portable_backend_cpp",
+    srcs = glob(["src/**/*.rs"]),
+    compile_data = ["src/runtime.hpp"],
+    crate_name = "portable_backend_cpp",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+        "//crates/ir:portable_ir",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_test(
+    name = "portable_backend_cpp_test",
+    compile_data = ["//crates/build:testdata/registration.poly.json"],
+    crate = ":portable_backend_cpp",
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "generate_v0_fixture",
+    srcs = ["examples/generate_v0.rs"],
+    crate_name = "generate_cpp_v0_fixture",
+    edition = "2024",
+    deps = [
+        ":portable_backend_cpp",
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+        "//crates/ir:portable_ir",
+    ],
+)
+
+genrule(
+    name = "generate_v0_package",
+    srcs = ["//crates/build:testdata/registration.poly.json"],
+    outs = [
+        "test-generated/README.md",
+        "test-generated/src/generated.cc",
+        "test-generated/src/generated.hpp",
+        "test-generated/src/runtime.hpp",
+        "test-generated/tests/conformance_test.cc",
+        "test-generated/tests/generated_test.cc",
+    ],
+    cmd = "$(location :generate_v0_fixture) $(location //crates/build:testdata/registration.poly.json) $(@D)/test-generated",
+    tools = [":generate_v0_fixture"],
+)
+
+CPP_COPTS = [
+    "-std=c++20",
+    "-Wall",
+    "-Wextra",
+    "-Wpedantic",
+    "-Werror",
+]
+
+cc_test(
+    name = "generated_v0_native_test",
+    srcs = [
+        ":test-generated/src/generated.cc",
+        ":test-generated/src/generated.hpp",
+        ":test-generated/src/runtime.hpp",
+        ":test-generated/tests/generated_test.cc",
+    ],
+    copts = CPP_COPTS,
+    includes = ["test-generated/src"],
+    visibility = ["//visibility:public"],
+)
+
+cc_test(
+    name = "generated_v0_conformance_test",
+    srcs = [
+        ":test-generated/src/generated.hpp",
+        ":test-generated/src/runtime.hpp",
+        ":test-generated/tests/conformance_test.cc",
+    ],
+    copts = CPP_COPTS,
+    includes = ["test-generated/src"],
+    visibility = ["//visibility:public"],
+)
+
+cc_test(
+    name = "generated_v0_public_api_test",
+    srcs = [
+        "test/cpp_consumer_test.cc",
+        ":test-generated/src/generated.cc",
+        ":test-generated/src/generated.hpp",
+        ":test-generated/src/runtime.hpp",
+    ],
+    copts = CPP_COPTS,
+    includes = ["test-generated/src"],
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "generated_v0_sanitizer_test",
+    srcs = ["//tools/cpp:test_sanitizers.sh"],
+    data = [
+        ":test-generated/src/generated.cc",
+        ":test-generated/src/generated.hpp",
+        ":test-generated/src/runtime.hpp",
+        ":test-generated/tests/generated_test.cc",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "generated_v0_style_test",
+    srcs = ["//tools/cpp:test_style.sh"],
+    data = [
+        ":test-generated/src/generated.cc",
+        ":test-generated/src/generated.hpp",
+        ":test-generated/src/runtime.hpp",
+        ":test-generated/tests/conformance_test.cc",
+        ":test-generated/tests/generated_test.cc",
+    ],
+    visibility = ["//visibility:public"],
+)

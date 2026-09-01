@@ -81,4 +81,6 @@ contract as every other target.
 ### Phase 7 — Target expansion
 
 - [M21 — JavaScript derivative and Java backend](milestones/M21-javascript-java.md) — complete
-- [M22 — C++ and C backends](milestones/M22-cpp-c.md) — planned
+- [M22 — C++ and C backends](milestones/M22-cpp-c.md) — in progress
+  - [M22A — C++20 backend checkpoint](milestones/M22A-cpp-backend.md) — complete
+  - [M22B — C17 backend](milestones/M22B-c-backend.md) — in progress

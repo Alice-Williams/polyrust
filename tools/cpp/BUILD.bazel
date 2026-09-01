@@ -1,0 +1,5 @@
+exports_files([
+    "defs.bzl",
+    "test_style.sh",
+    "test_sanitizers.sh",
+])

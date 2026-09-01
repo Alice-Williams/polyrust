@@ -30,9 +30,9 @@ find /tmp/polyrust-models-and-validation -type f | sort
 bazelisk test //examples/models-and-validation:all
 ```
 
-The `generate` invocation is the single command that creates all six packages
+The `generate` invocation is the single command that creates all seven current packages
 without hand edits. The `all` test runs the ten common tests in the reference
-evaluator and all six generated native frameworks.
+evaluator and all seven generated native frameworks.
 It also generates twice in clean temporary directories, deletes one output,
 regenerates it, and requires byte-identical trees. The walkthrough, source
 example, external-backend template, and documentation links are all compiled or

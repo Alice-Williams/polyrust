@@ -1,7 +1,8 @@
-//! Target-neutral differential conformance corpus and six-output harness.
+//! Target-neutral differential conformance corpus and seven-output harness.
 
 #![forbid(unsafe_code)]
 
+use portable_backend_cpp::CppBackend;
 use portable_backend_go::GoV0Backend;
 use portable_backend_java::JavaBackend;
 use portable_backend_python::PythonBackend;
@@ -205,13 +206,14 @@ pub fn verify_portable_tests(program: &CheckedProgram) -> HarnessResult<usize> {
 }
 
 pub fn verify_determinism(program: &CheckedProgram) -> HarnessResult<()> {
-    let backends: [(&str, &dyn Backend); 6] = [
+    let backends: [(&str, &dyn Backend); 7] = [
         ("rust", &RustBackend),
         ("typescript", &TypeScriptBackend),
         ("javascript", &JavaScriptBackend),
         ("python", &PythonBackend),
         ("go", &GoV0Backend),
         ("java", &JavaBackend),
+        ("cpp", &CppBackend),
     ];
     for (target, backend) in backends {
         let first = backend
@@ -310,7 +312,7 @@ pub fn run_all() -> HarnessResult<String> {
     let tests = verify_portable_tests(&program)?;
     verify_determinism(&program)?;
     Ok(format!(
-        "50 cases; {tests} portable tests; evaluator + 6 targets agree; manifests deterministic"
+        "50 cases; {tests} portable tests; evaluator + 7 targets agree; manifests deterministic"
     ))
 }
 
@@ -336,7 +338,7 @@ mod tests {
         }
     }
     #[test]
-    fn portable_tests_and_six_manifests_are_deterministic() {
+    fn portable_tests_and_seven_manifests_are_deterministic() {
         let program = checked_fixture();
         assert_eq!(verify_portable_tests(&program).unwrap(), 1);
         verify_determinism(&program).unwrap();

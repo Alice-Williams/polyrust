@@ -20,7 +20,7 @@ first executable development-environment baseline.
 - **Implementation language:** Rust.
 - **Initial authoring interface:** a typed Rust builder API, plus a versioned
   serialized IR for testing and tooling.
-- **Required targets:** Rust, TypeScript, JavaScript, Python, Go, and Java.
+- **Required targets:** Rust, TypeScript, JavaScript, Python, Go, Java, C++, and C.
 - **Correctness strategy:** validate before emission, run a reference evaluator,
   generate native tests, compile/type-check every target, then compare behavior.
 
@@ -37,6 +37,7 @@ targets.
 - [v0.1 benchmark](docs/benchmark-v0.1.md)
 - [v0.1 release checklist](docs/release-checklist-v0.1.md)
 - [Target-language roadmap](docs/language-roadmap.md)
+- [C and C++ generated API contract](docs/c-cpp-abi.md)
 - [Product charter](docs/charter.md)
 - [Feasibility study](docs/plan/analysis.md)
 - [Technical architecture](docs/architecture.md)
@@ -57,9 +58,9 @@ non-Linux host, open the repository in that container and run:
 bazel test //...
 ```
 
-This proves the pinned Rust, Go, and Java language contracts plus the container's
-Node/TypeScript and Python toolchains. Generated-language verification remains
-beneath the same command.
+This proves the pinned Rust, Go, Java, Zig C/C++, and GCC sanitizer contracts
+plus the container's Node/TypeScript and Python toolchains. Generated-language
+verification remains beneath the same command.
 
 ## Recommended first demonstration
 
@@ -72,7 +73,7 @@ Use one Rust program to construct a small PolyRust module containing:
 - explicit checked and wrapping integer operations; and
 - at least ten portable test declarations.
 
-Generate Rust, TypeScript, standalone JavaScript, Python, Go, and Java packages.
+Generate Rust, TypeScript, standalone JavaScript, Python, Go, Java, C++, and C packages.
 Each generated package must pass native formatting and static checks, run the
 same portable/conformance tests, and produce the same canonical result as the
 PolyRust evaluator.

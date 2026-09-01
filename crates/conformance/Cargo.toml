@@ -11,6 +11,7 @@ publish.workspace = true
 name = "portable_conformance"
 
 [dependencies]
+portable_backend_cpp.workspace = true
 portable_backend_go.workspace = true
 portable_backend_java.workspace = true
 portable_backend_python.workspace = true

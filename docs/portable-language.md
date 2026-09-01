@@ -81,7 +81,7 @@ source-language-to-source-language translation.
 | **Excluded** | Intentionally absent unless a future specification overturns the decision |
 
 Moving a feature to Core requires one target-independent definition, checker and
-evaluator support, all six output lowerings, generated native tests, and shared
+evaluator support, all seven current output lowerings, generated native tests, and shared
 conformance cases.
 
 ## 1. Declaration map
@@ -128,7 +128,7 @@ conformance cases.
 
 ### Core contract/interface view
 
-Interfaces are common across all six targets but their object models differ.
+Interfaces are common across all seven current targets but their object models differ.
 Core therefore uses a deliberately narrow abstraction:
 
 - A `Contract` contains required immutable instance-method signatures.
@@ -345,7 +345,7 @@ The first end-to-end program should contain:
 - concrete and contract-dispatched pure functions;
 - checked integer and Unicode string operators;
 - `List`, `Option`, and `Result`; and
-- at least ten portable tests generated into all six targets.
+- at least ten portable tests generated into all current targets.
 
 This is broad enough to test the architecture honestly without taking on
 arbitrary source translation, mutation/aliasing, async, or platform I/O.

@@ -34,11 +34,15 @@ PINNED_TEXT = {
         "ARG RUFF_VERSION=0.16.5",
         "ARG MYPY_VERSION=2.3.1",
         "ARG PYTEST_VERSION=9.1.1",
+        "ARG GCC_VERSION=14.2.0",
+        "ARG GCC_PACKAGE_VERSION=14.2.0-19",
     ],
     "MODULE.bazel": [
         'version = "0.74.0"',
         'version = "0.63.0"',
         'version = "9.6.1"',
+        'bazel_dep(name = "hermetic_cc_toolchain", version = "4.3.0")',
+        'bazel_dep(name = "rules_cc", version = "0.2.22")',
         'version = "1.25.14"',
         'versions = ["1.98.0"]',
     ],
@@ -86,10 +90,10 @@ def verify_evidence(evidence: dict[str, object]) -> None:
     require(evidence.get("snapshot_equal") is True, "snapshot drift")
     require(evidence.get("conformance") is True, "conformance failure")
     tools = set(evidence.get("formatters", []))
-    require({"rustfmt", "prettier", "ruff", "gofmt"} <= tools, "missing formatter")
+    require({"rustfmt", "prettier", "ruff", "gofmt", "cpp-style"} <= tools, "missing formatter")
     backends = set(evidence.get("backends", []))
     require(
-        {"rust", "typescript", "javascript", "python", "go", "java"} <= backends,
+        {"rust", "typescript", "javascript", "python", "go", "java", "cpp"} <= backends,
         "required backend skipped",
     )
 
@@ -116,8 +120,8 @@ def verify(root: Path) -> None:
         {
             "snapshot_equal": True,
             "conformance": True,
-            "formatters": ["rustfmt", "prettier", "ruff", "gofmt"],
-            "backends": ["rust", "typescript", "javascript", "python", "go", "java"],
+            "formatters": ["rustfmt", "prettier", "ruff", "gofmt", "cpp-style"],
+            "backends": ["rust", "typescript", "javascript", "python", "go", "java", "cpp"],
         }
     )
 
@@ -135,16 +139,16 @@ def self_test() -> None:
     good = {
         "snapshot_equal": True,
         "conformance": True,
-        "formatters": ["rustfmt", "prettier", "ruff", "gofmt"],
-        "backends": ["rust", "typescript", "javascript", "python", "go", "java"],
+        "formatters": ["rustfmt", "prettier", "ruff", "gofmt", "cpp-style"],
+        "backends": ["rust", "typescript", "javascript", "python", "go", "java", "cpp"],
     }
     for name, change in [
         ("snapshot drift", {"snapshot_equal": False}),
         ("conformance failure", {"conformance": False}),
         ("missing formatter", {"formatters": ["rustfmt", "ruff", "gofmt"]}),
         (
-            "skipped Java",
-            {"backends": ["rust", "typescript", "javascript", "python", "go"]},
+            "skipped C++",
+            {"backends": ["rust", "typescript", "javascript", "python", "go", "java"]},
         ),
     ]:
         evidence = {**good, **change}

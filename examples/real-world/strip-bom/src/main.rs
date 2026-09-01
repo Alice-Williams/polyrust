@@ -15,7 +15,7 @@ fn main() {
         }
     }
     println!(
-        "generated strip-bom for rust, typescript, javascript, python, go, and java in {}",
+        "generated strip-bom for rust, typescript, javascript, python, go, java, and C++ in {}",
         output.display()
     );
 }

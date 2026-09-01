@@ -6,6 +6,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+portable_backend_cpp.workspace = true
 portable_backend_go.workspace = true
 portable_backend_java.workspace = true
 portable_backend_python.workspace = true
