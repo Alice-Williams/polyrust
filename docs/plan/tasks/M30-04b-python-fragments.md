@@ -1,6 +1,6 @@
 # M30-04B — Migrate Python to dependency-complete fragments
 
-- Status: in-progress
+- Status: complete
 - Depends on: M30-04A
 
 ## Current audit finding
@@ -26,3 +26,21 @@ selection. The complete runtime uses a fixed inventory.
 - Ruff or configured Python lint, type checking, native tests, conformance, and
   public consumer.
 - Three-generation byte determinism.
+
+## Completion evidence
+
+- `PythonCode` fragments compose validated future, module, and from-import
+  requirements through nested types, values, declarations, and portable tests.
+- `PythonImport` stores only validated semantic data; the renderer alone spells
+  Python import directives. Direct imports reject relative modules while
+  from-imports permit validated relative paths.
+- The declaration-wide `require_type` and import-repair paths are deleted.
+  Nested `Result<Option<I64>, String>` coverage proves local dependency
+  propagation.
+- The Python runtime is an ordered helper graph. Common helpers and optional
+  F64 helpers own exact `dataclasses`, `types`, `typing`, `math`, and
+  `struct` imports; helper metadata is absent from rendered output.
+- Backend unit tests, generated-package Ruff/type/native/conformance/public
+  checks, Rustfmt, and Clippy pass. All 130 tests in
+  `//examples/real-world/...` pass, including the F64-heavy `parse-ms`
+  translation.

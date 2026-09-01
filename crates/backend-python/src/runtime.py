@@ -62,8 +62,10 @@ def semantic_equal(left: Any, right: Any) -> bool:
 
 
 def portable_test_equal(left: Any, right: Any) -> bool:
+    # POLYRUST-BEGIN f64-portable-equality
     if isinstance(left, float) and isinstance(right, float):
         return (math.isnan(left) and math.isnan(right)) or struct.pack(">d", left) == struct.pack(">d", right)
+    # POLYRUST-END f64-portable-equality
     if isinstance(left, (tuple, list)) and isinstance(right, (tuple, list)):
         return len(left) == len(right) and all(portable_test_equal(a, b) for a, b in zip(left, right))
     if isinstance(left, (dict, MappingProxyType)) and isinstance(right, (dict, MappingProxyType)):
@@ -90,6 +92,7 @@ def replace_bytes_all(source: bytes, needle: bytes, replacement: bytes) -> bytes
     return bytes(output)
 
 
+# POLYRUST-BEGIN f64-functions
 def float_div(left: float, right: float) -> float:
     if right != 0.0:
         return left / right
@@ -104,6 +107,7 @@ def float_rem_trunc(left: float, right: float) -> float:
         return math.fmod(left, right)
     except ValueError:
         return math.nan
+# POLYRUST-END f64-functions
 
 
 def scalar_length(value: str) -> PolyResult[int]:
@@ -180,8 +184,10 @@ class Runtime:
         kind, data = value["kind"], value.get("data")
         if kind == "unit": return None
         if kind in {"bool", "i32", "i64", "string", "char"}: return data
+        # POLYRUST-BEGIN f64-decode
         if kind == "f64":
             return struct.unpack(">d", int(data).to_bytes(8, "big"))[0]
+        # POLYRUST-END f64-decode
         if kind in {"bytes", "list"}: return tuple(self._value(item) for item in data) if kind == "list" else bytes(data)
         if kind == "none": return PolyOption("none")
         if kind == "some": return PolyOption("some", self._value(data))
@@ -300,6 +306,7 @@ class Runtime:
         if name == "int_bit_xor": return ok(a ^ b)
         if name == "int_shift_left_checked": return checked_i32(a << b) if -(2**31) <= a < 2**31 else checked_i64(a << b)
         if name == "int_shift_right_checked": return ok(a >> b)
+        # POLYRUST-BEGIN f64-intrinsics
         if name == "float_neg": return ok(-a)
         if name == "float_trunc": return ok(math.modf(a)[1])
         if name == "float_is_nan": return ok(math.isnan(a))
@@ -308,6 +315,7 @@ class Runtime:
         if name == "float_mul": return ok(a * b)
         if name == "float_div": return ok(float_div(a, b))
         if name == "float_rem_trunc": return ok(float_rem_trunc(a, b))
+        # POLYRUST-END f64-intrinsics
         if name == "string_concat": return ok(a + b)
         if name == "string_scalar_length": return scalar_length(a)
         if name == "string_is_empty": return ok(not a)

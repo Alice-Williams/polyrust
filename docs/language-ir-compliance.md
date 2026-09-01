@@ -16,7 +16,7 @@ not an accepted exception.
 | Rust | Pass: `RustImport` renderer | Fail: declarations build one `String` | Fail: complete `RUNTIME` is copied as text | Fail: runtime uses `LanguageFile::text` | Partial: source imports are attached at file-unit scope | **Fail** |
 | TypeScript | Pass: `EcmaImport` renderer | Fail: declarations build one body string | Fail: complete runtime is copied as text | Fail: runtime and node shim source bypass source IR | Partial: imports are attached to whole file bodies | **Fail** |
 | JavaScript | Pass: derived `EcmaImport` renderer | Fail: declarations build one body string | Fail: complete derived runtime is copied as text | Fail: runtime source bypasses source IR | Partial: imports are attached to whole file bodies | **Fail** |
-| Python | Pass: structured future/module/from renderer | Fail: declaration text and requirements mutate one unit | Fail: monolithic runtime has a fixed inventory | Pass: generated Python code uses source files | Fail: type/declaration walks separately attach imports | **Fail** |
+| Python | Pass: validated future/module/from IR; renderer alone spells imports | Pass: `PythonCode` composes types, values, declarations, and portable tests | Pass: exact common and optional F64 helper closure | Pass: every generated Python source role uses a source file | Pass: dependency repair walks are deleted | **Pass** |
 | Go | Pass: validated path IR; renderer alone spells `import` | Pass: `GoCode` composes types, values, declarations, and portable tests | Pass: exact common/integer/F64/bytes/text helper roots | Pass: every generated Go source role uses a source file | Pass: F64 values own `math`; the nested-value repair scan is deleted | **Pass** |
 | Java | Pass: validated kind/name IR; renderer alone spells `import` | Pass: nested type and declaration `JavaCode` fragments own imports | Pass: checked-program roots resolve ordered common, numeric, and UTF-8 helper closures | Pass: every generated Java source role uses a source file | Pass: source and runtime dependencies originate in the fragment that emits dependent syntax | **Pass** |
 | C++ | Pass: structured system/local includes | Fail: declarations build file-sized strings | Fail: runtime has a fixed 17-header inventory | Pass: generated C++ code uses source files | Fail: header declarations/capabilities are rescanned for includes | **Fail** |
@@ -34,7 +34,7 @@ not prove dependency completeness or minimality.
   `crates/backend-rust/src/v0.rs`.
 - TypeScript/JavaScript raw runtime and shim source files:
   `crates/backend-typescript/src/lib.rs`.
-- Python runtime inventory and declaration import walks:
+- Python fragment and helper-closure implementation:
   `crates/backend-python/src/lib.rs`.
 - Go fragment and helper-closure implementation:
   `crates/backend-go/src/v0.rs` and `crates/backend-go/src/runtime.go`.
@@ -99,3 +99,19 @@ all generated packages remain functionally equivalent, and hosted CI is green.
   second value walk.
 - Go unit/native gates (`gofmt`, `go vet`, `go test`), Rustfmt, Clippy, and all
   130 tests in `//examples/real-world/...` pass.
+
+### Python fragments and runtime (M30-04B)
+
+- `PythonCode` fragments carry validated future, module, and from-import
+  requirements through nested types, declarations, implementations, tests,
+  and callable bodies.
+- Direct module imports and relative from-imports have distinct validation;
+  rendered directives cannot enter dependency data.
+- The declaration/type repair passes are deleted. A nested
+  `Result<Option<I64>, String>` matrix proves dependency propagation from the
+  syntax-producing type mapping.
+- Runtime common and F64 nodes form an ordered helper graph with exact
+  `dataclasses`, `types`, `typing`, `math`, and `struct` ownership. Empty
+  and F64 fixtures prove positive and negative closure and marker-free output.
+- Backend unit tests, generated Python lint/type/native/conformance/public
+  checks, Rustfmt, Clippy, and all 130 real-world tests pass.

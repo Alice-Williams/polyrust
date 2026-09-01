@@ -1,6 +1,6 @@
 # M30-04C — Migrate TypeScript and derived JavaScript fragments
 
-- Status: planned
+- Status: in-progress
 - Depends on: M30-04B
 
 ## Current audit finding
