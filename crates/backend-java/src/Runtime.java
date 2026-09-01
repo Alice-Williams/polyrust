@@ -1,17 +1,3 @@
-// Generated packages copy this dependency-free Java 21 runtime verbatim.
-package org.polyrust.generated;
-
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CodingErrorAction;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-
 @SuppressWarnings({"unchecked", "rawtypes"})
 public final class Runtime {
   public record PolyError(String code, String message) {}

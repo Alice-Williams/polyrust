@@ -7,8 +7,10 @@ use std::collections::BTreeMap;
 use portable_check::v0::{Capability, CheckedProgram};
 use portable_codegen::{
     Backend, BackendDescriptor, BackendError, BackendOptions, BackendVersion, CapabilitySupport,
-    DeclaredDependency, InjectedHelper, IrVersionRange, OptionsSchema, OutputFile, OutputManifest,
-    TargetId,
+    DeclaredDependency, Document as CodeDocument, FileGroup, FileGroupId, FileRole, ImportGroup,
+    ImportSet, InjectedHelper, IrVersionRange, LanguageFile, LanguagePackage, LanguagePlugin,
+    LanguageRenderer, LanguageSourceFile, OptionsSchema, OutputManifest, RawText, TargetId,
+    generate_with_plugin,
 };
 use portable_ir::v0::{Declaration, IrVersion, NodeId, TypeRef, Visibility};
 
@@ -54,8 +56,39 @@ impl Backend for JavaBackend {
     fn generate(
         &self,
         program: &CheckedProgram,
-        _options: &BackendOptions,
+        options: &BackendOptions,
     ) -> Result<OutputManifest, BackendError> {
+        generate_with_plugin(self, program, options)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[doc(hidden)]
+pub struct JavaImport(&'static str);
+
+#[doc(hidden)]
+pub struct JavaRenderer;
+
+impl LanguageRenderer<JavaImport> for JavaRenderer {
+    fn render_imports(&self, imports: &ImportSet<JavaImport>) -> Result<CodeDocument, String> {
+        let lines = imports
+            .groups()
+            .flat_map(|(_, imports)| imports.iter())
+            .map(|import| format!("import {};", import.0))
+            .collect::<Vec<_>>();
+        Ok(CodeDocument::raw_text(RawText::new(lines.join("\n"))))
+    }
+}
+
+impl LanguagePlugin for JavaBackend {
+    type Import = JavaImport;
+    type Renderer = JavaRenderer;
+
+    fn translate(
+        &self,
+        program: &CheckedProgram,
+        _options: &BackendOptions,
+    ) -> Result<LanguagePackage<Self::Import>, BackendError> {
         let generator = Generator::new(program);
         let helpers = program
             .capabilities()
@@ -70,29 +103,119 @@ impl Backend for JavaBackend {
                 CapabilitySupport::Native | CapabilitySupport::Unsupported { .. } => None,
             })
             .collect();
-        OutputManifest::new(
+        LanguagePackage::new(
             vec![
-                OutputFile::text("README.md", README),
-                OutputFile::text("src/main/java/org/polyrust/generated/Runtime.java", RUNTIME),
-                OutputFile::text(
-                    "src/main/java/org/polyrust/generated/Generated.java",
-                    generator.module()?,
-                ),
-                OutputFile::text(
-                    "src/test/java/org/polyrust/generated/GeneratedTest.java",
-                    generator.tests(),
-                ),
-                OutputFile::text(
-                    "src/test/java/org/polyrust/generated/ConformanceTest.java",
-                    CONFORMANCE,
-                ),
-                OutputFile::text("negative/InvalidTypes.java", INVALID_TYPES),
+                FileGroup::new(
+                    java_group("documentation")?,
+                    vec![LanguageFile::text(
+                        "README.md",
+                        FileRole::Documentation,
+                        README,
+                    )],
+                )
+                .map_err(java_generation_error)?,
+                FileGroup::new(
+                    java_group("runtime")?,
+                    vec![LanguageFile::source(java_runtime_file())],
+                )
+                .map_err(java_generation_error)?,
+                FileGroup::new(
+                    java_group("source")?,
+                    vec![LanguageFile::source(generator.module_file()?)],
+                )
+                .map_err(java_generation_error)?,
+                FileGroup::new(
+                    java_group("tests")?,
+                    vec![
+                        LanguageFile::source(generator.tests_file()),
+                        LanguageFile::source(java_conformance_file()),
+                    ],
+                )
+                .map_err(java_generation_error)?,
+                FileGroup::new(
+                    java_group("negative-tests")?,
+                    vec![LanguageFile::source(java_invalid_types_file())],
+                )
+                .map_err(java_generation_error)?,
             ],
             Vec::<DeclaredDependency>::new(),
             helpers,
         )
-        .map_err(BackendError::UnsupportedCapabilities)
+        .map_err(java_generation_error)
     }
+
+    fn renderer(&self) -> Self::Renderer {
+        JavaRenderer
+    }
+}
+
+fn java_generation_error(error: impl std::fmt::Display) -> BackendError {
+    BackendError::Generation {
+        message: error.to_string(),
+    }
+}
+
+fn java_group(name: &str) -> Result<FileGroupId, BackendError> {
+    FileGroupId::parse(name).map_err(java_generation_error)
+}
+
+fn java_import_group() -> ImportGroup {
+    ImportGroup::new(10, "java-standard-library").expect("static import group is valid")
+}
+
+fn java_preamble(comment: Option<&str>) -> CodeDocument {
+    let prefix = comment.map_or_else(String::new, |comment| format!("{comment}\n"));
+    CodeDocument::raw_text(RawText::new(format!(
+        "{prefix}package org.polyrust.generated;"
+    )))
+}
+
+fn require_java(file: &mut LanguageSourceFile<JavaImport>, import: &'static str) {
+    file.require_import(java_import_group(), JavaImport(import));
+}
+
+fn java_runtime_file() -> LanguageSourceFile<JavaImport> {
+    let mut file = LanguageSourceFile::new(
+        "src/main/java/org/polyrust/generated/Runtime.java",
+        FileRole::Runtime,
+    );
+    file.set_preamble(java_preamble(Some(
+        "// Generated packages copy this dependency-free Java 21 runtime verbatim.",
+    )));
+    for import in [
+        "java.math.BigInteger",
+        "java.nio.ByteBuffer",
+        "java.nio.charset.CharacterCodingException",
+        "java.nio.charset.CodingErrorAction",
+        "java.nio.charset.StandardCharsets",
+        "java.util.ArrayList",
+        "java.util.LinkedHashMap",
+        "java.util.List",
+        "java.util.Map",
+        "java.util.Objects",
+    ] {
+        require_java(&mut file, import);
+    }
+    file.set_body(CodeDocument::raw_text(RawText::new(RUNTIME)));
+    file
+}
+
+fn java_conformance_file() -> LanguageSourceFile<JavaImport> {
+    let mut file = LanguageSourceFile::new(
+        "src/test/java/org/polyrust/generated/ConformanceTest.java",
+        FileRole::Conformance,
+    );
+    file.set_preamble(java_preamble(None));
+    require_java(&mut file, "java.util.List");
+    file.set_body(CodeDocument::raw_text(RawText::new(CONFORMANCE_BODY)));
+    file
+}
+
+fn java_invalid_types_file() -> LanguageSourceFile<JavaImport> {
+    let mut file = LanguageSourceFile::new("negative/InvalidTypes.java", FileRole::NegativeTest);
+    file.set_preamble(java_preamble(None));
+    file.set_body(CodeDocument::raw_text(RawText::new(INVALID_TYPES_BODY)));
+    file
 }
 
 struct Generator<'a> {
@@ -116,7 +239,7 @@ impl<'a> Generator<'a> {
         Self { program, names }
     }
 
-    fn module(&self) -> Result<String, BackendError> {
+    fn module_file(&self) -> Result<LanguageSourceFile<JavaImport>, BackendError> {
         let mut document = serde_json::to_value(self.program.document()).map_err(|error| {
             BackendError::Generation {
                 message: format!("cannot serialize checked IR: {error}"),
@@ -144,14 +267,27 @@ impl<'a> Generator<'a> {
         let mut tests = serde_json::to_value(tests).expect("tests serialize");
         stringify_wide_numbers(&mut tests);
         let tests_literal = java_string(&serde_json::to_string(&tests).expect("tests serialize"));
+        let mut file = LanguageSourceFile::new(
+            "src/main/java/org/polyrust/generated/Generated.java",
+            FileRole::Source,
+        );
+        file.set_preamble(java_preamble(Some(
+            "// Generated by PolyRust from checked IR v0.",
+        )));
+        require_java(&mut file, "java.util.List");
+        if self
+            .program
+            .module()
+            .declarations
+            .iter()
+            .any(|declaration| matches!(declaration, Declaration::Record(_) | Declaration::Enum(_)))
+        {
+            require_java(&mut file, "java.util.Collections");
+            require_java(&mut file, "java.util.LinkedHashMap");
+            require_java(&mut file, "java.util.Map");
+        }
         let mut output = format!(
-            "// Generated by PolyRust from checked IR v0.\n\
-             package org.polyrust.generated;\n\n\
-             import java.util.Collections;\n\
-             import java.util.LinkedHashMap;\n\
-             import java.util.List;\n\
-             import java.util.Map;\n\n\
-             public final class Generated {{\n\
+            "public final class Generated {{\n\
              \x20 private static final Runtime RUNTIME = new Runtime({document_literal});\n\
              \x20 private static final List<Object> TESTS = Runtime.jsonArray({tests_literal});\n\
              \x20 private Generated() {{}}\n\n"
@@ -167,7 +303,8 @@ impl<'a> Generator<'a> {
              \x20 }\n\
              }\n",
         );
-        Ok(output)
+        file.set_body(CodeDocument::raw_text(RawText::new(output)));
+        Ok(file)
     }
 
     fn declaration(&self, output: &mut String, declaration: &Declaration) {
@@ -391,7 +528,7 @@ impl<'a> Generator<'a> {
         self.names.get(&id).map(String::as_str).unwrap_or("Unknown")
     }
 
-    fn tests(&self) -> String {
+    fn tests_file(&self) -> LanguageSourceFile<JavaImport> {
         let count = self
             .program
             .module()
@@ -399,10 +536,15 @@ impl<'a> Generator<'a> {
             .iter()
             .filter(|declaration| matches!(declaration, Declaration::Test(_)))
             .count();
-        format!(
-            "// Generated by PolyRust from checked IR v0.\n\
-             package org.polyrust.generated;\n\n\
-             public final class GeneratedTest {{\n\
+        let mut file = LanguageSourceFile::new(
+            "src/test/java/org/polyrust/generated/GeneratedTest.java",
+            FileRole::Test,
+        );
+        file.set_preamble(java_preamble(Some(
+            "// Generated by PolyRust from checked IR v0.",
+        )));
+        file.set_body(CodeDocument::raw_text(RawText::new(format!(
+            "public final class GeneratedTest {{\n\
              \x20 private GeneratedTest() {{}}\n\
              \x20 public static void main(String[] arguments) {{\n\
              \x20   for (int index = 0; index < {count}; index++) {{\n\
@@ -416,7 +558,8 @@ impl<'a> Generator<'a> {
              \x20   }}\n\
              \x20 }}\n\
              }}\n"
-        )
+        ))));
+        file
     }
 }
 
@@ -536,8 +679,8 @@ fn stringify_wide_numbers(value: &mut serde_json::Value) {
 }
 
 const README: &str = "# Generated PolyRust Java package\n\nCompile with Java 21 or newer. The package has no third-party runtime dependencies.\n";
-const INVALID_TYPES: &str = "package org.polyrust.generated;\n\nfinal class InvalidTypes {\n  // Must fail: PolyOption tags are represented by a closed Java type, not strings.\n  Runtime.PolyOption<Integer> invalid = \"missing\";\n}\n";
-const CONFORMANCE: &str = "package org.polyrust.generated;\n\nimport java.util.List;\n\npublic final class ConformanceTest {\n  private ConformanceTest() {}\n  public static void main(String[] arguments) {\n    Runtime.PolyResult<Integer> astral = Runtime.scalarLength(\"😀\");\n    List<Integer> original = List.of(1);\n    List<Integer> appended = Runtime.listAppend(original, 2);\n    boolean[] vectors = {\n      Runtime.checkedI32(0L).ok(), Runtime.checkedI32(2147483647L).ok(), Runtime.checkedI32(-2147483648L).ok(), !Runtime.checkedI32(2147483648L).ok(), !Runtime.checkedI32(-2147483649L).ok(),\n      Runtime.checkedI64(java.math.BigInteger.ZERO).ok(), Runtime.checkedI64(java.math.BigInteger.valueOf(Long.MAX_VALUE)).ok(), Runtime.checkedI64(java.math.BigInteger.valueOf(Long.MIN_VALUE)).ok(), !Runtime.checkedI64(java.math.BigInteger.ONE.shiftLeft(63)).ok(), !Runtime.checkedI64(java.math.BigInteger.ONE.shiftLeft(63).negate().subtract(java.math.BigInteger.ONE)).ok(),\n      Runtime.wrappingI32(2147483648L) == Integer.MIN_VALUE, Runtime.wrappingI32(-2147483649L) == Integer.MAX_VALUE, Runtime.wrappingI64(java.math.BigInteger.ONE.shiftLeft(63)) == Long.MIN_VALUE, Runtime.wrappingI64(java.math.BigInteger.ONE.shiftLeft(63).negate().subtract(java.math.BigInteger.ONE)) == Long.MAX_VALUE,\n      Runtime.scalarLength(\"a\").ok(), astral.ok() && astral.value() == 1, !Runtime.scalarLength(\"\\ud800\").ok(), appended.size() == 2, appended != original, Double.doubleToRawLongBits(-0.0d) == Long.MIN_VALUE,\n    };\n    if (vectors.length != 20) throw new AssertionError(\"vector count\");\n    for (boolean vector : vectors) if (!vector) throw new AssertionError(\"conformance vector\");\n  }\n}\n";
+const INVALID_TYPES_BODY: &str = "final class InvalidTypes {\n  // Must fail: PolyOption tags are represented by a closed Java type, not strings.\n  Runtime.PolyOption<Integer> invalid = \"missing\";\n}\n";
+const CONFORMANCE_BODY: &str = "public final class ConformanceTest {\n  private ConformanceTest() {}\n  public static void main(String[] arguments) {\n    Runtime.PolyResult<Integer> astral = Runtime.scalarLength(\"😀\");\n    List<Integer> original = List.of(1);\n    List<Integer> appended = Runtime.listAppend(original, 2);\n    boolean[] vectors = {\n      Runtime.checkedI32(0L).ok(), Runtime.checkedI32(2147483647L).ok(), Runtime.checkedI32(-2147483648L).ok(), !Runtime.checkedI32(2147483648L).ok(), !Runtime.checkedI32(-2147483649L).ok(),\n      Runtime.checkedI64(java.math.BigInteger.ZERO).ok(), Runtime.checkedI64(java.math.BigInteger.valueOf(Long.MAX_VALUE)).ok(), Runtime.checkedI64(java.math.BigInteger.valueOf(Long.MIN_VALUE)).ok(), !Runtime.checkedI64(java.math.BigInteger.ONE.shiftLeft(63)).ok(), !Runtime.checkedI64(java.math.BigInteger.ONE.shiftLeft(63).negate().subtract(java.math.BigInteger.ONE)).ok(),\n      Runtime.wrappingI32(2147483648L) == Integer.MIN_VALUE, Runtime.wrappingI32(-2147483649L) == Integer.MAX_VALUE, Runtime.wrappingI64(java.math.BigInteger.ONE.shiftLeft(63)) == Long.MIN_VALUE, Runtime.wrappingI64(java.math.BigInteger.ONE.shiftLeft(63).negate().subtract(java.math.BigInteger.ONE)) == Long.MAX_VALUE,\n      Runtime.scalarLength(\"a\").ok(), astral.ok() && astral.value() == 1, !Runtime.scalarLength(\"\\ud800\").ok(), appended.size() == 2, appended != original, Double.doubleToRawLongBits(-0.0d) == Long.MIN_VALUE,\n    };\n    if (vectors.length != 20) throw new AssertionError(\"vector count\");\n    for (boolean vector : vectors) if (!vector) throw new AssertionError(\"conformance vector\");\n  }\n}\n";
 
 #[cfg(test)]
 mod tests {
@@ -568,11 +711,54 @@ mod tests {
         );
     }
 
+    #[test]
+    fn java_imports_follow_file_and_declaration_requirements() {
+        let rich = JavaBackend
+            .generate(&fixture(), &BackendOptions::default())
+            .unwrap();
+        let generated =
+            generated_text(&rich, "src/main/java/org/polyrust/generated/Generated.java");
+        assert_eq!(generated.matches("import java.util.List;").count(), 1);
+        assert_eq!(generated.matches("import java.util.Map;").count(), 1);
+        let runtime = generated_text(&rich, "src/main/java/org/polyrust/generated/Runtime.java");
+        assert_eq!(runtime.matches("import java.math.BigInteger;").count(), 1);
+        assert!(!generated_text(&rich, "negative/InvalidTypes.java").contains("import "));
+
+        let empty = JavaBackend
+            .generate(&empty_fixture(), &BackendOptions::default())
+            .unwrap();
+        let empty_generated = generated_text(
+            &empty,
+            "src/main/java/org/polyrust/generated/Generated.java",
+        );
+        assert!(empty_generated.contains("import java.util.List;"));
+        assert!(!empty_generated.contains("import java.util.Map;"));
+        assert!(!empty_generated.contains("import java.util.LinkedHashMap;"));
+        assert!(!empty_generated.contains("import java.util.Collections;"));
+    }
+
+    fn generated_text<'a>(manifest: &'a OutputManifest, path: &str) -> &'a str {
+        match manifest.file(path).unwrap().contents() {
+            portable_codegen::OutputContents::Text(text) => text,
+            portable_codegen::OutputContents::Bytes(_) => panic!("Java source must be text"),
+        }
+    }
+
     fn fixture() -> CheckedProgram {
         portable_check::v0::check_program(
             portable_ir::v0::from_json(include_bytes!(
                 "../../build/testdata/registration.poly.json"
             ))
+            .unwrap(),
+        )
+        .unwrap()
+    }
+
+    fn empty_fixture() -> CheckedProgram {
+        portable_check::v0::check_program(
+            portable_ir::v0::from_json(
+                br#"{"ir_version":"0.1.0","module":{"name":"empty","declarations":[]},"metadata":{}}"#,
+            )
             .unwrap(),
         )
         .unwrap()

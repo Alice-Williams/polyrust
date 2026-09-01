@@ -115,3 +115,16 @@ translation/rendering path after their migration checkpoint.
   index and conformance files merge each local module to one import statement.
 - TypeScript strict typecheck/native tests, JavaScript native tests, runtime
   derivation, and focused backend tests pass.
+
+## Java checkpoint evidence
+
+- Java metadata, runtime, generated source, portable tests, conformance, and
+  negative compile proof are explicit file groups. Every Java source receives
+  its package preamble independently from its sorted import requirements.
+- The runtime template no longer contains a package or import block; ten JDK
+  requirements are attached to the runtime language file. Conformance owns its
+  `List` requirement, and the negative compile source owns none.
+- Generated source always imports `List` for its test table. Record/enum-bearing
+  programs additionally require `Collections`, `LinkedHashMap`, and `Map`; an
+  empty checked program proves all three disappear.
+- Java unit, native, conformance, and public-consumer gates pass.
