@@ -109,15 +109,62 @@ impl<I: Ord> ImportSet<I> {
     }
 }
 
+impl<I: Clone + Ord> ImportSet<I> {
+    fn merge(&mut self, other: &Self) {
+        for (group, imports) in &other.groups {
+            self.groups
+                .entry(group.clone())
+                .or_default()
+                .extend(imports.iter().cloned());
+        }
+    }
+}
+
+/// One flat target-language mapping after semantic translation.
+///
+/// A unit couples target syntax to every import/include/use requirement caused
+/// by that syntax. Files can only collect imports by accepting units, which
+/// prevents import selection from drifting into the renderer or a separate
+/// static file-level list.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LanguageUnit<I: Ord> {
+    document: Document,
+    imports: ImportSet<I>,
+}
+
+impl<I: Ord> LanguageUnit<I> {
+    pub fn new(document: Document) -> Self {
+        Self {
+            document,
+            imports: ImportSet::default(),
+        }
+    }
+
+    pub fn set_document(&mut self, document: Document) {
+        self.document = document;
+    }
+
+    pub fn require_import(&mut self, group: ImportGroup, import: I) -> bool {
+        self.imports.require(group, import)
+    }
+
+    pub fn imports(&self) -> &ImportSet<I> {
+        &self.imports
+    }
+
+    fn document(&self) -> &Document {
+        &self.document
+    }
+}
+
 /// A source file after target translation but before syntax rendering.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LanguageSourceFile<I: Ord> {
     path: String,
     role: FileRole,
-    preamble: Option<Document>,
-    imports: ImportSet<I>,
-    body: Option<Document>,
-    epilogue: Option<Document>,
+    preamble: Option<LanguageUnit<I>>,
+    body: Option<LanguageUnit<I>>,
+    epilogue: Option<LanguageUnit<I>>,
     render_options: RenderOptions,
 }
 
@@ -127,7 +174,6 @@ impl<I: Ord> LanguageSourceFile<I> {
             path: path.into(),
             role,
             preamble: None,
-            imports: ImportSet::default(),
             body: None,
             epilogue: None,
             render_options: RenderOptions::default(),
@@ -142,28 +188,36 @@ impl<I: Ord> LanguageSourceFile<I> {
         self.role
     }
 
-    pub fn set_preamble(&mut self, document: Document) {
-        self.preamble = Some(document);
+    pub fn set_preamble(&mut self, unit: LanguageUnit<I>) {
+        self.preamble = Some(unit);
     }
 
-    pub fn require_import(&mut self, group: ImportGroup, import: I) -> bool {
-        self.imports.require(group, import)
+    pub fn set_body(&mut self, unit: LanguageUnit<I>) {
+        self.body = Some(unit);
     }
 
-    pub fn imports(&self) -> &ImportSet<I> {
-        &self.imports
-    }
-
-    pub fn set_body(&mut self, document: Document) {
-        self.body = Some(document);
-    }
-
-    pub fn set_epilogue(&mut self, document: Document) {
-        self.epilogue = Some(document);
+    pub fn set_epilogue(&mut self, unit: LanguageUnit<I>) {
+        self.epilogue = Some(unit);
     }
 
     pub fn set_render_options(&mut self, options: RenderOptions) {
         self.render_options = options;
+    }
+
+    fn imports(&self) -> ImportSet<I>
+    where
+        I: Clone,
+    {
+        let mut imports = ImportSet::default();
+        for unit in self
+            .preamble
+            .iter()
+            .chain(self.body.iter())
+            .chain(self.epilogue.iter())
+        {
+            imports.merge(unit.imports());
+        }
+        imports
     }
 }
 
@@ -356,6 +410,16 @@ impl std::error::Error for LanguagePackageError {}
 ///     }
 /// }
 /// ```
+///
+/// A source file also cannot receive imports independently from translated
+/// syntax:
+///
+/// ```compile_fail
+/// use portable_codegen::{FileRole, ImportGroup, LanguageSourceFile};
+///
+/// let mut file = LanguageSourceFile::<String>::new("src/example", FileRole::Source);
+/// file.require_import(ImportGroup::new(10, "standard").unwrap(), "value".into());
+/// ```
 pub trait LanguageRenderer<I: Ord> {
     fn render_imports(&self, imports: &ImportSet<I>) -> Result<Document, String>;
 }
@@ -363,7 +427,7 @@ pub trait LanguageRenderer<I: Ord> {
 /// Translation half of a language plugin. This is the only half that receives
 /// checked PolyIR.
 pub trait LanguagePlugin {
-    type Import: Ord;
+    type Import: Clone + Ord;
     type Renderer: LanguageRenderer<Self::Import>;
 
     fn translate(
@@ -384,7 +448,7 @@ pub fn generate_with_plugin<P: LanguagePlugin>(
     render_language_package(&package, &plugin.renderer())
 }
 
-pub fn render_language_package<I: Ord>(
+pub fn render_language_package<I: Clone + Ord>(
     package: &LanguagePackage<I>,
     renderer: &impl LanguageRenderer<I>,
 ) -> Result<OutputManifest, BackendError> {
@@ -415,28 +479,29 @@ pub fn render_language_package<I: Ord>(
     .map_err(BackendError::UnsupportedCapabilities)
 }
 
-fn render_source<I: Ord>(
+fn render_source<I: Clone + Ord>(
     file: &LanguageSourceFile<I>,
     renderer: &impl LanguageRenderer<I>,
 ) -> Result<String, BackendError> {
     let mut sections = Vec::new();
-    for document in file.preamble.iter() {
-        sections.push(render_section(document, file.render_options)?);
+    for unit in file.preamble.iter() {
+        sections.push(render_section(unit.document(), file.render_options)?);
     }
-    if !file.imports.is_empty() {
+    let imports = file.imports();
+    if !imports.is_empty() {
         let imports =
             renderer
-                .render_imports(&file.imports)
+                .render_imports(&imports)
                 .map_err(|message| BackendError::Generation {
                     message: LanguagePackageError::ImportRendering(message).to_string(),
                 })?;
         sections.push(render_section(&imports, file.render_options)?);
     }
-    for document in file.body.iter() {
-        sections.push(render_section(document, file.render_options)?);
+    for unit in file.body.iter() {
+        sections.push(render_section(unit.document(), file.render_options)?);
     }
-    for document in file.epilogue.iter() {
-        sections.push(render_section(document, file.render_options)?);
+    for unit in file.epilogue.iter() {
+        sections.push(render_section(unit.document(), file.render_options)?);
     }
     sections.retain(|section| !section.is_empty());
     let mut text = sections.join("\n\n");
@@ -495,11 +560,16 @@ mod tests {
     #[test]
     fn groups_files_and_imports_are_sorted_and_deduplicated() {
         let mut source = LanguageSourceFile::new("src/lib.test", FileRole::Source);
-        source.set_preamble(Document::raw_text(RawText::new("// preamble")));
-        assert!(source.require_import(import_group(10, "standard"), TestImport("zeta")));
-        assert!(source.require_import(import_group(10, "standard"), TestImport("alpha")));
-        assert!(!source.require_import(import_group(10, "standard"), TestImport("alpha")));
-        source.set_body(Document::raw_text(RawText::new("body")));
+        let mut preamble = LanguageUnit::new(Document::raw_text(RawText::new("// preamble")));
+        assert!(preamble.require_import(import_group(10, "standard"), TestImport("zeta")));
+        let mut body = LanguageUnit::new(Document::raw_text(RawText::new("body")));
+        assert!(body.require_import(import_group(10, "standard"), TestImport("alpha")));
+        assert!(!body.require_import(import_group(10, "standard"), TestImport("alpha")));
+        let mut epilogue = LanguageUnit::new(Document::empty());
+        assert!(epilogue.require_import(import_group(10, "standard"), TestImport("alpha")));
+        source.set_preamble(preamble);
+        source.set_body(body);
+        source.set_epilogue(epilogue);
         let source_group =
             FileGroup::new(id("source"), vec![LanguageFile::source(source)]).unwrap();
         let metadata_group = FileGroup::new(
@@ -524,7 +594,7 @@ mod tests {
     #[test]
     fn a_file_without_import_requirements_has_no_import_section() {
         let mut source = LanguageSourceFile::<TestImport>::new("src/empty.test", FileRole::Source);
-        source.set_body(Document::raw_text(RawText::new("body")));
+        source.set_body(LanguageUnit::new(Document::raw_text(RawText::new("body"))));
         let package = LanguagePackage::new(
             vec![FileGroup::new(id("source"), vec![LanguageFile::source(source)]).unwrap()],
             vec![],
@@ -587,7 +657,9 @@ mod tests {
     #[test]
     fn renderer_failures_are_not_hidden() {
         let mut source = LanguageSourceFile::new("src/lib.test", FileRole::Source);
-        source.require_import(import_group(10, "standard"), TestImport("alpha"));
+        let mut body = LanguageUnit::new(Document::empty());
+        body.require_import(import_group(10, "standard"), TestImport("alpha"));
+        source.set_body(body);
         let package = LanguagePackage::new(
             vec![FileGroup::new(id("source"), vec![LanguageFile::source(source)]).unwrap()],
             vec![],

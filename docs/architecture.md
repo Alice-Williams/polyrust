@@ -27,10 +27,12 @@ Rust builder program          Serialized .poly.json
                   │             │
                   │       backend preflight
                   │             │
-                  │      target lowering
+                  │     language plugin
                   │             ▼
-                  │   target LanguagePackage
-                  │     + dynamic imports
+                  │   dependency-bearing
+                  │   target LanguageUnits
+                  │             ▼
+                  │   grouped LanguagePackage
                   │             │
                   │    syntax-only rendering
                   │             ▼
@@ -367,15 +369,18 @@ Each backend owns:
 Between checked IR and the output manifest, each backend MUST expose two
 separate internal stages. Its language plugin translates checked IR into a
 validated `LanguagePackage` containing deterministic file groups, source-file
-roles, structured import requirements, dependencies, helpers, and target-owned
-documents. Its syntax renderer consumes only that package; it MUST NOT receive a
-`CheckedProgram`.
+roles, dependencies, helpers, and dependency-bearing target `LanguageUnit`
+nodes. Each unit couples a target-owned syntax document to the complete import
+requirements caused by that mapping. Its syntax renderer consumes only that
+package; it MUST NOT receive a `CheckedProgram`.
 
 Imports, includes, module uses, and equivalent declarations MUST be collected as
-requirements while target constructs are mapped. A renderer sorts, deduplicates,
-groups, and writes those requirements using target syntax. Backends MUST NOT
-prepend unconditional catch-all import blocks merely to make later string
-assembly compile. Files with no requirements emit no import section.
+requirements on the same unit while target constructs are mapped. A source file
+has no independent import mutation API: installing translated units is the only
+way it can acquire requirements. A renderer sorts, deduplicates, groups, and
+writes those requirements using target syntax. Backends MUST NOT prepend
+unconditional catch-all import blocks merely to make later string assembly
+compile. Files whose units have no requirements emit no import section.
 
 ## 7. Required target mappings
 

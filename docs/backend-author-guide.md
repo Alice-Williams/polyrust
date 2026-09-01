@@ -41,8 +41,10 @@ intrinsics, and capabilities to target constructs. It returns a
 - stable file groups such as metadata, runtime, source, tests, conformance, and
   negative tests;
 - a role for every file;
-- target import requirements collected on the exact source file that uses them;
-- target-owned preamble, body, and epilogue documents; and
+- dependency-bearing `LanguageUnit<Import>` values for target-owned preamble,
+  body, and epilogue syntax;
+- target import requirements attached to the exact translated unit that uses
+  them, then merged automatically by its source file; and
 - declared dependencies and injected helpers.
 
 The associated `LanguageRenderer` receives only the sorted, deduplicated
@@ -52,7 +54,15 @@ anticipation of possible output. A file with no imports must render without an
 import section.
 
 Checked-in runtime templates should contain bodies rather than preassembled
-import blocks. Their language plugin declares the imports required by that body,
-just as it does for translated program files. Focused backend tests must compare
-a feature-bearing checked program with a minimal program and prove both import
+import blocks. Their language plugin wraps each body in a runtime unit and
+declares the imports on that unit, just as it does for translated program files.
+Do not attach imports to a file separately from syntax; `LanguageSourceFile`
+deliberately exposes no such API. Focused backend tests must compare a
+feature-bearing checked program with a minimal program and prove both import
 presence and absence.
+
+The `Document` inside a unit is target syntax IR, not permission to make
+semantic decisions during rendering. A mapping should select names, target
+types, helpers, and imports before it creates the unit. Over time a backend may
+replace coarse file-sized documents with finer declaration/expression nodes;
+the dependency ownership and package renderer contracts remain unchanged.

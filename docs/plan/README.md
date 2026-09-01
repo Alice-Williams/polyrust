@@ -92,6 +92,7 @@ contract as every other target.
 ### Phase 8 — Language translation architecture
 
 - [M24 — Language package IR and dynamic imports](milestones/M24-language-package-ir.md) — complete
+- [M26 — Dependency-bearing flat language IR](milestones/M26-flat-language-ir.md) — complete
 
 ### Phase 6 continuation — Real-world compatibility
 
