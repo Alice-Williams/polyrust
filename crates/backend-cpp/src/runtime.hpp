@@ -1,23 +1,3 @@
-#pragma once
-// Dependency-free runtime copied into generated C++20 packages.
-
-#include <any>
-#include <algorithm>
-#include <bit>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <functional>
-#include <limits>
-#include <map>
-#include <optional>
-#include <stdexcept>
-#include <string>
-#include <string_view>
-#include <type_traits>
-#include <utility>
-#include <vector>
-
 namespace polyrust_generated {
 struct poly_error;
 template <typename T> struct poly_result;

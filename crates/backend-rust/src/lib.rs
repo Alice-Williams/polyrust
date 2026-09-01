@@ -108,8 +108,8 @@ fn render_module(module: &Module) -> String {
         ));
     }
 
-    output.push_str("#[cfg(test)]\nmod generated_tests {\n    use super::*;\n\n");
     for test in &module.tests {
+        output.push_str("#[cfg(test)]\n");
         output.push_str("    #[test]\n");
         output.push_str(&format!("    fn {}() {{\n", rust_test_name(&test.name)));
         for (index, value) in test.arguments.iter().enumerate() {
@@ -147,7 +147,6 @@ fn render_module(module: &Module) -> String {
         }
         output.push_str("    }\n\n");
     }
-    output.push_str("}\n");
     output
 }
 

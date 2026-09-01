@@ -91,4 +91,4 @@ contract as every other target.
 
 ### Phase 8 — Language translation architecture
 
-- [M24 — Language package IR and dynamic imports](milestones/M24-language-package-ir.md) — in progress
+- [M24 — Language package IR and dynamic imports](milestones/M24-language-package-ir.md) — complete

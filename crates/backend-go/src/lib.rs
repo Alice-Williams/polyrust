@@ -122,9 +122,12 @@ fn render_go_method(record: &str, method: &Function) -> String {
 
 fn render_tests(module: &Module) -> String {
     let package = go_package(&module.name);
-    let mut output = format!(
-        "// Code generated from portable tests. DO NOT EDIT.\npackage {package}\n\nimport \"testing\"\n\n"
-    );
+    let mut output =
+        format!("// Code generated from portable tests. DO NOT EDIT.\npackage {package}\n");
+    if !module.tests.is_empty() {
+        output.push_str("\nimport \"testing\"\n");
+    }
+    output.push('\n');
     for test in &module.tests {
         output.push_str(&format!(
             "func Test{}(t *testing.T) {{\n",

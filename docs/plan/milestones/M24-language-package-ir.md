@@ -1,6 +1,6 @@
 # M24 — Language package IR and dynamic imports
 
-- Status: in-progress
+- Status: complete
 - Phase: 8
 - Depends on: M08, M14, M21, M22A, M22B foundation checkpoints
 
@@ -128,3 +128,41 @@ translation/rendering path after their migration checkpoint.
   programs additionally require `Collections`, `LinkedHashMap`, and `Map`; an
   empty checked program proves all three disappear.
 - Java unit, native, conformance, and public-consumer gates pass.
+
+## C++ and C checkpoint evidence
+
+- C++ metadata, runtime, generated source, portable tests, and conformance are
+  explicit file groups. System and local includes are distinct language import
+  requirements, and header preambles are rendered independently from imports.
+- The C++ migration exposed a real hidden dependency: runtime code used
+  `std::monostate` while `<variant>` happened to be supplied by the generated
+  header. The sanitizer gate failed until the runtime language file declared
+  its own `<variant>` requirement, proving that includes now belong to the file
+  that uses them.
+- C metadata, runtime, generated source, portable tests, and conformance are
+  explicit file groups. Header guards are preamble/epilogue sections, while
+  system and local includes are sorted requirements. The checked-in runtime
+  remains a standalone compilable ownership-test fixture; translation validates
+  and strips that fixture's wrapper before placing its body in language IR.
+- Focused C++ and C unit, native, conformance, public-consumer, style, ownership,
+  ABI, and sanitizer gates pass.
+
+## Completion evidence
+
+- Python, Rust, Go, TypeScript, JavaScript, Java, C++, and C all implement the
+  frozen checked backend entry point by translating through
+  `LanguagePlugin -> LanguagePackage -> LanguageRenderer`. No checked v0
+  backend constructs an `OutputManifest` directly.
+- Import/include/use/package requirements are owned by individual language
+  files, sorted and deduplicated by language IR, and omitted when a file has no
+  requirements. Focused feature-bearing and empty-program tests cover the
+  conditional requirements for every target family.
+- The renderer contract has no `CheckedProgram` parameter; its compile-fail
+  documentation test proves that semantic IR is unavailable after translation.
+- Determinism gates generate complete packages three times and compare their
+  bytes. Native and differential gates continue to prove equivalent behavior
+  for every supported real-world example in all eight targets.
+- `bazelisk test //... --test_output=errors` passes 138/138 tests in the Linux
+  development container. `bazelisk test //:release_gate --test_output=errors`
+  passes 116/116 tests, including Buildifier, Rustfmt, Clippy, native compilers,
+  formatters/static checks, conformance, and C/C++ sanitizers.

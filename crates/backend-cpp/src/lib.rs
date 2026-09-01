@@ -7,8 +7,10 @@ use std::collections::BTreeMap;
 use portable_check::v0::{Capability, CheckedProgram};
 use portable_codegen::{
     Backend, BackendDescriptor, BackendError, BackendOptions, BackendVersion, CapabilitySupport,
-    DeclaredDependency, InjectedHelper, IrVersionRange, OptionsSchema, OutputFile, OutputManifest,
-    TargetId,
+    DeclaredDependency, Document as CodeDocument, FileGroup, FileGroupId, FileRole, ImportGroup,
+    ImportSet, InjectedHelper, IrVersionRange, LanguageFile, LanguagePackage, LanguagePlugin,
+    LanguageRenderer, LanguageSourceFile, OptionsSchema, OutputManifest, RawText, TargetId,
+    generate_with_plugin,
 };
 use portable_ir::v0::{Declaration, IrVersion, NodeId, TypeRef, Visibility};
 
@@ -54,8 +56,48 @@ impl Backend for CppBackend {
     fn generate(
         &self,
         program: &CheckedProgram,
-        _options: &BackendOptions,
+        options: &BackendOptions,
     ) -> Result<OutputManifest, BackendError> {
+        generate_with_plugin(self, program, options)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[doc(hidden)]
+pub struct CppImport {
+    path: &'static str,
+    system: bool,
+}
+
+#[doc(hidden)]
+pub struct CppRenderer;
+
+impl LanguageRenderer<CppImport> for CppRenderer {
+    fn render_imports(&self, imports: &ImportSet<CppImport>) -> Result<CodeDocument, String> {
+        let lines = imports
+            .groups()
+            .flat_map(|(_, imports)| imports.iter())
+            .map(|import| {
+                if import.system {
+                    format!("#include <{}>", import.path)
+                } else {
+                    format!("#include {:?}", import.path)
+                }
+            })
+            .collect::<Vec<_>>();
+        Ok(CodeDocument::raw_text(RawText::new(lines.join("\n"))))
+    }
+}
+
+impl LanguagePlugin for CppBackend {
+    type Import = CppImport;
+    type Renderer = CppRenderer;
+
+    fn translate(
+        &self,
+        program: &CheckedProgram,
+        _options: &BackendOptions,
+    ) -> Result<LanguagePackage<Self::Import>, BackendError> {
         let generator = Generator::new(program);
         let helpers = program
             .capabilities()
@@ -70,20 +112,129 @@ impl Backend for CppBackend {
                 CapabilitySupport::Native | CapabilitySupport::Unsupported { .. } => None,
             })
             .collect();
-        OutputManifest::new(
+        LanguagePackage::new(
             vec![
-                OutputFile::text("README.md", README),
-                OutputFile::text("src/runtime.hpp", RUNTIME),
-                OutputFile::text("src/generated.hpp", generator.header()),
-                OutputFile::text("src/generated.cc", generator.source()?),
-                OutputFile::text("tests/generated_test.cc", generator.tests()),
-                OutputFile::text("tests/conformance_test.cc", CONFORMANCE),
+                FileGroup::new(
+                    cpp_group("documentation")?,
+                    vec![LanguageFile::text(
+                        "README.md",
+                        FileRole::Documentation,
+                        README,
+                    )],
+                )
+                .map_err(cpp_generation_error)?,
+                FileGroup::new(
+                    cpp_group("runtime")?,
+                    vec![LanguageFile::source(cpp_runtime_file())],
+                )
+                .map_err(cpp_generation_error)?,
+                FileGroup::new(
+                    cpp_group("source")?,
+                    vec![
+                        LanguageFile::source(generator.header_file()),
+                        LanguageFile::source(generator.source_file()?),
+                    ],
+                )
+                .map_err(cpp_generation_error)?,
+                FileGroup::new(
+                    cpp_group("tests")?,
+                    vec![
+                        LanguageFile::source(cpp_generated_test_file()),
+                        LanguageFile::source(cpp_conformance_file()),
+                    ],
+                )
+                .map_err(cpp_generation_error)?,
             ],
             Vec::<DeclaredDependency>::new(),
             helpers,
         )
-        .map_err(BackendError::UnsupportedCapabilities)
+        .map_err(cpp_generation_error)
     }
+
+    fn renderer(&self) -> Self::Renderer {
+        CppRenderer
+    }
+}
+
+fn cpp_generation_error(error: impl std::fmt::Display) -> BackendError {
+    BackendError::Generation {
+        message: error.to_string(),
+    }
+}
+
+fn cpp_group(name: &str) -> Result<FileGroupId, BackendError> {
+    FileGroupId::parse(name).map_err(cpp_generation_error)
+}
+
+fn cpp_system_group() -> ImportGroup {
+    ImportGroup::new(10, "system-headers").expect("static import group is valid")
+}
+
+fn cpp_local_group() -> ImportGroup {
+    ImportGroup::new(20, "local-headers").expect("static import group is valid")
+}
+
+fn require_cpp_system(file: &mut LanguageSourceFile<CppImport>, path: &'static str) {
+    file.require_import(cpp_system_group(), CppImport { path, system: true });
+}
+
+fn require_cpp_local(file: &mut LanguageSourceFile<CppImport>, path: &'static str) {
+    file.require_import(
+        cpp_local_group(),
+        CppImport {
+            path,
+            system: false,
+        },
+    );
+}
+
+fn cpp_runtime_file() -> LanguageSourceFile<CppImport> {
+    let mut file = LanguageSourceFile::new("src/runtime.hpp", FileRole::Runtime);
+    file.set_preamble(CodeDocument::raw_text(RawText::new(
+        "#pragma once\n// Dependency-free runtime copied into generated C++20 packages.",
+    )));
+    for header in [
+        "algorithm",
+        "any",
+        "bit",
+        "cmath",
+        "cstddef",
+        "cstdint",
+        "functional",
+        "limits",
+        "map",
+        "optional",
+        "stdexcept",
+        "string",
+        "string_view",
+        "type_traits",
+        "utility",
+        "variant",
+        "vector",
+    ] {
+        require_cpp_system(&mut file, header);
+    }
+    file.set_body(CodeDocument::raw_text(RawText::new(RUNTIME)));
+    file
+}
+
+fn cpp_generated_test_file() -> LanguageSourceFile<CppImport> {
+    let mut file = LanguageSourceFile::new("tests/generated_test.cc", FileRole::Test);
+    require_cpp_local(&mut file, "generated.hpp");
+    file.set_body(CodeDocument::raw_text(RawText::new(
+        "int main() { return polyrust_generated::run_portable_tests() ? 0 : 1; }",
+    )));
+    file
+}
+
+fn cpp_conformance_file() -> LanguageSourceFile<CppImport> {
+    let mut file = LanguageSourceFile::new("tests/conformance_test.cc", FileRole::Conformance);
+    require_cpp_system(&mut file, "cstdint");
+    require_cpp_system(&mut file, "limits");
+    require_cpp_local(&mut file, "generated.hpp");
+    require_cpp_local(&mut file, "runtime.hpp");
+    file.set_body(CodeDocument::raw_text(RawText::new(CONFORMANCE_BODY)));
+    file
 }
 
 struct Generator<'a> {
@@ -107,17 +258,34 @@ impl<'a> Generator<'a> {
         Self { program, names }
     }
 
-    fn header(&self) -> String {
+    fn header_file(&self) -> LanguageSourceFile<CppImport> {
+        let mut file = LanguageSourceFile::new("src/generated.hpp", FileRole::Source);
+        file.set_preamble(CodeDocument::raw_text(RawText::new(
+            "#pragma once\n// Generated by PolyRust from checked IR v0.",
+        )));
+        for header in ["cstdint", "optional", "string"] {
+            require_cpp_system(&mut file, header);
+        }
+        if self
+            .program
+            .module()
+            .declarations
+            .iter()
+            .any(|declaration| matches!(declaration, Declaration::Enum(_)))
+        {
+            require_cpp_system(&mut file, "variant");
+        }
+        if self
+            .program
+            .capabilities()
+            .program()
+            .iter()
+            .any(|capability| matches!(capability, Capability::Bytes | Capability::ImmutableList))
+        {
+            require_cpp_system(&mut file, "vector");
+        }
         let mut output = String::from(
-            "#pragma once\n\
-             // Generated by PolyRust from checked IR v0.\n\
-             #include <cstdint>\n\
-             #include <optional>\n\
-             #include <string>\n\
-             #include <utility>\n\
-             #include <variant>\n\
-             #include <vector>\n\n\
-             namespace poly_runtime { struct aggregate; }\n\n\
+            "namespace poly_runtime { struct aggregate; }\n\n\
              namespace polyrust_generated {\n\
              struct poly_error { std::string code; std::string message; };\n\
              template <typename T> struct poly_result { bool ok; std::optional<T> value; std::optional<poly_error> error; };\n\
@@ -326,10 +494,11 @@ impl<'a> Generator<'a> {
             }
         }
         output.push_str("bool run_portable_tests();\n}\n");
-        output
+        file.set_body(CodeDocument::raw_text(RawText::new(output)));
+        file
     }
 
-    fn source(&self) -> Result<String, BackendError> {
+    fn source_file(&self) -> Result<LanguageSourceFile<CppImport>, BackendError> {
         let mut document = serde_json::to_value(self.program.document()).map_err(|error| {
             BackendError::Generation {
                 message: format!("cannot serialize checked IR: {error}"),
@@ -337,11 +506,13 @@ impl<'a> Generator<'a> {
         })?;
         stringify_wide_numbers(&mut document);
         let document = serde_json::to_string(&document).expect("checked document serializes");
-        let mut output = String::from(
-            "// Generated by PolyRust from checked IR v0.\n\
-             #include \"generated.hpp\"\n\
-             #include \"runtime.hpp\"\n\n",
-        );
+        let mut file = LanguageSourceFile::new("src/generated.cc", FileRole::Source);
+        file.set_preamble(CodeDocument::raw_text(RawText::new(
+            "// Generated by PolyRust from checked IR v0.",
+        )));
+        require_cpp_local(&mut file, "generated.hpp");
+        require_cpp_local(&mut file, "runtime.hpp");
+        let mut output = String::new();
         output.push_str(&self.conversions());
         output.push_str(
             "\nnamespace polyrust_generated {\nnamespace { poly_runtime::runtime runtime_instance(",
@@ -393,11 +564,8 @@ impl<'a> Generator<'a> {
         }
         output
             .push_str("\nbool run_portable_tests() { return runtime_instance.run_tests(); }\n}\n");
-        Ok(output)
-    }
-
-    fn tests(&self) -> String {
-        "#include \"generated.hpp\"\nint main() { return polyrust_generated::run_portable_tests() ? 0 : 1; }\n".into()
+        file.set_body(CodeDocument::raw_text(RawText::new(output)));
+        Ok(file)
     }
 
     fn argument(&self, ty: &TypeRef, name: &str) -> String {
@@ -758,7 +926,7 @@ fn stringify_wide_numbers(value: &mut serde_json::Value) {
 }
 
 const README: &str = "# Generated PolyRust C++20 package\n\nDependency-free C++20 source with value semantics and explicit portable results.\n";
-const CONFORMANCE: &str = "#include \"generated.hpp\"\n#include \"runtime.hpp\"\n#include <cstdint>\n#include <limits>\nint main() {\n  using poly_runtime::checked_i32;\n  return checked_i32(0).ok && checked_i32(INT32_MAX).ok && checked_i32(INT32_MIN).ok && !checked_i32(INT64_C(2147483648)).ok ? 0 : 1;\n}\n";
+const CONFORMANCE_BODY: &str = "int main() {\n  using poly_runtime::checked_i32;\n  return checked_i32(0).ok && checked_i32(INT32_MAX).ok && checked_i32(INT32_MIN).ok && !checked_i32(INT64_C(2147483648)).ok ? 0 : 1;\n}\n";
 
 #[cfg(test)]
 mod tests {
@@ -776,6 +944,33 @@ mod tests {
             .unwrap();
         assert_eq!(first.canonical_json(), second.canonical_json());
         assert!(first.dependencies().is_empty());
+    }
+
+    #[test]
+    fn includes_are_owned_by_the_cpp_file_that_uses_them() {
+        let manifest = CppBackend
+            .generate(&fixture(), &BackendOptions::default())
+            .unwrap();
+        let runtime = generated_text(&manifest, "src/runtime.hpp");
+        assert_eq!(runtime.matches("#include <variant>").count(), 1);
+        assert_eq!(runtime.matches("#include <vector>").count(), 1);
+        let header = generated_text(&manifest, "src/generated.hpp");
+        assert_eq!(header.matches("#include <cstdint>").count(), 1);
+        assert!(!header.contains("#include <variant>"));
+        assert!(!header.contains("#include <vector>"));
+        let source = generated_text(&manifest, "src/generated.cc");
+        assert_eq!(source.matches("#include \"generated.hpp\"").count(), 1);
+        assert_eq!(source.matches("#include \"runtime.hpp\"").count(), 1);
+        let test = generated_text(&manifest, "tests/generated_test.cc");
+        assert_eq!(test.matches("#include \"generated.hpp\"").count(), 1);
+        assert!(!test.contains("runtime.hpp"));
+    }
+
+    fn generated_text<'a>(manifest: &'a OutputManifest, path: &str) -> &'a str {
+        match manifest.file(path).unwrap().contents() {
+            portable_codegen::OutputContents::Text(text) => text,
+            portable_codegen::OutputContents::Bytes(_) => panic!("C++ source must be text"),
+        }
     }
 
     fn fixture() -> CheckedProgram {
