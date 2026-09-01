@@ -270,6 +270,174 @@ impl<I: Ord> From<LanguageFragment<I>> for LanguageUnit<I> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RuntimeHelper<I: Ord> {
+    id: String,
+    order: u16,
+    fragment: LanguageFragment<I>,
+}
+
+impl<I: Ord> RuntimeHelper<I> {
+    pub fn new(id: impl Into<String>, order: u16, fragment: LanguageFragment<I>) -> Self {
+        Self {
+            id: id.into(),
+            order,
+            fragment,
+        }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RuntimeHelperGraph<I: Ord> {
+    helpers: BTreeMap<String, RuntimeHelper<I>>,
+}
+
+impl<I: Ord> RuntimeHelperGraph<I> {
+    pub fn new(
+        helpers: impl IntoIterator<Item = RuntimeHelper<I>>,
+    ) -> Result<Self, HelperGraphError> {
+        let mut indexed = BTreeMap::new();
+        for helper in helpers {
+            if helper.id.is_empty() {
+                return Err(HelperGraphError::InvalidId(helper.id));
+            }
+            let id = helper.id.clone();
+            if indexed.insert(id.clone(), helper).is_some() {
+                return Err(HelperGraphError::DuplicateId(id));
+            }
+        }
+        Ok(Self { helpers: indexed })
+    }
+}
+
+impl<I: Clone + Ord> RuntimeHelperGraph<I> {
+    pub fn resolve(
+        &self,
+        roots: impl IntoIterator<Item = impl AsRef<str>>,
+    ) -> Result<LanguageFragment<I>, HelperGraphError> {
+        let mut selected = BTreeSet::new();
+        let mut pending = roots
+            .into_iter()
+            .map(|root| (root.as_ref().to_owned(), None::<String>))
+            .collect::<Vec<_>>();
+        while let Some((id, required_by)) = pending.pop() {
+            let Some(helper) = self.helpers.get(&id) else {
+                return Err(HelperGraphError::MissingId { id, required_by });
+            };
+            if !selected.insert(id.clone()) {
+                continue;
+            }
+            pending.extend(
+                helper
+                    .fragment
+                    .helper_roots()
+                    .iter()
+                    .rev()
+                    .map(|dependency| (dependency.clone(), Some(id.clone()))),
+            );
+        }
+
+        let mut dependents = BTreeMap::<String, BTreeSet<String>>::new();
+        let mut indegree = BTreeMap::<String, usize>::new();
+        for id in &selected {
+            indegree.insert(id.clone(), 0);
+        }
+        for id in &selected {
+            let helper = &self.helpers[id];
+            for dependency in helper.fragment.helper_roots() {
+                if !selected.contains(dependency) {
+                    return Err(HelperGraphError::MissingId {
+                        id: dependency.clone(),
+                        required_by: Some(id.clone()),
+                    });
+                }
+                dependents
+                    .entry(dependency.clone())
+                    .or_default()
+                    .insert(id.clone());
+                *indegree.get_mut(id).expect("selected helper has indegree") += 1;
+            }
+        }
+
+        let mut ready = BTreeSet::<(u16, String)>::new();
+        for (id, degree) in &indegree {
+            if *degree == 0 {
+                ready.insert((self.helpers[id].order, id.clone()));
+            }
+        }
+        let mut ordered = Vec::new();
+        while let Some((order, id)) = ready.pop_first() {
+            let _ = order;
+            ordered.push(id.clone());
+            for dependent in dependents.get(&id).into_iter().flatten() {
+                let degree = indegree
+                    .get_mut(dependent)
+                    .expect("dependent helper has indegree");
+                *degree -= 1;
+                if *degree == 0 {
+                    ready.insert((self.helpers[dependent].order, dependent.clone()));
+                }
+            }
+        }
+        if ordered.len() != selected.len() {
+            let cycle = indegree
+                .into_iter()
+                .filter_map(|(id, degree)| (degree != 0).then_some(id))
+                .collect();
+            return Err(HelperGraphError::Cycle(cycle));
+        }
+
+        let mut fragment = LanguageFragment::sequence(
+            ordered
+                .into_iter()
+                .map(|id| self.helpers[&id].fragment.clone()),
+        );
+        fragment.helper_roots.clear();
+        Ok(fragment)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum HelperGraphError {
+    InvalidId(String),
+    DuplicateId(String),
+    MissingId {
+        id: String,
+        required_by: Option<String>,
+    },
+    Cycle(Vec<String>),
+}
+
+impl fmt::Display for HelperGraphError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidId(id) => write!(formatter, "invalid empty runtime helper ID {id:?}"),
+            Self::DuplicateId(id) => write!(formatter, "duplicate runtime helper ID {id:?}"),
+            Self::MissingId { id, required_by } => match required_by {
+                Some(required_by) => write!(
+                    formatter,
+                    "runtime helper {required_by:?} requires missing helper {id:?}"
+                ),
+                None => write!(formatter, "missing runtime helper root {id:?}"),
+            },
+            Self::Cycle(ids) => write!(
+                formatter,
+                "runtime helper dependency cycle among {}",
+                ids.iter()
+                    .map(|id| format!("{id:?}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        }
+    }
+}
+
+impl std::error::Error for HelperGraphError {}
+
 /// A source file after target translation but before syntax rendering.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LanguageSourceFile<I: Ord> {
@@ -735,6 +903,82 @@ mod tests {
         let unit = joined.into_unit();
         assert_eq!(unit.imports().len(), 3);
         assert_eq!(unit.helper_roots().len(), 3);
+    }
+
+    #[test]
+    fn helper_graph_resolves_stable_dependency_order_and_deduplicates() {
+        let dependency = RuntimeHelper::new(
+            "dependency",
+            5,
+            LanguageFragment::new(Document::raw_text(RawText::new("a")))
+                .with_import(import_group(10, "standard"), TestImport("alpha")),
+        );
+        let root = RuntimeHelper::new("root", 10, fragment("b", "beta", "dependency"));
+        let independent = RuntimeHelper::new(
+            "independent",
+            20,
+            LanguageFragment::new(Document::raw_text(RawText::new("c"))),
+        );
+        let graph = RuntimeHelperGraph::new([root, independent, dependency]).unwrap();
+        let resolved = graph.resolve(["root", "independent", "root"]).unwrap();
+        assert_eq!(
+            render(resolved.document(), RenderOptions::default()).unwrap(),
+            "abc\n"
+        );
+        assert_eq!(resolved.imports().len(), 2);
+        assert!(resolved.helper_roots().is_empty());
+    }
+
+    #[test]
+    fn helper_graph_rejects_invalid_duplicate_missing_and_cyclic_nodes() {
+        let empty =
+            RuntimeHelper::<TestImport>::new("", 0, LanguageFragment::new(Document::empty()));
+        assert!(matches!(
+            RuntimeHelperGraph::new([empty]),
+            Err(HelperGraphError::InvalidId(_))
+        ));
+
+        let one =
+            RuntimeHelper::<TestImport>::new("same", 0, LanguageFragment::new(Document::empty()));
+        let two = one.clone();
+        assert!(matches!(
+            RuntimeHelperGraph::new([one, two]),
+            Err(HelperGraphError::DuplicateId(id)) if id == "same"
+        ));
+
+        let graph = RuntimeHelperGraph::<TestImport>::new([]).unwrap();
+        assert!(matches!(
+            graph.resolve(["missing"]),
+            Err(HelperGraphError::MissingId { id, required_by: None }) if id == "missing"
+        ));
+
+        let missing_dependency = RuntimeHelper::<TestImport>::new(
+            "root",
+            0,
+            LanguageFragment::new(Document::empty()).with_helper_root("missing"),
+        );
+        let graph = RuntimeHelperGraph::new([missing_dependency]).unwrap();
+        assert!(matches!(
+            graph.resolve(["root"]),
+            Err(HelperGraphError::MissingId { id, required_by: Some(parent) })
+                if id == "missing" && parent == "root"
+        ));
+
+        let left = RuntimeHelper::<TestImport>::new(
+            "left",
+            0,
+            LanguageFragment::new(Document::empty()).with_helper_root("right"),
+        );
+        let right = RuntimeHelper::<TestImport>::new(
+            "right",
+            0,
+            LanguageFragment::new(Document::empty()).with_helper_root("left"),
+        );
+        let graph = RuntimeHelperGraph::new([left, right]).unwrap();
+        assert!(matches!(
+            graph.resolve(["left"]),
+            Err(HelperGraphError::Cycle(ids)) if ids == ["left", "right"]
+        ));
     }
 
     #[test]
