@@ -349,6 +349,11 @@ func (r *runtime) intrinsic(name string, values []any) PolyResult[any] {
 		return polyOk(any(strings.Contains(a.(string), b.(string))))
 	case "string_starts_with":
 		return polyOk(any(strings.HasPrefix(a.(string), b.(string))))
+	case "string_strip_prefix":
+		if b.(string) == "" {
+			return polyOk(any(a.(string)))
+		}
+		return polyOk(any(strings.TrimPrefix(a.(string), b.(string))))
 	case "string_ends_with":
 		return polyOk(any(strings.HasSuffix(a.(string), b.(string))))
 	case "string_replace_all":

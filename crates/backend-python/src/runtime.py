@@ -228,6 +228,7 @@ class Runtime:
         if name == "string_is_empty": return ok(not a)
         if name == "string_contains": return ok(b in a)
         if name == "string_starts_with": return ok(a.startswith(b))
+        if name == "string_strip_prefix": return ok(a.removeprefix(b) if b else a)
         if name == "string_ends_with": return ok(a.endswith(b))
         if name == "string_replace_all": return ok(a.replace(b, c))
         if name == "string_trim_start": return ok(a.lstrip(b))

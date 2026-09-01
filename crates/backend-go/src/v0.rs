@@ -316,7 +316,87 @@ fn local(name: &str) -> String {
     let value = exported(name);
     let mut chars = value.chars();
     let first = chars.next().unwrap_or('v').to_ascii_lowercase();
-    format!("{first}{}", chars.collect::<String>())
+    let identifier = format!("{first}{}", chars.collect::<String>());
+    if is_go_reserved(&identifier) {
+        format!("{identifier}_")
+    } else {
+        identifier
+    }
+}
+
+fn is_go_reserved(identifier: &str) -> bool {
+    matches!(
+        identifier,
+        "any"
+            | "append"
+            | "bool"
+            | "break"
+            | "byte"
+            | "cap"
+            | "case"
+            | "chan"
+            | "clear"
+            | "close"
+            | "comparable"
+            | "complex"
+            | "complex64"
+            | "complex128"
+            | "const"
+            | "continue"
+            | "copy"
+            | "default"
+            | "defer"
+            | "delete"
+            | "else"
+            | "error"
+            | "fallthrough"
+            | "false"
+            | "float32"
+            | "float64"
+            | "for"
+            | "func"
+            | "go"
+            | "goto"
+            | "if"
+            | "imag"
+            | "import"
+            | "int"
+            | "int8"
+            | "int16"
+            | "int32"
+            | "int64"
+            | "interface"
+            | "iota"
+            | "len"
+            | "make"
+            | "map"
+            | "max"
+            | "min"
+            | "new"
+            | "nil"
+            | "package"
+            | "panic"
+            | "print"
+            | "println"
+            | "range"
+            | "real"
+            | "recover"
+            | "return"
+            | "rune"
+            | "select"
+            | "string"
+            | "struct"
+            | "switch"
+            | "true"
+            | "type"
+            | "uint"
+            | "uint8"
+            | "uint16"
+            | "uint32"
+            | "uint64"
+            | "uintptr"
+            | "var"
+    )
 }
 fn go_string(value: &str) -> String {
     let mut output = String::from("\"");
@@ -327,7 +407,7 @@ fn go_string(value: &str) -> String {
             '\n' => output.push_str("\\n"),
             '\r' => output.push_str("\\r"),
             '\t' => output.push_str("\\t"),
-            character if character.is_control() => {
+            character if character.is_control() || character == '\u{feff}' => {
                 output.push_str(&format!("\\u{:04x}", character as u32));
             }
             character => output.push(character),
@@ -357,9 +437,16 @@ mod tests {
     #[test]
     fn strings_use_only_valid_go_escapes_and_preserve_unicode() {
         assert_eq!(
-            go_string("\0\u{8}\n\r\t\\\"\u{301}🦄"),
-            "\"\\u0000\\u0008\\n\\r\\t\\\\\\\"\u{301}🦄\""
+            go_string("\0\u{8}\n\r\t\\\"\u{301}\u{feff}🦄"),
+            "\"\\u0000\\u0008\\n\\r\\t\\\\\\\"\u{301}\\ufeff🦄\""
         );
+    }
+
+    #[test]
+    fn local_names_do_not_shadow_go_keywords_or_predeclared_identifiers() {
+        assert_eq!(local("string"), "string_");
+        assert_eq!(local("range"), "range_");
+        assert_eq!(local("ordinary_name"), "ordinaryName");
     }
     fn fixture() -> CheckedProgram {
         portable_check::v0::check_program(

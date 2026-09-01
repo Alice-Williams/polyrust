@@ -871,6 +871,12 @@ impl<'a> Session<'a> {
                 let (left, right) = strings(arguments, self)?;
                 Ok(Value::Bool(left.starts_with(right)))
             }
+            StringStripPrefix => {
+                let (source, prefix) = strings(arguments, self)?;
+                Ok(Value::String(
+                    source.strip_prefix(prefix).unwrap_or(source).to_owned(),
+                ))
+            }
             StringEndsWith => {
                 let (left, right) = strings(arguments, self)?;
                 Ok(Value::Bool(left.ends_with(right)))
@@ -1521,6 +1527,16 @@ mod tests {
                 StringContains,
                 vec![Value::String("x🦀y".into()), Value::String("🦀".into())],
                 Ok(Value::Bool(true)),
+            ),
+            (
+                StringStripPrefix,
+                vec![Value::String("🦀value".into()), Value::String("🦀".into())],
+                Ok(Value::String("value".into())),
+            ),
+            (
+                StringStripPrefix,
+                vec![Value::String("value".into()), Value::String(String::new())],
+                Ok(Value::String("value".into())),
             ),
             (
                 StringReplaceAll,

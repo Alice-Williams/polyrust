@@ -1000,6 +1000,9 @@ impl Generator<'_> {
             Intrinsic::StringIsEmpty => format!("Ok({a}.is_empty())"),
             Intrinsic::StringContains => format!("Ok({a}.contains({b}.as_str()))"),
             Intrinsic::StringStartsWith => format!("Ok({a}.starts_with({b}.as_str()))"),
+            Intrinsic::StringStripPrefix => {
+                format!("Ok({a}.strip_prefix({b}.as_str()).unwrap_or({a}.as_str()).to_owned())")
+            }
             Intrinsic::StringEndsWith => format!("Ok({a}.ends_with({b}.as_str()))"),
             Intrinsic::StringReplaceAll => {
                 format!("Ok({a}.replace({b}.as_str(), {c}.as_str()))")
@@ -1111,6 +1114,7 @@ impl Generator<'_> {
                     Intrinsic::StringFromUtf8Checked
                     | Intrinsic::StringConcat
                     | Intrinsic::StringReplaceAll
+                    | Intrinsic::StringStripPrefix
                     | Intrinsic::StringTrimStart
                     | Intrinsic::StringTrimEnd => Some(TypeRef::String),
                     Intrinsic::ListGetChecked => match first {

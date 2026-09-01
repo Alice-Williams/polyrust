@@ -70,6 +70,20 @@ Only one port may be in progress. A port is complete when:
   generated-package gates, deterministic regeneration, and the complete
   repository release gate pass.
 
+### [strip-bom 5.0.0](ports/strip-bom.md)
+
+- Upstream: [sindresorhus/strip-bom](https://github.com/sindresorhus/strip-bom)
+- Revision: `b80d7bc94e79b4744d92a2dc6328c91d9afe9775`
+- License: MIT
+- Typed API: `stripBom(string: string): string`
+- Selection evidence: 114 GitHub stars, 2,056 npm dependents, and 147,115,411
+  weekly npm downloads measured on 1 September 2026
+- Required PolyRust gap: exact removal of one leading substring plus valid Go
+  serialization of U+FEFF and collision-free Go local identifiers
+- Completion: M20; 18 portable vectors, 55,991 differential strings, four
+  native generated-package gates, deterministic regeneration, and the complete
+  repository release gate pass.
+
 ## Deferred candidate
 
 `juliangruber/balanced-match` is MIT licensed and attractive for a later parser

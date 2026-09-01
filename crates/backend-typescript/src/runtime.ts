@@ -285,6 +285,7 @@ export class Runtime {
       case "string_is_empty": return ok(a.length === 0);
       case "string_contains": return ok(a.includes(b));
       case "string_starts_with": return ok(a.startsWith(b));
+      case "string_strip_prefix": return ok(b.length > 0 && a.startsWith(b) ? a.slice(b.length) : a);
       case "string_ends_with": return ok(a.endsWith(b));
       case "string_replace_all": return ok(replaceAllLiteral(a, b, c));
       case "string_trim_start": return ok(trimStartScalars(a, b));

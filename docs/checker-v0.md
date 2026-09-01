@@ -77,7 +77,7 @@ are unreachable. Enum payload patterns bind every field exactly once.
 
 ## Intrinsics and purity
 
-All 58 v0 intrinsics have explicit arity, operand, and result rules in the
+All 59 v0 intrinsics have explicit arity, operand, and result rules in the
 checker. Integer operations require an unambiguous common width. Operations
 named `Checked` retain their value result type; their runtime failure becomes a
 structured evaluator outcome in M05. Checked and wrapping arithmetic are
@@ -87,6 +87,10 @@ separate capabilities.
 `(String, String, String) -> String`. Its second and third operands are a
 literal needle and literal replacement; no target regular-expression or
 replacement-template syntax is accepted.
+
+`StringStripPrefix` has signature `(String, String) -> String`. It removes one
+exact leading substring when present. A missing or empty prefix leaves the
+source unchanged.
 
 `StringTrimStart` and `StringTrimEnd` each have signature
 `(String, String) -> String`. The second string is a set of Unicode scalar

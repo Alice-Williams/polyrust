@@ -43,6 +43,7 @@ pub enum Intrinsic {
     StringIsEmpty,
     StringContains,
     StringStartsWith,
+    StringStripPrefix,
     StringEndsWith,
     StringReplaceAll,
     StringTrimStart,
