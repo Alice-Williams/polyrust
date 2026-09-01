@@ -1793,17 +1793,17 @@ impl Checker<'_> {
         node: &NodeMeta,
     ) -> Option<TypeRef> {
         use Intrinsic::{
-            BoolAnd, BoolNot, BoolOr, BytesConcat, BytesIsEmpty, BytesLength, Equal, FloatAdd,
-            FloatDiv, FloatIsNaN, FloatMul, FloatNeg, FloatRemTrunc, FloatSub, FloatTrunc, Greater,
-            GreaterEqual, IntAddChecked, IntAddWrapping, IntBitAnd, IntBitNot, IntBitOr, IntBitXor,
-            IntDivChecked, IntMulChecked, IntMulWrapping, IntNegChecked, IntNegWrapping,
-            IntRemChecked, IntShiftLeftChecked, IntShiftRightChecked, IntSubChecked,
-            IntSubWrapping, Less, LessEqual, ListAppend, ListConcat, ListContains, ListGetChecked,
-            ListIsEmpty, ListLength, NarrowI64ToI32Checked, NotEqual, OptionIsNone, OptionIsSome,
-            OptionUnwrapOr, ResultIsErr, ResultIsOk, StringConcat, StringContains, StringEndsWith,
-            StringFromUtf8Checked, StringIsEmpty, StringReplaceAll, StringReplaceMany,
-            StringScalarLength, StringStartsWith, StringStripPrefix, StringToUtf8, StringTrimEnd,
-            StringTrimStart, StringTruncateUtf8Bytes, WidenI32ToI64,
+            BoolAnd, BoolNot, BoolOr, BytesConcat, BytesIsEmpty, BytesLength, BytesReplaceAll,
+            Equal, FloatAdd, FloatDiv, FloatIsNaN, FloatMul, FloatNeg, FloatRemTrunc, FloatSub,
+            FloatTrunc, Greater, GreaterEqual, IntAddChecked, IntAddWrapping, IntBitAnd, IntBitNot,
+            IntBitOr, IntBitXor, IntDivChecked, IntMulChecked, IntMulWrapping, IntNegChecked,
+            IntNegWrapping, IntRemChecked, IntShiftLeftChecked, IntShiftRightChecked,
+            IntSubChecked, IntSubWrapping, Less, LessEqual, ListAppend, ListConcat, ListContains,
+            ListGetChecked, ListIsEmpty, ListLength, NarrowI64ToI32Checked, NotEqual, OptionIsNone,
+            OptionIsSome, OptionUnwrapOr, ResultIsErr, ResultIsOk, StringConcat, StringContains,
+            StringEndsWith, StringFromUtf8Checked, StringIsEmpty, StringReplaceAll,
+            StringReplaceMany, StringScalarLength, StringStartsWith, StringStripPrefix,
+            StringToUtf8, StringTrimEnd, StringTrimStart, StringTruncateUtf8Bytes, WidenI32ToI64,
         };
         let invalid = |checker: &mut Self| {
             checker.error(
@@ -1896,6 +1896,9 @@ impl Checker<'_> {
                 Some(TypeRef::String)
             }
             BytesConcat if arguments == [TypeRef::Bytes, TypeRef::Bytes] => Some(TypeRef::Bytes),
+            BytesReplaceAll if arguments == [TypeRef::Bytes, TypeRef::Bytes, TypeRef::Bytes] => {
+                Some(TypeRef::Bytes)
+            }
             BytesLength if arguments == [TypeRef::Bytes] => Some(TypeRef::I64),
             BytesIsEmpty if arguments == [TypeRef::Bytes] => Some(TypeRef::Bool),
             ListLength if matches!(arguments, [TypeRef::List(_)]) => Some(TypeRef::I64),

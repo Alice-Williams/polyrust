@@ -35,6 +35,28 @@ export const replaceAllLiteral = (source, needle, replacement) => {
         ? replacement
         : replacement + scalars.join(replacement) + replacement;
 };
+export const replaceBytesAll = (source, needle, replacement) => {
+    const output = [];
+    if (needle.length === 0) {
+        output.push(...replacement);
+        for (const byte of source)
+            output.push(byte, ...replacement);
+        return output;
+    }
+    for (let offset = 0; offset < source.length;) {
+        const matches = offset + needle.length <= source.length
+            && needle.every((byte, index) => source[offset + index] === byte);
+        if (matches) {
+            output.push(...replacement);
+            offset += needle.length;
+        }
+        else {
+            output.push(source[offset]);
+            offset += 1;
+        }
+    }
+    return output;
+};
 export const replaceManyLiteral = (source, mappings) => {
     let output = "";
     let offset = 0;
@@ -353,6 +375,7 @@ export class Runtime {
             case "string_trim_end": return ok(trimEndScalars(a, b));
             case "bytes_concat":
             case "list_concat": return ok(listConcat(a, b));
+            case "bytes_replace_all": return ok(replaceBytesAll(a, b, c));
             case "bytes_length":
             case "list_length": return checkedI32(a.length);
             case "bytes_is_empty":

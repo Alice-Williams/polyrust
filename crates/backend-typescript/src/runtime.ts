@@ -47,6 +47,30 @@ export const replaceAllLiteral = (source: string, needle: string, replacement: s
     ? replacement
     : replacement + scalars.join(replacement) + replacement;
 };
+export const replaceBytesAll = (
+  source: readonly number[],
+  needle: readonly number[],
+  replacement: readonly number[],
+): readonly number[] => {
+  const output: number[] = [];
+  if (needle.length === 0) {
+    output.push(...replacement);
+    for (const byte of source) output.push(byte, ...replacement);
+    return output;
+  }
+  for (let offset = 0; offset < source.length;) {
+    const matches = offset + needle.length <= source.length
+      && needle.every((byte, index) => source[offset + index] === byte);
+    if (matches) {
+      output.push(...replacement);
+      offset += needle.length;
+    } else {
+      output.push(source[offset]!);
+      offset += 1;
+    }
+  }
+  return output;
+};
 export const replaceManyLiteral = (
   source: string,
   mappings: readonly (readonly [string, string])[],
@@ -343,6 +367,7 @@ export class Runtime {
       case "string_trim_start": return ok(trimStartScalars(a, b));
       case "string_trim_end": return ok(trimEndScalars(a, b));
       case "bytes_concat": case "list_concat": return ok(listConcat(a, b));
+      case "bytes_replace_all": return ok(replaceBytesAll(a, b, c));
       case "bytes_length": case "list_length": return checkedI32(a.length);
       case "bytes_is_empty": case "list_is_empty": return ok(a.length === 0);
       case "list_get_checked": return Number(b) >= 0 && Number(b) < a.length ? ok(a[Number(b)]) : fail("index_out_of_bounds", "list index out of bounds");

@@ -1,6 +1,6 @@
 # M29-03 — Port and prove normalize-newline
 
-- Status: planned
+- Status: in-progress
 
 ## Goal
 

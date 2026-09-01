@@ -1158,6 +1158,7 @@ impl Generator<'_> {
             Intrinsic::BytesConcat | Intrinsic::ListConcat => {
                 format!("{{ let mut value = {a}; value.extend({b}); Ok(value) }}")
             }
+            Intrinsic::BytesReplaceAll => format!("_poly_bytes_replace_all({a}, {b}, {c})"),
             Intrinsic::BytesLength | Intrinsic::ListLength => format!("Ok({a}.len() as i64)"),
             Intrinsic::BytesIsEmpty | Intrinsic::ListIsEmpty => format!("Ok({a}.is_empty())"),
             Intrinsic::ListGetChecked => format!("_poly_list_get({a}, {b})"),
@@ -1250,7 +1251,7 @@ impl Generator<'_> {
                     | Intrinsic::ListLength
                     | Intrinsic::WidenI32ToI64 => Some(TypeRef::I64),
                     Intrinsic::NarrowI64ToI32Checked => Some(TypeRef::I32),
-                    Intrinsic::StringToUtf8 => Some(TypeRef::Bytes),
+                    Intrinsic::StringToUtf8 | Intrinsic::BytesReplaceAll => Some(TypeRef::Bytes),
                     Intrinsic::StringFromUtf8Checked
                     | Intrinsic::StringConcat
                     | Intrinsic::StringReplaceAll
@@ -1630,6 +1631,34 @@ pub fn _poly_string_replace_many(
             let width = character.len_utf8();
             output.push_str(&remaining[..width]);
             offset += width;
+        }
+    }
+    Ok(output)
+}
+
+#[doc(hidden)]
+pub fn _poly_bytes_replace_all(
+    source: Vec<u8>,
+    needle: Vec<u8>,
+    replacement: Vec<u8>,
+) -> PolyResult<Vec<u8>> {
+    let mut output = Vec::new();
+    if needle.is_empty() {
+        output.extend_from_slice(&replacement);
+        for byte in source {
+            output.push(byte);
+            output.extend_from_slice(&replacement);
+        }
+        return Ok(output);
+    }
+    let mut offset = 0;
+    while offset < source.len() {
+        if source[offset..].starts_with(&needle) {
+            output.extend_from_slice(&replacement);
+            offset += needle.len();
+        } else {
+            output.push(source[offset]);
+            offset += 1;
         }
     }
     Ok(output)

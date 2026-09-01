@@ -1026,6 +1026,79 @@ impl<'a> Session<'a> {
                 value.extend_from_slice(right);
                 Ok(Value::Bytes(value))
             }
+            BytesReplaceAll => {
+                let source = byte_string(arguments.first(), self)?;
+                let needle = byte_string(arguments.get(1), self)?;
+                let replacement = byte_string(arguments.get(2), self)?;
+                let matches = if needle.is_empty() {
+                    source
+                        .len()
+                        .checked_add(1)
+                        .ok_or(EvaluationError::CollectionLimitExceeded {
+                            limit: self.limits.collection_size,
+                            requested: usize::MAX,
+                        })?
+                } else {
+                    let mut count = 0usize;
+                    let mut offset = 0usize;
+                    while offset + needle.len() <= source.len() {
+                        if source[offset..].starts_with(needle) {
+                            count = count.checked_add(1).ok_or(
+                                EvaluationError::CollectionLimitExceeded {
+                                    limit: self.limits.collection_size,
+                                    requested: usize::MAX,
+                                },
+                            )?;
+                            offset += needle.len();
+                        } else {
+                            offset += 1;
+                        }
+                    }
+                    count
+                };
+                let removed = matches.checked_mul(needle.len()).ok_or(
+                    EvaluationError::CollectionLimitExceeded {
+                        limit: self.limits.collection_size,
+                        requested: usize::MAX,
+                    },
+                )?;
+                let added = matches.checked_mul(replacement.len()).ok_or(
+                    EvaluationError::CollectionLimitExceeded {
+                        limit: self.limits.collection_size,
+                        requested: usize::MAX,
+                    },
+                )?;
+                let requested = source
+                    .len()
+                    .checked_sub(removed)
+                    .and_then(|remaining| remaining.checked_add(added))
+                    .ok_or(EvaluationError::CollectionLimitExceeded {
+                        limit: self.limits.collection_size,
+                        requested: usize::MAX,
+                    })?;
+                self.check_collection_size(requested)?;
+
+                let mut output = Vec::with_capacity(requested);
+                if needle.is_empty() {
+                    output.extend_from_slice(replacement);
+                    for byte in source {
+                        output.push(*byte);
+                        output.extend_from_slice(replacement);
+                    }
+                } else {
+                    let mut offset = 0usize;
+                    while offset < source.len() {
+                        if source[offset..].starts_with(needle) {
+                            output.extend_from_slice(replacement);
+                            offset += needle.len();
+                        } else {
+                            output.push(source[offset]);
+                            offset += 1;
+                        }
+                    }
+                }
+                Ok(Value::Bytes(output))
+            }
             BytesLength => Ok(Value::I64(usize_to_i64(
                 byte_string(arguments.first(), self)?.len(),
                 self,
@@ -1805,6 +1878,24 @@ mod tests {
                 BytesConcat,
                 vec![Value::Bytes(vec![0, 1]), Value::Bytes(vec![254, 255])],
                 Ok(Value::Bytes(vec![0, 1, 254, 255])),
+            ),
+            (
+                BytesReplaceAll,
+                vec![
+                    Value::Bytes(vec![1, 1, 1]),
+                    Value::Bytes(vec![1, 1]),
+                    Value::Bytes(vec![9]),
+                ],
+                Ok(Value::Bytes(vec![9, 1])),
+            ),
+            (
+                BytesReplaceAll,
+                vec![
+                    Value::Bytes(vec![0, 255]),
+                    Value::Bytes(Vec::new()),
+                    Value::Bytes(vec![7]),
+                ],
+                Ok(Value::Bytes(vec![7, 0, 7, 255, 7])),
             ),
             (
                 ListGetChecked,

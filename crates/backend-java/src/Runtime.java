@@ -395,6 +395,8 @@ public final class Runtime {
       case "bytes_concat":
       case "list_concat":
         return ok(concat(asList(a), asList(b)));
+      case "bytes_replace_all":
+        return ok(replaceBytesAll(asList(a), asList(b), asList(c)));
       case "bytes_length":
       case "list_length":
         return ok(asList(a).size());
@@ -783,6 +785,33 @@ public final class Runtime {
   private static List<Object> concat(List<Object> left, List<Object> right) {
     List<Object> result = new ArrayList<>(left);
     result.addAll(right);
+    return List.copyOf(result);
+  }
+
+  private static List<Object> replaceBytesAll(
+      List<Object> source, List<Object> needle, List<Object> replacement) {
+    List<Object> result = new ArrayList<>();
+    if (needle.isEmpty()) {
+      result.addAll(replacement);
+      for (Object value : source) {
+        result.add(value);
+        result.addAll(replacement);
+      }
+      return List.copyOf(result);
+    }
+    for (int offset = 0; offset < source.size();) {
+      boolean matches = offset + needle.size() <= source.size();
+      for (int index = 0; matches && index < needle.size(); index++) {
+        matches = Objects.equals(source.get(offset + index), needle.get(index));
+      }
+      if (matches) {
+        result.addAll(replacement);
+        offset += needle.size();
+      } else {
+        result.add(source.get(offset));
+        offset++;
+      }
+    }
     return List.copyOf(result);
   }
 

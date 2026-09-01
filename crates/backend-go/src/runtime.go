@@ -29,6 +29,28 @@ type PolyBytes struct{ items []byte }
 
 func NewPolyBytes(items ...byte) PolyBytes { return PolyBytes{items: append([]byte(nil), items...)} }
 func (value PolyBytes) Values() []byte     { return append([]byte(nil), value.items...) }
+func replaceBytesAll(source, needle, replacement PolyBytes) PolyBytes {
+	output := make([]byte, 0, len(source.items))
+	if len(needle.items) == 0 {
+		output = append(output, replacement.items...)
+		for _, value := range source.items {
+			output = append(output, value)
+			output = append(output, replacement.items...)
+		}
+		return NewPolyBytes(output...)
+	}
+	for offset := 0; offset < len(source.items); {
+		end := offset + len(needle.items)
+		if end <= len(source.items) && bytes.Equal(source.items[offset:end], needle.items) {
+			output = append(output, replacement.items...)
+			offset = end
+		} else {
+			output = append(output, source.items[offset])
+			offset++
+		}
+	}
+	return NewPolyBytes(output...)
+}
 func polyOk[T any](value T) PolyResult[T]  { return PolyResult[T]{Ok: true, Value: value} }
 func polyFail[T any](code, message string) PolyResult[T] {
 	return PolyResult[T]{Error: &PolyError{Code: code, Message: message}}
@@ -361,6 +383,15 @@ func (r *runtime) intrinsic(name string, values []any) PolyResult[any] {
 		return polyOk(any(strings.TrimLeft(a.(string), b.(string))))
 	case "string_trim_end":
 		return polyOk(any(strings.TrimRight(a.(string), b.(string))))
+	case "bytes_concat":
+		left, right := a.(PolyBytes), b.(PolyBytes)
+		return polyOk(any(NewPolyBytes(append(left.Values(), right.items...)...)))
+	case "bytes_replace_all":
+		return polyOk(any(replaceBytesAll(a.(PolyBytes), b.(PolyBytes), c.(PolyBytes))))
+	case "bytes_length":
+		return polyOk(any(int64(len(a.(PolyBytes).items))))
+	case "bytes_is_empty":
+		return polyOk(any(len(a.(PolyBytes).items) == 0))
 	case "widen_i32_to_i64":
 		return polyOk(any(int64(a.(int32))))
 	case "narrow_i64_to_i32_checked":
@@ -704,5 +735,4 @@ func (r *runtime) findImplementation(contract, record int64) int64 {
 	return -1
 }
 
-var _ = bytes.Equal
 var _ = binary.BigEndian

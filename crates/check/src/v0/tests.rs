@@ -1409,7 +1409,7 @@ fn string_truncate_utf8_bytes_rejects_invalid_operand_shapes_and_types() {
     }
 }
 
-const ALL_INTRINSICS: [Intrinsic; 63] = [
+const ALL_INTRINSICS: [Intrinsic; 64] = [
     Intrinsic::BoolNot,
     Intrinsic::BoolAnd,
     Intrinsic::BoolOr,
@@ -1456,6 +1456,7 @@ const ALL_INTRINSICS: [Intrinsic; 63] = [
     Intrinsic::StringTrimStart,
     Intrinsic::StringTrimEnd,
     Intrinsic::BytesConcat,
+    Intrinsic::BytesReplaceAll,
     Intrinsic::BytesLength,
     Intrinsic::BytesIsEmpty,
     Intrinsic::ListLength,
@@ -1630,6 +1631,11 @@ fn intrinsic_cases() -> Vec<(Intrinsic, Vec<TypeRef>, TypeRef)> {
         (
             BytesConcat,
             vec![TypeRef::Bytes, TypeRef::Bytes],
+            TypeRef::Bytes,
+        ),
+        (
+            BytesReplaceAll,
+            vec![TypeRef::Bytes, TypeRef::Bytes, TypeRef::Bytes],
             TypeRef::Bytes,
         ),
         (BytesLength, vec![TypeRef::Bytes], TypeRef::I64),

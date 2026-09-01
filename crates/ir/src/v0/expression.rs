@@ -54,6 +54,7 @@ pub enum Intrinsic {
     StringTrimStart,
     StringTrimEnd,
     BytesConcat,
+    BytesReplaceAll,
     BytesLength,
     BytesIsEmpty,
     ListLength,

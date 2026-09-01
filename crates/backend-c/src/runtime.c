@@ -417,6 +417,95 @@ poly_error_code poly_string_replace_all(poly_allocator allocator,
   return POLY_OK;
 }
 
+poly_error_code poly_bytes_replace_all(poly_allocator allocator,
+                                       poly_bytes_view source,
+                                       poly_bytes_view needle,
+                                       poly_bytes_view replacement,
+                                       poly_bytes *output) {
+  size_t count = 0U;
+  size_t length;
+  size_t input_offset = 0U;
+  size_t output_offset = 0U;
+  poly_bytes result = {0};
+  if (output == NULL) {
+    return POLY_INVARIANT_VIOLATION;
+  }
+  *output = result;
+  if (needle.length == 0U) {
+    if (source.length == SIZE_MAX) {
+      return POLY_ALLOCATION_FAILED;
+    }
+    if (replacement.length != 0U &&
+        source.length + 1U > (SIZE_MAX - source.length) / replacement.length) {
+      return POLY_ALLOCATION_FAILED;
+    }
+    length = source.length + (source.length + 1U) * replacement.length;
+  } else {
+    while (needle.length <= source.length - input_offset) {
+      if (view_equal(source.data + input_offset, needle.length, needle.data,
+                     needle.length)) {
+        ++count;
+        input_offset += needle.length;
+      } else {
+        ++input_offset;
+      }
+    }
+    if (replacement.length >= needle.length) {
+      size_t growth = replacement.length - needle.length;
+      if (growth != 0U && count > (SIZE_MAX - source.length) / growth) {
+        return POLY_ALLOCATION_FAILED;
+      }
+      length = source.length + count * growth;
+    } else {
+      length = source.length - count * (needle.length - replacement.length);
+    }
+  }
+  if (length != 0U) {
+    if (allocator.allocate == NULL || allocator.deallocate == NULL) {
+      return POLY_ALLOCATION_FAILED;
+    }
+    result.data = (uint8_t *)allocator.allocate(allocator.context, length);
+    if (result.data == NULL) {
+      return POLY_ALLOCATION_FAILED;
+    }
+  }
+  input_offset = 0U;
+  if (needle.length == 0U) {
+    if (replacement.length != 0U) {
+      memcpy(result.data, replacement.data, replacement.length);
+      output_offset = replacement.length;
+    }
+    while (input_offset < source.length) {
+      result.data[output_offset++] = source.data[input_offset++];
+      if (replacement.length != 0U) {
+        memcpy(result.data + output_offset, replacement.data,
+               replacement.length);
+        output_offset += replacement.length;
+      }
+    }
+  } else {
+    while (input_offset < source.length) {
+      if (needle.length <= source.length - input_offset &&
+          view_equal(source.data + input_offset, needle.length, needle.data,
+                     needle.length)) {
+        if (replacement.length != 0U) {
+          memcpy(result.data + output_offset, replacement.data,
+                 replacement.length);
+        }
+        output_offset += replacement.length;
+        input_offset += needle.length;
+      } else {
+        result.data[output_offset++] = source.data[input_offset++];
+      }
+    }
+  }
+  result.length = length;
+  result.capacity = length;
+  result.allocator = allocator;
+  *output = result;
+  return POLY_OK;
+}
+
 static size_t first_mapping_at(poly_string_view source, size_t offset,
                                const poly_string_view *needles,
                                size_t mapping_count) {

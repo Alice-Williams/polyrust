@@ -71,6 +71,25 @@ def portable_test_equal(left: Any, right: Any) -> bool:
     return left == right
 
 
+def replace_bytes_all(source: tuple[int, ...], needle: tuple[int, ...], replacement: tuple[int, ...]) -> tuple[int, ...]:
+    output: list[int] = []
+    if not needle:
+        output.extend(replacement)
+        for byte in source:
+            output.append(byte)
+            output.extend(replacement)
+        return tuple(output)
+    offset = 0
+    while offset < len(source):
+        if source[offset : offset + len(needle)] == needle:
+            output.extend(replacement)
+            offset += len(needle)
+        else:
+            output.append(source[offset])
+            offset += 1
+    return tuple(output)
+
+
 def float_div(left: float, right: float) -> float:
     if right != 0.0:
         return left / right
@@ -302,6 +321,7 @@ class Runtime:
         if name == "string_trim_start": return ok(a.lstrip(b))
         if name == "string_trim_end": return ok(a.rstrip(b))
         if name in {"bytes_concat", "list_concat"}: return ok(a + b)
+        if name == "bytes_replace_all": return ok(replace_bytes_all(a, b, c))
         if name in {"bytes_length", "list_length"}: return checked_i32(len(a))
         if name in {"bytes_is_empty", "list_is_empty"}: return ok(not a)
         if name == "list_get_checked": return ok(a[b]) if 0 <= b < len(a) else fail("index_out_of_bounds", "list index out of bounds")

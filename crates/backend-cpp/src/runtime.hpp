@@ -834,6 +834,11 @@ class runtime {
       result.insert(result.end(), right.begin(), right.end());
       return succeed(result);
     }
+    if (name == "bytes_replace_all") {
+      return succeed(replace_bytes_all(std::any_cast<const bytes_value&>(a),
+                                       std::any_cast<const bytes_value&>(b),
+                                       std::any_cast<const bytes_value&>(c)));
+    }
     if (name == "bytes_length") return succeed(static_cast<std::int64_t>(std::any_cast<const bytes_value&>(a).size()));
     if (name == "bytes_is_empty") return succeed(std::any_cast<const bytes_value&>(a).empty());
     if (name == "list_concat") {
@@ -912,6 +917,30 @@ class runtime {
       if (found == std::string::npos) { result.append(source, offset); return result; }
       result.append(source, offset, found - offset); result += replacement; offset = found + needle.size();
     }
+  }
+
+  static bytes_value replace_bytes_all(const bytes_value& source, const bytes_value& needle,
+                                       const bytes_value& replacement) {
+    bytes_value result;
+    if (needle.empty()) {
+      result.insert(result.end(), replacement.begin(), replacement.end());
+      for (const auto value : source) {
+        result.push_back(value);
+        result.insert(result.end(), replacement.begin(), replacement.end());
+      }
+      return result;
+    }
+    for (std::size_t offset = 0; offset < source.size();) {
+      const bool matches = offset + needle.size() <= source.size()
+          && std::equal(needle.begin(), needle.end(), source.begin() + offset);
+      if (matches) {
+        result.insert(result.end(), replacement.begin(), replacement.end());
+        offset += needle.size();
+      } else {
+        result.push_back(source[offset++]);
+      }
+    }
+    return result;
   }
 
   static std::string replace_many(const any_list& values) {

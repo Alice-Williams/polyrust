@@ -77,7 +77,7 @@ are unreachable. Enum payload patterns bind every field exactly once.
 
 ## Intrinsics and purity
 
-All 63 v0 intrinsics have explicit arity, operand, and result rules in the
+All 64 v0 intrinsics have explicit arity, operand, and result rules in the
 checker. Integer operations require an unambiguous common width. Operations
 named `Checked` retain their value result type; their runtime failure becomes a
 structured evaluator outcome in M05. Checked and wrapping arithmetic are

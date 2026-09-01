@@ -194,6 +194,7 @@ impl<'a> Generator<'a> {
                         | Intrinsic::StringTruncateUtf8Bytes
                         | Intrinsic::StringTrimStart
                         | Intrinsic::StringTrimEnd
+                        | Intrinsic::BytesReplaceAll
                 ) {
                     return self
                         .unsupported(&format!("intrinsic {operation:?} is not lowered yet"));
@@ -1693,6 +1694,23 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                 scalar(
                     format!("poly_string_borrow(&{temporary})"),
                     TypeRef::String,
+                    prelude,
+                )
+            }
+            Intrinsic::BytesReplaceAll => {
+                let temporary = self.temporary(|name| format!("poly_bytes {name} = {{0}};"));
+                self.cleanups
+                    .push(format!("poly_bytes_drop(&{temporary});"));
+                let status = self.temporary(|name| format!("poly_error_code {name} = POLY_OK;"));
+                prelude.push_str(&format!(
+                    "{status} = poly_bytes_replace_all(allocator, {}, {}, {}, &{temporary});\nif ({status} != POLY_OK) {{ error = (poly_error){{{status}, \"allocation failed\"}}; goto fail; }}\n",
+                    value(0),
+                    value(1),
+                    value(2)
+                ));
+                scalar(
+                    format!("poly_bytes_borrow(&{temporary})"),
+                    TypeRef::Bytes,
                     prelude,
                 )
             }

@@ -95,6 +95,11 @@ poly_error_code poly_string_replace_all(poly_allocator allocator,
                                         poly_string_view needle,
                                         poly_string_view replacement,
                                         poly_string *output);
+poly_error_code poly_bytes_replace_all(poly_allocator allocator,
+                                       poly_bytes_view source,
+                                       poly_bytes_view needle,
+                                       poly_bytes_view replacement,
+                                       poly_bytes *output);
 poly_error_code poly_string_replace_many(poly_allocator allocator,
                                          poly_string_view source,
                                          const poly_string_view *needles,
