@@ -1,6 +1,6 @@
 # M28 — is-fullwidth-code-point equivalence port
 
-- Status: in-progress
+- Status: complete
 - Phase: 6
 - Depends on: M24, M26, M27
 
@@ -60,3 +60,8 @@ does not claim the newer Unicode database used by later releases.
 - The differential oracle agrees on 22,409 deterministic inputs.
 - The complete uncached repository gate passes 183/183 tests.
 - The complete uncached release gate passes 161/161 tests.
+- Hosted GitHub CI run
+  [33547403633](https://github.com/Alice-Williams/polyrust/actions/runs/33547403633)
+  passes for implementation commit
+  `2ce9f18cb759b83c19426d1d79bfee6b70a11ac4`, including cache-cold and
+  cache-warm complete release gates.

@@ -1,6 +1,6 @@
 # M28-04 — Document and release-gate M28
 
-- Status: in-progress
+- Status: complete
 
 ## Goal
 

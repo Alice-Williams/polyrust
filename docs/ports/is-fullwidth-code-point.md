@@ -68,4 +68,7 @@ The same suite is mandatory through `//:release_gate` together with every
 earlier compatibility port. At the implementation checkpoint, the uncached
 full-repository gate passes 183/183 tests and the uncached release gate passes
 161/161 tests in the Linux development container; both include Buildifier,
-Rustfmt, and Clippy.
+Rustfmt, and Clippy. Hosted
+[CI run 33547403633](https://github.com/Alice-Williams/polyrust/actions/runs/33547403633)
+also passes for the implementation commit, including cache-cold and cache-warm
+complete release gates.
