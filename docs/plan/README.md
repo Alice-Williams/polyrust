@@ -93,6 +93,7 @@ contract as every other target.
 
 - [M24 — Language package IR and dynamic imports](milestones/M24-language-package-ir.md) — complete
 - [M26 — Dependency-bearing flat language IR](milestones/M26-flat-language-ir.md) — complete
+- [M30 — Compositional target-language IR](milestones/M30-compositional-language-ir.md) — planned
 
 ### Phase 6 continuation — Real-world compatibility
 
