@@ -2,13 +2,15 @@
 
 #![forbid(unsafe_code)]
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use portable_check::v0::{Capability, CheckedProgram};
 use portable_codegen::{
     Backend, BackendDescriptor, BackendError, BackendOptions, BackendVersion, CapabilitySupport,
-    DeclaredDependency, InjectedHelper, IrVersionRange, OptionsSchema, OutputFile, OutputManifest,
-    TargetId,
+    DeclaredDependency, Document as CodeDocument, FileGroup, FileGroupId, FileRole, ImportGroup,
+    ImportSet, InjectedHelper, IrVersionRange, LanguageFile, LanguagePackage, LanguagePlugin,
+    LanguageRenderer, LanguageSourceFile, OptionsSchema, OutputManifest, RawText, TargetId,
+    generate_with_plugin,
 };
 use portable_ir::v0::{Declaration, IrVersion, NodeId, TypeRef};
 
@@ -51,8 +53,79 @@ impl Backend for PythonBackend {
     fn generate(
         &self,
         program: &CheckedProgram,
-        _options: &BackendOptions,
+        options: &BackendOptions,
     ) -> Result<OutputManifest, BackendError> {
+        generate_with_plugin(self, program, options)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[doc(hidden)]
+pub enum PythonImport {
+    Future(&'static str),
+    Module(&'static str),
+    From {
+        module: &'static str,
+        name: &'static str,
+    },
+}
+
+#[doc(hidden)]
+pub struct PythonRenderer;
+
+impl LanguageRenderer<PythonImport> for PythonRenderer {
+    fn render_imports(&self, imports: &ImportSet<PythonImport>) -> Result<CodeDocument, String> {
+        let mut rendered_groups = Vec::new();
+        for (_, imports) in imports.groups() {
+            let mut futures = BTreeSet::new();
+            let mut modules = BTreeSet::new();
+            let mut from = BTreeMap::<&str, BTreeSet<&str>>::new();
+            for import in imports {
+                match import {
+                    PythonImport::Future(name) => {
+                        futures.insert(*name);
+                    }
+                    PythonImport::Module(module) => {
+                        modules.insert(*module);
+                    }
+                    PythonImport::From { module, name } => {
+                        from.entry(*module).or_default().insert(*name);
+                    }
+                }
+            }
+            let mut lines = Vec::new();
+            if !futures.is_empty() {
+                lines.push(format!(
+                    "from __future__ import {}",
+                    futures.into_iter().collect::<Vec<_>>().join(", ")
+                ));
+            }
+            lines.extend(modules.into_iter().map(|module| format!("import {module}")));
+            lines.extend(from.into_iter().map(|(module, names)| {
+                format!(
+                    "from {module} import {}",
+                    names.into_iter().collect::<Vec<_>>().join(", ")
+                )
+            }));
+            if !lines.is_empty() {
+                rendered_groups.push(lines.join("\n"));
+            }
+        }
+        Ok(CodeDocument::raw_text(RawText::new(
+            rendered_groups.join("\n\n"),
+        )))
+    }
+}
+
+impl LanguagePlugin for PythonBackend {
+    type Import = PythonImport;
+    type Renderer = PythonRenderer;
+
+    fn translate(
+        &self,
+        program: &CheckedProgram,
+        _options: &BackendOptions,
+    ) -> Result<LanguagePackage<Self::Import>, BackendError> {
         let generator = Generator::new(program);
         let helpers = program
             .capabilities()
@@ -67,20 +140,130 @@ impl Backend for PythonBackend {
                 CapabilitySupport::Native | CapabilitySupport::Unsupported { .. } => None,
             })
             .collect();
-        OutputManifest::new(
+        LanguagePackage::new(
             vec![
-                OutputFile::text("pyproject.toml", PYPROJECT),
-                OutputFile::text("src/generated_polyrust/__init__.py", generator.module()?),
-                OutputFile::text("src/generated_polyrust/runtime.py", RUNTIME),
-                OutputFile::text("tests/test_generated.py", generator.tests()),
-                OutputFile::text("tests/test_conformance.py", CONFORMANCE),
-                OutputFile::text("negative/invalid_option.py", TYPE_NEGATIVE),
+                FileGroup::new(
+                    file_group("metadata")?,
+                    vec![LanguageFile::text(
+                        "pyproject.toml",
+                        FileRole::Metadata,
+                        PYPROJECT,
+                    )],
+                )
+                .map_err(generation_error)?,
+                FileGroup::new(
+                    file_group("runtime")?,
+                    vec![LanguageFile::source(runtime_file())],
+                )
+                .map_err(generation_error)?,
+                FileGroup::new(
+                    file_group("source")?,
+                    vec![LanguageFile::source(generator.module_file()?)],
+                )
+                .map_err(generation_error)?,
+                FileGroup::new(
+                    file_group("tests")?,
+                    vec![
+                        LanguageFile::source(generator.tests_file()),
+                        LanguageFile::source(conformance_file()),
+                    ],
+                )
+                .map_err(generation_error)?,
+                FileGroup::new(
+                    file_group("negative-tests")?,
+                    vec![LanguageFile::source(type_negative_file())],
+                )
+                .map_err(generation_error)?,
             ],
             Vec::<DeclaredDependency>::new(),
             helpers,
         )
-        .map_err(BackendError::UnsupportedCapabilities)
+        .map_err(generation_error)
     }
+
+    fn renderer(&self) -> Self::Renderer {
+        PythonRenderer
+    }
+}
+
+fn generation_error(error: impl std::fmt::Display) -> BackendError {
+    BackendError::Generation {
+        message: error.to_string(),
+    }
+}
+
+fn file_group(name: &str) -> Result<FileGroupId, BackendError> {
+    FileGroupId::parse(name).map_err(generation_error)
+}
+
+fn future_group() -> ImportGroup {
+    ImportGroup::new(0, "future").expect("static import group is valid")
+}
+
+fn standard_group() -> ImportGroup {
+    ImportGroup::new(10, "standard-library").expect("static import group is valid")
+}
+
+fn local_group() -> ImportGroup {
+    ImportGroup::new(20, "local-package").expect("static import group is valid")
+}
+
+fn runtime_file() -> LanguageSourceFile<PythonImport> {
+    let mut file = LanguageSourceFile::new("src/generated_polyrust/runtime.py", FileRole::Runtime);
+    file.require_import(future_group(), PythonImport::Future("annotations"));
+    file.require_import(
+        standard_group(),
+        PythonImport::From {
+            module: "dataclasses",
+            name: "dataclass",
+        },
+    );
+    file.require_import(
+        standard_group(),
+        PythonImport::From {
+            module: "types",
+            name: "MappingProxyType",
+        },
+    );
+    for name in ["Any", "Generic", "TypeVar"] {
+        file.require_import(
+            standard_group(),
+            PythonImport::From {
+                module: "typing",
+                name,
+            },
+        );
+    }
+    file.set_body(CodeDocument::raw_text(RawText::new(RUNTIME)));
+    file
+}
+
+fn conformance_file() -> LanguageSourceFile<PythonImport> {
+    let mut file = LanguageSourceFile::new("tests/test_conformance.py", FileRole::Conformance);
+    for name in ["checked_i32", "checked_i64", "scalar_length", "wrapping"] {
+        file.require_import(
+            local_group(),
+            PythonImport::From {
+                module: "generated_polyrust.runtime",
+                name,
+            },
+        );
+    }
+    file.set_body(CodeDocument::raw_text(RawText::new(CONFORMANCE_BODY)));
+    file
+}
+
+fn type_negative_file() -> LanguageSourceFile<PythonImport> {
+    let mut file = LanguageSourceFile::new("negative/invalid_option.py", FileRole::NegativeTest);
+    file.require_import(
+        local_group(),
+        PythonImport::From {
+            module: "generated_polyrust.runtime",
+            name: "PolyOption",
+        },
+    );
+    file.set_body(CodeDocument::raw_text(RawText::new(TYPE_NEGATIVE_BODY)));
+    file
 }
 
 struct Generator<'a> {
@@ -104,7 +287,7 @@ impl<'a> Generator<'a> {
         Self { program, names }
     }
 
-    fn module(&self) -> Result<String, BackendError> {
+    fn module_file(&self) -> Result<LanguageSourceFile<PythonImport>, BackendError> {
         let document =
             portable_ir::v0::to_canonical_json(self.program.document()).map_err(|error| {
                 BackendError::Generation {
@@ -113,18 +296,97 @@ impl<'a> Generator<'a> {
             })?;
         let document = String::from_utf8(document).expect("canonical JSON is UTF-8");
         let literal = serde_json::to_string(&document).expect("JSON text string serializes");
-        let mut output = String::from(
-            "# Generated by PolyRust from checked IR v0.\nfrom __future__ import annotations\n\nimport json\nfrom dataclasses import dataclass, field  # noqa: F401\nfrom typing import Protocol, TypeAlias, cast  # noqa: F401\n\nfrom .runtime import PolyOption, PolyResult, PolyValueResult, Runtime  # noqa: F401\n\n",
-        );
+        let mut file =
+            LanguageSourceFile::new("src/generated_polyrust/__init__.py", FileRole::Source);
+        file.set_preamble(CodeDocument::raw_text(RawText::new(
+            "# Generated by PolyRust from checked IR v0.",
+        )));
+        file.require_import(standard_group(), PythonImport::Module("json"));
+        require_from(&mut file, local_group(), ".runtime", "Runtime");
+        let mut output = String::new();
         output.push_str(&format!("_runtime = Runtime(json.loads({literal}))\n\n"));
         let mut declarations: Vec<_> = self.program.module().declarations.iter().collect();
         declarations.sort_by_key(|declaration| declaration.header().node.id);
         for declaration in declarations {
+            self.require_declaration_imports(&mut file, declaration);
             self.declaration(&mut output, declaration);
         }
         let tests: Vec<_> = self.program.module().declarations.iter().filter_map(|declaration| if let Declaration::Test(test) = declaration { Some(serde_json::json!({"invocation": test.invocation, "expected": test.expected})) } else { None }).collect();
-        output.push_str(&format!("_TESTS: list[dict[str, object]] = json.loads({})\n\ndef _run_test(index: int) -> tuple[PolyResult[object], object, bool]:\n    test = _TESTS[index]\n    invocation = cast(dict[str, object], test[\"invocation\"])\n    data = cast(dict[str, object], invocation[\"data\"])\n    arguments = tuple(_runtime.decode(cast(dict[str, object], item)) for item in cast(list[object], data[\"arguments\"]))\n    if invocation[\"kind\"] == \"function\":\n        actual = _runtime.invoke(cast(int, data[\"function\"]), arguments)\n    else:\n        actual = _runtime.invoke_method(cast(int, data[\"implementation\"]), cast(int, data[\"method\"]), _runtime.decode(cast(dict[str, object], data[\"receiver\"])), arguments)\n    expected = cast(dict[str, object], test[\"expected\"])\n    return actual, _runtime.decode(cast(dict[str, object], expected[\"data\"])), expected[\"kind\"] == \"error\"\n", serde_json::to_string(&serde_json::to_string(&tests).expect("tests serialize")).expect("test JSON literal")));
-        Ok(output)
+        if !tests.is_empty() {
+            file.require_import(future_group(), PythonImport::Future("annotations"));
+            require_from(&mut file, standard_group(), "typing", "cast");
+            require_from(&mut file, local_group(), ".runtime", "PolyResult");
+            output.push_str(&format!("_TESTS: list[dict[str, object]] = json.loads({})\n\ndef _run_test(index: int) -> tuple[PolyResult[object], object, bool]:\n    test = _TESTS[index]\n    invocation = cast(dict[str, object], test[\"invocation\"])\n    data = cast(dict[str, object], invocation[\"data\"])\n    arguments = tuple(_runtime.decode(cast(dict[str, object], item)) for item in cast(list[object], data[\"arguments\"]))\n    if invocation[\"kind\"] == \"function\":\n        actual = _runtime.invoke(cast(int, data[\"function\"]), arguments)\n    else:\n        actual = _runtime.invoke_method(cast(int, data[\"implementation\"]), cast(int, data[\"method\"]), _runtime.decode(cast(dict[str, object], data[\"receiver\"])), arguments)\n    expected = cast(dict[str, object], test[\"expected\"])\n    return actual, _runtime.decode(cast(dict[str, object], expected[\"data\"])), expected[\"kind\"] == \"error\"\n", serde_json::to_string(&serde_json::to_string(&tests).expect("tests serialize")).expect("test JSON literal")));
+        }
+        file.set_body(CodeDocument::raw_text(RawText::new(output)));
+        Ok(file)
+    }
+
+    fn require_declaration_imports(
+        &self,
+        file: &mut LanguageSourceFile<PythonImport>,
+        declaration: &Declaration,
+    ) {
+        match declaration {
+            Declaration::Alias(item) => {
+                require_annotations(file);
+                require_from(file, standard_group(), "typing", "TypeAlias");
+                require_type(file, &item.target);
+            }
+            Declaration::Record(item) => {
+                require_annotations(file);
+                require_from(file, standard_group(), "dataclasses", "dataclass");
+                require_from(file, standard_group(), "dataclasses", "field");
+                for field in &item.fields {
+                    require_type(file, &field.ty);
+                }
+            }
+            Declaration::Enum(item) => {
+                require_annotations(file);
+                require_from(file, standard_group(), "dataclasses", "dataclass");
+                require_from(file, standard_group(), "dataclasses", "field");
+                require_from(file, standard_group(), "typing", "TypeAlias");
+                for variant in &item.variants {
+                    for field in &variant.fields {
+                        require_type(file, &field.ty);
+                    }
+                }
+            }
+            Declaration::Contract(item) => {
+                require_annotations(file);
+                require_from(file, standard_group(), "typing", "Protocol");
+                require_from(file, local_group(), ".runtime", "PolyResult");
+                for method in &item.methods {
+                    for parameter in &method.parameters {
+                        require_type(file, &parameter.ty);
+                    }
+                    require_type(file, &method.return_type);
+                }
+            }
+            Declaration::Constant(item) => {
+                require_callable_imports(file);
+                require_type(file, &item.ty);
+            }
+            Declaration::Function(item) => {
+                require_callable_imports(file);
+                for parameter in &item.parameters {
+                    require_type(file, &parameter.ty);
+                }
+                require_type(file, &item.return_type);
+            }
+            Declaration::Implementation(item) => {
+                if !item.methods.is_empty() {
+                    require_callable_imports(file);
+                }
+                for method in &item.methods {
+                    for parameter in &method.parameters {
+                        require_type(file, &parameter.ty);
+                    }
+                    require_type(file, &method.return_type);
+                }
+            }
+            Declaration::Test(_) => {}
+        }
     }
 
     fn declaration(&self, output: &mut String, declaration: &Declaration) {
@@ -191,16 +453,67 @@ impl<'a> Generator<'a> {
             }
         }
     }
-    fn tests(&self) -> String {
-        let mut output = String::from("from generated_polyrust import _run_test\n\n");
+    fn tests_file(&self) -> LanguageSourceFile<PythonImport> {
+        let mut file = LanguageSourceFile::new("tests/test_generated.py", FileRole::Test);
+        let mut output = String::new();
         let mut index = 0;
         for declaration in &self.program.module().declarations {
             if let Declaration::Test(test) = declaration {
+                if index == 0 {
+                    require_from(&mut file, local_group(), "generated_polyrust", "_run_test");
+                }
                 output.push_str(&format!("def test_{}() -> None:\n    actual, expected, expects_error = _run_test({index})\n    assert actual.ok is not expects_error\n    if actual.ok:\n        assert actual.value == expected\n\n", value_name(&test.header.name)));
                 index += 1;
             }
         }
-        output
+        if !output.is_empty() {
+            file.set_body(CodeDocument::raw_text(RawText::new(output)));
+        }
+        file
+    }
+}
+
+fn require_from(
+    file: &mut LanguageSourceFile<PythonImport>,
+    group: ImportGroup,
+    module: &'static str,
+    name: &'static str,
+) {
+    file.require_import(group, PythonImport::From { module, name });
+}
+
+fn require_annotations(file: &mut LanguageSourceFile<PythonImport>) {
+    file.require_import(future_group(), PythonImport::Future("annotations"));
+}
+
+fn require_callable_imports(file: &mut LanguageSourceFile<PythonImport>) {
+    require_annotations(file);
+    require_from(file, standard_group(), "typing", "cast");
+    require_from(file, local_group(), ".runtime", "PolyResult");
+}
+
+fn require_type(file: &mut LanguageSourceFile<PythonImport>, ty: &TypeRef) {
+    match ty {
+        TypeRef::List(inner) => require_type(file, inner),
+        TypeRef::Option(inner) => {
+            require_from(file, local_group(), ".runtime", "PolyOption");
+            require_type(file, inner);
+        }
+        TypeRef::Result { ok, error } => {
+            require_from(file, local_group(), ".runtime", "PolyValueResult");
+            require_type(file, ok);
+            require_type(file, error);
+        }
+        TypeRef::Unit
+        | TypeRef::Bool
+        | TypeRef::I32
+        | TypeRef::I64
+        | TypeRef::F64
+        | TypeRef::Char
+        | TypeRef::String
+        | TypeRef::Bytes
+        | TypeRef::Named(_)
+        | TypeRef::Contract(_) => {}
     }
 }
 
@@ -236,8 +549,8 @@ fn identifier(name: &str) -> String {
 }
 
 const PYPROJECT: &str = "[project]\nname = \"generated-polyrust-package\"\nversion = \"0.1.0\"\nrequires-python = \">=3.13\"\ndependencies = []\n\n[tool.pytest.ini_options]\npythonpath = [\"src\"]\ntestpaths = [\"tests\"]\n\n[tool.ruff]\ntarget-version = \"py313\"\nline-length = 120\n\n[tool.ruff.lint]\nselect = [\"E4\", \"E7\", \"E9\", \"F\"]\nignore = [\"E701\", \"E702\"]\n";
-const CONFORMANCE: &str = "from generated_polyrust.runtime import checked_i32, checked_i64, scalar_length, wrapping\n\ndef test_twenty_semantic_vectors() -> None:\n    source = (1,)\n    appended = source + (2,)\n    vectors = (\n        checked_i32(0).ok, checked_i32(2**31 - 1).ok, checked_i32(-(2**31)).ok, not checked_i32(2**31).ok, not checked_i32(-(2**31) - 1).ok,\n        checked_i64(0).ok, checked_i64(2**63 - 1).ok, checked_i64(-(2**63)).ok, not checked_i64(2**63).ok, not checked_i64(-(2**63) - 1).ok,\n        wrapping(2**31, 32) == -(2**31), wrapping(-(2**31) - 1, 32) == 2**31 - 1, wrapping(2**63, 64) == -(2**63), wrapping(-(2**63) - 1, 64) == 2**63 - 1,\n        scalar_length(\"a\").ok, scalar_length(\"😀\").value == 1, not scalar_length(\"\\ud800\").ok, len(appended) == 2, id(appended) != id(source), float(\"-0.0\").hex().startswith(\"-\"),\n    )\n    assert len(vectors) == 20\n    assert all(vectors)\n";
-const TYPE_NEGATIVE: &str = "from generated_polyrust.runtime import PolyOption\n\ninvalid: PolyOption[int] = PolyOption(tag=1)\n";
+const CONFORMANCE_BODY: &str = "def test_twenty_semantic_vectors() -> None:\n    source = (1,)\n    appended = source + (2,)\n    vectors = (\n        checked_i32(0).ok, checked_i32(2**31 - 1).ok, checked_i32(-(2**31)).ok, not checked_i32(2**31).ok, not checked_i32(-(2**31) - 1).ok,\n        checked_i64(0).ok, checked_i64(2**63 - 1).ok, checked_i64(-(2**63)).ok, not checked_i64(2**63).ok, not checked_i64(-(2**63) - 1).ok,\n        wrapping(2**31, 32) == -(2**31), wrapping(-(2**31) - 1, 32) == 2**31 - 1, wrapping(2**63, 64) == -(2**63), wrapping(-(2**63) - 1, 64) == 2**63 - 1,\n        scalar_length(\"a\").ok, scalar_length(\"😀\").value == 1, not scalar_length(\"\\ud800\").ok, len(appended) == 2, id(appended) != id(source), float(\"-0.0\").hex().startswith(\"-\"),\n    )\n    assert len(vectors) == 20\n    assert all(vectors)\n";
+const TYPE_NEGATIVE_BODY: &str = "invalid: PolyOption[int] = PolyOption(tag=1)\n";
 
 #[cfg(test)]
 mod tests {
@@ -260,15 +573,66 @@ mod tests {
         assert!(PYPROJECT.contains("py313"));
     }
     #[test]
-    fn stable_generated_imports_are_lint_clean_when_declaration_kinds_are_absent() {
-        let generated = Generator::new(&fixture()).module().unwrap();
-        assert!(generated.contains("from dataclasses import dataclass, field  # noqa: F401"));
+    fn generated_module_imports_follow_mapped_constructs_and_runtime_imports_are_merged() {
+        let manifest = PythonBackend
+            .generate(&fixture(), &BackendOptions::default())
+            .unwrap();
+        let generated = match manifest
+            .file("src/generated_polyrust/__init__.py")
+            .unwrap()
+            .contents()
+        {
+            portable_codegen::OutputContents::Text(text) => text,
+            portable_codegen::OutputContents::Bytes(_) => panic!("Python source must be text"),
+        };
+        assert!(generated.contains("from dataclasses import dataclass, field"));
+        assert!(!generated.contains("# noqa: F401"));
+        assert!(generated.contains("import json"));
+        assert!(generated.contains("from typing import Protocol, cast"));
+
+        let empty_manifest = PythonBackend
+            .generate(&empty_fixture(), &BackendOptions::default())
+            .unwrap();
+        let empty = match empty_manifest
+            .file("src/generated_polyrust/__init__.py")
+            .unwrap()
+            .contents()
+        {
+            portable_codegen::OutputContents::Text(text) => text,
+            portable_codegen::OutputContents::Bytes(_) => panic!("Python source must be text"),
+        };
+        assert!(!empty.contains("from __future__ import"));
+        assert!(!empty.contains("from dataclasses import"));
+        assert!(!empty.contains("from typing import"));
+        assert_eq!(empty.matches("import json").count(), 1);
+        assert_eq!(empty.matches("from .runtime import Runtime").count(), 1);
+
+        let runtime = match manifest
+            .file("src/generated_polyrust/runtime.py")
+            .unwrap()
+            .contents()
+        {
+            portable_codegen::OutputContents::Text(text) => text,
+            portable_codegen::OutputContents::Bytes(_) => panic!("Python runtime must be text"),
+        };
+        assert!(runtime.contains("from dataclasses import dataclass"));
+        assert!(runtime.contains("from typing import Any, Generic, TypeVar"));
+        assert_eq!(runtime.matches("from dataclasses import").count(), 1);
     }
     fn fixture() -> CheckedProgram {
         portable_check::v0::check_program(
             portable_ir::v0::from_json(include_bytes!(
                 "../../build/testdata/registration.poly.json"
             ))
+            .unwrap(),
+        )
+        .unwrap()
+    }
+    fn empty_fixture() -> CheckedProgram {
+        portable_check::v0::check_program(
+            portable_ir::v0::from_json(
+                br#"{"ir_version":"0.1.0","module":{"name":"empty","declarations":[]},"metadata":{}}"#,
+            )
             .unwrap(),
         )
         .unwrap()

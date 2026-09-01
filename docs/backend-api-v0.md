@@ -39,6 +39,13 @@ metadata, duplicate, and Unicode case-fold-colliding paths.
 The manifest API has no filesystem handle or output-directory argument. M09 is
 the only layer permitted to materialize a validated manifest.
 
+In-tree source backends additionally use the compatible language-plugin path:
+their translator consumes `CheckedProgram` and produces a validated generic
+`LanguagePackage`; a syntax-only renderer then flattens its file groups and
+dynamic import requirements into the same `OutputManifest`. This is an internal
+separation beneath the frozen `Backend::generate` entry point, not a second way
+to pass unchecked IR to generation.
+
 ## Compatibility freeze
 
 M10-M13 may extend target-owned option schemas and metadata values, but must not

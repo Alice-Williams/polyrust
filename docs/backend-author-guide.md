@@ -30,3 +30,29 @@ test. Follow the existing [Rust](rust-backend-v0.md),
 [TypeScript](typescript-backend-v0.md), [Python](python-backend-v0.md), and
 [Go](go-backend-v0.md) backend documents for target-specific precedents.
 
+## Language translation and rendering
+
+New source backends should implement `LanguagePlugin` and make their public
+`Backend::generate` method call `generate_with_plugin`. Translation owns symbol
+allocation and flat mappings from portable types, declarations, expressions,
+intrinsics, and capabilities to target constructs. It returns a
+`LanguagePackage<Import>` with:
+
+- stable file groups such as metadata, runtime, source, tests, conformance, and
+  negative tests;
+- a role for every file;
+- target import requirements collected on the exact source file that uses them;
+- target-owned preamble, body, and epilogue documents; and
+- declared dependencies and injected helpers.
+
+The associated `LanguageRenderer` receives only the sorted, deduplicated
+`ImportSet`. It merges requirements and writes target syntax. It cannot inspect
+`CheckedProgram`, choose semantic helpers, or add catch-all imports in
+anticipation of possible output. A file with no imports must render without an
+import section.
+
+Checked-in runtime templates should contain bodies rather than preassembled
+import blocks. Their language plugin declares the imports required by that body,
+just as it does for translated program files. Focused backend tests must compare
+a feature-bearing checked program with a minimal program and prove both import
+presence and absence.

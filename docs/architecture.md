@@ -29,6 +29,11 @@ Rust builder program          Serialized .poly.json
                   │             │
                   │      target lowering
                   │             ▼
+                  │   target LanguagePackage
+                  │     + dynamic imports
+                  │             │
+                  │    syntax-only rendering
+                  │             ▼
                   │       OutputManifest
                   │             │
                   │       atomic file write
@@ -358,6 +363,19 @@ Each backend owns:
 - declaration/expression lowering;
 - package layout and build metadata; and
 - semantic helper selection.
+
+Between checked IR and the output manifest, each backend MUST expose two
+separate internal stages. Its language plugin translates checked IR into a
+validated `LanguagePackage` containing deterministic file groups, source-file
+roles, structured import requirements, dependencies, helpers, and target-owned
+documents. Its syntax renderer consumes only that package; it MUST NOT receive a
+`CheckedProgram`.
+
+Imports, includes, module uses, and equivalent declarations MUST be collected as
+requirements while target constructs are mapped. A renderer sorts, deduplicates,
+groups, and writes those requirements using target syntax. Backends MUST NOT
+prepend unconditional catch-all import blocks merely to make later string
+assembly compile. Files with no requirements emit no import section.
 
 ## 7. Required target mappings
 

@@ -1,12 +1,6 @@
 # mypy: ignore-errors
 """Dependency-free runtime copied into generated Python packages."""
 
-from __future__ import annotations
-
-from dataclasses import dataclass
-from types import MappingProxyType
-from typing import Any, Generic, TypeVar
-
 T = TypeVar("T")
 E = TypeVar("E")
 

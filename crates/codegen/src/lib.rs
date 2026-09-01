@@ -4,10 +4,12 @@
 
 mod backend;
 mod document;
+mod language;
 mod manifest;
 
 pub use backend::*;
 pub use document::*;
+pub use language::*;
 pub use manifest::*;
 
 /// Temporary adapter for the pre-v0 prototype emitters. New backends must use
