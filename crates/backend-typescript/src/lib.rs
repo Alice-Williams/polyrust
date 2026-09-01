@@ -2,13 +2,15 @@
 
 #![forbid(unsafe_code)]
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use portable_check::v0::{Capability, CheckedProgram};
 use portable_codegen::{
     Backend, BackendDescriptor, BackendError, BackendOptions, BackendVersion, CapabilitySupport,
-    DeclaredDependency, InjectedHelper, IrVersionRange, OptionsSchema, OutputFile, OutputManifest,
-    TargetId,
+    DeclaredDependency, Document as CodeDocument, FileGroup, FileGroupId, FileRole, ImportGroup,
+    ImportSet, InjectedHelper, IrVersionRange, LanguageFile, LanguagePackage, LanguagePlugin,
+    LanguageRenderer, LanguageSourceFile, OptionsSchema, OutputManifest, RawText, TargetId,
+    generate_with_plugin,
 };
 use portable_ir::v0::{Declaration, IrVersion, NodeId, TypeRef, Visibility};
 
@@ -60,37 +62,9 @@ impl Backend for TypeScriptBackend {
     fn generate(
         &self,
         program: &CheckedProgram,
-        _options: &BackendOptions,
+        options: &BackendOptions,
     ) -> Result<OutputManifest, BackendError> {
-        let generator = Generator::new(program);
-        let helpers = program
-            .capabilities()
-            .program()
-            .iter()
-            .filter_map(|capability| match self.support(*capability) {
-                CapabilitySupport::Helper { helper } => Some(InjectedHelper {
-                    id: helper,
-                    capability: format!("{capability:?}"),
-                    files: vec!["src/runtime.ts".into()],
-                }),
-                CapabilitySupport::Native | CapabilitySupport::Unsupported { .. } => None,
-            })
-            .collect();
-        OutputManifest::new(
-            vec![
-                OutputFile::text("package.json", PACKAGE_JSON),
-                OutputFile::text("tsconfig.json", TSCONFIG),
-                OutputFile::text("src/runtime.ts", RUNTIME),
-                OutputFile::text("src/index.ts", generator.index()?),
-                OutputFile::text("src/generated.test.ts", generator.tests()),
-                OutputFile::text("src/conformance.test.ts", CONFORMANCE),
-                OutputFile::text("src/node-shims.d.ts", NODE_SHIMS),
-                OutputFile::text("tests/invalid-types.ts", INVALID_TYPES),
-            ],
-            Vec::<DeclaredDependency>::new(),
-            helpers,
-        )
-        .map_err(BackendError::UnsupportedCapabilities)
+        generate_with_plugin(self, program, options)
     }
 }
 
@@ -115,35 +89,279 @@ impl Backend for JavaScriptBackend {
     fn generate(
         &self,
         program: &CheckedProgram,
-        _options: &BackendOptions,
+        options: &BackendOptions,
     ) -> Result<OutputManifest, BackendError> {
-        let generator = Generator::new(program);
-        let helpers = program
-            .capabilities()
-            .program()
-            .iter()
-            .filter_map(|capability| match self.support(*capability) {
-                CapabilitySupport::Helper { helper } => Some(InjectedHelper {
-                    id: helper,
-                    capability: format!("{capability:?}"),
-                    files: vec!["src/runtime.js".into()],
-                }),
-                CapabilitySupport::Native | CapabilitySupport::Unsupported { .. } => None,
-            })
-            .collect();
-        OutputManifest::new(
-            vec![
-                OutputFile::text("package.json", JAVASCRIPT_PACKAGE_JSON),
-                OutputFile::text("src/runtime.js", JAVASCRIPT_RUNTIME),
-                OutputFile::text("src/index.js", generator.javascript_index()?),
-                OutputFile::text("src/generated.test.js", generator.javascript_tests()),
-                OutputFile::text("src/conformance.test.js", JAVASCRIPT_CONFORMANCE),
-            ],
-            Vec::<DeclaredDependency>::new(),
-            helpers,
-        )
-        .map_err(BackendError::UnsupportedCapabilities)
+        generate_with_plugin(self, program, options)
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[doc(hidden)]
+pub enum EcmaImport {
+    Default {
+        module: &'static str,
+        name: &'static str,
+    },
+    Named {
+        module: &'static str,
+        name: &'static str,
+        type_only: bool,
+    },
+    ExportAll {
+        module: &'static str,
+    },
+}
+
+#[doc(hidden)]
+pub struct EcmaRenderer;
+
+impl LanguageRenderer<EcmaImport> for EcmaRenderer {
+    fn render_imports(&self, imports: &ImportSet<EcmaImport>) -> Result<CodeDocument, String> {
+        let mut groups = Vec::new();
+        for (_, imports) in imports.groups() {
+            let mut defaults = Vec::new();
+            let mut exports = Vec::new();
+            let mut named = BTreeMap::<&str, (BTreeSet<&str>, BTreeSet<&str>)>::new();
+            for import in imports {
+                match import {
+                    EcmaImport::Default { module, name } => {
+                        defaults.push(format!("import {name} from {module:?};"));
+                    }
+                    EcmaImport::Named {
+                        module,
+                        name,
+                        type_only,
+                    } => {
+                        let names = named.entry(*module).or_default();
+                        if *type_only {
+                            names.1.insert(*name);
+                        } else {
+                            names.0.insert(*name);
+                        }
+                    }
+                    EcmaImport::ExportAll { module } => {
+                        exports.push(format!("export * from {module:?};"));
+                    }
+                }
+            }
+            let mut lines = defaults;
+            for (module, (values, types)) in named {
+                let mut names = values.into_iter().map(str::to_owned).collect::<Vec<_>>();
+                names.extend(types.into_iter().map(|name| format!("type {name}")));
+                lines.push(format!(
+                    "import {{ {} }} from {module:?};",
+                    names.join(", ")
+                ));
+            }
+            lines.extend(exports);
+            if !lines.is_empty() {
+                groups.push(lines.join("\n"));
+            }
+        }
+        Ok(CodeDocument::raw_text(RawText::new(groups.join("\n\n"))))
+    }
+}
+
+impl LanguagePlugin for TypeScriptBackend {
+    type Import = EcmaImport;
+    type Renderer = EcmaRenderer;
+
+    fn translate(
+        &self,
+        program: &CheckedProgram,
+        _options: &BackendOptions,
+    ) -> Result<LanguagePackage<Self::Import>, BackendError> {
+        ecma_package(self, program, false)
+    }
+
+    fn renderer(&self) -> Self::Renderer {
+        EcmaRenderer
+    }
+}
+
+impl LanguagePlugin for JavaScriptBackend {
+    type Import = EcmaImport;
+    type Renderer = EcmaRenderer;
+
+    fn translate(
+        &self,
+        program: &CheckedProgram,
+        _options: &BackendOptions,
+    ) -> Result<LanguagePackage<Self::Import>, BackendError> {
+        ecma_package(self, program, true)
+    }
+
+    fn renderer(&self) -> Self::Renderer {
+        EcmaRenderer
+    }
+}
+
+fn ecma_package(
+    _backend: &impl Backend,
+    program: &CheckedProgram,
+    javascript: bool,
+) -> Result<LanguagePackage<EcmaImport>, BackendError> {
+    let generator = Generator::new(program);
+    let runtime_path = if javascript {
+        "src/runtime.js"
+    } else {
+        "src/runtime.ts"
+    };
+    let helpers = program
+        .capabilities()
+        .program()
+        .iter()
+        .filter_map(|capability| match support(*capability) {
+            CapabilitySupport::Helper { helper } => Some(InjectedHelper {
+                id: helper,
+                capability: format!("{capability:?}"),
+                files: vec![runtime_path.into()],
+            }),
+            CapabilitySupport::Native | CapabilitySupport::Unsupported { .. } => None,
+        })
+        .collect();
+    let metadata = if javascript {
+        vec![LanguageFile::text(
+            "package.json",
+            FileRole::Metadata,
+            JAVASCRIPT_PACKAGE_JSON,
+        )]
+    } else {
+        vec![
+            LanguageFile::text("package.json", FileRole::Metadata, PACKAGE_JSON),
+            LanguageFile::text("tsconfig.json", FileRole::Metadata, TSCONFIG),
+        ]
+    };
+    let runtime = if javascript {
+        JAVASCRIPT_RUNTIME
+    } else {
+        RUNTIME
+    };
+    let mut groups = vec![
+        FileGroup::new(ecma_group("metadata")?, metadata).map_err(ecma_generation_error)?,
+        FileGroup::new(
+            ecma_group("runtime")?,
+            vec![LanguageFile::text(runtime_path, FileRole::Runtime, runtime)],
+        )
+        .map_err(ecma_generation_error)?,
+        FileGroup::new(
+            ecma_group("source")?,
+            vec![LanguageFile::source(if javascript {
+                generator.javascript_index_file()?
+            } else {
+                generator.index_file()?
+            })],
+        )
+        .map_err(ecma_generation_error)?,
+        FileGroup::new(
+            ecma_group("tests")?,
+            vec![
+                LanguageFile::source(generator.tests_file(javascript)),
+                LanguageFile::source(conformance_file(javascript)),
+            ],
+        )
+        .map_err(ecma_generation_error)?,
+    ];
+    if !javascript {
+        groups.push(
+            FileGroup::new(
+                ecma_group("type-system-tests")?,
+                vec![
+                    LanguageFile::text("src/node-shims.d.ts", FileRole::Source, NODE_SHIMS),
+                    LanguageFile::source(invalid_types_file()),
+                ],
+            )
+            .map_err(ecma_generation_error)?,
+        );
+    }
+    LanguagePackage::new(groups, Vec::<DeclaredDependency>::new(), helpers)
+        .map_err(ecma_generation_error)
+}
+
+fn ecma_generation_error(error: impl std::fmt::Display) -> BackendError {
+    BackendError::Generation {
+        message: error.to_string(),
+    }
+}
+
+fn ecma_group(name: &str) -> Result<FileGroupId, BackendError> {
+    FileGroupId::parse(name).map_err(ecma_generation_error)
+}
+
+fn node_import_group() -> ImportGroup {
+    ImportGroup::new(10, "node-standard-library").expect("static import group is valid")
+}
+
+fn local_import_group() -> ImportGroup {
+    ImportGroup::new(20, "local-modules").expect("static import group is valid")
+}
+
+fn export_group() -> ImportGroup {
+    ImportGroup::new(30, "module-exports").expect("static import group is valid")
+}
+
+fn require_default(
+    file: &mut LanguageSourceFile<EcmaImport>,
+    group: ImportGroup,
+    module: &'static str,
+    name: &'static str,
+) {
+    file.require_import(group, EcmaImport::Default { module, name });
+}
+
+fn require_named(
+    file: &mut LanguageSourceFile<EcmaImport>,
+    module: &'static str,
+    name: &'static str,
+    type_only: bool,
+) {
+    file.require_import(
+        local_import_group(),
+        EcmaImport::Named {
+            module,
+            name,
+            type_only,
+        },
+    );
+}
+
+fn conformance_file(javascript: bool) -> LanguageSourceFile<EcmaImport> {
+    let path = if javascript {
+        "src/conformance.test.js"
+    } else {
+        "src/conformance.test.ts"
+    };
+    let mut file = LanguageSourceFile::new(path, FileRole::Conformance);
+    require_default(
+        &mut file,
+        node_import_group(),
+        "node:assert/strict",
+        "assert",
+    );
+    require_default(&mut file, node_import_group(), "node:test", "test");
+    for name in [
+        "checkedI32",
+        "checkedI64",
+        "listAppend",
+        "scalarLength",
+        "wrappingI32",
+        "wrappingI64",
+    ] {
+        require_named(&mut file, "./runtime.js", name, false);
+    }
+    file.set_body(CodeDocument::raw_text(RawText::new(if javascript {
+        JAVASCRIPT_CONFORMANCE_BODY
+    } else {
+        CONFORMANCE_BODY
+    })));
+    file
+}
+
+fn invalid_types_file() -> LanguageSourceFile<EcmaImport> {
+    let mut file = LanguageSourceFile::new("tests/invalid-types.ts", FileRole::NegativeTest);
+    require_named(&mut file, "../src/runtime.js", "PolyOption", true);
+    file.set_body(CodeDocument::raw_text(RawText::new(INVALID_TYPES_BODY)));
+    file
 }
 
 struct Generator<'a> {
@@ -167,7 +385,7 @@ impl<'a> Generator<'a> {
         Self { program, names }
     }
 
-    fn index(&self) -> Result<String, BackendError> {
+    fn index_file(&self) -> Result<LanguageSourceFile<EcmaImport>, BackendError> {
         let mut document = serde_json::to_value(self.program.document()).map_err(|error| {
             BackendError::Generation {
                 message: format!("cannot serialize checked IR: {error}"),
@@ -175,9 +393,19 @@ impl<'a> Generator<'a> {
         })?;
         stringify_wide_numbers(&mut document);
         let document = serde_json::to_string(&document).expect("checked document serializes");
-        let mut output = String::from(
-            "// Generated by PolyRust from checked IR v0.\nimport { Runtime, type PolyResult } from \"./runtime.js\";\nexport * from \"./runtime.js\";\n\n",
+        let mut file = LanguageSourceFile::new("src/index.ts", FileRole::Source);
+        file.set_preamble(CodeDocument::raw_text(RawText::new(
+            "// Generated by PolyRust from checked IR v0.",
+        )));
+        require_named(&mut file, "./runtime.js", "Runtime", false);
+        require_named(&mut file, "./runtime.js", "PolyResult", true);
+        file.require_import(
+            export_group(),
+            EcmaImport::ExportAll {
+                module: "./runtime.js",
+            },
         );
+        let mut output = String::new();
         output.push_str("const runtime = new Runtime(");
         output.push_str(&document);
         output.push_str(");\nconst castResult = <T>(value: PolyResult<unknown>): PolyResult<T> => value as PolyResult<T>;\n\n");
@@ -191,10 +419,11 @@ impl<'a> Generator<'a> {
         output.push_str("const TESTS: readonly any[] = ");
         output.push_str(&serde_json::to_string(&tests).expect("tests serialize"));
         output.push_str(";\n");
-        Ok(output)
+        file.set_body(CodeDocument::raw_text(RawText::new(output)));
+        Ok(file)
     }
 
-    fn javascript_index(&self) -> Result<String, BackendError> {
+    fn javascript_index_file(&self) -> Result<LanguageSourceFile<EcmaImport>, BackendError> {
         let mut document = serde_json::to_value(self.program.document()).map_err(|error| {
             BackendError::Generation {
                 message: format!("cannot serialize checked IR: {error}"),
@@ -202,11 +431,18 @@ impl<'a> Generator<'a> {
         })?;
         stringify_wide_numbers(&mut document);
         let document = serde_json::to_string(&document).expect("checked document serializes");
-        let mut output = String::from(
-            "// Generated by PolyRust from the TypeScript target implementation.\n\
-             import { Runtime } from \"./runtime.js\";\n\
-             export * from \"./runtime.js\";\n\n",
+        let mut file = LanguageSourceFile::new("src/index.js", FileRole::Source);
+        file.set_preamble(CodeDocument::raw_text(RawText::new(
+            "// Generated by PolyRust from the TypeScript target implementation.",
+        )));
+        require_named(&mut file, "./runtime.js", "Runtime", false);
+        file.require_import(
+            export_group(),
+            EcmaImport::ExportAll {
+                module: "./runtime.js",
+            },
         );
+        let mut output = String::new();
         output.push_str("const runtime = new Runtime(");
         output.push_str(&document);
         output.push_str(");\n\n");
@@ -244,7 +480,8 @@ impl<'a> Generator<'a> {
         output.push_str("const TESTS = ");
         output.push_str(&serde_json::to_string(&tests).expect("tests serialize"));
         output.push_str(";\n");
-        Ok(output)
+        file.set_body(CodeDocument::raw_text(RawText::new(output)));
+        Ok(file)
     }
 
     fn javascript_declaration(&self, output: &mut String, declaration: &Declaration) {
@@ -511,37 +748,35 @@ impl<'a> Generator<'a> {
         self.names.get(&id).map(String::as_str).unwrap_or("Unknown")
     }
 
-    fn tests(&self) -> String {
-        let mut output = String::from(
-            "import assert from \"node:assert/strict\";\nimport test from \"node:test\";\nimport { __invokeTest } from \"./index.js\";\n\n",
-        );
+    fn tests_file(&self, javascript: bool) -> LanguageSourceFile<EcmaImport> {
+        let path = if javascript {
+            "src/generated.test.js"
+        } else {
+            "src/generated.test.ts"
+        };
+        let mut file = LanguageSourceFile::new(path, FileRole::Test);
+        let mut output = String::new();
         let mut index = 0;
         for declaration in &self.program.module().declarations {
             if let Declaration::Test(test_declaration) = declaration {
+                if index == 0 {
+                    require_default(
+                        &mut file,
+                        node_import_group(),
+                        "node:assert/strict",
+                        "assert",
+                    );
+                    require_default(&mut file, node_import_group(), "node:test", "test");
+                    require_named(&mut file, "./index.js", "__invokeTest", false);
+                }
                 output.push_str(&format!("test({:?}, () => {{ const result = __invokeTest({index}); assert.equal(result.actual.ok, !result.expectsError); if (result.actual.ok) assert.deepEqual(result.actual.value, result.expected); }});\n", test_declaration.header.name));
                 index += 1;
             }
         }
-        output
-    }
-
-    fn javascript_tests(&self) -> String {
-        let mut output = String::from(
-            "import assert from \"node:assert/strict\";\n\
-             import test from \"node:test\";\n\
-             import { __invokeTest } from \"./index.js\";\n\n",
-        );
-        let mut index = 0;
-        for declaration in &self.program.module().declarations {
-            if let Declaration::Test(test_declaration) = declaration {
-                output.push_str(&format!(
-                    "test({:?}, () => {{ const result = __invokeTest({index}); assert.equal(result.actual.ok, !result.expectsError); if (result.actual.ok) assert.deepEqual(result.actual.value, result.expected); }});\n",
-                    test_declaration.header.name
-                ));
-                index += 1;
-            }
+        if !output.is_empty() {
+            file.set_body(CodeDocument::raw_text(RawText::new(output)));
         }
-        output
+        file
     }
 }
 
@@ -647,9 +882,9 @@ fn stringify_wide_numbers(value: &mut serde_json::Value) {
 const PACKAGE_JSON: &str = "{\n  \"name\": \"generated-polyrust-package\",\n  \"version\": \"0.1.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"typecheck\": \"tsc --noEmit\",\n    \"test\": \"tsc && node --test dist/*.test.js\"\n  }\n}\n";
 const JAVASCRIPT_PACKAGE_JSON: &str = "{\n  \"name\": \"generated-polyrust-javascript-package\",\n  \"version\": \"0.1.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"test\": \"node --test src/*.test.js\"\n  }\n}\n";
 const TSCONFIG: &str = "{\n  \"compilerOptions\": {\n    \"target\": \"ES2024\",\n    \"module\": \"NodeNext\",\n    \"moduleResolution\": \"NodeNext\",\n    \"strict\": true,\n    \"noImplicitAny\": true,\n    \"noUncheckedIndexedAccess\": true,\n    \"exactOptionalPropertyTypes\": true,\n    \"rootDir\": \"src\",\n    \"outDir\": \"dist\",\n    \"declaration\": true,\n    \"skipLibCheck\": true\n  },\n  \"include\": [\"src/**/*.ts\"],\n  \"exclude\": [\"tests\"]\n}\n";
-const CONFORMANCE: &str = "import assert from \"node:assert/strict\";\nimport test from \"node:test\";\nimport { checkedI32, checkedI64, listAppend, scalarLength, wrappingI32, wrappingI64 } from \"./runtime.js\";\n\ntest(\"20 semantic boundary vectors\", () => {\n  const astral = scalarLength(\"😀\");\n  const original: readonly number[] = [1];\n  const appended = listAppend(original, 2);\n  const vectors: readonly boolean[] = [\n    checkedI32(0).ok, checkedI32(2147483647).ok, checkedI32(-2147483648).ok, !checkedI32(2147483648).ok, !checkedI32(-2147483649).ok,\n    checkedI64(0n).ok, checkedI64(9223372036854775807n).ok, checkedI64(-9223372036854775808n).ok, !checkedI64(9223372036854775808n).ok, !checkedI64(-9223372036854775809n).ok,\n    wrappingI32(2147483648) === -2147483648, wrappingI32(-2147483649) === 2147483647, wrappingI64(9223372036854775808n) === -9223372036854775808n, wrappingI64(-9223372036854775809n) === 9223372036854775807n,\n    scalarLength(\"a\").ok, astral.ok && astral.value === 1, !scalarLength(\"\\ud800\").ok, appended.length === 2, appended !== original, Object.is(-0, -0),\n  ];\n  assert.equal(vectors.length, 20); assert.ok(vectors.every(Boolean));\n});\n";
-const JAVASCRIPT_CONFORMANCE: &str = "import assert from \"node:assert/strict\";\nimport test from \"node:test\";\nimport { checkedI32, checkedI64, listAppend, scalarLength, wrappingI32, wrappingI64 } from \"./runtime.js\";\n\ntest(\"20 semantic boundary vectors\", () => {\n  const astral = scalarLength(\"😀\");\n  const original = [1];\n  const appended = listAppend(original, 2);\n  const vectors = [\n    checkedI32(0).ok, checkedI32(2147483647).ok, checkedI32(-2147483648).ok, !checkedI32(2147483648).ok, !checkedI32(-2147483649).ok,\n    checkedI64(0n).ok, checkedI64(9223372036854775807n).ok, checkedI64(-9223372036854775808n).ok, !checkedI64(9223372036854775808n).ok, !checkedI64(-9223372036854775809n).ok,\n    wrappingI32(2147483648) === -2147483648, wrappingI32(-2147483649) === 2147483647, wrappingI64(9223372036854775808n) === -9223372036854775808n, wrappingI64(-9223372036854775809n) === 9223372036854775807n,\n    scalarLength(\"a\").ok, astral.ok && astral.value === 1, !scalarLength(\"\\ud800\").ok, appended.length === 2, appended !== original, Object.is(-0, -0),\n  ];\n  assert.equal(vectors.length, 20); assert.ok(vectors.every(Boolean));\n});\n";
-const INVALID_TYPES: &str = "import type { PolyOption } from \"../src/runtime.js\";\n// @ts-expect-error invalid option tag must be rejected\nconst invalid: PolyOption<number> = { tag: \"missing\" };\nvoid invalid;\n";
+const CONFORMANCE_BODY: &str = "test(\"20 semantic boundary vectors\", () => {\n  const astral = scalarLength(\"😀\");\n  const original: readonly number[] = [1];\n  const appended = listAppend(original, 2);\n  const vectors: readonly boolean[] = [\n    checkedI32(0).ok, checkedI32(2147483647).ok, checkedI32(-2147483648).ok, !checkedI32(2147483648).ok, !checkedI32(-2147483649).ok,\n    checkedI64(0n).ok, checkedI64(9223372036854775807n).ok, checkedI64(-9223372036854775808n).ok, !checkedI64(9223372036854775808n).ok, !checkedI64(-9223372036854775809n).ok,\n    wrappingI32(2147483648) === -2147483648, wrappingI32(-2147483649) === 2147483647, wrappingI64(9223372036854775808n) === -9223372036854775808n, wrappingI64(-9223372036854775809n) === 9223372036854775807n,\n    scalarLength(\"a\").ok, astral.ok && astral.value === 1, !scalarLength(\"\\ud800\").ok, appended.length === 2, appended !== original, Object.is(-0, -0),\n  ];\n  assert.equal(vectors.length, 20); assert.ok(vectors.every(Boolean));\n});\n";
+const JAVASCRIPT_CONFORMANCE_BODY: &str = "test(\"20 semantic boundary vectors\", () => {\n  const astral = scalarLength(\"😀\");\n  const original = [1];\n  const appended = listAppend(original, 2);\n  const vectors = [\n    checkedI32(0).ok, checkedI32(2147483647).ok, checkedI32(-2147483648).ok, !checkedI32(2147483648).ok, !checkedI32(-2147483649).ok,\n    checkedI64(0n).ok, checkedI64(9223372036854775807n).ok, checkedI64(-9223372036854775808n).ok, !checkedI64(9223372036854775808n).ok, !checkedI64(-9223372036854775809n).ok,\n    wrappingI32(2147483648) === -2147483648, wrappingI32(-2147483649) === 2147483647, wrappingI64(9223372036854775808n) === -9223372036854775808n, wrappingI64(-9223372036854775809n) === 9223372036854775807n,\n    scalarLength(\"a\").ok, astral.ok && astral.value === 1, !scalarLength(\"\\ud800\").ok, appended.length === 2, appended !== original, Object.is(-0, -0),\n  ];\n  assert.equal(vectors.length, 20); assert.ok(vectors.every(Boolean));\n});\n";
+const INVALID_TYPES_BODY: &str = "// @ts-expect-error invalid option tag must be rejected\nconst invalid: PolyOption<number> = { tag: \"missing\" };\nvoid invalid;\n";
 const NODE_SHIMS: &str = "declare module \"node:assert/strict\" { const assert: { equal(actual: unknown, expected: unknown): void; deepEqual(actual: unknown, expected: unknown): void; ok(value: unknown): void }; export default assert; }\ndeclare module \"node:test\" { const test: (name: string, body: () => void) => void; export default test; }\n";
 
 #[cfg(test)]
@@ -704,11 +939,53 @@ mod tests {
                 .any(|file| file.path() == "src/runtime.js")
         );
     }
+    #[test]
+    fn ecmascript_imports_are_merged_and_omitted_per_file() {
+        let typescript = TypeScriptBackend
+            .generate(&fixture(), &BackendOptions::default())
+            .unwrap();
+        let index = generated_text(&typescript, "src/index.ts");
+        assert_eq!(
+            index
+                .matches("import { Runtime, type PolyResult } from \"./runtime.js\";")
+                .count(),
+            1
+        );
+        let conformance = generated_text(&typescript, "src/conformance.test.ts");
+        assert_eq!(conformance.matches("from \"./runtime.js\";").count(), 1);
+
+        let empty_typescript = TypeScriptBackend
+            .generate(&empty_fixture(), &BackendOptions::default())
+            .unwrap();
+        assert!(!generated_text(&empty_typescript, "src/generated.test.ts").contains("import "));
+        let empty_javascript = JavaScriptBackend
+            .generate(&empty_fixture(), &BackendOptions::default())
+            .unwrap();
+        assert!(!generated_text(&empty_javascript, "src/generated.test.js").contains("import "));
+    }
+
+    fn generated_text<'a>(manifest: &'a OutputManifest, path: &str) -> &'a str {
+        match manifest.file(path).unwrap().contents() {
+            portable_codegen::OutputContents::Text(text) => text,
+            portable_codegen::OutputContents::Bytes(_) => panic!("ECMAScript source must be text"),
+        }
+    }
+
     fn fixture() -> CheckedProgram {
         let document = portable_ir::v0::from_json(include_bytes!(
             "../../build/testdata/registration.poly.json"
         ))
         .unwrap();
         portable_check::v0::check_program(document).unwrap()
+    }
+
+    fn empty_fixture() -> CheckedProgram {
+        portable_check::v0::check_program(
+            portable_ir::v0::from_json(
+                br#"{"ir_version":"0.1.0","module":{"name":"empty","declarations":[]},"metadata":{}}"#,
+            )
+            .unwrap(),
+        )
+        .unwrap()
     }
 }

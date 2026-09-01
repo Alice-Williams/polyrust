@@ -101,3 +101,17 @@ translation/rendering path after their migration checkpoint.
   from language IR. A program with portable tests requires `testing`, while an
   empty checked program's generated test file has no import section.
 - Focused Rust and Go unit/native gates pass after the migrations.
+
+## TypeScript and JavaScript checkpoint evidence
+
+- TypeScript and JavaScript share an extensible ECMAScript import IR while
+  producing separate language packages. Default, named, type-only, and
+  re-export requirements are sorted and merged by module by a syntax-only
+  renderer.
+- Index modules, portable tests, conformance tests, and the TypeScript negative
+  type test contain import-free bodies. Their requirements live on the owning
+  language source files; runtime assets require no imports.
+- Both empty-program generated test files omit imports entirely. Feature-bearing
+  index and conformance files merge each local module to one import statement.
+- TypeScript strict typecheck/native tests, JavaScript native tests, runtime
+  derivation, and focused backend tests pass.
