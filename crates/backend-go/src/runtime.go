@@ -73,6 +73,13 @@ func nodeID(value map[string]any) int64 {
 	return id
 }
 func number(value any) int64 { result, _ := value.(json.Number).Int64(); return result }
+func unsignedNumber(value any) uint64 {
+	result, err := strconv.ParseUint(value.(json.Number).String(), 10, 64)
+	if err != nil {
+		panic(err)
+	}
+	return result
+}
 
 func (r *runtime) invoke(id int64, arguments []any) PolyResult[any] {
 	declaration := r.declarations[id]
@@ -120,7 +127,7 @@ func (r *runtime) value(value map[string]any) any {
 	case "i64":
 		return number(data)
 	case "f64":
-		return math.Float64frombits(uint64(number(data)))
+		return math.Float64frombits(unsignedNumber(data))
 	case "bytes":
 		raw := data.([]any)
 		items := make([]byte, len(raw))
@@ -348,6 +355,8 @@ func (r *runtime) intrinsic(name string, values []any) PolyResult[any] {
 		return polyOk(any(strings.ReplaceAll(a.(string), b.(string), c.(string))))
 	case "string_replace_many":
 		return polyOk(any(replaceManyLiteral(a.(string), values)))
+	case "string_truncate_utf8_bytes":
+		return polyOk(any(truncateUtf8Bytes(a.(string), b.(float64))))
 	case "string_trim_start":
 		return polyOk(any(strings.TrimLeft(a.(string), b.(string))))
 	case "string_trim_end":
@@ -482,6 +491,19 @@ func replaceManyLiteral(source string, values []any) string {
 		output.WriteString(remaining[:width])
 		offset += width
 	}
+}
+func truncateUtf8Bytes(source string, budget float64) string {
+	for offset, character := range source {
+		end := offset + utf8.RuneLen(character)
+		consumed := float64(end)
+		if consumed == budget {
+			return source[:end]
+		}
+		if consumed > budget {
+			return source[:offset]
+		}
+	}
+	return source
 }
 func checked32(value int64) PolyResult[any] {
 	if value < math.MinInt32 || value > math.MaxInt32 {

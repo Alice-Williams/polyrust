@@ -81,6 +81,17 @@ def replace_many_literal(source: str, values: tuple[Any, ...]) -> str:
     return "".join(output)
 
 
+def truncate_utf8_bytes(source: str, budget: float) -> str:
+    consumed = 0
+    for offset, character in enumerate(source):
+        consumed += len(character.encode("utf-8"))
+        if consumed == budget:
+            return source[: offset + 1]
+        if consumed > budget:
+            return source[:offset]
+    return source
+
+
 class Runtime:
     def __init__(self, document: dict[str, Any]) -> None:
         self.document = document
@@ -250,6 +261,7 @@ class Runtime:
         if name == "string_ends_with": return ok(a.endswith(b))
         if name == "string_replace_all": return ok(a.replace(b, c))
         if name == "string_replace_many": return ok(replace_many_literal(a, values))
+        if name == "string_truncate_utf8_bytes": return ok(truncate_utf8_bytes(a, b))
         if name == "string_trim_start": return ok(a.lstrip(b))
         if name == "string_trim_end": return ok(a.rstrip(b))
         if name in {"bytes_concat", "list_concat"}: return ok(a + b)

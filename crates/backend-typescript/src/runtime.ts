@@ -76,6 +76,19 @@ export const replaceManyLiteral = (
   }
   return output;
 };
+export const truncateUtf8Bytes = (source: string, budget: number): string => {
+  let bytes = 0;
+  let end = 0;
+  for (const scalar of source) {
+    const codePoint = scalar.codePointAt(0)!;
+    const width = codePoint <= 0x7f ? 1 : codePoint <= 0x7ff ? 2 : codePoint <= 0xffff ? 3 : 4;
+    bytes += width;
+    end += scalar.length;
+    if (bytes === budget) return source.slice(0, end);
+    if (bytes > budget) return source.slice(0, end - scalar.length);
+  }
+  return source;
+};
 export const trimStartScalars = (source: string, characters: string): string => {
   const scalars = Array.from(source);
   const trim = new Set(Array.from(characters));
@@ -324,6 +337,7 @@ export class Runtime {
         }
         return ok(replaceManyLiteral(a, mappings));
       }
+      case "string_truncate_utf8_bytes": return ok(truncateUtf8Bytes(a, b));
       case "string_trim_start": return ok(trimStartScalars(a, b));
       case "string_trim_end": return ok(trimEndScalars(a, b));
       case "bytes_concat": case "list_concat": return ok(listConcat(a, b));

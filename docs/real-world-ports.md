@@ -101,6 +101,23 @@ Only one port may be in progress. A port is complete when:
   native generated-package gates, deterministic regeneration, and the complete
   repository release gate pass.
 
+### [truncate-utf8-bytes 1.0.2](ports/truncate-utf8-bytes.md)
+
+- Upstream: [parshap/truncate-utf8-bytes](https://github.com/parshap/truncate-utf8-bytes)
+- Implementation/license revision: `4212839ea184e74fb81f1e4e633e1db794ebe4f4`
+- Type declaration revision: `451dc8fc19383bc12af59522020e571957f1684e`
+- License: MIT (dual-licensed upstream)
+- Typed API: `truncate(string: string, byteLength: number): string`
+- Selection evidence: 8,395,462 npm downloads for the measured week ending
+  29 August 2026.
+- Required PolyRust gap: Unicode-scalar-safe truncation by a UTF-8 byte budget,
+  retaining fractional, infinity, and NaN behavior from the typed JavaScript
+  `number` input.
+- Completion: M25; 30 portable vectors, 25,303 differential comparisons over
+  486 strings including the complete official corpus, eight native generated
+  package gates, deterministic regeneration, immutable provenance checks, and
+  the complete repository release gate pass.
+
 ## Deferred candidate
 
 `juliangruber/balanced-match` is MIT licensed and attractive for a later parser

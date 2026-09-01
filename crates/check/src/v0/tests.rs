@@ -1361,7 +1361,55 @@ fn string_replace_many_rejects_invalid_pair_shapes_and_operand_types() {
     }
 }
 
-const ALL_INTRINSICS: [Intrinsic; 60] = [
+#[test]
+fn string_truncate_utf8_bytes_rejects_invalid_operand_shapes_and_types() {
+    let cases = [
+        vec![Value::String("source".into())],
+        vec![Value::String("source".into()), Value::I64(2)],
+        vec![
+            Value::F64(F64Bits::from_f64(2.0)),
+            Value::String("source".into()),
+        ],
+        vec![
+            Value::String("source".into()),
+            Value::F64(F64Bits::from_f64(2.0)),
+            Value::Bool(true),
+        ],
+    ];
+    for (index, values) in cases.into_iter().enumerate() {
+        let mut factory = Factory::new();
+        let arguments = values
+            .into_iter()
+            .map(|value| factory.literal(value))
+            .collect();
+        let expression = Expression::Intrinsic {
+            node: factory.node(),
+            operation: Intrinsic::StringTruncateUtf8Bytes,
+            arguments,
+        };
+        let body = factory.block(expression);
+        let declaration = Declaration::Function(FunctionDeclaration {
+            header: factory.declaration(&format!("invalid_truncate_utf8_{index}")),
+            parameters: vec![],
+            return_type: TypeRef::String,
+            body,
+        });
+        let diagnostics = check_program(Document::new(
+            IrVersion::CURRENT,
+            Module {
+                name: format!("invalid_truncate_utf8_{index}"),
+                declarations: vec![declaration],
+            },
+        ))
+        .expect_err("invalid StringTruncateUtf8Bytes arguments must be diagnosed");
+        assert!(
+            codes(&diagnostics).contains(&DiagnosticCode::InvalidInvocation),
+            "case {index}: {diagnostics:#?}"
+        );
+    }
+}
+
+const ALL_INTRINSICS: [Intrinsic; 61] = [
     Intrinsic::BoolNot,
     Intrinsic::BoolAnd,
     Intrinsic::BoolOr,
@@ -1402,6 +1450,7 @@ const ALL_INTRINSICS: [Intrinsic; 60] = [
     Intrinsic::StringEndsWith,
     Intrinsic::StringReplaceAll,
     Intrinsic::StringReplaceMany,
+    Intrinsic::StringTruncateUtf8Bytes,
     Intrinsic::StringTrimStart,
     Intrinsic::StringTrimEnd,
     Intrinsic::BytesConcat,
@@ -1557,6 +1606,11 @@ fn intrinsic_cases() -> Vec<(Intrinsic, Vec<TypeRef>, TypeRef)> {
                 TypeRef::String,
                 TypeRef::String,
             ],
+            TypeRef::String,
+        ),
+        (
+            StringTruncateUtf8Bytes,
+            vec![TypeRef::String, TypeRef::F64],
             TypeRef::String,
         ),
         (

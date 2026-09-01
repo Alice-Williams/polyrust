@@ -981,6 +981,24 @@ impl<'a> Session<'a> {
                 }
                 Ok(Value::String(output))
             }
+            StringTruncateUtf8Bytes => {
+                let source = string(arguments.first(), self)?;
+                let budget = match arguments.get(1) {
+                    Some(Value::F64(value)) => value.to_f64(),
+                    _ => return Err(self.invariant("checked UTF-8 budget operand is not f64")),
+                };
+                for (offset, character) in source.char_indices() {
+                    let end = offset + character.len_utf8();
+                    let consumed = end as f64;
+                    if consumed == budget {
+                        return Ok(Value::String(source[..end].to_owned()));
+                    }
+                    if consumed > budget {
+                        return Ok(Value::String(source[..offset].to_owned()));
+                    }
+                }
+                Ok(Value::String(source.to_owned()))
+            }
             StringTrimStart => {
                 let source = string(arguments.first(), self)?;
                 let characters = string(arguments.get(1), self)?;
@@ -1640,6 +1658,38 @@ mod tests {
                     Value::String("-".into()),
                 ],
                 Ok(Value::String("X-🦀-".into())),
+            ),
+            (
+                StringTruncateUtf8Bytes,
+                vec![
+                    Value::String("a☃🦀".into()),
+                    Value::F64(F64Bits::from_f64(4.0)),
+                ],
+                Ok(Value::String("a☃".into())),
+            ),
+            (
+                StringTruncateUtf8Bytes,
+                vec![
+                    Value::String("a☃".into()),
+                    Value::F64(F64Bits::from_f64(3.5)),
+                ],
+                Ok(Value::String("a".into())),
+            ),
+            (
+                StringTruncateUtf8Bytes,
+                vec![
+                    Value::String("a☃".into()),
+                    Value::F64(F64Bits::from_f64(f64::NAN)),
+                ],
+                Ok(Value::String("a☃".into())),
+            ),
+            (
+                StringTruncateUtf8Bytes,
+                vec![
+                    Value::String("a☃".into()),
+                    Value::F64(F64Bits::from_f64(f64::NEG_INFINITY)),
+                ],
+                Ok(Value::String(String::new())),
             ),
             (
                 StringTrimStart,

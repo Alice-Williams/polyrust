@@ -47,6 +47,7 @@ pub enum Intrinsic {
     StringEndsWith,
     StringReplaceAll,
     StringReplaceMany,
+    StringTruncateUtf8Bytes,
     StringTrimStart,
     StringTrimEnd,
     BytesConcat,

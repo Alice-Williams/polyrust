@@ -1139,6 +1139,9 @@ impl Generator<'_> {
                     .join(", ");
                 format!("_poly_string_replace_many({a}, &[{mappings}])")
             }
+            Intrinsic::StringTruncateUtf8Bytes => {
+                format!("_poly_string_truncate_utf8_bytes({a}, {b})")
+            }
             Intrinsic::StringTrimStart => {
                 format!(
                     "Ok({a}.trim_start_matches(|character| {b}.contains(character)).to_owned())"
@@ -1247,6 +1250,7 @@ impl Generator<'_> {
                     | Intrinsic::StringConcat
                     | Intrinsic::StringReplaceAll
                     | Intrinsic::StringReplaceMany
+                    | Intrinsic::StringTruncateUtf8Bytes
                     | Intrinsic::StringStripPrefix
                     | Intrinsic::StringTrimStart
                     | Intrinsic::StringTrimEnd => Some(TypeRef::String),
@@ -1589,6 +1593,24 @@ pub fn _poly_string_replace_many(
         }
     }
     Ok(output)
+}
+
+#[doc(hidden)]
+pub fn _poly_string_truncate_utf8_bytes(
+    source: String,
+    budget: f64,
+) -> PolyResult<String> {
+    for (offset, character) in source.char_indices() {
+        let end = offset + character.len_utf8();
+        let consumed = end as f64;
+        if consumed == budget {
+            return Ok(source[..end].to_owned());
+        }
+        if consumed > budget {
+            return Ok(source[..offset].to_owned());
+        }
+    }
+    Ok(source)
 }
 
 #[doc(hidden)]

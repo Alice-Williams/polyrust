@@ -92,3 +92,7 @@ contract as every other target.
 ### Phase 8 — Language translation architecture
 
 - [M24 — Language package IR and dynamic imports](milestones/M24-language-package-ir.md) — complete
+
+### Phase 6 continuation — Real-world compatibility
+
+- [M25 — truncate-utf8-bytes equivalence port](milestones/M25-truncate-utf8-bytes.md) — complete

@@ -383,6 +383,8 @@ public final class Runtime {
       case "string_ends_with": return ok(((String) a).endsWith((String) b));
       case "string_replace_all": return ok(((String) a).replace((String) b, (String) c));
       case "string_replace_many": return ok(replaceManyLiteral((String) a, values));
+      case "string_truncate_utf8_bytes":
+        return ok(truncateUtf8Bytes((String) a, (Double) b));
       case "string_trim_start": return ok(trimStartScalars((String) a, (String) b));
       case "string_trim_end": return ok(trimEndScalars((String) a, (String) b));
       case "bytes_concat":
@@ -784,6 +786,21 @@ public final class Runtime {
       output.append(remaining, 0, width);
       offset += width;
     }
+  }
+
+  private static String truncateUtf8Bytes(String source, double budget) {
+    int consumed = 0;
+    int offset = 0;
+    while (offset < source.length()) {
+      int codePoint = source.codePointAt(offset);
+      int end = offset + Character.charCount(codePoint);
+      consumed +=
+          codePoint <= 0x7f ? 1 : codePoint <= 0x7ff ? 2 : codePoint <= 0xffff ? 3 : 4;
+      if (consumed == budget) return source.substring(0, end);
+      if (consumed > budget) return source.substring(0, offset);
+      offset = end;
+    }
+    return source;
   }
 
   private static String trimStartScalars(String source, String characters) {

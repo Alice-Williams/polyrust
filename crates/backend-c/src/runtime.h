@@ -96,6 +96,10 @@ poly_error_code poly_string_replace_many(poly_allocator allocator,
                                          const poly_string_view *replacements,
                                          size_t mapping_count,
                                          poly_string *output);
+poly_error_code poly_string_truncate_utf8_bytes(poly_allocator allocator,
+                                                poly_string_view source,
+                                                double budget,
+                                                poly_string *output);
 poly_error_code poly_string_trim_start(poly_allocator allocator,
                                        poly_string_view source,
                                        poly_string_view characters,

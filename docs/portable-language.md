@@ -198,7 +198,7 @@ specified behavior.
 | Integer bitwise | `bit_not`, `bit_and`, `bit_or`, `bit_xor` | Exact-width bit pattern |
 | Integer shifts | `shift_left_checked`, `shift_right_checked` | Invalid counts return structured error; signed right shift is specified |
 | Float | `neg`, `add`, `sub`, `mul`, `div`, `rem_trunc` | IEEE 754 binary64, including NaN/infinities/negative zero; remainder uses truncating quotient |
-| String | `concat`, `scalar_len`, `is_empty`, `contains`, `starts_with`, `ends_with`, `replace_all_literal`, `trim_start_set`, `trim_end_set` | Unicode scalar semantics; `scalar_len` returns `I64`; replacement is global, left-to-right, non-overlapping, and literal; trim operands are scalar sets |
+| String | `concat`, `scalar_len`, `is_empty`, `contains`, `starts_with`, `ends_with`, `replace_all_literal`, `truncate_utf8_bytes`, `trim_start_set`, `trim_end_set` | Unicode scalar semantics; `scalar_len` returns `I64`; replacement is global, left-to-right, non-overlapping, and literal; UTF-8 truncation accepts an explicit `F64` byte budget and never splits a scalar; trim operands are scalar sets |
 | Bytes | `concat`, `len`, `is_empty` | Immutable octet sequence; `len` returns `I64`; indexing waits for unsigned-byte design |
 | List | `len`, `is_empty`, `get_checked`, `append`, `concat`, `contains` | Immutable; length/index use `I64`, `get_checked` returns `Option<T>`, and updates return a new list |
 | Option | `some`, `none`, `is_some`, `is_none`, `unwrap_or`, exhaustive match | No implicit null |

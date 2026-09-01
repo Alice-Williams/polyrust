@@ -818,6 +818,7 @@ class runtime {
     if (name == "string_ends_with") return succeed(string(a).ends_with(string(b)));
     if (name == "string_replace_all") return succeed(replace_all(string(a), string(b), string(c)));
     if (name == "string_replace_many") return succeed(replace_many(values));
+    if (name == "string_truncate_utf8_bytes") return succeed(truncate_utf8_bytes(string(a), std::any_cast<double>(b)));
     if (name == "string_trim_start") return succeed(trim_scalars(string(a), string(b), true));
     if (name == "string_trim_end") return succeed(trim_scalars(string(a), string(b), false));
     if (name == "bytes_concat") {
@@ -934,6 +935,17 @@ class runtime {
       result.append(source, offset, width);
       offset += width;
     }
+  }
+
+  static std::string truncate_utf8_bytes(const std::string& source, double budget) {
+    for (std::size_t offset = 0; offset < source.size();) {
+      const std::size_t end = offset + utf8_scalar_width(static_cast<std::uint8_t>(source[offset]));
+      const double consumed = static_cast<double>(end);
+      if (consumed == budget) return source.substr(0, end);
+      if (consumed > budget) return source.substr(0, offset);
+      offset = end;
+    }
+    return source;
   }
 
   static std::vector<std::string_view> scalars(std::string_view value) {

@@ -39,6 +39,8 @@ int main(void) {
   static const uint8_t source[] = {'a', '-', 'b', '-', 'c'};
   static const uint8_t needle[] = {'-'};
   static const uint8_t replacement[] = {'/', '/'};
+  static const uint8_t truncate_source[] = {
+      'a', UINT8_C(0xe2), UINT8_C(0x98), UINT8_C(0x83)};
   static const uint8_t many_source[] = {'&', 'a', 'm', 'p', ';', 'l', 't', ';',
                                         '&', 'l', 't', ';'};
   static const uint8_t amp[] = {'&', 'a', 'm', 'p', ';'};
@@ -56,6 +58,8 @@ int main(void) {
   poly_string replaced = {0};
   poly_string replaced_many = {0};
   poly_string failed_many = {0};
+  poly_string truncated = {0};
+  poly_string failed_truncate = {0};
   size_t scalars = 0U;
   failing_context context = {0};
   poly_allocator failing = {&context, failing_allocate, failing_reallocate,
@@ -102,6 +106,23 @@ int main(void) {
       failed_many.capacity != 0U) {
     return 7;
   }
+  if (poly_string_truncate_utf8_bytes(
+          allocator,
+          (poly_string_view){truncate_source, sizeof(truncate_source)}, 2.0,
+          &truncated) != POLY_OK ||
+      truncated.length != 1U || memcmp(truncated.data, "a", 1U) != 0) {
+    return 8;
+  }
+  context.calls = 0U;
+  context.fail_at = 1U;
+  if (poly_string_truncate_utf8_bytes(
+          failing,
+          (poly_string_view){truncate_source, sizeof(truncate_source)}, 4.0,
+          &failed_truncate) != POLY_ALLOCATION_FAILED ||
+      failed_truncate.data != NULL || failed_truncate.length != 0U ||
+      failed_truncate.capacity != 0U) {
+    return 9;
+  }
   context.calls = 0U;
   context.fail_at = 1U;
   if (poly_string_clone(failing, (poly_string_view){source, sizeof(source)},
@@ -115,12 +136,17 @@ int main(void) {
                          (poly_string_view){invalid, sizeof(invalid)},
                          (poly_string_view){source, sizeof(source)},
                          &(poly_string){0}) != POLY_INVALID_UTF8 ||
+      poly_string_truncate_utf8_bytes(
+          allocator, (poly_string_view){invalid, sizeof(invalid)}, 1.0,
+          &(poly_string){0}) != POLY_INVALID_UTF8 ||
       poly_utf8_valid((poly_string_view){NULL, 1U}, NULL)) {
     return 5;
   }
   poly_string_drop(&replaced);
   poly_string_drop(&replaced_many);
   poly_string_drop(&failed_many);
+  poly_string_drop(&truncated);
+  poly_string_drop(&failed_truncate);
   poly_string_drop(&clone);
   poly_string_drop(&first);
   poly_string_drop(&first);

@@ -177,6 +177,7 @@ impl<'a> Generator<'a> {
                         | Intrinsic::StringEndsWith
                         | Intrinsic::StringReplaceAll
                         | Intrinsic::StringReplaceMany
+                        | Intrinsic::StringTruncateUtf8Bytes
                         | Intrinsic::StringTrimStart
                         | Intrinsic::StringTrimEnd
                 ) {
@@ -1525,6 +1526,7 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
             | Intrinsic::StringStripPrefix
             | Intrinsic::StringReplaceAll
             | Intrinsic::StringReplaceMany
+            | Intrinsic::StringTruncateUtf8Bytes
             | Intrinsic::StringTrimStart
             | Intrinsic::StringTrimEnd => {
                 let temporary = self.temporary(|name| format!("poly_string {name} = {{0}};"));
@@ -1567,6 +1569,11 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                             value(0)
                         )
                     }
+                    Intrinsic::StringTruncateUtf8Bytes => format!(
+                        "poly_string_truncate_utf8_bytes(allocator, {}, {}, &{temporary})",
+                        value(0),
+                        value(1)
+                    ),
                     Intrinsic::StringTrimStart => format!(
                         "poly_string_trim_start(allocator, {}, {}, &{temporary})",
                         value(0),
@@ -1807,6 +1814,9 @@ impl Generator<'_> {
             (Value::Bool(value), TypeRef::Bool) => Ok(value.to_string()),
             (Value::I32(value), TypeRef::I32) => Ok(i32_literal(*value)),
             (Value::I64(value), TypeRef::I64) => Ok(i64_literal(*value)),
+            (Value::F64(value), TypeRef::F64) => {
+                Ok(format!("poly_f64_from_bits(UINT64_C(0x{:016x}))", value.0))
+            }
             (
                 Value::Record {
                     declaration,

@@ -523,6 +523,42 @@ poly_error_code poly_string_replace_many(poly_allocator allocator,
   return POLY_OK;
 }
 
+poly_error_code poly_string_truncate_utf8_bytes(poly_allocator allocator,
+                                                poly_string_view source,
+                                                double budget,
+                                                poly_string *output) {
+  size_t offset = 0U;
+  size_t prefix_length = source.length;
+  if (output == NULL) {
+    return POLY_INVARIANT_VIOLATION;
+  }
+  *output = (poly_string){0};
+  if (!poly_utf8_valid(source, NULL)) {
+    return POLY_INVALID_UTF8;
+  }
+  while (offset < source.length) {
+    size_t width = 0U;
+    size_t end;
+    double consumed;
+    (void)valid_scalar(source.data + offset, source.length - offset, &width);
+    end = offset + width;
+    consumed = (double)end;
+    if (consumed == budget) {
+      prefix_length = end;
+      break;
+    }
+    if (consumed > budget) {
+      prefix_length = offset;
+      break;
+    }
+    offset = end;
+  }
+  return poly_string_clone(
+      allocator,
+      (poly_string_view){source.data, prefix_length},
+      output);
+}
+
 static bool scalar_in(poly_string_view characters, const uint8_t *scalar,
                       size_t width) {
   size_t offset = 0U;

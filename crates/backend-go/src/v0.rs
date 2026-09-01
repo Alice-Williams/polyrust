@@ -175,6 +175,7 @@ fn go_runtime_file() -> LanguageSourceFile<GoImport> {
         "encoding/binary",
         "encoding/json",
         "math",
+        "strconv",
         "strings",
         "unicode/utf8",
     ] {
@@ -295,9 +296,25 @@ impl<'a> Generator<'a> {
         )));
         let mut output = String::new();
         let mut has_tests = false;
+        let mut requires_math = false;
         for declaration in &self.program.module().declarations {
             if let Declaration::Test(test) = declaration {
                 has_tests = true;
+                requires_math |= match &test.invocation {
+                    TestInvocation::Function { arguments, .. } => {
+                        arguments.iter().any(typed_value_uses_f64)
+                    }
+                    TestInvocation::Method {
+                        receiver,
+                        arguments,
+                        ..
+                    } => {
+                        typed_value_uses_f64(receiver) || arguments.iter().any(typed_value_uses_f64)
+                    }
+                };
+                if let ExpectedOutcome::Value(expected) = &test.expected {
+                    requires_math |= typed_value_uses_f64(expected);
+                }
                 output.push_str(&format!(
                     "func Test{}(t *testing.T) {{\n",
                     exported(&test.header.name)
@@ -337,6 +354,9 @@ impl<'a> Generator<'a> {
         }
         if has_tests {
             file.require_import(go_import_group(), GoImport("testing"));
+            if requires_math {
+                file.require_import(go_import_group(), GoImport("math"));
+            }
             file.set_body(CodeDocument::raw_text(RawText::new(output)));
         }
         file
@@ -369,6 +389,9 @@ impl<'a> Generator<'a> {
             (Value::Bool(value), _) => value.to_string(),
             (Value::I32(value), _) => format!("int32({value})"),
             (Value::I64(value), _) => format!("int64({value})"),
+            (Value::F64(value), _) => {
+                format!("math.Float64frombits(0x{:016x})", value.0)
+            }
             (Value::String(value), _) => go_string(value),
             (
                 Value::Record {
@@ -410,6 +433,29 @@ impl<'a> Generator<'a> {
             }
             _ => "nil".into(),
         }
+    }
+}
+
+fn typed_value_uses_f64(value: &TypedValue) -> bool {
+    value_uses_f64(&value.value)
+}
+
+fn value_uses_f64(value: &Value) -> bool {
+    match value {
+        Value::F64(_) => true,
+        Value::List(values) => values.iter().any(value_uses_f64),
+        Value::Some(value) | Value::Ok(value) | Value::Err(value) => value_uses_f64(value),
+        Value::Record { fields, .. } | Value::Enum { fields, .. } => {
+            fields.iter().any(|field| value_uses_f64(&field.value))
+        }
+        Value::Unit
+        | Value::Bool(_)
+        | Value::I32(_)
+        | Value::I64(_)
+        | Value::Char(_)
+        | Value::String(_)
+        | Value::Bytes(_)
+        | Value::None => false,
     }
 }
 

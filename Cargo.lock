@@ -307,6 +307,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "polyrust-truncate-utf8-bytes-example"
+version = "0.1.0"
+dependencies = [
+ "polyrust-backend-c",
+ "polyrust-backend-cpp",
+ "polyrust-backend-go",
+ "polyrust-backend-java",
+ "polyrust-backend-python",
+ "polyrust-backend-rust",
+ "polyrust-backend-typescript",
+ "polyrust-build",
+ "polyrust-check",
+ "polyrust-codegen",
+ "polyrust-eval",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
