@@ -19,7 +19,7 @@ not an accepted exception.
 | Python | Pass: validated future/module/from IR; renderer alone spells imports | Pass: `PythonCode` composes types, values, declarations, and portable tests | Pass: exact common and optional F64 helper closure | Pass: every generated Python source role uses a source file | Pass: dependency repair walks are deleted | **Pass** |
 | Go | Pass: validated path IR; renderer alone spells `import` | Pass: `GoCode` composes types, values, declarations, and portable tests | Pass: exact common/integer/F64/bytes/text helper roots | Pass: every generated Go source role uses a source file | Pass: F64 values own `math`; the nested-value repair scan is deleted | **Pass** |
 | Java | Pass: validated kind/name IR; renderer alone spells `import` | Pass: nested type and declaration `JavaCode` fragments own imports | Pass: checked-program roots resolve ordered common, numeric, and UTF-8 helper closures | Pass: every generated Java source role uses a source file | Pass: source and runtime dependencies originate in the fragment that emits dependent syntax | **Pass** |
-| C++ | Pass: structured system/local includes | Fail: declarations build file-sized strings | Fail: runtime has a fixed 17-header inventory | Pass: generated C++ code uses source files | Fail: header declarations/capabilities are rescanned for includes | **Fail** |
+| C++ | Pass: validated system/local include IR; renderer alone spells directives | Pass: `CppCode` composes types, declarations, definitions, conversions, and tests | Pass: source-owned roots resolve marked model/JSON/engine runtime nodes | Pass: every generated C++ source role uses a source file | Pass: declaration/capability repair scans and fixed runtime inventory are deleted | **Pass** |
 | C | Pass: renderer owns stripped system/local includes | Fail: generator returns file-sized strings | Fail: runtime header/source use fixed inventories | Pass: generated C code uses source files | Partial: dependencies are attached only at file-unit scope | **Fail** |
 
 The audit deliberately does not infer compliance from successful compilation.
@@ -41,8 +41,9 @@ not prove dependency completeness or minimality.
 - Java fragment and helper-closure implementation:
   `crates/backend-java/src/lib.rs` and
   `crates/backend-java/src/Runtime.java`.
-- C++ fixed runtime headers and header feature scans:
-  `crates/backend-cpp/src/lib.rs`.
+- C++ fragments and marked runtime-helper closure:
+  `crates/backend-cpp/src/lib.rs` and
+  `crates/backend-cpp/src/runtime.hpp`.
 - C fixed runtime/file-level requirements:
   `crates/backend-c/src/lib.rs`.
 
@@ -157,3 +158,23 @@ all generated packages remain functionally equivalent, and hosted CI is green.
 - Three-generation determinism, generated-crate Rustfmt/Clippy,
   debug/release/native and negative-compilation gates, and all 130 real-world
   tests pass.
+
+### C++ fragments and runtime (M30-04E)
+
+- `CppImport` privately stores validated system/local include paths. Empty,
+  rooted, traversal, malformed, non-header local, and rendered-directive forms
+  are rejected; only `CppRenderer` spells `#include`.
+- `CppCode` composes types, parameters, forward declarations, type bodies,
+  callable declarations, definitions, value bridges, conversion bridges,
+  tests, and runtime roots. The old declaration/capability header scans and
+  file-sized header/source assembly are deleted.
+- The runtime template is divided into ordered model, JSON, and execution
+  nodes. Each node owns its exact headers, while the generated runtime
+  bootstrap owns `runtime.full`; deterministic closure removes marker metadata
+  and merges requirements.
+- Empty/scalar/string/numeric/bytes/nested container type matrices and exact
+  per-runtime-node/full-runtime header matrices are executable tests. Runtime,
+  source, test, and conformance roles are closed source files.
+- Three-generation determinism, generated C++20 warnings-as-errors,
+  conformance, public-consumer, style, ASan/UBSan, Rustfmt, Clippy, and all 130
+  real-world tests pass.

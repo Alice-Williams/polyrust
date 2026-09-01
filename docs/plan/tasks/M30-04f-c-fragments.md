@@ -1,6 +1,6 @@
 # M30-04F — Migrate C to dependency-complete fragments
 
-- Status: planned
+- Status: in-progress
 - Depends on: M30-04E
 
 ## Current audit finding

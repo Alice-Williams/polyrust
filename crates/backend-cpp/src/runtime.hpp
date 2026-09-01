@@ -1,3 +1,4 @@
+// POLYRUST-BEGIN runtime.model
 namespace polyrust_generated {
 struct poly_error;
 template <typename T> struct poly_result;
@@ -196,6 +197,8 @@ inline const any_list& list(const any& value) {
   return std::any_cast<const any_list&>(value);
 }
 
+// POLYRUST-END runtime.model
+// POLYRUST-BEGIN runtime.json
 class json_parser {
  public:
   explicit json_parser(std::string_view source) : source_(source) {}
@@ -397,6 +400,8 @@ inline std::int64_t node_id(const json_map& declaration) {
   return node_id_from_header(object(member(object(member(declaration, "data")), "header")));
 }
 
+// POLYRUST-END runtime.json
+// POLYRUST-BEGIN runtime.engine
 inline any_result checked_i32(std::int64_t value) {
   if (value < std::numeric_limits<std::int32_t>::min()
       || value > std::numeric_limits<std::int32_t>::max()) {
@@ -1147,3 +1152,4 @@ class runtime {
   std::map<std::int64_t, any_result> constants_;
 };
 }  // namespace poly_runtime
+// POLYRUST-END runtime.engine

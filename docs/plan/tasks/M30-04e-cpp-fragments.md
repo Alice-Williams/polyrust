@@ -1,6 +1,6 @@
 # M30-04E — Migrate C++ to dependency-complete fragments
 
-- Status: in-progress
+- Status: complete
 - Depends on: M30-04D
 
 ## Current audit finding
@@ -25,3 +25,17 @@ unconditionally attaches a seventeen-header inventory.
 - Header self-containment, formatter/linter, generated compile/tests,
   conformance, and public consumer.
 - Three-generation byte determinism.
+
+## Completion evidence
+
+- Validated `CppImport` values distinguish system and local includes; only the
+  renderer spells directives.
+- `CppCode` fragments own and compose exact includes and helper roots across
+  types, declarations, definitions, conversion bridges, tests, and runtime
+  bootstrap syntax. The header repair scans and fixed runtime inventory are
+  removed.
+- Marked runtime model, JSON, and engine nodes declare exact header matrices;
+  `runtime.full` is reached from the source fragment's helper root.
+- Backend unit/native/conformance/public/style/sanitizer tests, Rustfmt,
+  Clippy, Buildifier, release policy, and all 130 real-world tests pass.
+- The unit suite proves three independently generated manifests are identical.

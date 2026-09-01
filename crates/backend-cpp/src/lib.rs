@@ -2,7 +2,7 @@
 
 #![forbid(unsafe_code)]
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use portable_check::v0::{Capability, CheckedProgram};
 use portable_codegen::{
@@ -10,7 +10,7 @@ use portable_codegen::{
     DeclaredDependency, Document as CodeDocument, FileGroup, FileGroupId, FileRole, ImportGroup,
     ImportSet, InjectedHelper, IrVersionRange, LanguageFile, LanguageFragment, LanguagePackage,
     LanguagePlugin, LanguageRenderer, LanguageSourceFile, OptionsSchema, OutputManifest, RawText,
-    TargetId, generate_with_plugin,
+    RuntimeHelper, RuntimeHelperGraph, TargetId, generate_with_plugin,
 };
 use portable_ir::v0::{Declaration, IrVersion, NodeId, TypeRef, Visibility};
 
@@ -65,8 +65,51 @@ impl Backend for CppBackend {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[doc(hidden)]
 pub struct CppImport {
-    path: &'static str,
-    system: bool,
+    kind: CppImportKind,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum CppImportKind {
+    System { path: String },
+    Local { path: String },
+}
+
+impl CppImport {
+    pub fn system(path: &str) -> Result<Self, String> {
+        validate_cpp_include(path, false)?;
+        Ok(Self {
+            kind: CppImportKind::System {
+                path: path.to_owned(),
+            },
+        })
+    }
+
+    pub fn local(path: &str) -> Result<Self, String> {
+        validate_cpp_include(path, true)?;
+        Ok(Self {
+            kind: CppImportKind::Local {
+                path: path.to_owned(),
+            },
+        })
+    }
+}
+
+fn validate_cpp_include(path: &str, local: bool) -> Result<(), String> {
+    let valid_character = |character: char| {
+        character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.' | '/' | '+')
+    };
+    let valid = !path.is_empty()
+        && !path.starts_with('/')
+        && !path.ends_with('/')
+        && !path.contains("//")
+        && !path.split('/').any(|segment| matches!(segment, "." | ".."))
+        && path.chars().all(valid_character)
+        && (!local || path.ends_with(".h") || path.ends_with(".hpp"));
+    if valid {
+        Ok(())
+    } else {
+        Err(format!("invalid C++ include path {path:?}"))
+    }
 }
 
 #[doc(hidden)]
@@ -77,15 +120,104 @@ impl LanguageRenderer<CppImport> for CppRenderer {
         let lines = imports
             .groups()
             .flat_map(|(_, imports)| imports.iter())
-            .map(|import| {
-                if import.system {
-                    format!("#include <{}>", import.path)
-                } else {
-                    format!("#include {:?}", import.path)
-                }
+            .map(|import| match &import.kind {
+                CppImportKind::System { path } => format!("#include <{path}>"),
+                CppImportKind::Local { path } => format!("#include {path:?}"),
             })
             .collect::<Vec<_>>();
         Ok(CodeDocument::raw_text(RawText::new(lines.join("\n"))))
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct CppCode {
+    text: String,
+    imports: BTreeSet<(ImportGroup, CppImport)>,
+    helper_roots: BTreeSet<String>,
+}
+
+impl CppCode {
+    fn new(text: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            ..Self::default()
+        }
+    }
+
+    fn with_system(mut self, path: &str) -> Self {
+        self.imports.insert((
+            cpp_system_group(),
+            CppImport::system(path).expect("static C++ system include is valid"),
+        ));
+        self
+    }
+
+    fn with_local(mut self, path: &str) -> Self {
+        self.imports.insert((
+            cpp_local_group(),
+            CppImport::local(path).expect("static C++ local include is valid"),
+        ));
+        self
+    }
+
+    fn with_helper_root(mut self, helper: impl Into<String>) -> Self {
+        self.helper_roots.insert(helper.into());
+        self
+    }
+
+    fn sequence(fragments: impl IntoIterator<Item = Self>) -> Self {
+        fragments
+            .into_iter()
+            .fold(Self::default(), |mut combined, fragment| {
+                combined.text.push_str(&fragment.text);
+                combined.imports.extend(fragment.imports);
+                combined.helper_roots.extend(fragment.helper_roots);
+                combined
+            })
+    }
+
+    fn joined(fragments: impl IntoIterator<Item = Self>, separator: &str) -> Self {
+        let mut fragments = fragments.into_iter();
+        let Some(first) = fragments.next() else {
+            return Self::default();
+        };
+        fragments.fold(first, |mut combined, fragment| {
+            combined.text.push_str(separator);
+            combined.text.push_str(&fragment.text);
+            combined.imports.extend(fragment.imports);
+            combined.helper_roots.extend(fragment.helper_roots);
+            combined
+        })
+    }
+
+    fn map_text(mut self, map: impl FnOnce(String) -> String) -> Self {
+        self.text = map(self.text);
+        self
+    }
+
+    fn with_text_from(mut self, dependencies: impl IntoIterator<Item = Self>) -> Self {
+        for dependency in dependencies {
+            self.imports.extend(dependency.imports);
+            self.helper_roots.extend(dependency.helper_roots);
+        }
+        self
+    }
+
+    fn into_fragment(self) -> LanguageFragment<CppImport> {
+        let mut fragment = LanguageFragment::new(CodeDocument::raw_text(RawText::new(self.text)));
+        for (group, import) in self.imports {
+            fragment.require_import(group, import);
+        }
+        for helper in self.helper_roots {
+            fragment = fragment.with_helper_root(helper);
+        }
+        fragment
+    }
+}
+
+impl std::fmt::Display for CppCode {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&self.text)
     }
 }
 
@@ -99,6 +231,7 @@ impl LanguagePlugin for CppBackend {
         _options: &BackendOptions,
     ) -> Result<LanguagePackage<Self::Import>, BackendError> {
         let generator = Generator::new(program);
+        let (source, runtime_roots) = generator.source_file()?;
         let helpers = program
             .capabilities()
             .program()
@@ -125,14 +258,14 @@ impl LanguagePlugin for CppBackend {
                 .map_err(cpp_generation_error)?,
                 FileGroup::new(
                     cpp_group("runtime")?,
-                    vec![LanguageFile::source(cpp_runtime_file())],
+                    vec![LanguageFile::source(cpp_runtime_file(&runtime_roots)?)],
                 )
                 .map_err(cpp_generation_error)?,
                 FileGroup::new(
                     cpp_group("source")?,
                     vec![
                         LanguageFile::source(generator.header_file()),
-                        LanguageFile::source(generator.source_file()?),
+                        LanguageFile::source(source),
                     ],
                 )
                 .map_err(cpp_generation_error)?,
@@ -174,69 +307,152 @@ fn cpp_local_group() -> ImportGroup {
     ImportGroup::new(20, "local-headers").expect("static import group is valid")
 }
 
-fn require_cpp_system(unit: &mut LanguageFragment<CppImport>, path: &'static str) {
-    unit.require_import(cpp_system_group(), CppImport { path, system: true });
-}
-
-fn require_cpp_local(unit: &mut LanguageFragment<CppImport>, path: &'static str) {
-    unit.require_import(
-        cpp_local_group(),
-        CppImport {
-            path,
-            system: false,
-        },
-    );
-}
-
-fn cpp_runtime_file() -> LanguageSourceFile<CppImport> {
+fn cpp_runtime_file(
+    roots: &BTreeSet<String>,
+) -> Result<LanguageSourceFile<CppImport>, BackendError> {
+    let graph = cpp_runtime_helper_graph()?;
     let mut file = LanguageSourceFile::new("src/runtime.hpp", FileRole::Runtime);
-    file.set_preamble(LanguageFragment::new(CodeDocument::raw_text(RawText::new(
-        "#pragma once\n// Dependency-free runtime copied into generated C++20 packages.",
-    ))));
-    let mut body = LanguageFragment::new(CodeDocument::raw_text(RawText::new(RUNTIME)));
-    for header in [
-        "algorithm",
-        "any",
-        "bit",
-        "cmath",
-        "cstddef",
-        "cstdint",
-        "functional",
-        "limits",
-        "map",
-        "optional",
-        "stdexcept",
-        "string",
-        "string_view",
-        "type_traits",
-        "utility",
-        "variant",
-        "vector",
-    ] {
-        require_cpp_system(&mut body, header);
+    file.set_preamble(
+        CppCode::new(
+            "#pragma once\n// Dependency-free runtime copied into generated C++20 packages.",
+        )
+        .into_fragment(),
+    );
+    file.set_body(
+        graph
+            .resolve(roots.iter().cloned())
+            .map_err(cpp_generation_error)?,
+    );
+    Ok(file)
+}
+
+fn cpp_runtime_helper_graph() -> Result<RuntimeHelperGraph<CppImport>, BackendError> {
+    const BEGIN: &str = "// POLYRUST-BEGIN ";
+    const END: &str = "// POLYRUST-END ";
+
+    let mut helpers = Vec::new();
+    let mut active: Option<String> = None;
+    let mut source = String::new();
+    let mut order = 0_u16;
+    for line in RUNTIME.split_inclusive('\n') {
+        let marker = line.trim().trim_end_matches('\r');
+        if let Some(id) = marker.strip_prefix(BEGIN) {
+            if active.is_some() || !source.trim().is_empty() {
+                return Err(cpp_generation_error(format!(
+                    "invalid nested or unowned C++ runtime helper marker {id:?}"
+                )));
+            }
+            active = Some(id.to_owned());
+        } else if let Some(id) = marker.strip_prefix(END) {
+            let Some(open) = active.take() else {
+                return Err(cpp_generation_error(format!(
+                    "unmatched C++ runtime helper end marker {id:?}"
+                )));
+            };
+            if open != id || source.trim().is_empty() {
+                return Err(cpp_generation_error(format!(
+                    "invalid C++ runtime helper marker {open:?} closed by {id:?}"
+                )));
+            }
+            helpers.push(RuntimeHelper::new(
+                open.clone(),
+                order,
+                cpp_runtime_section(&open, std::mem::take(&mut source))?.into_fragment(),
+            ));
+            order = order
+                .checked_add(1)
+                .expect("C++ runtime helper order fits u16");
+        } else if active.is_some() {
+            source.push_str(line);
+        } else if !marker.is_empty() {
+            return Err(cpp_generation_error(
+                "C++ runtime text lacks a helper owner",
+            ));
+        }
     }
-    file.set_body(body);
-    file
+    if let Some(open) = active {
+        return Err(cpp_generation_error(format!(
+            "unclosed C++ runtime helper marker {open:?}"
+        )));
+    }
+    helpers.push(RuntimeHelper::new(
+        "runtime.full",
+        u16::MAX,
+        CppCode::default()
+            .with_helper_root("runtime.model")
+            .with_helper_root("runtime.json")
+            .with_helper_root("runtime.engine")
+            .into_fragment(),
+    ));
+    RuntimeHelperGraph::new(helpers).map_err(cpp_generation_error)
+}
+
+fn cpp_runtime_section(id: &str, source: String) -> Result<CppCode, BackendError> {
+    let code = CppCode::new(source);
+    let code = match id {
+        "runtime.model" => code
+            .with_system("any")
+            .with_system("cstdint")
+            .with_system("map")
+            .with_system("optional")
+            .with_system("stdexcept")
+            .with_system("string")
+            .with_system("type_traits")
+            .with_system("utility")
+            .with_system("variant")
+            .with_system("vector"),
+        "runtime.json" => code
+            .with_system("cstddef")
+            .with_system("cstdint")
+            .with_system("stdexcept")
+            .with_system("string")
+            .with_system("string_view")
+            .with_system("utility"),
+        "runtime.engine" => code
+            .with_system("algorithm")
+            .with_system("any")
+            .with_system("bit")
+            .with_system("cmath")
+            .with_system("cstddef")
+            .with_system("cstdint")
+            .with_system("functional")
+            .with_system("limits")
+            .with_system("map")
+            .with_system("optional")
+            .with_system("stdexcept")
+            .with_system("string")
+            .with_system("string_view")
+            .with_system("utility")
+            .with_system("vector"),
+        _ => {
+            return Err(cpp_generation_error(format!(
+                "unknown C++ runtime helper {id:?}"
+            )));
+        }
+    };
+    Ok(code)
 }
 
 fn cpp_generated_test_file() -> LanguageSourceFile<CppImport> {
     let mut file = LanguageSourceFile::new("tests/generated_test.cc", FileRole::Test);
-    let mut body = LanguageFragment::new(CodeDocument::raw_text(RawText::new(
-        "int main() { return polyrust_generated::run_portable_tests() ? 0 : 1; }",
-    )));
-    require_cpp_local(&mut body, "generated.hpp");
-    file.set_body(body);
+    file.set_body(
+        CppCode::new("int main() { return polyrust_generated::run_portable_tests() ? 0 : 1; }")
+            .with_local("generated.hpp")
+            .into_fragment(),
+    );
     file
 }
 
 fn cpp_conformance_file() -> LanguageSourceFile<CppImport> {
     let mut file = LanguageSourceFile::new("tests/conformance_test.cc", FileRole::Conformance);
-    let mut body = LanguageFragment::new(CodeDocument::raw_text(RawText::new(CONFORMANCE_BODY)));
-    require_cpp_system(&mut body, "cstdint");
-    require_cpp_system(&mut body, "limits");
-    require_cpp_local(&mut body, "generated.hpp");
-    require_cpp_local(&mut body, "runtime.hpp");
-    file.set_body(body);
+    file.set_body(
+        CppCode::new(CONFORMANCE_BODY)
+            .with_system("cstdint")
+            .with_system("limits")
+            .with_local("generated.hpp")
+            .with_local("runtime.hpp")
+            .into_fragment(),
+    );
     file
 }
 
@@ -263,86 +479,96 @@ impl<'a> Generator<'a> {
 
     fn header_file(&self) -> LanguageSourceFile<CppImport> {
         let mut file = LanguageSourceFile::new("src/generated.hpp", FileRole::Source);
-        file.set_preamble(LanguageFragment::new(CodeDocument::raw_text(RawText::new(
-            "#pragma once\n// Generated by PolyRust from checked IR v0.",
-        ))));
-        let mut body = LanguageFragment::new(CodeDocument::empty());
-        for header in ["cstdint", "optional", "string"] {
-            require_cpp_system(&mut body, header);
-        }
-        if self
-            .program
-            .module()
-            .declarations
-            .iter()
-            .any(|declaration| matches!(declaration, Declaration::Enum(_)))
-        {
-            require_cpp_system(&mut body, "variant");
-        }
-        if self
-            .program
-            .capabilities()
-            .program()
-            .iter()
-            .any(|capability| matches!(capability, Capability::Bytes | Capability::ImmutableList))
-        {
-            require_cpp_system(&mut body, "vector");
-        }
-        let mut output = String::from(
-            "namespace poly_runtime { struct aggregate; }\n\n\
-             namespace polyrust_generated {\n\
-             struct poly_error { std::string code; std::string message; };\n\
-             template <typename T> struct poly_result { bool ok; std::optional<T> value; std::optional<poly_error> error; };\n\
-             template <typename T, typename E> struct value_result { bool is_ok; std::optional<T> value; std::optional<E> error; };\n\n",
+        file.set_preamble(
+            CppCode::new("#pragma once\n// Generated by PolyRust from checked IR v0.")
+                .into_fragment(),
         );
-        for declaration in &self.program.module().declarations {
-            match declaration {
-                Declaration::Record(item) => output.push_str(&format!(
-                    "{}struct {};\n",
+        let declarations = &self.program.module().declarations;
+        let body = CppCode::sequence([
+            CppCode::new("namespace poly_runtime { struct aggregate; }\n\nnamespace polyrust_generated {\n"),
+            CppCode::new(
+                "struct poly_error { std::string code; std::string message; };\n\
+                 template <typename T> struct poly_result { bool ok; std::optional<T> value; std::optional<poly_error> error; };\n\
+                 template <typename T, typename E> struct value_result { bool is_ok; std::optional<T> value; std::optional<E> error; };\n\n",
+            )
+            .with_system("optional")
+            .with_system("string"),
+            CppCode::sequence(declarations.iter().map(|item| self.forward_declaration(item))),
+            CppCode::new("\n"),
+            CppCode::sequence(
+                declarations
+                    .iter()
+                    .filter(|item| matches!(item, Declaration::Contract(_)))
+                    .map(|item| self.type_declaration(item)),
+            ),
+            CppCode::sequence(
+                declarations
+                    .iter()
+                    .filter(|item| matches!(item, Declaration::Record(_)))
+                    .map(|item| self.type_declaration(item)),
+            ),
+            CppCode::sequence(
+                declarations
+                    .iter()
+                    .filter(|item| matches!(item, Declaration::Enum(_)))
+                    .map(|item| self.type_declaration(item)),
+            ),
+            CppCode::sequence(declarations.iter().map(|item| self.callable_declaration(item))),
+            CppCode::new("bool run_portable_tests();\n}\n"),
+        ]);
+        file.set_body(body.into_fragment());
+        file
+    }
+
+    fn forward_declaration(&self, declaration: &Declaration) -> CppCode {
+        match declaration {
+            Declaration::Record(item) => CppCode::new(format!(
+                "{}struct {};\n",
+                visibility(item.header.visibility),
+                type_name(&item.header.name)
+            )),
+            Declaration::Contract(item) => CppCode::new(format!(
+                "{}struct {};\n",
+                visibility(item.header.visibility),
+                type_name(&item.header.name)
+            )),
+            Declaration::Enum(item) => CppCode::sequence(item.variants.iter().map(|variant| {
+                CppCode::new(format!(
+                    "{}struct {}{};\n",
                     visibility(item.header.visibility),
-                    type_name(&item.header.name)
-                )),
-                Declaration::Enum(item) => {
-                    for variant in &item.variants {
-                        output.push_str(&format!(
-                            "{}struct {}{};\n",
-                            visibility(item.header.visibility),
-                            type_name(&item.header.name),
-                            type_name(&variant.header.name)
-                        ));
-                    }
-                }
-                Declaration::Contract(item) => output.push_str(&format!(
-                    "{}struct {};\n",
-                    visibility(item.header.visibility),
-                    type_name(&item.header.name)
-                )),
-                _ => {}
-            }
+                    type_name(&item.header.name),
+                    type_name(&variant.header.name)
+                ))
+            })),
+            _ => CppCode::default(),
         }
-        output.push('\n');
-        for declaration in &self.program.module().declarations {
-            if let Declaration::Contract(item) = declaration {
-                output.push_str(&format!(
-                    "{}struct {} {{\n  virtual ~{}() = default;\n  virtual std::int64_t polyrust_declaration() const noexcept = 0;\n",
+    }
+
+    fn type_declaration(&self, declaration: &Declaration) -> CppCode {
+        match declaration {
+            Declaration::Contract(item) => {
+                let mut output = format!(
+                    "{}struct {} {{\n  virtual ~{}() = default;\n  virtual std::int64_t polyrust_declaration() const noexcept = 0;\n  virtual poly_runtime::aggregate polyrust_value() const = 0;\n",
                     visibility(item.header.visibility),
                     type_name(&item.header.name),
                     type_name(&item.header.name)
-                ));
-                output.push_str("  virtual poly_runtime::aggregate polyrust_value() const = 0;\n");
+                );
+                let mut dependencies = Vec::new();
                 for method in &item.methods {
+                    let return_type = self.ty(&method.return_type);
+                    let parameters = self.parameters(&method.parameters);
                     output.push_str(&format!(
-                        "  virtual poly_result<{}> {}({}) const = 0;\n",
-                        self.ty(&method.return_type),
-                        value_name(&method.header.name),
-                        self.parameters(&method.parameters)
+                        "  virtual poly_result<{return_type}> {}({parameters}) const = 0;\n",
+                        value_name(&method.header.name)
                     ));
+                    dependencies.extend([return_type, parameters]);
                 }
                 output.push_str("};\n\n");
+                CppCode::new(output)
+                    .with_system("cstdint")
+                    .with_text_from(dependencies)
             }
-        }
-        for declaration in &self.program.module().declarations {
-            if let Declaration::Record(item) = declaration {
+            Declaration::Record(item) => {
                 let implementations = self.implementations(item.header.node.id);
                 let bases = implementations
                     .iter()
@@ -350,7 +576,7 @@ impl<'a> Generator<'a> {
                         format!("public {}", type_name(self.name(implementation.contract)))
                     })
                     .collect::<Vec<_>>();
-                output.push_str(&format!(
+                let mut output = format!(
                     "{}struct {}{} {{\n",
                     visibility(item.header.visibility),
                     type_name(&item.header.name),
@@ -359,13 +585,15 @@ impl<'a> Generator<'a> {
                     } else {
                         format!(" : {}", bases.join(", "))
                     }
-                ));
+                );
+                let mut dependencies = Vec::new();
                 for field in &item.fields {
+                    let field_type = self.ty(&field.ty);
                     output.push_str(&format!(
-                        "  {} {};\n",
-                        self.ty(&field.ty),
+                        "  {field_type} {};\n",
                         value_name(&field.header.name)
                     ));
+                    dependencies.push(field_type);
                 }
                 if item.fields.is_empty() {
                     output.push_str(&format!(
@@ -373,23 +601,23 @@ impl<'a> Generator<'a> {
                         type_name(&item.header.name)
                     ));
                 } else {
+                    let constructor_parameters = self.parameters(
+                        &item
+                            .fields
+                            .iter()
+                            .map(|field| portable_ir::v0::Parameter {
+                                header: portable_ir::v0::MemberHeader {
+                                    node: field.header.node.clone(),
+                                    name: format!("{}_value", value_name(&field.header.name)),
+                                    documentation: Vec::new(),
+                                },
+                                ty: field.ty.clone(),
+                            })
+                            .collect::<Vec<_>>(),
+                    );
                     output.push_str(&format!(
-                        "  {}({}) : {} {{}}\n",
+                        "  {}({constructor_parameters}) : {} {{}}\n",
                         type_name(&item.header.name),
-                        self.parameters(
-                            &item
-                                .fields
-                                .iter()
-                                .map(|field| portable_ir::v0::Parameter {
-                                    header: portable_ir::v0::MemberHeader {
-                                        node: field.header.node.clone(),
-                                        name: format!("{}_value", value_name(&field.header.name)),
-                                        documentation: Vec::new(),
-                                    },
-                                    ty: field.ty.clone(),
-                                })
-                                .collect::<Vec<_>>()
-                        ),
                         item.fields
                             .iter()
                             .map(|field| format!(
@@ -400,6 +628,7 @@ impl<'a> Generator<'a> {
                             .collect::<Vec<_>>()
                             .join(", ")
                     ));
+                    dependencies.push(constructor_parameters);
                 }
                 if !implementations.is_empty() {
                     output.push_str(&format!(
@@ -412,43 +641,53 @@ impl<'a> Generator<'a> {
                     output.push_str(" override");
                 }
                 output.push_str(";\n");
-                for implementation in implementations {
+                for implementation in &implementations {
                     for method in &implementation.methods {
+                        let return_type = self.ty(&method.return_type);
+                        let parameters = self.parameters(&method.parameters);
                         output.push_str(&format!(
-                            "  poly_result<{}> {}({}) const override;\n",
-                            self.ty(&method.return_type),
-                            value_name(&method.header.name),
-                            self.parameters(&method.parameters)
+                            "  poly_result<{return_type}> {}({parameters}) const override;\n",
+                            value_name(&method.header.name)
                         ));
+                        dependencies.extend([return_type, parameters]);
                     }
                 }
-                if item.fields.is_empty() {
-                    output.push_str("  bool operator==(const ");
-                    output.push_str(&type_name(&item.header.name));
-                    output.push_str("&) const { return true; }\n");
-                } else {
-                    output.push_str("  bool operator==(const ");
-                    output.push_str(&type_name(&item.header.name));
-                    output.push_str("& other) const { return ");
-                    output.push_str(
-                        &item
-                            .fields
-                            .iter()
-                            .map(|field| {
-                                let name = value_name(&field.header.name);
-                                format!("{name} == other.{name}")
-                            })
-                            .collect::<Vec<_>>()
-                            .join(" && "),
-                    );
-                    output.push_str("; }\n");
-                }
+                output.push_str(&format!(
+                    "  bool operator==(const {}&{} const {{ {} }}\n",
+                    type_name(&item.header.name),
+                    if item.fields.is_empty() {
+                        ")"
+                    } else {
+                        " other)"
+                    },
+                    if item.fields.is_empty() {
+                        "return true;".to_owned()
+                    } else {
+                        format!(
+                            "return {};",
+                            item.fields
+                                .iter()
+                                .map(|field| {
+                                    let name = value_name(&field.header.name);
+                                    format!("{name} == other.{name}")
+                                })
+                                .collect::<Vec<_>>()
+                                .join(" && ")
+                        )
+                    }
+                ));
                 output.push_str("};\n\n");
+                let code = CppCode::new(output).with_text_from(dependencies);
+                if implementations.is_empty() {
+                    code
+                } else {
+                    code.with_system("cstdint")
+                }
             }
-        }
-        for declaration in &self.program.module().declarations {
-            if let Declaration::Enum(item) = declaration {
+            Declaration::Enum(item) => {
+                let mut output = String::new();
                 let mut variants = Vec::new();
+                let mut dependencies = Vec::new();
                 for variant in &item.variants {
                     let name = format!(
                         "{}{}",
@@ -461,11 +700,12 @@ impl<'a> Generator<'a> {
                         visibility(item.header.visibility)
                     ));
                     for field in &variant.fields {
+                        let field_type = self.ty(&field.ty);
                         output.push_str(&format!(
-                            "  {} {};\n",
-                            self.ty(&field.ty),
+                            "  {field_type} {};\n",
                             value_name(&field.header.name)
                         ));
+                        dependencies.push(field_type);
                     }
                     output.push_str(&format!(
                         "  bool operator==(const {name}&) const = default;\n}};\n"
@@ -477,33 +717,42 @@ impl<'a> Generator<'a> {
                     type_name(&item.header.name),
                     variants.join(", ")
                 ));
+                CppCode::new(output)
+                    .with_system("variant")
+                    .with_text_from(dependencies)
             }
+            _ => CppCode::default(),
         }
-        for declaration in &self.program.module().declarations {
-            match declaration {
-                Declaration::Constant(item) => output.push_str(&format!(
-                    "{}poly_result<{}> {}();\n",
-                    visibility(item.header.visibility),
-                    self.ty(&item.ty),
-                    value_name(&item.header.name)
-                )),
-                Declaration::Function(item) => output.push_str(&format!(
-                    "{}poly_result<{}> {}({});\n",
-                    visibility(item.header.visibility),
-                    self.ty(&item.return_type),
-                    value_name(&item.header.name),
-                    self.parameters(&item.parameters)
-                )),
-                _ => {}
-            }
-        }
-        output.push_str("bool run_portable_tests();\n}\n");
-        body = body.map_document(|_| CodeDocument::raw_text(RawText::new(output)));
-        file.set_body(body);
-        file
     }
 
-    fn source_file(&self) -> Result<LanguageSourceFile<CppImport>, BackendError> {
+    fn callable_declaration(&self, declaration: &Declaration) -> CppCode {
+        match declaration {
+            Declaration::Constant(item) => {
+                let ty = self.ty(&item.ty);
+                CppCode::new(format!(
+                    "{}poly_result<{ty}> {}();\n",
+                    visibility(item.header.visibility),
+                    value_name(&item.header.name)
+                ))
+                .with_text_from([ty])
+            }
+            Declaration::Function(item) => {
+                let return_type = self.ty(&item.return_type);
+                let parameters = self.parameters(&item.parameters);
+                CppCode::new(format!(
+                    "{}poly_result<{return_type}> {}({parameters});\n",
+                    visibility(item.header.visibility),
+                    value_name(&item.header.name)
+                ))
+                .with_text_from([return_type, parameters])
+            }
+            _ => CppCode::default(),
+        }
+    }
+
+    fn source_file(
+        &self,
+    ) -> Result<(LanguageSourceFile<CppImport>, BTreeSet<String>), BackendError> {
         let mut document = serde_json::to_value(self.program.document()).map_err(|error| {
             BackendError::Generation {
                 message: format!("cannot serialize checked IR: {error}"),
@@ -512,209 +761,247 @@ impl<'a> Generator<'a> {
         stringify_wide_numbers(&mut document);
         let document = serde_json::to_string(&document).expect("checked document serializes");
         let mut file = LanguageSourceFile::new("src/generated.cc", FileRole::Source);
-        file.set_preamble(LanguageFragment::new(CodeDocument::raw_text(RawText::new(
-            "// Generated by PolyRust from checked IR v0.",
-        ))));
-        let mut body = LanguageFragment::new(CodeDocument::empty());
-        require_cpp_local(&mut body, "generated.hpp");
-        require_cpp_local(&mut body, "runtime.hpp");
-        if document.len() > CPP_LITERAL_CHUNK_BYTES {
-            require_cpp_system(&mut body, "string");
-        }
-        let mut output = String::new();
-        output.push_str(&self.conversions());
-        output.push_str(
-            "\nnamespace polyrust_generated {\nnamespace { poly_runtime::runtime runtime_instance(",
+        file.set_preamble(
+            CppCode::new("// Generated by PolyRust from checked IR v0.").into_fragment(),
         );
-        output.push_str(&cpp_string_expression(&document));
-        output.push_str("); }\n\n");
-        for declaration in &self.program.module().declarations {
-            match declaration {
-                Declaration::Constant(item) => output.push_str(&format!(
-                    "poly_result<{}> {}() {{ return poly_runtime::convert_result<{}>(runtime_instance.read_constant({})); }}\n",
-                    self.ty(&item.ty),
+        let embedded_document = cpp_string_expression(&document);
+        let runtime = CppCode::new(format!(
+            "\nnamespace polyrust_generated {{\nnamespace {{ poly_runtime::runtime runtime_instance({embedded_document}); }}\n\n"
+        ))
+        .with_local("generated.hpp")
+        .with_local("runtime.hpp")
+        .with_helper_root("runtime.full")
+        .with_text_from([embedded_document]);
+        let body = CppCode::sequence([
+            self.conversions(),
+            runtime,
+            CppCode::sequence(
+                self.program
+                    .module()
+                    .declarations
+                    .iter()
+                    .map(|declaration| self.definition(declaration)),
+            ),
+            CppCode::new(
+                "\nbool run_portable_tests() { return runtime_instance.run_tests(); }\n}\n",
+            ),
+        ]);
+        let roots = body.helper_roots.clone();
+        file.set_body(body.into_fragment());
+        Ok((file, roots))
+    }
+
+    fn definition(&self, declaration: &Declaration) -> CppCode {
+        match declaration {
+            Declaration::Constant(item) => {
+                let ty = self.ty(&item.ty);
+                CppCode::new(format!(
+                    "poly_result<{ty}> {}() {{ return poly_runtime::convert_result<{ty}>(runtime_instance.read_constant({})); }}\n",
                     value_name(&item.header.name),
-                    self.ty(&item.ty),
                     item.header.node.id.0
-                )),
-                Declaration::Function(item) => output.push_str(&format!(
-                    "poly_result<{}> {}({}) {{ return poly_runtime::convert_result<{}>(runtime_instance.invoke({}, {{{}}})); }}\n",
-                    self.ty(&item.return_type),
+                ))
+                .with_text_from([ty])
+            }
+            Declaration::Function(item) => {
+                let return_type = self.ty(&item.return_type);
+                let parameters = self.parameters(&item.parameters);
+                let arguments = CppCode::joined(
+                    item.parameters.iter().map(|parameter| {
+                        self.argument(&parameter.ty, &value_name(&parameter.header.name))
+                    }),
+                    ", ",
+                );
+                CppCode::new(format!(
+                    "poly_result<{return_type}> {}({parameters}) {{ return poly_runtime::convert_result<{return_type}>(runtime_instance.invoke({}, {{{arguments}}})); }}\n",
                     value_name(&item.header.name),
-                    self.parameters(&item.parameters),
-                    self.ty(&item.return_type),
-                    item.header.node.id.0,
-                    item.parameters
-                        .iter()
-                        .map(|parameter| {
+                    item.header.node.id.0
+                ))
+                .with_text_from([return_type, parameters, arguments])
+            }
+            Declaration::Implementation(item) => {
+                let record = type_name(self.name(item.record));
+                CppCode::sequence(item.methods.iter().map(|method| {
+                    let return_type = self.ty(&method.return_type);
+                    let parameters = self.parameters(&method.parameters);
+                    let arguments = CppCode::joined(
+                        method.parameters.iter().map(|parameter| {
                             self.argument(&parameter.ty, &value_name(&parameter.header.name))
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )),
-                Declaration::Implementation(item) => {
-                    let record = type_name(self.name(item.record));
-                    for method in &item.methods {
-                        output.push_str(&format!(
-                            "poly_result<{}> {}::{}({}) const {{ return poly_runtime::convert_result<{}>(runtime_instance.invoke_method({}, {}, poly_runtime::to_any(*this), {{{}}})); }}\n",
-                            self.ty(&method.return_type),
-                            record,
-                            value_name(&method.header.name),
-                            self.parameters(&method.parameters),
-                            self.ty(&method.return_type),
-                            item.header.node.id.0,
-                            method.header.node.id.0,
-                            method.parameters.iter().map(|parameter| self.argument(&parameter.ty, &value_name(&parameter.header.name))).collect::<Vec<_>>().join(", ")
-                        ));
-                    }
-                }
-                _ => {}
+                        }),
+                        ", ",
+                    );
+                    CppCode::new(format!(
+                        "poly_result<{return_type}> {record}::{}({parameters}) const {{ return poly_runtime::convert_result<{return_type}>(runtime_instance.invoke_method({}, {}, poly_runtime::to_any(*this), {{{arguments}}})); }}\n",
+                        value_name(&method.header.name),
+                        item.header.node.id.0,
+                        method.header.node.id.0
+                    ))
+                    .with_text_from([return_type, parameters, arguments])
+                }))
             }
+            _ => CppCode::default(),
         }
-        output
-            .push_str("\nbool run_portable_tests() { return runtime_instance.run_tests(); }\n}\n");
-        body = body.map_document(|_| CodeDocument::raw_text(RawText::new(output)));
-        file.set_body(body);
-        Ok(file)
     }
 
-    fn argument(&self, ty: &TypeRef, name: &str) -> String {
+    fn argument(&self, ty: &TypeRef, name: &str) -> CppCode {
         if matches!(ty, TypeRef::Contract(_)) {
-            format!("{name}.polyrust_value()")
+            CppCode::new(format!("{name}.polyrust_value()"))
         } else {
-            format!("poly_runtime::to_any({name})")
+            CppCode::new(format!("poly_runtime::to_any({name})"))
         }
     }
 
-    fn conversions(&self) -> String {
-        let records = self
-            .program
-            .module()
-            .declarations
-            .iter()
-            .filter_map(|declaration| match declaration {
-                Declaration::Record(item) => Some(item),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        let enums = self
-            .program
-            .module()
-            .declarations
-            .iter()
-            .filter_map(|declaration| match declaration {
-                Declaration::Enum(item) => Some(item),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        let mut output = String::from("namespace poly_runtime {\n");
-        for record in &records {
-            let name = type_name(&record.header.name);
-            output.push_str(&format!(
-                "template <> any to_any<polyrust_generated::{name}>(const polyrust_generated::{name}& value);\n\
-                 template <> polyrust_generated::{name} from_any<polyrust_generated::{name}>(const any& value);\n"
-            ));
-        }
-        for enumeration in &enums {
-            let enum_name = type_name(&enumeration.header.name);
-            for variant in &enumeration.variants {
-                let name = format!("{enum_name}{}", type_name(&variant.header.name));
-                output.push_str(&format!(
-                    "template <> any to_any<polyrust_generated::{name}>(const polyrust_generated::{name}& value);\n"
-                ));
-            }
-            output.push_str(&format!(
-                "template <> any to_any<polyrust_generated::{enum_name}>(const polyrust_generated::{enum_name}& value);\n\
-                 template <> polyrust_generated::{enum_name} from_any<polyrust_generated::{enum_name}>(const any& value);\n"
-            ));
-        }
-        output.push_str("}\n\nnamespace polyrust_generated {\n");
-        for record in &records {
-            let name = type_name(&record.header.name);
-            output.push_str(&format!(
-                "poly_runtime::aggregate {name}::polyrust_value() const {{\n  return {{{}, \"\", {{{}}}}};\n}}\n",
-                record.header.node.id.0,
-                record
-                    .fields
+    fn conversions(&self) -> CppCode {
+        let declarations = &self.program.module().declarations;
+        CppCode::sequence([
+            CppCode::new("namespace poly_runtime {\n"),
+            CppCode::sequence(
+                declarations
                     .iter()
-                    .map(|field| format!(
-                        "{{{}, poly_runtime::to_any({})}}",
-                        cpp_string(&field.header.name),
-                        value_name(&field.header.name)
-                    ))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ));
-        }
-        output.push_str("}\n\nnamespace poly_runtime {\n");
-        for record in &records {
-            let name = type_name(&record.header.name);
-            output.push_str(&format!(
-                "template <> any to_any<polyrust_generated::{name}>(const polyrust_generated::{name}& value) {{ return value.polyrust_value(); }}\n\
-                 template <> polyrust_generated::{name} from_any<polyrust_generated::{name}>(const any& value) {{\n\
-                   const auto& item = std::any_cast<const aggregate&>(value);\n\
-                   return {{{}}};\n}}\n",
-                record
-                    .fields
+                    .map(|declaration| self.conversion_forward(declaration)),
+            ),
+            CppCode::new("}\n\nnamespace polyrust_generated {\n"),
+            CppCode::sequence(
+                declarations
                     .iter()
-                    .map(|field| format!(
-                        "from_any<{}>(item.fields.at({}))",
-                        self.ty(&field.ty),
-                        cpp_string(&field.header.name)
-                    ))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ));
-        }
-        for enumeration in &enums {
-            let enum_name = type_name(&enumeration.header.name);
-            for variant in &enumeration.variants {
-                let variant_name = type_name(&variant.header.name);
-                let name = format!("{enum_name}{variant_name}");
-                output.push_str(&format!(
-                    "template <> any to_any<polyrust_generated::{name}>(const polyrust_generated::{name}& value) {{\n\
-                       return aggregate{{{}, {}, {{{}}}}};\n}}\n",
-                    enumeration.header.node.id.0,
-                    cpp_string(&variant.header.name),
-                    variant
-                        .fields
-                        .iter()
-                        .map(|field| format!(
-                            "{{{}, to_any(value.{})}}",
-                            cpp_string(&field.header.name),
-                            value_name(&field.header.name)
-                        ))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ));
+                    .map(|declaration| self.value_bridge_definition(declaration)),
+            ),
+            CppCode::new("}\n\nnamespace poly_runtime {\n"),
+            CppCode::sequence(
+                declarations
+                    .iter()
+                    .map(|declaration| self.conversion_definition(declaration)),
+            ),
+            CppCode::new("}\n"),
+        ])
+    }
+
+    fn conversion_forward(&self, declaration: &Declaration) -> CppCode {
+        match declaration {
+            Declaration::Record(item) => {
+                let name = type_name(&item.header.name);
+                CppCode::new(format!(
+                    "template <> any to_any<polyrust_generated::{name}>(const polyrust_generated::{name}& value);\n\
+                     template <> polyrust_generated::{name} from_any<polyrust_generated::{name}>(const any& value);\n"
+                ))
             }
-            output.push_str(&format!(
-                "template <> any to_any<polyrust_generated::{enum_name}>(const polyrust_generated::{enum_name}& value) {{\n\
-                   return std::visit([](const auto& item) -> any {{ return to_any(item); }}, value);\n}}\n\
-                 template <> polyrust_generated::{enum_name} from_any<polyrust_generated::{enum_name}>(const any& value) {{\n\
-                   const auto& item = std::any_cast<const aggregate&>(value);\n"
-            ));
-            for variant in &enumeration.variants {
-                let name = format!("{enum_name}{}", type_name(&variant.header.name));
+            Declaration::Enum(item) => {
+                let enum_name = type_name(&item.header.name);
+                let mut output = String::new();
+                for variant in &item.variants {
+                    let name = format!("{enum_name}{}", type_name(&variant.header.name));
+                    output.push_str(&format!(
+                        "template <> any to_any<polyrust_generated::{name}>(const polyrust_generated::{name}& value);\n"
+                    ));
+                }
                 output.push_str(&format!(
-                    "  if (item.tag == {}) return polyrust_generated::{name}{{{}}};\n",
-                    cpp_string(&variant.header.name),
-                    variant
-                        .fields
-                        .iter()
-                        .map(|field| format!(
-                            "from_any<{}>(item.fields.at({}))",
-                            self.ty(&field.ty),
+                    "template <> any to_any<polyrust_generated::{enum_name}>(const polyrust_generated::{enum_name}& value);\n\
+                     template <> polyrust_generated::{enum_name} from_any<polyrust_generated::{enum_name}>(const any& value);\n"
+                ));
+                CppCode::new(output)
+            }
+            _ => CppCode::default(),
+        }
+    }
+
+    fn value_bridge_definition(&self, declaration: &Declaration) -> CppCode {
+        let Declaration::Record(item) = declaration else {
+            return CppCode::default();
+        };
+        let name = type_name(&item.header.name);
+        CppCode::new(format!(
+            "poly_runtime::aggregate {name}::polyrust_value() const {{\n  return {{{}, \"\", {{{}}}}};\n}}\n",
+            item.header.node.id.0,
+            item.fields
+                .iter()
+                .map(|field| format!(
+                    "{{{}, poly_runtime::to_any({})}}",
+                    cpp_string(&field.header.name),
+                    value_name(&field.header.name)
+                ))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ))
+    }
+
+    fn conversion_definition(&self, declaration: &Declaration) -> CppCode {
+        match declaration {
+            Declaration::Record(item) => {
+                let name = type_name(&item.header.name);
+                let fields = CppCode::joined(
+                    item.fields.iter().map(|field| {
+                        let ty = self.ty(&field.ty);
+                        CppCode::new(format!(
+                            "from_any<{ty}>(item.fields.at({}))",
                             cpp_string(&field.header.name)
                         ))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ));
+                        .with_text_from([ty])
+                    }),
+                    ", ",
+                );
+                CppCode::new(format!(
+                    "template <> any to_any<polyrust_generated::{name}>(const polyrust_generated::{name}& value) {{ return value.polyrust_value(); }}\n\
+                     template <> polyrust_generated::{name} from_any<polyrust_generated::{name}>(const any& value) {{\n\
+                       const auto& item = std::any_cast<const aggregate&>(value);\n\
+                       return {{{fields}}};\n}}\n"
+                ))
+                .with_system("any")
+                .with_text_from([fields])
             }
-            output.push_str("  throw std::runtime_error(\"unknown generated enum tag\");\n}\n");
+            Declaration::Enum(item) => {
+                let enum_name = type_name(&item.header.name);
+                let mut output = String::new();
+                let mut dependencies = Vec::new();
+                for variant in &item.variants {
+                    let variant_name = type_name(&variant.header.name);
+                    let name = format!("{enum_name}{variant_name}");
+                    output.push_str(&format!(
+                        "template <> any to_any<polyrust_generated::{name}>(const polyrust_generated::{name}& value) {{\n  return aggregate{{{}, {}, {{{}}}}};\n}}\n",
+                        item.header.node.id.0,
+                        cpp_string(&variant.header.name),
+                        variant
+                            .fields
+                            .iter()
+                            .map(|field| format!(
+                                "{{{}, to_any(value.{})}}",
+                                cpp_string(&field.header.name),
+                                value_name(&field.header.name)
+                            ))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ));
+                }
+                output.push_str(&format!(
+                    "template <> any to_any<polyrust_generated::{enum_name}>(const polyrust_generated::{enum_name}& value) {{\n  return std::visit([](const auto& item) -> any {{ return to_any(item); }}, value);\n}}\n\
+                     template <> polyrust_generated::{enum_name} from_any<polyrust_generated::{enum_name}>(const any& value) {{\n  const auto& item = std::any_cast<const aggregate&>(value);\n"
+                ));
+                for variant in &item.variants {
+                    let name = format!("{enum_name}{}", type_name(&variant.header.name));
+                    let fields = CppCode::joined(
+                        variant.fields.iter().map(|field| {
+                            let ty = self.ty(&field.ty);
+                            CppCode::new(format!(
+                                "from_any<{ty}>(item.fields.at({}))",
+                                cpp_string(&field.header.name)
+                            ))
+                            .with_text_from([ty])
+                        }),
+                        ", ",
+                    );
+                    output.push_str(&format!(
+                        "  if (item.tag == {}) return polyrust_generated::{name}{{{fields}}};\n",
+                        cpp_string(&variant.header.name)
+                    ));
+                    dependencies.push(fields);
+                }
+                output.push_str("  throw std::runtime_error(\"unknown generated enum tag\");\n}\n");
+                CppCode::new(output)
+                    .with_system("any")
+                    .with_system("stdexcept")
+                    .with_system("variant")
+                    .with_text_from(dependencies)
+            }
+            _ => CppCode::default(),
         }
-        output.push_str("}\n");
-        output
     }
 
     fn implementations(&self, record: NodeId) -> Vec<&portable_ir::v0::ImplementationDeclaration> {
@@ -729,41 +1016,51 @@ impl<'a> Generator<'a> {
             .collect()
     }
 
-    fn parameters(&self, parameters: &[portable_ir::v0::Parameter]) -> String {
-        parameters
-            .iter()
-            .map(|parameter| {
-                format!(
-                    "{} {}",
-                    parameter_type(&self.ty(&parameter.ty)),
-                    value_name(&parameter.header.name)
-                )
-            })
-            .collect::<Vec<_>>()
-            .join(", ")
+    fn parameters(&self, parameters: &[portable_ir::v0::Parameter]) -> CppCode {
+        CppCode::joined(
+            parameters.iter().map(|parameter| {
+                parameter_type(self.ty(&parameter.ty))
+                    .map_text(|ty| format!("{ty} {}", value_name(&parameter.header.name)))
+            }),
+            ", ",
+        )
     }
 
-    fn ty(&self, ty: &TypeRef) -> String {
+    fn ty(&self, ty: &TypeRef) -> CppCode {
         match ty {
-            TypeRef::Unit => "std::monostate".into(),
-            TypeRef::Bool => "bool".into(),
-            TypeRef::I32 => "std::int32_t".into(),
-            TypeRef::I64 => "std::int64_t".into(),
-            TypeRef::F64 => "double".into(),
-            TypeRef::Char => "char32_t".into(),
-            TypeRef::String => "std::string".into(),
-            TypeRef::Bytes => "std::vector<std::uint8_t>".into(),
-            TypeRef::List(inner) => format!("std::vector<{}>", self.ty(inner)),
-            TypeRef::Option(inner) => format!("std::optional<{}>", self.ty(inner)),
+            TypeRef::Unit => CppCode::new("std::monostate").with_system("variant"),
+            TypeRef::Bool => CppCode::new("bool"),
+            TypeRef::I32 => CppCode::new("std::int32_t").with_system("cstdint"),
+            TypeRef::I64 => CppCode::new("std::int64_t").with_system("cstdint"),
+            TypeRef::F64 => CppCode::new("double"),
+            TypeRef::Char => CppCode::new("char32_t"),
+            TypeRef::String => CppCode::new("std::string").with_system("string"),
+            TypeRef::Bytes => CppCode::new("std::vector<std::uint8_t>")
+                .with_system("cstdint")
+                .with_system("vector"),
+            TypeRef::List(inner) => {
+                let inner = self.ty(inner);
+                CppCode::new(format!("std::vector<{inner}>"))
+                    .with_system("vector")
+                    .with_text_from([inner])
+            }
+            TypeRef::Option(inner) => {
+                let inner = self.ty(inner);
+                CppCode::new(format!("std::optional<{inner}>"))
+                    .with_system("optional")
+                    .with_text_from([inner])
+            }
             TypeRef::Result { ok, error } => {
-                format!("value_result<{}, {}>", self.ty(ok), self.ty(error))
+                let ok = self.ty(ok);
+                let error = self.ty(error);
+                CppCode::new(format!("value_result<{ok}, {error}>")).with_text_from([ok, error])
             }
             TypeRef::Named(id) => self.named_ty(*id),
-            TypeRef::Contract(id) => type_name(self.name(*id)),
+            TypeRef::Contract(id) => CppCode::new(type_name(self.name(*id))),
         }
     }
 
-    fn named_ty(&self, id: NodeId) -> String {
+    fn named_ty(&self, id: NodeId) -> CppCode {
         self.program
             .module()
             .declarations
@@ -773,11 +1070,11 @@ impl<'a> Generator<'a> {
                     Some(self.ty(&item.target))
                 }
                 declaration if declaration.header().node.id == id => {
-                    Some(type_name(&declaration.header().name))
+                    Some(CppCode::new(type_name(&declaration.header().name)))
                 }
                 _ => None,
             })
-            .unwrap_or_else(|| "std::monostate".into())
+            .unwrap_or_else(|| CppCode::new("std::monostate").with_system("variant"))
     }
 
     fn name(&self, id: NodeId) -> &str {
@@ -785,14 +1082,14 @@ impl<'a> Generator<'a> {
     }
 }
 
-fn parameter_type(ty: &str) -> String {
+fn parameter_type(ty: CppCode) -> CppCode {
     if matches!(
-        ty,
+        ty.text.as_str(),
         "bool" | "std::int32_t" | "std::int64_t" | "double" | "char32_t"
     ) {
-        ty.into()
+        ty
     } else {
-        format!("const {ty}&")
+        ty.map_text(|text| format!("const {text}&"))
     }
 }
 
@@ -907,13 +1204,13 @@ fn identifier(name: &str) -> String {
     }
 }
 
-fn cpp_string(value: &str) -> String {
-    serde_json::to_string(value).expect("C++ string serializes")
+fn cpp_string(value: &str) -> CppCode {
+    CppCode::new(serde_json::to_string(value).expect("C++ string serializes"))
 }
 
 const CPP_LITERAL_CHUNK_BYTES: usize = 8 * 1024;
 
-fn cpp_string_expression(value: &str) -> String {
+fn cpp_string_expression(value: &str) -> CppCode {
     if value.len() <= CPP_LITERAL_CHUNK_BYTES {
         return cpp_string(value);
     }
@@ -930,9 +1227,9 @@ fn cpp_string_expression(value: &str) -> String {
     let mut expression = format!("std::string({})", chunks[0]);
     for chunk in &chunks[1..] {
         expression.push_str(" + ");
-        expression.push_str(chunk);
+        expression.push_str(&chunk.text);
     }
-    expression
+    CppCode::new(expression).with_system("string")
 }
 
 fn stringify_wide_numbers(value: &mut serde_json::Value) {
@@ -976,17 +1273,164 @@ mod tests {
         let second = CppBackend
             .generate(&checked, &BackendOptions::default())
             .unwrap();
+        let third = CppBackend
+            .generate(&checked, &BackendOptions::default())
+            .unwrap();
         assert_eq!(first.canonical_json(), second.canonical_json());
+        assert_eq!(second.canonical_json(), third.canonical_json());
         assert!(first.dependencies().is_empty());
+    }
+
+    #[test]
+    fn cpp_includes_and_nested_types_are_validated_fragments() {
+        for header in ["any", "cstdint", "string_view", "vendor/library.hpp"] {
+            assert!(CppImport::system(header).is_ok(), "{header}");
+        }
+        for header in ["generated.hpp", "detail/runtime.h"] {
+            assert!(CppImport::local(header).is_ok(), "{header}");
+        }
+        for header in [
+            "",
+            "../escape.hpp",
+            "/absolute.hpp",
+            "bad\\path.hpp",
+            "x.hpp>\n#include <y",
+        ] {
+            assert!(CppImport::system(header).is_err(), "{header}");
+            assert!(CppImport::local(header).is_err(), "{header}");
+        }
+        assert!(CppImport::local("not_a_header").is_err());
+
+        let program = fixture();
+        let generator = Generator::new(&program);
+        for (ty, expected_text, expected_headers) in [
+            (TypeRef::Bool, "bool", &[][..]),
+            (TypeRef::I64, "std::int64_t", &["cstdint"][..]),
+            (TypeRef::String, "std::string", &["string"][..]),
+            (TypeRef::Unit, "std::monostate", &["variant"][..]),
+            (
+                TypeRef::Bytes,
+                "std::vector<std::uint8_t>",
+                &["cstdint", "vector"][..],
+            ),
+        ] {
+            let code = generator.ty(&ty);
+            assert_eq!(code.text, expected_text);
+            assert_eq!(system_headers(&code), string_set(expected_headers));
+            assert!(code.helper_roots.is_empty());
+        }
+        let nested = generator.ty(&TypeRef::Result {
+            ok: Box::new(TypeRef::Option(Box::new(TypeRef::List(Box::new(
+                TypeRef::I64,
+            ))))),
+            error: Box::new(TypeRef::String),
+        });
+        assert_eq!(
+            nested.text,
+            "value_result<std::optional<std::vector<std::int64_t>>, std::string>"
+        );
+        assert_eq!(
+            system_headers(&nested),
+            string_set(&["cstdint", "optional", "string", "vector"])
+        );
+    }
+
+    #[test]
+    fn cpp_runtime_sections_own_exact_headers_and_resolve_from_source_roots() {
+        let sections = [
+            (
+                "runtime.model",
+                &[
+                    "any",
+                    "cstdint",
+                    "map",
+                    "optional",
+                    "stdexcept",
+                    "string",
+                    "type_traits",
+                    "utility",
+                    "variant",
+                    "vector",
+                ][..],
+            ),
+            (
+                "runtime.json",
+                &[
+                    "cstddef",
+                    "cstdint",
+                    "stdexcept",
+                    "string",
+                    "string_view",
+                    "utility",
+                ][..],
+            ),
+            (
+                "runtime.engine",
+                &[
+                    "algorithm",
+                    "any",
+                    "bit",
+                    "cmath",
+                    "cstddef",
+                    "cstdint",
+                    "functional",
+                    "limits",
+                    "map",
+                    "optional",
+                    "stdexcept",
+                    "string",
+                    "string_view",
+                    "utility",
+                    "vector",
+                ][..],
+            ),
+        ];
+        for (id, expected) in sections {
+            let code = cpp_runtime_section(id, "int owned;\n".to_owned()).unwrap();
+            assert_eq!(system_headers(&code), string_set(expected), "{id}");
+        }
+
+        let program = fixture();
+        let generator = Generator::new(&program);
+        let (_, roots) = generator.source_file().unwrap();
+        assert_eq!(roots, string_set(&["runtime.full"]));
+        let runtime = render_runtime(&roots);
+        assert!(!runtime.contains("POLYRUST-"));
+        assert_eq!(
+            include_headers(&runtime),
+            string_set(&[
+                "algorithm",
+                "any",
+                "bit",
+                "cmath",
+                "cstddef",
+                "cstdint",
+                "functional",
+                "limits",
+                "map",
+                "optional",
+                "stdexcept",
+                "string",
+                "string_view",
+                "type_traits",
+                "utility",
+                "variant",
+                "vector",
+            ])
+        );
     }
 
     #[test]
     fn large_embedded_documents_are_runtime_joined_below_cpp_literal_limits() {
         let expression = cpp_string_expression(&"x".repeat(100_000));
-        assert!(expression.starts_with("std::string(\""));
-        assert!(expression.ends_with('"'));
-        assert!(expression.matches(" + \"").count() >= 12);
-        assert!(!expression.contains(&"x".repeat(65_536)));
+        assert!(expression.text.starts_with("std::string(\""));
+        assert!(expression.text.ends_with('"'));
+        assert!(expression.text.matches(" + \"").count() >= 12);
+        assert!(!expression.text.contains(&"x".repeat(65_536)));
+        assert_eq!(
+            expression.imports,
+            BTreeSet::from([(cpp_system_group(), CppImport::system("string").unwrap())])
+        );
     }
 
     #[test]
@@ -1014,6 +1458,42 @@ mod tests {
             portable_codegen::OutputContents::Text(text) => text,
             portable_codegen::OutputContents::Bytes(_) => panic!("C++ source must be text"),
         }
+    }
+
+    fn system_headers(code: &CppCode) -> BTreeSet<String> {
+        code.imports
+            .iter()
+            .filter_map(|(_, import)| match &import.kind {
+                CppImportKind::System { path } => Some(path.clone()),
+                CppImportKind::Local { .. } => None,
+            })
+            .collect()
+    }
+
+    fn string_set(values: &[&str]) -> BTreeSet<String> {
+        values.iter().map(|value| (*value).to_owned()).collect()
+    }
+
+    fn include_headers(source: &str) -> BTreeSet<String> {
+        source
+            .lines()
+            .filter_map(|line| line.strip_prefix("#include <")?.strip_suffix('>'))
+            .map(str::to_owned)
+            .collect()
+    }
+
+    fn render_runtime(roots: &BTreeSet<String>) -> String {
+        let file = cpp_runtime_file(roots).unwrap();
+        let group = FileGroup::new(
+            FileGroupId::parse("test").unwrap(),
+            vec![LanguageFile::source(file)],
+        )
+        .unwrap();
+        let package =
+            LanguagePackage::new(vec![group], Vec::<DeclaredDependency>::new(), Vec::new())
+                .unwrap();
+        let manifest = portable_codegen::render_language_package(&package, &CppRenderer).unwrap();
+        generated_text(&manifest, "src/runtime.hpp").to_owned()
     }
 
     fn fixture() -> CheckedProgram {
