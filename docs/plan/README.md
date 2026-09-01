@@ -77,3 +77,8 @@ contract as every other target.
 - [M18 — trim-newlines equivalence port](milestones/M18-trim-newlines.md) — complete
 - [M19 — slash equivalence port](milestones/M19-slash.md) — complete
 - [M20 — strip-bom equivalence port](milestones/M20-strip-bom.md) — complete
+
+### Phase 7 — Target expansion
+
+- [M21 — JavaScript derivative and Java backend](milestones/M21-javascript-java.md) — complete
+- [M22 — C++ and C backends](milestones/M22-cpp-c.md) — planned

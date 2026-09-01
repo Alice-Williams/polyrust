@@ -38,6 +38,7 @@ PINNED_TEXT = {
     "MODULE.bazel": [
         'version = "0.74.0"',
         'version = "0.63.0"',
+        'version = "9.6.1"',
         'version = "1.25.14"',
         'versions = ["1.98.0"]',
     ],
@@ -87,7 +88,10 @@ def verify_evidence(evidence: dict[str, object]) -> None:
     tools = set(evidence.get("formatters", []))
     require({"rustfmt", "prettier", "ruff", "gofmt"} <= tools, "missing formatter")
     backends = set(evidence.get("backends", []))
-    require({"rust", "typescript", "python", "go"} <= backends, "required backend skipped")
+    require(
+        {"rust", "typescript", "javascript", "python", "go", "java"} <= backends,
+        "required backend skipped",
+    )
 
 
 def generated_sources(root: Path, target: str, suffix: str) -> list[Path]:
@@ -113,7 +117,7 @@ def verify(root: Path) -> None:
             "snapshot_equal": True,
             "conformance": True,
             "formatters": ["rustfmt", "prettier", "ruff", "gofmt"],
-            "backends": ["rust", "typescript", "python", "go"],
+            "backends": ["rust", "typescript", "javascript", "python", "go", "java"],
         }
     )
 
@@ -132,13 +136,16 @@ def self_test() -> None:
         "snapshot_equal": True,
         "conformance": True,
         "formatters": ["rustfmt", "prettier", "ruff", "gofmt"],
-        "backends": ["rust", "typescript", "python", "go"],
+        "backends": ["rust", "typescript", "javascript", "python", "go", "java"],
     }
     for name, change in [
         ("snapshot drift", {"snapshot_equal": False}),
         ("conformance failure", {"conformance": False}),
         ("missing formatter", {"formatters": ["rustfmt", "ruff", "gofmt"]}),
-        ("skipped Go", {"backends": ["rust", "typescript", "python"]}),
+        (
+            "skipped Java",
+            {"backends": ["rust", "typescript", "javascript", "python", "go"]},
+        ),
     ]:
         evidence = {**good, **change}
         expect_failure(name, lambda evidence=evidence: verify_evidence(evidence))
@@ -174,4 +181,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

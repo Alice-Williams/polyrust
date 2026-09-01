@@ -13,8 +13,31 @@ use portable_codegen::{
 use portable_ir::v0::{Declaration, IrVersion, NodeId, TypeRef, Visibility};
 
 const RUNTIME: &str = include_str!("runtime.ts");
+const JAVASCRIPT_RUNTIME: &str = include_str!("runtime.js");
 
 pub struct TypeScriptBackend;
+pub struct JavaScriptBackend;
+
+fn support(capability: Capability) -> CapabilitySupport {
+    match capability {
+        Capability::CheckedIntegerArithmetic => CapabilitySupport::Helper {
+            helper: "polyrust.runtime.checked-integers.v0".into(),
+        },
+        Capability::UnicodeScalar => CapabilitySupport::Helper {
+            helper: "polyrust.runtime.unicode-scalars.v0".into(),
+        },
+        Capability::ImmutableList => CapabilitySupport::Helper {
+            helper: "polyrust.runtime.immutable-list.v0".into(),
+        },
+        Capability::Bytes
+        | Capability::ContractDispatch
+        | Capability::F64
+        | Capability::Option
+        | Capability::Result
+        | Capability::WrappingIntegerArithmetic
+        | Capability::BoundedIteration => CapabilitySupport::Native,
+    }
+}
 
 impl Backend for TypeScriptBackend {
     fn descriptor(&self) -> BackendDescriptor {
@@ -27,24 +50,7 @@ impl Backend for TypeScriptBackend {
     }
 
     fn support(&self, capability: Capability) -> CapabilitySupport {
-        match capability {
-            Capability::CheckedIntegerArithmetic => CapabilitySupport::Helper {
-                helper: "polyrust.runtime.checked-integers.v0".into(),
-            },
-            Capability::UnicodeScalar => CapabilitySupport::Helper {
-                helper: "polyrust.runtime.unicode-scalars.v0".into(),
-            },
-            Capability::ImmutableList => CapabilitySupport::Helper {
-                helper: "polyrust.runtime.immutable-list.v0".into(),
-            },
-            Capability::Bytes
-            | Capability::ContractDispatch
-            | Capability::F64
-            | Capability::Option
-            | Capability::Result
-            | Capability::WrappingIntegerArithmetic
-            | Capability::BoundedIteration => CapabilitySupport::Native,
-        }
+        support(capability)
     }
 
     fn options_schema(&self) -> OptionsSchema {
@@ -80,6 +86,58 @@ impl Backend for TypeScriptBackend {
                 OutputFile::text("src/conformance.test.ts", CONFORMANCE),
                 OutputFile::text("src/node-shims.d.ts", NODE_SHIMS),
                 OutputFile::text("tests/invalid-types.ts", INVALID_TYPES),
+            ],
+            Vec::<DeclaredDependency>::new(),
+            helpers,
+        )
+        .map_err(BackendError::UnsupportedCapabilities)
+    }
+}
+
+impl Backend for JavaScriptBackend {
+    fn descriptor(&self) -> BackendDescriptor {
+        BackendDescriptor {
+            target: TargetId::parse("org.polyrust.javascript").expect("static target ID is valid"),
+            display_name: "JavaScript".to_owned(),
+            backend_version: BackendVersion::new(0, 1, 0),
+            supported_ir: IrVersionRange::exact(IrVersion::CURRENT),
+        }
+    }
+
+    fn support(&self, capability: Capability) -> CapabilitySupport {
+        support(capability)
+    }
+
+    fn options_schema(&self) -> OptionsSchema {
+        BTreeMap::new()
+    }
+
+    fn generate(
+        &self,
+        program: &CheckedProgram,
+        _options: &BackendOptions,
+    ) -> Result<OutputManifest, BackendError> {
+        let generator = Generator::new(program);
+        let helpers = program
+            .capabilities()
+            .program()
+            .iter()
+            .filter_map(|capability| match self.support(*capability) {
+                CapabilitySupport::Helper { helper } => Some(InjectedHelper {
+                    id: helper,
+                    capability: format!("{capability:?}"),
+                    files: vec!["src/runtime.js".into()],
+                }),
+                CapabilitySupport::Native | CapabilitySupport::Unsupported { .. } => None,
+            })
+            .collect();
+        OutputManifest::new(
+            vec![
+                OutputFile::text("package.json", JAVASCRIPT_PACKAGE_JSON),
+                OutputFile::text("src/runtime.js", JAVASCRIPT_RUNTIME),
+                OutputFile::text("src/index.js", generator.javascript_index()?),
+                OutputFile::text("src/generated.test.js", generator.javascript_tests()),
+                OutputFile::text("src/conformance.test.js", JAVASCRIPT_CONFORMANCE),
             ],
             Vec::<DeclaredDependency>::new(),
             helpers,
@@ -134,6 +192,147 @@ impl<'a> Generator<'a> {
         output.push_str(&serde_json::to_string(&tests).expect("tests serialize"));
         output.push_str(";\n");
         Ok(output)
+    }
+
+    fn javascript_index(&self) -> Result<String, BackendError> {
+        let mut document = serde_json::to_value(self.program.document()).map_err(|error| {
+            BackendError::Generation {
+                message: format!("cannot serialize checked IR: {error}"),
+            }
+        })?;
+        stringify_wide_numbers(&mut document);
+        let document = serde_json::to_string(&document).expect("checked document serializes");
+        let mut output = String::from(
+            "// Generated by PolyRust from the TypeScript target implementation.\n\
+             import { Runtime } from \"./runtime.js\";\n\
+             export * from \"./runtime.js\";\n\n",
+        );
+        output.push_str("const runtime = new Runtime(");
+        output.push_str(&document);
+        output.push_str(");\n\n");
+        let mut declarations: Vec<_> = self.program.module().declarations.iter().collect();
+        declarations.sort_by_key(|declaration| declaration.header().node.id);
+        for declaration in declarations {
+            self.javascript_declaration(&mut output, declaration);
+        }
+        output.push_str(
+            "export const __invokeTest = (index) => {\n\
+             \x20 const test = TESTS[index];\n\
+             \x20 if (test === undefined) return { actual: { ok: false, error: { code: \"invalid_test\", message: \"unknown test\" } }, expected: undefined, expectsError: true };\n\
+             \x20 const invocation = test.invocation;\n\
+             \x20 const arguments_ = invocation.data.arguments.map((value) => runtime.decode(value));\n\
+             \x20 const actual = invocation.kind === \"function\" ? runtime.invoke(invocation.data.function, arguments_) : runtime.invokeMethod(invocation.data.implementation, invocation.data.method, runtime.decode(invocation.data.receiver), arguments_);\n\
+             \x20 return { actual, expected: runtime.decode(test.expected.data), expectsError: test.expected.kind === \"error\" };\n\
+             };\n",
+        );
+        let tests: Vec<_> = self
+            .program
+            .module()
+            .declarations
+            .iter()
+            .filter_map(|declaration| {
+                if let Declaration::Test(test) = declaration {
+                    Some(serde_json::json!({
+                        "invocation": test.invocation,
+                        "expected": test.expected,
+                    }))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        output.push_str("const TESTS = ");
+        output.push_str(&serde_json::to_string(&tests).expect("tests serialize"));
+        output.push_str(";\n");
+        Ok(output)
+    }
+
+    fn javascript_declaration(&self, output: &mut String, declaration: &Declaration) {
+        match declaration {
+            Declaration::Alias(_)
+            | Declaration::Enum(_)
+            | Declaration::Contract(_)
+            | Declaration::Implementation(_)
+            | Declaration::Test(_) => {}
+            Declaration::Record(item) => {
+                output.push_str(&format!(
+                    "{}class {} {{\n  __polyDecl = {};\n",
+                    export(item.header.visibility),
+                    type_name(&item.header.name),
+                    item.header.node.id.0
+                ));
+                output.push_str(&format!(
+                    "  constructor({}) {{\n",
+                    item.fields
+                        .iter()
+                        .map(|field| value_name(&field.header.name))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
+                for field in &item.fields {
+                    output.push_str(&format!(
+                        "    this.{} = {};\n",
+                        value_name(&field.header.name),
+                        value_name(&field.header.name)
+                    ));
+                }
+                output.push_str("    Object.freeze(this);\n  }\n");
+                for implementation in self.program.module().declarations.iter().filter_map(
+                    |candidate| match candidate {
+                        Declaration::Implementation(value)
+                            if value.record == item.header.node.id =>
+                        {
+                            Some(value)
+                        }
+                        _ => None,
+                    },
+                ) {
+                    for method in &implementation.methods {
+                        output.push_str(&format!(
+                            "  {}({}) {{ return runtime.invokeMethod({}, {}, this, [{}]); }}\n",
+                            value_name(&method.header.name),
+                            method
+                                .parameters
+                                .iter()
+                                .map(|parameter| value_name(&parameter.header.name))
+                                .collect::<Vec<_>>()
+                                .join(", "),
+                            implementation.header.node.id.0,
+                            method.header.node.id.0,
+                            method
+                                .parameters
+                                .iter()
+                                .map(|parameter| value_name(&parameter.header.name))
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        ));
+                    }
+                }
+                output.push_str("}\n\n");
+            }
+            Declaration::Constant(item) => output.push_str(&format!(
+                "{}const {} = () => runtime.readConstant({});\n\n",
+                export(item.header.visibility),
+                value_name(&item.header.name),
+                item.header.node.id.0
+            )),
+            Declaration::Function(item) => output.push_str(&format!(
+                "{}const {} = ({}) => runtime.invoke({}, [{}]);\n\n",
+                export(item.header.visibility),
+                value_name(&item.header.name),
+                item.parameters
+                    .iter()
+                    .map(|parameter| value_name(&parameter.header.name))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                item.header.node.id.0,
+                item.parameters
+                    .iter()
+                    .map(|parameter| value_name(&parameter.header.name))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )),
+        }
     }
 
     fn declaration(&self, output: &mut String, declaration: &Declaration) {
@@ -325,6 +524,25 @@ impl<'a> Generator<'a> {
         }
         output
     }
+
+    fn javascript_tests(&self) -> String {
+        let mut output = String::from(
+            "import assert from \"node:assert/strict\";\n\
+             import test from \"node:test\";\n\
+             import { __invokeTest } from \"./index.js\";\n\n",
+        );
+        let mut index = 0;
+        for declaration in &self.program.module().declarations {
+            if let Declaration::Test(test_declaration) = declaration {
+                output.push_str(&format!(
+                    "test({:?}, () => {{ const result = __invokeTest({index}); assert.equal(result.actual.ok, !result.expectsError); if (result.actual.ok) assert.deepEqual(result.actual.value, result.expected); }});\n",
+                    test_declaration.header.name
+                ));
+                index += 1;
+            }
+        }
+        output
+    }
 }
 
 fn export(visibility: Visibility) -> &'static str {
@@ -427,8 +645,10 @@ fn stringify_wide_numbers(value: &mut serde_json::Value) {
 }
 
 const PACKAGE_JSON: &str = "{\n  \"name\": \"generated-polyrust-package\",\n  \"version\": \"0.1.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"typecheck\": \"tsc --noEmit\",\n    \"test\": \"tsc && node --test dist/*.test.js\"\n  }\n}\n";
+const JAVASCRIPT_PACKAGE_JSON: &str = "{\n  \"name\": \"generated-polyrust-javascript-package\",\n  \"version\": \"0.1.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"test\": \"node --test src/*.test.js\"\n  }\n}\n";
 const TSCONFIG: &str = "{\n  \"compilerOptions\": {\n    \"target\": \"ES2024\",\n    \"module\": \"NodeNext\",\n    \"moduleResolution\": \"NodeNext\",\n    \"strict\": true,\n    \"noImplicitAny\": true,\n    \"noUncheckedIndexedAccess\": true,\n    \"exactOptionalPropertyTypes\": true,\n    \"rootDir\": \"src\",\n    \"outDir\": \"dist\",\n    \"declaration\": true,\n    \"skipLibCheck\": true\n  },\n  \"include\": [\"src/**/*.ts\"],\n  \"exclude\": [\"tests\"]\n}\n";
 const CONFORMANCE: &str = "import assert from \"node:assert/strict\";\nimport test from \"node:test\";\nimport { checkedI32, checkedI64, listAppend, scalarLength, wrappingI32, wrappingI64 } from \"./runtime.js\";\n\ntest(\"20 semantic boundary vectors\", () => {\n  const astral = scalarLength(\"😀\");\n  const original: readonly number[] = [1];\n  const appended = listAppend(original, 2);\n  const vectors: readonly boolean[] = [\n    checkedI32(0).ok, checkedI32(2147483647).ok, checkedI32(-2147483648).ok, !checkedI32(2147483648).ok, !checkedI32(-2147483649).ok,\n    checkedI64(0n).ok, checkedI64(9223372036854775807n).ok, checkedI64(-9223372036854775808n).ok, !checkedI64(9223372036854775808n).ok, !checkedI64(-9223372036854775809n).ok,\n    wrappingI32(2147483648) === -2147483648, wrappingI32(-2147483649) === 2147483647, wrappingI64(9223372036854775808n) === -9223372036854775808n, wrappingI64(-9223372036854775809n) === 9223372036854775807n,\n    scalarLength(\"a\").ok, astral.ok && astral.value === 1, !scalarLength(\"\\ud800\").ok, appended.length === 2, appended !== original, Object.is(-0, -0),\n  ];\n  assert.equal(vectors.length, 20); assert.ok(vectors.every(Boolean));\n});\n";
+const JAVASCRIPT_CONFORMANCE: &str = "import assert from \"node:assert/strict\";\nimport test from \"node:test\";\nimport { checkedI32, checkedI64, listAppend, scalarLength, wrappingI32, wrappingI64 } from \"./runtime.js\";\n\ntest(\"20 semantic boundary vectors\", () => {\n  const astral = scalarLength(\"😀\");\n  const original = [1];\n  const appended = listAppend(original, 2);\n  const vectors = [\n    checkedI32(0).ok, checkedI32(2147483647).ok, checkedI32(-2147483648).ok, !checkedI32(2147483648).ok, !checkedI32(-2147483649).ok,\n    checkedI64(0n).ok, checkedI64(9223372036854775807n).ok, checkedI64(-9223372036854775808n).ok, !checkedI64(9223372036854775808n).ok, !checkedI64(-9223372036854775809n).ok,\n    wrappingI32(2147483648) === -2147483648, wrappingI32(-2147483649) === 2147483647, wrappingI64(9223372036854775808n) === -9223372036854775808n, wrappingI64(-9223372036854775809n) === 9223372036854775807n,\n    scalarLength(\"a\").ok, astral.ok && astral.value === 1, !scalarLength(\"\\ud800\").ok, appended.length === 2, appended !== original, Object.is(-0, -0),\n  ];\n  assert.equal(vectors.length, 20); assert.ok(vectors.every(Boolean));\n});\n";
 const INVALID_TYPES: &str = "import type { PolyOption } from \"../src/runtime.js\";\n// @ts-expect-error invalid option tag must be rejected\nconst invalid: PolyOption<number> = { tag: \"missing\" };\nvoid invalid;\n";
 const NODE_SHIMS: &str = "declare module \"node:assert/strict\" { const assert: { equal(actual: unknown, expected: unknown): void; deepEqual(actual: unknown, expected: unknown): void; ok(value: unknown): void }; export default assert; }\ndeclare module \"node:test\" { const test: (name: string, body: () => void) => void; export default test; }\n";
 
@@ -460,6 +680,29 @@ mod tests {
         };
         assert!(index.contains("bigint") || index.contains("call_render"));
         assert!(TSCONFIG.contains("\"strict\": true"));
+    }
+    #[test]
+    fn javascript_manifest_is_standalone_and_deterministic() {
+        let checked = fixture();
+        let first = JavaScriptBackend
+            .generate(&checked, &BackendOptions::default())
+            .unwrap();
+        let second = JavaScriptBackend
+            .generate(&checked, &BackendOptions::default())
+            .unwrap();
+        assert_eq!(first.canonical_json(), second.canonical_json());
+        assert!(
+            first
+                .files()
+                .iter()
+                .all(|file| !file.path().ends_with(".ts"))
+        );
+        assert!(
+            first
+                .files()
+                .iter()
+                .any(|file| file.path() == "src/runtime.js")
+        );
     }
     fn fixture() -> CheckedProgram {
         let document = portable_ir::v0::from_json(include_bytes!(

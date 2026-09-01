@@ -23,7 +23,7 @@ fn main() {
         if determinism {
             portable_conformance::verify_determinism(&portable_conformance::checked_fixture())?;
             summaries
-                .push("four target manifests are byte-identical across repeated generation".into());
+                .push("six target manifests are byte-identical across repeated generation".into());
         }
         Ok(summaries.join("; "))
     })();

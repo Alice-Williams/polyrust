@@ -1,0 +1,102 @@
+load("@rules_java//java:defs.bzl", "java_test")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+
+exports_files(["Cargo.toml"])
+
+rust_library(
+    name = "portable_backend_java",
+    srcs = glob(["src/**/*.rs"]),
+    compile_data = ["src/Runtime.java"],
+    crate_name = "portable_backend_java",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+        "//crates/ir:portable_ir",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_test(
+    name = "portable_backend_java_test",
+    compile_data = ["//crates/build:testdata/registration.poly.json"],
+    crate = ":portable_backend_java",
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "generate_v0_fixture",
+    srcs = ["examples/generate_v0.rs"],
+    crate_name = "generate_java_v0_fixture",
+    edition = "2024",
+    deps = [
+        ":portable_backend_java",
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+        "//crates/ir:portable_ir",
+    ],
+)
+
+genrule(
+    name = "generate_v0_package",
+    srcs = ["//crates/build:testdata/registration.poly.json"],
+    outs = [
+        "test-generated/README.md",
+        "test-generated/negative/InvalidTypes.java",
+        "test-generated/src/main/java/org/polyrust/generated/Generated.java",
+        "test-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        "test-generated/src/test/java/org/polyrust/generated/ConformanceTest.java",
+        "test-generated/src/test/java/org/polyrust/generated/GeneratedTest.java",
+    ],
+    cmd = "$(location :generate_v0_fixture) $(location //crates/build:testdata/registration.poly.json) $(@D)/test-generated",
+    tools = [":generate_v0_fixture"],
+)
+
+java_test(
+    name = "generated_v0_native_test",
+    srcs = [
+        ":test-generated/src/main/java/org/polyrust/generated/Generated.java",
+        ":test-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        ":test-generated/src/test/java/org/polyrust/generated/GeneratedTest.java",
+    ],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
+    main_class = "org.polyrust.generated.GeneratedTest",
+    use_testrunner = False,
+    visibility = ["//visibility:public"],
+)
+
+java_test(
+    name = "generated_v0_conformance_test",
+    srcs = [
+        ":test-generated/src/main/java/org/polyrust/generated/Generated.java",
+        ":test-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        ":test-generated/src/test/java/org/polyrust/generated/ConformanceTest.java",
+    ],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
+    main_class = "org.polyrust.generated.ConformanceTest",
+    use_testrunner = False,
+    visibility = ["//visibility:public"],
+)
+
+java_test(
+    name = "generated_v0_public_api_test",
+    srcs = [
+        "test/JavaConsumerTest.java",
+        ":test-generated/src/main/java/org/polyrust/generated/Generated.java",
+        ":test-generated/src/main/java/org/polyrust/generated/Runtime.java",
+    ],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
+    main_class = "org.polyrust.consumer.JavaConsumerTest",
+    use_testrunner = False,
+    visibility = ["//visibility:public"],
+)

@@ -7,7 +7,8 @@ Status: proposed v0.1
 PolyRust is one extensible portable code-generation language hosted in Rust.
 Generator authors describe constants, types, contracts/interfaces,
 implementations, functions, and tests once, then emit readable, checked source
-packages for Rust, TypeScript, Python, and Go. New functionality is added to the
+packages for Rust, TypeScript, JavaScript, Python, Go, and Java. New
+functionality is added to the
 common model one specified and conformance-tested capability at a time.
 
 ## Problem
@@ -28,7 +29,7 @@ discard information needed for maintainable high-level source.
 ## User jobs
 
 1. As a generator author, I define a module once through a Rust API and generate
-   Rust, TypeScript, Python, and Go packages.
+   Rust, TypeScript, JavaScript, Python, Go, and Java packages.
 2. As a generator author, I define tests beside the common code and run the same
    tests in the evaluator and every generated target.
 3. As a package maintainer, I can inspect, format, build, and test generated code
@@ -46,11 +47,12 @@ discard information needed for maintainable high-level source.
 - Specify and validate the Core functionality in the portable language map.
 - Include constants, records, enums, restricted contracts/interfaces, explicit
   implementations, pure functions/methods, and portable tests.
-- Generate deterministic multi-file Rust, TypeScript, Python, and Go packages.
+- Generate deterministic multi-file Rust, TypeScript, JavaScript, Python, Go,
+  and Java packages.
 - Format and statically check/compile all generated packages.
 - Execute shared conformance vectors against a reference evaluator and all
-  four targets.
-- Prove that all four backends work through the same public core interfaces.
+  six targets.
+- Prove that all six outputs work through the same public core interfaces.
 - Produce actionable diagnostics with codes, source paths, and suggestions.
 
 ## Non-goals for v0.1
@@ -66,10 +68,10 @@ discard information needed for maintainable high-level source.
 
 ## Required target policy
 
-Rust, TypeScript, Python, and Go are all release-blocking v0.1 targets. Rust is
+Rust, TypeScript, JavaScript, Python, Go, and Java are release-blocking targets. Rust is
 implemented first as the reference source backend, but it uses the same
 `Backend` interface, capability checks, file manifest, snapshots, and conformance
-suite as the other three. A feature is not part of v0.1 unless all four required
+suite as the others. A feature is not complete unless all six required
 backends implement it or the feature is explicitly moved out of v0.1.
 
 ## Functional requirements
@@ -171,7 +173,7 @@ core switches on its target name.
   before v0.1 release.
 - **Dependency transparency:** manifest and CLI report injected runtime helpers
   and package dependencies.
-- **Testability:** every IR feature has checker, evaluator, and four-backend
+- **Testability:** every IR feature has checker, evaluator, and six-output
   coverage.
 
 ## Proposed user experience
@@ -233,13 +235,13 @@ A proposed IR feature is accepted only when it has:
 2. IR and Rust-builder representation;
 3. validation rules and stable diagnostic examples;
 4. reference-evaluator behavior;
-5. Rust, TypeScript, Python, and Go lowering designs;
+5. Rust, TypeScript, JavaScript, Python, Go, and Java lowering designs;
 6. generated native and shared conformance tests; and
 7. a compatibility note for serialized IR.
 
 ## Success measures
 
-- One non-trivial example generates all four required packages without
+- One non-trivial example generates all six required packages without
   hand-editing.
 - The example includes constants, a contract and implementation, concrete and
   contract-dispatched functions, and at least ten portable tests.
@@ -265,9 +267,9 @@ behavior.
 The generated Rust crate builds, tests, contains no `unsafe`, and agrees with the
 evaluator.
 
-### Gate C: four-target proof
+### Gate C: cross-target proof
 
-Rust, TypeScript, Python, and Go agree with the evaluator for all required
+Rust, TypeScript, JavaScript, Python, Go, and Java agree with the evaluator for all required
 vectors.
 
 ### Gate D: extensibility proof

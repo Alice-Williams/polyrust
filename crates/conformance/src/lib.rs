@@ -1,11 +1,12 @@
-//! Target-neutral differential conformance corpus and four-backend harness.
+//! Target-neutral differential conformance corpus and six-output harness.
 
 #![forbid(unsafe_code)]
 
 use portable_backend_go::GoV0Backend;
+use portable_backend_java::JavaBackend;
 use portable_backend_python::PythonBackend;
 use portable_backend_rust::RustBackend;
-use portable_backend_typescript::TypeScriptBackend;
+use portable_backend_typescript::{JavaScriptBackend, TypeScriptBackend};
 use portable_check::v0::{CheckedProgram, check_program};
 use portable_codegen::{Backend, BackendOptions};
 use portable_eval::{Evaluator, decode_canonical_value, encode_canonical_value};
@@ -204,11 +205,13 @@ pub fn verify_portable_tests(program: &CheckedProgram) -> HarnessResult<usize> {
 }
 
 pub fn verify_determinism(program: &CheckedProgram) -> HarnessResult<()> {
-    let backends: [(&str, &dyn Backend); 4] = [
+    let backends: [(&str, &dyn Backend); 6] = [
         ("rust", &RustBackend),
         ("typescript", &TypeScriptBackend),
+        ("javascript", &JavaScriptBackend),
         ("python", &PythonBackend),
         ("go", &GoV0Backend),
+        ("java", &JavaBackend),
     ];
     for (target, backend) in backends {
         let first = backend
@@ -307,7 +310,7 @@ pub fn run_all() -> HarnessResult<String> {
     let tests = verify_portable_tests(&program)?;
     verify_determinism(&program)?;
     Ok(format!(
-        "50 cases; {tests} portable tests; evaluator + 4 targets agree; manifests deterministic"
+        "50 cases; {tests} portable tests; evaluator + 6 targets agree; manifests deterministic"
     ))
 }
 
@@ -333,7 +336,7 @@ mod tests {
         }
     }
     #[test]
-    fn portable_tests_and_four_manifests_are_deterministic() {
+    fn portable_tests_and_six_manifests_are_deterministic() {
         let program = checked_fixture();
         assert_eq!(verify_portable_tests(&program).unwrap(), 1);
         verify_determinism(&program).unwrap();

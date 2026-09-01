@@ -33,7 +33,7 @@ The permanent M19 suite proves:
   slash, question mark, drive punctuation, ordinary text, and Unicode;
 - a 90,000-backslash ordinary path is fully converted and an equally large
   extended-length path remains byte-identical;
-- fresh generated Rust, TypeScript, Python, and Go packages pass their native
+- fresh generated Rust, TypeScript, JavaScript, Python, Go, and Java packages pass their native
   formatter, static checker/linter, compiler, and tests; and
 - three independent generations are byte-identical.
 

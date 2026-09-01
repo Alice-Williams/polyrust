@@ -15,7 +15,7 @@ fn main() {
         }
     }
     println!(
-        "generated trim-newlines for rust, typescript, python, and go in {}",
+        "generated trim-newlines for rust, typescript, javascript, python, go, and java in {}",
         output.display()
     );
 }

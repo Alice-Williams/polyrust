@@ -4,14 +4,15 @@
 //!
 //! The functions in this crate are ordinary **Rust host code** which construct
 //! a checked **PolyRust portable program**. Backends then turn that program into
-//! four independent forms of **generated target code**.
+//! six independent forms of **generated target code**.
 
 use std::sync::Arc;
 
 use portable_backend_go::GoV0Backend;
+use portable_backend_java::JavaBackend;
 use portable_backend_python::PythonBackend;
 use portable_backend_rust::RustBackend;
-use portable_backend_typescript::TypeScriptBackend;
+use portable_backend_typescript::{JavaScriptBackend, TypeScriptBackend};
 use portable_build::{
     Expected, Invocation, ModuleBuilder, Operation, Parameter, Type, TypedValue, Value, Visibility,
 };
@@ -205,11 +206,13 @@ pub fn program() -> CheckedProgram {
 /// Generates all required target manifests from the same checked program.
 pub fn manifests() -> Vec<(&'static str, OutputManifest)> {
     let program = program();
-    let backends: [(&str, Arc<dyn Backend>); 4] = [
+    let backends: [(&str, Arc<dyn Backend>); 6] = [
         ("rust", Arc::new(RustBackend)),
         ("typescript", Arc::new(TypeScriptBackend)),
+        ("javascript", Arc::new(JavaScriptBackend)),
         ("python", Arc::new(PythonBackend)),
         ("go", Arc::new(GoV0Backend)),
+        ("java", Arc::new(JavaBackend)),
     ];
     backends
         .into_iter()
@@ -237,11 +240,11 @@ mod tests {
     }
 
     #[test]
-    fn all_four_manifests_are_nonempty_and_repeatable() {
+    fn all_six_manifests_are_nonempty_and_repeatable() {
         let first = manifests();
         let second = manifests();
         assert_eq!(first, second);
-        assert_eq!(first.len(), 4);
+        assert_eq!(first.len(), 6);
         assert!(
             first
                 .iter()

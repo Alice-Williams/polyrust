@@ -39,7 +39,7 @@ replacement:
 
 The implementation has no target switch, embedded target source, regular
 expression dependency, or oracle dependency. One checked program generates
-Rust, TypeScript, Python, and Go.
+Rust, TypeScript, JavaScript, Python, Go, and Java.
 
 ## Equivalence evidence
 
@@ -74,7 +74,8 @@ determinism check cannot be omitted silently.
 ## Gaps discovered and filled
 
 M17 added target-independent global literal string replacement to the IR,
-checker, evaluator, builder surface, and all four backends. The port also found
+checker, evaluator, builder surface, and the initial four backends; M21 extended
+the same checked program and evidence to JavaScript and Java. The port also found
 and permanently regressed two emitter issues: unused stable imports in
 function-only generated Python modules and invalid Go literals for Rust-specific
 control/Unicode escape spellings.

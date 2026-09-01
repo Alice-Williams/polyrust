@@ -6,7 +6,10 @@ exports_files(["Cargo.toml"])
 rust_library(
     name = "portable_backend_typescript",
     srcs = glob(["src/**/*.rs"]),
-    compile_data = ["src/runtime.ts"],
+    compile_data = [
+        "src/runtime.js",
+        "src/runtime.ts",
+    ],
     crate_name = "portable_backend_typescript",
     edition = "2024",
     visibility = ["//visibility:public"],
@@ -67,6 +70,56 @@ sh_test(
         ":test-generated/src/runtime.ts",
         ":test-generated/tests/invalid-types.ts",
         ":test-generated/tsconfig.json",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "generate_javascript_v0_fixture",
+    srcs = ["examples/generate_javascript_v0.rs"],
+    crate_name = "generate_javascript_v0_fixture",
+    edition = "2024",
+    deps = [
+        ":portable_backend_typescript",
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+        "//crates/ir:portable_ir",
+    ],
+)
+
+genrule(
+    name = "generate_javascript_v0_package",
+    srcs = ["//crates/build:testdata/registration.poly.json"],
+    outs = [
+        "test-generated-javascript/package.json",
+        "test-generated-javascript/src/conformance.test.js",
+        "test-generated-javascript/src/generated.test.js",
+        "test-generated-javascript/src/index.js",
+        "test-generated-javascript/src/runtime.js",
+    ],
+    cmd = "$(location :generate_javascript_v0_fixture) $(location //crates/build:testdata/registration.poly.json) $(@D)/test-generated-javascript",
+    tools = [":generate_javascript_v0_fixture"],
+)
+
+sh_test(
+    name = "generated_javascript_v0_native_test",
+    srcs = ["test_generated_javascript.sh"],
+    data = [
+        ":test-generated-javascript/package.json",
+        ":test-generated-javascript/src/conformance.test.js",
+        ":test-generated-javascript/src/generated.test.js",
+        ":test-generated-javascript/src/index.js",
+        ":test-generated-javascript/src/runtime.js",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "javascript_runtime_derivation_test",
+    srcs = ["test_runtime_derivation.sh"],
+    data = [
+        "src/runtime.js",
+        "src/runtime.ts",
     ],
     visibility = ["//visibility:public"],
 )

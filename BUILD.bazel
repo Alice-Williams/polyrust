@@ -21,6 +21,8 @@ rust_clippy_test(
     name = "rust_clippy_test",
     targets = [
         "//crates/backend-go:portable_backend_go",
+        "//crates/backend-java:portable_backend_java",
+        "//crates/backend-java:portable_backend_java_test",
         "//crates/backend-python:portable_backend_python",
         "//crates/backend-rust:portable_backend_rust",
         "//crates/backend-rust:portable_backend_rust_test",
@@ -64,6 +66,8 @@ rustfmt_test(
     name = "rustfmt_test",
     targets = [
         "//crates/backend-go:portable_backend_go",
+        "//crates/backend-java:portable_backend_java",
+        "//crates/backend-java:portable_backend_java_test",
         "//crates/backend-python:portable_backend_python",
         "//crates/backend-rust:portable_backend_rust",
         "//crates/backend-rust:portable_backend_rust_test",

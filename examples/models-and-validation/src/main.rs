@@ -15,7 +15,7 @@ fn main() {
         }
     }
     println!(
-        "generated rust, typescript, python, and go in {}",
+        "generated rust, typescript, javascript, python, go, and java in {}",
         output.display()
     );
 }

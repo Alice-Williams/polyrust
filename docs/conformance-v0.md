@@ -9,8 +9,10 @@ versioned corpus supplies 50 named boundary and nested-value vectors.
 The in-process harness runs the reference evaluator, verifies canonical
 round-trips, generates every required backend twice, compares complete manifest
 bytes, and verifies native-test manifest coverage. Bazel's `all_targets_test`
-then executes the generated Rust, TypeScript, Python, and Go packages with their
-native compilers and test frameworks.
+then executes generated Rust, TypeScript, standalone JavaScript, Python, Go, and
+Java packages with their native compilers and test frameworks. The JavaScript
+runtime has an additional byte-for-byte gate proving it is compiled from the
+TypeScript runtime source.
 
 Mismatch records always include the case, invoked function/helper, input,
 oracle, target, and first structural difference. Staged arithmetic, Unicode,

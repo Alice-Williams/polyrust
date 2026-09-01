@@ -24,6 +24,7 @@ and imported into Bazel through `rules_rust` crate universe.
 | Bazelisk | 1.29.0 | Selects and launches the pinned Bazel version | Apache-2.0 |
 | Rust | 1.98.0 | Project implementation and generated-Rust toolchain | Apache-2.0 OR MIT |
 | Go | 1.25.14 | Compiles and tests generated Go | BSD-3-Clause |
+| Java | 21 language/runtime contract | Compiles and tests generated Java through Bazel's hermetic remote JDK | GPL-2.0 with Classpath Exception |
 | Node.js | 24.20.0 (Krypton LTS) | Executes generated TypeScript and its native test runner | MIT |
 | npm | 11.19.0 (bundled with Node) | TypeScript package-manager contract | Artistic-2.0 |
 | TypeScript | 7.0.2 | Strict generated-package type checking | Apache-2.0 |
@@ -34,6 +35,7 @@ and imported into Bazel through `rules_rust` crate universe.
 | pytest | 9.1.1 | Generated Python native test runner | MIT |
 | `rules_rust` | 0.74.0 | Hermetic Bazel Rust rules and toolchain | Apache-2.0 |
 | `rules_go` | 0.63.0 | Hermetic Bazel Go rules and toolchain | Apache-2.0 |
+| `rules_java` | 9.6.1 | Hermetic Bazel Java rules and remote JDK toolchains | Apache-2.0 |
 | `rules_shell` | 0.8.0 | Runs repository policy tests under Bazel | Apache-2.0 |
 | `buildifier_prebuilt` | 8.5.1.4 | Formats and lints Bazel/Starlark files | Apache-2.0 |
 | `cargo-audit` | 0.22.2 | Release-time RustSec advisory scan | Apache-2.0 OR MIT |

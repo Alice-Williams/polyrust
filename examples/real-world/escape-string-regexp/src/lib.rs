@@ -3,15 +3,16 @@
 //! Complete typed-behavior port of \`sindresorhus/escape-string-regexp\` 5.0.0.
 //!
 //! This Rust code authors one checked portable program. It does not implement
-//! the target function itself; four backends generate independently compiled
-//! Rust, TypeScript, Python, and Go packages from that program.
+//! the target function itself; six outputs generate independently tested Rust,
+//! TypeScript, JavaScript, Python, Go, and Java packages from that program.
 
 use std::sync::Arc;
 
 use portable_backend_go::GoV0Backend;
+use portable_backend_java::JavaBackend;
 use portable_backend_python::PythonBackend;
 use portable_backend_rust::RustBackend;
-use portable_backend_typescript::TypeScriptBackend;
+use portable_backend_typescript::{JavaScriptBackend, TypeScriptBackend};
 use portable_build::{
     Expected, Invocation, ModuleBuilder, Operation, Parameter, Type, TypedValue, Value, Visibility,
 };
@@ -80,14 +81,16 @@ pub fn program() -> CheckedProgram {
     })
 }
 
-/// Generates all four required target packages from the same checked program.
+/// Generates all six required target packages from the same checked program.
 pub fn manifests() -> Vec<(&'static str, OutputManifest)> {
     let program = program();
-    let backends: [(&str, Arc<dyn Backend>); 4] = [
+    let backends: [(&str, Arc<dyn Backend>); 6] = [
         ("rust", Arc::new(RustBackend)),
         ("typescript", Arc::new(TypeScriptBackend)),
+        ("javascript", Arc::new(JavaScriptBackend)),
         ("python", Arc::new(PythonBackend)),
         ("go", Arc::new(GoV0Backend)),
+        ("java", Arc::new(JavaBackend)),
     ];
     backends
         .into_iter()
@@ -150,11 +153,11 @@ mod tests {
     }
 
     #[test]
-    fn all_four_manifests_are_nonempty_and_repeatable() {
+    fn all_six_manifests_are_nonempty_and_repeatable() {
         let first = manifests();
         let second = manifests();
         assert_eq!(first, second);
-        assert_eq!(first.len(), 4);
+        assert_eq!(first.len(), 6);
         assert!(
             first
                 .iter()

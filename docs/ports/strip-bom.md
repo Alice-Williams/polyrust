@@ -39,7 +39,7 @@ The permanent M20 suite proves:
   ASCII, astral Unicode, a combining scalar, NUL, and newline;
 - a 90,000-BOM input loses exactly one leading scalar while an equally large
   input with an ordinary leading character remains byte-identical;
-- fresh generated Rust, TypeScript, Python, and Go packages pass their native
+- fresh generated Rust, TypeScript, JavaScript, Python, Go, and Java packages pass their native
   formatter, static checker/linter, compiler, and tests; and
 - three independent generations are byte-identical.
 

@@ -38,7 +38,7 @@ behavior.
 The permanent M18 suite proves:
 
 - all 24 official functional vectors and seven additional Unicode/whitespace
-  boundaries pass in the evaluator and all four generated packages;
+  boundaries pass in the evaluator and all six generated packages;
 - all three generated TypeScript functions match the pinned upstream for
   107,851 unique inputs and 323,553 function comparisons;
 - the differential corpus exhausts short strings over CR, LF, ordinary text,

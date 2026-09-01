@@ -13,6 +13,7 @@ rust_library(
     visibility = ["//visibility:public"],
     deps = [
         "//crates/backend-go:portable_backend_go",
+        "//crates/backend-java:portable_backend_java",
         "//crates/backend-python:portable_backend_python",
         "//crates/backend-rust:portable_backend_rust",
         "//crates/backend-typescript:portable_backend_typescript",

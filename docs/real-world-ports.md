@@ -16,8 +16,8 @@ Only one port may be in progress. A port is complete when:
 1. its valid typed input domain is represented without silently dropping an API;
 2. official vectors and a broader differential corpus agree with the pinned
    upstream implementation;
-3. the reference evaluator agrees with generated Rust, TypeScript, Python, and
-   Go native tests;
+3. the reference evaluator agrees with generated Rust, TypeScript, JavaScript,
+   Python, Go, and Java native tests;
 4. every generated package passes native formatting, static checks, compilation,
    and tests from clean output;
 5. regeneration is byte-identical; and
@@ -36,7 +36,7 @@ Only one port may be in progress. A port is complete when:
   measured week on 1 September 2026.
 - Required PolyRust gap: literal, global, non-overlapping string replacement
   with replacement text interpreted literally.
-- Completion: M17; 18 shared portable vectors, 3,750 differential inputs, four
+- Completion: M17 plus M21 expansion; 18 shared portable vectors, 3,750 differential inputs, six
   native generated-package gates, deterministic regeneration, and the complete
   repository release gate pass.
 
@@ -53,7 +53,7 @@ Only one port may be in progress. A port is complete when:
 - Required PolyRust gap: linear trimming from either boundary by an explicit
   set of Unicode scalar values
 - Completion: M18; 31 shared portable vectors, 107,851 differential inputs,
-  323,553 three-function comparisons, four native generated-package gates,
+  323,553 three-function comparisons, six native generated-package gates,
   deterministic regeneration, and the complete repository release gate pass.
 
 ### [slash 5.1.0](ports/slash.md)
@@ -66,7 +66,7 @@ Only one port may be in progress. A port is complete when:
   weekly npm downloads measured on 1 September 2026
 - PolyRust coverage: reuses prefix checks, if expressions, and global literal
   replacement without a project-specific intrinsic
-- Completion: M19; 15 portable vectors, 55,994 differential paths, four native
+- Completion: M19 plus M21 expansion; 15 portable vectors, 55,994 differential paths, six native
   generated-package gates, deterministic regeneration, and the complete
   repository release gate pass.
 
@@ -80,7 +80,7 @@ Only one port may be in progress. A port is complete when:
   weekly npm downloads measured on 1 September 2026
 - Required PolyRust gap: exact removal of one leading substring plus valid Go
   serialization of U+FEFF and collision-free Go local identifiers
-- Completion: M20; 18 portable vectors, 55,991 differential strings, four
+- Completion: M20 plus M21 expansion; 18 portable vectors, 55,991 differential strings, six
   native generated-package gates, deterministic regeneration, and the complete
   repository release gate pass.
 
@@ -88,7 +88,7 @@ Only one port may be in progress. A port is complete when:
 
 `juliangruber/balanced-match` is MIT licensed and attractive for a later parser
 case, but its current API accepts arbitrary JavaScript `RegExp` values. Native
-regex engines in Rust, TypeScript, Python, and Go do not share one complete
+regex engines in Rust, TypeScript, JavaScript, Python, Go, and Java do not share one complete
 language or matching model. It remains deferred until PolyRust specifies an
 honest portable regex subset or implements one common engine; a literal-only
 partial port would not satisfy this track's completion policy.

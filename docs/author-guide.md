@@ -7,9 +7,9 @@ PolyRust has three deliberately separate layers:
 2. **PolyRust portable code** is the checked, target-independent module produced
    by that builder. Its types and operations have the semantics described in
    the [portable language map](portable-language.md).
-3. **Generated Rust target code** (and generated TypeScript, Python, or Go) is
-   an output package. It is reviewed and compiled like ordinary target code but
-   is never the authoring source of truth.
+3. **Generated target code** in Rust, TypeScript, JavaScript, Python, Go, or
+   Java is an output package. It is reviewed and compiled like ordinary target
+   code but is never the authoring source of truth.
 
 The complete compiled source is the
 [`models-and-validation` example](../examples/models-and-validation/src/lib.rs).
@@ -30,9 +30,9 @@ find /tmp/polyrust-models-and-validation -type f | sort
 bazelisk test //examples/models-and-validation:all
 ```
 
-The `generate` invocation is the single command that creates all four packages
+The `generate` invocation is the single command that creates all six packages
 without hand edits. The `all` test runs the ten common tests in the reference
-evaluator and the generated Rust, TypeScript, Python, and Go native frameworks.
+evaluator and all six generated native frameworks.
 It also generates twice in clean temporary directories, deletes one output,
 regenerates it, and requires byte-identical trees. The walkthrough, source
 example, external-backend template, and documentation links are all compiled or
@@ -65,4 +65,3 @@ Generated packages are replaceable artifacts. Generate into a clean directory,
 run the `all` gate, review the conventions in the
 [generated-code review guide](generated-code-review.md), and replace downstream
 output only after the manifest is deterministic.
-

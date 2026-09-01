@@ -24,6 +24,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "polyrust-backend-java"
+version = "0.1.0"
+dependencies = [
+ "polyrust-check",
+ "polyrust-codegen",
+ "polyrust-ir",
+ "serde_json",
+]
+
+[[package]]
 name = "polyrust-backend-python"
 version = "0.1.0"
 dependencies = [
@@ -58,6 +68,7 @@ name = "polyrust-benchmark"
 version = "0.1.0"
 dependencies = [
  "polyrust-backend-go",
+ "polyrust-backend-java",
  "polyrust-backend-python",
  "polyrust-backend-rust",
  "polyrust-backend-typescript",
@@ -89,6 +100,7 @@ name = "polyrust-cli"
 version = "0.1.0"
 dependencies = [
  "polyrust-backend-go",
+ "polyrust-backend-java",
  "polyrust-backend-python",
  "polyrust-backend-rust",
  "polyrust-backend-typescript",
@@ -119,6 +131,7 @@ name = "polyrust-conformance"
 version = "0.1.0"
 dependencies = [
  "polyrust-backend-go",
+ "polyrust-backend-java",
  "polyrust-backend-python",
  "polyrust-backend-rust",
  "polyrust-backend-typescript",
@@ -142,6 +155,7 @@ name = "polyrust-escape-string-regexp-example"
 version = "0.1.0"
 dependencies = [
  "polyrust-backend-go",
+ "polyrust-backend-java",
  "polyrust-backend-python",
  "polyrust-backend-rust",
  "polyrust-backend-typescript",
@@ -173,6 +187,7 @@ name = "polyrust-models-and-validation-example"
 version = "0.1.0"
 dependencies = [
  "polyrust-backend-go",
+ "polyrust-backend-java",
  "polyrust-backend-python",
  "polyrust-backend-rust",
  "polyrust-backend-typescript",
@@ -198,6 +213,7 @@ name = "polyrust-slash-example"
 version = "0.1.0"
 dependencies = [
  "polyrust-backend-go",
+ "polyrust-backend-java",
  "polyrust-backend-python",
  "polyrust-backend-rust",
  "polyrust-backend-typescript",
@@ -212,6 +228,7 @@ name = "polyrust-strip-bom-example"
 version = "0.1.0"
 dependencies = [
  "polyrust-backend-go",
+ "polyrust-backend-java",
  "polyrust-backend-python",
  "polyrust-backend-rust",
  "polyrust-backend-typescript",
@@ -226,6 +243,7 @@ name = "polyrust-trim-newlines-example"
 version = "0.1.0"
 dependencies = [
  "polyrust-backend-go",
+ "polyrust-backend-java",
  "polyrust-backend-python",
  "polyrust-backend-rust",
  "polyrust-backend-typescript",

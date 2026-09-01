@@ -453,11 +453,17 @@ fn default_registry() -> BackendRegistry {
         .register(Arc::new(portable_backend_typescript::TypeScriptBackend))
         .expect("TypeScript target is unique");
     registry
+        .register(Arc::new(portable_backend_typescript::JavaScriptBackend))
+        .expect("JavaScript target is unique");
+    registry
         .register(Arc::new(portable_backend_python::PythonBackend))
         .expect("Python target is unique");
     registry
         .register(Arc::new(portable_backend_go::GoV0Backend))
         .expect("Go target is unique");
+    registry
+        .register(Arc::new(portable_backend_java::JavaBackend))
+        .expect("Java target is unique");
     registry
 }
 
@@ -632,6 +638,16 @@ mod tests {
             targets
                 .1
                 .contains("org.polyrust.rust\tRust\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n")
+        );
+        assert!(
+            targets
+                .1
+                .contains("org.polyrust.javascript\tJavaScript\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n")
+        );
+        assert!(
+            targets
+                .1
+                .contains("org.polyrust.java\tJava\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n")
         );
         assert!(
             targets.1.contains(

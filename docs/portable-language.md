@@ -7,7 +7,7 @@ Status: proposed capability roadmap
 PolyRust defines one extensible, language-neutral programming model. Authors use
 a Rust builder API to declare types, constants, functions, implementations, and
 tests. PolyRust validates and executes that model, then each backend renders it as
-native Rust, TypeScript, Python, or Go.
+native Rust, TypeScript, JavaScript, Python, Go, or Java.
 
 PolyRust does not ingest existing Rust, TypeScript, Python, or Go programs and
 does not translate between pairs of source languages.
@@ -74,14 +74,14 @@ source-language-to-source-language translation.
 
 | Stage | Meaning |
 | --- | --- |
-| **Core** | Required for the first useful four-language vertical slice |
+| **Core** | Required for the useful cross-language vertical slice |
 | **Next** | Add after Core conformance is reliable |
 | **Later** | Valuable, but needs a larger semantic design |
 | **Adapter** | Platform effect supplied explicitly per target |
 | **Excluded** | Intentionally absent unless a future specification overturns the decision |
 
 Moving a feature to Core requires one target-independent definition, checker and
-evaluator support, all four backend lowerings, generated native tests, and shared
+evaluator support, all six output lowerings, generated native tests, and shared
 conformance cases.
 
 ## 1. Declaration map
@@ -128,7 +128,7 @@ conformance cases.
 
 ### Core contract/interface view
 
-Interfaces are common across all four targets but their object models differ.
+Interfaces are common across all six targets but their object models differ.
 Core therefore uses a deliberately narrow abstraction:
 
 - A `Contract` contains required immutable instance-method signatures.
@@ -345,7 +345,7 @@ The first end-to-end program should contain:
 - concrete and contract-dispatched pure functions;
 - checked integer and Unicode string operators;
 - `List`, `Option`, and `Result`; and
-- at least ten portable tests generated into all four targets.
+- at least ten portable tests generated into all six targets.
 
 This is broad enough to test the architecture honestly without taking on
 arbitrary source translation, mutation/aliasing, async, or platform I/O.

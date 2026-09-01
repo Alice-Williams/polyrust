@@ -3,9 +3,10 @@
 use std::{sync::Arc, time::Instant};
 
 use portable_backend_go::GoV0Backend;
+use portable_backend_java::JavaBackend;
 use portable_backend_python::PythonBackend;
 use portable_backend_rust::RustBackend;
-use portable_backend_typescript::TypeScriptBackend;
+use portable_backend_typescript::{JavaScriptBackend, TypeScriptBackend};
 use portable_build::{ModuleBuilder, Type, Visibility};
 use portable_codegen::{Backend, BackendOptions};
 
@@ -23,11 +24,13 @@ fn main() {
         );
     }
     let program = module.finish().expect("benchmark fixture checks");
-    let backends: [Arc<dyn Backend>; 4] = [
+    let backends: [Arc<dyn Backend>; 6] = [
         Arc::new(RustBackend),
         Arc::new(TypeScriptBackend),
+        Arc::new(JavaScriptBackend),
         Arc::new(PythonBackend),
         Arc::new(GoV0Backend),
+        Arc::new(JavaBackend),
     ];
     let mut files = 0;
     let mut bytes = 0;
@@ -46,7 +49,7 @@ fn main() {
             .sum::<usize>();
     }
     println!(
-        "{{\"schema\":\"polyrust.benchmark.v0\",\"tool\":\"polyrust-v0.1\",\"declarations\":{DECLARATIONS},\"targets\":4,\"files\":{files},\"bytes\":{bytes},\"elapsed_ms\":{}}}",
+        "{{\"schema\":\"polyrust.benchmark.v0\",\"tool\":\"polyrust-v0.1\",\"declarations\":{DECLARATIONS},\"targets\":6,\"files\":{files},\"bytes\":{bytes},\"elapsed_ms\":{}}}",
         started.elapsed().as_millis()
     );
 }

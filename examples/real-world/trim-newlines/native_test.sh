@@ -26,6 +26,13 @@ tsc --noEmit
 npm test
 popd >/dev/null
 
+pushd "${work}/javascript" >/dev/null
+prettier --write . >/dev/null
+prettier --check .
+npm test
+test -z "$(find . -type f -name '*.ts' -print -quit)"
+popd >/dev/null
+
 pushd "${work}/python" >/dev/null
 export PYTHONPATH="${work}/python/src"
 export MYPYPATH="${work}/python/src"

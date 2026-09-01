@@ -35,7 +35,7 @@ def main() -> int:
             "bazelisk test //examples/models-and-validation:all",
             "Rust host code",
             "PolyRust portable code",
-            "Generated Rust target code",
+            "Generated target code",
         ],
         "docs/backend-author-guide.md": ["check_backend_contract"],
     }

@@ -427,7 +427,8 @@ required capabilities
 
 For each required target, native generated tests execute the declared cases and a
 generated runner encodes canonical results. The harness compares evaluator,
-Rust, TypeScript, Python, and Go results byte-for-byte after canonical encoding.
+Rust, TypeScript, JavaScript, Python, Go, and Java results after canonical
+encoding.
 
 Tests MUST cover boundary integers, overflow, negative zero, NaN, Unicode scalar
 length, nested `Option`/`Result`, every enum variant, evaluation order, short
@@ -476,7 +477,7 @@ Snapshot approval alone never establishes semantic correctness.
 - Changing evaluation behavior, type mapping visible at public APIs, canonical
   encoding, or helper error behavior is semantic and requires a compatibility
   review.
-- A new core IR feature requires designs and conformance cases for all four
+- A new core IR feature requires designs and conformance cases for all six
   required targets before merge.
 - An external “toy” backend fixture remains outside core and compiles in CI to
   detect accidental coupling.

@@ -15,7 +15,7 @@ fn main() {
         }
     }
     println!(
-        "generated escape-string-regexp for rust, typescript, python, and go in {}",
+        "generated escape-string-regexp for rust, typescript, javascript, python, go, and java in {}",
         output.display()
     );
 }

@@ -24,8 +24,8 @@ def main() -> int:
             "peak_mib": round(peak_mib, 2),
         }
     )
-    if measurement["declarations"] != 1_000 or measurement["targets"] != 4:
-        raise SystemExit("benchmark did not exercise 1,000 declarations and four targets")
+    if measurement["declarations"] != 1_000 or measurement["targets"] != 6:
+        raise SystemExit("benchmark did not exercise 1,000 declarations and six targets")
     if measurement["elapsed_ms"] >= 2_000:
         raise SystemExit(f"generation exceeded 2,000 ms: {measurement}")
     if peak_mib >= 512:
@@ -36,4 +36,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

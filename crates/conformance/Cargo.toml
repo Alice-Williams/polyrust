@@ -12,6 +12,7 @@ name = "portable_conformance"
 
 [dependencies]
 portable_backend_go.workspace = true
+portable_backend_java.workspace = true
 portable_backend_python.workspace = true
 portable_backend_rust.workspace = true
 portable_backend_typescript.workspace = true

@@ -8,7 +8,8 @@ checklist, required exit evidence, and scope boundary.
 
 - Semantics precede syntax lowering.
 - Rust output is required from the first backend milestone.
-- Rust, TypeScript, Python, and Go are all proof-of-concept release gates.
+- Rust, TypeScript, Python, and Go form the completed initial proof; M21 adds
+  JavaScript and Java as release gates.
 - Unsupported behavior fails before output is written.
 - Portable tests are declarations in the base program and become native tests in
   every output.
@@ -139,6 +140,8 @@ Exit gate:
 | 013 | Implement required Go backend | 008, 009 | M2 |
 | 014 | Build four-target differential conformance harness | 005, 010, 011, 012, 013 | M3 |
 | 015 | Deliver examples, author guide, and external backend proof | 006, 010, 011, 012, 013, 014 | M4 |
+| 021 | Add derived JavaScript and independent Java output gates | 014, 016, 020 | M5 |
+| 022 | Add independent C++20 and C17 output gates | 021 | M6 |
 | 016 | Add CI matrix, determinism benchmark, and release gate | 001, 009–015 | M4 |
 
 ## Suggested sequencing
@@ -151,6 +154,9 @@ After M08, backend milestones are structurally parallel, but completing Rust fir
 is recommended because it exposes IR-to-strong-type mapping issues early. Do not
 freeze public generated APIs based only on Rust; review all four target mapping
 documents before declaring an IR feature stable.
+
+After M21, review all six target mappings; after M22, review all eight. The
+original four-target rows above remain the dependency history for M10–M14.
 
 ## Estimated effort bands
 

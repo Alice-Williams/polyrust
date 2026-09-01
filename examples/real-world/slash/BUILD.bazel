@@ -1,5 +1,6 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load("//tools/java:defs.bzl", "generated_java_tests")
 
 exports_files(
     [
@@ -19,6 +20,7 @@ rust_library(
     visibility = ["//visibility:public"],
     deps = [
         "//crates/backend-go:portable_backend_go",
+        "//crates/backend-java:portable_backend_java",
         "//crates/backend-python:portable_backend_python",
         "//crates/backend-rust:portable_backend_rust",
         "//crates/backend-typescript:portable_backend_typescript",
@@ -55,6 +57,17 @@ genrule(
         "generated/go/generated_test.go",
         "generated/go/go.mod",
         "generated/go/runtime.go",
+        "generated/java/README.md",
+        "generated/java/negative/InvalidTypes.java",
+        "generated/java/src/main/java/org/polyrust/generated/Generated.java",
+        "generated/java/src/main/java/org/polyrust/generated/Runtime.java",
+        "generated/java/src/test/java/org/polyrust/generated/ConformanceTest.java",
+        "generated/java/src/test/java/org/polyrust/generated/GeneratedTest.java",
+        "generated/javascript/package.json",
+        "generated/javascript/src/conformance.test.js",
+        "generated/javascript/src/generated.test.js",
+        "generated/javascript/src/index.js",
+        "generated/javascript/src/runtime.js",
         "generated/python/negative/invalid_option.py",
         "generated/python/pyproject.toml",
         "generated/python/src/generated_polyrust/__init__.py",
@@ -78,6 +91,8 @@ genrule(
     tools = [":generate"],
     visibility = ["//visibility:public"],
 )
+
+generated_java_tests()
 
 sh_test(
     name = "native_test",
@@ -109,6 +124,8 @@ test_suite(
     tests = [
         ":determinism_test",
         ":differential_test",
+        ":java_conformance_test",
+        ":java_generated_test",
         ":model_test",
         ":native_test",
     ],
