@@ -430,6 +430,33 @@ func (r *runtime) numericOrCollection(name string, a, b any) PolyResult[any] {
 			return polyOk(any(left >= right))
 		}
 	}
+	if left, ok := a.(float64); ok {
+		right, _ := b.(float64)
+		switch name {
+		case "float_neg":
+			return polyOk(any(-left))
+		case "float_trunc":
+			return polyOk(any(math.Trunc(left)))
+		case "float_add":
+			return polyOk(any(left + right))
+		case "float_sub":
+			return polyOk(any(left - right))
+		case "float_mul":
+			return polyOk(any(left * right))
+		case "float_div":
+			return polyOk(any(left / right))
+		case "float_rem_trunc":
+			return polyOk(any(math.Mod(left, right)))
+		case "less":
+			return polyOk(any(left < right))
+		case "less_equal":
+			return polyOk(any(left <= right))
+		case "greater":
+			return polyOk(any(left > right))
+		case "greater_equal":
+			return polyOk(any(left >= right))
+		}
+	}
 	if list, ok := a.([]any); ok {
 		switch name {
 		case "list_length":
@@ -511,8 +538,16 @@ func checked32(value int64) PolyResult[any] {
 	}
 	return polyOk(any(int32(value)))
 }
-func equal(a, b any) bool {
+func equalImpl(a, b any, exactFloat bool) bool {
+	if left, ok := a.(polyRecord); ok {
+		a = left.polyValue()
+	}
+	if right, ok := b.(polyRecord); ok {
+		b = right.polyValue()
+	}
 	switch left := a.(type) {
+	case nil:
+		return b == nil
 	case int32:
 		right, ok := b.(int32)
 		return ok && left == right
@@ -525,9 +560,55 @@ func equal(a, b any) bool {
 	case bool:
 		right, ok := b.(bool)
 		return ok && left == right
+	case float64:
+		right, ok := b.(float64)
+		if !ok {
+			return false
+		}
+		if exactFloat {
+			return (math.IsNaN(left) && math.IsNaN(right)) || math.Float64bits(left) == math.Float64bits(right)
+		}
+		return left == right
+	case []any:
+		right, ok := b.([]any)
+		if !ok || len(left) != len(right) {
+			return false
+		}
+		for index := range left {
+			if !equalImpl(left[index], right[index], exactFloat) {
+				return false
+			}
+		}
+		return true
+	case map[string]any:
+		right, ok := b.(map[string]any)
+		if !ok || len(left) != len(right) {
+			return false
+		}
+		for key, value := range left {
+			other, exists := right[key]
+			if !exists || !equalImpl(value, other, exactFloat) {
+				return false
+			}
+		}
+		return true
+	case PolyBytes:
+		right, ok := b.(PolyBytes)
+		if !ok || len(left.items) != len(right.items) {
+			return false
+		}
+		for index := range left.items {
+			if left.items[index] != right.items[index] {
+				return false
+			}
+		}
+		return true
 	}
 	return false
 }
+
+func equal(a, b any) bool { return equalImpl(a, b, false) }
+func testEqual(a, b any) bool { return equalImpl(a, b, true) }
 func (r *runtime) sequence(expressions []any, environment map[string]any, self any) PolyResult[any] {
 	values := make([]any, 0, len(expressions))
 	for _, raw := range expressions {

@@ -24,6 +24,7 @@ common=(
   "$work/src/runtime.c"
   "$work/src/generated.c"
   "$work/tests/generated_test.c"
+  -lm
 )
 gcc-14 "${common[@]}" -fsanitize=address -o "$work/asan-test"
 ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 "$work/asan-test"

@@ -241,16 +241,125 @@ impl<'a> Generator<'a> {
     }
     fn declaration(&self, output: &mut String, declaration: &Declaration) {
         match declaration {
-            Declaration::Alias(item) => output.push_str(&format!("type {} = {}\n\n", exported(&item.header.name), self.ty(&item.target))),
+            Declaration::Alias(item) => output.push_str(&format!(
+                "type {} = {}\n\n",
+                exported(&item.header.name),
+                self.ty(&item.target)
+            )),
             Declaration::Record(item) => {
-                output.push_str(&format!("type {} struct {{\n", exported(&item.header.name))); for member in &item.fields { output.push_str(&format!("\t{} {}\n", exported(&member.header.name), self.ty(&member.ty))); } output.push_str("}\n\n");
-                output.push_str(&format!("func (value {}) polyValue() map[string]any {{ return map[string]any{{\"__polyDecl\": int64({})", exported(&item.header.name), item.header.node.id.0)); for member in &item.fields { output.push_str(&format!(", {:?}: value.{}", member.header.name, exported(&member.header.name))); } output.push_str("} }\n\n");
-                for implementation in self.implementations(item.header.node.id) { output.push_str(&format!("var _ {} = {}{{}}\n\n", exported(self.name(implementation.contract)), exported(&item.header.name))); for method in &implementation.methods { output.push_str(&format!("func (value {}) {}({}) PolyResult[{}] {{ return castResult[{}](generatedRuntime.invokeMethod({}, {}, value, []any{{{}}})) }}\n\n", exported(&item.header.name), exported(&method.header.name), self.parameters(&method.parameters), self.ty(&method.return_type), self.ty(&method.return_type), implementation.header.node.id.0, method.header.node.id.0, args(&method.parameters))); } }
+                output.push_str(&format!("type {} struct {{\n", exported(&item.header.name)));
+                for member in &item.fields {
+                    output.push_str(&format!(
+                        "\t{} {}\n",
+                        exported(&member.header.name),
+                        self.ty(&member.ty)
+                    ));
+                }
+                output.push_str("}\n\n");
+                output.push_str(&format!("func (value {}) polyValue() map[string]any {{ return map[string]any{{\"__polyDecl\": int64({})", exported(&item.header.name), item.header.node.id.0));
+                for member in &item.fields {
+                    output.push_str(&format!(
+                        ", {:?}: value.{}",
+                        member.header.name,
+                        exported(&member.header.name)
+                    ));
+                }
+                output.push_str("} }\n\n");
+                output.push_str(&self.record_result_converter(item));
+                for implementation in self.implementations(item.header.node.id) {
+                    output.push_str(&format!(
+                        "var _ {} = {}{{}}\n\n",
+                        exported(self.name(implementation.contract)),
+                        exported(&item.header.name)
+                    ));
+                    for method in &implementation.methods {
+                        let call = format!(
+                            "generatedRuntime.invokeMethod({}, {}, value, []any{{{}}})",
+                            implementation.header.node.id.0,
+                            method.header.node.id.0,
+                            args(&method.parameters)
+                        );
+                        output.push_str(&format!(
+                            "func (value {}) {}({}) PolyResult[{}] {{ return {} }}\n\n",
+                            exported(&item.header.name),
+                            exported(&method.header.name),
+                            self.parameters(&method.parameters),
+                            self.ty(&method.return_type),
+                            self.convert_result(&method.return_type, &call)
+                        ));
+                    }
+                }
             }
-            Declaration::Enum(item) => { let mut variants = Vec::new(); for variant in &item.variants { let name = format!("{}{}", exported(&item.header.name), exported(&variant.header.name)); variants.push(name.clone()); output.push_str(&format!("type {name} struct {{\n\tTag string\n")); for member in &variant.fields { output.push_str(&format!("\t{} {}\n", exported(&member.header.name), self.ty(&member.ty))); } output.push_str("}\n\n"); } output.push_str(&format!("type {} interface {{ is{}() }}\n", exported(&item.header.name), exported(&item.header.name))); for variant in variants { output.push_str(&format!("func ({variant}) is{}() {{}}\n", exported(&item.header.name))); } output.push('\n'); }
-            Declaration::Contract(item) => { output.push_str(&format!("type {} interface {{\n\tpolyValue() map[string]any\n", exported(&item.header.name))); for method in &item.methods { output.push_str(&format!("\t{}({}) PolyResult[{}]\n", exported(&method.header.name), self.parameters(&method.parameters), self.ty(&method.return_type))); } output.push_str("}\n\n"); }
-            Declaration::Constant(item) => output.push_str(&format!("func {}() PolyResult[{}] {{ return castResult[{}](generatedRuntime.constant({})) }}\n\n", exported(&item.header.name), self.ty(&item.ty), self.ty(&item.ty), item.header.node.id.0)),
-            Declaration::Function(item) => output.push_str(&format!("func {}({}) PolyResult[{}] {{ return castResult[{}](generatedRuntime.invoke({}, []any{{{}}})) }}\n\n", exported(&item.header.name), self.parameters(&item.parameters), self.ty(&item.return_type), self.ty(&item.return_type), item.header.node.id.0, args(&item.parameters))),
+            Declaration::Enum(item) => {
+                let mut variants = Vec::new();
+                for variant in &item.variants {
+                    let name = format!(
+                        "{}{}",
+                        exported(&item.header.name),
+                        exported(&variant.header.name)
+                    );
+                    variants.push(name.clone());
+                    output.push_str(&format!("type {name} struct {{\n\tTag string\n"));
+                    for member in &variant.fields {
+                        output.push_str(&format!(
+                            "\t{} {}\n",
+                            exported(&member.header.name),
+                            self.ty(&member.ty)
+                        ));
+                    }
+                    output.push_str("}\n\n");
+                }
+                output.push_str(&format!(
+                    "type {} interface {{ is{}() }}\n",
+                    exported(&item.header.name),
+                    exported(&item.header.name)
+                ));
+                for variant in variants {
+                    output.push_str(&format!(
+                        "func ({variant}) is{}() {{}}\n",
+                        exported(&item.header.name)
+                    ));
+                }
+                output.push('\n');
+            }
+            Declaration::Contract(item) => {
+                output.push_str(&format!(
+                    "type {} interface {{\n\tpolyValue() map[string]any\n",
+                    exported(&item.header.name)
+                ));
+                for method in &item.methods {
+                    output.push_str(&format!(
+                        "\t{}({}) PolyResult[{}]\n",
+                        exported(&method.header.name),
+                        self.parameters(&method.parameters),
+                        self.ty(&method.return_type)
+                    ));
+                }
+                output.push_str("}\n\n");
+            }
+            Declaration::Constant(item) => {
+                let call = format!("generatedRuntime.constant({})", item.header.node.id.0);
+                output.push_str(&format!(
+                    "func {}() PolyResult[{}] {{ return {} }}\n\n",
+                    exported(&item.header.name),
+                    self.ty(&item.ty),
+                    self.convert_result(&item.ty, &call)
+                ));
+            }
+            Declaration::Function(item) => {
+                let call = format!(
+                    "generatedRuntime.invoke({}, []any{{{}}})",
+                    item.header.node.id.0,
+                    args(&item.parameters)
+                );
+                output.push_str(&format!(
+                    "func {}({}) PolyResult[{}] {{ return {} }}\n\n",
+                    exported(&item.header.name),
+                    self.parameters(&item.parameters),
+                    self.ty(&item.return_type),
+                    self.convert_result(&item.return_type, &call)
+                ));
+            }
             Declaration::Implementation(_) | Declaration::Test(_) => {}
         }
     }
@@ -264,6 +373,36 @@ impl<'a> Generator<'a> {
                 _ => None,
             })
             .collect()
+    }
+    fn record_result_converter(&self, record: &portable_ir::v0::RecordDeclaration) -> String {
+        let name = exported(&record.header.name);
+        let mut fields = String::new();
+        for field in &record.fields {
+            fields.push_str(&format!(
+                "\t\t{}: value[{:?}].({}),\n",
+                exported(&field.header.name),
+                field.header.name,
+                self.ty(&field.ty)
+            ));
+        }
+        format!(
+            "func polyResult{name}(result PolyResult[any]) PolyResult[{name}] {{\n\tif !result.Ok {{ return polyFail[{name}](result.Error.Code, result.Error.Message) }}\n\tvalue, ok := result.Value.(map[string]any)\n\tif !ok {{ return polyFail[{name}](\"internal_type\", \"checked record result type mismatch\") }}\n\treturn polyOk({name}{{\n{fields}\t}})\n}}\n\n"
+        )
+    }
+    fn convert_result(&self, ty: &TypeRef, call: &str) -> String {
+        if let TypeRef::Named(id) = ty
+            && matches!(self.declaration_by_id(*id), Some(Declaration::Record(_)))
+        {
+            return format!("polyResult{}({call})", exported(self.name(*id)));
+        }
+        format!("castResult[{}]({call})", self.ty(ty))
+    }
+    fn declaration_by_id(&self, id: NodeId) -> Option<&Declaration> {
+        self.program
+            .module()
+            .declarations
+            .iter()
+            .find(|declaration| declaration.header().node.id == id)
     }
     fn parameters(&self, parameters: &[portable_ir::v0::Parameter]) -> String {
         parameters
@@ -353,7 +492,7 @@ impl<'a> Generator<'a> {
                             .join(", ")
                     ),
                 };
-                match &test.expected { ExpectedOutcome::Value(expected) => output.push_str(&format!("\tgot := {call}\n\tif !got.Ok || !equal(got.Value, {}) {{ t.Fatalf(\"unexpected result: %#v\", got) }}\n", self.value(expected))), ExpectedOutcome::Error(_) => output.push_str(&format!("\tgot := {call}\n\tif got.Ok {{ t.Fatalf(\"expected error: %#v\", got) }}\n")) }
+                match &test.expected { ExpectedOutcome::Value(expected) => output.push_str(&format!("\tgot := {call}\n\tif !got.Ok || !testEqual(got.Value, {}) {{ t.Fatalf(\"unexpected result: %#v\", got) }}\n", self.value(expected))), ExpectedOutcome::Error(_) => output.push_str(&format!("\tgot := {call}\n\tif got.Ok {{ t.Fatalf(\"expected error: %#v\", got) }}\n")) }
                 output.push_str("}\n\n");
             }
         }

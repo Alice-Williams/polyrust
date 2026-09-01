@@ -326,6 +326,7 @@ export class Runtime {
             case "int_shift_left_checked": return this.checked(a << b, a);
             case "int_shift_right_checked": return ok(a >> b);
             case "float_neg": return ok(-a);
+            case "float_trunc": return ok(Math.trunc(a));
             case "float_add": return ok(a + b);
             case "float_sub": return ok(a - b);
             case "float_mul": return ok(a * b);
@@ -381,10 +382,8 @@ export class Runtime {
         return typeof exemplar === "bigint" ? checkedI64(value) : checkedI32(value);
     }
     equal(left, right) {
-        if (Object.is(left, right))
-            return true;
         if (typeof left !== "object" || typeof right !== "object" || left === null || right === null)
-            return false;
+            return left === right;
         const keys = Object.keys(left);
         return keys.length === Object.keys(right).length && keys.every((key) => this.equal(left[key], right[key]));
     }

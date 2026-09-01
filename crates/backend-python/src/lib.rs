@@ -212,6 +212,9 @@ fn runtime_file() -> LanguageSourceFile<PythonImport> {
     let mut file = LanguageSourceFile::new("src/generated_polyrust/runtime.py", FileRole::Runtime);
     let mut body = LanguageUnit::new(CodeDocument::raw_text(RawText::new(RUNTIME)));
     body.require_import(future_group(), PythonImport::Future("annotations"));
+    for module in ["math", "struct"] {
+        body.require_import(standard_group(), PythonImport::Module(module));
+    }
     body.require_import(
         standard_group(),
         PythonImport::From {
@@ -467,8 +470,14 @@ impl<'a> Generator<'a> {
             if let Declaration::Test(test) = declaration {
                 if index == 0 {
                     require_from(&mut body, local_group(), "generated_polyrust", "_run_test");
+                    require_from(
+                        &mut body,
+                        local_group(),
+                        "generated_polyrust.runtime",
+                        "portable_test_equal",
+                    );
                 }
-                output.push_str(&format!("def test_{}() -> None:\n    actual, expected, expects_error = _run_test({index})\n    assert actual.ok is not expects_error\n    if actual.ok:\n        assert actual.value == expected\n\n", value_name(&test.header.name)));
+                output.push_str(&format!("def test_{}() -> None:\n    actual, expected, expects_error = _run_test({index})\n    assert actual.ok is not expects_error\n    if actual.ok:\n        assert portable_test_equal(actual.value, expected)\n\n", value_name(&test.header.name)));
                 index += 1;
             }
         }
@@ -625,6 +634,8 @@ mod tests {
         assert!(runtime.contains("from dataclasses import dataclass"));
         assert!(runtime.contains("from typing import Any, Generic, TypeVar"));
         assert_eq!(runtime.matches("from dataclasses import").count(), 1);
+        assert_eq!(runtime.matches("import math").count(), 1);
+        assert_eq!(runtime.matches("import struct").count(), 1);
     }
     fn fixture() -> CheckedProgram {
         portable_check::v0::check_program(

@@ -3,8 +3,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use portable_check::v0::CheckedProgram;
 use portable_codegen::BackendError;
 use portable_ir::v0::{
-    Block, ConstantExpression, Declaration, ExpectedOutcome, Expression, Intrinsic, MethodDispatch,
-    NodeId, Parameter, TestInvocation, TypeRef, TypedValue, Value,
+    Block, ConstantExpression, Declaration, ExpectedOutcome, Expression, ExpressionField,
+    Intrinsic, MethodDispatch, NodeId, Parameter, TestInvocation, TypeRef, TypedValue, Value,
 };
 
 pub(crate) struct Generator<'a> {
@@ -141,6 +141,12 @@ impl<'a> Generator<'a> {
             Expression::Local { .. }
             | Expression::Constant { .. }
             | Expression::SelfValue { .. } => Ok(()),
+            Expression::ConstructRecord { fields, .. } => {
+                for field in fields {
+                    self.validate_expression(&field.value)?;
+                }
+                Ok(())
+            }
             Expression::Field { base, .. } => self.validate_expression(base),
             Expression::MethodCall {
                 receiver,
@@ -169,6 +175,13 @@ impl<'a> Generator<'a> {
                         | Intrinsic::LessEqual
                         | Intrinsic::Greater
                         | Intrinsic::GreaterEqual
+                        | Intrinsic::FloatNeg
+                        | Intrinsic::FloatTrunc
+                        | Intrinsic::FloatAdd
+                        | Intrinsic::FloatSub
+                        | Intrinsic::FloatMul
+                        | Intrinsic::FloatDiv
+                        | Intrinsic::FloatRemTrunc
                         | Intrinsic::StringConcat
                         | Intrinsic::StringIsEmpty
                         | Intrinsic::StringContains
@@ -368,7 +381,13 @@ impl<'a> Generator<'a> {
     }
 
     fn result_ty(&self, ty: &TypeRef) -> String {
-        let suffix = match self.resolve_alias(ty) {
+        let resolved = self.resolve_alias(ty);
+        if let TypeRef::Named(id) = resolved
+            && (self.is_record(id) || self.is_enum(id))
+        {
+            return format!("{}_call_result", self.named_name(id));
+        }
+        let suffix = match resolved {
             TypeRef::Unit => "unit",
             TypeRef::Bool => "bool",
             TypeRef::I32 => "i32",
@@ -1237,6 +1256,11 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                         message: "C17 self expression outside a method".into(),
                     })
             }
+            Expression::ConstructRecord {
+                declaration,
+                fields,
+                ..
+            } => self.construct_record(*declaration, fields),
             Expression::Field { base, field, .. } => {
                 let base = self.expression(base)?;
                 let (name, ty) =
@@ -1355,6 +1379,49 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
         let mut result = self.call_result(call, ty)?;
         result.prelude = format!("{prelude}{}", result.prelude);
         Ok(result)
+    }
+
+    fn construct_record(
+        &mut self,
+        declaration: NodeId,
+        fields: &[ExpressionField],
+    ) -> Result<CExpression, BackendError> {
+        let record_ty = self.generator.record_name(declaration);
+        let temporary = self.temporary(|name| format!("{record_ty} {name} = {{0}};"));
+        let mut prelude = String::new();
+        for field in fields {
+            let value = self.expression(&field.value)?;
+            prelude.push_str(&value.prelude);
+            let (name, ty) =
+                self.generator
+                    .field(field.field)
+                    .ok_or_else(|| BackendError::Generation {
+                        message: "C17 record construction field is missing".into(),
+                    })?;
+            if !matches!(
+                self.generator.resolve_alias(ty),
+                TypeRef::Unit
+                    | TypeRef::Bool
+                    | TypeRef::I32
+                    | TypeRef::I64
+                    | TypeRef::F64
+                    | TypeRef::Char
+            ) {
+                return self
+                    .generator
+                    .unsupported("owned record construction fields are not lowered yet");
+            }
+            prelude.push_str(&format!(
+                "{temporary}.{} = {};\n",
+                value_name(name),
+                value.value
+            ));
+        }
+        Ok(CExpression {
+            prelude,
+            value: temporary,
+            ty: TypeRef::Named(declaration),
+        })
     }
 
     fn if_expression(
@@ -1502,6 +1569,33 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                     prelude,
                 )
             }
+            Intrinsic::FloatNeg => scalar(format!("-({})", value(0)), TypeRef::F64, prelude),
+            Intrinsic::FloatTrunc => scalar(
+                format!("poly_f64_trunc({})", value(0)),
+                TypeRef::F64,
+                prelude,
+            ),
+            Intrinsic::FloatAdd
+            | Intrinsic::FloatSub
+            | Intrinsic::FloatMul
+            | Intrinsic::FloatDiv => {
+                let operator = match operation {
+                    Intrinsic::FloatAdd => "+",
+                    Intrinsic::FloatSub => "-",
+                    Intrinsic::FloatMul => "*",
+                    _ => "/",
+                };
+                scalar(
+                    format!("({}) {operator} ({})", value(0), value(1)),
+                    TypeRef::F64,
+                    prelude,
+                )
+            }
+            Intrinsic::FloatRemTrunc => scalar(
+                format!("poly_f64_rem_trunc({}, {})", value(0), value(1)),
+                TypeRef::F64,
+                prelude,
+            ),
             Intrinsic::StringIsEmpty => scalar(
                 format!("({}).length == 0U", value(0)),
                 TypeRef::Bool,
@@ -1746,31 +1840,12 @@ impl Generator<'_> {
             output.push_str(&format!("    {result_ty} result = {call};\n"));
             match &test.expected {
                 ExpectedOutcome::Value(expected) => {
-                    output.push_str("    if (!result.ok");
-                    match (self.resolve_alias(&return_type), &expected.value) {
-                        (TypeRef::Bool, Value::Bool(value)) => {
-                            output.push_str(&format!(" || result.value != {value}"));
-                        }
-                        (TypeRef::I32, Value::I32(value)) => {
-                            output
-                                .push_str(&format!(" || result.value != {}", i32_literal(*value)));
-                        }
-                        (TypeRef::I64, Value::I64(value)) => {
-                            output
-                                .push_str(&format!(" || result.value != {}", i64_literal(*value)));
-                        }
-                        (TypeRef::String, Value::String(value)) => {
-                            output.push_str(&format!(
-                                " || !poly_string_equal(poly_string_borrow(&result.value), {})",
-                                string_view(value.as_bytes())
-                            ));
-                        }
-                        _ => {
-                            return self
-                                .unsupported("this portable-test expectation is not emitted yet");
-                        }
-                    }
-                    output.push_str(&format!(") {{ return {}; }}\n", 10 + index));
+                    let mismatch =
+                        self.test_mismatch("result.value", &expected.value, &return_type)?;
+                    output.push_str(&format!(
+                        "    if (!result.ok || {mismatch}) {{ return {}; }}\n",
+                        10 + index
+                    ));
                 }
                 ExpectedOutcome::Error(_) => {
                     output.push_str(&format!(
@@ -1798,6 +1873,58 @@ impl Generator<'_> {
         }
         output.push_str("  return 0;\n}\n");
         Ok(output)
+    }
+
+    fn test_mismatch(
+        &self,
+        actual: &str,
+        expected: &Value,
+        ty: &TypeRef,
+    ) -> Result<String, BackendError> {
+        match (self.resolve_alias(ty), expected) {
+            (TypeRef::Bool, Value::Bool(value)) => Ok(format!("{actual} != {value}")),
+            (TypeRef::I32, Value::I32(value)) => Ok(format!("{actual} != {}", i32_literal(*value))),
+            (TypeRef::I64, Value::I64(value)) => Ok(format!("{actual} != {}", i64_literal(*value))),
+            (TypeRef::F64, Value::F64(value)) => Ok(format!(
+                "!poly_f64_test_equal({actual}, poly_f64_from_bits(UINT64_C(0x{:016x})))",
+                value.0
+            )),
+            (TypeRef::String, Value::String(value)) => Ok(format!(
+                "!poly_string_equal(poly_string_borrow(&{actual}), {})",
+                string_view(value.as_bytes())
+            )),
+            (
+                TypeRef::Named(_),
+                Value::Record {
+                    declaration,
+                    fields,
+                },
+            ) => {
+                let record = match self.declarations.get(declaration) {
+                    Some(Declaration::Record(value)) => value,
+                    _ => return self.unsupported("portable test record is missing"),
+                };
+                let mut mismatches = Vec::new();
+                for field in fields {
+                    let member = record
+                        .fields
+                        .iter()
+                        .find(|candidate| candidate.header.node.id == field.field)
+                        .expect("checked portable test field exists");
+                    mismatches.push(self.test_mismatch(
+                        &format!("{actual}.{}", value_name(&member.header.name)),
+                        &field.value,
+                        &member.ty,
+                    )?);
+                }
+                Ok(if mismatches.is_empty() {
+                    "false".to_owned()
+                } else {
+                    mismatches.join(" || ")
+                })
+            }
+            _ => self.unsupported("this portable-test expectation is not emitted yet"),
+        }
     }
 
     fn test_value(
@@ -1854,6 +1981,10 @@ impl Generator<'_> {
                         )),
                         (Value::Bool(value), TypeRef::Bool) => output.push_str(&format!(
                             "    {variable}.{name} = {value};\n"
+                        )),
+                        (Value::F64(value), TypeRef::F64) => output.push_str(&format!(
+                            "    {variable}.{name} = poly_f64_from_bits(UINT64_C(0x{:016x}));\n",
+                            value.0
                         )),
                         _ => {
                             return self.unsupported(

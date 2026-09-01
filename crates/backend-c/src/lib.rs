@@ -234,6 +234,7 @@ fn c_runtime_source_file() -> LanguageSourceFile<CImport> {
     let mut body = LanguageUnit::new(CodeDocument::raw_text(
         RawText::new(c_runtime_source_body()),
     ));
+    require_c_system(&mut body, "math.h");
     require_c_system(&mut body, "stdlib.h");
     require_c_system(&mut body, "string.h");
     require_c_local(&mut body, "runtime.h");
@@ -298,7 +299,8 @@ fn c_runtime_header_body() -> &'static str {
 }
 
 fn c_runtime_source_body() -> &'static str {
-    const PREFIX: &str = "#include \"runtime.h\"\n\n#include <stdlib.h>\n#include <string.h>\n\n";
+    const PREFIX: &str =
+        "#include \"runtime.h\"\n\n#include <math.h>\n#include <stdlib.h>\n#include <string.h>\n\n";
     RUNTIME_C
         .strip_prefix(PREFIX)
         .expect("checked-in C runtime source wrapper matches language IR")

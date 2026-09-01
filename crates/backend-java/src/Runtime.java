@@ -329,8 +329,8 @@ public final class Runtime {
       case "bool_not": return ok(!((Boolean) a));
       case "bool_and": return ok((Boolean) a && (Boolean) b);
       case "bool_or": return ok((Boolean) a || (Boolean) b);
-      case "equal": return ok(deepEqual(a, b));
-      case "not_equal": return ok(!deepEqual(a, b));
+      case "equal": return ok(semanticEqual(a, b));
+      case "not_equal": return ok(!semanticEqual(a, b));
       case "less": return ok(compare(a, b) < 0);
       case "less_equal": return ok(compare(a, b) <= 0);
       case "greater": return ok(compare(a, b) > 0);
@@ -365,6 +365,10 @@ public final class Runtime {
             ? ok((Integer) a >> (Integer) b)
             : ok((Long) a >> (Integer) b);
       case "float_neg": return ok(-((Double) a));
+      case "float_trunc": {
+        double value = (Double) a;
+        return ok(value > 0.0 ? Math.floor(value) : Math.ceil(value));
+      }
       case "float_add": return ok((Double) a + (Double) b);
       case "float_sub": return ok((Double) a - (Double) b);
       case "float_mul": return ok((Double) a * (Double) b);
@@ -403,7 +407,7 @@ public final class Runtime {
             : fail("index_out_of_bounds", "list index out of bounds");
       }
       case "list_append": return ok(listAppend(asList(a), b));
-      case "list_contains": return ok(asList(a).stream().anyMatch(item -> deepEqual(item, b)));
+      case "list_contains": return ok(asList(a).stream().anyMatch(item -> semanticEqual(item, b)));
       case "option_is_some": return ok("some".equals(((PolyOption<?>) a).tag()));
       case "option_is_none": return ok("none".equals(((PolyOption<?>) a).tag()));
       case "option_unwrap_or":
@@ -722,6 +726,29 @@ public final class Runtime {
       if (!leftMap.keySet().equals(rightMap.keySet())) return false;
       for (Object key : leftMap.keySet()) {
         if (!deepEqual(leftMap.get(key), rightMap.get(key))) return false;
+      }
+      return true;
+    }
+    return Objects.equals(left, right);
+  }
+
+  static boolean semanticEqual(Object left, Object right) {
+    if (left instanceof PolyRecord record) left = record.polyValue();
+    if (right instanceof PolyRecord record) right = record.polyValue();
+    if (left instanceof Double leftDouble && right instanceof Double rightDouble) {
+      return leftDouble.doubleValue() == rightDouble.doubleValue();
+    }
+    if (left instanceof List<?> leftList && right instanceof List<?> rightList) {
+      if (leftList.size() != rightList.size()) return false;
+      for (int index = 0; index < leftList.size(); index++) {
+        if (!semanticEqual(leftList.get(index), rightList.get(index))) return false;
+      }
+      return true;
+    }
+    if (left instanceof Map<?, ?> leftMap && right instanceof Map<?, ?> rightMap) {
+      if (!leftMap.keySet().equals(rightMap.keySet())) return false;
+      for (Object key : leftMap.keySet()) {
+        if (!semanticEqual(leftMap.get(key), rightMap.get(key))) return false;
       }
       return true;
     }

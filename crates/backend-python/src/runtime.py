@@ -51,6 +51,42 @@ def wrapping(value: int, bits: int) -> int:
     return ((value + 2 ** (bits - 1)) % 2**bits) - 2 ** (bits - 1)
 
 
+def semantic_equal(left: Any, right: Any) -> bool:
+    if isinstance(left, float) and isinstance(right, float):
+        return left == right
+    if isinstance(left, (tuple, list)) and isinstance(right, (tuple, list)):
+        return len(left) == len(right) and all(semantic_equal(a, b) for a, b in zip(left, right))
+    if isinstance(left, (dict, MappingProxyType)) and isinstance(right, (dict, MappingProxyType)):
+        return left.keys() == right.keys() and all(semantic_equal(left[key], right[key]) for key in left)
+    return left == right
+
+
+def portable_test_equal(left: Any, right: Any) -> bool:
+    if isinstance(left, float) and isinstance(right, float):
+        return (math.isnan(left) and math.isnan(right)) or struct.pack(">d", left) == struct.pack(">d", right)
+    if isinstance(left, (tuple, list)) and isinstance(right, (tuple, list)):
+        return len(left) == len(right) and all(portable_test_equal(a, b) for a, b in zip(left, right))
+    if isinstance(left, (dict, MappingProxyType)) and isinstance(right, (dict, MappingProxyType)):
+        return left.keys() == right.keys() and all(portable_test_equal(left[key], right[key]) for key in left)
+    return left == right
+
+
+def float_div(left: float, right: float) -> float:
+    if right != 0.0:
+        return left / right
+    if math.isnan(left) or left == 0.0:
+        return math.nan
+    sign = math.copysign(1.0, left) * math.copysign(1.0, right)
+    return math.copysign(math.inf, sign)
+
+
+def float_rem_trunc(left: float, right: float) -> float:
+    try:
+        return math.fmod(left, right)
+    except ValueError:
+        return math.nan
+
+
 def scalar_length(value: str) -> PolyResult[int]:
     if any(0xD800 <= ord(character) <= 0xDFFF for character in value):
         return fail("invalid_unicode", "surrogate is not a Unicode scalar")
@@ -126,7 +162,6 @@ class Runtime:
         if kind == "unit": return None
         if kind in {"bool", "i32", "i64", "string", "char"}: return data
         if kind == "f64":
-            import struct
             return struct.unpack(">d", int(data).to_bytes(8, "big"))[0]
         if kind in {"bytes", "list"}: return tuple(self._value(item) for item in data) if kind == "list" else bytes(data)
         if kind == "none": return PolyOption("none")
@@ -230,8 +265,8 @@ class Runtime:
         if name == "bool_not": return ok(not a)
         if name == "bool_and": return ok(a and b)
         if name == "bool_or": return ok(a or b)
-        if name == "equal": return ok(a == b)
-        if name == "not_equal": return ok(a != b)
+        if name == "equal": return ok(semantic_equal(a, b))
+        if name == "not_equal": return ok(not semantic_equal(a, b))
         if name in {"less", "less_equal", "greater", "greater_equal"}: return ok({"less": a < b, "less_equal": a <= b, "greater": a > b, "greater_equal": a >= b}[name])
         if name in {"int_neg_checked", "int_add_checked", "int_sub_checked", "int_mul_checked", "int_div_checked", "int_rem_checked"}:
             if name in {"int_div_checked", "int_rem_checked"} and b == 0: return fail("division_by_zero", "integer division by zero")
@@ -247,11 +282,12 @@ class Runtime:
         if name == "int_shift_left_checked": return checked_i32(a << b) if -(2**31) <= a < 2**31 else checked_i64(a << b)
         if name == "int_shift_right_checked": return ok(a >> b)
         if name == "float_neg": return ok(-a)
+        if name == "float_trunc": return ok(math.modf(a)[1])
         if name == "float_add": return ok(a + b)
         if name == "float_sub": return ok(a - b)
         if name == "float_mul": return ok(a * b)
-        if name == "float_div": return ok(a / b)
-        if name == "float_rem_trunc": import math; return ok(math.fmod(a, b))
+        if name == "float_div": return ok(float_div(a, b))
+        if name == "float_rem_trunc": return ok(float_rem_trunc(a, b))
         if name == "string_concat": return ok(a + b)
         if name == "string_scalar_length": return scalar_length(a)
         if name == "string_is_empty": return ok(not a)
@@ -269,7 +305,7 @@ class Runtime:
         if name in {"bytes_is_empty", "list_is_empty"}: return ok(not a)
         if name == "list_get_checked": return ok(a[b]) if 0 <= b < len(a) else fail("index_out_of_bounds", "list index out of bounds")
         if name == "list_append": return ok(a + (b,))
-        if name == "list_contains": return ok(b in a)
+        if name == "list_contains": return ok(any(semantic_equal(item, b) for item in a))
         if name == "option_is_some": return ok(a.tag == "some")
         if name == "option_is_none": return ok(a.tag == "none")
         if name == "option_unwrap_or": return ok(a.value if a.tag == "some" else b)

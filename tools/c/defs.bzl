@@ -23,6 +23,7 @@ def generated_c_tests():
         srcs = common + [":generated/c/tests/generated_test.c"],
         copts = options,
         includes = ["generated/c/src"],
+        linkopts = ["-lm"],
     )
     sh_test(
         name = "c_sanitizer_test",
@@ -42,4 +43,5 @@ def generated_c_tests():
         srcs = common[2:] + [":generated/c/tests/conformance_test.c"],
         copts = options,
         includes = ["generated/c/src"],
+        linkopts = ["-lm"],
     )

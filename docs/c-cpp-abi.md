@@ -40,8 +40,9 @@ without signed-overflow undefined behavior. Builds use `-std=c++20`,
 M22B is implementing this normative mapping in slices. The checked scalar,
 UTF-8 string, allocator, contract-vtable, and concrete aggregate ABI slices are
 active. Aggregate layouts and recursive ownership operations are generated and
-tested; expression construction, matching, container intrinsics, arithmetic,
-and bounded iteration remain diagnostic-only. The backend never exposes
+tested. Scalar-field record construction and binary64 arithmetic are active;
+owned aggregate construction, matching, container intrinsics, general integer
+arithmetic, and bounded iteration remain diagnostic-only. The backend never exposes
 placeholder `void *` containers.
 
 ### Names and monomorphization

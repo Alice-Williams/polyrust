@@ -33,6 +33,7 @@ pub enum Intrinsic {
     IntShiftLeftChecked,
     IntShiftRightChecked,
     FloatNeg,
+    FloatTrunc,
     FloatAdd,
     FloatSub,
     FloatMul,

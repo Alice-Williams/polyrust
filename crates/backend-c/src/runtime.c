@@ -1,5 +1,6 @@
 #include "runtime.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -28,6 +29,23 @@ double poly_f64_from_bits(uint64_t bits) {
   double result;
   memcpy(&result, &bits, sizeof(result));
   return result;
+}
+
+uint64_t poly_f64_bits(double value) {
+  uint64_t result;
+  memcpy(&result, &value, sizeof(result));
+  return result;
+}
+
+double poly_f64_trunc(double value) { return trunc(value); }
+
+double poly_f64_rem_trunc(double left, double right) {
+  return fmod(left, right);
+}
+
+bool poly_f64_test_equal(double left, double right) {
+  return (isnan(left) && isnan(right)) ||
+         poly_f64_bits(left) == poly_f64_bits(right);
 }
 
 poly_string_view poly_string_borrow(const poly_string *value) {

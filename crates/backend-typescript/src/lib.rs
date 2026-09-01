@@ -419,6 +419,8 @@ impl<'a> Generator<'a> {
         }
         output.push_str("export const __invokeTest = (index: number): Readonly<{ actual: PolyResult<unknown>; expected: unknown; expectsError: boolean }> => {\n  const test = TESTS[index];\n  if (test === undefined) return { actual: { ok: false, error: { code: \"invalid_test\", message: \"unknown test\" } }, expected: undefined, expectsError: true };\n  const invocation = test.invocation;\n  const arguments_ = invocation.data.arguments.map((value: unknown) => runtime.decode(value));\n  const actual = invocation.kind === \"function\" ? runtime.invoke(invocation.data.function, arguments_) : runtime.invokeMethod(invocation.data.implementation, invocation.data.method, runtime.decode(invocation.data.receiver), arguments_);\n  return { actual, expected: runtime.decode(test.expected.data), expectsError: test.expected.kind === \"error\" };\n};\n");
         let tests: Vec<_> = self.program.module().declarations.iter().filter_map(|declaration| if let Declaration::Test(test) = declaration { Some(serde_json::json!({"invocation": test.invocation, "expected": test.expected})) } else { None }).collect();
+        let mut tests = serde_json::to_value(tests).expect("tests serialize");
+        stringify_wide_numbers(&mut tests);
         output.push_str("const TESTS: readonly any[] = ");
         output.push_str(&serde_json::to_string(&tests).expect("tests serialize"));
         output.push_str(";\n");
@@ -482,6 +484,8 @@ impl<'a> Generator<'a> {
                 }
             })
             .collect();
+        let mut tests = serde_json::to_value(tests).expect("tests serialize");
+        stringify_wide_numbers(&mut tests);
         output.push_str("const TESTS = ");
         output.push_str(&serde_json::to_string(&tests).expect("tests serialize"));
         output.push_str(";\n");

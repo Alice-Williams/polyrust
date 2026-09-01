@@ -325,6 +325,7 @@ fn all_intrinsics_values_and_constant_nodes_serialize() {
         Intrinsic::IntShiftLeftChecked,
         Intrinsic::IntShiftRightChecked,
         Intrinsic::FloatNeg,
+        Intrinsic::FloatTrunc,
         Intrinsic::FloatAdd,
         Intrinsic::FloatSub,
         Intrinsic::FloatMul,

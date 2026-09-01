@@ -442,7 +442,7 @@ inline bool valid_utf8(const bytes_value& bytes, std::size_t* scalar_count = nul
   return true;
 }
 
-inline bool deep_equal(const any& left, const any& right) {
+inline bool equal_impl(const any& left, const any& right, bool exact_float) {
   if (left.type() != right.type()) return false;
   if (!left.has_value()) return true;
   if (left.type() == typeid(std::nullptr_t)) return true;
@@ -451,35 +451,40 @@ inline bool deep_equal(const any& left, const any& right) {
   if (left.type() == typeid(std::int64_t)) return std::any_cast<std::int64_t>(left) == std::any_cast<std::int64_t>(right);
   if (left.type() == typeid(double)) {
     const double a = std::any_cast<double>(left), b = std::any_cast<double>(right);
-    return (std::isnan(a) && std::isnan(b)) || std::bit_cast<std::uint64_t>(a) == std::bit_cast<std::uint64_t>(b);
+    return exact_float
+        ? (std::isnan(a) && std::isnan(b)) || std::bit_cast<std::uint64_t>(a) == std::bit_cast<std::uint64_t>(b)
+        : a == b;
   }
   if (left.type() == typeid(std::string)) return string(left) == string(right);
   if (left.type() == typeid(bytes_value)) return std::any_cast<const bytes_value&>(left) == std::any_cast<const bytes_value&>(right);
   if (left.type() == typeid(any_list)) {
     const auto& a = list(left); const auto& b = list(right);
     if (a.size() != b.size()) return false;
-    for (std::size_t index = 0; index < a.size(); ++index) if (!deep_equal(a[index], b[index])) return false;
+    for (std::size_t index = 0; index < a.size(); ++index) if (!equal_impl(a[index], b[index], exact_float)) return false;
     return true;
   }
   if (left.type() == typeid(option_value)) {
     const auto& a = std::any_cast<const option_value&>(left); const auto& b = std::any_cast<const option_value&>(right);
-    return a.some == b.some && (!a.some || deep_equal(a.value, b.value));
+    return a.some == b.some && (!a.some || equal_impl(a.value, b.value, exact_float));
   }
   if (left.type() == typeid(value_result)) {
     const auto& a = std::any_cast<const value_result&>(left); const auto& b = std::any_cast<const value_result&>(right);
-    return a.is_ok == b.is_ok && deep_equal(a.is_ok ? a.value : a.failure, b.is_ok ? b.value : b.failure);
+    return a.is_ok == b.is_ok && equal_impl(a.is_ok ? a.value : a.failure, b.is_ok ? b.value : b.failure, exact_float);
   }
   if (left.type() == typeid(aggregate)) {
     const auto& a = std::any_cast<const aggregate&>(left); const auto& b = std::any_cast<const aggregate&>(right);
     if (a.declaration != b.declaration || a.tag != b.tag || a.fields.size() != b.fields.size()) return false;
     for (const auto& [name, value] : a.fields) {
       const auto found = b.fields.find(name);
-      if (found == b.fields.end() || !deep_equal(value, found->second)) return false;
+      if (found == b.fields.end() || !equal_impl(value, found->second, exact_float)) return false;
     }
     return true;
   }
   return false;
 }
+
+inline bool deep_equal(const any& left, const any& right) { return equal_impl(left, right, true); }
+inline bool semantic_equal(const any& left, const any& right) { return equal_impl(left, right, false); }
 
 struct flow {
   bool returned;
@@ -735,8 +740,8 @@ class runtime {
     if (name == "bool_not") return succeed(!std::any_cast<bool>(a));
     if (name == "bool_and") return succeed(std::any_cast<bool>(a) && std::any_cast<bool>(b));
     if (name == "bool_or") return succeed(std::any_cast<bool>(a) || std::any_cast<bool>(b));
-    if (name == "equal") return succeed(deep_equal(a, b));
-    if (name == "not_equal") return succeed(!deep_equal(a, b));
+    if (name == "equal") return succeed(semantic_equal(a, b));
+    if (name == "not_equal") return succeed(!semantic_equal(a, b));
     if (name == "less" || name == "less_equal" || name == "greater" || name == "greater_equal") {
       const int compared = compare(a, b);
       return succeed(name == "less" ? compared < 0 : name == "less_equal" ? compared <= 0
@@ -799,6 +804,7 @@ class runtime {
           : succeed(static_cast<std::int64_t>(std::any_cast<std::int64_t>(a) >> amount));
     }
     if (name == "float_neg") return succeed(-std::any_cast<double>(a));
+    if (name == "float_trunc") return succeed(std::trunc(std::any_cast<double>(a)));
     if (name == "float_add") return succeed(std::any_cast<double>(a) + std::any_cast<double>(b));
     if (name == "float_sub") return succeed(std::any_cast<double>(a) - std::any_cast<double>(b));
     if (name == "float_mul") return succeed(std::any_cast<double>(a) * std::any_cast<double>(b));
@@ -847,7 +853,7 @@ class runtime {
       any_list result = list(a); result.push_back(b); return succeed(result);
     }
     if (name == "list_contains") {
-      return succeed(std::any_of(list(a).begin(), list(a).end(), [&](const any& item) { return deep_equal(item, b); }));
+      return succeed(std::any_of(list(a).begin(), list(a).end(), [&](const any& item) { return semantic_equal(item, b); }));
     }
     if (name == "option_is_some") return succeed(std::any_cast<const option_value&>(a).some);
     if (name == "option_is_none") return succeed(!std::any_cast<const option_value&>(a).some);

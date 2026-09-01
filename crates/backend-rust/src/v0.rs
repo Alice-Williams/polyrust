@@ -1110,6 +1110,7 @@ impl Generator<'_> {
                 format!("_poly_shift_right({a}, {b} as i64, {width})")
             }
             Intrinsic::FloatNeg => format!("Ok(-{a})"),
+            Intrinsic::FloatTrunc => format!("Ok({a}.trunc())"),
             Intrinsic::FloatAdd => format!("Ok({a} + {b})"),
             Intrinsic::FloatSub => format!("Ok({a} - {b})"),
             Intrinsic::FloatMul => format!("Ok({a} * {b})"),
@@ -1476,22 +1477,7 @@ impl Generator<'_> {
                     output.push_str(&format!(
                         "        let actual = {call}.expect(\"portable test expected a value\");\n"
                     ));
-                    match (&return_type, &expected.value) {
-                        (TypeRef::Bool, Value::Bool(true)) => {
-                            output.push_str("        assert!(actual);\n")
-                        }
-                        (TypeRef::Bool, Value::Bool(false)) => {
-                            output.push_str("        assert!(!actual);\n")
-                        }
-                        (TypeRef::F64, Value::F64(value)) => output.push_str(&format!(
-                            "        assert_eq!(actual.to_bits(), 0x{:016x});\n",
-                            value.0
-                        )),
-                        _ => output.push_str(&format!(
-                            "        assert_eq!(actual, {});\n",
-                            self.value(&expected.value)
-                        )),
-                    }
+                    output.push_str(&self.test_assertions("actual", &return_type, &expected.value));
                 }
                 ExpectedOutcome::Error(expected) => {
                     let code = match &expected.value {
@@ -1532,6 +1518,56 @@ impl Generator<'_> {
             })
             .collect::<Vec<_>>()
             .join(", ")
+    }
+
+    fn test_assertions(&self, actual: &str, ty: &TypeRef, expected: &Value) -> String {
+        match (ty, expected) {
+            (TypeRef::Bool, Value::Bool(true)) => {
+                format!("        assert!({actual});\n")
+            }
+            (TypeRef::Bool, Value::Bool(false)) => {
+                format!("        assert!(!{actual});\n")
+            }
+            (TypeRef::F64, Value::F64(value)) => {
+                if f64::from_bits(value.0).is_nan() {
+                    format!("        assert!({actual}.is_nan());\n")
+                } else {
+                    format!(
+                        "        assert_eq!({actual}.to_bits(), 0x{:016x});\n",
+                        value.0
+                    )
+                }
+            }
+            (
+                TypeRef::Named(_),
+                Value::Record {
+                    declaration,
+                    fields,
+                },
+            ) => {
+                let Some(Declaration::Record(record)) = self.declaration(*declaration) else {
+                    return format!("        assert_eq!({actual}, {});\n", self.value(expected));
+                };
+                fields
+                    .iter()
+                    .map(|field| {
+                        let Some(member) = record
+                            .fields
+                            .iter()
+                            .find(|member| member.header.node.id == field.field)
+                        else {
+                            return String::new();
+                        };
+                        self.test_assertions(
+                            &format!("{actual}.{}", value_name(&member.header.name)),
+                            &member.ty,
+                            &field.value,
+                        )
+                    })
+                    .collect()
+            }
+            _ => format!("        assert_eq!({actual}, {});\n", self.value(expected)),
+        }
     }
 }
 
@@ -1806,6 +1842,20 @@ mod tests {
         assert_eq!(
             generator.value(&Value::Bytes(vec![0, 255])),
             "vec![0x00_u8, 0xff_u8]"
+        );
+    }
+
+    #[test]
+    fn portable_boolean_expectations_use_clippy_safe_assertions() {
+        let program = fixture();
+        let generator = Generator::new(&program);
+        assert_eq!(
+            generator.test_assertions("actual", &TypeRef::Bool, &Value::Bool(true)),
+            "        assert!(actual);\n"
+        );
+        assert_eq!(
+            generator.test_assertions("actual", &TypeRef::Bool, &Value::Bool(false)),
+            "        assert!(!actual);\n"
         );
     }
 

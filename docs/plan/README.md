@@ -97,3 +97,4 @@ contract as every other target.
 ### Phase 6 continuation — Real-world compatibility
 
 - [M25 — truncate-utf8-bytes equivalence port](milestones/M25-truncate-utf8-bytes.md) — complete
+- [M27 — parse-ms equivalence port](milestones/M27-parse-ms.md) — complete

@@ -62,6 +62,10 @@ typedef struct poly_error {
 
 poly_allocator poly_default_allocator(void);
 double poly_f64_from_bits(uint64_t bits);
+uint64_t poly_f64_bits(double value);
+double poly_f64_trunc(double value);
+double poly_f64_rem_trunc(double left, double right);
+bool poly_f64_test_equal(double left, double right);
 poly_string_view poly_string_borrow(const poly_string *value);
 poly_bytes_view poly_bytes_borrow(const poly_bytes *value);
 bool poly_utf8_valid(poly_string_view value, size_t *scalar_count);

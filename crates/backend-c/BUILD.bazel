@@ -95,6 +95,7 @@ cc_test(
     ],
     copts = C_COPTS,
     includes = ["test-generated/src"],
+    linkopts = ["-lm"],
     visibility = ["//visibility:public"],
 )
 
@@ -107,6 +108,7 @@ cc_test(
     ],
     copts = C_COPTS,
     includes = ["test-generated/src"],
+    linkopts = ["-lm"],
     visibility = ["//visibility:public"],
 )
 
@@ -121,6 +123,7 @@ cc_test(
     ],
     copts = C_COPTS,
     includes = ["test-generated/src"],
+    linkopts = ["-lm"],
     visibility = ["//visibility:public"],
 )
 
@@ -133,6 +136,7 @@ cc_test(
     ],
     copts = C_COPTS,
     includes = ["src"],
+    linkopts = ["-lm"],
     visibility = ["//visibility:public"],
 )
 
@@ -147,6 +151,7 @@ cc_test(
     ],
     copts = C_COPTS,
     includes = ["abi-generated/src"],
+    linkopts = ["-lm"],
     visibility = ["//visibility:public"],
 )
 

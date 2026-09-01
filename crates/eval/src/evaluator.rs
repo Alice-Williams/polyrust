@@ -179,10 +179,10 @@ impl<'a> Evaluator<'a> {
         };
         let passed = match (&test.expected, &actual) {
             (ExpectedOutcome::Value(expected), EvaluationOutcome::Value(actual)) => {
-                semantic_equal(&expected.value, actual)
+                test_equal(&expected.value, actual)
             }
             (ExpectedOutcome::Error(expected), EvaluationOutcome::Error(actual)) => {
-                semantic_equal(&expected.value, &actual.portable_value())
+                test_equal(&expected.value, &actual.portable_value())
             }
             _ => false,
         };
@@ -848,6 +848,7 @@ impl<'a> Session<'a> {
             IntShiftLeftChecked => self.integer_shift(arguments, true),
             IntShiftRightChecked => self.integer_shift(arguments, false),
             FloatNeg => unary_float(arguments, |value| -value, self),
+            FloatTrunc => unary_float(arguments, f64::trunc, self),
             FloatAdd => binary_float(arguments, |left, right| left + right, self),
             FloatSub => binary_float(arguments, |left, right| left - right, self),
             FloatMul => binary_float(arguments, |left, right| left * right, self),
@@ -1381,6 +1382,61 @@ fn equal_fields(left: &[ValueField], right: &[ValueField]) -> bool {
         })
 }
 
+fn test_equal(left: &Value, right: &Value) -> bool {
+    match (left, right) {
+        (Value::F64(left), Value::F64(right)) => {
+            let left = left.to_f64();
+            let right = right.to_f64();
+            (left.is_nan() && right.is_nan()) || left.to_bits() == right.to_bits()
+        }
+        (Value::List(left), Value::List(right)) => {
+            left.len() == right.len()
+                && left
+                    .iter()
+                    .zip(right)
+                    .all(|(left, right)| test_equal(left, right))
+        }
+        (Value::Some(left), Value::Some(right))
+        | (Value::Ok(left), Value::Ok(right))
+        | (Value::Err(left), Value::Err(right)) => test_equal(left, right),
+        (
+            Value::Record {
+                declaration: left_declaration,
+                fields: left_fields,
+            },
+            Value::Record {
+                declaration: right_declaration,
+                fields: right_fields,
+            },
+        ) => left_declaration == right_declaration && test_equal_fields(left_fields, right_fields),
+        (
+            Value::Enum {
+                declaration: left_declaration,
+                variant: left_variant,
+                fields: left_fields,
+            },
+            Value::Enum {
+                declaration: right_declaration,
+                variant: right_variant,
+                fields: right_fields,
+            },
+        ) => {
+            left_declaration == right_declaration
+                && left_variant == right_variant
+                && test_equal_fields(left_fields, right_fields)
+        }
+        _ => left == right,
+    }
+}
+
+fn test_equal_fields(left: &[ValueField], right: &[ValueField]) -> bool {
+    left.len() == right.len()
+        && left
+            .iter()
+            .zip(right)
+            .all(|(left, right)| left.field == right.field && test_equal(&left.value, &right.value))
+}
+
 fn unary_bool(
     arguments: &[Value],
     operation: impl FnOnce(bool) -> bool,
@@ -1528,6 +1584,22 @@ mod tests {
     }
 
     #[test]
+    fn portable_expectations_are_bit_exact_without_changing_ieee_language_equality() {
+        let nan = Value::F64(F64Bits(f64::NAN.to_bits()));
+        let positive_zero = Value::F64(F64Bits(0.0_f64.to_bits()));
+        let negative_zero = Value::F64(F64Bits((-0.0_f64).to_bits()));
+
+        assert!(!semantic_equal(&nan, &nan));
+        assert!(test_equal(&nan, &nan));
+        assert!(semantic_equal(&positive_zero, &negative_zero));
+        assert!(!test_equal(&positive_zero, &negative_zero));
+        assert!(test_equal(
+            &Value::List(vec![nan.clone(), negative_zero.clone()]),
+            &Value::List(vec![nan, negative_zero]),
+        ));
+    }
+
+    #[test]
     fn semantic_vector_corpus_covers_more_than_twenty_operations_and_faults() {
         use Intrinsic::*;
         let nan = Value::F64(F64Bits(f64::NAN.to_bits()));
@@ -1598,6 +1670,11 @@ mod tests {
                 FloatNeg,
                 vec![Value::F64(F64Bits(0.0_f64.to_bits()))],
                 Ok(Value::F64(F64Bits((-0.0_f64).to_bits()))),
+            ),
+            (
+                FloatTrunc,
+                vec![Value::F64(F64Bits((-1.75_f64).to_bits()))],
+                Ok(Value::F64(F64Bits((-1.0_f64).to_bits()))),
             ),
             (
                 StringScalarLength,

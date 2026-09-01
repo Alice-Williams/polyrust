@@ -118,6 +118,21 @@ Only one port may be in progress. A port is complete when:
   package gates, deterministic regeneration, immutable provenance checks, and
   the complete repository release gate pass.
 
+### [parse-ms 3.0.0](ports/parse-ms.md)
+
+- Upstream: [sindresorhus/parse-ms](https://github.com/sindresorhus/parse-ms)
+- Revision: `49dab09236deeea5d2c082182e2c73e7a79763a8`
+- License: MIT
+- Typed API: `parseMilliseconds(milliseconds: number): TimeComponents`
+- Selection evidence: 24,963,960 weekly npm downloads and 171 dependents
+  measured on 1 September 2026.
+- Required PolyRust gaps: truncation-toward-zero, exact nested-F64 portable
+  expectations, typed record results, and lossless IEEE-bit transport.
+- Completion: M27; 30 portable vectors, 10,105 differential inputs and 70,735
+  exact field comparisons, eight native generated-package gates, deterministic
+  regeneration, immutable provenance checks, and the complete repository
+  release gate.
+
 ## Deferred candidate
 
 `juliangruber/balanced-match` is MIT licensed and attractive for a later parser
