@@ -81,7 +81,7 @@ source-language-to-source-language translation.
 | **Excluded** | Intentionally absent unless a future specification overturns the decision |
 
 Moving a feature to Core requires one target-independent definition, checker and
-evaluator support, all seven current output lowerings, generated native tests, and shared
+evaluator support, all eight current output lowerings, generated native tests, and shared
 conformance cases.
 
 ## 1. Declaration map
@@ -128,7 +128,7 @@ conformance cases.
 
 ### Core contract/interface view
 
-Interfaces are common across all seven current targets but their object models differ.
+Interfaces are common across all eight current targets but their object models differ.
 Core therefore uses a deliberately narrow abstraction:
 
 - A `Contract` contains required immutable instance-method signatures.

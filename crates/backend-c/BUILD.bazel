@@ -1,0 +1,145 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+exports_files(["Cargo.toml"])
+
+rust_library(
+    name = "portable_backend_c",
+    srcs = glob(["src/**/*.rs"]),
+    compile_data = [
+        "src/runtime.c",
+        "src/runtime.h",
+    ],
+    crate_name = "portable_backend_c",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+        "//crates/ir:portable_ir",
+    ],
+)
+
+rust_test(
+    name = "portable_backend_c_test",
+    compile_data = ["//crates/build:testdata/registration.poly.json"],
+    crate = ":portable_backend_c",
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "generate_v0_fixture",
+    srcs = ["examples/generate_v0.rs"],
+    crate_name = "generate_c_v0_fixture",
+    edition = "2024",
+    deps = [
+        ":portable_backend_c",
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+        "//crates/ir:portable_ir",
+    ],
+)
+
+genrule(
+    name = "generate_v0_package",
+    srcs = ["//crates/build:testdata/registration.poly.json"],
+    outs = [
+        "test-generated/README.md",
+        "test-generated/src/generated.c",
+        "test-generated/src/generated.h",
+        "test-generated/src/runtime.c",
+        "test-generated/src/runtime.h",
+        "test-generated/tests/conformance_test.c",
+        "test-generated/tests/generated_test.c",
+    ],
+    cmd = "$(location :generate_v0_fixture) $(location //crates/build:testdata/registration.poly.json) $(@D)/test-generated",
+    tools = [":generate_v0_fixture"],
+)
+
+C_COPTS = [
+    "-std=c17",
+    "-Wall",
+    "-Wextra",
+    "-Wpedantic",
+    "-Werror",
+]
+
+cc_test(
+    name = "generated_v0_native_test",
+    srcs = [
+        ":test-generated/src/generated.c",
+        ":test-generated/src/generated.h",
+        ":test-generated/src/runtime.c",
+        ":test-generated/src/runtime.h",
+        ":test-generated/tests/generated_test.c",
+    ],
+    copts = C_COPTS,
+    includes = ["test-generated/src"],
+    visibility = ["//visibility:public"],
+)
+
+cc_test(
+    name = "generated_v0_conformance_test",
+    srcs = [
+        ":test-generated/src/runtime.c",
+        ":test-generated/src/runtime.h",
+        ":test-generated/tests/conformance_test.c",
+    ],
+    copts = C_COPTS,
+    includes = ["test-generated/src"],
+    visibility = ["//visibility:public"],
+)
+
+cc_test(
+    name = "generated_v0_public_api_test",
+    srcs = [
+        "test/c_consumer_test.c",
+        ":test-generated/src/generated.c",
+        ":test-generated/src/generated.h",
+        ":test-generated/src/runtime.c",
+        ":test-generated/src/runtime.h",
+    ],
+    copts = C_COPTS,
+    includes = ["test-generated/src"],
+    visibility = ["//visibility:public"],
+)
+
+cc_test(
+    name = "runtime_ownership_test",
+    srcs = [
+        "src/runtime.c",
+        "src/runtime.h",
+        "test/runtime_ownership_test.c",
+    ],
+    copts = C_COPTS,
+    includes = ["src"],
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "generated_v0_sanitizer_test",
+    srcs = ["//tools/c:test_sanitizers.sh"],
+    data = [
+        ":test-generated/src/generated.c",
+        ":test-generated/src/generated.h",
+        ":test-generated/src/runtime.c",
+        ":test-generated/src/runtime.h",
+        ":test-generated/tests/generated_test.c",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "generated_v0_style_test",
+    srcs = ["//tools/c:test_style.sh"],
+    data = [
+        ":test-generated/src/generated.c",
+        ":test-generated/src/generated.h",
+        ":test-generated/src/runtime.c",
+        ":test-generated/src/runtime.h",
+        ":test-generated/tests/conformance_test.c",
+        ":test-generated/tests/generated_test.c",
+    ],
+    visibility = ["//visibility:public"],
+)

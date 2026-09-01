@@ -13,6 +13,7 @@ rust_library(
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = [
+        "//crates/backend-c:portable_backend_c",
         "//crates/backend-cpp:portable_backend_cpp",
         "//crates/backend-go:portable_backend_go",
         "//crates/backend-java:portable_backend_java",
@@ -45,6 +46,12 @@ test_suite(
     name = "all_targets_test",
     tests = [
         ":portable_conformance_test",
+        "//crates/backend-c:generated_v0_conformance_test",
+        "//crates/backend-c:generated_v0_native_test",
+        "//crates/backend-c:generated_v0_public_api_test",
+        "//crates/backend-c:generated_v0_sanitizer_test",
+        "//crates/backend-c:generated_v0_style_test",
+        "//crates/backend-c:runtime_ownership_test",
         "//crates/backend-cpp:generated_v0_conformance_test",
         "//crates/backend-cpp:generated_v0_native_test",
         "//crates/backend-cpp:generated_v0_public_api_test",

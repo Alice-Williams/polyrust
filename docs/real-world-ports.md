@@ -36,7 +36,7 @@ Only one port may be in progress. A port is complete when:
   measured week on 1 September 2026.
 - Required PolyRust gap: literal, global, non-overlapping string replacement
   with replacement text interpreted literally.
-- Completion: M17 plus M21/M22A expansion; 18 shared portable vectors, 3,750 differential inputs, seven
+- Completion: M17 plus M21/M22 expansion; 18 shared portable vectors, 3,750 differential inputs, eight
   native generated-package gates, deterministic regeneration, and the complete
   repository release gate pass.
 
@@ -52,8 +52,8 @@ Only one port may be in progress. A port is complete when:
   weekly npm downloads measured on 1 September 2026
 - Required PolyRust gap: linear trimming from either boundary by an explicit
   set of Unicode scalar values
-- Completion: M18; 31 shared portable vectors, 107,851 differential inputs,
-  323,553 three-function comparisons, seven native generated-package gates,
+- Completion: M18 plus M21/M22 expansion; 31 shared portable vectors, 107,851
+  differential inputs, 323,553 three-function comparisons, eight native generated-package gates,
   deterministic regeneration, and the complete repository release gate pass.
 
 ### [slash 5.1.0](ports/slash.md)
@@ -66,7 +66,7 @@ Only one port may be in progress. A port is complete when:
   weekly npm downloads measured on 1 September 2026
 - PolyRust coverage: reuses prefix checks, if expressions, and global literal
   replacement without a project-specific intrinsic
-- Completion: M19 plus M21/M22A expansion; 15 portable vectors, 55,994 differential paths, seven native
+- Completion: M19 plus M21/M22 expansion; 15 portable vectors, 55,994 differential paths, eight native
   generated-package gates, deterministic regeneration, and the complete
   repository release gate pass.
 
@@ -80,7 +80,7 @@ Only one port may be in progress. A port is complete when:
   weekly npm downloads measured on 1 September 2026
 - Required PolyRust gap: exact removal of one leading substring plus valid Go
   serialization of U+FEFF and collision-free Go local identifiers
-- Completion: M20 plus M21/M22A expansion; 18 portable vectors, 55,991 differential strings, seven
+- Completion: M20 plus M21/M22 expansion; 18 portable vectors, 55,991 differential strings, eight
   native generated-package gates, deterministic regeneration, and the complete
   repository release gate pass.
 

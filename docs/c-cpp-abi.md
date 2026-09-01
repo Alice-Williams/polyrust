@@ -37,6 +37,12 @@ without signed-overflow undefined behavior. Builds use `-std=c++20`,
 
 ## C17 mapping
 
+M22B is implementing this normative mapping in slices. The checked scalar,
+UTF-8 string, owned-record, allocator, and contract-vtable slice is active in
+all examples. The backend diagnoses list, option, value-result, enum, checked
+arithmetic, and bounded-iteration programs until their monomorphized lowering
+is complete; it does not expose placeholder `void *` containers.
+
 ### Names and monomorphization
 
 Every public symbol is prefixed with the sanitized module name. Each reachable

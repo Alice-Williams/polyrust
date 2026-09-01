@@ -20,6 +20,8 @@ filegroup(
 rust_clippy_test(
     name = "rust_clippy_test",
     targets = [
+        "//crates/backend-c:portable_backend_c",
+        "//crates/backend-c:portable_backend_c_test",
         "//crates/backend-cpp:portable_backend_cpp",
         "//crates/backend-cpp:portable_backend_cpp_test",
         "//crates/backend-go:portable_backend_go",
@@ -67,6 +69,8 @@ rust_clippy_test(
 rustfmt_test(
     name = "rustfmt_test",
     targets = [
+        "//crates/backend-c:portable_backend_c",
+        "//crates/backend-c:portable_backend_c_test",
         "//crates/backend-cpp:portable_backend_cpp",
         "//crates/backend-cpp:portable_backend_cpp_test",
         "//crates/backend-go:portable_backend_go",

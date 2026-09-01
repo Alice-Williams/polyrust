@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/backend-c",
     "crates/backend-go",
     "crates/backend-cpp",
     "crates/backend-java",
@@ -32,6 +33,7 @@ repository = "https://github.com/Alice-Williams/polyrust"
 publish = false
 
 [workspace.dependencies]
+portable_backend_c = { package = "polyrust-backend-c", path = "crates/backend-c" }
 portable_backend_go = { package = "polyrust-backend-go", path = "crates/backend-go" }
 portable_backend_cpp = { package = "polyrust-backend-cpp", path = "crates/backend-cpp" }
 portable_backend_java = { package = "polyrust-backend-java", path = "crates/backend-java" }

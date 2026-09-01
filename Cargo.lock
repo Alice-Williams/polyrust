@@ -15,6 +15,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
+name = "polyrust-backend-c"
+version = "0.1.0"
+dependencies = [
+ "polyrust-build",
+ "polyrust-check",
+ "polyrust-codegen",
+ "polyrust-ir",
+]
+
+[[package]]
 name = "polyrust-backend-cpp"
 version = "0.1.0"
 dependencies = [
@@ -77,6 +87,7 @@ dependencies = [
 name = "polyrust-benchmark"
 version = "0.1.0"
 dependencies = [
+ "polyrust-backend-c",
  "polyrust-backend-cpp",
  "polyrust-backend-go",
  "polyrust-backend-java",
@@ -110,6 +121,7 @@ dependencies = [
 name = "polyrust-cli"
 version = "0.1.0"
 dependencies = [
+ "polyrust-backend-c",
  "polyrust-backend-cpp",
  "polyrust-backend-go",
  "polyrust-backend-java",
@@ -142,6 +154,7 @@ dependencies = [
 name = "polyrust-conformance"
 version = "0.1.0"
 dependencies = [
+ "polyrust-backend-c",
  "polyrust-backend-cpp",
  "polyrust-backend-go",
  "polyrust-backend-java",
@@ -167,6 +180,7 @@ dependencies = [
 name = "polyrust-escape-string-regexp-example"
 version = "0.1.0"
 dependencies = [
+ "polyrust-backend-c",
  "polyrust-backend-cpp",
  "polyrust-backend-go",
  "polyrust-backend-java",
@@ -200,6 +214,7 @@ dependencies = [
 name = "polyrust-models-and-validation-example"
 version = "0.1.0"
 dependencies = [
+ "polyrust-backend-c",
  "polyrust-backend-cpp",
  "polyrust-backend-go",
  "polyrust-backend-java",
@@ -227,6 +242,7 @@ dependencies = [
 name = "polyrust-slash-example"
 version = "0.1.0"
 dependencies = [
+ "polyrust-backend-c",
  "polyrust-backend-cpp",
  "polyrust-backend-go",
  "polyrust-backend-java",
@@ -243,6 +259,7 @@ dependencies = [
 name = "polyrust-strip-bom-example"
 version = "0.1.0"
 dependencies = [
+ "polyrust-backend-c",
  "polyrust-backend-cpp",
  "polyrust-backend-go",
  "polyrust-backend-java",
@@ -259,6 +276,7 @@ dependencies = [
 name = "polyrust-trim-newlines-example"
 version = "0.1.0"
 dependencies = [
+ "polyrust-backend-c",
  "polyrust-backend-cpp",
  "polyrust-backend-go",
  "polyrust-backend-java",

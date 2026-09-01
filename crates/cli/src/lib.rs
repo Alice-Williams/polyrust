@@ -468,6 +468,9 @@ fn default_registry() -> BackendRegistry {
         .register(Arc::new(portable_backend_cpp::CppBackend))
         .expect("C++ target is unique");
     registry
+        .register(Arc::new(portable_backend_c::CBackend))
+        .expect("C target is unique");
+    registry
 }
 
 struct InspectionBackend {
@@ -656,6 +659,11 @@ mod tests {
             targets
                 .1
                 .contains("org.polyrust.cpp\tC++\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n")
+        );
+        assert!(
+            targets
+                .1
+                .contains("org.polyrust.c\tC\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n")
         );
         assert!(
             targets.1.contains(

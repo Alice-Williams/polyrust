@@ -10,6 +10,7 @@ rust_binary(
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = [
+        "//crates/backend-c:portable_backend_c",
         "//crates/backend-cpp:portable_backend_cpp",
         "//crates/backend-go:portable_backend_go",
         "//crates/backend-java:portable_backend_java",

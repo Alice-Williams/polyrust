@@ -1,0 +1,22 @@
+[package]
+name = "polyrust-backend-c"
+description = "C17 source backend for checked portable programs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+name = "portable_backend_c"
+
+[dependencies]
+portable_check.workspace = true
+portable_codegen.workspace = true
+portable_ir.workspace = true
+
+[dev-dependencies]
+portable_build.workspace = true
+
+[lints]
+workspace = true

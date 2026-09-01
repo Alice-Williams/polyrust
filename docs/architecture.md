@@ -477,7 +477,7 @@ Snapshot approval alone never establishes semantic correctness.
 - Changing evaluation behavior, type mapping visible at public APIs, canonical
   encoding, or helper error behavior is semantic and requires a compatibility
   review.
-- A new core IR feature requires designs and conformance cases for all seven
+- A new core IR feature requires designs and conformance cases for all eight
   required targets before merge.
 - An external “toy” backend fixture remains outside core and compiles in CI to
   detect accidental coupling.

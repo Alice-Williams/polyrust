@@ -8,7 +8,7 @@ It has five independent layers:
 - a fast Ubuntu 24.04 job runs Cargo Rustfmt, warning-denied Clippy, workspace
   tests, Bazel Buildifier, and the dependency-boundary linter;
 - Rust 1.98.0 (MSRV) and current stable each run the complete Cargo workspace;
-- Ubuntu 22.04 and 24.04 generate clean seven-target trees which a dependent job
+- Ubuntu 22.04 and 24.04 generate clean eight-target trees which a dependent job
   compares byte-for-byte; and
 - the final Ubuntu job can run only after every prior job succeeds, installs
   pinned `cargo-audit` 0.22.2, and runs the entire release gate first with empty

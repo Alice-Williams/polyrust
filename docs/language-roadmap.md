@@ -29,7 +29,7 @@ emission targets.
 
 ## PolyRust target strategy
 
-After M22A, PolyRust covers seven general-purpose ecosystems:
+The M22B foundation makes C the eighth independently generated ecosystem:
 
 - Rust
 - TypeScript
@@ -38,10 +38,12 @@ After M22A, PolyRust covers seven general-purpose ecosystems:
 - Go
 - Java
 - C++
+- C
 
-M22 commits the next two targets:
-
-1. C, with an explicit ABI, allocation, ownership, and monomorphization design.
+The current C slice compiles and behaviorally tests scalars, UTF-8 strings,
+owned records, and contract vtables across every completed port. M22B remains
+in progress until lists, options, value results, and enums are monomorphized
+without untyped public containers.
 
 Recommended order after M22:
 

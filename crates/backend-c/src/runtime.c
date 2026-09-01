@@ -1,0 +1,413 @@
+#include "runtime.h"
+
+#include <stdlib.h>
+#include <string.h>
+
+static void *default_allocate(void *context, size_t size) {
+  (void)context;
+  return malloc(size);
+}
+
+static void *default_reallocate(void *context, void *pointer, size_t size) {
+  (void)context;
+  return realloc(pointer, size);
+}
+
+static void default_deallocate(void *context, void *pointer) {
+  (void)context;
+  free(pointer);
+}
+
+poly_allocator poly_default_allocator(void) {
+  poly_allocator result = {NULL, default_allocate, default_reallocate,
+                           default_deallocate};
+  return result;
+}
+
+double poly_f64_from_bits(uint64_t bits) {
+  double result;
+  memcpy(&result, &bits, sizeof(result));
+  return result;
+}
+
+poly_string_view poly_string_borrow(const poly_string *value) {
+  poly_string_view result = {value->data, value->length};
+  return result;
+}
+
+poly_bytes_view poly_bytes_borrow(const poly_bytes *value) {
+  poly_bytes_view result = {value->data, value->length};
+  return result;
+}
+
+static bool valid_scalar(const uint8_t *data, size_t remaining, size_t *width) {
+  uint8_t first;
+  uint32_t scalar;
+  size_t count;
+  size_t index;
+  if (remaining == 0U) {
+    return false;
+  }
+  first = data[0];
+  if (first <= UINT8_C(0x7f)) {
+    *width = 1U;
+    return true;
+  }
+  if (first >= UINT8_C(0xc2) && first <= UINT8_C(0xdf)) {
+    count = 2U;
+    scalar = (uint32_t)(first & UINT8_C(0x1f));
+  } else if (first >= UINT8_C(0xe0) && first <= UINT8_C(0xef)) {
+    count = 3U;
+    scalar = (uint32_t)(first & UINT8_C(0x0f));
+  } else if (first >= UINT8_C(0xf0) && first <= UINT8_C(0xf4)) {
+    count = 4U;
+    scalar = (uint32_t)(first & UINT8_C(0x07));
+  } else {
+    return false;
+  }
+  if (remaining < count) {
+    return false;
+  }
+  for (index = 1U; index < count; ++index) {
+    if ((data[index] & UINT8_C(0xc0)) != UINT8_C(0x80)) {
+      return false;
+    }
+    scalar = (scalar << 6U) | (uint32_t)(data[index] & UINT8_C(0x3f));
+  }
+  if ((count == 3U && scalar < UINT32_C(0x800)) ||
+      (count == 4U && scalar < UINT32_C(0x10000)) ||
+      (scalar >= UINT32_C(0xd800) && scalar <= UINT32_C(0xdfff)) ||
+      scalar > UINT32_C(0x10ffff)) {
+    return false;
+  }
+  *width = count;
+  return true;
+}
+
+bool poly_utf8_valid(poly_string_view value, size_t *scalar_count) {
+  size_t offset = 0U;
+  size_t count = 0U;
+  while (offset < value.length) {
+    size_t width = 0U;
+    if (!valid_scalar(value.data + offset, value.length - offset, &width)) {
+      return false;
+    }
+    offset += width;
+    ++count;
+  }
+  if (scalar_count != NULL) {
+    *scalar_count = count;
+  }
+  return true;
+}
+
+static bool bytes_clone(poly_allocator allocator, const uint8_t *source,
+                        size_t length, uint8_t **output) {
+  uint8_t *data;
+  *output = NULL;
+  if (length == 0U) {
+    return true;
+  }
+  if (source == NULL || allocator.allocate == NULL ||
+      allocator.deallocate == NULL) {
+    return false;
+  }
+  data = (uint8_t *)allocator.allocate(allocator.context, length);
+  if (data == NULL) {
+    return false;
+  }
+  memcpy(data, source, length);
+  *output = data;
+  return true;
+}
+
+bool poly_string_clone(poly_allocator allocator, poly_string_view source,
+                       poly_string *output) {
+  poly_string result = {0};
+  if (output == NULL || !poly_utf8_valid(source, NULL) ||
+      !bytes_clone(allocator, source.data, source.length, &result.data)) {
+    return false;
+  }
+  result.length = source.length;
+  result.capacity = source.length;
+  result.allocator = allocator;
+  *output = result;
+  return true;
+}
+
+bool poly_bytes_clone(poly_allocator allocator, poly_bytes_view source,
+                      poly_bytes *output) {
+  poly_bytes result = {0};
+  if (output == NULL ||
+      !bytes_clone(allocator, source.data, source.length, &result.data)) {
+    return false;
+  }
+  result.length = source.length;
+  result.capacity = source.length;
+  result.allocator = allocator;
+  *output = result;
+  return true;
+}
+
+void poly_string_drop(poly_string *value) {
+  if (value == NULL) {
+    return;
+  }
+  if (value->data != NULL && value->allocator.deallocate != NULL) {
+    value->allocator.deallocate(value->allocator.context, value->data);
+  }
+  *value = (poly_string){0};
+}
+
+void poly_bytes_drop(poly_bytes *value) {
+  if (value == NULL) {
+    return;
+  }
+  if (value->data != NULL && value->allocator.deallocate != NULL) {
+    value->allocator.deallocate(value->allocator.context, value->data);
+  }
+  *value = (poly_bytes){0};
+}
+
+static bool view_equal(const uint8_t *left, size_t left_length,
+                       const uint8_t *right, size_t right_length) {
+  return left_length == right_length &&
+         (left_length == 0U || memcmp(left, right, left_length) == 0);
+}
+
+bool poly_string_equal(poly_string_view left, poly_string_view right) {
+  return view_equal(left.data, left.length, right.data, right.length);
+}
+
+bool poly_bytes_equal(poly_bytes_view left, poly_bytes_view right) {
+  return view_equal(left.data, left.length, right.data, right.length);
+}
+
+bool poly_string_starts_with(poly_string_view source, poly_string_view prefix) {
+  return prefix.length <= source.length &&
+         view_equal(source.data, prefix.length, prefix.data, prefix.length);
+}
+
+bool poly_string_ends_with(poly_string_view source, poly_string_view suffix) {
+  if (suffix.length == 0U) {
+    return true;
+  }
+  return suffix.length <= source.length &&
+         view_equal(source.data + source.length - suffix.length, suffix.length,
+                    suffix.data, suffix.length);
+}
+
+bool poly_string_contains(poly_string_view source, poly_string_view needle) {
+  size_t offset;
+  if (needle.length == 0U) {
+    return true;
+  }
+  if (needle.length > source.length) {
+    return false;
+  }
+  for (offset = 0U; offset <= source.length - needle.length; ++offset) {
+    if (view_equal(source.data + offset, needle.length, needle.data,
+                   needle.length)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool poly_string_strip_prefix(poly_allocator allocator, poly_string_view source,
+                              poly_string_view prefix, poly_string *output) {
+  if (poly_string_starts_with(source, prefix)) {
+    source.data += prefix.length;
+    source.length -= prefix.length;
+  }
+  return poly_string_clone(allocator, source, output);
+}
+
+bool poly_string_concat(poly_allocator allocator, poly_string_view left,
+                        poly_string_view right, poly_string *output) {
+  poly_string result = {0};
+  size_t length;
+  if (output == NULL || left.length > SIZE_MAX - right.length) {
+    return false;
+  }
+  length = left.length + right.length;
+  if (length != 0U) {
+    if (allocator.allocate == NULL || allocator.deallocate == NULL) {
+      return false;
+    }
+    result.data = (uint8_t *)allocator.allocate(allocator.context, length);
+    if (result.data == NULL) {
+      return false;
+    }
+  }
+  if (left.length != 0U) {
+    memcpy(result.data, left.data, left.length);
+  }
+  if (right.length != 0U) {
+    memcpy(result.data + left.length, right.data, right.length);
+  }
+  result.length = length;
+  result.capacity = length;
+  result.allocator = allocator;
+  *output = result;
+  return true;
+}
+
+static size_t count_occurrences(poly_string_view source,
+                                poly_string_view needle) {
+  size_t count = 0U;
+  size_t offset = 0U;
+  if (needle.length == 0U) {
+    size_t scalars = 0U;
+    (void)poly_utf8_valid(source, &scalars);
+    return scalars + 1U;
+  }
+  while (offset + needle.length <= source.length) {
+    if (view_equal(source.data + offset, needle.length, needle.data,
+                   needle.length)) {
+      ++count;
+      offset += needle.length;
+    } else {
+      ++offset;
+    }
+  }
+  return count;
+}
+
+bool poly_string_replace_all(poly_allocator allocator, poly_string_view source,
+                             poly_string_view needle,
+                             poly_string_view replacement,
+                             poly_string *output) {
+  size_t count;
+  size_t length;
+  size_t input_offset = 0U;
+  size_t output_offset = 0U;
+  poly_string result = {0};
+  if (output == NULL || !poly_utf8_valid(source, NULL) ||
+      !poly_utf8_valid(needle, NULL) || !poly_utf8_valid(replacement, NULL)) {
+    return false;
+  }
+  if (needle.length == 0U) {
+    /* Empty-needle insertion is intentionally handled scalar-by-scalar. */
+    size_t scalar_offset = 0U;
+    size_t scalar_count = 0U;
+    (void)poly_utf8_valid(source, &scalar_count);
+    if (replacement.length != 0U &&
+        scalar_count + 1U > (SIZE_MAX - source.length) / replacement.length) {
+      return false;
+    }
+    length = source.length + (scalar_count + 1U) * replacement.length;
+    if (length != 0U) {
+      result.data = (uint8_t *)allocator.allocate(allocator.context, length);
+      if (result.data == NULL) {
+        return false;
+      }
+    }
+    if (replacement.length != 0U) {
+      memcpy(result.data, replacement.data, replacement.length);
+      output_offset += replacement.length;
+    }
+    while (scalar_offset < source.length) {
+      size_t width = 0U;
+      (void)valid_scalar(source.data + scalar_offset,
+                         source.length - scalar_offset, &width);
+      memcpy(result.data + output_offset, source.data + scalar_offset, width);
+      output_offset += width;
+      scalar_offset += width;
+      if (replacement.length != 0U) {
+        memcpy(result.data + output_offset, replacement.data,
+               replacement.length);
+        output_offset += replacement.length;
+      }
+    }
+  } else {
+    count = count_occurrences(source, needle);
+    if (replacement.length >= needle.length) {
+      size_t growth = replacement.length - needle.length;
+      if (growth != 0U && count > (SIZE_MAX - source.length) / growth) {
+        return false;
+      }
+      length = source.length + count * growth;
+    } else {
+      length = source.length - count * (needle.length - replacement.length);
+    }
+    if (length != 0U) {
+      result.data = (uint8_t *)allocator.allocate(allocator.context, length);
+      if (result.data == NULL) {
+        return false;
+      }
+    }
+    while (input_offset < source.length) {
+      if (input_offset + needle.length <= source.length &&
+          view_equal(source.data + input_offset, needle.length, needle.data,
+                     needle.length)) {
+        if (replacement.length != 0U) {
+          memcpy(result.data + output_offset, replacement.data,
+                 replacement.length);
+        }
+        output_offset += replacement.length;
+        input_offset += needle.length;
+      } else {
+        result.data[output_offset++] = source.data[input_offset++];
+      }
+    }
+  }
+  result.length = length;
+  result.capacity = length;
+  result.allocator = allocator;
+  *output = result;
+  return true;
+}
+
+static bool scalar_in(poly_string_view characters, const uint8_t *scalar,
+                      size_t width) {
+  size_t offset = 0U;
+  while (offset < characters.length) {
+    size_t item_width = 0U;
+    (void)valid_scalar(characters.data + offset, characters.length - offset,
+                       &item_width);
+    if (view_equal(characters.data + offset, item_width, scalar, width)) {
+      return true;
+    }
+    offset += item_width;
+  }
+  return false;
+}
+
+bool poly_string_trim_start(poly_allocator allocator, poly_string_view source,
+                            poly_string_view characters, poly_string *output) {
+  size_t offset = 0U;
+  if (!poly_utf8_valid(source, NULL) || !poly_utf8_valid(characters, NULL)) {
+    return false;
+  }
+  while (offset < source.length) {
+    size_t width = 0U;
+    (void)valid_scalar(source.data + offset, source.length - offset, &width);
+    if (!scalar_in(characters, source.data + offset, width)) {
+      break;
+    }
+    offset += width;
+  }
+  source.data += offset;
+  source.length -= offset;
+  return poly_string_clone(allocator, source, output);
+}
+
+bool poly_string_trim_end(poly_allocator allocator, poly_string_view source,
+                          poly_string_view characters, poly_string *output) {
+  size_t offset = 0U;
+  size_t keep = 0U;
+  if (!poly_utf8_valid(source, NULL) || !poly_utf8_valid(characters, NULL)) {
+    return false;
+  }
+  while (offset < source.length) {
+    size_t width = 0U;
+    (void)valid_scalar(source.data + offset, source.length - offset, &width);
+    if (!scalar_in(characters, source.data + offset, width)) {
+      keep = offset + width;
+    }
+    offset += width;
+  }
+  source.length = keep;
+  return poly_string_clone(allocator, source, output);
+}

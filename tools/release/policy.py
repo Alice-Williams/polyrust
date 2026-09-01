@@ -90,10 +90,14 @@ def verify_evidence(evidence: dict[str, object]) -> None:
     require(evidence.get("snapshot_equal") is True, "snapshot drift")
     require(evidence.get("conformance") is True, "conformance failure")
     tools = set(evidence.get("formatters", []))
-    require({"rustfmt", "prettier", "ruff", "gofmt", "cpp-style"} <= tools, "missing formatter")
+    require(
+        {"rustfmt", "prettier", "ruff", "gofmt", "cpp-style", "c-style"} <= tools,
+        "missing formatter",
+    )
     backends = set(evidence.get("backends", []))
     require(
-        {"rust", "typescript", "javascript", "python", "go", "java", "cpp"} <= backends,
+        {"rust", "typescript", "javascript", "python", "go", "java", "cpp", "c"}
+        <= backends,
         "required backend skipped",
     )
 
@@ -120,8 +124,8 @@ def verify(root: Path) -> None:
         {
             "snapshot_equal": True,
             "conformance": True,
-            "formatters": ["rustfmt", "prettier", "ruff", "gofmt", "cpp-style"],
-            "backends": ["rust", "typescript", "javascript", "python", "go", "java", "cpp"],
+            "formatters": ["rustfmt", "prettier", "ruff", "gofmt", "cpp-style", "c-style"],
+            "backends": ["rust", "typescript", "javascript", "python", "go", "java", "cpp", "c"],
         }
     )
 
@@ -139,8 +143,8 @@ def self_test() -> None:
     good = {
         "snapshot_equal": True,
         "conformance": True,
-        "formatters": ["rustfmt", "prettier", "ruff", "gofmt", "cpp-style"],
-        "backends": ["rust", "typescript", "javascript", "python", "go", "java", "cpp"],
+        "formatters": ["rustfmt", "prettier", "ruff", "gofmt", "cpp-style", "c-style"],
+        "backends": ["rust", "typescript", "javascript", "python", "go", "java", "cpp", "c"],
     }
     for name, change in [
         ("snapshot drift", {"snapshot_equal": False}),
