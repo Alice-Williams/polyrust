@@ -3,8 +3,10 @@ use std::collections::BTreeMap;
 use portable_check::v0::{Capability, CheckedProgram};
 use portable_codegen::{
     Backend, BackendDescriptor, BackendError, BackendOptions, BackendVersion, CapabilitySupport,
-    DeclaredDependency, Document as CodeDocument, FinalNewline, InjectedHelper, IrVersionRange,
-    OptionsSchema, OutputFile, OutputManifest, RawText, RenderOptions, TargetId, render,
+    DeclaredDependency, Document as CodeDocument, FileGroup, FileGroupId, FileRole, FinalNewline,
+    ImportGroup, ImportSet, InjectedHelper, IrVersionRange, LanguageFile, LanguagePackage,
+    LanguagePlugin, LanguageRenderer, LanguageSourceFile, OptionsSchema, OutputManifest, RawText,
+    RenderOptions, TargetId, generate_with_plugin, render,
 };
 use portable_ir::v0::{
     Block, ConstantExpression, Declaration, EnumVariant, ExpectedOutcome, Expression, Intrinsic,
@@ -52,11 +54,54 @@ impl Backend for RustBackend {
     fn generate(
         &self,
         program: &CheckedProgram,
-        _options: &BackendOptions,
+        options: &BackendOptions,
     ) -> Result<OutputManifest, BackendError> {
+        generate_with_plugin(self, program, options)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[doc(hidden)]
+pub enum RustImport {
+    Module { name: &'static str, test_only: bool },
+    Use { path: &'static str, public: bool },
+}
+
+#[doc(hidden)]
+pub struct RustRenderer;
+
+impl LanguageRenderer<RustImport> for RustRenderer {
+    fn render_imports(&self, imports: &ImportSet<RustImport>) -> Result<CodeDocument, String> {
+        let mut lines = Vec::new();
+        for (_, imports) in imports.groups() {
+            for import in imports {
+                match import {
+                    RustImport::Module { name, test_only } => {
+                        if *test_only {
+                            lines.push("#[cfg(test)]".to_owned());
+                        }
+                        lines.push(format!("mod {name};"));
+                    }
+                    RustImport::Use { path, public } => {
+                        lines.push(format!("{}use {path};", if *public { "pub " } else { "" }))
+                    }
+                }
+            }
+        }
+        Ok(CodeDocument::raw_text(RawText::new(lines.join("\n"))))
+    }
+}
+
+impl LanguagePlugin for RustBackend {
+    type Import = RustImport;
+    type Renderer = RustRenderer;
+
+    fn translate(
+        &self,
+        program: &CheckedProgram,
+        _options: &BackendOptions,
+    ) -> Result<LanguagePackage<Self::Import>, BackendError> {
         let generator = Generator::new(program);
-        let source = generator.render_crate()?;
-        let conformance = render_conformance();
         let cargo = format!(
             "[package]\nname = \"{}\"\nversion = \"0.1.0\"\nedition = \"2024\"\npublish = false\n\n[lib]\npath = \"src/lib.rs\"\n",
             package_name(&program.module().name)
@@ -74,18 +119,69 @@ impl Backend for RustBackend {
                 CapabilitySupport::Native | CapabilitySupport::Unsupported { .. } => None,
             })
             .collect();
-        OutputManifest::new(
+        LanguagePackage::new(
             vec![
-                OutputFile::text("Cargo.toml", cargo),
-                OutputFile::text("src/conformance.rs", conformance),
-                OutputFile::text("src/lib.rs", source),
-                OutputFile::text("src/polyrust_runtime.rs", RUNTIME),
+                FileGroup::new(
+                    rust_group("metadata")?,
+                    vec![LanguageFile::text("Cargo.toml", FileRole::Metadata, cargo)],
+                )
+                .map_err(rust_generation_error)?,
+                FileGroup::new(
+                    rust_group("runtime")?,
+                    vec![LanguageFile::text(
+                        "src/polyrust_runtime.rs",
+                        FileRole::Runtime,
+                        RUNTIME,
+                    )],
+                )
+                .map_err(rust_generation_error)?,
+                FileGroup::new(
+                    rust_group("source")?,
+                    vec![LanguageFile::source(generator.source_file()?)],
+                )
+                .map_err(rust_generation_error)?,
+                FileGroup::new(
+                    rust_group("tests")?,
+                    vec![LanguageFile::source(rust_conformance_file())],
+                )
+                .map_err(rust_generation_error)?,
             ],
             Vec::<DeclaredDependency>::new(),
             helpers,
         )
-        .map_err(BackendError::UnsupportedCapabilities)
+        .map_err(rust_generation_error)
     }
+
+    fn renderer(&self) -> Self::Renderer {
+        RustRenderer
+    }
+}
+
+fn rust_generation_error(error: impl std::fmt::Display) -> BackendError {
+    BackendError::Generation {
+        message: error.to_string(),
+    }
+}
+
+fn rust_group(name: &str) -> Result<FileGroupId, BackendError> {
+    FileGroupId::parse(name).map_err(rust_generation_error)
+}
+
+fn rust_import_group() -> ImportGroup {
+    ImportGroup::new(10, "modules-and-uses").expect("static import group is valid")
+}
+
+fn rust_conformance_file() -> LanguageSourceFile<RustImport> {
+    let mut file = LanguageSourceFile::new("src/conformance.rs", FileRole::Conformance);
+    file.require_import(
+        rust_import_group(),
+        RustImport::Use {
+            path: "super::*",
+            public: false,
+        },
+    );
+    file.set_body(CodeDocument::raw_text(RawText::new(render_conformance())));
+    file
 }
 
 struct Generator<'a> {
@@ -106,11 +202,33 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn render_crate(&self) -> Result<String, BackendError> {
-        let mut source = String::from(
-            "#![forbid(unsafe_code)]\n#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]\n#![allow(clippy::unnecessary_wraps)]\n\n// Generated by PolyRust from checked IR v0.\n\n",
+    fn source_file(&self) -> Result<LanguageSourceFile<RustImport>, BackendError> {
+        let mut file = LanguageSourceFile::new("src/lib.rs", FileRole::Source);
+        file.set_preamble(CodeDocument::raw_text(RawText::new(
+            "#![forbid(unsafe_code)]\n#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]\n#![allow(clippy::unnecessary_wraps)]\n\n// Generated by PolyRust from checked IR v0.",
+        )));
+        file.require_import(
+            rust_import_group(),
+            RustImport::Module {
+                name: "polyrust_runtime",
+                test_only: false,
+            },
         );
-        source.push_str("mod polyrust_runtime;\npub use polyrust_runtime::*;\n\n");
+        file.require_import(
+            rust_import_group(),
+            RustImport::Use {
+                path: "polyrust_runtime::*",
+                public: true,
+            },
+        );
+        file.require_import(
+            rust_import_group(),
+            RustImport::Module {
+                name: "conformance",
+                test_only: true,
+            },
+        );
+        let mut source = String::new();
 
         let mut declarations: Vec<_> = self.program.module().declarations.iter().collect();
         declarations.sort_by_key(|declaration| declaration.header().node.id);
@@ -233,9 +351,8 @@ impl<'a> Generator<'a> {
             }
         }
         self.tests(&mut source);
-        source.push_str("\n#[cfg(test)]\nmod conformance;\n");
         let document = CodeDocument::raw_text(RawText::new(source));
-        render(
+        let body = render(
             &document,
             RenderOptions {
                 final_newline: FinalNewline::Always,
@@ -244,7 +361,9 @@ impl<'a> Generator<'a> {
         )
         .map_err(|error| BackendError::Generation {
             message: format!("Rust document rendering failed: {error}"),
-        })
+        })?;
+        file.set_body(CodeDocument::raw_text(RawText::new(body)));
+        Ok(file)
     }
 
     fn documentation(&self, output: &mut String, paragraphs: &[String], indent: usize) {
@@ -1253,7 +1372,6 @@ impl Generator<'_> {
 
 impl Generator<'_> {
     fn tests(&self, output: &mut String) {
-        output.push_str("#[cfg(test)]\nmod generated_tests {\n    use super::*;\n\n");
         let mut tests: Vec<_> = self
             .program
             .module()
@@ -1266,6 +1384,7 @@ impl Generator<'_> {
             .collect();
         tests.sort_by_key(|test| test.header.node.id);
         for test in tests {
+            output.push_str("#[cfg(test)]\n");
             output.push_str("    #[test]\n");
             output.push_str(&format!(
                 "    fn {}() {{\n",
@@ -1379,7 +1498,6 @@ impl Generator<'_> {
             }
             output.push_str("    }\n\n");
         }
-        output.push_str("}\n");
     }
 
     fn test_arguments(&self, output: &mut String, arguments: &[TypedValue]) {
@@ -1516,9 +1634,7 @@ pub fn _poly_list_get<T: Clone>(values: Vec<T>, index: i64) -> PolyResult<T> {
 "#;
 
 fn render_conformance() -> String {
-    r#"use super::*;
-
-#[test] fn vector_01_bool_not() { let result = !std::hint::black_box(true); assert!(!result); }
+    r#"#[test] fn vector_01_bool_not() { let result = !std::hint::black_box(true); assert!(!result); }
 #[test] fn vector_02_checked_add() { assert_eq!(20_i64.checked_add(22).unwrap(), 42); }
 #[test] fn vector_03_checked_overflow() { assert_eq!(i64::MAX.checked_add(1).ok_or(PolyRuntimeError::CheckedOverflow { operation: "add" }).unwrap_err().code(), "checked_overflow"); }
 #[test] fn vector_04_division_by_zero() { let divisor = std::hint::black_box(0_i32); let result: PolyResult<i32> = if divisor == 0 { Err(PolyRuntimeError::DivisionByZero) } else { Ok(1 / divisor) }; assert_eq!(result.unwrap_err().code(), "division_by_zero"); }
@@ -1632,12 +1748,15 @@ mod tests {
         ] {
             assert!(source.contains(required), "missing {required:?}");
         }
+        assert_eq!(source.matches("pub use polyrust_runtime::*;").count(), 1);
+        assert!(!source.contains("use super::*;"));
         let conformance = generated_text(&first, "src/conformance.rs");
+        assert_eq!(conformance.matches("use super::*;").count(), 1);
         assert_eq!(conformance.matches("#[test]").count(), 20);
         assert!(conformance.contains("vector_20_list_append_non_aliasing"));
-        assert!(
-            generated_text(&first, "src/polyrust_runtime.rs").contains("pub enum PolyRuntimeError")
-        );
+        let runtime = generated_text(&first, "src/polyrust_runtime.rs");
+        assert!(runtime.contains("pub enum PolyRuntimeError"));
+        assert!(!runtime.lines().any(|line| line.starts_with("use ")));
     }
 
     #[test]

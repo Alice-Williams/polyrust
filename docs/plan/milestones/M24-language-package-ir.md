@@ -88,3 +88,16 @@ translation/rendering path after their migration checkpoint.
   repository gate passes 138/138 tests, including regeneration, determinism,
   every native target, all differential ports, C/C++ sanitizers, and release
   policy checks.
+
+## Rust and Go checkpoint evidence
+
+- Rust now lowers metadata, runtime, crate source, and conformance into explicit
+  file groups. Runtime and conformance module declarations plus `use` items are
+  renderer-owned import requirements. Portable tests are emitted as cfg-gated
+  root tests, removing their former nested blanket import.
+- Go now lowers metadata, runtime, generated source, portable tests, and
+  conformance into explicit groups. The runtime template contains no package or
+  import block; its six standard-library requirements are sorted and rendered
+  from language IR. A program with portable tests requires `testing`, while an
+  empty checked program's generated test file has no import section.
+- Focused Rust and Go unit/native gates pass after the migrations.
