@@ -56,6 +56,20 @@ Only one port may be in progress. A port is complete when:
   323,553 three-function comparisons, four native generated-package gates,
   deterministic regeneration, and the complete repository release gate pass.
 
+### [slash 5.1.0](ports/slash.md)
+
+- Upstream: [sindresorhus/slash](https://github.com/sindresorhus/slash)
+- Revision: `98b618f5a3bfcb5dd374b204868818845b87bb2f`
+- License: MIT
+- Typed API: `slash(path: string): string`
+- Selection evidence: 340 GitHub stars, 3,884 npm dependents, and 89,686,202
+  weekly npm downloads measured on 1 September 2026
+- PolyRust coverage: reuses prefix checks, if expressions, and global literal
+  replacement without a project-specific intrinsic
+- Completion: M19; 15 portable vectors, 55,994 differential paths, four native
+  generated-package gates, deterministic regeneration, and the complete
+  repository release gate pass.
+
 ## Deferred candidate
 
 `juliangruber/balanced-match` is MIT licensed and attractive for a later parser
