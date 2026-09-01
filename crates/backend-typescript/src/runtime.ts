@@ -47,6 +47,28 @@ export const replaceAllLiteral = (source: string, needle: string, replacement: s
     ? replacement
     : replacement + scalars.join(replacement) + replacement;
 };
+export const trimStartScalars = (source: string, characters: string): string => {
+  const scalars = Array.from(source);
+  const trim = new Set(Array.from(characters));
+  let start = 0;
+  while (start < scalars.length) {
+    const scalar = scalars[start];
+    if (scalar === undefined || !trim.has(scalar)) break;
+    start += 1;
+  }
+  return scalars.slice(start).join("");
+};
+export const trimEndScalars = (source: string, characters: string): string => {
+  const scalars = Array.from(source);
+  const trim = new Set(Array.from(characters));
+  let end = scalars.length;
+  while (end > 0) {
+    const scalar = scalars[end - 1];
+    if (scalar === undefined || !trim.has(scalar)) break;
+    end -= 1;
+  }
+  return scalars.slice(0, end).join("");
+};
 export const listAppend = <T>(items: readonly T[], item: T): readonly T[] => [...items, item];
 export const listConcat = <T>(left: readonly T[], right: readonly T[]): readonly T[] => [...left, ...right];
 
@@ -265,6 +287,8 @@ export class Runtime {
       case "string_starts_with": return ok(a.startsWith(b));
       case "string_ends_with": return ok(a.endsWith(b));
       case "string_replace_all": return ok(replaceAllLiteral(a, b, c));
+      case "string_trim_start": return ok(trimStartScalars(a, b));
+      case "string_trim_end": return ok(trimEndScalars(a, b));
       case "bytes_concat": case "list_concat": return ok(listConcat(a, b));
       case "bytes_length": case "list_length": return checkedI32(a.length);
       case "bytes_is_empty": case "list_is_empty": return ok(a.length === 0);

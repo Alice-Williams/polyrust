@@ -912,6 +912,24 @@ impl<'a> Session<'a> {
                 self.check_collection_size(requested)?;
                 Ok(Value::String(source.replace(needle, replacement)))
             }
+            StringTrimStart => {
+                let source = string(arguments.first(), self)?;
+                let characters = string(arguments.get(1), self)?;
+                Ok(Value::String(
+                    source
+                        .trim_start_matches(|character| characters.contains(character))
+                        .to_owned(),
+                ))
+            }
+            StringTrimEnd => {
+                let source = string(arguments.first(), self)?;
+                let characters = string(arguments.get(1), self)?;
+                Ok(Value::String(
+                    source
+                        .trim_end_matches(|character| characters.contains(character))
+                        .to_owned(),
+                ))
+            }
             BytesConcat => {
                 let (left, right) = bytes(arguments, self)?;
                 self.check_collection_sum(left.len(), right.len())?;
@@ -1521,6 +1539,22 @@ mod tests {
                     Value::String("-".into()),
                 ],
                 Ok(Value::String("-a-🦀-".into())),
+            ),
+            (
+                StringTrimStart,
+                vec![
+                    Value::String("\r\n🦀\n".into()),
+                    Value::String("\r\n".into()),
+                ],
+                Ok(Value::String("🦀\n".into())),
+            ),
+            (
+                StringTrimEnd,
+                vec![
+                    Value::String("\n🦀\r\n".into()),
+                    Value::String("\r\n".into()),
+                ],
+                Ok(Value::String("\n🦀".into())),
             ),
             (
                 BytesConcat,

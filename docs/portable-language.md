@@ -198,7 +198,7 @@ specified behavior.
 | Integer bitwise | `bit_not`, `bit_and`, `bit_or`, `bit_xor` | Exact-width bit pattern |
 | Integer shifts | `shift_left_checked`, `shift_right_checked` | Invalid counts return structured error; signed right shift is specified |
 | Float | `neg`, `add`, `sub`, `mul`, `div`, `rem_trunc` | IEEE 754 binary64, including NaN/infinities/negative zero; remainder uses truncating quotient |
-| String | `concat`, `scalar_len`, `is_empty`, `contains`, `starts_with`, `ends_with`, `replace_all_literal` | Unicode scalar semantics; `scalar_len` returns `I64`; replacement is global, left-to-right, non-overlapping, and literal |
+| String | `concat`, `scalar_len`, `is_empty`, `contains`, `starts_with`, `ends_with`, `replace_all_literal`, `trim_start_set`, `trim_end_set` | Unicode scalar semantics; `scalar_len` returns `I64`; replacement is global, left-to-right, non-overlapping, and literal; trim operands are scalar sets |
 | Bytes | `concat`, `len`, `is_empty` | Immutable octet sequence; `len` returns `I64`; indexing waits for unsigned-byte design |
 | List | `len`, `is_empty`, `get_checked`, `append`, `concat`, `contains` | Immutable; length/index use `I64`, `get_checked` returns `Option<T>`, and updates return a new list |
 | Option | `some`, `none`, `is_some`, `is_none`, `unwrap_or`, exhaustive match | No implicit null |
@@ -212,7 +212,7 @@ specified behavior.
 | --- | --- | --- |
 | Integer | saturating arithmetic, power, rotate | Which widths enter Next together? |
 | Float | rounding, min/max variants, classification | Preserve NaN and signed-zero rules |
-| String | scalar slicing, split, trim | Define indices and locale independence |
+| String | scalar slicing, split | Define indices and locale independence |
 | List | insert/remove, map/filter/fold/zip | Requires callable/closure design or named-function references |
 | Ordered map/set | get/insert/remove/keys/values/iteration | Define key eligibility and insertion ordering |
 | Parse/format | numeric and structured text formatting | Must not inherit host locale |

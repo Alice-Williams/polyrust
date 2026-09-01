@@ -337,6 +337,8 @@ fn all_intrinsics_values_and_constant_nodes_serialize() {
         Intrinsic::StringStartsWith,
         Intrinsic::StringEndsWith,
         Intrinsic::StringReplaceAll,
+        Intrinsic::StringTrimStart,
+        Intrinsic::StringTrimEnd,
         Intrinsic::BytesConcat,
         Intrinsic::BytesLength,
         Intrinsic::BytesIsEmpty,

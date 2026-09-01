@@ -1,0 +1,116 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+exports_files(
+    [
+        "Cargo.toml",
+        "compare.mjs",
+        "native_test.sh",
+        "src/lib.rs",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_library(
+    name = "model",
+    srcs = ["src/lib.rs"],
+    crate_name = "polyrust_trim_newlines_example",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//crates/backend-go:portable_backend_go",
+        "//crates/backend-python:portable_backend_python",
+        "//crates/backend-rust:portable_backend_rust",
+        "//crates/backend-typescript:portable_backend_typescript",
+        "//crates/build:portable_build",
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+    ],
+)
+
+rust_test(
+    name = "model_test",
+    crate = ":model",
+    visibility = ["//visibility:public"],
+    deps = ["//crates/eval:portable_eval"],
+)
+
+rust_binary(
+    name = "generate",
+    srcs = ["src/main.rs"],
+    crate_name = "generate_trim_newlines",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":model",
+        "//crates/codegen:portable_codegen",
+    ],
+)
+
+genrule(
+    name = "generate_packages",
+    outs = [
+        "generated/go/conformance_test.go",
+        "generated/go/generated.go",
+        "generated/go/generated_test.go",
+        "generated/go/go.mod",
+        "generated/go/runtime.go",
+        "generated/python/negative/invalid_option.py",
+        "generated/python/pyproject.toml",
+        "generated/python/src/generated_polyrust/__init__.py",
+        "generated/python/src/generated_polyrust/runtime.py",
+        "generated/python/tests/test_conformance.py",
+        "generated/python/tests/test_generated.py",
+        "generated/rust/Cargo.toml",
+        "generated/rust/src/conformance.rs",
+        "generated/rust/src/lib.rs",
+        "generated/rust/src/polyrust_runtime.rs",
+        "generated/typescript/package.json",
+        "generated/typescript/src/conformance.test.ts",
+        "generated/typescript/src/generated.test.ts",
+        "generated/typescript/src/index.ts",
+        "generated/typescript/src/node-shims.d.ts",
+        "generated/typescript/src/runtime.ts",
+        "generated/typescript/tests/invalid-types.ts",
+        "generated/typescript/tsconfig.json",
+    ],
+    cmd = "$(location :generate) $(RULEDIR)/generated",
+    tools = [":generate"],
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "native_test",
+    srcs = ["native_test.sh"],
+    data = [
+        ":generate_packages",
+        "@go_sdk//:files",
+    ],
+)
+
+sh_test(
+    name = "determinism_test",
+    srcs = ["determinism_test.sh"],
+    data = [":generate"],
+)
+
+sh_test(
+    name = "differential_test",
+    srcs = ["differential_test.sh"],
+    data = [
+        ":compare.mjs",
+        ":generate",
+        "//third_party/trim-newlines:oracle",
+    ],
+)
+
+test_suite(
+    name = "all",
+    tests = [
+        ":determinism_test",
+        ":differential_test",
+        ":model_test",
+        ":native_test",
+    ],
+    visibility = ["//visibility:public"],
+)

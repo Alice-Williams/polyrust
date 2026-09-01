@@ -122,7 +122,8 @@ set covers:
   shifts;
 - IEEE binary64 arithmetic and truncating remainder;
 - Unicode-scalar string operations, including global literal replacement whose
-  replacement text has no interpolation syntax;
+  replacement text has no interpolation syntax and boundary trimming by an
+  explicit scalar set;
 - immutable bytes/list operations;
 - option/result queries;
 - explicit integer and UTF-8 conversions.

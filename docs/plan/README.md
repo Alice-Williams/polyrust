@@ -74,3 +74,4 @@ contract as every other target.
 ### Phase 6 — Real-world compatibility
 
 - [M17 — escape-string-regexp equivalence port](milestones/M17-escape-string-regexp.md) — complete
+- [M18 — trim-newlines equivalence port](milestones/M18-trim-newlines.md) — complete

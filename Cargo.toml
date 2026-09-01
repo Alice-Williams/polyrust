@@ -15,6 +15,7 @@ members = [
     "crates/ir",
     "examples/models-and-validation",
     "examples/real-world/escape-string-regexp",
+    "examples/real-world/trim-newlines",
     "examples/registration",
 ]
 resolver = "3"

@@ -230,6 +230,8 @@ class Runtime:
         if name == "string_starts_with": return ok(a.startswith(b))
         if name == "string_ends_with": return ok(a.endswith(b))
         if name == "string_replace_all": return ok(a.replace(b, c))
+        if name == "string_trim_start": return ok(a.lstrip(b))
+        if name == "string_trim_end": return ok(a.rstrip(b))
         if name in {"bytes_concat", "list_concat"}: return ok(a + b)
         if name in {"bytes_length", "list_length"}: return checked_i32(len(a))
         if name in {"bytes_is_empty", "list_is_empty"}: return ok(not a)

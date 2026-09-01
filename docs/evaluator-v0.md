@@ -41,6 +41,10 @@ needle and replacement are literal strings, so text such as `$&` has no
 special meaning. An empty needle inserts the replacement at Unicode-scalar
 boundaries, including both ends, and the evaluator checks the resulting byte
 length against the collection limit before allocation.
+Boundary trimming removes the longest prefix or suffix consisting only of
+Unicode scalar values present in an explicit cut-set string. The empty cut set
+is a no-op. Trimming is linear in the inspected boundary and never removes
+matching values from the interior.
 
 ## Deterministic limits and errors
 

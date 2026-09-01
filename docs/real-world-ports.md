@@ -40,6 +40,22 @@ Only one port may be in progress. A port is complete when:
   native generated-package gates, deterministic regeneration, and the complete
   repository release gate pass.
 
+### [trim-newlines 5.0.0](ports/trim-newlines.md)
+
+- Upstream: [sindresorhus/trim-newlines](https://github.com/sindresorhus/trim-newlines)
+- Revision: `6980540ee683a660fd82cb1bda37bf1ebd989179`
+- License: MIT
+- Source language: JavaScript with TypeScript declarations
+- Runtime API: `trimNewlines`, `trimNewlinesStart`, and
+  `trimNewlinesEnd`, each `String -> String`
+- Selection evidence: 49 GitHub stars, 583 npm dependents, and 16,782,947
+  weekly npm downloads measured on 1 September 2026
+- Required PolyRust gap: linear trimming from either boundary by an explicit
+  set of Unicode scalar values
+- Completion: M18; 31 shared portable vectors, 107,851 differential inputs,
+  323,553 three-function comparisons, four native generated-package gates,
+  deterministic regeneration, and the complete repository release gate pass.
+
 ## Deferred candidate
 
 `juliangruber/balanced-match` is MIT licensed and attractive for a later parser

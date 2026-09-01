@@ -353,6 +353,10 @@ func (r *runtime) intrinsic(name string, values []any) PolyResult[any] {
 		return polyOk(any(strings.HasSuffix(a.(string), b.(string))))
 	case "string_replace_all":
 		return polyOk(any(strings.ReplaceAll(a.(string), b.(string), c.(string))))
+	case "string_trim_start":
+		return polyOk(any(strings.TrimLeft(a.(string), b.(string))))
+	case "string_trim_end":
+		return polyOk(any(strings.TrimRight(a.(string), b.(string))))
 	case "widen_i32_to_i64":
 		return polyOk(any(int64(a.(int32))))
 	case "narrow_i64_to_i32_checked":

@@ -1004,6 +1004,14 @@ impl Generator<'_> {
             Intrinsic::StringReplaceAll => {
                 format!("Ok({a}.replace({b}.as_str(), {c}.as_str()))")
             }
+            Intrinsic::StringTrimStart => {
+                format!(
+                    "Ok({a}.trim_start_matches(|character| {b}.contains(character)).to_owned())"
+                )
+            }
+            Intrinsic::StringTrimEnd => {
+                format!("Ok({a}.trim_end_matches(|character| {b}.contains(character)).to_owned())")
+            }
             Intrinsic::BytesConcat | Intrinsic::ListConcat => {
                 format!("{{ let mut value = {a}; value.extend({b}); Ok(value) }}")
             }
@@ -1102,7 +1110,9 @@ impl Generator<'_> {
                     Intrinsic::StringToUtf8 => Some(TypeRef::Bytes),
                     Intrinsic::StringFromUtf8Checked
                     | Intrinsic::StringConcat
-                    | Intrinsic::StringReplaceAll => Some(TypeRef::String),
+                    | Intrinsic::StringReplaceAll
+                    | Intrinsic::StringTrimStart
+                    | Intrinsic::StringTrimEnd => Some(TypeRef::String),
                     Intrinsic::ListGetChecked => match first {
                         TypeRef::List(element) => Some(*element),
                         _ => None,
