@@ -14,8 +14,8 @@ not an accepted exception.
 | --- | --- | --- | --- | --- | --- | --- |
 | Shared codegen | Pass: renderer sees `ImportSet` only | Pass: associative `LanguageFragment` composition closes immutable units | Pass: deterministic closure rejects invalid, duplicate, missing, and cyclic helper graphs | Partial: source roles can still use raw `Text` | Pass: closed units expose no document/dependency repair API | **Fail** |
 | Rust | Pass: `RustImport` renderer | Fail: declarations build one `String` | Fail: complete `RUNTIME` is copied as text | Fail: runtime uses `LanguageFile::text` | Partial: source imports are attached at file-unit scope | **Fail** |
-| TypeScript | Pass: `EcmaImport` renderer | Fail: declarations build one body string | Fail: complete runtime is copied as text | Fail: runtime and node shim source bypass source IR | Partial: imports are attached to whole file bodies | **Fail** |
-| JavaScript | Pass: derived `EcmaImport` renderer | Fail: declarations build one body string | Fail: complete derived runtime is copied as text | Fail: runtime source bypasses source IR | Partial: imports are attached to whole file bodies | **Fail** |
+| TypeScript | Pass: validated default/named/type-only/export IR; renderer alone spells directives | Pass: paired `EcmaCode` composes types, declarations, and tests | Pass: exact intrinsic-selected paired helper closure | Pass: every generated TypeScript source role uses a source file | Pass: mapping-local fragments replace file-wide attachment | **Pass** |
+| JavaScript | Pass: the same validated `EcmaImport` IR with type-only erasure | Pass: erased syntax comes from the same `EcmaCode` traversal | Pass: compiler-derived runtime has the same helper IDs and roots | Pass: every generated JavaScript source role uses a source file | Pass: no parallel declaration or dependency scan remains | **Pass** |
 | Python | Pass: validated future/module/from IR; renderer alone spells imports | Pass: `PythonCode` composes types, values, declarations, and portable tests | Pass: exact common and optional F64 helper closure | Pass: every generated Python source role uses a source file | Pass: dependency repair walks are deleted | **Pass** |
 | Go | Pass: validated path IR; renderer alone spells `import` | Pass: `GoCode` composes types, values, declarations, and portable tests | Pass: exact common/integer/F64/bytes/text helper roots | Pass: every generated Go source role uses a source file | Pass: F64 values own `math`; the nested-value repair scan is deleted | **Pass** |
 | Java | Pass: validated kind/name IR; renderer alone spells `import` | Pass: nested type and declaration `JavaCode` fragments own imports | Pass: checked-program roots resolve ordered common, numeric, and UTF-8 helper closures | Pass: every generated Java source role uses a source file | Pass: source and runtime dependencies originate in the fragment that emits dependent syntax | **Pass** |
@@ -32,7 +32,7 @@ not prove dependency completeness or minimality.
   `crates/codegen/src/language.rs`.
 - Rust monolithic runtime/source assembly:
   `crates/backend-rust/src/v0.rs`.
-- TypeScript/JavaScript raw runtime and shim source files:
+- TypeScript/JavaScript paired fragments and helper closure:
   `crates/backend-typescript/src/lib.rs`.
 - Python fragment and helper-closure implementation:
   `crates/backend-python/src/lib.rs`.
@@ -115,3 +115,24 @@ all generated packages remain functionally equivalent, and hosted CI is green.
   and F64 fixtures prove positive and negative closure and marker-free output.
 - Backend unit tests, generated Python lint/type/native/conformance/public
   checks, Rustfmt, Clippy, and all 130 real-world tests pass.
+
+### TypeScript and derived JavaScript fragments (M30-04C)
+
+- `EcmaCode` owns paired TypeScript and erased JavaScript syntax plus
+  validated structured dependencies. Types, parameters, declarations, and
+  portable tests compose it in one traversal; the old parallel JavaScript
+  emitter and naked-string type mapping are deleted.
+- Type-only imports propagate through nested
+  `Result<Option<I64>, String>` and disappear with erased syntax. Default,
+  named, type-only, and export-all import data reject invalid module and symbol
+  forms, and only the renderer spells directives.
+- TypeScript runtime markers are retained by compiler-derived JavaScript.
+  Layout parity is mandatory, and exact roots select optional declaration and
+  dispatch-case pairs for replacement, truncation, trimming, concatenation,
+  and UTF-8 operations.
+- Minimal and one-feature matrices prove exact helper absence/presence in both
+  dialects. Runtime, index, test, conformance, negative-test, and Node-shim
+  source roles all use closed source files.
+- Three-generation determinism, Prettier, strict `tsc`, Node TypeScript and
+  standalone JavaScript tests, derivation parity, and all 130 real-world tests
+  pass.

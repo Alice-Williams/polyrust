@@ -10,9 +10,9 @@ use portable_codegen::{
     DeclaredDependency, Document as CodeDocument, FileGroup, FileGroupId, FileRole, ImportGroup,
     ImportSet, InjectedHelper, IrVersionRange, LanguageFile, LanguageFragment, LanguagePackage,
     LanguagePlugin, LanguageRenderer, LanguageSourceFile, OptionsSchema, OutputManifest, RawText,
-    TargetId, generate_with_plugin,
+    RuntimeHelper, RuntimeHelperGraph, TargetId, generate_with_plugin,
 };
-use portable_ir::v0::{Declaration, IrVersion, NodeId, TypeRef, Visibility};
+use portable_ir::v0::{Declaration, Intrinsic, IrVersion, NodeId, TypeRef, Visibility};
 
 const RUNTIME: &str = include_str!("runtime.ts");
 const JAVASCRIPT_RUNTIME: &str = include_str!("runtime.js");
@@ -96,20 +96,94 @@ impl Backend for JavaScriptBackend {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[doc(hidden)]
-pub enum EcmaImport {
+pub struct EcmaImport {
+    kind: EcmaImportKind,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum EcmaImportKind {
     Default {
-        module: &'static str,
-        name: &'static str,
+        module: String,
+        name: String,
     },
     Named {
-        module: &'static str,
-        name: &'static str,
+        module: String,
+        name: String,
         type_only: bool,
     },
     ExportAll {
-        module: &'static str,
+        module: String,
     },
+}
+
+impl EcmaImport {
+    pub fn default(module: &str, name: &str) -> Result<Self, String> {
+        Ok(Self {
+            kind: EcmaImportKind::Default {
+                module: ecma_module(module)?,
+                name: ecma_symbol(name)?,
+            },
+        })
+    }
+
+    pub fn named(module: &str, name: &str, type_only: bool) -> Result<Self, String> {
+        Ok(Self {
+            kind: EcmaImportKind::Named {
+                module: ecma_module(module)?,
+                name: ecma_symbol(name)?,
+                type_only,
+            },
+        })
+    }
+
+    pub fn export_all(module: &str) -> Result<Self, String> {
+        Ok(Self {
+            kind: EcmaImportKind::ExportAll {
+                module: ecma_module(module)?,
+            },
+        })
+    }
+
+    fn is_type_only(&self) -> bool {
+        matches!(
+            self.kind,
+            EcmaImportKind::Named {
+                type_only: true,
+                ..
+            }
+        )
+    }
+}
+
+fn ecma_module(module: &str) -> Result<String, String> {
+    let valid = !module.is_empty()
+        && !module.starts_with('/')
+        && !module.ends_with('/')
+        && !module.contains("//")
+        && module.chars().all(|character| {
+            character.is_ascii_alphanumeric()
+                || matches!(character, '@' | '_' | '-' | '.' | '/' | ':')
+        });
+    if valid {
+        Ok(module.to_owned())
+    } else {
+        Err(format!("invalid ECMAScript module specifier {module:?}"))
+    }
+}
+
+fn ecma_symbol(name: &str) -> Result<String, String> {
+    let mut characters = name.chars();
+    let valid = characters
+        .next()
+        .is_some_and(|first| first == '_' || first == '$' || first.is_ascii_alphabetic())
+        && characters.all(|character| {
+            character == '_' || character == '$' || character.is_ascii_alphanumeric()
+        });
+    if valid {
+        Ok(name.to_owned())
+    } else {
+        Err(format!("invalid ECMAScript import symbol {name:?}"))
+    }
 }
 
 #[doc(hidden)]
@@ -123,23 +197,23 @@ impl LanguageRenderer<EcmaImport> for EcmaRenderer {
             let mut exports = Vec::new();
             let mut named = BTreeMap::<&str, (BTreeSet<&str>, BTreeSet<&str>)>::new();
             for import in imports {
-                match import {
-                    EcmaImport::Default { module, name } => {
+                match &import.kind {
+                    EcmaImportKind::Default { module, name } => {
                         defaults.push(format!("import {name} from {module:?};"));
                     }
-                    EcmaImport::Named {
+                    EcmaImportKind::Named {
                         module,
                         name,
                         type_only,
                     } => {
-                        let names = named.entry(*module).or_default();
+                        let names = named.entry(module.as_str()).or_default();
                         if *type_only {
-                            names.1.insert(*name);
+                            names.1.insert(name.as_str());
                         } else {
-                            names.0.insert(*name);
+                            names.0.insert(name.as_str());
                         }
                     }
-                    EcmaImport::ExportAll { module } => {
+                    EcmaImportKind::ExportAll { module } => {
                         exports.push(format!("export * from {module:?};"));
                     }
                 }
@@ -159,6 +233,97 @@ impl LanguageRenderer<EcmaImport> for EcmaRenderer {
             }
         }
         Ok(CodeDocument::raw_text(RawText::new(groups.join("\n\n"))))
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct EcmaCode {
+    typescript: String,
+    javascript: String,
+    imports: BTreeSet<(ImportGroup, EcmaImport)>,
+}
+
+impl EcmaCode {
+    fn paired(typescript: impl Into<String>, javascript: impl Into<String>) -> Self {
+        Self {
+            typescript: typescript.into(),
+            javascript: javascript.into(),
+            imports: BTreeSet::new(),
+        }
+    }
+
+    fn same(text: impl Into<String>) -> Self {
+        let text = text.into();
+        Self::paired(text.clone(), text)
+    }
+
+    fn typescript(text: impl Into<String>) -> Self {
+        Self::paired(text, String::new())
+    }
+
+    fn with_default(mut self, group: ImportGroup, module: &str, name: &str) -> Self {
+        self.imports.insert((
+            group,
+            EcmaImport::default(module, name).expect("static ECMAScript import is valid"),
+        ));
+        self
+    }
+
+    fn with_named(mut self, module: &str, name: &str, type_only: bool) -> Self {
+        self.imports.insert((
+            local_import_group(),
+            EcmaImport::named(module, name, type_only).expect("static ECMAScript import is valid"),
+        ));
+        self
+    }
+
+    fn with_export_all(mut self, module: &str) -> Self {
+        self.imports.insert((
+            export_group(),
+            EcmaImport::export_all(module).expect("static ECMAScript export is valid"),
+        ));
+        self
+    }
+
+    fn sequence(fragments: impl IntoIterator<Item = Self>) -> Self {
+        fragments
+            .into_iter()
+            .fold(Self::default(), |mut combined, fragment| {
+                combined.typescript.push_str(&fragment.typescript);
+                combined.javascript.push_str(&fragment.javascript);
+                combined.imports.extend(fragment.imports);
+                combined
+            })
+    }
+
+    fn joined(fragments: impl IntoIterator<Item = Self>, separator: &str) -> Self {
+        let mut fragments = fragments.into_iter();
+        let Some(first) = fragments.next() else {
+            return Self::default();
+        };
+        fragments.fold(first, |mut combined, fragment| {
+            combined.typescript.push_str(separator);
+            combined.typescript.push_str(&fragment.typescript);
+            combined.javascript.push_str(separator);
+            combined.javascript.push_str(&fragment.javascript);
+            combined.imports.extend(fragment.imports);
+            combined
+        })
+    }
+
+    fn into_fragment(self, javascript: bool) -> LanguageFragment<EcmaImport> {
+        let text = if javascript {
+            self.javascript
+        } else {
+            self.typescript
+        };
+        let mut fragment = LanguageFragment::new(CodeDocument::raw_text(RawText::new(text)));
+        for (group, dependency) in self.imports {
+            if !javascript || !dependency.is_type_only() {
+                fragment.require_import(group, dependency);
+            }
+        }
+        fragment
     }
 }
 
@@ -232,25 +397,18 @@ fn ecma_package(
             LanguageFile::text("tsconfig.json", FileRole::Metadata, TSCONFIG),
         ]
     };
-    let runtime = if javascript {
-        JAVASCRIPT_RUNTIME
-    } else {
-        RUNTIME
-    };
     let mut groups = vec![
         FileGroup::new(ecma_group("metadata")?, metadata).map_err(ecma_generation_error)?,
         FileGroup::new(
             ecma_group("runtime")?,
-            vec![LanguageFile::text(runtime_path, FileRole::Runtime, runtime)],
+            vec![LanguageFile::source(ecma_runtime_file(
+                program, javascript,
+            )?)],
         )
         .map_err(ecma_generation_error)?,
         FileGroup::new(
             ecma_group("source")?,
-            vec![LanguageFile::source(if javascript {
-                generator.javascript_index_file()?
-            } else {
-                generator.index_file()?
-            })],
+            vec![LanguageFile::source(generator.index_file(javascript)?)],
         )
         .map_err(ecma_generation_error)?,
         FileGroup::new(
@@ -267,7 +425,7 @@ fn ecma_package(
             FileGroup::new(
                 ecma_group("type-system-tests")?,
                 vec![
-                    LanguageFile::text("src/node-shims.d.ts", FileRole::Source, NODE_SHIMS),
+                    LanguageFile::source(node_shims_file()),
                     LanguageFile::source(invalid_types_file()),
                 ],
             )
@@ -300,29 +458,203 @@ fn export_group() -> ImportGroup {
     ImportGroup::new(30, "module-exports").expect("static import group is valid")
 }
 
-fn require_default(
-    unit: &mut LanguageFragment<EcmaImport>,
-    group: ImportGroup,
-    module: &'static str,
-    name: &'static str,
-) {
-    unit.require_import(group, EcmaImport::Default { module, name });
+fn ecma_runtime_file(
+    program: &CheckedProgram,
+    javascript: bool,
+) -> Result<LanguageSourceFile<EcmaImport>, BackendError> {
+    let path = if javascript {
+        "src/runtime.js"
+    } else {
+        "src/runtime.ts"
+    };
+    let (graph, mut roots) = ecma_runtime_helper_graph(javascript)?;
+    for (operation, root) in [
+        (Intrinsic::StringReplaceAll, "feature.string-replace-all"),
+        (Intrinsic::BytesReplaceAll, "feature.bytes-replace-all"),
+        (Intrinsic::StringReplaceMany, "feature.string-replace-many"),
+        (
+            Intrinsic::StringTruncateUtf8Bytes,
+            "feature.string-truncate-utf8",
+        ),
+        (Intrinsic::StringTrimStart, "feature.string-trim-start"),
+        (Intrinsic::StringTrimEnd, "feature.string-trim-end"),
+        (Intrinsic::StringToUtf8, "feature.string-to-utf8"),
+        (Intrinsic::StringFromUtf8Checked, "feature.string-from-utf8"),
+    ] {
+        if portable_ir::v0::module_uses_intrinsic(program.module(), |used| used == operation) {
+            roots.push(root.to_owned());
+        }
+    }
+    if portable_ir::v0::module_uses_intrinsic(program.module(), |operation| {
+        matches!(operation, Intrinsic::BytesConcat | Intrinsic::ListConcat)
+    }) {
+        roots.push("feature.list-concat".to_owned());
+    }
+    let mut file = LanguageSourceFile::new(path, FileRole::Runtime);
+    file.set_body(graph.resolve(&roots).map_err(ecma_generation_error)?);
+    Ok(file)
 }
 
-fn require_named(
-    unit: &mut LanguageFragment<EcmaImport>,
-    module: &'static str,
-    name: &'static str,
-    type_only: bool,
-) {
-    unit.require_import(
-        local_import_group(),
-        EcmaImport::Named {
-            module,
-            name,
-            type_only,
-        },
-    );
+#[derive(Debug)]
+struct RuntimeSegment {
+    id: String,
+    source: String,
+    common: bool,
+}
+
+fn ecma_runtime_helper_graph(
+    javascript: bool,
+) -> Result<(RuntimeHelperGraph<EcmaImport>, Vec<String>), BackendError> {
+    let typescript = parse_runtime_segments(RUNTIME, "TypeScript")?;
+    let derived = parse_runtime_segments(JAVASCRIPT_RUNTIME, "JavaScript")?;
+    if typescript.len() != derived.len()
+        || typescript
+            .iter()
+            .zip(&derived)
+            .any(|(left, right)| left.id != right.id || left.common != right.common)
+    {
+        return Err(ecma_generation_error(
+            "TypeScript and derived JavaScript runtime helper layouts differ",
+        ));
+    }
+
+    let mut common_roots = Vec::new();
+    let mut helpers = Vec::new();
+    for (order, (typescript, derived)) in typescript.into_iter().zip(derived).enumerate() {
+        if typescript.common {
+            common_roots.push(typescript.id.clone());
+        }
+        helpers.push(RuntimeHelper::new(
+            typescript.id,
+            u16::try_from(order).expect("ECMAScript runtime helper order fits u16"),
+            EcmaCode::paired(typescript.source, derived.source).into_fragment(javascript),
+        ));
+    }
+    let feature = |dependencies: &[&str]| {
+        dependencies.iter().fold(
+            LanguageFragment::new(CodeDocument::empty()),
+            |fragment, dependency| fragment.with_helper_root(*dependency),
+        )
+    };
+    for (index, (id, dependencies)) in [
+        (
+            "feature.string-replace-all",
+            &["top.string-replace-all", "case.string-replace-all"][..],
+        ),
+        (
+            "feature.bytes-replace-all",
+            &["top.bytes-replace-all", "case.bytes-replace-all"][..],
+        ),
+        (
+            "feature.string-replace-many",
+            &["top.string-replace-many", "case.string-replace-many"][..],
+        ),
+        (
+            "feature.string-truncate-utf8",
+            &["top.string-truncate-utf8", "case.string-truncate-utf8"][..],
+        ),
+        (
+            "feature.string-trim-start",
+            &["top.string-trim-start", "case.string-trim-start"][..],
+        ),
+        (
+            "feature.string-trim-end",
+            &["top.string-trim-end", "case.string-trim-end"][..],
+        ),
+        (
+            "feature.list-concat",
+            &["top.list-concat", "case.list-concat"][..],
+        ),
+        ("feature.string-to-utf8", &["case.string-to-utf8"][..]),
+        ("feature.string-from-utf8", &["case.string-from-utf8"][..]),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        helpers.push(RuntimeHelper::new(
+            id,
+            u16::MAX - 16 + u16::try_from(index).expect("feature count fits u16"),
+            feature(dependencies),
+        ));
+    }
+    Ok((
+        RuntimeHelperGraph::new(helpers).map_err(ecma_generation_error)?,
+        common_roots,
+    ))
+}
+
+fn parse_runtime_segments(
+    runtime: &str,
+    dialect: &str,
+) -> Result<Vec<RuntimeSegment>, BackendError> {
+    const BEGIN: &str = "// POLYRUST-BEGIN ";
+    const END: &str = "// POLYRUST-END ";
+
+    let mut segments = Vec::new();
+    let mut common_index = 0_u16;
+    let mut active: Option<String> = None;
+    let mut source = String::new();
+    let emit =
+        |id: String, common: bool, source: &mut String, segments: &mut Vec<RuntimeSegment>| {
+            if source.trim().is_empty() {
+                source.clear();
+                return false;
+            }
+            segments.push(RuntimeSegment {
+                id,
+                source: std::mem::take(source),
+                common,
+            });
+            true
+        };
+
+    for line in runtime.split_inclusive('\n') {
+        let marker = line.trim().trim_end_matches('\r');
+        if let Some(id) = marker.strip_prefix(BEGIN) {
+            if active.is_some() {
+                return Err(ecma_generation_error(format!(
+                    "nested {dialect} runtime helper marker {id:?}"
+                )));
+            }
+            let common_id = format!("runtime.common.{common_index:03}");
+            if emit(common_id, true, &mut source, &mut segments) {
+                common_index += 1;
+            }
+            active = Some(id.to_owned());
+        } else if let Some(id) = marker.strip_prefix(END) {
+            let Some(open) = active.take() else {
+                return Err(ecma_generation_error(format!(
+                    "unmatched {dialect} runtime helper end marker {id:?}"
+                )));
+            };
+            if open != id {
+                return Err(ecma_generation_error(format!(
+                    "{dialect} runtime helper marker {open:?} closed by {id:?}"
+                )));
+            }
+            if !emit(open, false, &mut source, &mut segments) {
+                return Err(ecma_generation_error(format!(
+                    "empty {dialect} runtime helper {id:?}"
+                )));
+            }
+        } else {
+            source.push_str(line);
+        }
+    }
+    if let Some(open) = active {
+        return Err(ecma_generation_error(format!(
+            "unclosed {dialect} runtime helper marker {open:?}"
+        )));
+    }
+    let common_id = format!("runtime.common.{common_index:03}");
+    let _ = emit(common_id, true, &mut source, &mut segments);
+    Ok(segments)
+}
+
+fn node_shims_file() -> LanguageSourceFile<EcmaImport> {
+    let mut file = LanguageSourceFile::new("src/node-shims.d.ts", FileRole::Source);
+    file.set_body(EcmaCode::typescript(NODE_SHIMS).into_fragment(false));
+    file
 }
 
 fn conformance_file(javascript: bool) -> LanguageSourceFile<EcmaImport> {
@@ -332,18 +664,9 @@ fn conformance_file(javascript: bool) -> LanguageSourceFile<EcmaImport> {
         "src/conformance.test.ts"
     };
     let mut file = LanguageSourceFile::new(path, FileRole::Conformance);
-    let mut body = LanguageFragment::new(CodeDocument::raw_text(RawText::new(if javascript {
-        JAVASCRIPT_CONFORMANCE_BODY
-    } else {
-        CONFORMANCE_BODY
-    })));
-    require_default(
-        &mut body,
-        node_import_group(),
-        "node:assert/strict",
-        "assert",
-    );
-    require_default(&mut body, node_import_group(), "node:test", "test");
+    let mut body = EcmaCode::paired(CONFORMANCE_BODY, JAVASCRIPT_CONFORMANCE_BODY)
+        .with_default(node_import_group(), "node:assert/strict", "assert")
+        .with_default(node_import_group(), "node:test", "test");
     for name in [
         "checkedI32",
         "checkedI64",
@@ -352,17 +675,19 @@ fn conformance_file(javascript: bool) -> LanguageSourceFile<EcmaImport> {
         "wrappingI32",
         "wrappingI64",
     ] {
-        require_named(&mut body, "./runtime.js", name, false);
+        body = body.with_named("./runtime.js", name, false);
     }
-    file.set_body(body);
+    file.set_body(body.into_fragment(javascript));
     file
 }
 
 fn invalid_types_file() -> LanguageSourceFile<EcmaImport> {
     let mut file = LanguageSourceFile::new("tests/invalid-types.ts", FileRole::NegativeTest);
-    let mut body = LanguageFragment::new(CodeDocument::raw_text(RawText::new(INVALID_TYPES_BODY)));
-    require_named(&mut body, "../src/runtime.js", "PolyOption", true);
-    file.set_body(body);
+    file.set_body(
+        EcmaCode::typescript(INVALID_TYPES_BODY)
+            .with_named("../src/runtime.js", "PolyOption", true)
+            .into_fragment(false),
+    );
     file
 }
 
@@ -387,7 +712,7 @@ impl<'a> Generator<'a> {
         Self { program, names }
     }
 
-    fn index_file(&self) -> Result<LanguageSourceFile<EcmaImport>, BackendError> {
+    fn index_file(&self, javascript: bool) -> Result<LanguageSourceFile<EcmaImport>, BackendError> {
         let mut document = serde_json::to_value(self.program.document()).map_err(|error| {
             BackendError::Generation {
                 message: format!("cannot serialize checked IR: {error}"),
@@ -395,201 +720,65 @@ impl<'a> Generator<'a> {
         })?;
         stringify_wide_numbers(&mut document);
         let document = serde_json::to_string(&document).expect("checked document serializes");
-        let mut file = LanguageSourceFile::new("src/index.ts", FileRole::Source);
-        file.set_preamble(LanguageFragment::new(CodeDocument::raw_text(RawText::new(
-            "// Generated by PolyRust from checked IR v0.",
-        ))));
-        let mut body = LanguageFragment::new(CodeDocument::empty());
-        require_named(&mut body, "./runtime.js", "Runtime", false);
-        require_named(&mut body, "./runtime.js", "PolyResult", true);
-        body.require_import(
-            export_group(),
-            EcmaImport::ExportAll {
-                module: "./runtime.js",
-            },
+        let path = if javascript {
+            "src/index.js"
+        } else {
+            "src/index.ts"
+        };
+        let mut file = LanguageSourceFile::new(path, FileRole::Source);
+        file.set_preamble(
+            EcmaCode::paired(
+                "// Generated by PolyRust from checked IR v0.",
+                "// Generated by PolyRust from the TypeScript target fragments.",
+            )
+            .into_fragment(javascript),
         );
-        let mut output = String::new();
-        output.push_str("const runtime = new Runtime(");
-        output.push_str(&document);
-        output.push_str(");\nconst castResult = <T>(value: PolyResult<unknown>): PolyResult<T> => value as PolyResult<T>;\n\n");
+        let initializer = EcmaCode::paired(
+            format!("const runtime = new Runtime({document});\nconst castResult = <T>(value: PolyResult<unknown>): PolyResult<T> => value as PolyResult<T>;\n\n"),
+            format!("const runtime = new Runtime({document});\n\n"),
+        )
+        .with_named("./runtime.js", "Runtime", false)
+        .with_named("./runtime.js", "PolyResult", true)
+        .with_export_all("./runtime.js");
         let mut declarations: Vec<_> = self.program.module().declarations.iter().collect();
         declarations.sort_by_key(|declaration| declaration.header().node.id);
-        for declaration in declarations {
-            self.declaration(&mut output, declaration);
-        }
-        output.push_str("export const __invokeTest = (index: number): Readonly<{ actual: PolyResult<unknown>; expected: unknown; expectsError: boolean }> => {\n  const test = TESTS[index];\n  if (test === undefined) return { actual: { ok: false, error: { code: \"invalid_test\", message: \"unknown test\" } }, expected: undefined, expectsError: true };\n  const invocation = test.invocation;\n  const arguments_ = invocation.data.arguments.map((value: unknown) => runtime.decode(value));\n  const actual = invocation.kind === \"function\" ? runtime.invoke(invocation.data.function, arguments_) : runtime.invokeMethod(invocation.data.implementation, invocation.data.method, runtime.decode(invocation.data.receiver), arguments_);\n  return { actual, expected: runtime.decode(test.expected.data), expectsError: test.expected.kind === \"error\" };\n};\n");
+        let declarations = EcmaCode::sequence(
+            declarations
+                .into_iter()
+                .map(|declaration| self.paired_declaration(declaration)),
+        );
+        let invocation = EcmaCode::paired(
+            "export const __invokeTest = (index: number): Readonly<{ actual: PolyResult<unknown>; expected: unknown; expectsError: boolean }> => {\n  const test = TESTS[index];\n  if (test === undefined) return { actual: { ok: false, error: { code: \"invalid_test\", message: \"unknown test\" } }, expected: undefined, expectsError: true };\n  const invocation = test.invocation;\n  const arguments_ = invocation.data.arguments.map((value: unknown) => runtime.decode(value));\n  const actual = invocation.kind === \"function\" ? runtime.invoke(invocation.data.function, arguments_) : runtime.invokeMethod(invocation.data.implementation, invocation.data.method, runtime.decode(invocation.data.receiver), arguments_);\n  return { actual, expected: runtime.decode(test.expected.data), expectsError: test.expected.kind === \"error\" };\n};\n",
+            "export const __invokeTest = (index) => {\n  const test = TESTS[index];\n  if (test === undefined) return { actual: { ok: false, error: { code: \"invalid_test\", message: \"unknown test\" } }, expected: undefined, expectsError: true };\n  const invocation = test.invocation;\n  const arguments_ = invocation.data.arguments.map((value) => runtime.decode(value));\n  const actual = invocation.kind === \"function\" ? runtime.invoke(invocation.data.function, arguments_) : runtime.invokeMethod(invocation.data.implementation, invocation.data.method, runtime.decode(invocation.data.receiver), arguments_);\n  return { actual, expected: runtime.decode(test.expected.data), expectsError: test.expected.kind === \"error\" };\n};\n",
+        )
+        .with_named("./runtime.js", "PolyResult", true);
         let tests: Vec<_> = self.program.module().declarations.iter().filter_map(|declaration| if let Declaration::Test(test) = declaration { Some(serde_json::json!({"invocation": test.invocation, "expected": test.expected})) } else { None }).collect();
         let mut tests = serde_json::to_value(tests).expect("tests serialize");
         stringify_wide_numbers(&mut tests);
-        output.push_str("const TESTS: readonly any[] = ");
-        output.push_str(&serde_json::to_string(&tests).expect("tests serialize"));
-        output.push_str(";\n");
-        body = body.map_document(|_| CodeDocument::raw_text(RawText::new(output)));
-        file.set_body(body);
+        let tests = serde_json::to_string(&tests).expect("tests serialize");
+        let test_data = EcmaCode::paired(
+            format!("const TESTS: readonly any[] = {tests};\n"),
+            format!("const TESTS = {tests};\n"),
+        );
+        file.set_body(
+            EcmaCode::sequence([initializer, declarations, invocation, test_data])
+                .into_fragment(javascript),
+        );
         Ok(file)
     }
 
-    fn javascript_index_file(&self) -> Result<LanguageSourceFile<EcmaImport>, BackendError> {
-        let mut document = serde_json::to_value(self.program.document()).map_err(|error| {
-            BackendError::Generation {
-                message: format!("cannot serialize checked IR: {error}"),
-            }
-        })?;
-        stringify_wide_numbers(&mut document);
-        let document = serde_json::to_string(&document).expect("checked document serializes");
-        let mut file = LanguageSourceFile::new("src/index.js", FileRole::Source);
-        file.set_preamble(LanguageFragment::new(CodeDocument::raw_text(RawText::new(
-            "// Generated by PolyRust from the TypeScript target implementation.",
-        ))));
-        let mut body = LanguageFragment::new(CodeDocument::empty());
-        require_named(&mut body, "./runtime.js", "Runtime", false);
-        body.require_import(
-            export_group(),
-            EcmaImport::ExportAll {
-                module: "./runtime.js",
-            },
-        );
-        let mut output = String::new();
-        output.push_str("const runtime = new Runtime(");
-        output.push_str(&document);
-        output.push_str(");\n\n");
-        let mut declarations: Vec<_> = self.program.module().declarations.iter().collect();
-        declarations.sort_by_key(|declaration| declaration.header().node.id);
-        for declaration in declarations {
-            self.javascript_declaration(&mut output, declaration);
-        }
-        output.push_str(
-            "export const __invokeTest = (index) => {\n\
-             \x20 const test = TESTS[index];\n\
-             \x20 if (test === undefined) return { actual: { ok: false, error: { code: \"invalid_test\", message: \"unknown test\" } }, expected: undefined, expectsError: true };\n\
-             \x20 const invocation = test.invocation;\n\
-             \x20 const arguments_ = invocation.data.arguments.map((value) => runtime.decode(value));\n\
-             \x20 const actual = invocation.kind === \"function\" ? runtime.invoke(invocation.data.function, arguments_) : runtime.invokeMethod(invocation.data.implementation, invocation.data.method, runtime.decode(invocation.data.receiver), arguments_);\n\
-             \x20 return { actual, expected: runtime.decode(test.expected.data), expectsError: test.expected.kind === \"error\" };\n\
-             };\n",
-        );
-        let tests: Vec<_> = self
-            .program
-            .module()
-            .declarations
-            .iter()
-            .filter_map(|declaration| {
-                if let Declaration::Test(test) = declaration {
-                    Some(serde_json::json!({
-                        "invocation": test.invocation,
-                        "expected": test.expected,
-                    }))
-                } else {
-                    None
-                }
-            })
-            .collect();
-        let mut tests = serde_json::to_value(tests).expect("tests serialize");
-        stringify_wide_numbers(&mut tests);
-        output.push_str("const TESTS = ");
-        output.push_str(&serde_json::to_string(&tests).expect("tests serialize"));
-        output.push_str(";\n");
-        body = body.map_document(|_| CodeDocument::raw_text(RawText::new(output)));
-        file.set_body(body);
-        Ok(file)
-    }
-
-    fn javascript_declaration(&self, output: &mut String, declaration: &Declaration) {
+    fn paired_declaration(&self, declaration: &Declaration) -> EcmaCode {
         match declaration {
-            Declaration::Alias(_)
-            | Declaration::Enum(_)
-            | Declaration::Contract(_)
-            | Declaration::Implementation(_)
-            | Declaration::Test(_) => {}
-            Declaration::Record(item) => {
-                output.push_str(&format!(
-                    "{}class {} {{\n  __polyDecl = {};\n",
+            Declaration::Alias(item) => {
+                let mut target = self.paired_ty(&item.target);
+                target.typescript = format!(
+                    "{}type {} = {};\n\n",
                     export(item.header.visibility),
                     type_name(&item.header.name),
-                    item.header.node.id.0
-                ));
-                output.push_str(&format!(
-                    "  constructor({}) {{\n",
-                    item.fields
-                        .iter()
-                        .map(|field| value_name(&field.header.name))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ));
-                for field in &item.fields {
-                    output.push_str(&format!(
-                        "    this.{} = {};\n",
-                        value_name(&field.header.name),
-                        value_name(&field.header.name)
-                    ));
-                }
-                output.push_str("    Object.freeze(this);\n  }\n");
-                for implementation in self.program.module().declarations.iter().filter_map(
-                    |candidate| match candidate {
-                        Declaration::Implementation(value)
-                            if value.record == item.header.node.id =>
-                        {
-                            Some(value)
-                        }
-                        _ => None,
-                    },
-                ) {
-                    for method in &implementation.methods {
-                        output.push_str(&format!(
-                            "  {}({}) {{ return runtime.invokeMethod({}, {}, this, [{}]); }}\n",
-                            value_name(&method.header.name),
-                            method
-                                .parameters
-                                .iter()
-                                .map(|parameter| value_name(&parameter.header.name))
-                                .collect::<Vec<_>>()
-                                .join(", "),
-                            implementation.header.node.id.0,
-                            method.header.node.id.0,
-                            method
-                                .parameters
-                                .iter()
-                                .map(|parameter| value_name(&parameter.header.name))
-                                .collect::<Vec<_>>()
-                                .join(", ")
-                        ));
-                    }
-                }
-                output.push_str("}\n\n");
+                    target.typescript
+                );
+                target
             }
-            Declaration::Constant(item) => output.push_str(&format!(
-                "{}const {} = () => runtime.readConstant({});\n\n",
-                export(item.header.visibility),
-                value_name(&item.header.name),
-                item.header.node.id.0
-            )),
-            Declaration::Function(item) => output.push_str(&format!(
-                "{}const {} = ({}) => runtime.invoke({}, [{}]);\n\n",
-                export(item.header.visibility),
-                value_name(&item.header.name),
-                item.parameters
-                    .iter()
-                    .map(|parameter| value_name(&parameter.header.name))
-                    .collect::<Vec<_>>()
-                    .join(", "),
-                item.header.node.id.0,
-                item.parameters
-                    .iter()
-                    .map(|parameter| value_name(&parameter.header.name))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )),
-        }
-    }
-
-    fn declaration(&self, output: &mut String, declaration: &Declaration) {
-        match declaration {
-            Declaration::Alias(item) => output.push_str(&format!(
-                "{}type {} = {};\n\n",
-                export(item.header.visibility),
-                type_name(&item.header.name),
-                self.ty(&item.target)
-            )),
             Declaration::Record(item) => {
                 let implementations: Vec<_> = self
                     .program
@@ -610,7 +799,8 @@ impl<'a> Generator<'a> {
                     .map(|implementation| type_name(self.name(implementation.contract)))
                     .collect::<Vec<_>>()
                     .join(", ");
-                output.push_str(&format!(
+                let mut requirements = Vec::new();
+                let mut typescript = format!(
                     "{}class {}{} {{\n  public readonly __polyDecl = {};\n",
                     export(item.header.visibility),
                     type_name(&item.header.name),
@@ -620,137 +810,241 @@ impl<'a> Generator<'a> {
                         format!(" implements {contracts}")
                     },
                     item.header.node.id.0
-                ));
+                );
+                let mut javascript = format!(
+                    "{}class {} {{\n  __polyDecl = {};\n",
+                    export(item.header.visibility),
+                    type_name(&item.header.name),
+                    item.header.node.id.0
+                );
+                let mut constructor_types = Vec::new();
                 for field in &item.fields {
-                    output.push_str(&format!(
+                    let field_ty = self.paired_ty(&field.ty);
+                    typescript.push_str(&format!(
                         "  public readonly {}: {};\n",
                         value_name(&field.header.name),
-                        self.ty(&field.ty)
+                        field_ty.typescript
                     ));
+                    constructor_types.push(format!(
+                        "{}: {}",
+                        value_name(&field.header.name),
+                        field_ty.typescript
+                    ));
+                    requirements.push(field_ty);
                 }
-                output.push_str(&format!(
+                let constructor_names = item
+                    .fields
+                    .iter()
+                    .map(|field| value_name(&field.header.name))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                typescript.push_str(&format!(
                     "  public constructor({}) {{\n",
-                    item.fields
-                        .iter()
-                        .map(|field| format!(
-                            "{}: {}",
-                            value_name(&field.header.name),
-                            self.ty(&field.ty)
-                        ))
-                        .collect::<Vec<_>>()
-                        .join(", ")
+                    constructor_types.join(", ")
                 ));
+                javascript.push_str(&format!("  constructor({constructor_names}) {{\n"));
                 for field in &item.fields {
-                    output.push_str(&format!(
+                    let assignment = format!(
                         "    this.{} = {};\n",
                         value_name(&field.header.name),
                         value_name(&field.header.name)
-                    ));
+                    );
+                    typescript.push_str(&assignment);
+                    javascript.push_str(&assignment);
                 }
-                output.push_str("    Object.freeze(this);\n  }\n");
+                typescript.push_str("    Object.freeze(this);\n  }\n");
+                javascript.push_str("    Object.freeze(this);\n  }\n");
+                let mut has_methods = false;
                 for implementation in implementations {
                     for method in &implementation.methods {
-                        output.push_str(&format!("  public {}({}): PolyResult<{}> {{ return castResult(runtime.invokeMethod({}, {}, this, [{}])); }}\n", value_name(&method.header.name), self.parameters(&method.parameters), self.ty(&method.return_type), implementation.header.node.id.0, method.header.node.id.0, method.parameters.iter().map(|parameter| value_name(&parameter.header.name)).collect::<Vec<_>>().join(", ")));
+                        has_methods = true;
+                        let parameters = self.paired_parameters(&method.parameters);
+                        let result = self.paired_ty(&method.return_type);
+                        let arguments = method
+                            .parameters
+                            .iter()
+                            .map(|parameter| value_name(&parameter.header.name))
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        typescript.push_str(&format!(
+                            "  public {}({}): PolyResult<{}> {{ return castResult(runtime.invokeMethod({}, {}, this, [{}])); }}\n",
+                            value_name(&method.header.name),
+                            parameters.typescript,
+                            result.typescript,
+                            implementation.header.node.id.0,
+                            method.header.node.id.0,
+                            arguments
+                        ));
+                        javascript.push_str(&format!(
+                            "  {}({}) {{ return runtime.invokeMethod({}, {}, this, [{}]); }}\n",
+                            value_name(&method.header.name),
+                            parameters.javascript,
+                            implementation.header.node.id.0,
+                            method.header.node.id.0,
+                            arguments
+                        ));
+                        requirements.push(parameters);
+                        requirements.push(result);
                     }
                 }
-                output.push_str("}\n\n");
+                typescript.push_str("}\n\n");
+                javascript.push_str("}\n\n");
+                let mut code = EcmaCode::sequence(requirements);
+                code.typescript = typescript;
+                code.javascript = javascript;
+                if has_methods {
+                    code = code.with_named("./runtime.js", "PolyResult", true);
+                }
+                code
             }
             Declaration::Enum(item) => {
+                let mut requirements = Vec::new();
                 let variants = item
                     .variants
                     .iter()
                     .map(|variant| {
                         let mut fields = vec![format!("readonly tag: {:?}", variant.header.name)];
-                        fields.extend(variant.fields.iter().map(|field| {
-                            format!(
+                        for field in &variant.fields {
+                            let field_ty = self.paired_ty(&field.ty);
+                            fields.push(format!(
                                 "readonly {}: {}",
                                 value_name(&field.header.name),
-                                self.ty(&field.ty)
-                            )
-                        }));
+                                field_ty.typescript
+                            ));
+                            requirements.push(field_ty);
+                        }
                         format!("Readonly<{{ {} }}>", fields.join("; "))
                     })
                     .collect::<Vec<_>>()
                     .join(" | ");
-                output.push_str(&format!(
+                let mut code = EcmaCode::sequence(requirements);
+                code.typescript = format!(
                     "{}type {} = {};\n\n",
                     export(item.header.visibility),
                     type_name(&item.header.name),
                     variants
-                ));
+                );
+                code
             }
             Declaration::Contract(item) => {
-                output.push_str(&format!(
+                let mut requirements = Vec::new();
+                let mut typescript = format!(
                     "{}interface {} {{\n",
                     export(item.header.visibility),
                     type_name(&item.header.name)
-                ));
+                );
                 for method in &item.methods {
-                    output.push_str(&format!(
+                    let parameters = self.paired_parameters(&method.parameters);
+                    let result = self.paired_ty(&method.return_type);
+                    typescript.push_str(&format!(
                         "  {}({}): PolyResult<{}>;\n",
                         value_name(&method.header.name),
-                        self.parameters(&method.parameters),
-                        self.ty(&method.return_type)
+                        parameters.typescript,
+                        result.typescript
                     ));
+                    requirements.push(parameters);
+                    requirements.push(result);
                 }
-                output.push_str("}\n\n");
+                typescript.push_str("}\n\n");
+                let mut code = EcmaCode::sequence(requirements);
+                code.typescript = typescript;
+                if !item.methods.is_empty() {
+                    code = code.with_named("./runtime.js", "PolyResult", true);
+                }
+                code
             }
-            Declaration::Constant(item) => output.push_str(&format!(
-                "{}const {} = (): PolyResult<{}> => castResult(runtime.readConstant({}));\n\n",
-                export(item.header.visibility),
-                value_name(&item.header.name),
-                self.ty(&item.ty),
-                item.header.node.id.0
-            )),
-            Declaration::Function(item) => output.push_str(&format!(
-                "{}const {} = ({}): PolyResult<{}> => castResult(runtime.invoke({}, [{}]));\n\n",
-                export(item.header.visibility),
-                value_name(&item.header.name),
-                self.parameters(&item.parameters),
-                self.ty(&item.return_type),
-                item.header.node.id.0,
-                item.parameters
+            Declaration::Constant(item) => {
+                let mut ty = self.paired_ty(&item.ty);
+                ty.typescript = format!(
+                    "{}const {} = (): PolyResult<{}> => castResult(runtime.readConstant({}));\n\n",
+                    export(item.header.visibility),
+                    value_name(&item.header.name),
+                    ty.typescript,
+                    item.header.node.id.0
+                );
+                ty.javascript = format!(
+                    "{}const {} = () => runtime.readConstant({});\n\n",
+                    export(item.header.visibility),
+                    value_name(&item.header.name),
+                    item.header.node.id.0
+                );
+                ty.with_named("./runtime.js", "PolyResult", true)
+            }
+            Declaration::Function(item) => {
+                let parameters = self.paired_parameters(&item.parameters);
+                let result = self.paired_ty(&item.return_type);
+                let arguments = item
+                    .parameters
                     .iter()
                     .map(|parameter| value_name(&parameter.header.name))
                     .collect::<Vec<_>>()
-                    .join(", ")
-            )),
-            Declaration::Implementation(_) | Declaration::Test(_) => {}
+                    .join(", ");
+                let mut code = EcmaCode::sequence([parameters.clone(), result.clone()]);
+                code.typescript = format!(
+                    "{}const {} = ({}): PolyResult<{}> => castResult(runtime.invoke({}, [{}]));\n\n",
+                    export(item.header.visibility),
+                    value_name(&item.header.name),
+                    parameters.typescript,
+                    result.typescript,
+                    item.header.node.id.0,
+                    arguments
+                );
+                code.javascript = format!(
+                    "{}const {} = ({}) => runtime.invoke({}, [{}]);\n\n",
+                    export(item.header.visibility),
+                    value_name(&item.header.name),
+                    parameters.javascript,
+                    item.header.node.id.0,
+                    arguments
+                );
+                code.with_named("./runtime.js", "PolyResult", true)
+            }
+            Declaration::Implementation(_) | Declaration::Test(_) => EcmaCode::default(),
         }
     }
 
-    fn parameters(&self, parameters: &[portable_ir::v0::Parameter]) -> String {
-        parameters
-            .iter()
-            .map(|parameter| {
-                format!(
-                    "{}: {}",
-                    value_name(&parameter.header.name),
-                    self.ty(&parameter.ty)
-                )
-            })
-            .collect::<Vec<_>>()
-            .join(", ")
+    fn paired_parameters(&self, parameters: &[portable_ir::v0::Parameter]) -> EcmaCode {
+        EcmaCode::joined(
+            parameters.iter().map(|parameter| {
+                let mut ty = self.paired_ty(&parameter.ty);
+                ty.typescript =
+                    format!("{}: {}", value_name(&parameter.header.name), ty.typescript);
+                ty.javascript = value_name(&parameter.header.name);
+                ty
+            }),
+            ", ",
+        )
     }
 
-    fn ty(&self, ty: &TypeRef) -> String {
+    fn paired_ty(&self, ty: &TypeRef) -> EcmaCode {
         match ty {
-            TypeRef::Unit => "undefined".into(),
-            TypeRef::Bool => "boolean".into(),
-            TypeRef::I32 | TypeRef::F64 => "number".into(),
-            TypeRef::I64 => "bigint".into(),
-            TypeRef::Char | TypeRef::String => "string".into(),
-            TypeRef::Bytes => "readonly number[]".into(),
-            TypeRef::List(inner) => format!("readonly {}[]", parenthesize(self.ty(inner))),
-            TypeRef::Option(inner) => {
-                format!("import(\"./runtime.js\").PolyOption<{}>", self.ty(inner))
+            TypeRef::Unit => EcmaCode::typescript("undefined"),
+            TypeRef::Bool => EcmaCode::typescript("boolean"),
+            TypeRef::I32 | TypeRef::F64 => EcmaCode::typescript("number"),
+            TypeRef::I64 => EcmaCode::typescript("bigint"),
+            TypeRef::Char | TypeRef::String => EcmaCode::typescript("string"),
+            TypeRef::Bytes => EcmaCode::typescript("readonly number[]"),
+            TypeRef::List(inner) => {
+                let mut inner = self.paired_ty(inner);
+                inner.typescript = format!("readonly {}[]", parenthesize(inner.typescript));
+                inner
             }
-            TypeRef::Result { ok, error } => format!(
-                "import(\"./runtime.js\").PolyValueResult<{}, {}>",
-                self.ty(ok),
-                self.ty(error)
-            ),
-            TypeRef::Named(id) | TypeRef::Contract(id) => type_name(self.name(*id)),
+            TypeRef::Option(inner) => {
+                let mut inner = self.paired_ty(inner);
+                inner.typescript = format!("PolyOption<{}>", inner.typescript);
+                inner.with_named("./runtime.js", "PolyOption", true)
+            }
+            TypeRef::Result { ok, error } => {
+                let ok = self.paired_ty(ok);
+                let error = self.paired_ty(error);
+                let mut result = EcmaCode::sequence([ok.clone(), error.clone()]);
+                result.typescript =
+                    format!("PolyValueResult<{}, {}>", ok.typescript, error.typescript);
+                result.with_named("./runtime.js", "PolyValueResult", true)
+            }
+            TypeRef::Named(id) | TypeRef::Contract(id) => {
+                EcmaCode::typescript(type_name(self.name(*id)))
+            }
         }
     }
 
@@ -765,28 +1059,28 @@ impl<'a> Generator<'a> {
             "src/generated.test.ts"
         };
         let mut file = LanguageSourceFile::new(path, FileRole::Test);
-        let mut body = LanguageFragment::new(CodeDocument::empty());
-        let mut output = String::new();
-        let mut index = 0;
-        for declaration in &self.program.module().declarations {
-            if let Declaration::Test(test_declaration) = declaration {
-                if index == 0 {
-                    require_default(
-                        &mut body,
-                        node_import_group(),
-                        "node:assert/strict",
-                        "assert",
-                    );
-                    require_default(&mut body, node_import_group(), "node:test", "test");
-                    require_named(&mut body, "./index.js", "__invokeTest", false);
+        let tests = self
+            .program
+            .module()
+            .declarations
+            .iter()
+            .filter_map(|declaration| {
+                if let Declaration::Test(test) = declaration {
+                    Some(test)
+                } else {
+                    None
                 }
-                output.push_str(&format!("test({:?}, () => {{ const result = __invokeTest({index}); assert.equal(result.actual.ok, !result.expectsError); if (result.actual.ok) assert.deepEqual(result.actual.value, result.expected); }});\n", test_declaration.header.name));
-                index += 1;
-            }
-        }
-        if !output.is_empty() {
-            body = body.map_document(|_| CodeDocument::raw_text(RawText::new(output)));
-            file.set_body(body);
+            })
+            .enumerate()
+            .map(|(index, test)| {
+                EcmaCode::same(format!("test({:?}, () => {{ const result = __invokeTest({index}); assert.equal(result.actual.ok, !result.expectsError); if (result.actual.ok) assert.deepEqual(result.actual.value, result.expected); }});\n", test.header.name))
+                    .with_default(node_import_group(), "node:assert/strict", "assert")
+                    .with_default(node_import_group(), "node:test", "test")
+                    .with_named("./index.js", "__invokeTest", false)
+            })
+            .collect::<Vec<_>>();
+        if !tests.is_empty() {
+            file.set_body(EcmaCode::sequence(tests).into_fragment(javascript));
         }
         file
     }
@@ -905,7 +1199,12 @@ mod tests {
     #[test]
     fn keywords_are_escaped_and_i64_is_bigint() {
         assert_eq!(identifier("class"), "class_");
-        assert_eq!(Generator::new(&fixture()).ty(&TypeRef::I64), "bigint");
+        assert_eq!(
+            Generator::new(&fixture())
+                .paired_ty(&TypeRef::I64)
+                .typescript,
+            "bigint"
+        );
     }
     #[test]
     fn generated_manifest_is_deterministic_and_strict() {
@@ -916,7 +1215,11 @@ mod tests {
         let second = TypeScriptBackend
             .generate(&checked, &BackendOptions::default())
             .unwrap();
+        let third = TypeScriptBackend
+            .generate(&checked, &BackendOptions::default())
+            .unwrap();
         assert_eq!(first.canonical_json(), second.canonical_json());
+        assert_eq!(second.canonical_json(), third.canonical_json());
         let index = first
             .files()
             .iter()
@@ -937,7 +1240,11 @@ mod tests {
         let second = JavaScriptBackend
             .generate(&checked, &BackendOptions::default())
             .unwrap();
+        let third = JavaScriptBackend
+            .generate(&checked, &BackendOptions::default())
+            .unwrap();
         assert_eq!(first.canonical_json(), second.canonical_json());
+        assert_eq!(second.canonical_json(), third.canonical_json());
         assert!(
             first
                 .files()
@@ -976,11 +1283,130 @@ mod tests {
         assert!(!generated_text(&empty_javascript, "src/generated.test.js").contains("import "));
     }
 
+    #[test]
+    fn ecmascript_import_data_is_validated_and_renderer_owned() {
+        assert!(EcmaImport::default("node:test", "test").is_ok());
+        assert!(EcmaImport::named("./runtime.js", "PolyResult", true).is_ok());
+        assert!(EcmaImport::export_all("../runtime.js").is_ok());
+        for module in ["", "/rooted", "bad module", "./bad//path", "x/"] {
+            assert!(EcmaImport::default(module, "valid").is_err(), "{module}");
+        }
+        for symbol in ["", "9value", "bad-name", "import { x }"] {
+            assert!(
+                EcmaImport::named("./runtime.js", symbol, false).is_err(),
+                "{symbol}"
+            );
+        }
+    }
+
+    #[test]
+    fn nested_type_fragments_own_and_erase_type_only_imports() {
+        let checked = fixture();
+        let generator = Generator::new(&checked);
+        let nested = generator.paired_ty(&TypeRef::Result {
+            ok: Box::new(TypeRef::Option(Box::new(TypeRef::I64))),
+            error: Box::new(TypeRef::String),
+        });
+        assert_eq!(
+            nested.typescript,
+            "PolyValueResult<PolyOption<bigint>, string>"
+        );
+        let typescript = nested.clone().into_fragment(false);
+        assert_eq!(typescript.imports().len(), 2);
+        let javascript = nested.into_fragment(true);
+        assert!(render_runtime(&javascript).trim().is_empty());
+        assert!(javascript.imports().is_empty());
+    }
+
+    #[test]
+    fn runtime_helper_matrix_is_exact_and_paired() {
+        let cases = [
+            (
+                "feature.string-replace-all",
+                "replaceAllLiteral",
+                "replaceBytesAll",
+            ),
+            (
+                "feature.bytes-replace-all",
+                "replaceBytesAll",
+                "replaceManyLiteral",
+            ),
+            (
+                "feature.string-replace-many",
+                "replaceManyLiteral",
+                "truncateUtf8Bytes",
+            ),
+            (
+                "feature.string-truncate-utf8",
+                "truncateUtf8Bytes",
+                "trimStartScalars",
+            ),
+            (
+                "feature.string-trim-start",
+                "trimStartScalars",
+                "trimEndScalars",
+            ),
+            ("feature.string-trim-end", "trimEndScalars", "listConcat"),
+            ("feature.list-concat", "listConcat", "replaceAllLiteral"),
+            (
+                "feature.string-to-utf8",
+                "new TextEncoder",
+                "new TextDecoder",
+            ),
+            (
+                "feature.string-from-utf8",
+                "new TextDecoder",
+                "new TextEncoder",
+            ),
+        ];
+        for javascript in [false, true] {
+            let (graph, common) = ecma_runtime_helper_graph(javascript).unwrap();
+            let minimal = render_runtime(&graph.resolve(&common).unwrap());
+            assert!(!minimal.contains("POLYRUST-"));
+            for token in [
+                "replaceAllLiteral",
+                "replaceBytesAll",
+                "replaceManyLiteral",
+                "truncateUtf8Bytes",
+                "trimStartScalars",
+                "trimEndScalars",
+                "listConcat",
+                "new TextEncoder",
+                "new TextDecoder",
+            ] {
+                assert!(!minimal.contains(token), "{token} in minimal runtime");
+            }
+            for (root, present, absent) in cases {
+                let mut roots = common.clone();
+                roots.push(root.to_owned());
+                let runtime = render_runtime(&graph.resolve(&roots).unwrap());
+                assert!(runtime.contains(present), "{root} lacks {present}");
+                assert!(!runtime.contains(absent), "{root} includes {absent}");
+                assert!(!runtime.contains("POLYRUST-"));
+            }
+        }
+    }
+
     fn generated_text<'a>(manifest: &'a OutputManifest, path: &str) -> &'a str {
         match manifest.file(path).unwrap().contents() {
             portable_codegen::OutputContents::Text(text) => text,
             portable_codegen::OutputContents::Bytes(_) => panic!("ECMAScript source must be text"),
         }
+    }
+
+    fn render_runtime(fragment: &LanguageFragment<EcmaImport>) -> String {
+        let mut file = LanguageSourceFile::new("runtime.test.js", FileRole::Runtime);
+        file.set_body(fragment.clone());
+        let group = FileGroup::new(
+            FileGroupId::parse("test").unwrap(),
+            vec![LanguageFile::source(file)],
+        )
+        .unwrap();
+        let package =
+            LanguagePackage::new(vec![group], Vec::<DeclaredDependency>::new(), Vec::new())
+                .unwrap();
+        let manifest = portable_codegen::render_language_package(&package, &EcmaRenderer).unwrap();
+        generated_text(&manifest, "runtime.test.js").to_owned()
     }
 
     fn fixture() -> CheckedProgram {

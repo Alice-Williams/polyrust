@@ -1,6 +1,6 @@
 # M30-04D — Migrate Rust to dependency-complete fragments
 
-- Status: planned
+- Status: in-progress
 - Depends on: M30-04C
 
 ## Current audit finding

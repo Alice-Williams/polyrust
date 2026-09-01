@@ -27,6 +27,7 @@ export const scalarLength = (value) => {
     }
     return ok([...value].length);
 };
+// POLYRUST-BEGIN top.string-replace-all
 export const replaceAllLiteral = (source, needle, replacement) => {
     if (needle !== "")
         return source.split(needle).join(replacement);
@@ -35,6 +36,8 @@ export const replaceAllLiteral = (source, needle, replacement) => {
         ? replacement
         : replacement + scalars.join(replacement) + replacement;
 };
+// POLYRUST-END top.string-replace-all
+// POLYRUST-BEGIN top.bytes-replace-all
 export const replaceBytesAll = (source, needle, replacement) => {
     const output = [];
     if (needle.length === 0) {
@@ -57,6 +60,8 @@ export const replaceBytesAll = (source, needle, replacement) => {
     }
     return output;
 };
+// POLYRUST-END top.bytes-replace-all
+// POLYRUST-BEGIN top.string-replace-many
 export const replaceManyLiteral = (source, mappings) => {
     let output = "";
     let offset = 0;
@@ -85,6 +90,8 @@ export const replaceManyLiteral = (source, mappings) => {
     }
     return output;
 };
+// POLYRUST-END top.string-replace-many
+// POLYRUST-BEGIN top.string-truncate-utf8
 export const truncateUtf8Bytes = (source, budget) => {
     let bytes = 0;
     let end = 0;
@@ -100,6 +107,8 @@ export const truncateUtf8Bytes = (source, budget) => {
     }
     return source;
 };
+// POLYRUST-END top.string-truncate-utf8
+// POLYRUST-BEGIN top.string-trim-start
 export const trimStartScalars = (source, characters) => {
     const scalars = Array.from(source);
     const trim = new Set(Array.from(characters));
@@ -112,6 +121,8 @@ export const trimStartScalars = (source, characters) => {
     }
     return scalars.slice(start).join("");
 };
+// POLYRUST-END top.string-trim-start
+// POLYRUST-BEGIN top.string-trim-end
 export const trimEndScalars = (source, characters) => {
     const scalars = Array.from(source);
     const trim = new Set(Array.from(characters));
@@ -124,8 +135,11 @@ export const trimEndScalars = (source, characters) => {
     }
     return scalars.slice(0, end).join("");
 };
+// POLYRUST-END top.string-trim-end
 export const listAppend = (items, item) => [...items, item];
+// POLYRUST-BEGIN top.list-concat
 export const listConcat = (left, right) => [...left, ...right];
+// POLYRUST-END top.list-concat
 export class Runtime {
     document;
     declarations = new Map();
@@ -362,7 +376,10 @@ export class Runtime {
             case "string_starts_with": return ok(a.startsWith(b));
             case "string_strip_prefix": return ok(b.length > 0 && a.startsWith(b) ? a.slice(b.length) : a);
             case "string_ends_with": return ok(a.endsWith(b));
+            // POLYRUST-BEGIN case.string-replace-all
             case "string_replace_all": return ok(replaceAllLiteral(a, b, c));
+            // POLYRUST-END case.string-replace-all
+            // POLYRUST-BEGIN case.string-replace-many
             case "string_replace_many": {
                 const mappings = [];
                 for (let index = 1; index < values.length; index += 2) {
@@ -370,12 +387,23 @@ export class Runtime {
                 }
                 return ok(replaceManyLiteral(a, mappings));
             }
+            // POLYRUST-END case.string-replace-many
+            // POLYRUST-BEGIN case.string-truncate-utf8
             case "string_truncate_utf8_bytes": return ok(truncateUtf8Bytes(a, b));
+            // POLYRUST-END case.string-truncate-utf8
+            // POLYRUST-BEGIN case.string-trim-start
             case "string_trim_start": return ok(trimStartScalars(a, b));
+            // POLYRUST-END case.string-trim-start
+            // POLYRUST-BEGIN case.string-trim-end
             case "string_trim_end": return ok(trimEndScalars(a, b));
+            // POLYRUST-END case.string-trim-end
+            // POLYRUST-BEGIN case.list-concat
             case "bytes_concat":
             case "list_concat": return ok(listConcat(a, b));
+            // POLYRUST-END case.list-concat
+            // POLYRUST-BEGIN case.bytes-replace-all
             case "bytes_replace_all": return ok(replaceBytesAll(a, b, c));
+            // POLYRUST-END case.bytes-replace-all
             case "bytes_length":
             case "list_length": return checkedI32(a.length);
             case "bytes_is_empty":
@@ -390,7 +418,10 @@ export class Runtime {
             case "result_is_err": return ok(a.tag === "err");
             case "widen_i32_to_i64": return ok(BigInt(a));
             case "narrow_i64_to_i32_checked": return a < -2147483648n || a > 2147483647n ? fail("integer_overflow", "i64 does not fit i32") : checkedI32(Number(a));
+            // POLYRUST-BEGIN case.string-to-utf8
             case "string_to_utf8": return ok(Object.freeze([...new TextEncoder().encode(a)]));
+            // POLYRUST-END case.string-to-utf8
+            // POLYRUST-BEGIN case.string-from-utf8
             case "string_from_utf8_checked": {
                 try {
                     return ok(new TextDecoder("utf-8", { fatal: true }).decode(new Uint8Array(a)));
@@ -399,6 +430,7 @@ export class Runtime {
                     return fail("invalid_utf8", "invalid UTF-8");
                 }
             }
+            // POLYRUST-END case.string-from-utf8
             default: return fail("invalid_intrinsic", "unknown intrinsic " + name);
         }
     }
