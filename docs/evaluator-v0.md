@@ -36,6 +36,11 @@ infinities, and NaNs. Equality follows IEEE numeric equality: NaN is unequal
 to every value and positive zero equals negative zero. Ordering with NaN is
 false. String length counts Unicode scalar values, not UTF-8 bytes or grapheme
 clusters; an astral scalar and a combining scalar each count as one.
+String replacement is global, left-to-right, and non-overlapping. Both the
+needle and replacement are literal strings, so text such as `$&` has no
+special meaning. An empty needle inserts the replacement at Unicode-scalar
+boundaries, including both ends, and the evaluator checks the resulting byte
+length against the collection limit before allocation.
 
 ## Deterministic limits and errors
 

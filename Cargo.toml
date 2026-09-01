@@ -14,6 +14,7 @@ members = [
     "crates/eval",
     "crates/ir",
     "examples/models-and-validation",
+    "examples/real-world/escape-string-regexp",
     "examples/registration",
 ]
 resolver = "3"

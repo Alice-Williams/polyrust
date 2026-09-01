@@ -197,6 +197,7 @@ class Runtime:
     def _intrinsic(self, name: str, values: tuple[Any, ...]) -> PolyResult[Any]:
         a = values[0] if values else None
         b = values[1] if len(values) > 1 else None
+        c = values[2] if len(values) > 2 else None
         if name == "bool_not": return ok(not a)
         if name == "bool_and": return ok(a and b)
         if name == "bool_or": return ok(a or b)
@@ -228,6 +229,7 @@ class Runtime:
         if name == "string_contains": return ok(b in a)
         if name == "string_starts_with": return ok(a.startswith(b))
         if name == "string_ends_with": return ok(a.endswith(b))
+        if name == "string_replace_all": return ok(a.replace(b, c))
         if name in {"bytes_concat", "list_concat"}: return ok(a + b)
         if name in {"bytes_length", "list_length"}: return checked_i32(len(a))
         if name in {"bytes_is_empty", "list_is_empty"}: return ok(not a)

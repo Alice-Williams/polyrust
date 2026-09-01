@@ -77,11 +77,16 @@ are unreachable. Enum payload patterns bind every field exactly once.
 
 ## Intrinsics and purity
 
-All 55 v0 intrinsics have explicit arity, operand, and result rules in the
+All 56 v0 intrinsics have explicit arity, operand, and result rules in the
 checker. Integer operations require an unambiguous common width. Operations
 named `Checked` retain their value result type; their runtime failure becomes a
 structured evaluator outcome in M05. Checked and wrapping arithmetic are
 separate capabilities.
+
+`StringReplaceAll` has the exact signature
+`(String, String, String) -> String`. Its second and third operands are a
+literal needle and literal replacement; no target regular-expression or
+replacement-template syntax is accepted.
 
 The v0 IR grammar contains no I/O, mutation, global state, allocation hooks, or
 unbounded loop node, so an impure operation cannot be represented by a valid v0

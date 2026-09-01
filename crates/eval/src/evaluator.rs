@@ -875,6 +875,43 @@ impl<'a> Session<'a> {
                 let (left, right) = strings(arguments, self)?;
                 Ok(Value::Bool(left.ends_with(right)))
             }
+            StringReplaceAll => {
+                let source = string(arguments.first(), self)?;
+                let needle = string(arguments.get(1), self)?;
+                let replacement = string(arguments.get(2), self)?;
+                let matches = if needle.is_empty() {
+                    source.chars().count().checked_add(1).ok_or(
+                        EvaluationError::CollectionLimitExceeded {
+                            limit: self.limits.collection_size,
+                            requested: usize::MAX,
+                        },
+                    )?
+                } else {
+                    source.match_indices(needle).count()
+                };
+                let removed = matches.checked_mul(needle.len()).ok_or(
+                    EvaluationError::CollectionLimitExceeded {
+                        limit: self.limits.collection_size,
+                        requested: usize::MAX,
+                    },
+                )?;
+                let added = matches.checked_mul(replacement.len()).ok_or(
+                    EvaluationError::CollectionLimitExceeded {
+                        limit: self.limits.collection_size,
+                        requested: usize::MAX,
+                    },
+                )?;
+                let requested = source
+                    .len()
+                    .checked_sub(removed)
+                    .and_then(|remaining| remaining.checked_add(added))
+                    .ok_or(EvaluationError::CollectionLimitExceeded {
+                        limit: self.limits.collection_size,
+                        requested: usize::MAX,
+                    })?;
+                self.check_collection_size(requested)?;
+                Ok(Value::String(source.replace(needle, replacement)))
+            }
             BytesConcat => {
                 let (left, right) = bytes(arguments, self)?;
                 self.check_collection_sum(left.len(), right.len())?;
@@ -1466,6 +1503,24 @@ mod tests {
                 StringContains,
                 vec![Value::String("x🦀y".into()), Value::String("🦀".into())],
                 Ok(Value::Bool(true)),
+            ),
+            (
+                StringReplaceAll,
+                vec![
+                    Value::String("a🦀a".into()),
+                    Value::String("a".into()),
+                    Value::String("$&".into()),
+                ],
+                Ok(Value::String("$&🦀$&".into())),
+            ),
+            (
+                StringReplaceAll,
+                vec![
+                    Value::String("a🦀".into()),
+                    Value::String(String::new()),
+                    Value::String("-".into()),
+                ],
+                Ok(Value::String("-a-🦀-".into())),
             ),
             (
                 BytesConcat,

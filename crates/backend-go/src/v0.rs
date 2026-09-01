@@ -319,7 +319,22 @@ fn local(name: &str) -> String {
     format!("{first}{}", chars.collect::<String>())
 }
 fn go_string(value: &str) -> String {
-    format!("{value:?}")
+    let mut output = String::from("\"");
+    for character in value.chars() {
+        match character {
+            '\\' => output.push_str("\\\\"),
+            '"' => output.push_str("\\\""),
+            '\n' => output.push_str("\\n"),
+            '\r' => output.push_str("\\r"),
+            '\t' => output.push_str("\\t"),
+            character if character.is_control() => {
+                output.push_str(&format!("\\u{:04x}", character as u32));
+            }
+            character => output.push(character),
+        }
+    }
+    output.push('"');
+    output
 }
 
 const CONFORMANCE: &str = "package generated\n\nimport (\n \"math\"\n \"testing\"\n)\n\nfunc TestTwentySemanticVectors(t *testing.T) {\n source := NewPolyList(int32(1)); appended := source.append(2)\n wide32 := uint32(2147483648); wide64 := uint64(9223372036854775808)\n vectors := []bool{\n  checked32(0).Ok, checked32(2147483647).Ok, checked32(-2147483648).Ok, !checked32(2147483648).Ok, !checked32(-2147483649).Ok,\n  int64(0) == 0, int64(9223372036854775807) > 0, int64(-9223372036854775807-1) < 0,\n  int32(wide32) == -2147483648, int64(wide64) == -9223372036854775807-1,\n  len([]rune(\"a\")) == 1, len([]rune(\"😀\")) == 1, NewPolyBytes(1,2).Values()[1] == 2,\n  source.Len() == 1, appended.Len() == 2, len(source.Values()) == 1, len(appended.Values()) == 2,\n  PolyOption[int]{Tag:\"none\"}.Tag == \"none\", PolyOption[int]{Tag:\"some\",Value:0}.Tag == \"some\", math.Signbit(math.Copysign(0,-1)),\n }\n if len(vectors)!=20 { t.Fatal(len(vectors)) }; for index,value:=range vectors { if !value { t.Fatal(index) } }\n}\n";
@@ -338,6 +353,13 @@ mod tests {
             .unwrap();
         assert_eq!(first.canonical_json(), second.canonical_json());
         assert_eq!(Generator::new(&checked).ty(&TypeRef::I64), "int64");
+    }
+    #[test]
+    fn strings_use_only_valid_go_escapes_and_preserve_unicode() {
+        assert_eq!(
+            go_string("\0\u{8}\n\r\t\\\"\u{301}🦄"),
+            "\"\\u0000\\u0008\\n\\r\\t\\\\\\\"\u{301}🦄\""
+        );
     }
     fn fixture() -> CheckedProgram {
         portable_check::v0::check_program(

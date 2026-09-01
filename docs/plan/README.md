@@ -70,3 +70,7 @@ contract as every other target.
 
 - [M15 — Examples and extension proof](milestones/M15-examples-extensions.md) — complete
 - [M16 — CI and release gate](milestones/M16-ci-release.md) — complete
+
+### Phase 6 — Real-world compatibility
+
+- [M17 — escape-string-regexp equivalence port](milestones/M17-escape-string-regexp.md) — complete

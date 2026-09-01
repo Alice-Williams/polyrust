@@ -121,7 +121,8 @@ set covers:
 - checked and wrapping signed integer arithmetic, bitwise operations, and checked
   shifts;
 - IEEE binary64 arithmetic and truncating remainder;
-- Unicode-scalar string operations;
+- Unicode-scalar string operations, including global literal replacement whose
+  replacement text has no interpolation syntax;
 - immutable bytes/list operations;
 - option/result queries;
 - explicit integer and UTF-8 conversions.

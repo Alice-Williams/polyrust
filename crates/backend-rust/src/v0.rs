@@ -943,6 +943,7 @@ impl Generator<'_> {
         }
         let a = "__argument_0";
         let b = "__argument_1";
+        let c = "__argument_2";
         let width = match first_type {
             Some(TypeRef::I32) => 32,
             _ => 64,
@@ -1000,6 +1001,9 @@ impl Generator<'_> {
             Intrinsic::StringContains => format!("Ok({a}.contains({b}.as_str()))"),
             Intrinsic::StringStartsWith => format!("Ok({a}.starts_with({b}.as_str()))"),
             Intrinsic::StringEndsWith => format!("Ok({a}.ends_with({b}.as_str()))"),
+            Intrinsic::StringReplaceAll => {
+                format!("Ok({a}.replace({b}.as_str(), {c}.as_str()))")
+            }
             Intrinsic::BytesConcat | Intrinsic::ListConcat => {
                 format!("{{ let mut value = {a}; value.extend({b}); Ok(value) }}")
             }
@@ -1096,9 +1100,9 @@ impl Generator<'_> {
                     | Intrinsic::WidenI32ToI64 => Some(TypeRef::I64),
                     Intrinsic::NarrowI64ToI32Checked => Some(TypeRef::I32),
                     Intrinsic::StringToUtf8 => Some(TypeRef::Bytes),
-                    Intrinsic::StringFromUtf8Checked | Intrinsic::StringConcat => {
-                        Some(TypeRef::String)
-                    }
+                    Intrinsic::StringFromUtf8Checked
+                    | Intrinsic::StringConcat
+                    | Intrinsic::StringReplaceAll => Some(TypeRef::String),
                     Intrinsic::ListGetChecked => match first {
                         TypeRef::List(element) => Some(*element),
                         _ => None,

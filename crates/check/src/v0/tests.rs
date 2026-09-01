@@ -1307,7 +1307,7 @@ fn every_v0_intrinsic_has_a_checked_signature() {
     assert_eq!(checked.module().declarations.len(), ALL_INTRINSICS.len());
 }
 
-const ALL_INTRINSICS: [Intrinsic; 55] = [
+const ALL_INTRINSICS: [Intrinsic; 56] = [
     Intrinsic::BoolNot,
     Intrinsic::BoolAnd,
     Intrinsic::BoolOr,
@@ -1345,6 +1345,7 @@ const ALL_INTRINSICS: [Intrinsic; 55] = [
     Intrinsic::StringContains,
     Intrinsic::StringStartsWith,
     Intrinsic::StringEndsWith,
+    Intrinsic::StringReplaceAll,
     Intrinsic::BytesConcat,
     Intrinsic::BytesLength,
     Intrinsic::BytesIsEmpty,
@@ -1478,6 +1479,11 @@ fn intrinsic_cases() -> Vec<(Intrinsic, Vec<TypeRef>, TypeRef)> {
             StringEndsWith,
             vec![TypeRef::String, TypeRef::String],
             TypeRef::Bool,
+        ),
+        (
+            StringReplaceAll,
+            vec![TypeRef::String, TypeRef::String, TypeRef::String],
+            TypeRef::String,
         ),
         (
             BytesConcat,

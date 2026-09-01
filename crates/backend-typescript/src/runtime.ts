@@ -40,6 +40,13 @@ export const scalarLength = (value: string): PolyResult<number> => {
   }
   return ok([...value].length);
 };
+export const replaceAllLiteral = (source: string, needle: string, replacement: string): string => {
+  if (needle !== "") return source.split(needle).join(replacement);
+  const scalars = Array.from(source);
+  return scalars.length === 0
+    ? replacement
+    : replacement + scalars.join(replacement) + replacement;
+};
 export const listAppend = <T>(items: readonly T[], item: T): readonly T[] => [...items, item];
 export const listConcat = <T>(left: readonly T[], right: readonly T[]): readonly T[] => [...left, ...right];
 
@@ -214,6 +221,7 @@ export class Runtime {
   private intrinsic(name: string, values: readonly unknown[]): PolyResult<unknown> {
     const a = values[0] as Json;
     const b = values[1] as Json;
+    const c = values[2] as Json;
     switch (name) {
       case "bool_not": return ok(!a);
       case "bool_and": return ok(a && b);
@@ -256,6 +264,7 @@ export class Runtime {
       case "string_contains": return ok(a.includes(b));
       case "string_starts_with": return ok(a.startsWith(b));
       case "string_ends_with": return ok(a.endsWith(b));
+      case "string_replace_all": return ok(replaceAllLiteral(a, b, c));
       case "bytes_concat": case "list_concat": return ok(listConcat(a, b));
       case "bytes_length": case "list_length": return checkedI32(a.length);
       case "bytes_is_empty": case "list_is_empty": return ok(a.length === 0);

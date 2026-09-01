@@ -138,6 +138,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "polyrust-escape-string-regexp-example"
+version = "0.1.0"
+dependencies = [
+ "polyrust-backend-go",
+ "polyrust-backend-python",
+ "polyrust-backend-rust",
+ "polyrust-backend-typescript",
+ "polyrust-build",
+ "polyrust-check",
+ "polyrust-codegen",
+ "polyrust-eval",
+]
+
+[[package]]
 name = "polyrust-eval"
 version = "0.1.0"
 dependencies = [

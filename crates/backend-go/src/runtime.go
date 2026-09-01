@@ -315,12 +315,15 @@ func (r *runtime) block(block map[string]any, environment map[string]any, self a
 }
 
 func (r *runtime) intrinsic(name string, values []any) PolyResult[any] {
-	var a, b any
+	var a, b, c any
 	if len(values) > 0 {
 		a = values[0]
 	}
 	if len(values) > 1 {
 		b = values[1]
+	}
+	if len(values) > 2 {
+		c = values[2]
 	}
 	switch name {
 	case "bool_not":
@@ -348,6 +351,8 @@ func (r *runtime) intrinsic(name string, values []any) PolyResult[any] {
 		return polyOk(any(strings.HasPrefix(a.(string), b.(string))))
 	case "string_ends_with":
 		return polyOk(any(strings.HasSuffix(a.(string), b.(string))))
+	case "string_replace_all":
+		return polyOk(any(strings.ReplaceAll(a.(string), b.(string), c.(string))))
 	case "widen_i32_to_i64":
 		return polyOk(any(int64(a.(int32))))
 	case "narrow_i64_to_i32_checked":

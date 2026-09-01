@@ -1801,8 +1801,8 @@ impl Checker<'_> {
             IntSubWrapping, Less, LessEqual, ListAppend, ListConcat, ListContains, ListGetChecked,
             ListIsEmpty, ListLength, NarrowI64ToI32Checked, NotEqual, OptionIsNone, OptionIsSome,
             OptionUnwrapOr, ResultIsErr, ResultIsOk, StringConcat, StringContains, StringEndsWith,
-            StringFromUtf8Checked, StringIsEmpty, StringScalarLength, StringStartsWith,
-            StringToUtf8, WidenI32ToI64,
+            StringFromUtf8Checked, StringIsEmpty, StringReplaceAll, StringScalarLength,
+            StringStartsWith, StringToUtf8, WidenI32ToI64,
         };
         let invalid = |checker: &mut Self| {
             checker.error(
@@ -1870,6 +1870,11 @@ impl Checker<'_> {
                 if arguments == [TypeRef::String, TypeRef::String] =>
             {
                 Some(TypeRef::Bool)
+            }
+            StringReplaceAll
+                if arguments == [TypeRef::String, TypeRef::String, TypeRef::String] =>
+            {
+                Some(TypeRef::String)
             }
             BytesConcat if arguments == [TypeRef::Bytes, TypeRef::Bytes] => Some(TypeRef::Bytes),
             BytesLength if arguments == [TypeRef::Bytes] => Some(TypeRef::I64),
