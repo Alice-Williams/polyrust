@@ -1,6 +1,6 @@
 # M30-01 — Add compositional language fragments
 
-- Status: planned
+- Status: complete
 
 ## Goal
 
@@ -9,8 +9,9 @@ expression, type, and helper granularity.
 
 ## Definition of done
 
-- `LanguageFragment<Import>` owns one `Document` and one `ImportSet<Import>`.
-- Sequence, optional, mapped, joined, and nested composition merge both parts.
+- `LanguageFragment<Import>` owns one `Document`, one `ImportSet<Import>`, and
+  its runtime-helper roots.
+- Sequence, optional, mapped, joined, and nested composition merge all parts.
 - A fragment converts to a `LanguageUnit` without exposing a second import path.
 - Existing package/file rendering remains syntax-only and target-independent.
 - Public documentation distinguishes fragments, units, files, and renderers.

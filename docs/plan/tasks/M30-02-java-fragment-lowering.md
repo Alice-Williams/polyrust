@@ -1,6 +1,6 @@
 # M30-02 — Migrate Java lowering to fragments
 
-- Status: planned
+- Status: in-progress
 
 ## Goal
 

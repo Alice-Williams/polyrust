@@ -12,7 +12,7 @@ not an accepted exception.
 
 | Surface | Structured renderer | Mapping-local fragments | Helper graph/minimal runtime | Source-role closure | No repair scan | Baseline result |
 | --- | --- | --- | --- | --- | --- | --- |
-| Shared codegen | Pass: renderer sees `ImportSet` only | Fail: mutable file-sized `LanguageUnit` | Fail: no helper graph in language IR | Partial: source roles can still use raw `Text` | Fail: `set_document` and late requirement mutation permit repair | **Fail** |
+| Shared codegen | Pass: renderer sees `ImportSet` only | Pass: associative `LanguageFragment` composition closes immutable units | Fail: roots are preserved but no helper graph is resolved yet | Partial: source roles can still use raw `Text` | Pass: closed units expose no document/dependency repair API | **Fail** |
 | Rust | Pass: `RustImport` renderer | Fail: declarations build one `String` | Fail: complete `RUNTIME` is copied as text | Fail: runtime uses `LanguageFile::text` | Partial: source imports are attached at file-unit scope | **Fail** |
 | TypeScript | Pass: `EcmaImport` renderer | Fail: declarations build one body string | Fail: complete runtime is copied as text | Fail: runtime and node shim source bypass source IR | Partial: imports are attached to whole file bodies | **Fail** |
 | JavaScript | Pass: derived `EcmaImport` renderer | Fail: declarations build one body string | Fail: complete derived runtime is copied as text | Fail: runtime source bypasses source IR | Partial: imports are attached to whole file bodies | **Fail** |

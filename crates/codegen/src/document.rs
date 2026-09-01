@@ -117,7 +117,15 @@ impl Document {
     }
 
     pub fn concat(documents: impl IntoIterator<Item = Self>) -> Self {
-        let documents = documents.into_iter().collect::<Vec<_>>();
+        let mut flattened = Vec::new();
+        for document in documents {
+            match document.0.as_ref() {
+                Node::Empty => {}
+                Node::Concat(children) => flattened.extend(children.iter().cloned()),
+                _ => flattened.push(document),
+            }
+        }
+        let documents = flattened;
         match documents.as_slice() {
             [] => Self::empty(),
             [document] => document.clone(),

@@ -120,40 +120,153 @@ impl<I: Clone + Ord> ImportSet<I> {
     }
 }
 
-/// One flat target-language mapping after semantic translation.
+/// The smallest dependency-complete target-language mapping.
 ///
-/// A unit couples target syntax to every import/include/use requirement caused
-/// by that syntax. Files can only collect imports by accepting units, which
-/// prevents import selection from drifting into the renderer or a separate
-/// static file-level list.
+/// A fragment keeps target syntax, structured imports, and runtime-helper roots
+/// inseparable while mappings are composed. Transforming or joining fragments
+/// preserves every requirement by construction.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LanguageUnit<I: Ord> {
+pub struct LanguageFragment<I: Ord> {
     document: Document,
     imports: ImportSet<I>,
+    helper_roots: BTreeSet<String>,
 }
 
-impl<I: Ord> LanguageUnit<I> {
+impl<I: Ord> LanguageFragment<I> {
     pub fn new(document: Document) -> Self {
         Self {
             document,
             imports: ImportSet::default(),
+            helper_roots: BTreeSet::new(),
         }
     }
 
-    pub fn set_document(&mut self, document: Document) {
-        self.document = document;
+    pub fn with_import(mut self, group: ImportGroup, import: I) -> Self {
+        self.imports.require(group, import);
+        self
     }
 
     pub fn require_import(&mut self, group: ImportGroup, import: I) -> bool {
         self.imports.require(group, import)
     }
 
+    pub fn with_helper_root(mut self, helper: impl Into<String>) -> Self {
+        self.helper_roots.insert(helper.into());
+        self
+    }
+
     pub fn imports(&self) -> &ImportSet<I> {
         &self.imports
     }
 
+    pub fn helper_roots(&self) -> &BTreeSet<String> {
+        &self.helper_roots
+    }
+
+    pub fn map_document(self, map: impl FnOnce(Document) -> Document) -> Self {
+        Self {
+            document: map(self.document),
+            imports: self.imports,
+            helper_roots: self.helper_roots,
+        }
+    }
+
+    pub fn indent(self, spaces: usize) -> Self {
+        self.map_document(|document| document.indent(spaces))
+    }
+
+    pub fn group(self) -> Self {
+        self.map_document(Document::group)
+    }
+
+    pub fn sequence(fragments: impl IntoIterator<Item = Self>) -> Self {
+        let mut documents = Vec::new();
+        let mut imports = ImportSet::default();
+        let mut helper_roots = BTreeSet::new();
+        for fragment in fragments {
+            documents.push(fragment.document);
+            for (group, group_imports) in fragment.imports.groups {
+                imports
+                    .groups
+                    .entry(group)
+                    .or_default()
+                    .extend(group_imports);
+            }
+            helper_roots.extend(fragment.helper_roots);
+        }
+        Self {
+            document: Document::concat(documents),
+            imports,
+            helper_roots,
+        }
+    }
+
+    pub fn optional(fragment: Option<Self>) -> Self {
+        fragment.unwrap_or_else(|| Self::new(Document::empty()))
+    }
+
+    pub fn into_unit(self) -> LanguageUnit<I> {
+        LanguageUnit { fragment: self }
+    }
+
     fn document(&self) -> &Document {
         &self.document
+    }
+}
+
+impl<I: Clone + Ord> LanguageFragment<I> {
+    pub fn joined(separator: Self, fragments: impl IntoIterator<Item = Self>) -> Self {
+        let mut fragments = fragments.into_iter();
+        let Some(first) = fragments.next() else {
+            return Self::new(Document::empty());
+        };
+        let mut parts = vec![first];
+        for fragment in fragments {
+            parts.push(separator.clone());
+            parts.push(fragment);
+        }
+        Self::sequence(parts)
+    }
+}
+
+/// A closed target-language file section.
+///
+/// Units can only be created from dependency-complete fragments. They expose no
+/// document or dependency mutation path, so a file cannot be repaired after a
+/// mapping has discarded its requirements.
+///
+/// ```compile_fail
+/// use portable_codegen::{Document, LanguageUnit};
+/// let _ = LanguageUnit::<String>::new(Document::empty());
+/// ```
+///
+/// ```compile_fail
+/// use portable_codegen::{Document, ImportGroup, LanguageFragment};
+/// let mut unit = LanguageFragment::<String>::new(Document::empty()).into_unit();
+/// unit.require_import(ImportGroup::new(10, "standard").unwrap(), "value".into());
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LanguageUnit<I: Ord> {
+    fragment: LanguageFragment<I>,
+}
+
+impl<I: Ord> LanguageUnit<I> {
+    pub fn imports(&self) -> &ImportSet<I> {
+        self.fragment.imports()
+    }
+
+    pub fn helper_roots(&self) -> &BTreeSet<String> {
+        self.fragment.helper_roots()
+    }
+
+    fn document(&self) -> &Document {
+        self.fragment.document()
+    }
+}
+
+impl<I: Ord> From<LanguageFragment<I>> for LanguageUnit<I> {
+    fn from(fragment: LanguageFragment<I>) -> Self {
+        Self { fragment }
     }
 }
 
@@ -188,16 +301,16 @@ impl<I: Ord> LanguageSourceFile<I> {
         self.role
     }
 
-    pub fn set_preamble(&mut self, unit: LanguageUnit<I>) {
-        self.preamble = Some(unit);
+    pub fn set_preamble(&mut self, unit: impl Into<LanguageUnit<I>>) {
+        self.preamble = Some(unit.into());
     }
 
-    pub fn set_body(&mut self, unit: LanguageUnit<I>) {
-        self.body = Some(unit);
+    pub fn set_body(&mut self, unit: impl Into<LanguageUnit<I>>) {
+        self.body = Some(unit.into());
     }
 
-    pub fn set_epilogue(&mut self, unit: LanguageUnit<I>) {
-        self.epilogue = Some(unit);
+    pub fn set_epilogue(&mut self, unit: impl Into<LanguageUnit<I>>) {
+        self.epilogue = Some(unit.into());
     }
 
     pub fn set_render_options(&mut self, options: RenderOptions) {
@@ -557,15 +670,82 @@ mod tests {
         ImportGroup::new(order, value).unwrap()
     }
 
+    fn fragment(
+        text: &'static str,
+        import: &'static str,
+        helper: &'static str,
+    ) -> LanguageFragment<TestImport> {
+        LanguageFragment::new(Document::raw_text(RawText::new(text)))
+            .with_import(import_group(10, "standard"), TestImport(import))
+            .with_helper_root(helper)
+    }
+
+    #[test]
+    fn fragment_composition_is_associative_and_preserves_requirements() {
+        let alpha = fragment("a", "alpha", "helper.alpha");
+        let beta = fragment("b", "beta", "helper.beta");
+        let gamma = fragment("c", "alpha", "helper.alpha");
+        let left = LanguageFragment::sequence([
+            LanguageFragment::sequence([alpha.clone(), beta.clone()]),
+            gamma.clone(),
+        ]);
+        let right = LanguageFragment::sequence([alpha, LanguageFragment::sequence([beta, gamma])]);
+        assert_eq!(left, right);
+        assert_eq!(left.imports().len(), 2);
+        assert_eq!(
+            left.helper_roots()
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            ["helper.alpha", "helper.beta"]
+        );
+        assert_eq!(
+            render(left.document(), RenderOptions::default()).unwrap(),
+            "abc\n"
+        );
+    }
+
+    #[test]
+    fn optional_joined_grouped_and_indented_fragments_keep_dependencies() {
+        let separator = fragment("|", "separator", "helper.separator");
+        let joined = LanguageFragment::joined(
+            separator,
+            [
+                fragment("a", "alpha", "helper.alpha"),
+                fragment("b", "beta", "helper.beta"),
+            ],
+        )
+        .indent(2)
+        .group();
+        assert_eq!(joined.imports().len(), 3);
+        assert_eq!(joined.helper_roots().len(), 3);
+        assert_eq!(
+            render(joined.document(), RenderOptions::default()).unwrap(),
+            "a|b\n"
+        );
+
+        let empty = LanguageFragment::<TestImport>::optional(None);
+        assert!(empty.imports().is_empty());
+        assert!(empty.helper_roots().is_empty());
+        assert_eq!(
+            render(empty.document(), RenderOptions::default()).unwrap(),
+            "\n"
+        );
+
+        let unit = joined.into_unit();
+        assert_eq!(unit.imports().len(), 3);
+        assert_eq!(unit.helper_roots().len(), 3);
+    }
+
     #[test]
     fn groups_files_and_imports_are_sorted_and_deduplicated() {
         let mut source = LanguageSourceFile::new("src/lib.test", FileRole::Source);
-        let mut preamble = LanguageUnit::new(Document::raw_text(RawText::new("// preamble")));
+        let mut preamble = LanguageFragment::new(Document::raw_text(RawText::new("// preamble")));
         assert!(preamble.require_import(import_group(10, "standard"), TestImport("zeta")));
-        let mut body = LanguageUnit::new(Document::raw_text(RawText::new("body")));
+        let mut body = LanguageFragment::new(Document::raw_text(RawText::new("body")));
         assert!(body.require_import(import_group(10, "standard"), TestImport("alpha")));
         assert!(!body.require_import(import_group(10, "standard"), TestImport("alpha")));
-        let mut epilogue = LanguageUnit::new(Document::empty());
+        let mut epilogue = LanguageFragment::new(Document::empty());
         assert!(epilogue.require_import(import_group(10, "standard"), TestImport("alpha")));
         source.set_preamble(preamble);
         source.set_body(body);
@@ -594,7 +774,9 @@ mod tests {
     #[test]
     fn a_file_without_import_requirements_has_no_import_section() {
         let mut source = LanguageSourceFile::<TestImport>::new("src/empty.test", FileRole::Source);
-        source.set_body(LanguageUnit::new(Document::raw_text(RawText::new("body"))));
+        source.set_body(LanguageFragment::new(Document::raw_text(RawText::new(
+            "body",
+        ))));
         let package = LanguagePackage::new(
             vec![FileGroup::new(id("source"), vec![LanguageFile::source(source)]).unwrap()],
             vec![],
@@ -657,7 +839,7 @@ mod tests {
     #[test]
     fn renderer_failures_are_not_hidden() {
         let mut source = LanguageSourceFile::new("src/lib.test", FileRole::Source);
-        let mut body = LanguageUnit::new(Document::empty());
+        let mut body = LanguageFragment::new(Document::empty());
         body.require_import(import_group(10, "standard"), TestImport("alpha"));
         source.set_body(body);
         let package = LanguagePackage::new(
