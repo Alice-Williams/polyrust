@@ -87,6 +87,9 @@ static bool valid_scalar(const uint8_t *data, size_t remaining, size_t *width) {
 bool poly_utf8_valid(poly_string_view value, size_t *scalar_count) {
   size_t offset = 0U;
   size_t count = 0U;
+  if (value.length != 0U && value.data == NULL) {
+    return false;
+  }
   while (offset < value.length) {
     size_t width = 0U;
     if (!valid_scalar(value.data + offset, value.length - offset, &width)) {
@@ -121,18 +124,25 @@ static bool bytes_clone(poly_allocator allocator, const uint8_t *source,
   return true;
 }
 
-bool poly_string_clone(poly_allocator allocator, poly_string_view source,
-                       poly_string *output) {
+poly_error_code poly_string_clone(poly_allocator allocator,
+                                  poly_string_view source,
+                                  poly_string *output) {
   poly_string result = {0};
-  if (output == NULL || !poly_utf8_valid(source, NULL) ||
-      !bytes_clone(allocator, source.data, source.length, &result.data)) {
-    return false;
+  if (output == NULL) {
+    return POLY_INVARIANT_VIOLATION;
+  }
+  *output = result;
+  if (!poly_utf8_valid(source, NULL)) {
+    return POLY_INVALID_UTF8;
+  }
+  if (!bytes_clone(allocator, source.data, source.length, &result.data)) {
+    return POLY_ALLOCATION_FAILED;
   }
   result.length = source.length;
   result.capacity = source.length;
   result.allocator = allocator;
   *output = result;
-  return true;
+  return POLY_OK;
 }
 
 bool poly_bytes_clone(poly_allocator allocator, poly_bytes_view source,
@@ -214,8 +224,13 @@ bool poly_string_contains(poly_string_view source, poly_string_view needle) {
   return false;
 }
 
-bool poly_string_strip_prefix(poly_allocator allocator, poly_string_view source,
-                              poly_string_view prefix, poly_string *output) {
+poly_error_code poly_string_strip_prefix(poly_allocator allocator,
+                                         poly_string_view source,
+                                         poly_string_view prefix,
+                                         poly_string *output) {
+  if (!poly_utf8_valid(source, NULL) || !poly_utf8_valid(prefix, NULL)) {
+    return POLY_INVALID_UTF8;
+  }
   if (poly_string_starts_with(source, prefix)) {
     source.data += prefix.length;
     source.length -= prefix.length;
@@ -223,21 +238,30 @@ bool poly_string_strip_prefix(poly_allocator allocator, poly_string_view source,
   return poly_string_clone(allocator, source, output);
 }
 
-bool poly_string_concat(poly_allocator allocator, poly_string_view left,
-                        poly_string_view right, poly_string *output) {
+poly_error_code poly_string_concat(poly_allocator allocator,
+                                   poly_string_view left,
+                                   poly_string_view right,
+                                   poly_string *output) {
   poly_string result = {0};
   size_t length;
-  if (output == NULL || left.length > SIZE_MAX - right.length) {
-    return false;
+  if (output == NULL) {
+    return POLY_INVARIANT_VIOLATION;
+  }
+  *output = result;
+  if (!poly_utf8_valid(left, NULL) || !poly_utf8_valid(right, NULL)) {
+    return POLY_INVALID_UTF8;
+  }
+  if (left.length > SIZE_MAX - right.length) {
+    return POLY_ALLOCATION_FAILED;
   }
   length = left.length + right.length;
   if (length != 0U) {
     if (allocator.allocate == NULL || allocator.deallocate == NULL) {
-      return false;
+      return POLY_ALLOCATION_FAILED;
     }
     result.data = (uint8_t *)allocator.allocate(allocator.context, length);
     if (result.data == NULL) {
-      return false;
+      return POLY_ALLOCATION_FAILED;
     }
   }
   if (left.length != 0U) {
@@ -250,7 +274,7 @@ bool poly_string_concat(poly_allocator allocator, poly_string_view left,
   result.capacity = length;
   result.allocator = allocator;
   *output = result;
-  return true;
+  return POLY_OK;
 }
 
 static size_t count_occurrences(poly_string_view source,
@@ -274,18 +298,23 @@ static size_t count_occurrences(poly_string_view source,
   return count;
 }
 
-bool poly_string_replace_all(poly_allocator allocator, poly_string_view source,
-                             poly_string_view needle,
-                             poly_string_view replacement,
-                             poly_string *output) {
+poly_error_code poly_string_replace_all(poly_allocator allocator,
+                                        poly_string_view source,
+                                        poly_string_view needle,
+                                        poly_string_view replacement,
+                                        poly_string *output) {
   size_t count;
   size_t length;
   size_t input_offset = 0U;
   size_t output_offset = 0U;
   poly_string result = {0};
-  if (output == NULL || !poly_utf8_valid(source, NULL) ||
-      !poly_utf8_valid(needle, NULL) || !poly_utf8_valid(replacement, NULL)) {
-    return false;
+  if (output == NULL) {
+    return POLY_INVARIANT_VIOLATION;
+  }
+  *output = result;
+  if (!poly_utf8_valid(source, NULL) || !poly_utf8_valid(needle, NULL) ||
+      !poly_utf8_valid(replacement, NULL)) {
+    return POLY_INVALID_UTF8;
   }
   if (needle.length == 0U) {
     /* Empty-needle insertion is intentionally handled scalar-by-scalar. */
@@ -294,13 +323,16 @@ bool poly_string_replace_all(poly_allocator allocator, poly_string_view source,
     (void)poly_utf8_valid(source, &scalar_count);
     if (replacement.length != 0U &&
         scalar_count + 1U > (SIZE_MAX - source.length) / replacement.length) {
-      return false;
+      return POLY_ALLOCATION_FAILED;
     }
     length = source.length + (scalar_count + 1U) * replacement.length;
     if (length != 0U) {
+      if (allocator.allocate == NULL || allocator.deallocate == NULL) {
+        return POLY_ALLOCATION_FAILED;
+      }
       result.data = (uint8_t *)allocator.allocate(allocator.context, length);
       if (result.data == NULL) {
-        return false;
+        return POLY_ALLOCATION_FAILED;
       }
     }
     if (replacement.length != 0U) {
@@ -325,16 +357,19 @@ bool poly_string_replace_all(poly_allocator allocator, poly_string_view source,
     if (replacement.length >= needle.length) {
       size_t growth = replacement.length - needle.length;
       if (growth != 0U && count > (SIZE_MAX - source.length) / growth) {
-        return false;
+        return POLY_ALLOCATION_FAILED;
       }
       length = source.length + count * growth;
     } else {
       length = source.length - count * (needle.length - replacement.length);
     }
     if (length != 0U) {
+      if (allocator.allocate == NULL || allocator.deallocate == NULL) {
+        return POLY_ALLOCATION_FAILED;
+      }
       result.data = (uint8_t *)allocator.allocate(allocator.context, length);
       if (result.data == NULL) {
-        return false;
+        return POLY_ALLOCATION_FAILED;
       }
     }
     while (input_offset < source.length) {
@@ -356,7 +391,7 @@ bool poly_string_replace_all(poly_allocator allocator, poly_string_view source,
   result.capacity = length;
   result.allocator = allocator;
   *output = result;
-  return true;
+  return POLY_OK;
 }
 
 static bool scalar_in(poly_string_view characters, const uint8_t *scalar,
@@ -374,11 +409,13 @@ static bool scalar_in(poly_string_view characters, const uint8_t *scalar,
   return false;
 }
 
-bool poly_string_trim_start(poly_allocator allocator, poly_string_view source,
-                            poly_string_view characters, poly_string *output) {
+poly_error_code poly_string_trim_start(poly_allocator allocator,
+                                       poly_string_view source,
+                                       poly_string_view characters,
+                                       poly_string *output) {
   size_t offset = 0U;
   if (!poly_utf8_valid(source, NULL) || !poly_utf8_valid(characters, NULL)) {
-    return false;
+    return POLY_INVALID_UTF8;
   }
   while (offset < source.length) {
     size_t width = 0U;
@@ -393,12 +430,14 @@ bool poly_string_trim_start(poly_allocator allocator, poly_string_view source,
   return poly_string_clone(allocator, source, output);
 }
 
-bool poly_string_trim_end(poly_allocator allocator, poly_string_view source,
-                          poly_string_view characters, poly_string *output) {
+poly_error_code poly_string_trim_end(poly_allocator allocator,
+                                     poly_string_view source,
+                                     poly_string_view characters,
+                                     poly_string *output) {
   size_t offset = 0U;
   size_t keep = 0U;
   if (!poly_utf8_valid(source, NULL) || !poly_utf8_valid(characters, NULL)) {
-    return false;
+    return POLY_INVALID_UTF8;
   }
   while (offset < source.length) {
     size_t width = 0U;

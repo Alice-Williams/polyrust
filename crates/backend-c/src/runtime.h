@@ -65,8 +65,9 @@ double poly_f64_from_bits(uint64_t bits);
 poly_string_view poly_string_borrow(const poly_string *value);
 poly_bytes_view poly_bytes_borrow(const poly_bytes *value);
 bool poly_utf8_valid(poly_string_view value, size_t *scalar_count);
-bool poly_string_clone(poly_allocator allocator, poly_string_view source,
-                       poly_string *output);
+poly_error_code poly_string_clone(poly_allocator allocator,
+                                  poly_string_view source,
+                                  poly_string *output);
 bool poly_bytes_clone(poly_allocator allocator, poly_bytes_view source,
                       poly_bytes *output);
 void poly_string_drop(poly_string *value);
@@ -76,17 +77,26 @@ bool poly_bytes_equal(poly_bytes_view left, poly_bytes_view right);
 bool poly_string_starts_with(poly_string_view source, poly_string_view prefix);
 bool poly_string_ends_with(poly_string_view source, poly_string_view suffix);
 bool poly_string_contains(poly_string_view source, poly_string_view needle);
-bool poly_string_strip_prefix(poly_allocator allocator, poly_string_view source,
-                              poly_string_view prefix, poly_string *output);
-bool poly_string_concat(poly_allocator allocator, poly_string_view left,
-                        poly_string_view right, poly_string *output);
-bool poly_string_replace_all(poly_allocator allocator, poly_string_view source,
-                             poly_string_view needle,
-                             poly_string_view replacement,
-                             poly_string *output);
-bool poly_string_trim_start(poly_allocator allocator, poly_string_view source,
-                            poly_string_view characters, poly_string *output);
-bool poly_string_trim_end(poly_allocator allocator, poly_string_view source,
-                          poly_string_view characters, poly_string *output);
+poly_error_code poly_string_strip_prefix(poly_allocator allocator,
+                                         poly_string_view source,
+                                         poly_string_view prefix,
+                                         poly_string *output);
+poly_error_code poly_string_concat(poly_allocator allocator,
+                                   poly_string_view left,
+                                   poly_string_view right,
+                                   poly_string *output);
+poly_error_code poly_string_replace_all(poly_allocator allocator,
+                                        poly_string_view source,
+                                        poly_string_view needle,
+                                        poly_string_view replacement,
+                                        poly_string *output);
+poly_error_code poly_string_trim_start(poly_allocator allocator,
+                                       poly_string_view source,
+                                       poly_string_view characters,
+                                       poly_string *output);
+poly_error_code poly_string_trim_end(poly_allocator allocator,
+                                     poly_string_view source,
+                                     poly_string_view characters,
+                                     poly_string *output);
 
 #endif

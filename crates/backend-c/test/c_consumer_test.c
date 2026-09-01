@@ -8,8 +8,8 @@ int main(void) {
   registration_Label label = {0};
   registration_Renderable renderable;
   registration_string_result result;
-  if (!poly_string_clone(allocator, (poly_string_view){text, sizeof(text)},
-                         &label.text)) {
+  if (poly_string_clone(allocator, (poly_string_view){text, sizeof(text)},
+                        &label.text) != POLY_OK) {
     return 1;
   }
   renderable = registration_Label_as_Renderable(&label);

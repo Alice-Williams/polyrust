@@ -53,26 +53,39 @@ int main(void) {
       poly_utf8_valid((poly_string_view){invalid, sizeof(invalid)}, NULL)) {
     return 1;
   }
-  if (!poly_string_clone(
+  if (poly_string_clone(
           allocator,
-          (poly_string_view){embedded_zero, sizeof(embedded_zero)}, &first) ||
-      !poly_string_clone(allocator, poly_string_borrow(&first), &clone) ||
+          (poly_string_view){embedded_zero, sizeof(embedded_zero)}, &first) !=
+          POLY_OK ||
+      poly_string_clone(allocator, poly_string_borrow(&first), &clone) !=
+          POLY_OK ||
       first.data == clone.data ||
       !poly_string_equal(poly_string_borrow(&first),
                          poly_string_borrow(&clone))) {
     return 2;
   }
-  if (!poly_string_replace_all(
+  if (poly_string_replace_all(
           allocator, (poly_string_view){source, sizeof(source)},
           (poly_string_view){needle, sizeof(needle)},
-          (poly_string_view){replacement, sizeof(replacement)}, &replaced) ||
+          (poly_string_view){replacement, sizeof(replacement)}, &replaced) !=
+          POLY_OK ||
       replaced.length != 7U || memcmp(replaced.data, "a//b//c", 7U) != 0) {
     return 3;
   }
   context.fail_at = 1U;
   if (poly_string_clone(failing, (poly_string_view){source, sizeof(source)},
-                        &(poly_string){0})) {
+                        &(poly_string){0}) != POLY_ALLOCATION_FAILED) {
     return 4;
+  }
+  if (poly_string_clone(allocator,
+                        (poly_string_view){invalid, sizeof(invalid)},
+                        &(poly_string){0}) != POLY_INVALID_UTF8 ||
+      poly_string_concat(allocator,
+                         (poly_string_view){invalid, sizeof(invalid)},
+                         (poly_string_view){source, sizeof(source)},
+                         &(poly_string){0}) != POLY_INVALID_UTF8 ||
+      poly_utf8_valid((poly_string_view){NULL, 1U}, NULL)) {
+    return 5;
   }
   poly_string_drop(&replaced);
   poly_string_drop(&clone);

@@ -445,7 +445,7 @@ impl<'a> Generator<'a> {
             let field_name = value_name(&field.header.name);
             match self.resolve_alias(&field.ty) {
                 TypeRef::String => output.push_str(&format!(
-                    "  if (!poly_string_clone(allocator, poly_string_borrow(&source->{field_name}), &result.{field_name})) {{ {name}_drop(&result); return false; }}\n"
+                    "  if (poly_string_clone(allocator, poly_string_borrow(&source->{field_name}), &result.{field_name}) != POLY_OK) {{ {name}_drop(&result); return false; }}\n"
                 )),
                 TypeRef::Bytes => output.push_str(&format!(
                     "  if (!poly_bytes_clone(allocator, poly_bytes_borrow(&source->{field_name}), &result.{field_name})) {{ {name}_drop(&result); return false; }}\n"
@@ -636,7 +636,7 @@ impl<'a> Generator<'a> {
         output.push_str(&indent(&expression.prelude, 2));
         match self.resolve_alias(return_type) {
             TypeRef::String => output.push_str(&format!(
-                "  poly_string final_value = {{0}};\n  if (!poly_string_clone(allocator, {}, &final_value)) {{ error = (poly_error){{POLY_ALLOCATION_FAILED, \"allocation failed\"}}; goto fail; }}\n",
+                "  poly_string final_value = {{0}};\n  poly_error_code final_status = poly_string_clone(allocator, {}, &final_value);\n  if (final_status != POLY_OK) {{ error = (poly_error){{final_status, final_status == POLY_INVALID_UTF8 ? \"invalid UTF-8\" : \"allocation failed\"}}; goto fail; }}\n",
                 expression.value
             )),
             TypeRef::Bytes => output.push_str(&format!(
@@ -891,7 +891,7 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                 self.cleanups
                     .push(format!("poly_string_drop(&{temporary});"));
                 let prelude = format!(
-                    "{}if ({}) {{\n{}  if (!poly_string_clone(allocator, {}, &{})) {{ error = (poly_error){{POLY_ALLOCATION_FAILED, \"allocation failed\"}}; goto fail; }}\n}} else {{\n{}  if (!poly_string_clone(allocator, {}, &{})) {{ error = (poly_error){{POLY_ALLOCATION_FAILED, \"allocation failed\"}}; goto fail; }}\n}}\n",
+                    "{}if ({}) {{\n{}  poly_error_code branch_status = poly_string_clone(allocator, {}, &{});\n  if (branch_status != POLY_OK) {{ error = (poly_error){{branch_status, branch_status == POLY_INVALID_UTF8 ? \"invalid UTF-8\" : \"allocation failed\"}}; goto fail; }}\n}} else {{\n{}  poly_error_code branch_status = poly_string_clone(allocator, {}, &{});\n  if (branch_status != POLY_OK) {{ error = (poly_error){{branch_status, branch_status == POLY_INVALID_UTF8 ? \"invalid UTF-8\" : \"allocation failed\"}}; goto fail; }}\n}}\n",
                     condition.prelude,
                     condition.value,
                     indent(&then_value.prelude, 2),
@@ -1075,8 +1075,9 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                     ),
                     _ => unreachable!(),
                 };
+                let status = self.temporary(|name| format!("poly_error_code {name} = POLY_OK;"));
                 prelude.push_str(&format!(
-                    "if (!{call}) {{ error = (poly_error){{POLY_ALLOCATION_FAILED, \"allocation or UTF-8 validation failed\"}}; goto fail; }}\n"
+                    "{status} = {call};\nif ({status} != POLY_OK) {{ error = (poly_error){{{status}, {status} == POLY_INVALID_UTF8 ? \"invalid UTF-8\" : \"allocation failed\"}}; goto fail; }}\n"
                 ));
                 scalar(
                     format!("poly_string_borrow(&{temporary})"),
@@ -1325,7 +1326,7 @@ impl Generator<'_> {
                     let name = value_name(&declaration.header.name);
                     match (&field.value, self.resolve_alias(&declaration.ty)) {
                         (Value::String(value), TypeRef::String) => output.push_str(&format!(
-                            "    if (!poly_string_clone(allocator, {}, &{variable}.{name})) {{ return {}; }}\n",
+                            "    if (poly_string_clone(allocator, {}, &{variable}.{name}) != POLY_OK) {{ return {}; }}\n",
                             string_view(value.as_bytes()),
                             100 + test_index
                         )),

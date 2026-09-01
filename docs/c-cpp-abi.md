@@ -82,9 +82,13 @@ Generated packages use an explicit allocator table:
 
 The default uses `malloc`/`realloc`/`free`. Tests inject a
 deterministically failing allocator. Allocation failure returns
-`POLYRUST_ALLOCATION_FAILED` and leaves every output in a valid droppable
+`POLY_ALLOCATION_FAILED` and leaves every output in a valid droppable
 state. Allocation ownership never crosses allocators: a value is dropped with
 the allocator that created it.
+
+Malformed borrowed string input returns `POLY_INVALID_UTF8` before any
+allocation is attempted. A non-empty view with a null data pointer is malformed;
+an empty null view is the canonical empty value.
 
 ### Contracts
 

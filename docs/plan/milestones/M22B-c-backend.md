@@ -31,5 +31,9 @@ coverage, ASan/UBSan, deterministic manifests, and all real-world native gates.
   full ownership matrix remain required before M22B is complete.
 - The foundation checkpoint passes `bazelisk test //...` with 121/121 tests and
   `bazelisk test //:release_gate` with 99/99 tests in the Linux container.
+- Runtime string operations return exact `POLY_INVALID_UTF8` and
+  `POLY_ALLOCATION_FAILED` codes, reject non-empty null views, and leave failed
+  outputs zero-initialized and droppable. The ownership and sanitizer tests
+  cover both failure classes, and the complete 121/121 plus 99/99 gates pass.
 - The eight-target 1,000-declaration benchmark emits 47 files and 2,143,600
   bytes in 423 ms with 11.80 MiB peak RSS, below both release limits.
