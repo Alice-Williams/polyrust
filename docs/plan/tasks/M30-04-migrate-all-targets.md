@@ -1,6 +1,6 @@
 # M30-04 — Migrate every target plugin
 
-- Status: in-progress
+- Status: complete
 
 ## Goal
 

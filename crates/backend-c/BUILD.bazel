@@ -133,8 +133,12 @@ cc_test(
         "src/runtime.c",
         "src/runtime.h",
         "test/runtime_ownership_test.c",
+        "test/runtime_template_preamble.h",
     ],
-    copts = C_COPTS,
+    copts = C_COPTS + [
+        "-include",
+        "crates/backend-c/test/runtime_template_preamble.h",
+    ],
     includes = ["src"],
     linkopts = ["-lm"],
     visibility = ["//visibility:public"],

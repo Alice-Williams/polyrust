@@ -20,7 +20,7 @@ not an accepted exception.
 | Go | Pass: validated path IR; renderer alone spells `import` | Pass: `GoCode` composes types, values, declarations, and portable tests | Pass: exact common/integer/F64/bytes/text helper roots | Pass: every generated Go source role uses a source file | Pass: F64 values own `math`; the nested-value repair scan is deleted | **Pass** |
 | Java | Pass: validated kind/name IR; renderer alone spells `import` | Pass: nested type and declaration `JavaCode` fragments own imports | Pass: checked-program roots resolve ordered common, numeric, and UTF-8 helper closures | Pass: every generated Java source role uses a source file | Pass: source and runtime dependencies originate in the fragment that emits dependent syntax | **Pass** |
 | C++ | Pass: validated system/local include IR; renderer alone spells directives | Pass: `CppCode` composes types, declarations, definitions, conversions, and tests | Pass: source-owned roots resolve marked model/JSON/engine runtime nodes | Pass: every generated C++ source role uses a source file | Pass: declaration/capability repair scans and fixed runtime inventory are deleted | **Pass** |
-| C | Pass: renderer owns stripped system/local includes | Fail: generator returns file-sized strings | Fail: runtime header/source use fixed inventories | Pass: generated C code uses source files | Partial: dependencies are attached only at file-unit scope | **Fail** |
+| C | Pass: validated system/local include IR; renderer alone spells directives | Pass: `CCode` composes ABI types, declarations, definitions, ownership, expressions, values, and tests | Pass: exact core and optional semantic runtime-helper closure | Pass: every generated C source role uses a source file | Pass: syntax-producing mappings directly own includes and helper roots | **Pass** |
 
 The audit deliberately does not infer compliance from successful compilation.
 The current full and release gates prove functional generated output; they do
@@ -44,8 +44,9 @@ not prove dependency completeness or minimality.
 - C++ fragments and marked runtime-helper closure:
   `crates/backend-cpp/src/lib.rs` and
   `crates/backend-cpp/src/runtime.hpp`.
-- C fixed runtime/file-level requirements:
-  `crates/backend-c/src/lib.rs`.
+- C fragments and marked runtime-helper closure:
+  `crates/backend-c/src/lib.rs`, `crates/backend-c/src/generator.rs`,
+  `crates/backend-c/src/runtime.h`, and `crates/backend-c/src/runtime.c`.
 
 ## Closure rule
 
@@ -178,3 +179,23 @@ all generated packages remain functionally equivalent, and hosted CI is green.
 - Three-generation determinism, generated C++20 warnings-as-errors,
   conformance, public-consumer, style, ASan/UBSan, Rustfmt, Clippy, and all 130
   real-world tests pass.
+
+### C fragments and runtime (M30-04F)
+
+- `CImport` privately stores validated system/local include paths. Empty,
+  rooted, traversal, malformed, non-header local, and rendered-directive forms
+  are rejected; only `CRenderer` spells `#include`.
+- `CCode` carries syntax, structured includes, and runtime roots through ABI
+  types, declarations, definitions, ownership helpers, expressions, literals,
+  portable-test values, and result assertions. Dependency-free name allocation
+  and indentation remain spelling helpers rather than dependency boundaries.
+- Marked runtime header/source sections form deterministic core, F64, string,
+  bytes, replacement, truncation, and trimming helper nodes. Programs select
+  roots from the fragments that emit calls; the fixed all-features runtime root
+  and fixed include inventories are deleted.
+- Empty and primitive/composite ABI matrices prove exact includes. Core and
+  one-feature runtime matrices prove positive and negative helper/import
+  closure, marker removal, and minimal-program exclusion of optional nodes.
+- Three-generation determinism, header self-containment, C17
+  warnings-as-errors, ABI/ownership, native, conformance, public-consumer,
+  style, ASan/UBSan, Rustfmt, Clippy, and all 130 real-world tests pass.

@@ -4,7 +4,7 @@
 
 mod generator;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use generator::Generator;
 use portable_check::v0::{Capability, CheckedProgram};
@@ -13,7 +13,7 @@ use portable_codegen::{
     DeclaredDependency, Document as CodeDocument, FileGroup, FileGroupId, FileRole, ImportGroup,
     ImportSet, InjectedHelper, IrVersionRange, LanguageFile, LanguageFragment, LanguagePackage,
     LanguagePlugin, LanguageRenderer, LanguageSourceFile, OptionsSchema, OutputManifest, RawText,
-    TargetId, generate_with_plugin,
+    RuntimeHelper, RuntimeHelperGraph, TargetId, generate_with_plugin,
 };
 use portable_ir::v0::IrVersion;
 
@@ -69,8 +69,50 @@ impl Backend for CBackend {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[doc(hidden)]
 pub struct CImport {
-    path: &'static str,
-    system: bool,
+    kind: CImportKind,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum CImportKind {
+    System { path: String },
+    Local { path: String },
+}
+
+impl CImport {
+    pub fn system(path: &str) -> Result<Self, String> {
+        validate_c_include(path, false)?;
+        Ok(Self {
+            kind: CImportKind::System {
+                path: path.to_owned(),
+            },
+        })
+    }
+
+    pub fn local(path: &str) -> Result<Self, String> {
+        validate_c_include(path, true)?;
+        Ok(Self {
+            kind: CImportKind::Local {
+                path: path.to_owned(),
+            },
+        })
+    }
+}
+
+fn validate_c_include(path: &str, local: bool) -> Result<(), String> {
+    let valid = !path.is_empty()
+        && !path.starts_with('/')
+        && !path.ends_with('/')
+        && !path.contains("//")
+        && !path.split('/').any(|segment| matches!(segment, "." | ".."))
+        && path.chars().all(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '.' | '/')
+        })
+        && (!local || path.ends_with(".h"));
+    if valid {
+        Ok(())
+    } else {
+        Err(format!("invalid C include path {path:?}"))
+    }
 }
 
 #[doc(hidden)]
@@ -83,18 +125,107 @@ impl LanguageRenderer<CImport> for CRenderer {
             .map(|(_, imports)| {
                 imports
                     .iter()
-                    .map(|import| {
-                        if import.system {
-                            format!("#include <{}>", import.path)
-                        } else {
-                            format!("#include {:?}", import.path)
-                        }
+                    .map(|import| match &import.kind {
+                        CImportKind::System { path } => format!("#include <{path}>"),
+                        CImportKind::Local { path } => format!("#include {path:?}"),
                     })
                     .collect::<Vec<_>>()
                     .join("\n")
             })
             .collect::<Vec<_>>();
         Ok(CodeDocument::raw_text(RawText::new(groups.join("\n\n"))))
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct CCode {
+    pub(crate) text: String,
+    pub(crate) imports: BTreeSet<(ImportGroup, CImport)>,
+    pub(crate) helper_roots: BTreeSet<String>,
+}
+
+impl CCode {
+    pub(crate) fn new(text: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            ..Self::default()
+        }
+    }
+
+    pub(crate) fn with_system(mut self, path: &str) -> Self {
+        self.imports.insert((
+            c_system_group(),
+            CImport::system(path).expect("static C system include is valid"),
+        ));
+        self
+    }
+
+    pub(crate) fn with_local(mut self, path: &str) -> Self {
+        self.imports.insert((
+            c_local_group(),
+            CImport::local(path).expect("static C local include is valid"),
+        ));
+        self
+    }
+
+    pub(crate) fn with_helper_root(mut self, helper: impl Into<String>) -> Self {
+        self.helper_roots.insert(helper.into());
+        self
+    }
+
+    pub(crate) fn sequence(fragments: impl IntoIterator<Item = Self>) -> Self {
+        fragments
+            .into_iter()
+            .fold(Self::default(), |mut combined, fragment| {
+                combined.text.push_str(&fragment.text);
+                combined.imports.extend(fragment.imports);
+                combined.helper_roots.extend(fragment.helper_roots);
+                combined
+            })
+    }
+
+    pub(crate) fn joined(fragments: impl IntoIterator<Item = Self>, separator: &str) -> Self {
+        let mut fragments = fragments.into_iter();
+        let Some(first) = fragments.next() else {
+            return Self::default();
+        };
+        fragments.fold(first, |mut combined, fragment| {
+            combined.text.push_str(separator);
+            combined.text.push_str(&fragment.text);
+            combined.imports.extend(fragment.imports);
+            combined.helper_roots.extend(fragment.helper_roots);
+            combined
+        })
+    }
+
+    pub(crate) fn map_text(mut self, map: impl FnOnce(String) -> String) -> Self {
+        self.text = map(self.text);
+        self
+    }
+
+    pub(crate) fn with_text_from(mut self, dependencies: impl IntoIterator<Item = Self>) -> Self {
+        for dependency in dependencies {
+            self.imports.extend(dependency.imports);
+            self.helper_roots.extend(dependency.helper_roots);
+        }
+        self
+    }
+
+    fn into_fragment(self) -> LanguageFragment<CImport> {
+        let mut fragment = LanguageFragment::new(CodeDocument::raw_text(RawText::new(self.text)));
+        for (group, import) in self.imports {
+            fragment.require_import(group, import);
+        }
+        for helper in self.helper_roots {
+            fragment = fragment.with_helper_root(helper);
+        }
+        fragment
+    }
+}
+
+impl std::fmt::Display for CCode {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&self.text)
     }
 }
 
@@ -109,6 +240,13 @@ impl LanguagePlugin for CBackend {
     ) -> Result<LanguagePackage<Self::Import>, BackendError> {
         let generator = Generator::new(program);
         generator.validate()?;
+        let header = generator.header();
+        let source = generator.source()?;
+        let tests = generator.tests()?;
+        let mut runtime_roots = BTreeSet::from(["runtime.core".to_owned()]);
+        runtime_roots.extend(header.helper_roots.iter().cloned());
+        runtime_roots.extend(source.helper_roots.iter().cloned());
+        runtime_roots.extend(tests.helper_roots.iter().cloned());
         let helpers = program
             .capabilities()
             .program()
@@ -136,23 +274,23 @@ impl LanguagePlugin for CBackend {
                 FileGroup::new(
                     c_group("runtime")?,
                     vec![
-                        LanguageFile::source(c_runtime_header_file()),
-                        LanguageFile::source(c_runtime_source_file()),
+                        LanguageFile::source(c_runtime_header_file(&runtime_roots)?),
+                        LanguageFile::source(c_runtime_source_file(&runtime_roots)?),
                     ],
                 )
                 .map_err(c_generation_error)?,
                 FileGroup::new(
                     c_group("source")?,
                     vec![
-                        LanguageFile::source(c_generated_header_file(&generator)),
-                        LanguageFile::source(c_generated_source_file(&generator)?),
+                        LanguageFile::source(c_generated_header_file(&generator, header)),
+                        LanguageFile::source(c_generated_source_file(source)),
                     ],
                 )
                 .map_err(c_generation_error)?,
                 FileGroup::new(
                     c_group("tests")?,
                     vec![
-                        LanguageFile::source(c_generated_test_file(&generator)?),
+                        LanguageFile::source(c_generated_test_file(tests)),
                         LanguageFile::source(c_conformance_file()),
                     ],
                 )
@@ -187,123 +325,212 @@ fn c_local_group() -> ImportGroup {
     ImportGroup::new(20, "local-headers").expect("static import group is valid")
 }
 
-fn require_c_system(unit: &mut LanguageFragment<CImport>, path: &'static str) {
-    unit.require_import(c_system_group(), CImport { path, system: true });
+fn guarded_preamble(guard: &str, comment: &str) -> CCode {
+    CCode::new(format!("#ifndef {guard}\n#define {guard}\n\n{comment}"))
 }
 
-fn require_c_local(unit: &mut LanguageFragment<CImport>, path: &'static str) {
-    unit.require_import(
-        c_local_group(),
-        CImport {
-            path,
-            system: false,
-        },
-    );
+fn guarded_epilogue(guard: &str) -> CCode {
+    CCode::new(format!("#endif /* {guard} */"))
 }
 
-fn guarded_preamble(guard: &str, comment: &str) -> CodeDocument {
-    CodeDocument::raw_text(RawText::new(format!(
-        "#ifndef {guard}\n#define {guard}\n\n{comment}"
-    )))
-}
-
-fn guarded_epilogue(guard: &str) -> CodeDocument {
-    CodeDocument::raw_text(RawText::new(format!("#endif /* {guard} */")))
-}
-
-fn c_runtime_header_file() -> LanguageSourceFile<CImport> {
+fn c_runtime_header_file(
+    roots: &BTreeSet<String>,
+) -> Result<LanguageSourceFile<CImport>, BackendError> {
     const GUARD: &str = "POLYRUST_RUNTIME_H";
     let mut file = LanguageSourceFile::new("src/runtime.h", FileRole::Runtime);
-    file.set_preamble(LanguageFragment::new(guarded_preamble(
-        GUARD,
-        "/* Dependency-free C17 ownership runtime copied into generated packages. */",
-    )));
-    let mut body = LanguageFragment::new(CodeDocument::raw_text(RawText::new(
-        c_runtime_header_body(),
-    )));
-    for header in ["stdbool.h", "stddef.h", "stdint.h"] {
-        require_c_system(&mut body, header);
-    }
-    file.set_body(body);
-    file.set_epilogue(LanguageFragment::new(guarded_epilogue(GUARD)));
-    file
+    file.set_preamble(
+        guarded_preamble(
+            GUARD,
+            "/* Dependency-free C17 ownership runtime copied into generated packages. */",
+        )
+        .into_fragment(),
+    );
+    file.set_body(
+        c_runtime_helper_graph(RUNTIME_H, RuntimeTemplate::Header)?
+            .resolve(roots.iter().cloned())
+            .map_err(c_generation_error)?,
+    );
+    file.set_epilogue(guarded_epilogue(GUARD).into_fragment());
+    Ok(file)
 }
 
-fn c_runtime_source_file() -> LanguageSourceFile<CImport> {
+fn c_runtime_source_file(
+    roots: &BTreeSet<String>,
+) -> Result<LanguageSourceFile<CImport>, BackendError> {
     let mut file = LanguageSourceFile::new("src/runtime.c", FileRole::Runtime);
-    let mut body = LanguageFragment::new(CodeDocument::raw_text(RawText::new(
-        c_runtime_source_body(),
-    )));
-    require_c_system(&mut body, "math.h");
-    require_c_system(&mut body, "stdlib.h");
-    require_c_system(&mut body, "string.h");
-    require_c_local(&mut body, "runtime.h");
-    file.set_body(body);
-    file
+    file.set_body(
+        c_runtime_helper_graph(RUNTIME_C, RuntimeTemplate::Source)?
+            .resolve(roots.iter().cloned())
+            .map_err(c_generation_error)?,
+    );
+    Ok(file)
 }
 
-fn c_generated_header_file(generator: &Generator<'_>) -> LanguageSourceFile<CImport> {
+#[derive(Clone, Copy)]
+enum RuntimeTemplate {
+    Header,
+    Source,
+}
+
+fn c_runtime_helper_graph(
+    template: &str,
+    kind: RuntimeTemplate,
+) -> Result<RuntimeHelperGraph<CImport>, BackendError> {
+    const BEGIN: &str = "/* POLYRUST-BEGIN ";
+    const END: &str = "/* POLYRUST-END ";
+    let mut helpers = Vec::new();
+    let mut active: Option<String> = None;
+    let mut source = String::new();
+    let mut order = 0_u16;
+    for line in template.split_inclusive('\n') {
+        let marker = line.trim().trim_end_matches('\r');
+        if let Some(id) = marker
+            .strip_prefix(BEGIN)
+            .and_then(|value| value.strip_suffix(" */"))
+        {
+            if active.is_some() || !source.trim().is_empty() {
+                return Err(c_generation_error(format!(
+                    "invalid nested or unowned C runtime helper marker {id:?}"
+                )));
+            }
+            active = Some(id.to_owned());
+        } else if let Some(id) = marker
+            .strip_prefix(END)
+            .and_then(|value| value.strip_suffix(" */"))
+        {
+            let Some(open) = active.take() else {
+                return Err(c_generation_error(format!(
+                    "unmatched C runtime helper end marker {id:?}"
+                )));
+            };
+            if open != id || source.trim().is_empty() {
+                return Err(c_generation_error(format!(
+                    "invalid C runtime helper marker {open:?} closed by {id:?}"
+                )));
+            }
+            helpers.push(RuntimeHelper::new(
+                open.clone(),
+                order,
+                c_runtime_section(kind, &open, std::mem::take(&mut source))?.into_fragment(),
+            ));
+            order = order
+                .checked_add(1)
+                .expect("C runtime helper order fits u16");
+        } else if active.is_some() {
+            source.push_str(line);
+        } else if !marker.is_empty() {
+            return Err(c_generation_error("C runtime text lacks a helper owner"));
+        }
+    }
+    if let Some(open) = active {
+        return Err(c_generation_error(format!(
+            "unclosed C runtime helper marker {open:?}"
+        )));
+    }
+    let core_dependencies = match kind {
+        RuntimeTemplate::Header => vec!["runtime.core.types"],
+        RuntimeTemplate::Source => vec![
+            "runtime.core.allocator",
+            "runtime.core.views",
+            "runtime.core.utf8",
+            "runtime.core.ownership",
+        ],
+    };
+    helpers.push(RuntimeHelper::new(
+        "runtime.core",
+        u16::MAX - 2,
+        core_dependencies
+            .into_iter()
+            .fold(CCode::default(), |code, root| code.with_helper_root(root))
+            .into_fragment(),
+    ));
+    RuntimeHelperGraph::new(helpers).map_err(c_generation_error)
+}
+
+fn c_runtime_section(
+    kind: RuntimeTemplate,
+    id: &str,
+    source: String,
+) -> Result<CCode, BackendError> {
+    let code = CCode::new(source);
+    let code = match (kind, id) {
+        (RuntimeTemplate::Header, "runtime.core.types") => code
+            .with_system("stdbool.h")
+            .with_system("stddef.h")
+            .with_system("stdint.h"),
+        (RuntimeTemplate::Header, "runtime.feature.f64") => code
+            .with_system("stdbool.h")
+            .with_system("stdint.h")
+            .with_helper_root("runtime.core"),
+        (RuntimeTemplate::Header, "runtime.feature.string-predicates") => code
+            .with_system("stdbool.h")
+            .with_helper_root("runtime.core"),
+        (RuntimeTemplate::Header, "runtime.feature.string-replace-many") => code
+            .with_system("stddef.h")
+            .with_helper_root("runtime.core"),
+        (RuntimeTemplate::Header, id) if id.starts_with("runtime.feature.") => {
+            code.with_helper_root("runtime.core")
+        }
+        (RuntimeTemplate::Source, "runtime.core.allocator") => {
+            code.with_system("stdlib.h").with_local("runtime.h")
+        }
+        (RuntimeTemplate::Source, "runtime.core.ownership") => code.with_system("string.h"),
+        (RuntimeTemplate::Source, "runtime.core.views" | "runtime.core.utf8") => code,
+        (RuntimeTemplate::Source, "runtime.feature.f64") => code
+            .with_system("math.h")
+            .with_system("string.h")
+            .with_helper_root("runtime.core"),
+        (RuntimeTemplate::Source, "runtime.feature.string-strip-prefix") => code
+            .with_helper_root("runtime.core")
+            .with_helper_root("runtime.feature.string-predicates"),
+        (RuntimeTemplate::Source, id) if id.starts_with("runtime.feature.") => code
+            .with_system("string.h")
+            .with_helper_root("runtime.core"),
+        _ => {
+            return Err(c_generation_error(format!(
+                "unknown C runtime helper {id:?}"
+            )));
+        }
+    };
+    Ok(code)
+}
+
+fn c_generated_header_file(generator: &Generator<'_>, body: CCode) -> LanguageSourceFile<CImport> {
     let guard = generator.header_guard();
     let mut file = LanguageSourceFile::new("src/generated.h", FileRole::Source);
-    file.set_preamble(LanguageFragment::new(guarded_preamble(
-        &guard,
-        "/* Generated by PolyRust from checked IR v0. */",
-    )));
-    let mut body = LanguageFragment::new(CodeDocument::raw_text(RawText::new(generator.header())));
-    require_c_local(&mut body, "runtime.h");
-    file.set_body(body);
-    file.set_epilogue(LanguageFragment::new(guarded_epilogue(&guard)));
+    file.set_preamble(
+        guarded_preamble(&guard, "/* Generated by PolyRust from checked IR v0. */").into_fragment(),
+    );
+    file.set_body(body.with_local("runtime.h").into_fragment());
+    file.set_epilogue(guarded_epilogue(&guard).into_fragment());
     file
 }
 
-fn c_generated_source_file(
-    generator: &Generator<'_>,
-) -> Result<LanguageSourceFile<CImport>, BackendError> {
+fn c_generated_source_file(body: CCode) -> LanguageSourceFile<CImport> {
     let mut file = LanguageSourceFile::new("src/generated.c", FileRole::Source);
-    file.set_preamble(LanguageFragment::new(CodeDocument::raw_text(RawText::new(
-        "/* Generated by PolyRust from checked IR v0. */",
-    ))));
-    let mut body = LanguageFragment::new(CodeDocument::raw_text(RawText::new(generator.source()?)));
-    require_c_system(&mut body, "string.h");
-    require_c_local(&mut body, "generated.h");
-    file.set_body(body);
-    Ok(file)
+    file.set_preamble(
+        CCode::new("/* Generated by PolyRust from checked IR v0. */").into_fragment(),
+    );
+    file.set_body(body.with_local("generated.h").into_fragment());
+    file
 }
 
-fn c_generated_test_file(
-    generator: &Generator<'_>,
-) -> Result<LanguageSourceFile<CImport>, BackendError> {
+fn c_generated_test_file(body: CCode) -> LanguageSourceFile<CImport> {
     let mut file = LanguageSourceFile::new("tests/generated_test.c", FileRole::Test);
-    let mut body = LanguageFragment::new(CodeDocument::raw_text(RawText::new(generator.tests()?)));
-    require_c_system(&mut body, "string.h");
-    require_c_local(&mut body, "generated.h");
-    file.set_body(body);
-    Ok(file)
+    file.set_body(body.with_local("generated.h").into_fragment());
+    file
 }
 
 fn c_conformance_file() -> LanguageSourceFile<CImport> {
     let mut file = LanguageSourceFile::new("tests/conformance_test.c", FileRole::Conformance);
-    let mut body = LanguageFragment::new(CodeDocument::raw_text(RawText::new(CONFORMANCE_BODY)));
-    require_c_system(&mut body, "limits.h");
-    require_c_local(&mut body, "runtime.h");
-    file.set_body(body);
+    file.set_body(
+        CCode::new(CONFORMANCE_BODY)
+            .with_system("limits.h")
+            .with_local("runtime.h")
+            .with_helper_root("runtime.core")
+            .into_fragment(),
+    );
     file
-}
-
-fn c_runtime_header_body() -> &'static str {
-    const PREFIX: &str = "#ifndef POLYRUST_RUNTIME_H\n#define POLYRUST_RUNTIME_H\n\n/* Dependency-free C17 ownership runtime copied into generated packages. */\n\n#include <stdbool.h>\n#include <stddef.h>\n#include <stdint.h>\n\n";
-    RUNTIME_H
-        .strip_prefix(PREFIX)
-        .and_then(|body| body.strip_suffix("\n#endif\n"))
-        .expect("checked-in C runtime header wrapper matches language IR")
-}
-
-fn c_runtime_source_body() -> &'static str {
-    const PREFIX: &str =
-        "#include \"runtime.h\"\n\n#include <math.h>\n#include <stdlib.h>\n#include <string.h>\n\n";
-    RUNTIME_C
-        .strip_prefix(PREFIX)
-        .expect("checked-in C runtime source wrapper matches language IR")
 }
 
 const README: &str = "# Generated PolyRust C17 package\n\nDependency-free C17 source with borrowed inputs, allocator-owned outputs, and explicit portable results.\n";
@@ -323,6 +550,7 @@ const CONFORMANCE_BODY: &str = r#"int main(void) {
 mod tests {
     use super::*;
     use portable_codegen::OutputContents;
+    use portable_ir::v0::TypeRef;
 
     #[test]
     fn descriptor_and_manifest_are_deterministic() {
@@ -334,7 +562,11 @@ mod tests {
         let second = CBackend
             .generate(&checked, &BackendOptions::default())
             .unwrap();
+        let third = CBackend
+            .generate(&checked, &BackendOptions::default())
+            .unwrap();
         assert_eq!(first.canonical_json(), second.canonical_json());
+        assert_eq!(second.canonical_json(), third.canonical_json());
         assert!(first.dependencies().is_empty());
         assert!(first.file("src/generated.c").is_some());
     }
@@ -361,6 +593,135 @@ mod tests {
         assert!(header.contains("struct abi_shapes_result__option__string__bytes"));
         assert!(header.contains("typedef enum abi_shapes_Choice_tag"));
         assert!(!header.contains("void *"));
+    }
+
+    #[test]
+    fn c_includes_and_abi_types_are_validated_fragments() {
+        for header in ["stdbool.h", "sys/types.h", "generated.h"] {
+            let result = if header == "generated.h" {
+                CImport::local(header)
+            } else {
+                CImport::system(header)
+            };
+            assert!(result.is_ok(), "{header}");
+        }
+        for header in [
+            "",
+            "../escape.h",
+            "/absolute.h",
+            "bad\\path.h",
+            "x.h>\n#include <y",
+        ] {
+            assert!(CImport::system(header).is_err(), "{header}");
+            assert!(CImport::local(header).is_err(), "{header}");
+        }
+        assert!(CImport::local("not_a_header.hpp").is_err());
+
+        let program = fixture();
+        let generator = Generator::new(&program);
+        for (ty, expected_text, expected_headers) in [
+            (TypeRef::Unit, "registration_unit", &[][..]),
+            (TypeRef::Bool, "bool", &["stdbool.h"][..]),
+            (TypeRef::I64, "int64_t", &["stdint.h"][..]),
+            (TypeRef::String, "poly_string", &[][..]),
+        ] {
+            let code = generator.ty(&ty);
+            assert_eq!(code.text, expected_text);
+            assert_eq!(system_headers(&code), string_set(expected_headers));
+        }
+        for (ty, expected_headers) in [
+            (
+                TypeRef::List(Box::new(TypeRef::I64)),
+                &["stdbool.h", "stddef.h", "stdint.h"][..],
+            ),
+            (
+                TypeRef::Option(Box::new(TypeRef::String)),
+                &["stdbool.h"][..],
+            ),
+            (
+                TypeRef::Result {
+                    ok: Box::new(TypeRef::Bytes),
+                    error: Box::new(TypeRef::String),
+                },
+                &["stdbool.h"][..],
+            ),
+        ] {
+            let code = generator.composite_shape_header(&ty);
+            assert_eq!(system_headers(&code), string_set(expected_headers));
+            assert!(code.helper_roots.contains("runtime.core"));
+        }
+    }
+
+    #[test]
+    fn c_runtime_helper_matrix_is_exact_and_minimal() {
+        let core = string_set(&["runtime.core"]);
+        let header = render_runtime_header(&core);
+        assert_eq!(
+            include_headers(&header),
+            string_set(&["stdbool.h", "stddef.h", "stdint.h"])
+        );
+        assert!(!header.contains("poly_f64_trunc"));
+        assert!(!header.contains("poly_string_replace_all"));
+        let source = render_runtime_source(&core);
+        assert_eq!(
+            include_headers(&source),
+            string_set(&["stdlib.h", "string.h"])
+        );
+        assert_eq!(source.matches("#include \"runtime.h\"").count(), 1);
+        assert!(!source.contains("POLYRUST-"));
+        assert!(!source.contains("poly_f64_trunc"));
+
+        for (root, present, absent) in [
+            (
+                "runtime.feature.f64",
+                "poly_f64_trunc",
+                "poly_string_replace_all",
+            ),
+            (
+                "runtime.feature.string-replace-all",
+                "poly_string_replace_all",
+                "poly_bytes_replace_all",
+            ),
+            (
+                "runtime.feature.bytes-replace-all",
+                "poly_bytes_replace_all",
+                "poly_string_replace_many",
+            ),
+            (
+                "runtime.feature.string-replace-many",
+                "poly_string_replace_many",
+                "poly_string_truncate_utf8_bytes",
+            ),
+            (
+                "runtime.feature.string-truncate-utf8",
+                "poly_string_truncate_utf8_bytes",
+                "poly_string_trim_start",
+            ),
+            (
+                "runtime.feature.string-trim",
+                "poly_string_trim_start",
+                "poly_string_replace_all",
+            ),
+        ] {
+            let roots = string_set(&[root]);
+            let rendered = render_runtime_source(&roots);
+            assert!(rendered.contains(present), "{root} lacks {present}");
+            assert!(!rendered.contains(absent), "{root} includes {absent}");
+            assert!(!rendered.contains("POLYRUST-"));
+            if root == "runtime.feature.f64" {
+                assert!(rendered.contains("#include <math.h>"));
+            } else {
+                assert!(!rendered.contains("#include <math.h>"));
+            }
+        }
+
+        let manifest = CBackend
+            .generate(&fixture(), &BackendOptions::default())
+            .unwrap();
+        let minimal = generated_text(&manifest, "src/runtime.c");
+        assert!(!minimal.contains("poly_string_replace_all"));
+        assert!(!minimal.contains("poly_f64_trunc"));
+        assert!(!minimal.contains("#include <math.h>"));
     }
 
     #[test]
@@ -396,7 +757,7 @@ mod tests {
             generated_source.matches("#include \"generated.h\"").count(),
             1
         );
-        assert_eq!(generated_source.matches("#include <string.h>").count(), 1);
+        assert!(!generated_source.contains("#include <string.h>"));
         let conformance = generated_text(&manifest, "tests/conformance_test.c");
         assert_eq!(conformance.matches("#include <limits.h>").count(), 1);
         assert!(!conformance.contains("#include <string.h>"));
@@ -407,6 +768,49 @@ mod tests {
             OutputContents::Text(text) => text,
             OutputContents::Bytes(_) => panic!("C source must be text"),
         }
+    }
+
+    fn system_headers(code: &CCode) -> BTreeSet<String> {
+        code.imports
+            .iter()
+            .filter_map(|(_, import)| match &import.kind {
+                CImportKind::System { path } => Some(path.clone()),
+                CImportKind::Local { .. } => None,
+            })
+            .collect()
+    }
+
+    fn string_set(values: &[&str]) -> BTreeSet<String> {
+        values.iter().map(|value| (*value).to_owned()).collect()
+    }
+
+    fn include_headers(source: &str) -> BTreeSet<String> {
+        source
+            .lines()
+            .filter_map(|line| line.strip_prefix("#include <")?.strip_suffix('>'))
+            .map(str::to_owned)
+            .collect()
+    }
+
+    fn render_runtime_header(roots: &BTreeSet<String>) -> String {
+        render_source_file(c_runtime_header_file(roots).unwrap(), "src/runtime.h")
+    }
+
+    fn render_runtime_source(roots: &BTreeSet<String>) -> String {
+        render_source_file(c_runtime_source_file(roots).unwrap(), "src/runtime.c")
+    }
+
+    fn render_source_file(file: LanguageSourceFile<CImport>, path: &str) -> String {
+        let group = FileGroup::new(
+            FileGroupId::parse("test").unwrap(),
+            vec![LanguageFile::source(file)],
+        )
+        .unwrap();
+        let package =
+            LanguagePackage::new(vec![group], Vec::<DeclaredDependency>::new(), Vec::new())
+                .unwrap();
+        let manifest = portable_codegen::render_language_package(&package, &CRenderer).unwrap();
+        generated_text(&manifest, path).to_owned()
     }
 
     fn fixture() -> CheckedProgram {

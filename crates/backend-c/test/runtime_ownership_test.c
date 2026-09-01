@@ -1,4 +1,6 @@
+#ifndef POLYRUST_RUNTIME_TEMPLATE_INCLUDED
 #include "runtime.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>

@@ -1,6 +1,6 @@
 # M30-05 — Enforce the import boundary and release
 
-- Status: planned
+- Status: in-progress
 
 ## Goal
 

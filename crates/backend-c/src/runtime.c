@@ -1,9 +1,4 @@
-#include "runtime.h"
-
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
-
+/* POLYRUST-BEGIN runtime.core.allocator */
 static void *default_allocate(void *context, size_t size) {
   (void)context;
   return malloc(size);
@@ -24,7 +19,9 @@ poly_allocator poly_default_allocator(void) {
                            default_deallocate};
   return result;
 }
+/* POLYRUST-END runtime.core.allocator */
 
+/* POLYRUST-BEGIN runtime.feature.f64 */
 double poly_f64_from_bits(uint64_t bits) {
   double result;
   memcpy(&result, &bits, sizeof(result));
@@ -49,7 +46,9 @@ bool poly_f64_test_equal(double left, double right) {
   return (isnan(left) && isnan(right)) ||
          poly_f64_bits(left) == poly_f64_bits(right);
 }
+/* POLYRUST-END runtime.feature.f64 */
 
+/* POLYRUST-BEGIN runtime.core.views */
 poly_string_view poly_string_borrow(const poly_string *value) {
   poly_string_view result = {value->data, value->length};
   return result;
@@ -59,7 +58,9 @@ poly_bytes_view poly_bytes_borrow(const poly_bytes *value) {
   poly_bytes_view result = {value->data, value->length};
   return result;
 }
+/* POLYRUST-END runtime.core.views */
 
+/* POLYRUST-BEGIN runtime.core.utf8 */
 static bool valid_scalar(const uint8_t *data, size_t remaining, size_t *width) {
   uint8_t first;
   uint32_t scalar;
@@ -123,7 +124,9 @@ bool poly_utf8_valid(poly_string_view value, size_t *scalar_count) {
   }
   return true;
 }
+/* POLYRUST-END runtime.core.utf8 */
 
+/* POLYRUST-BEGIN runtime.core.ownership */
 static bool bytes_clone(poly_allocator allocator, const uint8_t *source,
                         size_t length, uint8_t **output) {
   uint8_t *data;
@@ -215,7 +218,9 @@ bool poly_string_equal(poly_string_view left, poly_string_view right) {
 bool poly_bytes_equal(poly_bytes_view left, poly_bytes_view right) {
   return view_equal(left.data, left.length, right.data, right.length);
 }
+/* POLYRUST-END runtime.core.ownership */
 
+/* POLYRUST-BEGIN runtime.feature.string-predicates */
 bool poly_string_starts_with(poly_string_view source, poly_string_view prefix) {
   return prefix.length <= source.length &&
          view_equal(source.data, prefix.length, prefix.data, prefix.length);
@@ -246,7 +251,9 @@ bool poly_string_contains(poly_string_view source, poly_string_view needle) {
   }
   return false;
 }
+/* POLYRUST-END runtime.feature.string-predicates */
 
+/* POLYRUST-BEGIN runtime.feature.string-strip-prefix */
 poly_error_code poly_string_strip_prefix(poly_allocator allocator,
                                          poly_string_view source,
                                          poly_string_view prefix,
@@ -260,7 +267,9 @@ poly_error_code poly_string_strip_prefix(poly_allocator allocator,
   }
   return poly_string_clone(allocator, source, output);
 }
+/* POLYRUST-END runtime.feature.string-strip-prefix */
 
+/* POLYRUST-BEGIN runtime.feature.string-concat */
 poly_error_code poly_string_concat(poly_allocator allocator,
                                    poly_string_view left,
                                    poly_string_view right,
@@ -299,7 +308,9 @@ poly_error_code poly_string_concat(poly_allocator allocator,
   *output = result;
   return POLY_OK;
 }
+/* POLYRUST-END runtime.feature.string-concat */
 
+/* POLYRUST-BEGIN runtime.feature.string-replace-all */
 static size_t count_occurrences(poly_string_view source,
                                 poly_string_view needle) {
   size_t count = 0U;
@@ -416,7 +427,9 @@ poly_error_code poly_string_replace_all(poly_allocator allocator,
   *output = result;
   return POLY_OK;
 }
+/* POLYRUST-END runtime.feature.string-replace-all */
 
+/* POLYRUST-BEGIN runtime.feature.bytes-replace-all */
 poly_error_code poly_bytes_replace_all(poly_allocator allocator,
                                        poly_bytes_view source,
                                        poly_bytes_view needle,
@@ -505,7 +518,9 @@ poly_error_code poly_bytes_replace_all(poly_allocator allocator,
   *output = result;
   return POLY_OK;
 }
+/* POLYRUST-END runtime.feature.bytes-replace-all */
 
+/* POLYRUST-BEGIN runtime.feature.string-replace-many */
 static size_t first_mapping_at(poly_string_view source, size_t offset,
                                const poly_string_view *needles,
                                size_t mapping_count) {
@@ -631,7 +646,9 @@ poly_error_code poly_string_replace_many(poly_allocator allocator,
   *output = result;
   return POLY_OK;
 }
+/* POLYRUST-END runtime.feature.string-replace-many */
 
+/* POLYRUST-BEGIN runtime.feature.string-truncate-utf8 */
 poly_error_code poly_string_truncate_utf8_bytes(poly_allocator allocator,
                                                 poly_string_view source,
                                                 double budget,
@@ -667,7 +684,9 @@ poly_error_code poly_string_truncate_utf8_bytes(poly_allocator allocator,
       (poly_string_view){source.data, prefix_length},
       output);
 }
+/* POLYRUST-END runtime.feature.string-truncate-utf8 */
 
+/* POLYRUST-BEGIN runtime.feature.string-trim */
 static bool scalar_in(poly_string_view characters, const uint8_t *scalar,
                       size_t width) {
   size_t offset = 0U;
@@ -724,3 +743,4 @@ poly_error_code poly_string_trim_end(poly_allocator allocator,
   source.length = keep;
   return poly_string_clone(allocator, source, output);
 }
+/* POLYRUST-END runtime.feature.string-trim */

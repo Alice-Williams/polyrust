@@ -1,12 +1,4 @@
-#ifndef POLYRUST_RUNTIME_H
-#define POLYRUST_RUNTIME_H
-
-/* Dependency-free C17 ownership runtime copied into generated packages. */
-
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
+/* POLYRUST-BEGIN runtime.core.types */
 typedef void *(*poly_allocate_fn)(void *context, size_t size);
 typedef void *(*poly_reallocate_fn)(void *context, void *pointer, size_t size);
 typedef void (*poly_deallocate_fn)(void *context, void *pointer);
@@ -61,12 +53,6 @@ typedef struct poly_error {
 } poly_error;
 
 poly_allocator poly_default_allocator(void);
-double poly_f64_from_bits(uint64_t bits);
-uint64_t poly_f64_bits(double value);
-double poly_f64_trunc(double value);
-bool poly_f64_is_nan(double value);
-double poly_f64_rem_trunc(double left, double right);
-bool poly_f64_test_equal(double left, double right);
 poly_string_view poly_string_borrow(const poly_string *value);
 poly_bytes_view poly_bytes_borrow(const poly_bytes *value);
 bool poly_utf8_valid(poly_string_view value, size_t *scalar_count);
@@ -79,37 +65,61 @@ void poly_string_drop(poly_string *value);
 void poly_bytes_drop(poly_bytes *value);
 bool poly_string_equal(poly_string_view left, poly_string_view right);
 bool poly_bytes_equal(poly_bytes_view left, poly_bytes_view right);
+/* POLYRUST-END runtime.core.types */
+/* POLYRUST-BEGIN runtime.feature.f64 */
+double poly_f64_from_bits(uint64_t bits);
+uint64_t poly_f64_bits(double value);
+double poly_f64_trunc(double value);
+bool poly_f64_is_nan(double value);
+double poly_f64_rem_trunc(double left, double right);
+bool poly_f64_test_equal(double left, double right);
+/* POLYRUST-END runtime.feature.f64 */
+/* POLYRUST-BEGIN runtime.feature.string-predicates */
 bool poly_string_starts_with(poly_string_view source, poly_string_view prefix);
 bool poly_string_ends_with(poly_string_view source, poly_string_view suffix);
 bool poly_string_contains(poly_string_view source, poly_string_view needle);
+/* POLYRUST-END runtime.feature.string-predicates */
+/* POLYRUST-BEGIN runtime.feature.string-strip-prefix */
 poly_error_code poly_string_strip_prefix(poly_allocator allocator,
                                          poly_string_view source,
                                          poly_string_view prefix,
                                          poly_string *output);
+/* POLYRUST-END runtime.feature.string-strip-prefix */
+/* POLYRUST-BEGIN runtime.feature.string-concat */
 poly_error_code poly_string_concat(poly_allocator allocator,
                                    poly_string_view left,
                                    poly_string_view right,
                                    poly_string *output);
+/* POLYRUST-END runtime.feature.string-concat */
+/* POLYRUST-BEGIN runtime.feature.string-replace-all */
 poly_error_code poly_string_replace_all(poly_allocator allocator,
                                         poly_string_view source,
                                         poly_string_view needle,
                                         poly_string_view replacement,
                                         poly_string *output);
+/* POLYRUST-END runtime.feature.string-replace-all */
+/* POLYRUST-BEGIN runtime.feature.bytes-replace-all */
 poly_error_code poly_bytes_replace_all(poly_allocator allocator,
                                        poly_bytes_view source,
                                        poly_bytes_view needle,
                                        poly_bytes_view replacement,
                                        poly_bytes *output);
+/* POLYRUST-END runtime.feature.bytes-replace-all */
+/* POLYRUST-BEGIN runtime.feature.string-replace-many */
 poly_error_code poly_string_replace_many(poly_allocator allocator,
                                          poly_string_view source,
                                          const poly_string_view *needles,
                                          const poly_string_view *replacements,
                                          size_t mapping_count,
                                          poly_string *output);
+/* POLYRUST-END runtime.feature.string-replace-many */
+/* POLYRUST-BEGIN runtime.feature.string-truncate-utf8 */
 poly_error_code poly_string_truncate_utf8_bytes(poly_allocator allocator,
                                                 poly_string_view source,
                                                 double budget,
                                                 poly_string *output);
+/* POLYRUST-END runtime.feature.string-truncate-utf8 */
+/* POLYRUST-BEGIN runtime.feature.string-trim */
 poly_error_code poly_string_trim_start(poly_allocator allocator,
                                        poly_string_view source,
                                        poly_string_view characters,
@@ -118,5 +128,4 @@ poly_error_code poly_string_trim_end(poly_allocator allocator,
                                      poly_string_view source,
                                      poly_string_view characters,
                                      poly_string *output);
-
-#endif
+/* POLYRUST-END runtime.feature.string-trim */
