@@ -71,14 +71,14 @@ def portable_test_equal(left: Any, right: Any) -> bool:
     return left == right
 
 
-def replace_bytes_all(source: tuple[int, ...], needle: tuple[int, ...], replacement: tuple[int, ...]) -> tuple[int, ...]:
+def replace_bytes_all(source: bytes, needle: bytes, replacement: bytes) -> bytes:
     output: list[int] = []
     if not needle:
         output.extend(replacement)
         for byte in source:
             output.append(byte)
             output.extend(replacement)
-        return tuple(output)
+        return bytes(output)
     offset = 0
     while offset < len(source):
         if source[offset : offset + len(needle)] == needle:
@@ -87,7 +87,7 @@ def replace_bytes_all(source: tuple[int, ...], needle: tuple[int, ...], replacem
         else:
             output.append(source[offset])
             offset += 1
-    return tuple(output)
+    return bytes(output)
 
 
 def float_div(left: float, right: float) -> float:

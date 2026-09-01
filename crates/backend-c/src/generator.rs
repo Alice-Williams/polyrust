@@ -1917,6 +1917,10 @@ impl Generator<'_> {
                 "!poly_string_equal(poly_string_borrow(&{actual}), {})",
                 string_view(value.as_bytes())
             )),
+            (TypeRef::Bytes, Value::Bytes(value)) => Ok(format!(
+                "!poly_bytes_equal(poly_bytes_borrow(&{actual}), {})",
+                bytes_view(value)
+            )),
             (
                 TypeRef::Named(_),
                 Value::Record {
@@ -1962,6 +1966,7 @@ impl Generator<'_> {
     ) -> Result<String, BackendError> {
         match (&argument.value, self.resolve_alias(&argument.ty)) {
             (Value::String(value), TypeRef::String) => Ok(string_view(value.as_bytes())),
+            (Value::Bytes(value), TypeRef::Bytes) => Ok(bytes_view(value)),
             (Value::Bool(value), TypeRef::Bool) => Ok(value.to_string()),
             (Value::I32(value), TypeRef::I32) => Ok(i32_literal(*value)),
             (Value::I64(value), TypeRef::I64) => Ok(i64_literal(*value)),

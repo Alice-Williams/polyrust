@@ -1,6 +1,6 @@
 # M29-04 — Document and release-gate M29
 
-- Status: planned
+- Status: in-progress
 
 ## Goal
 

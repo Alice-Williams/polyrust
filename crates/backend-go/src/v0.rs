@@ -538,6 +538,14 @@ impl<'a> Generator<'a> {
                 format!("math.Float64frombits(0x{:016x})", value.0)
             }
             (Value::String(value), _) => go_string(value),
+            (Value::Bytes(values), _) => format!(
+                "NewPolyBytes({})",
+                values
+                    .iter()
+                    .map(|value| format!("0x{value:02x}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
             (
                 Value::Record {
                     declaration,
