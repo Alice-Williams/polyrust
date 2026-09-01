@@ -133,6 +133,20 @@ Only one port may be in progress. A port is complete when:
   regeneration, immutable provenance checks, and the complete repository
   release gate.
 
+### [is-fullwidth-code-point 3.0.0](ports/is-fullwidth-code-point.md)
+
+- Upstream: [sindresorhus/is-fullwidth-code-point](https://github.com/sindresorhus/is-fullwidth-code-point)
+- Revision: `80e5e314d86e5f76bd1b0573aa9d33e615a372db`
+- License: MIT
+- Typed API: `isFullwidthCodePoint(codePoint: number): boolean`
+- Selection evidence: 265,568,331 npm downloads for the measured week ending
+  29 August 2026 and 51 GitHub stars.
+- Required PolyRust gap: an explicit IEEE-754 NaN predicate; the complete range
+  classifier otherwise composes existing comparisons and Boolean operations.
+- Completion: M28; 89 portable vectors, 22,409 differential inputs, eight
+  native generated-package gates, deterministic regeneration, and immutable
+  provenance checks.
+
 ## Deferred candidate
 
 `juliangruber/balanced-match` is MIT licensed and attractive for a later parser

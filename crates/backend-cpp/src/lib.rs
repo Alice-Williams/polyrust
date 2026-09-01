@@ -518,12 +518,15 @@ impl<'a> Generator<'a> {
         let mut body = LanguageUnit::new(CodeDocument::empty());
         require_cpp_local(&mut body, "generated.hpp");
         require_cpp_local(&mut body, "runtime.hpp");
+        if document.len() > CPP_LITERAL_CHUNK_BYTES {
+            require_cpp_system(&mut body, "string");
+        }
         let mut output = String::new();
         output.push_str(&self.conversions());
         output.push_str(
             "\nnamespace polyrust_generated {\nnamespace { poly_runtime::runtime runtime_instance(",
         );
-        output.push_str(&cpp_string(&document));
+        output.push_str(&cpp_string_expression(&document));
         output.push_str("); }\n\n");
         for declaration in &self.program.module().declarations {
             match declaration {
@@ -908,6 +911,30 @@ fn cpp_string(value: &str) -> String {
     serde_json::to_string(value).expect("C++ string serializes")
 }
 
+const CPP_LITERAL_CHUNK_BYTES: usize = 8 * 1024;
+
+fn cpp_string_expression(value: &str) -> String {
+    if value.len() <= CPP_LITERAL_CHUNK_BYTES {
+        return cpp_string(value);
+    }
+    let mut chunks = Vec::new();
+    let mut start = 0;
+    while start < value.len() {
+        let mut end = (start + CPP_LITERAL_CHUNK_BYTES).min(value.len());
+        while !value.is_char_boundary(end) {
+            end -= 1;
+        }
+        chunks.push(cpp_string(&value[start..end]));
+        start = end;
+    }
+    let mut expression = format!("std::string({})", chunks[0]);
+    for chunk in &chunks[1..] {
+        expression.push_str(" + ");
+        expression.push_str(chunk);
+    }
+    expression
+}
+
 fn stringify_wide_numbers(value: &mut serde_json::Value) {
     match value {
         serde_json::Value::Array(values) => {
@@ -951,6 +978,15 @@ mod tests {
             .unwrap();
         assert_eq!(first.canonical_json(), second.canonical_json());
         assert!(first.dependencies().is_empty());
+    }
+
+    #[test]
+    fn large_embedded_documents_are_runtime_joined_below_cpp_literal_limits() {
+        let expression = cpp_string_expression(&"x".repeat(100_000));
+        assert!(expression.starts_with("std::string(\""));
+        assert!(expression.ends_with('"'));
+        assert!(expression.matches(" + \"").count() >= 12);
+        assert!(!expression.contains(&"x".repeat(65_536)));
     }
 
     #[test]

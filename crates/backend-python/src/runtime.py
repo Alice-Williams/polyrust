@@ -283,6 +283,7 @@ class Runtime:
         if name == "int_shift_right_checked": return ok(a >> b)
         if name == "float_neg": return ok(-a)
         if name == "float_trunc": return ok(math.modf(a)[1])
+        if name == "float_is_nan": return ok(math.isnan(a))
         if name == "float_add": return ok(a + b)
         if name == "float_sub": return ok(a - b)
         if name == "float_mul": return ok(a * b)

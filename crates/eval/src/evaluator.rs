@@ -849,6 +849,7 @@ impl<'a> Session<'a> {
             IntShiftRightChecked => self.integer_shift(arguments, false),
             FloatNeg => unary_float(arguments, |value| -value, self),
             FloatTrunc => unary_float(arguments, f64::trunc, self),
+            FloatIsNaN => unary_float_predicate(arguments, f64::is_nan, self),
             FloatAdd => binary_float(arguments, |left, right| left + right, self),
             FloatSub => binary_float(arguments, |left, right| left - right, self),
             FloatMul => binary_float(arguments, |left, right| left * right, self),
@@ -1472,6 +1473,17 @@ fn unary_float(
     }
 }
 
+fn unary_float_predicate(
+    arguments: &[Value],
+    operation: impl FnOnce(f64) -> bool,
+    session: &Session<'_>,
+) -> Result<Value, EvaluationError> {
+    match arguments.first() {
+        Some(Value::F64(value)) => Ok(Value::Bool(operation(value.to_f64()))),
+        _ => Err(session.invariant("checked float operand is not a float")),
+    }
+}
+
 fn binary_float(
     arguments: &[Value],
     operation: impl FnOnce(f64, f64) -> f64,
@@ -1675,6 +1687,11 @@ mod tests {
                 FloatTrunc,
                 vec![Value::F64(F64Bits((-1.75_f64).to_bits()))],
                 Ok(Value::F64(F64Bits((-1.0_f64).to_bits()))),
+            ),
+            (
+                FloatIsNaN,
+                vec![Value::F64(F64Bits(f64::NAN.to_bits()))],
+                Ok(Value::Bool(true)),
             ),
             (
                 StringScalarLength,

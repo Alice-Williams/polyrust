@@ -805,6 +805,7 @@ class runtime {
     }
     if (name == "float_neg") return succeed(-std::any_cast<double>(a));
     if (name == "float_trunc") return succeed(std::trunc(std::any_cast<double>(a)));
+    if (name == "float_is_nan") return succeed(std::isnan(std::any_cast<double>(a)));
     if (name == "float_add") return succeed(std::any_cast<double>(a) + std::any_cast<double>(b));
     if (name == "float_sub") return succeed(std::any_cast<double>(a) - std::any_cast<double>(b));
     if (name == "float_mul") return succeed(std::any_cast<double>(a) * std::any_cast<double>(b));

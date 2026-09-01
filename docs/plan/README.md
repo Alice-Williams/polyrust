@@ -98,3 +98,4 @@ contract as every other target.
 
 - [M25 — truncate-utf8-bytes equivalence port](milestones/M25-truncate-utf8-bytes.md) — complete
 - [M27 — parse-ms equivalence port](milestones/M27-parse-ms.md) — complete
+- [M28 — is-fullwidth-code-point equivalence port](milestones/M28-is-fullwidth-code-point.md) — in-progress

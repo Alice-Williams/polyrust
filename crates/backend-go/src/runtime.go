@@ -437,6 +437,8 @@ func (r *runtime) numericOrCollection(name string, a, b any) PolyResult[any] {
 			return polyOk(any(-left))
 		case "float_trunc":
 			return polyOk(any(math.Trunc(left)))
+		case "float_is_nan":
+			return polyOk(any(math.IsNaN(left)))
 		case "float_add":
 			return polyOk(any(left + right))
 		case "float_sub":

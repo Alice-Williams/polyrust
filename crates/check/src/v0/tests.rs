@@ -1409,7 +1409,7 @@ fn string_truncate_utf8_bytes_rejects_invalid_operand_shapes_and_types() {
     }
 }
 
-const ALL_INTRINSICS: [Intrinsic; 62] = [
+const ALL_INTRINSICS: [Intrinsic; 63] = [
     Intrinsic::BoolNot,
     Intrinsic::BoolAnd,
     Intrinsic::BoolOr,
@@ -1437,6 +1437,7 @@ const ALL_INTRINSICS: [Intrinsic; 62] = [
     Intrinsic::IntShiftRightChecked,
     Intrinsic::FloatNeg,
     Intrinsic::FloatTrunc,
+    Intrinsic::FloatIsNaN,
     Intrinsic::FloatAdd,
     Intrinsic::FloatSub,
     Intrinsic::FloatMul,
@@ -1558,6 +1559,7 @@ fn intrinsic_cases() -> Vec<(Intrinsic, Vec<TypeRef>, TypeRef)> {
         ),
         (FloatNeg, vec![TypeRef::F64], TypeRef::F64),
         (FloatTrunc, vec![TypeRef::F64], TypeRef::F64),
+        (FloatIsNaN, vec![TypeRef::F64], TypeRef::Bool),
         (FloatAdd, vec![TypeRef::F64, TypeRef::F64], TypeRef::F64),
         (FloatSub, vec![TypeRef::F64, TypeRef::F64], TypeRef::F64),
         (FloatMul, vec![TypeRef::F64, TypeRef::F64], TypeRef::F64),

@@ -177,6 +177,7 @@ impl<'a> Generator<'a> {
                         | Intrinsic::GreaterEqual
                         | Intrinsic::FloatNeg
                         | Intrinsic::FloatTrunc
+                        | Intrinsic::FloatIsNaN
                         | Intrinsic::FloatAdd
                         | Intrinsic::FloatSub
                         | Intrinsic::FloatMul
@@ -1573,6 +1574,11 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
             Intrinsic::FloatTrunc => scalar(
                 format!("poly_f64_trunc({})", value(0)),
                 TypeRef::F64,
+                prelude,
+            ),
+            Intrinsic::FloatIsNaN => scalar(
+                format!("poly_f64_is_nan({})", value(0)),
+                TypeRef::Bool,
                 prelude,
             ),
             Intrinsic::FloatAdd

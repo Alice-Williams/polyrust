@@ -39,6 +39,8 @@ uint64_t poly_f64_bits(double value) {
 
 double poly_f64_trunc(double value) { return trunc(value); }
 
+bool poly_f64_is_nan(double value) { return isnan(value); }
+
 double poly_f64_rem_trunc(double left, double right) {
   return fmod(left, right);
 }

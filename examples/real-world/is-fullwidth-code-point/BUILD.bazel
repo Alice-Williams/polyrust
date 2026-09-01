@@ -1,0 +1,163 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load("//tools/c:defs.bzl", "generated_c_tests")
+load("//tools/cpp:defs.bzl", "generated_cpp_tests")
+load("//tools/java:defs.bzl", "generated_java_tests")
+
+exports_files(
+    [
+        "Cargo.toml",
+        "compare.mjs",
+        "native_test.sh",
+        "src/lib.rs",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_library(
+    name = "model",
+    srcs = ["src/lib.rs"],
+    crate_name = "polyrust_is_fullwidth_code_point_example",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//crates/backend-c:portable_backend_c",
+        "//crates/backend-cpp:portable_backend_cpp",
+        "//crates/backend-go:portable_backend_go",
+        "//crates/backend-java:portable_backend_java",
+        "//crates/backend-python:portable_backend_python",
+        "//crates/backend-rust:portable_backend_rust",
+        "//crates/backend-typescript:portable_backend_typescript",
+        "//crates/build:portable_build",
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+    ],
+)
+
+rust_test(
+    name = "model_test",
+    crate = ":model",
+    visibility = ["//visibility:public"],
+    deps = ["//crates/eval:portable_eval"],
+)
+
+rust_binary(
+    name = "generate",
+    srcs = ["src/main.rs"],
+    crate_name = "generate_is_fullwidth_code_point",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":model",
+        "//crates/codegen:portable_codegen",
+    ],
+)
+
+genrule(
+    name = "generate_packages",
+    outs = [
+        "generated/c/README.md",
+        "generated/c/src/generated.c",
+        "generated/c/src/generated.h",
+        "generated/c/src/runtime.c",
+        "generated/c/src/runtime.h",
+        "generated/c/tests/conformance_test.c",
+        "generated/c/tests/generated_test.c",
+        "generated/cpp/README.md",
+        "generated/cpp/src/generated.cc",
+        "generated/cpp/src/generated.hpp",
+        "generated/cpp/src/runtime.hpp",
+        "generated/cpp/tests/conformance_test.cc",
+        "generated/cpp/tests/generated_test.cc",
+        "generated/go/conformance_test.go",
+        "generated/go/generated.go",
+        "generated/go/generated_test.go",
+        "generated/go/go.mod",
+        "generated/go/runtime.go",
+        "generated/java/README.md",
+        "generated/java/negative/InvalidTypes.java",
+        "generated/java/src/main/java/org/polyrust/generated/Generated.java",
+        "generated/java/src/main/java/org/polyrust/generated/Runtime.java",
+        "generated/java/src/test/java/org/polyrust/generated/ConformanceTest.java",
+        "generated/java/src/test/java/org/polyrust/generated/GeneratedTest.java",
+        "generated/javascript/package.json",
+        "generated/javascript/src/conformance.test.js",
+        "generated/javascript/src/generated.test.js",
+        "generated/javascript/src/index.js",
+        "generated/javascript/src/runtime.js",
+        "generated/python/negative/invalid_option.py",
+        "generated/python/pyproject.toml",
+        "generated/python/src/generated_polyrust/__init__.py",
+        "generated/python/src/generated_polyrust/runtime.py",
+        "generated/python/tests/test_conformance.py",
+        "generated/python/tests/test_generated.py",
+        "generated/rust/Cargo.toml",
+        "generated/rust/src/conformance.rs",
+        "generated/rust/src/lib.rs",
+        "generated/rust/src/polyrust_runtime.rs",
+        "generated/typescript/package.json",
+        "generated/typescript/src/conformance.test.ts",
+        "generated/typescript/src/generated.test.ts",
+        "generated/typescript/src/index.ts",
+        "generated/typescript/src/node-shims.d.ts",
+        "generated/typescript/src/runtime.ts",
+        "generated/typescript/tests/invalid-types.ts",
+        "generated/typescript/tsconfig.json",
+    ],
+    cmd = "$(location :generate) $(RULEDIR)/generated",
+    tools = [":generate"],
+    visibility = ["//visibility:public"],
+)
+
+generated_java_tests()
+
+generated_cpp_tests()
+
+generated_c_tests()
+
+sh_test(
+    name = "native_test",
+    srcs = ["native_test.sh"],
+    data = [
+        ":generate_packages",
+        "@go_sdk//:files",
+    ],
+)
+
+sh_test(
+    name = "determinism_test",
+    srcs = ["determinism_test.sh"],
+    data = [":generate"],
+)
+
+sh_test(
+    name = "differential_test",
+    srcs = ["differential_test.sh"],
+    data = [
+        ":compare.mjs",
+        ":generate",
+        "//third_party/is-fullwidth-code-point:oracle",
+    ],
+)
+
+test_suite(
+    name = "all",
+    tests = [
+        ":c_conformance_test",
+        ":c_generated_test",
+        ":c_sanitizer_test",
+        ":c_style_test",
+        ":cpp_conformance_test",
+        ":cpp_generated_test",
+        ":cpp_sanitizer_test",
+        ":cpp_style_test",
+        ":determinism_test",
+        ":differential_test",
+        ":java_conformance_test",
+        ":java_generated_test",
+        ":model_test",
+        ":native_test",
+        "//third_party/is-fullwidth-code-point:provenance_test",
+    ],
+    visibility = ["//visibility:public"],
+)

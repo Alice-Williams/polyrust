@@ -7,7 +7,7 @@ Status: proposed capability roadmap
 PolyRust defines one extensible, language-neutral programming model. Authors use
 a Rust builder API to declare types, constants, functions, implementations, and
 tests. PolyRust validates and executes that model, then each backend renders it as
-native Rust, TypeScript, JavaScript, Python, Go, or Java.
+native Rust, TypeScript, JavaScript, Python, Go, Java, C++, or C.
 
 PolyRust does not ingest existing Rust, TypeScript, Python, or Go programs and
 does not translate between pairs of source languages.
@@ -17,16 +17,13 @@ flowchart LR
     A["Rust generator program"] --> B["PolyRust program model"]
     B --> C["Type checker"]
     C --> D["Reference evaluator"]
-    C --> E["Rust backend"]
-    C --> F["TypeScript backend"]
-    C --> G["Python backend"]
-    C --> H["Go backend"]
+    C --> L["Language IR translators"]
+    L --> E["Rust / TypeScript / JavaScript"]
+    L --> F["Python / Go / Java"]
+    L --> G["C++ / C"]
     B --> T["Portable test declarations"]
     T --> D
-    T --> E
-    T --> F
-    T --> G
-    T --> H
+    T --> L
 ```
 
 The program model is the product. The Rust builder is how authors construct it;
@@ -197,7 +194,7 @@ specified behavior.
 | Signed integer wrapping | `neg_wrapping`, `add_wrapping`, `sub_wrapping`, `mul_wrapping` | Exact two's-complement width |
 | Integer bitwise | `bit_not`, `bit_and`, `bit_or`, `bit_xor` | Exact-width bit pattern |
 | Integer shifts | `shift_left_checked`, `shift_right_checked` | Invalid counts return structured error; signed right shift is specified |
-| Float | `neg`, `add`, `sub`, `mul`, `div`, `rem_trunc` | IEEE 754 binary64, including NaN/infinities/negative zero; remainder uses truncating quotient |
+| Float | `neg`, `add`, `sub`, `mul`, `div`, `rem_trunc`, `trunc`, `is_nan` | IEEE 754 binary64, including NaN/infinities/negative zero; remainder uses truncating quotient; `trunc` rounds toward zero; `is_nan` recognizes every NaN payload/sign and no other value |
 | String | `concat`, `scalar_len`, `is_empty`, `contains`, `starts_with`, `ends_with`, `replace_all_literal`, `truncate_utf8_bytes`, `trim_start_set`, `trim_end_set` | Unicode scalar semantics; `scalar_len` returns `I64`; replacement is global, left-to-right, non-overlapping, and literal; UTF-8 truncation accepts an explicit `F64` byte budget and never splits a scalar; trim operands are scalar sets |
 | Bytes | `concat`, `len`, `is_empty` | Immutable octet sequence; `len` returns `I64`; indexing waits for unsigned-byte design |
 | List | `len`, `is_empty`, `get_checked`, `append`, `concat`, `contains` | Immutable; length/index use `I64`, `get_checked` returns `Option<T>`, and updates return a new list |
@@ -211,7 +208,7 @@ specified behavior.
 | Group | Operations | Design question |
 | --- | --- | --- |
 | Integer | saturating arithmetic, power, rotate | Which widths enter Next together? |
-| Float | rounding, min/max variants, classification | Preserve NaN and signed-zero rules |
+| Float | floor/ceil/round, min/max variants, remaining classification | Preserve NaN and signed-zero rules |
 | String | scalar slicing, split | Define indices and locale independence |
 | List | insert/remove, map/filter/fold/zip | Requires callable/closure design or named-function references |
 | Ordered map/set | get/insert/remove/keys/values/iteration | Define key eligibility and insertion ordering |

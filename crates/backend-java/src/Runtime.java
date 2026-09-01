@@ -369,6 +369,7 @@ public final class Runtime {
         double value = (Double) a;
         return ok(value > 0.0 ? Math.floor(value) : Math.ceil(value));
       }
+      case "float_is_nan": return ok(Double.isNaN((Double) a));
       case "float_add": return ok((Double) a + (Double) b);
       case "float_sub": return ok((Double) a - (Double) b);
       case "float_mul": return ok((Double) a * (Double) b);

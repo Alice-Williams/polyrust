@@ -1111,6 +1111,7 @@ impl Generator<'_> {
             }
             Intrinsic::FloatNeg => format!("Ok(-{a})"),
             Intrinsic::FloatTrunc => format!("Ok({a}.trunc())"),
+            Intrinsic::FloatIsNaN => format!("Ok({a}.is_nan())"),
             Intrinsic::FloatAdd => format!("Ok({a} + {b})"),
             Intrinsic::FloatSub => format!("Ok({a} - {b})"),
             Intrinsic::FloatMul => format!("Ok({a} * {b})"),

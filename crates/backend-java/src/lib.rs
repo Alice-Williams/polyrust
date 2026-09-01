@@ -251,7 +251,7 @@ impl<'a> Generator<'a> {
         })?;
         stringify_wide_numbers(&mut document);
         let document = serde_json::to_string(&document).expect("checked document serializes");
-        let document_literal = java_string(&document);
+        let document_literal = java_string_expression(&document);
         let tests: Vec<_> = self
             .program
             .module()
@@ -270,7 +270,8 @@ impl<'a> Generator<'a> {
             .collect();
         let mut tests = serde_json::to_value(tests).expect("tests serialize");
         stringify_wide_numbers(&mut tests);
-        let tests_literal = java_string(&serde_json::to_string(&tests).expect("tests serialize"));
+        let tests_literal =
+            java_string_expression(&serde_json::to_string(&tests).expect("tests serialize"));
         let mut file = LanguageSourceFile::new(
             "src/main/java/org/polyrust/generated/Generated.java",
             FileRole::Source,
@@ -660,6 +661,24 @@ fn java_string(value: &str) -> String {
         .replace('\u{2029}', "\\u2029")
 }
 
+fn java_string_expression(value: &str) -> String {
+    const MAX_CHUNK_BYTES: usize = 8 * 1024;
+    if value.len() <= MAX_CHUNK_BYTES {
+        return java_string(value);
+    }
+    let mut chunks = Vec::new();
+    let mut start = 0;
+    while start < value.len() {
+        let mut end = (start + MAX_CHUNK_BYTES).min(value.len());
+        while !value.is_char_boundary(end) {
+            end -= 1;
+        }
+        chunks.push(java_string(&value[start..end]));
+        start = end;
+    }
+    format!("String.join(\"\", {})", chunks.join(", "))
+}
+
 fn stringify_wide_numbers(value: &mut serde_json::Value) {
     match value {
         serde_json::Value::Array(values) => {
@@ -715,6 +734,15 @@ mod tests {
                 .iter()
                 .any(|file| file.path().ends_with("GeneratedTest.java"))
         );
+    }
+
+    #[test]
+    fn large_embedded_documents_are_split_below_java_constant_limits() {
+        let expression = java_string_expression(&"x".repeat(100_000));
+        assert!(expression.starts_with("String.join(\"\", \""));
+        assert!(expression.ends_with("\")"));
+        assert!(expression.matches("\", \"").count() >= 12);
+        assert!(!expression.contains(&"x".repeat(65_536)));
     }
 
     #[test]

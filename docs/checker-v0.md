@@ -77,7 +77,7 @@ are unreachable. Enum payload patterns bind every field exactly once.
 
 ## Intrinsics and purity
 
-All 62 v0 intrinsics have explicit arity, operand, and result rules in the
+All 63 v0 intrinsics have explicit arity, operand, and result rules in the
 checker. Integer operations require an unambiguous common width. Operations
 named `Checked` retain their value result type; their runtime failure becomes a
 structured evaluator outcome in M05. Checked and wrapping arithmetic are
@@ -88,6 +88,11 @@ IEEE signed zero, NaN, and infinities. Portable-test expectation comparison is
 separate from `Equal`: tests compare finite F64 bit patterns exactly, accept NaN
 as an expected class, and recurse through aggregate values; program equality
 continues to use IEEE semantics.
+
+`FloatIsNaN` has signature `F64 -> Bool`. It accepts every binary64 NaN payload
+and sign and rejects finite values, signed zeros, and both infinities. The
+operation is serialized as `float_is_nan`; target runtimes may use their native
+IEEE predicate, but cannot substitute a truthiness or domain check.
 
 `StringReplaceAll` has the exact signature
 `(String, String, String) -> String`. Its second and third operands are a

@@ -326,6 +326,7 @@ fn all_intrinsics_values_and_constant_nodes_serialize() {
         Intrinsic::IntShiftRightChecked,
         Intrinsic::FloatNeg,
         Intrinsic::FloatTrunc,
+        Intrinsic::FloatIsNaN,
         Intrinsic::FloatAdd,
         Intrinsic::FloatSub,
         Intrinsic::FloatMul,
@@ -369,6 +370,10 @@ fn all_intrinsics_values_and_constant_nodes_serialize() {
             intrinsic
         );
     }
+    assert_eq!(
+        serde_json::to_string(&Intrinsic::FloatIsNaN).unwrap(),
+        "\"float_is_nan\""
+    );
 
     let values = vec![
         Value::Unit,

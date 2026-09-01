@@ -228,6 +228,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "polyrust-is-fullwidth-code-point-example"
+version = "0.1.0"
+dependencies = [
+ "polyrust-backend-c",
+ "polyrust-backend-cpp",
+ "polyrust-backend-go",
+ "polyrust-backend-java",
+ "polyrust-backend-python",
+ "polyrust-backend-rust",
+ "polyrust-backend-typescript",
+ "polyrust-build",
+ "polyrust-check",
+ "polyrust-codegen",
+ "polyrust-eval",
+]
+
+[[package]]
 name = "polyrust-models-and-validation-example"
 version = "0.1.0"
 dependencies = [
