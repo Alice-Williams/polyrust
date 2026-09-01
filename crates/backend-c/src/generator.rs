@@ -176,6 +176,7 @@ impl<'a> Generator<'a> {
                         | Intrinsic::StringStripPrefix
                         | Intrinsic::StringEndsWith
                         | Intrinsic::StringReplaceAll
+                        | Intrinsic::StringReplaceMany
                         | Intrinsic::StringTrimStart
                         | Intrinsic::StringTrimEnd
                 ) {
@@ -1525,6 +1526,7 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
             Intrinsic::StringConcat
             | Intrinsic::StringStripPrefix
             | Intrinsic::StringReplaceAll
+            | Intrinsic::StringReplaceMany
             | Intrinsic::StringTrimStart
             | Intrinsic::StringTrimEnd => {
                 let temporary = self.temporary(|name| format!("poly_string {name} = {{0}};"));
@@ -1547,6 +1549,26 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                         value(1),
                         value(2)
                     ),
+                    Intrinsic::StringReplaceMany => {
+                        let mapping_count = (values.len() - 1) / 2;
+                        let needles = self.temporary(|name| {
+                            format!("poly_string_view {name}[{mapping_count}] = {{0}};")
+                        });
+                        let replacements = self.temporary(|name| {
+                            format!("poly_string_view {name}[{mapping_count}] = {{0}};")
+                        });
+                        for index in 0..mapping_count {
+                            prelude.push_str(&format!(
+                                "{needles}[{index}] = {};\n{replacements}[{index}] = {};\n",
+                                value(1 + index * 2),
+                                value(2 + index * 2)
+                            ));
+                        }
+                        format!(
+                            "poly_string_replace_many(allocator, {}, {needles}, {replacements}, {mapping_count}U, &{temporary})",
+                            value(0)
+                        )
+                    }
                     Intrinsic::StringTrimStart => format!(
                         "poly_string_trim_start(allocator, {}, {}, &{temporary})",
                         value(0),

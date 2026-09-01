@@ -17,7 +17,7 @@ Only one port may be in progress. A port is complete when:
 2. official vectors and a broader differential corpus agree with the pinned
    upstream implementation;
 3. the reference evaluator agrees with generated Rust, TypeScript, JavaScript,
-   Python, Go, and Java native tests;
+   Python, Go, Java, C++, and C native tests;
 4. every generated package passes native formatting, static checks, compilation,
    and tests from clean output;
 5. regeneration is byte-identical; and
@@ -81,6 +81,23 @@ Only one port may be in progress. A port is complete when:
 - Required PolyRust gap: exact removal of one leading substring plus valid Go
   serialization of U+FEFF and collision-free Go local identifiers
 - Completion: M20 plus M21/M22 expansion; 18 portable vectors, 55,991 differential strings, eight
+  native generated-package gates, deterministic regeneration, and the complete
+  repository release gate pass.
+
+### [html-escaper 3.0.3](ports/html-escaper.md)
+
+- Upstream: [WebReflection/html-escaper](https://github.com/WebReflection/html-escaper)
+- Implementation revision: `c6e2b50d7b6f486afb3ddc92bfcfec89857b75d7`
+- Type declaration revision: `cd61c555bfc93e985b313263a42ed78074570d08`
+- License: MIT
+- Typed API: `escape(str: string): string` and
+  `unescape(str: string): string`
+- Selection evidence: 112 GitHub stars and 88,831,960 npm downloads for the
+  measured week ending 29 August 2026.
+- Required PolyRust gap: ordered simultaneous literal replacement whose output
+  is never recursively rescanned.
+- Completion: M23; all four official assertions, 42 portable vectors, 108,498
+  differential function/input comparisons over 54,249 unique strings, eight
   native generated-package gates, deterministic regeneration, and the complete
   repository release gate pass.
 

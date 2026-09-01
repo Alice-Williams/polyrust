@@ -396,6 +396,7 @@ public final class Runtime {
                 : a);
       case "string_ends_with": return ok(((String) a).endsWith((String) b));
       case "string_replace_all": return ok(((String) a).replace((String) b, (String) c));
+      case "string_replace_many": return ok(replaceManyLiteral((String) a, values));
       case "string_trim_start": return ok(trimStartScalars((String) a, (String) b));
       case "string_trim_end": return ok(trimEndScalars((String) a, (String) b));
       case "bytes_concat":
@@ -767,6 +768,36 @@ public final class Runtime {
     List<Object> result = new ArrayList<>(left);
     result.addAll(right);
     return List.copyOf(result);
+  }
+
+  private static String replaceManyLiteral(String source, List<Object> values) {
+    StringBuilder output = new StringBuilder();
+    int offset = 0;
+    while (true) {
+      String remaining = source.substring(offset);
+      boolean matched = false;
+      for (int index = 1; index < values.size(); index += 2) {
+        String needle = (String) values.get(index);
+        if (!remaining.startsWith(needle)) continue;
+        output.append((String) values.get(index + 1));
+        if (!needle.isEmpty()) {
+          offset += needle.length();
+        } else if (remaining.isEmpty()) {
+          return output.toString();
+        } else {
+          int width = Character.charCount(remaining.codePointAt(0));
+          output.append(remaining, 0, width);
+          offset += width;
+        }
+        matched = true;
+        break;
+      }
+      if (matched) continue;
+      if (remaining.isEmpty()) return output.toString();
+      int width = Character.charCount(remaining.codePointAt(0));
+      output.append(remaining, 0, width);
+      offset += width;
+    }
   }
 
   private static String trimStartScalars(String source, String characters) {

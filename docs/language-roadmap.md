@@ -41,9 +41,11 @@ The M22B foundation makes C the eighth independently generated ecosystem:
 - C
 
 The current C slice compiles and behaviorally tests scalars, UTF-8 strings,
-owned records, and contract vtables across every completed port. M22B remains
-in progress until lists, options, value results, and enums are monomorphized
-without untyped public containers.
+owned records, and contract vtables across every completed port. It also emits
+deterministic concrete ABI shapes for lists, options, value results, records,
+and enums, with recursive clone/drop and allocation-failure proof. M22B remains
+in progress until construction, matching, container intrinsics, bounded
+iteration, arithmetic, and callable lowering cover those shapes.
 
 Recommended order after M22:
 

@@ -1,0 +1,19 @@
+exports_files(
+    [
+        "LICENSE",
+        "README.md",
+        "upstream.d.cts",
+        "upstream.js",
+        "upstream.test.js",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "oracle",
+    srcs = [
+        "LICENSE",
+        "upstream.js",
+    ],
+    visibility = ["//visibility:public"],
+)

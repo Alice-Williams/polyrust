@@ -397,6 +397,132 @@ poly_error_code poly_string_replace_all(poly_allocator allocator,
   return POLY_OK;
 }
 
+static size_t first_mapping_at(poly_string_view source, size_t offset,
+                               const poly_string_view *needles,
+                               size_t mapping_count) {
+  size_t index;
+  for (index = 0U; index < mapping_count; ++index) {
+    poly_string_view needle = needles[index];
+    const uint8_t *location =
+        offset == source.length ? NULL : source.data + offset;
+    if (needle.length <= source.length - offset &&
+        view_equal(location, needle.length, needle.data, needle.length)) {
+      return index;
+    }
+  }
+  return mapping_count;
+}
+
+static bool add_length(size_t *length, size_t added) {
+  if (added > SIZE_MAX - *length) {
+    return false;
+  }
+  *length += added;
+  return true;
+}
+
+poly_error_code poly_string_replace_many(poly_allocator allocator,
+                                         poly_string_view source,
+                                         const poly_string_view *needles,
+                                         const poly_string_view *replacements,
+                                         size_t mapping_count,
+                                         poly_string *output) {
+  size_t index;
+  size_t input_offset = 0U;
+  size_t output_offset = 0U;
+  size_t length = 0U;
+  poly_string result = {0};
+  if (output == NULL || mapping_count == 0U || needles == NULL ||
+      replacements == NULL) {
+    return POLY_INVARIANT_VIOLATION;
+  }
+  *output = result;
+  if (!poly_utf8_valid(source, NULL)) {
+    return POLY_INVALID_UTF8;
+  }
+  for (index = 0U; index < mapping_count; ++index) {
+    if (!poly_utf8_valid(needles[index], NULL) ||
+        !poly_utf8_valid(replacements[index], NULL)) {
+      return POLY_INVALID_UTF8;
+    }
+  }
+
+  while (true) {
+    size_t mapping = first_mapping_at(source, input_offset, needles,
+                                      mapping_count);
+    if (mapping != mapping_count) {
+      size_t needle_length = needles[mapping].length;
+      if (!add_length(&length, replacements[mapping].length)) {
+        return POLY_ALLOCATION_FAILED;
+      }
+      if (needle_length != 0U) {
+        input_offset += needle_length;
+        continue;
+      }
+      if (input_offset == source.length) {
+        break;
+      }
+    } else if (input_offset == source.length) {
+      break;
+    }
+    {
+      size_t width = 0U;
+      (void)valid_scalar(source.data + input_offset,
+                         source.length - input_offset, &width);
+      if (!add_length(&length, width)) {
+        return POLY_ALLOCATION_FAILED;
+      }
+      input_offset += width;
+    }
+  }
+
+  if (length != 0U) {
+    if (allocator.allocate == NULL || allocator.deallocate == NULL) {
+      return POLY_ALLOCATION_FAILED;
+    }
+    result.data = (uint8_t *)allocator.allocate(allocator.context, length);
+    if (result.data == NULL) {
+      return POLY_ALLOCATION_FAILED;
+    }
+  }
+  input_offset = 0U;
+  while (true) {
+    size_t mapping = first_mapping_at(source, input_offset, needles,
+                                      mapping_count);
+    if (mapping != mapping_count) {
+      poly_string_view needle = needles[mapping];
+      poly_string_view replacement = replacements[mapping];
+      if (replacement.length != 0U) {
+        memcpy(result.data + output_offset, replacement.data,
+               replacement.length);
+        output_offset += replacement.length;
+      }
+      if (needle.length != 0U) {
+        input_offset += needle.length;
+        continue;
+      }
+      if (input_offset == source.length) {
+        break;
+      }
+    } else if (input_offset == source.length) {
+      break;
+    }
+    {
+      size_t width = 0U;
+      (void)valid_scalar(source.data + input_offset,
+                         source.length - input_offset, &width);
+      memcpy(result.data + output_offset, source.data + input_offset, width);
+      output_offset += width;
+      input_offset += width;
+    }
+  }
+  result.length = length;
+  result.capacity = length;
+  result.allocator = allocator;
+  *output = result;
+  return POLY_OK;
+}
+
 static bool scalar_in(poly_string_view characters, const uint8_t *scalar,
                       size_t width) {
   size_t offset = 0U;

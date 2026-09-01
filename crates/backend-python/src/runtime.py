@@ -62,6 +62,30 @@ def scalar_length(value: str) -> PolyResult[int]:
         return fail("invalid_unicode", "surrogate is not a Unicode scalar")
     return ok(len(value))
 
+def replace_many_literal(source: str, values: tuple[Any, ...]) -> str:
+    output: list[str] = []
+    offset = 0
+    mappings = tuple((values[index], values[index + 1]) for index in range(1, len(values), 2))
+    while True:
+        remaining = source[offset:]
+        mapping = next((item for item in mappings if remaining.startswith(item[0])), None)
+        if mapping is not None:
+            needle, replacement = mapping
+            output.append(replacement)
+            if needle:
+                offset += len(needle)
+                continue
+            if not remaining:
+                break
+            output.append(remaining[0])
+            offset += 1
+            continue
+        if not remaining:
+            break
+        output.append(remaining[0])
+        offset += 1
+    return "".join(output)
+
 
 class Runtime:
     def __init__(self, document: dict[str, Any]) -> None:
@@ -231,6 +255,7 @@ class Runtime:
         if name == "string_strip_prefix": return ok(a.removeprefix(b) if b else a)
         if name == "string_ends_with": return ok(a.endswith(b))
         if name == "string_replace_all": return ok(a.replace(b, c))
+        if name == "string_replace_many": return ok(replace_many_literal(a, values))
         if name == "string_trim_start": return ok(a.lstrip(b))
         if name == "string_trim_end": return ok(a.rstrip(b))
         if name in {"bytes_concat", "list_concat"}: return ok(a + b)

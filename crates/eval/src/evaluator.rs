@@ -918,6 +918,69 @@ impl<'a> Session<'a> {
                 self.check_collection_size(requested)?;
                 Ok(Value::String(source.replace(needle, replacement)))
             }
+            StringReplaceMany => {
+                if arguments.len() < 3 || arguments.len().is_multiple_of(2) {
+                    return Err(EvaluationError::InvariantViolation {
+                        message: "StringReplaceMany requires a source and one or more needle/replacement pairs"
+                            .to_owned(),
+                    });
+                }
+                let source = string(arguments.first(), self)?;
+                let mut mappings = Vec::with_capacity((arguments.len() - 1) / 2);
+                for pair in arguments[1..].as_chunks::<2>().0 {
+                    mappings.push((string(pair.first(), self)?, string(pair.get(1), self)?));
+                }
+                let mut output = String::new();
+                let mut offset = 0;
+                loop {
+                    let remaining = &source[offset..];
+                    if let Some((needle, replacement)) = mappings
+                        .iter()
+                        .find(|(needle, _)| remaining.starts_with(*needle))
+                    {
+                        let requested = output.len().checked_add(replacement.len()).ok_or(
+                            EvaluationError::CollectionLimitExceeded {
+                                limit: self.limits.collection_size,
+                                requested: usize::MAX,
+                            },
+                        )?;
+                        self.check_collection_size(requested)?;
+                        output.push_str(replacement);
+                        if needle.is_empty() {
+                            let Some(character) = remaining.chars().next() else {
+                                break;
+                            };
+                            let width = character.len_utf8();
+                            let requested = output.len().checked_add(width).ok_or(
+                                EvaluationError::CollectionLimitExceeded {
+                                    limit: self.limits.collection_size,
+                                    requested: usize::MAX,
+                                },
+                            )?;
+                            self.check_collection_size(requested)?;
+                            output.push_str(&remaining[..width]);
+                            offset += width;
+                        } else {
+                            offset += needle.len();
+                        }
+                    } else {
+                        let Some(character) = remaining.chars().next() else {
+                            break;
+                        };
+                        let width = character.len_utf8();
+                        let requested = output.len().checked_add(width).ok_or(
+                            EvaluationError::CollectionLimitExceeded {
+                                limit: self.limits.collection_size,
+                                requested: usize::MAX,
+                            },
+                        )?;
+                        self.check_collection_size(requested)?;
+                        output.push_str(&remaining[..width]);
+                        offset += width;
+                    }
+                }
+                Ok(Value::String(output))
+            }
             StringTrimStart => {
                 let source = string(arguments.first(), self)?;
                 let characters = string(arguments.get(1), self)?;
@@ -1555,6 +1618,28 @@ mod tests {
                     Value::String("-".into()),
                 ],
                 Ok(Value::String("-a-🦀-".into())),
+            ),
+            (
+                StringReplaceMany,
+                vec![
+                    Value::String("&amp;lt;&lt;".into()),
+                    Value::String("&amp;".into()),
+                    Value::String("&".into()),
+                    Value::String("&lt;".into()),
+                    Value::String("<".into()),
+                ],
+                Ok(Value::String("&lt;<".into())),
+            ),
+            (
+                StringReplaceMany,
+                vec![
+                    Value::String("a🦀".into()),
+                    Value::String("a".into()),
+                    Value::String("X".into()),
+                    Value::String(String::new()),
+                    Value::String("-".into()),
+                ],
+                Ok(Value::String("X-🦀-".into())),
             ),
             (
                 StringTrimStart,

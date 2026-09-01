@@ -90,6 +90,12 @@ poly_error_code poly_string_replace_all(poly_allocator allocator,
                                         poly_string_view needle,
                                         poly_string_view replacement,
                                         poly_string *output);
+poly_error_code poly_string_replace_many(poly_allocator allocator,
+                                         poly_string_view source,
+                                         const poly_string_view *needles,
+                                         const poly_string_view *replacements,
+                                         size_t mapping_count,
+                                         poly_string *output);
 poly_error_code poly_string_trim_start(poly_allocator allocator,
                                        poly_string_view source,
                                        poly_string_view characters,

@@ -1801,9 +1801,9 @@ impl Checker<'_> {
             IntSubWrapping, Less, LessEqual, ListAppend, ListConcat, ListContains, ListGetChecked,
             ListIsEmpty, ListLength, NarrowI64ToI32Checked, NotEqual, OptionIsNone, OptionIsSome,
             OptionUnwrapOr, ResultIsErr, ResultIsOk, StringConcat, StringContains, StringEndsWith,
-            StringFromUtf8Checked, StringIsEmpty, StringReplaceAll, StringScalarLength,
-            StringStartsWith, StringStripPrefix, StringToUtf8, StringTrimEnd, StringTrimStart,
-            WidenI32ToI64,
+            StringFromUtf8Checked, StringIsEmpty, StringReplaceAll, StringReplaceMany,
+            StringScalarLength, StringStartsWith, StringStripPrefix, StringToUtf8, StringTrimEnd,
+            StringTrimStart, WidenI32ToI64,
         };
         let invalid = |checker: &mut Self| {
             checker.error(
@@ -1874,6 +1874,15 @@ impl Checker<'_> {
             }
             StringReplaceAll
                 if arguments == [TypeRef::String, TypeRef::String, TypeRef::String] =>
+            {
+                Some(TypeRef::String)
+            }
+            StringReplaceMany
+                if arguments.len() >= 3
+                    && !arguments.len().is_multiple_of(2)
+                    && arguments
+                        .iter()
+                        .all(|argument| *argument == TypeRef::String) =>
             {
                 Some(TypeRef::String)
             }

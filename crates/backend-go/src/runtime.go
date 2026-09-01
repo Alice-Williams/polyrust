@@ -358,6 +358,8 @@ func (r *runtime) intrinsic(name string, values []any) PolyResult[any] {
 		return polyOk(any(strings.HasSuffix(a.(string), b.(string))))
 	case "string_replace_all":
 		return polyOk(any(strings.ReplaceAll(a.(string), b.(string), c.(string))))
+	case "string_replace_many":
+		return polyOk(any(replaceManyLiteral(a.(string), values)))
 	case "string_trim_start":
 		return polyOk(any(strings.TrimLeft(a.(string), b.(string))))
 	case "string_trim_end":
@@ -457,6 +459,41 @@ func (r *runtime) numericOrCollection(name string, a, b any) PolyResult[any] {
 		}
 	}
 	return polyFail[any]("unsupported", "intrinsic not implemented: "+name)
+}
+func replaceManyLiteral(source string, values []any) string {
+	var output strings.Builder
+	offset := 0
+	for {
+		remaining := source[offset:]
+		matched := false
+		for index := 1; index < len(values); index += 2 {
+			needle := values[index].(string)
+			if !strings.HasPrefix(remaining, needle) {
+				continue
+			}
+			output.WriteString(values[index+1].(string))
+			if needle != "" {
+				offset += len(needle)
+			} else if remaining == "" {
+				return output.String()
+			} else {
+				_, width := utf8.DecodeRuneInString(remaining)
+				output.WriteString(remaining[:width])
+				offset += width
+			}
+			matched = true
+			break
+		}
+		if matched {
+			continue
+		}
+		if remaining == "" {
+			return output.String()
+		}
+		_, width := utf8.DecodeRuneInString(remaining)
+		output.WriteString(remaining[:width])
+		offset += width
+	}
 }
 func checked32(value int64) PolyResult[any] {
 	if value < math.MinInt32 || value > math.MaxInt32 {

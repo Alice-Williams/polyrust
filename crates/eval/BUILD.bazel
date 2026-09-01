@@ -1,4 +1,4 @@
-load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
 exports_files(["Cargo.toml"])
 
@@ -14,4 +14,10 @@ rust_library(
         "//crates/ir:portable_ir",
         "@crates//:serde_json",
     ],
+)
+
+rust_test(
+    name = "portable_eval_test",
+    crate = ":portable_eval",
+    visibility = ["//visibility:public"],
 )

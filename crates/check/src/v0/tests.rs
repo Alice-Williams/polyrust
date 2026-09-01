@@ -1307,7 +1307,61 @@ fn every_v0_intrinsic_has_a_checked_signature() {
     assert_eq!(checked.module().declarations.len(), ALL_INTRINSICS.len());
 }
 
-const ALL_INTRINSICS: [Intrinsic; 59] = [
+#[test]
+fn string_replace_many_rejects_invalid_pair_shapes_and_operand_types() {
+    let cases = [
+        vec![],
+        vec![Value::String("source".into())],
+        vec![
+            Value::String("source".into()),
+            Value::String("needle".into()),
+        ],
+        vec![
+            Value::String("source".into()),
+            Value::String("needle".into()),
+            Value::String("replacement".into()),
+            Value::String("orphan".into()),
+        ],
+        vec![
+            Value::String("source".into()),
+            Value::Bool(true),
+            Value::String("replacement".into()),
+        ],
+    ];
+    for (index, values) in cases.into_iter().enumerate() {
+        let mut factory = Factory::new();
+        let arguments = values
+            .into_iter()
+            .map(|value| factory.literal(value))
+            .collect();
+        let expression = Expression::Intrinsic {
+            node: factory.node(),
+            operation: Intrinsic::StringReplaceMany,
+            arguments,
+        };
+        let body = factory.block(expression);
+        let declaration = Declaration::Function(FunctionDeclaration {
+            header: factory.declaration(&format!("invalid_replace_many_{index}")),
+            parameters: vec![],
+            return_type: TypeRef::String,
+            body,
+        });
+        let diagnostics = check_program(Document::new(
+            IrVersion::CURRENT,
+            Module {
+                name: format!("invalid_replace_many_{index}"),
+                declarations: vec![declaration],
+            },
+        ))
+        .expect_err("invalid StringReplaceMany arguments must be diagnosed");
+        assert!(
+            codes(&diagnostics).contains(&DiagnosticCode::InvalidInvocation),
+            "case {index}: {diagnostics:#?}"
+        );
+    }
+}
+
+const ALL_INTRINSICS: [Intrinsic; 60] = [
     Intrinsic::BoolNot,
     Intrinsic::BoolAnd,
     Intrinsic::BoolOr,
@@ -1347,6 +1401,7 @@ const ALL_INTRINSICS: [Intrinsic; 59] = [
     Intrinsic::StringStripPrefix,
     Intrinsic::StringEndsWith,
     Intrinsic::StringReplaceAll,
+    Intrinsic::StringReplaceMany,
     Intrinsic::StringTrimStart,
     Intrinsic::StringTrimEnd,
     Intrinsic::BytesConcat,
@@ -1491,6 +1546,17 @@ fn intrinsic_cases() -> Vec<(Intrinsic, Vec<TypeRef>, TypeRef)> {
         (
             StringReplaceAll,
             vec![TypeRef::String, TypeRef::String, TypeRef::String],
+            TypeRef::String,
+        ),
+        (
+            StringReplaceMany,
+            vec![
+                TypeRef::String,
+                TypeRef::String,
+                TypeRef::String,
+                TypeRef::String,
+                TypeRef::String,
+            ],
             TypeRef::String,
         ),
         (

@@ -47,6 +47,35 @@ export const replaceAllLiteral = (source: string, needle: string, replacement: s
     ? replacement
     : replacement + scalars.join(replacement) + replacement;
 };
+export const replaceManyLiteral = (
+  source: string,
+  mappings: readonly (readonly [string, string])[],
+): string => {
+  let output = "";
+  let offset = 0;
+  while (true) {
+    const remaining = source.slice(offset);
+    const mapping = mappings.find(([needle]) => remaining.startsWith(needle));
+    if (mapping !== undefined) {
+      const [needle, replacement] = mapping;
+      output += replacement;
+      if (needle.length > 0) {
+        offset += needle.length;
+        continue;
+      }
+      const scalar = Array.from(remaining)[0];
+      if (scalar === undefined) break;
+      output += scalar;
+      offset += scalar.length;
+      continue;
+    }
+    const scalar = Array.from(remaining)[0];
+    if (scalar === undefined) break;
+    output += scalar;
+    offset += scalar.length;
+  }
+  return output;
+};
 export const trimStartScalars = (source: string, characters: string): string => {
   const scalars = Array.from(source);
   const trim = new Set(Array.from(characters));
@@ -288,6 +317,13 @@ export class Runtime {
       case "string_strip_prefix": return ok(b.length > 0 && a.startsWith(b) ? a.slice(b.length) : a);
       case "string_ends_with": return ok(a.endsWith(b));
       case "string_replace_all": return ok(replaceAllLiteral(a, b, c));
+      case "string_replace_many": {
+        const mappings: [string, string][] = [];
+        for (let index = 1; index < values.length; index += 2) {
+          mappings.push([values[index] as string, values[index + 1] as string]);
+        }
+        return ok(replaceManyLiteral(a, mappings));
+      }
       case "string_trim_start": return ok(trimStartScalars(a, b));
       case "string_trim_end": return ok(trimEndScalars(a, b));
       case "bytes_concat": case "list_concat": return ok(listConcat(a, b));

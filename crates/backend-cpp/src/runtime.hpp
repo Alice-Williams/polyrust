@@ -837,6 +837,7 @@ class runtime {
     if (name == "string_strip_prefix") return succeed(string(a).starts_with(string(b)) ? string(a).substr(string(b).size()) : string(a));
     if (name == "string_ends_with") return succeed(string(a).ends_with(string(b)));
     if (name == "string_replace_all") return succeed(replace_all(string(a), string(b), string(c)));
+    if (name == "string_replace_many") return succeed(replace_many(values));
     if (name == "string_trim_start") return succeed(trim_scalars(string(a), string(b), true));
     if (name == "string_trim_end") return succeed(trim_scalars(string(a), string(b), false));
     if (name == "bytes_concat") {
@@ -922,6 +923,36 @@ class runtime {
       const auto found = source.find(needle, offset);
       if (found == std::string::npos) { result.append(source, offset); return result; }
       result.append(source, offset, found - offset); result += replacement; offset = found + needle.size();
+    }
+  }
+
+  static std::string replace_many(const any_list& values) {
+    const auto& source = string(values[0]);
+    std::string result;
+    for (std::size_t offset = 0;;) {
+      const std::string_view remaining(source.data() + offset, source.size() - offset);
+      bool matched = false;
+      for (std::size_t index = 1; index < values.size(); index += 2) {
+        const auto& needle = string(values[index]);
+        if (!remaining.starts_with(needle)) continue;
+        result += string(values[index + 1]);
+        if (!needle.empty()) {
+          offset += needle.size();
+        } else if (remaining.empty()) {
+          return result;
+        } else {
+          const std::size_t width = utf8_scalar_width(static_cast<std::uint8_t>(source[offset]));
+          result.append(source, offset, width);
+          offset += width;
+        }
+        matched = true;
+        break;
+      }
+      if (matched) continue;
+      if (remaining.empty()) return result;
+      const std::size_t width = utf8_scalar_width(static_cast<std::uint8_t>(source[offset]));
+      result.append(source, offset, width);
+      offset += width;
     }
   }
 

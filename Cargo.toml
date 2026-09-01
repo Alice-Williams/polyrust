@@ -18,6 +18,7 @@ members = [
     "crates/ir",
     "examples/models-and-validation",
     "examples/real-world/escape-string-regexp",
+    "examples/real-world/html-escaper",
     "examples/real-world/slash",
     "examples/real-world/strip-bom",
     "examples/real-world/trim-newlines",

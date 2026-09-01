@@ -84,3 +84,7 @@ contract as every other target.
 - [M22 — C++ and C backends](milestones/M22-cpp-c.md) — in progress
   - [M22A — C++20 backend checkpoint](milestones/M22A-cpp-backend.md) — complete
   - [M22B — C17 backend](milestones/M22B-c-backend.md) — in progress
+
+### Phase 6 continuation — Real-world compatibility
+
+- [M23 — html-escaper equivalence port](milestones/M23-html-escaper.md) — complete

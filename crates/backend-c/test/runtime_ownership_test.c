@@ -39,10 +39,23 @@ int main(void) {
   static const uint8_t source[] = {'a', '-', 'b', '-', 'c'};
   static const uint8_t needle[] = {'-'};
   static const uint8_t replacement[] = {'/', '/'};
+  static const uint8_t many_source[] = {'&', 'a', 'm', 'p', ';', 'l', 't', ';',
+                                        '&', 'l', 't', ';'};
+  static const uint8_t amp[] = {'&', 'a', 'm', 'p', ';'};
+  static const uint8_t lt[] = {'&', 'l', 't', ';'};
+  static const uint8_t amp_replacement[] = {'&'};
+  static const uint8_t lt_replacement[] = {'<'};
+  static const poly_string_view needles[] = {
+      {amp, sizeof(amp)}, {lt, sizeof(lt)}};
+  static const poly_string_view replacements[] = {
+      {amp_replacement, sizeof(amp_replacement)},
+      {lt_replacement, sizeof(lt_replacement)}};
   poly_allocator allocator = poly_default_allocator();
   poly_string first = {0};
   poly_string clone = {0};
   poly_string replaced = {0};
+  poly_string replaced_many = {0};
+  poly_string failed_many = {0};
   size_t scalars = 0U;
   failing_context context = {0};
   poly_allocator failing = {&context, failing_allocate, failing_reallocate,
@@ -72,6 +85,24 @@ int main(void) {
       replaced.length != 7U || memcmp(replaced.data, "a//b//c", 7U) != 0) {
     return 3;
   }
+  if (poly_string_replace_many(
+          allocator, (poly_string_view){many_source, sizeof(many_source)},
+          needles, replacements, 2U, &replaced_many) != POLY_OK ||
+      replaced_many.length != 5U ||
+      memcmp(replaced_many.data, "&lt;<", 5U) != 0) {
+    return 6;
+  }
+  context.calls = 0U;
+  context.fail_at = 1U;
+  if (poly_string_replace_many(
+          failing, (poly_string_view){many_source, sizeof(many_source)},
+          needles, replacements, 2U, &failed_many) !=
+          POLY_ALLOCATION_FAILED ||
+      failed_many.data != NULL || failed_many.length != 0U ||
+      failed_many.capacity != 0U) {
+    return 7;
+  }
+  context.calls = 0U;
   context.fail_at = 1U;
   if (poly_string_clone(failing, (poly_string_view){source, sizeof(source)},
                         &(poly_string){0}) != POLY_ALLOCATION_FAILED) {
@@ -88,6 +119,8 @@ int main(void) {
     return 5;
   }
   poly_string_drop(&replaced);
+  poly_string_drop(&replaced_many);
+  poly_string_drop(&failed_many);
   poly_string_drop(&clone);
   poly_string_drop(&first);
   poly_string_drop(&first);

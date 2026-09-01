@@ -1007,6 +1007,19 @@ impl Generator<'_> {
             Intrinsic::StringReplaceAll => {
                 format!("Ok({a}.replace({b}.as_str(), {c}.as_str()))")
             }
+            Intrinsic::StringReplaceMany => {
+                let mappings = (1..arguments.len())
+                    .step_by(2)
+                    .map(|index| {
+                        format!(
+                            "(__argument_{index}.as_str(), __argument_{}.as_str())",
+                            index + 1
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("_poly_string_replace_many({a}, &[{mappings}])")
+            }
             Intrinsic::StringTrimStart => {
                 format!(
                     "Ok({a}.trim_start_matches(|character| {b}.contains(character)).to_owned())"
@@ -1114,6 +1127,7 @@ impl Generator<'_> {
                     Intrinsic::StringFromUtf8Checked
                     | Intrinsic::StringConcat
                     | Intrinsic::StringReplaceAll
+                    | Intrinsic::StringReplaceMany
                     | Intrinsic::StringStripPrefix
                     | Intrinsic::StringTrimStart
                     | Intrinsic::StringTrimEnd => Some(TypeRef::String),
@@ -1422,6 +1436,42 @@ impl PolyRuntimeError {
 }
 
 pub type PolyResult<T> = Result<T, PolyRuntimeError>;
+
+#[doc(hidden)]
+pub fn _poly_string_replace_many(
+    source: String,
+    mappings: &[(&str, &str)],
+) -> PolyResult<String> {
+    let mut output = String::new();
+    let mut offset = 0;
+    loop {
+        let remaining = &source[offset..];
+        if let Some((needle, replacement)) = mappings
+            .iter()
+            .find(|(needle, _)| remaining.starts_with(*needle))
+        {
+            output.push_str(replacement);
+            if needle.is_empty() {
+                let Some(character) = remaining.chars().next() else {
+                    break;
+                };
+                let width = character.len_utf8();
+                output.push_str(&remaining[..width]);
+                offset += width;
+            } else {
+                offset += needle.len();
+            }
+        } else {
+            let Some(character) = remaining.chars().next() else {
+                break;
+            };
+            let width = character.len_utf8();
+            output.push_str(&remaining[..width]);
+            offset += width;
+        }
+    }
+    Ok(output)
+}
 
 #[doc(hidden)]
 pub trait PolyShift: Sized {
