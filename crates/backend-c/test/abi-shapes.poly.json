@@ -1,0 +1,46 @@
+{
+  "ir_version": "0.1.0",
+  "module": {
+    "name": "abi_shapes",
+    "declarations": [
+      {
+        "kind": "record",
+        "data": {
+          "header": {"node": {"id": 1, "source": {"kind": "logical", "data": {"segments": ["abi_shapes", "Leaf"]}}}, "name": "Leaf", "visibility": "public", "documentation": []},
+          "fields": [
+            {"header": {"node": {"id": 2, "source": {"kind": "logical", "data": {"segments": ["abi_shapes", "Leaf", "text"]}}}, "name": "text", "documentation": []}, "ty": {"kind": "string"}}
+          ]
+        }
+      },
+      {
+        "kind": "enum",
+        "data": {
+          "header": {"node": {"id": 3, "source": {"kind": "logical", "data": {"segments": ["abi_shapes", "Choice"]}}}, "name": "Choice", "visibility": "public", "documentation": []},
+          "variants": [
+            {"header": {"node": {"id": 4, "source": {"kind": "logical", "data": {"segments": ["abi_shapes", "Choice", "Empty"]}}}, "name": "Empty", "documentation": []}, "fields": []},
+            {"header": {"node": {"id": 5, "source": {"kind": "logical", "data": {"segments": ["abi_shapes", "Choice", "Label"]}}}, "name": "Label", "documentation": []}, "fields": [
+              {"header": {"node": {"id": 6, "source": {"kind": "logical", "data": {"segments": ["abi_shapes", "Choice", "Label", "value"]}}}, "name": "value", "documentation": []}, "ty": {"kind": "string"}}
+            ]},
+            {"header": {"node": {"id": 7, "source": {"kind": "logical", "data": {"segments": ["abi_shapes", "Choice", "Leaves"]}}}, "name": "Leaves", "documentation": []}, "fields": [
+              {"header": {"node": {"id": 8, "source": {"kind": "logical", "data": {"segments": ["abi_shapes", "Choice", "Leaves", "items"]}}}, "name": "items", "documentation": []}, "ty": {"kind": "list", "data": {"kind": "named", "data": 1}}}
+            ]}
+          ]
+        }
+      },
+      {
+        "kind": "record",
+        "data": {
+          "header": {"node": {"id": 9, "source": {"kind": "logical", "data": {"segments": ["abi_shapes", "Aggregate"]}}}, "name": "Aggregate", "visibility": "public", "documentation": []},
+          "fields": [
+            {"header": {"node": {"id": 10, "source": {"kind": "logical", "data": {"segments": ["abi_shapes", "Aggregate", "items"]}}}, "name": "items", "documentation": []}, "ty": {"kind": "list", "data": {"kind": "named", "data": 1}}},
+            {"header": {"node": {"id": 11, "source": {"kind": "logical", "data": {"segments": ["abi_shapes", "Aggregate", "nested"]}}}, "name": "nested", "documentation": []}, "ty": {"kind": "list", "data": {"kind": "list", "data": {"kind": "string"}}}},
+            {"header": {"node": {"id": 12, "source": {"kind": "logical", "data": {"segments": ["abi_shapes", "Aggregate", "maybe"]}}}, "name": "maybe", "documentation": []}, "ty": {"kind": "option", "data": {"kind": "named", "data": 1}}},
+            {"header": {"node": {"id": 13, "source": {"kind": "logical", "data": {"segments": ["abi_shapes", "Aggregate", "outcome"]}}}, "name": "outcome", "documentation": []}, "ty": {"kind": "result", "data": {"ok": {"kind": "option", "data": {"kind": "string"}}, "error": {"kind": "bytes"}}}},
+            {"header": {"node": {"id": 14, "source": {"kind": "logical", "data": {"segments": ["abi_shapes", "Aggregate", "choice"]}}}, "name": "choice", "documentation": []}, "ty": {"kind": "named", "data": 3}}
+          ]
+        }
+      }
+    ]
+  },
+  "metadata": {}
+}

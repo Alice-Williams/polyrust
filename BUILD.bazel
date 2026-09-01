@@ -144,6 +144,8 @@ test_suite(
         ":buildifier_test",
         ":rust_clippy_test",
         ":rustfmt_test",
+        "//crates/backend-c:abi_shapes_ownership_test",
+        "//crates/backend-c:abi_shapes_sanitizer_test",
         "//crates/benchmark:generation_benchmark_test",
         "//crates/conformance:all_targets_test",
         "//examples/models-and-validation:all",

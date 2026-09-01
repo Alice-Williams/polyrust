@@ -38,10 +38,11 @@ without signed-overflow undefined behavior. Builds use `-std=c++20`,
 ## C17 mapping
 
 M22B is implementing this normative mapping in slices. The checked scalar,
-UTF-8 string, owned-record, allocator, and contract-vtable slice is active in
-all examples. The backend diagnoses list, option, value-result, enum, checked
-arithmetic, and bounded-iteration programs until their monomorphized lowering
-is complete; it does not expose placeholder `void *` containers.
+UTF-8 string, allocator, contract-vtable, and concrete aggregate ABI slices are
+active. Aggregate layouts and recursive ownership operations are generated and
+tested; expression construction, matching, container intrinsics, arithmetic,
+and bounded iteration remain diagnostic-only. The backend never exposes
+placeholder `void *` containers.
 
 ### Names and monomorphization
 

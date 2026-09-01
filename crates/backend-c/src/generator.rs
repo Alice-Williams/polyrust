@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use portable_check::v0::CheckedProgram;
 use portable_codegen::BackendError;
@@ -11,6 +11,13 @@ pub(crate) struct Generator<'a> {
     program: &'a CheckedProgram,
     prefix: String,
     declarations: BTreeMap<NodeId, &'a Declaration>,
+}
+
+#[derive(Clone)]
+enum AbiShape {
+    Record(NodeId),
+    Enum(NodeId),
+    Composite(TypeRef),
 }
 
 impl<'a> Generator<'a> {
@@ -37,17 +44,17 @@ impl<'a> Generator<'a> {
                 Declaration::Implementation(item) => {
                     for method in &item.methods {
                         for parameter in &method.parameters {
-                            self.validate_type(&parameter.ty)?;
+                            self.validate_callable_type(&parameter.ty)?;
                         }
-                        self.validate_type(&method.return_type)?;
+                        self.validate_callable_type(&method.return_type)?;
                         self.validate_block(&method.body)?;
                     }
                 }
                 Declaration::Function(item) => {
                     for parameter in &item.parameters {
-                        self.validate_type(&parameter.ty)?;
+                        self.validate_callable_type(&parameter.ty)?;
                     }
-                    self.validate_type(&item.return_type)?;
+                    self.validate_callable_type(&item.return_type)?;
                     self.validate_block(&item.body)?;
                 }
                 Declaration::Alias(item) => self.validate_type(&item.target)?,
@@ -59,29 +66,47 @@ impl<'a> Generator<'a> {
                 Declaration::Contract(item) => {
                     for method in &item.methods {
                         for parameter in &method.parameters {
-                            self.validate_type(&parameter.ty)?;
+                            self.validate_callable_type(&parameter.ty)?;
                         }
-                        self.validate_type(&method.return_type)?;
+                        self.validate_callable_type(&method.return_type)?;
                     }
                 }
                 Declaration::Test(_) => {}
-                Declaration::Enum(_) => {
-                    return self
-                        .unsupported("enum lowering follows the initial owned-record C slice");
+                Declaration::Enum(item) => {
+                    for variant in &item.variants {
+                        for field in &variant.fields {
+                            self.validate_type(&field.ty)?;
+                        }
+                    }
                 }
             }
         }
+        self.definition_order()?;
         Ok(())
     }
 
     fn validate_type(&self, ty: &TypeRef) -> Result<(), BackendError> {
         match self.resolve_alias(ty) {
-            TypeRef::List(_) | TypeRef::Option(_) | TypeRef::Result { .. } => self.unsupported(
-                "list, option, and value-result types require the next monomorphization slice",
-            ),
-            TypeRef::Named(id) if !self.is_record(id) => {
-                self.unsupported("only named records and scalar aliases are lowered in this slice")
+            TypeRef::List(inner) | TypeRef::Option(inner) => self.validate_type(&inner),
+            TypeRef::Result { ok, error } => {
+                self.validate_type(&ok)?;
+                self.validate_type(&error)
             }
+            TypeRef::Named(id) if !self.is_record(id) && !self.is_enum(id) => {
+                self.unsupported("named type does not resolve to a record, enum, or scalar alias")
+            }
+            _ => Ok(()),
+        }
+    }
+
+    fn validate_callable_type(&self, ty: &TypeRef) -> Result<(), BackendError> {
+        self.validate_type(ty)?;
+        match self.resolve_alias(ty) {
+            TypeRef::List(_) | TypeRef::Option(_) | TypeRef::Result { .. } => self.unsupported(
+                "container ABI is defined, but callable container lowering is not complete yet",
+            ),
+            TypeRef::Named(id) if self.is_enum(id) => self
+                .unsupported("enum ABI is defined, but callable enum lowering is not complete yet"),
             _ => Ok(()),
         }
     }
@@ -203,22 +228,34 @@ impl<'a> Generator<'a> {
             self.prefix
         ));
         for declaration in &self.program.module().declarations {
-            if let Declaration::Record(item) = declaration {
-                let name = self.record_name(item.header.node.id);
-                output.push_str(&format!("typedef struct {name} {name};\n"));
+            match declaration {
+                Declaration::Record(item) => {
+                    let name = self.named_name(item.header.node.id);
+                    output.push_str(&format!("typedef struct {name} {name};\n"));
+                }
+                Declaration::Enum(item) => {
+                    let name = self.named_name(item.header.node.id);
+                    output.push_str(&format!("typedef struct {name} {name};\n"));
+                }
+                _ => {}
             }
         }
+        for ty in self.composite_types().values() {
+            let name = self.ty(ty);
+            output.push_str(&format!("typedef struct {name} {name};\n"));
+        }
         output.push('\n');
+        for shape in self.definition_order().expect("C ABI graph was validated") {
+            output.push_str(&self.shape_header(&shape));
+        }
         for declaration in &self.program.module().declarations {
-            match declaration {
-                Declaration::Alias(item) => output.push_str(&format!(
+            if let Declaration::Alias(item) = declaration {
+                output.push_str(&format!(
                     "typedef {} {}_{};\n",
                     self.ty(&item.target),
                     self.prefix,
                     type_name(&item.header.name)
-                )),
-                Declaration::Record(item) => output.push_str(&self.record_header(item)),
-                _ => {}
+                ));
             }
         }
         for declaration in &self.program.module().declarations {
@@ -273,22 +310,6 @@ impl<'a> Generator<'a> {
         output
     }
 
-    fn record_header(&self, item: &portable_ir::v0::RecordDeclaration) -> String {
-        let name = self.record_name(item.header.node.id);
-        let mut output = format!("struct {name} {{\n");
-        for field in &item.fields {
-            output.push_str(&format!(
-                "  {} {};\n",
-                self.ty(&field.ty),
-                value_name(&field.header.name)
-            ));
-        }
-        output.push_str(&format!(
-            "}};\nbool {name}_clone(poly_allocator allocator, const {name} *source, {name} *output);\nvoid {name}_drop({name} *value);\n\n"
-        ));
-        output
-    }
-
     fn parameters(&self, parameters: &[Parameter]) -> String {
         parameters
             .iter()
@@ -332,9 +353,15 @@ impl<'a> Generator<'a> {
             TypeRef::Char => "uint32_t".into(),
             TypeRef::String => "poly_string".into(),
             TypeRef::Bytes => "poly_bytes".into(),
-            TypeRef::Named(id) => self.record_name(id),
+            TypeRef::Named(id) => self.named_name(id),
             TypeRef::Contract(id) => self.contract_name(id),
-            TypeRef::List(_) | TypeRef::Option(_) | TypeRef::Result { .. } => "void *".into(),
+            TypeRef::List(_) | TypeRef::Option(_) | TypeRef::Result { .. } => {
+                format!(
+                    "{}_{}",
+                    self.prefix,
+                    self.shape_key(&self.resolve_alias(ty))
+                )
+            }
         }
     }
 
@@ -371,6 +398,10 @@ impl<'a> Generator<'a> {
     }
 
     fn record_name(&self, id: NodeId) -> String {
+        self.named_name(id)
+    }
+
+    fn named_name(&self, id: NodeId) -> String {
         format!("{}_{}", self.prefix, type_name(self.declaration_name(id)))
     }
 
@@ -382,6 +413,282 @@ impl<'a> Generator<'a> {
         matches!(self.declarations.get(&id), Some(Declaration::Record(_)))
     }
 
+    fn is_enum(&self, id: NodeId) -> bool {
+        matches!(self.declarations.get(&id), Some(Declaration::Enum(_)))
+    }
+
+    fn shape_key(&self, ty: &TypeRef) -> String {
+        match self.resolve_alias(ty) {
+            TypeRef::Unit => "unit".into(),
+            TypeRef::Bool => "bool".into(),
+            TypeRef::I32 => "i32".into(),
+            TypeRef::I64 => "i64".into(),
+            TypeRef::F64 => "f64".into(),
+            TypeRef::Char => "char".into(),
+            TypeRef::String => "string".into(),
+            TypeRef::Bytes => "bytes".into(),
+            TypeRef::Named(id) => format!("named_{}", id.0),
+            TypeRef::Contract(id) => format!("contract_{}", id.0),
+            TypeRef::List(inner) => format!("list__{}", self.shape_key(&inner)),
+            TypeRef::Option(inner) => format!("option__{}", self.shape_key(&inner)),
+            TypeRef::Result { ok, error } => format!(
+                "result__{}__{}",
+                self.shape_key(&ok),
+                self.shape_key(&error)
+            ),
+        }
+    }
+
+    fn composite_types(&self) -> BTreeMap<String, TypeRef> {
+        let mut output = BTreeMap::new();
+        for declaration in &self.program.module().declarations {
+            match declaration {
+                Declaration::Constant(item) => self.collect_composites(&item.ty, &mut output),
+                Declaration::Alias(item) => self.collect_composites(&item.target, &mut output),
+                Declaration::Record(item) => {
+                    for field in &item.fields {
+                        self.collect_composites(&field.ty, &mut output);
+                    }
+                }
+                Declaration::Enum(item) => {
+                    for variant in &item.variants {
+                        for field in &variant.fields {
+                            self.collect_composites(&field.ty, &mut output);
+                        }
+                    }
+                }
+                Declaration::Contract(item) => {
+                    for method in &item.methods {
+                        for parameter in &method.parameters {
+                            self.collect_composites(&parameter.ty, &mut output);
+                        }
+                        self.collect_composites(&method.return_type, &mut output);
+                    }
+                }
+                Declaration::Implementation(item) => {
+                    for method in &item.methods {
+                        for parameter in &method.parameters {
+                            self.collect_composites(&parameter.ty, &mut output);
+                        }
+                        self.collect_composites(&method.return_type, &mut output);
+                    }
+                }
+                Declaration::Function(item) => {
+                    for parameter in &item.parameters {
+                        self.collect_composites(&parameter.ty, &mut output);
+                    }
+                    self.collect_composites(&item.return_type, &mut output);
+                }
+                Declaration::Test(_) => {}
+            }
+        }
+        for (_, ty) in self.program.expression_types() {
+            self.collect_composites(ty, &mut output);
+        }
+        output
+    }
+
+    fn collect_composites(&self, ty: &TypeRef, output: &mut BTreeMap<String, TypeRef>) {
+        match self.resolve_alias(ty) {
+            TypeRef::List(inner) => {
+                self.collect_composites(&inner, output);
+                let ty = TypeRef::List(inner);
+                output.insert(self.shape_key(&ty), ty);
+            }
+            TypeRef::Option(inner) => {
+                self.collect_composites(&inner, output);
+                let ty = TypeRef::Option(inner);
+                output.insert(self.shape_key(&ty), ty);
+            }
+            TypeRef::Result { ok, error } => {
+                self.collect_composites(&ok, output);
+                self.collect_composites(&error, output);
+                let ty = TypeRef::Result { ok, error };
+                output.insert(self.shape_key(&ty), ty);
+            }
+            _ => {}
+        }
+    }
+
+    fn definition_order(&self) -> Result<Vec<AbiShape>, BackendError> {
+        let mut pending = BTreeMap::new();
+        for declaration in &self.program.module().declarations {
+            match declaration {
+                Declaration::Record(item) => {
+                    pending.insert(
+                        self.named_name(item.header.node.id),
+                        AbiShape::Record(item.header.node.id),
+                    );
+                }
+                Declaration::Enum(item) => {
+                    pending.insert(
+                        self.named_name(item.header.node.id),
+                        AbiShape::Enum(item.header.node.id),
+                    );
+                }
+                _ => {}
+            }
+        }
+        for ty in self.composite_types().into_values() {
+            pending.insert(self.ty(&ty), AbiShape::Composite(ty));
+        }
+        let mut defined = BTreeSet::new();
+        let mut output = Vec::new();
+        while !pending.is_empty() {
+            let ready = pending
+                .iter()
+                .find(|(_, shape)| {
+                    self.shape_dependencies(shape)
+                        .iter()
+                        .all(|dependency| defined.contains(dependency))
+                })
+                .map(|(name, _)| name.clone());
+            let Some(name) = ready else {
+                return self
+                    .unsupported("owned type definitions contain an irreducible by-value cycle");
+            };
+            let shape = pending.remove(&name).expect("ready ABI shape");
+            defined.insert(name);
+            output.push(shape);
+        }
+        Ok(output)
+    }
+
+    fn shape_dependencies(&self, shape: &AbiShape) -> BTreeSet<String> {
+        let mut output = BTreeSet::new();
+        match shape {
+            AbiShape::Record(id) => {
+                if let Some(Declaration::Record(item)) = self.declarations.get(id) {
+                    for field in &item.fields {
+                        self.add_definition_dependency(&field.ty, &mut output);
+                    }
+                }
+            }
+            AbiShape::Enum(id) => {
+                if let Some(Declaration::Enum(item)) = self.declarations.get(id) {
+                    for variant in &item.variants {
+                        for field in &variant.fields {
+                            self.add_definition_dependency(&field.ty, &mut output);
+                        }
+                    }
+                }
+            }
+            AbiShape::Composite(TypeRef::List(_)) => {}
+            AbiShape::Composite(TypeRef::Option(inner)) => {
+                self.add_definition_dependency(inner, &mut output);
+            }
+            AbiShape::Composite(TypeRef::Result { ok, error }) => {
+                self.add_definition_dependency(ok, &mut output);
+                self.add_definition_dependency(error, &mut output);
+            }
+            AbiShape::Composite(_) => {}
+        }
+        output
+    }
+
+    fn add_definition_dependency(&self, ty: &TypeRef, output: &mut BTreeSet<String>) {
+        match self.resolve_alias(ty) {
+            TypeRef::Named(id) if self.is_record(id) || self.is_enum(id) => {
+                output.insert(self.named_name(id));
+            }
+            TypeRef::List(_) | TypeRef::Option(_) | TypeRef::Result { .. } => {
+                output.insert(self.ty(ty));
+            }
+            _ => {}
+        }
+    }
+
+    fn shape_header(&self, shape: &AbiShape) -> String {
+        match shape {
+            AbiShape::Record(id) => self.record_shape_header(*id),
+            AbiShape::Enum(id) => self.enum_shape_header(*id),
+            AbiShape::Composite(ty) => self.composite_shape_header(ty),
+        }
+    }
+
+    fn owned_shape_footer(&self, name: &str) -> String {
+        format!(
+            "bool {name}_clone(poly_allocator allocator, const {name} *source, {name} *output);\nvoid {name}_drop({name} *value);\ntypedef struct {name}_call_result {{ bool ok; {name} value; poly_error error; }} {name}_call_result;\nvoid {name}_call_result_drop({name}_call_result *value);\n\n"
+        )
+    }
+
+    fn record_shape_header(&self, id: NodeId) -> String {
+        let Some(Declaration::Record(item)) = self.declarations.get(&id) else {
+            return String::new();
+        };
+        let name = self.named_name(id);
+        let mut output = format!("struct {name} {{\n");
+        for field in &item.fields {
+            output.push_str(&format!(
+                "  {} {};\n",
+                self.ty(&field.ty),
+                value_name(&field.header.name)
+            ));
+        }
+        output.push_str("};\n");
+        output.push_str(&self.owned_shape_footer(&name));
+        output
+    }
+
+    fn enum_shape_header(&self, id: NodeId) -> String {
+        let Some(Declaration::Enum(item)) = self.declarations.get(&id) else {
+            return String::new();
+        };
+        let name = self.named_name(id);
+        let tag = format!("{name}_tag");
+        let mut output = format!("typedef enum {tag} {{\n");
+        for (index, variant) in item.variants.iter().enumerate() {
+            output.push_str(&format!(
+                "  {}_{} = {},\n",
+                name.to_ascii_uppercase(),
+                type_name(&variant.header.name).to_ascii_uppercase(),
+                index
+            ));
+        }
+        output.push_str(&format!(
+            "}} {tag};\nstruct {name} {{\n  {tag} tag;\n  union {{\n"
+        ));
+        for variant in &item.variants {
+            output.push_str("    struct {\n");
+            if variant.fields.is_empty() {
+                output.push_str("      uint8_t unused;\n");
+            }
+            for field in &variant.fields {
+                output.push_str(&format!(
+                    "      {} {};\n",
+                    self.ty(&field.ty),
+                    value_name(&field.header.name)
+                ));
+            }
+            output.push_str(&format!("    }} {};\n", value_name(&variant.header.name)));
+        }
+        output.push_str("  } payload;\n};\n");
+        output.push_str(&self.owned_shape_footer(&name));
+        output
+    }
+
+    fn composite_shape_header(&self, ty: &TypeRef) -> String {
+        let name = self.ty(ty);
+        let mut output = match self.resolve_alias(ty) {
+            TypeRef::List(inner) => format!(
+                "struct {name} {{ {} *data; size_t length; size_t capacity; poly_allocator allocator; }};\n",
+                self.ty(&inner)
+            ),
+            TypeRef::Option(inner) => format!(
+                "struct {name} {{ bool has_value; union {{ {} value; }} payload; }};\n",
+                self.ty(&inner)
+            ),
+            TypeRef::Result { ok, error } => format!(
+                "struct {name} {{ bool is_ok; union {{ {} ok; {} error; }} payload; }};\n",
+                self.ty(&ok),
+                self.ty(&error)
+            ),
+            _ => String::new(),
+        };
+        output.push_str(&self.owned_shape_footer(&name));
+        output
+    }
+
     pub(crate) fn source(&self) -> Result<String, BackendError> {
         let mut output = String::from(
             "/* Generated by PolyRust from checked IR v0. */\n#include \"generated.h\"\n\n#include <string.h>\n\n",
@@ -391,10 +698,8 @@ impl<'a> Generator<'a> {
              void {0}_bytes_result_drop({0}_bytes_result *value) {{\n  if (value != NULL) {{ poly_bytes_drop(&value->value); *value = ({0}_bytes_result){{0}}; }}\n}}\n\n",
             self.prefix
         ));
-        for declaration in &self.program.module().declarations {
-            if let Declaration::Record(item) = declaration {
-                output.push_str(&self.record_functions(item));
-            }
+        for shape in self.definition_order().expect("C ABI graph was validated") {
+            output.push_str(&self.shape_functions(&shape));
         }
         for declaration in &self.program.module().declarations {
             if let Declaration::Implementation(item) = declaration {
@@ -436,28 +741,31 @@ impl<'a> Generator<'a> {
         Ok(output)
     }
 
+    fn shape_functions(&self, shape: &AbiShape) -> String {
+        match shape {
+            AbiShape::Record(id) => match self.declarations.get(id) {
+                Some(Declaration::Record(item)) => self.record_functions(item),
+                _ => String::new(),
+            },
+            AbiShape::Enum(id) => self.enum_functions(*id),
+            AbiShape::Composite(ty) => self.composite_functions(ty),
+        }
+    }
+
     fn record_functions(&self, item: &portable_ir::v0::RecordDeclaration) -> String {
         let name = self.record_name(item.header.node.id);
         let mut output = format!(
-            "bool {name}_clone(poly_allocator allocator, const {name} *source, {name} *output) {{\n  {name} result = {{0}};\n  (void)allocator;\n  if (source == NULL || output == NULL) {{ return false; }}\n"
+            "bool {name}_clone(poly_allocator allocator, const {name} *source, {name} *output) {{\n  {name} result = {{0}};\n  (void)allocator;\n  if (output == NULL) {{ return false; }}\n  *output = result;\n  if (source == NULL) {{ return false; }}\n"
         );
         for field in &item.fields {
             let field_name = value_name(&field.header.name);
-            match self.resolve_alias(&field.ty) {
-                TypeRef::String => output.push_str(&format!(
-                    "  if (poly_string_clone(allocator, poly_string_borrow(&source->{field_name}), &result.{field_name}) != POLY_OK) {{ {name}_drop(&result); return false; }}\n"
-                )),
-                TypeRef::Bytes => output.push_str(&format!(
-                    "  if (!poly_bytes_clone(allocator, poly_bytes_borrow(&source->{field_name}), &result.{field_name})) {{ {name}_drop(&result); return false; }}\n"
-                )),
-                TypeRef::Named(id) if self.is_record(id) => output.push_str(&format!(
-                    "  if (!{}_clone(allocator, &source->{field_name}, &result.{field_name})) {{ {name}_drop(&result); return false; }}\n",
-                    self.record_name(id)
-                )),
-                _ => output.push_str(&format!(
-                    "  result.{field_name} = source->{field_name};\n"
-                )),
-            }
+            output.push_str(&self.clone_statement(
+                &field.ty,
+                &format!("source->{field_name}"),
+                &format!("result.{field_name}"),
+                &format!("{name}_drop(&result); return false;"),
+                2,
+            ));
         }
         output.push_str("  *output = result;\n  return true;\n}\n");
         output.push_str(&format!(
@@ -465,22 +773,198 @@ impl<'a> Generator<'a> {
         ));
         for field in &item.fields {
             let field_name = value_name(&field.header.name);
-            match self.resolve_alias(&field.ty) {
-                TypeRef::String => {
-                    output.push_str(&format!("  poly_string_drop(&value->{field_name});\n"))
-                }
-                TypeRef::Bytes => {
-                    output.push_str(&format!("  poly_bytes_drop(&value->{field_name});\n"))
-                }
-                TypeRef::Named(id) if self.is_record(id) => output.push_str(&format!(
-                    "  {}_drop(&value->{field_name});\n",
-                    self.record_name(id)
-                )),
-                _ => {}
-            }
+            output.push_str(&self.drop_statement(&field.ty, &format!("value->{field_name}"), 2));
         }
-        output.push_str(&format!("  *value = ({name}){{0}};\n}}\n\n"));
+        output.push_str(&format!("  *value = ({name}){{0}};\n}}\n"));
+        output.push_str(&self.call_result_drop_function(&name));
         output
+    }
+
+    fn enum_functions(&self, id: NodeId) -> String {
+        let Some(Declaration::Enum(item)) = self.declarations.get(&id) else {
+            return String::new();
+        };
+        let name = self.named_name(id);
+        let mut output = format!(
+            "bool {name}_clone(poly_allocator allocator, const {name} *source, {name} *output) {{\n  {name} result = {{0}};\n  if (output == NULL) {{ return false; }}\n  *output = result;\n  if (source == NULL) {{ return false; }}\n  result.tag = source->tag;\n  switch (source->tag) {{\n"
+        );
+        for variant in &item.variants {
+            let variant_name = value_name(&variant.header.name);
+            let tag = format!(
+                "{}_{}",
+                name.to_ascii_uppercase(),
+                type_name(&variant.header.name).to_ascii_uppercase()
+            );
+            output.push_str(&format!("    case {tag}:\n"));
+            for field in &variant.fields {
+                let field_name = value_name(&field.header.name);
+                output.push_str(&self.clone_statement(
+                    &field.ty,
+                    &format!("source->payload.{variant_name}.{field_name}"),
+                    &format!("result.payload.{variant_name}.{field_name}"),
+                    &format!("{name}_drop(&result); return false;"),
+                    6,
+                ));
+            }
+            output.push_str("      break;\n");
+        }
+        output
+            .push_str("    default: return false;\n  }\n  *output = result;\n  return true;\n}\n");
+        output.push_str(&format!(
+            "void {name}_drop({name} *value) {{\n  if (value == NULL) {{ return; }}\n  switch (value->tag) {{\n"
+        ));
+        for variant in &item.variants {
+            let variant_name = value_name(&variant.header.name);
+            let tag = format!(
+                "{}_{}",
+                name.to_ascii_uppercase(),
+                type_name(&variant.header.name).to_ascii_uppercase()
+            );
+            output.push_str(&format!("    case {tag}:\n"));
+            for field in &variant.fields {
+                let field_name = value_name(&field.header.name);
+                output.push_str(&self.drop_statement(
+                    &field.ty,
+                    &format!("value->payload.{variant_name}.{field_name}"),
+                    6,
+                ));
+            }
+            output.push_str("      break;\n");
+        }
+        output.push_str(&format!(
+            "    default: break;\n  }}\n  *value = ({name}){{0}};\n}}\n"
+        ));
+        output.push_str(&self.call_result_drop_function(&name));
+        output
+    }
+
+    fn composite_functions(&self, ty: &TypeRef) -> String {
+        let name = self.ty(ty);
+        let mut output = match self.resolve_alias(ty) {
+            TypeRef::List(inner) => {
+                let mut text = format!(
+                    "bool {name}_clone(poly_allocator allocator, const {name} *source, {name} *output) {{\n  {name} result = {{0}};\n  size_t index;\n  if (output == NULL) {{ return false; }}\n  *output = result;\n  if (source == NULL) {{ return false; }}\n  result.allocator = allocator;\n  if (source->length != 0U) {{\n    if (source->data == NULL || allocator.allocate == NULL || allocator.deallocate == NULL || source->length > SIZE_MAX / sizeof(*result.data)) {{ return false; }}\n    result.data = allocator.allocate(allocator.context, source->length * sizeof(*result.data));\n    if (result.data == NULL) {{ return false; }}\n    result.capacity = source->length;\n    for (index = 0U; index < source->length; ++index) {{\n"
+                );
+                text.push_str(&self.clone_statement(
+                    &inner,
+                    "source->data[index]",
+                    "result.data[index]",
+                    &format!("result.length = index; {name}_drop(&result); return false;"),
+                    6,
+                ));
+                text.push_str("      result.length = index + 1U;\n    }\n  }\n  *output = result;\n  return true;\n}\n");
+                text.push_str(&format!(
+                    "void {name}_drop({name} *value) {{\n  size_t index;\n  if (value == NULL) {{ return; }}\n  for (index = 0U; index < value->length; ++index) {{\n"
+                ));
+                text.push_str(&self.drop_statement(&inner, "value->data[index]", 4));
+                text.push_str(&format!(
+                    "  }}\n  if (value->data != NULL && value->allocator.deallocate != NULL) {{ value->allocator.deallocate(value->allocator.context, value->data); }}\n  *value = ({name}){{0}};\n}}\n"
+                ));
+                text
+            }
+            TypeRef::Option(inner) => {
+                let mut text = format!(
+                    "bool {name}_clone(poly_allocator allocator, const {name} *source, {name} *output) {{\n  {name} result = {{0}};\n  if (output == NULL) {{ return false; }}\n  *output = result;\n  if (source == NULL) {{ return false; }}\n  result.has_value = source->has_value;\n  if (source->has_value) {{\n"
+                );
+                text.push_str(&self.clone_statement(
+                    &inner,
+                    "source->payload.value",
+                    "result.payload.value",
+                    "return false;",
+                    4,
+                ));
+                text.push_str("  }\n  *output = result;\n  return true;\n}\n");
+                text.push_str(&format!(
+                    "void {name}_drop({name} *value) {{\n  if (value == NULL) {{ return; }}\n  if (value->has_value) {{\n"
+                ));
+                text.push_str(&self.drop_statement(&inner, "value->payload.value", 4));
+                text.push_str(&format!("  }}\n  *value = ({name}){{0}};\n}}\n"));
+                text
+            }
+            TypeRef::Result { ok, error } => {
+                let mut text = format!(
+                    "bool {name}_clone(poly_allocator allocator, const {name} *source, {name} *output) {{\n  {name} result = {{0}};\n  if (output == NULL) {{ return false; }}\n  *output = result;\n  if (source == NULL) {{ return false; }}\n  result.is_ok = source->is_ok;\n  if (source->is_ok) {{\n"
+                );
+                text.push_str(&self.clone_statement(
+                    &ok,
+                    "source->payload.ok",
+                    "result.payload.ok",
+                    "return false;",
+                    4,
+                ));
+                text.push_str("  } else {\n");
+                text.push_str(&self.clone_statement(
+                    &error,
+                    "source->payload.error",
+                    "result.payload.error",
+                    "return false;",
+                    4,
+                ));
+                text.push_str("  }\n  *output = result;\n  return true;\n}\n");
+                text.push_str(&format!(
+                    "void {name}_drop({name} *value) {{\n  if (value == NULL) {{ return; }}\n  if (value->is_ok) {{\n"
+                ));
+                text.push_str(&self.drop_statement(&ok, "value->payload.ok", 4));
+                text.push_str("  } else {\n");
+                text.push_str(&self.drop_statement(&error, "value->payload.error", 4));
+                text.push_str(&format!("  }}\n  *value = ({name}){{0}};\n}}\n"));
+                text
+            }
+            _ => String::new(),
+        };
+        output.push_str(&self.call_result_drop_function(&name));
+        output
+    }
+
+    fn clone_statement(
+        &self,
+        ty: &TypeRef,
+        source: &str,
+        destination: &str,
+        failure: &str,
+        spaces: usize,
+    ) -> String {
+        let statement = match self.resolve_alias(ty) {
+            TypeRef::String => format!(
+                "if (poly_string_clone(allocator, poly_string_borrow(&{source}), &{destination}) != POLY_OK) {{ {failure} }}"
+            ),
+            TypeRef::Bytes => format!(
+                "if (!poly_bytes_clone(allocator, poly_bytes_borrow(&{source}), &{destination})) {{ {failure} }}"
+            ),
+            TypeRef::Named(id) if self.is_record(id) || self.is_enum(id) => format!(
+                "if (!{}_clone(allocator, &{source}, &{destination})) {{ {failure} }}",
+                self.named_name(id)
+            ),
+            TypeRef::List(_) | TypeRef::Option(_) | TypeRef::Result { .. } => format!(
+                "if (!{}_clone(allocator, &{source}, &{destination})) {{ {failure} }}",
+                self.ty(ty)
+            ),
+            _ => format!("{destination} = {source};"),
+        };
+        format!("{}{}\n", " ".repeat(spaces), statement)
+    }
+
+    fn drop_statement(&self, ty: &TypeRef, value: &str, spaces: usize) -> String {
+        let statement = match self.resolve_alias(ty) {
+            TypeRef::String => Some(format!("poly_string_drop(&{value});")),
+            TypeRef::Bytes => Some(format!("poly_bytes_drop(&{value});")),
+            TypeRef::Named(id) if self.is_record(id) || self.is_enum(id) => {
+                Some(format!("{}_drop(&{value});", self.named_name(id)))
+            }
+            TypeRef::List(_) | TypeRef::Option(_) | TypeRef::Result { .. } => {
+                Some(format!("{}_drop(&{value});", self.ty(ty)))
+            }
+            _ => None,
+        };
+        statement
+            .map(|statement| format!("{}{}\n", " ".repeat(spaces), statement))
+            .unwrap_or_default()
+    }
+
+    fn call_result_drop_function(&self, name: &str) -> String {
+        format!(
+            "void {name}_call_result_drop({name}_call_result *value) {{\n  if (value != NULL) {{ {name}_drop(&value->value); *value = ({name}_call_result){{0}}; }}\n}}\n\n"
+        )
     }
 
     fn implementation(

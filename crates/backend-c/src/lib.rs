@@ -45,7 +45,7 @@ impl Backend for CBackend {
             | Capability::Result
             | Capability::WrappingIntegerArithmetic
             | Capability::BoundedIteration => CapabilitySupport::Unsupported {
-                reason: "C17 monomorphized container/arithmetic lowering is the next M22B slice"
+                reason: "C17 concrete container ABI is available; portable expression and arithmetic lowering remains in M22B"
                     .into(),
             },
         }
@@ -112,6 +112,7 @@ int main(void) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use portable_codegen::OutputContents;
 
     #[test]
     fn descriptor_and_manifest_are_deterministic() {
@@ -126,6 +127,30 @@ mod tests {
         assert_eq!(first.canonical_json(), second.canonical_json());
         assert!(first.dependencies().is_empty());
         assert!(first.file("src/generated.c").is_some());
+    }
+
+    #[test]
+    fn aggregate_abi_is_concrete_and_deterministic() {
+        let checked = portable_check::v0::check_program(
+            portable_ir::v0::from_json(include_bytes!("../test/abi-shapes.poly.json")).unwrap(),
+        )
+        .unwrap();
+        let first = CBackend
+            .generate(&checked, &BackendOptions::default())
+            .unwrap();
+        let second = CBackend
+            .generate(&checked, &BackendOptions::default())
+            .unwrap();
+        assert_eq!(first.canonical_json(), second.canonical_json());
+        let header = match first.file("src/generated.h").unwrap().contents() {
+            OutputContents::Text(text) => text,
+            OutputContents::Bytes(_) => panic!("generated C header must be text"),
+        };
+        assert!(header.contains("struct abi_shapes_list__named_1"));
+        assert!(header.contains("struct abi_shapes_option__named_1"));
+        assert!(header.contains("struct abi_shapes_result__option__string__bytes"));
+        assert!(header.contains("typedef enum abi_shapes_Choice_tag"));
+        assert!(!header.contains("void *"));
     }
 
     fn fixture() -> CheckedProgram {

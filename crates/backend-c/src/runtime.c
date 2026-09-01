@@ -148,8 +148,11 @@ poly_error_code poly_string_clone(poly_allocator allocator,
 bool poly_bytes_clone(poly_allocator allocator, poly_bytes_view source,
                       poly_bytes *output) {
   poly_bytes result = {0};
-  if (output == NULL ||
-      !bytes_clone(allocator, source.data, source.length, &result.data)) {
+  if (output == NULL) {
+    return false;
+  }
+  *output = result;
+  if (!bytes_clone(allocator, source.data, source.length, &result.data)) {
     return false;
   }
   result.length = source.length;

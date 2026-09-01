@@ -23,7 +23,10 @@ rust_library(
 
 rust_test(
     name = "portable_backend_c_test",
-    compile_data = ["//crates/build:testdata/registration.poly.json"],
+    compile_data = [
+        "test/abi-shapes.poly.json",
+        "//crates/build:testdata/registration.poly.json",
+    ],
     crate = ":portable_backend_c",
     visibility = ["//visibility:public"],
 )
@@ -54,6 +57,22 @@ genrule(
         "test-generated/tests/generated_test.c",
     ],
     cmd = "$(location :generate_v0_fixture) $(location //crates/build:testdata/registration.poly.json) $(@D)/test-generated",
+    tools = [":generate_v0_fixture"],
+)
+
+genrule(
+    name = "generate_abi_package",
+    srcs = ["test/abi-shapes.poly.json"],
+    outs = [
+        "abi-generated/README.md",
+        "abi-generated/src/generated.c",
+        "abi-generated/src/generated.h",
+        "abi-generated/src/runtime.c",
+        "abi-generated/src/runtime.h",
+        "abi-generated/tests/conformance_test.c",
+        "abi-generated/tests/generated_test.c",
+    ],
+    cmd = "$(location :generate_v0_fixture) $(location test/abi-shapes.poly.json) $(@D)/abi-generated",
     tools = [":generate_v0_fixture"],
 )
 
@@ -114,6 +133,33 @@ cc_test(
     ],
     copts = C_COPTS,
     includes = ["src"],
+    visibility = ["//visibility:public"],
+)
+
+cc_test(
+    name = "abi_shapes_ownership_test",
+    srcs = [
+        "test/abi_shapes_test.c",
+        ":abi-generated/src/generated.c",
+        ":abi-generated/src/generated.h",
+        ":abi-generated/src/runtime.c",
+        ":abi-generated/src/runtime.h",
+    ],
+    copts = C_COPTS,
+    includes = ["abi-generated/src"],
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "abi_shapes_sanitizer_test",
+    srcs = ["//tools/c:test_abi_sanitizers.sh"],
+    data = [
+        "test/abi_shapes_test.c",
+        ":abi-generated/src/generated.c",
+        ":abi-generated/src/generated.h",
+        ":abi-generated/src/runtime.c",
+        ":abi-generated/src/runtime.h",
+    ],
     visibility = ["//visibility:public"],
 )
 
