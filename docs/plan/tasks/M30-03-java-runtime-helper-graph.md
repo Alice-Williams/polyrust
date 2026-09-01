@@ -34,9 +34,9 @@ transitive closure of helpers required by the checked program.
 - Common evaluator infrastructure, the checked/wrapping integer family, and
   UTF-8 encode/decode support are separate graph roots. Each fragment carries
   the structured imports used by that fragment.
-- Numeric roots come from checked capability evidence. UTF-8 roots come from a
-  semantic IR visitor, because the broader `Bytes` capability is intentionally
-  insufficient to infer UTF-8 support.
+- Numeric roots come from checked capability evidence. UTF-8 roots use the
+  shared target-independent semantic IR visitor, because the broader `Bytes`
+  capability is intentionally insufficient to infer UTF-8 support.
 - The former fixed `for import in [...]` inventory is deleted. Graph
   construction and resolution surface duplicate, missing, cyclic, malformed,
   and mismatched marker failures as generation diagnostics.

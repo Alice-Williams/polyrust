@@ -29,6 +29,7 @@ type PolyBytes struct{ items []byte }
 
 func NewPolyBytes(items ...byte) PolyBytes { return PolyBytes{items: append([]byte(nil), items...)} }
 func (value PolyBytes) Values() []byte     { return append([]byte(nil), value.items...) }
+// POLYRUST-BEGIN bytes-replace-function
 func replaceBytesAll(source, needle, replacement PolyBytes) PolyBytes {
 	output := make([]byte, 0, len(source.items))
 	if len(needle.items) == 0 {
@@ -51,6 +52,7 @@ func replaceBytesAll(source, needle, replacement PolyBytes) PolyBytes {
 	}
 	return NewPolyBytes(output...)
 }
+// POLYRUST-END bytes-replace-function
 func polyOk[T any](value T) PolyResult[T]  { return PolyResult[T]{Ok: true, Value: value} }
 func polyFail[T any](code, message string) PolyResult[T] {
 	return PolyResult[T]{Error: &PolyError{Code: code, Message: message}}
@@ -95,6 +97,7 @@ func nodeID(value map[string]any) int64 {
 	return id
 }
 func number(value any) int64 { result, _ := value.(json.Number).Int64(); return result }
+// POLYRUST-BEGIN math-unsigned-number
 func unsignedNumber(value any) uint64 {
 	result, err := strconv.ParseUint(value.(json.Number).String(), 10, 64)
 	if err != nil {
@@ -102,6 +105,7 @@ func unsignedNumber(value any) uint64 {
 	}
 	return result
 }
+// POLYRUST-END math-unsigned-number
 
 func (r *runtime) invoke(id int64, arguments []any) PolyResult[any] {
 	declaration := r.declarations[id]
@@ -148,8 +152,10 @@ func (r *runtime) value(value map[string]any) any {
 		return int32(number(data))
 	case "i64":
 		return number(data)
+	// POLYRUST-BEGIN math-value-case
 	case "f64":
 		return math.Float64frombits(unsignedNumber(data))
+	// POLYRUST-END math-value-case
 	case "bytes":
 		raw := data.([]any)
 		items := make([]byte, len(raw))
@@ -355,11 +361,13 @@ func (r *runtime) intrinsic(name string, values []any) PolyResult[any] {
 		return polyOk(any(!equal(a, b)))
 	case "string_concat":
 		return polyOk(any(a.(string) + b.(string)))
+	// POLYRUST-BEGIN utf8-scalar-case
 	case "string_scalar_length":
 		if !utf8.ValidString(a.(string)) {
 			return polyFail[any]("invalid_unicode", "invalid scalar string")
 		}
 		return polyOk(any(int32(utf8.RuneCountInString(a.(string)))))
+	// POLYRUST-END utf8-scalar-case
 	case "string_is_empty":
 		return polyOk(any(a.(string) == ""))
 	case "string_contains":
@@ -375,10 +383,14 @@ func (r *runtime) intrinsic(name string, values []any) PolyResult[any] {
 		return polyOk(any(strings.HasSuffix(a.(string), b.(string))))
 	case "string_replace_all":
 		return polyOk(any(strings.ReplaceAll(a.(string), b.(string), c.(string))))
+	// POLYRUST-BEGIN utf8-replace-many-case
 	case "string_replace_many":
 		return polyOk(any(replaceManyLiteral(a.(string), values)))
+	// POLYRUST-END utf8-replace-many-case
+	// POLYRUST-BEGIN utf8-truncate-case
 	case "string_truncate_utf8_bytes":
 		return polyOk(any(truncateUtf8Bytes(a.(string), b.(float64))))
+	// POLYRUST-END utf8-truncate-case
 	case "string_trim_start":
 		return polyOk(any(strings.TrimLeft(a.(string), b.(string))))
 	case "string_trim_end":
@@ -386,28 +398,34 @@ func (r *runtime) intrinsic(name string, values []any) PolyResult[any] {
 	case "bytes_concat":
 		left, right := a.(PolyBytes), b.(PolyBytes)
 		return polyOk(any(NewPolyBytes(append(left.Values(), right.items...)...)))
+	// POLYRUST-BEGIN bytes-replace-case
 	case "bytes_replace_all":
 		return polyOk(any(replaceBytesAll(a.(PolyBytes), b.(PolyBytes), c.(PolyBytes))))
+	// POLYRUST-END bytes-replace-case
 	case "bytes_length":
 		return polyOk(any(int64(len(a.(PolyBytes).items))))
 	case "bytes_is_empty":
 		return polyOk(any(len(a.(PolyBytes).items) == 0))
 	case "widen_i32_to_i64":
 		return polyOk(any(int64(a.(int32))))
+	// POLYRUST-BEGIN math-narrow-case
 	case "narrow_i64_to_i32_checked":
 		value := a.(int64)
 		if value < math.MinInt32 || value > math.MaxInt32 {
 			return polyFail[any]("integer_overflow", "i64 does not fit i32")
 		}
 		return polyOk(any(int32(value)))
+	// POLYRUST-END math-narrow-case
 	case "string_to_utf8":
 		return polyOk(any(NewPolyBytes([]byte(a.(string))...)))
+	// POLYRUST-BEGIN utf8-from-bytes-case
 	case "string_from_utf8_checked":
 		raw := a.(PolyBytes).items
 		if !utf8.Valid(raw) {
 			return polyFail[any]("invalid_utf8", "invalid UTF-8")
 		}
 		return polyOk(any(string(raw)))
+	// POLYRUST-END utf8-from-bytes-case
 	}
 	return r.numericOrCollection(name, a, b)
 }
@@ -415,6 +433,7 @@ func (r *runtime) numericOrCollection(name string, a, b any) PolyResult[any] {
 	if left, ok := a.(int32); ok {
 		right, _ := b.(int32)
 		switch name {
+		// POLYRUST-BEGIN math-i32-checked-cases
 		case "int_neg_checked":
 			return checked32(-int64(left))
 		case "int_add_checked":
@@ -423,6 +442,7 @@ func (r *runtime) numericOrCollection(name string, a, b any) PolyResult[any] {
 			return checked32(int64(left) - int64(right))
 		case "int_mul_checked":
 			return checked32(int64(left) * int64(right))
+		// POLYRUST-END math-i32-checked-cases
 		case "int_add_wrapping":
 			return polyOk(any(left + right))
 		case "int_sub_wrapping":
@@ -444,11 +464,13 @@ func (r *runtime) numericOrCollection(name string, a, b any) PolyResult[any] {
 	if left, ok := a.(int64); ok {
 		right, _ := b.(int64)
 		switch name {
+		// POLYRUST-BEGIN math-i64-checked-case
 		case "int_add_checked":
 			if (right > 0 && left > math.MaxInt64-right) || (right < 0 && left < math.MinInt64-right) {
 				return polyFail[any]("integer_overflow", "i64 overflow")
 			}
 			return polyOk(any(left + right))
+		// POLYRUST-END math-i64-checked-case
 		case "int_add_wrapping":
 			return polyOk(any(left + right))
 		case "less":
@@ -461,6 +483,7 @@ func (r *runtime) numericOrCollection(name string, a, b any) PolyResult[any] {
 			return polyOk(any(left >= right))
 		}
 	}
+	// POLYRUST-BEGIN math-float-dispatch
 	if left, ok := a.(float64); ok {
 		right, _ := b.(float64)
 		switch name {
@@ -490,6 +513,7 @@ func (r *runtime) numericOrCollection(name string, a, b any) PolyResult[any] {
 			return polyOk(any(left >= right))
 		}
 	}
+	// POLYRUST-END math-float-dispatch
 	if list, ok := a.([]any); ok {
 		switch name {
 		case "list_length":
@@ -517,6 +541,7 @@ func (r *runtime) numericOrCollection(name string, a, b any) PolyResult[any] {
 	}
 	return polyFail[any]("unsupported", "intrinsic not implemented: "+name)
 }
+// POLYRUST-BEGIN utf8-replace-many-function
 func replaceManyLiteral(source string, values []any) string {
 	var output strings.Builder
 	offset := 0
@@ -552,6 +577,8 @@ func replaceManyLiteral(source string, values []any) string {
 		offset += width
 	}
 }
+// POLYRUST-END utf8-replace-many-function
+// POLYRUST-BEGIN utf8-truncate-function
 func truncateUtf8Bytes(source string, budget float64) string {
 	for offset, character := range source {
 		end := offset + utf8.RuneLen(character)
@@ -565,12 +592,15 @@ func truncateUtf8Bytes(source string, budget float64) string {
 	}
 	return source
 }
+// POLYRUST-END utf8-truncate-function
+// POLYRUST-BEGIN math-checked32
 func checked32(value int64) PolyResult[any] {
 	if value < math.MinInt32 || value > math.MaxInt32 {
 		return polyFail[any]("integer_overflow", "i32 overflow")
 	}
 	return polyOk(any(int32(value)))
 }
+// POLYRUST-END math-checked32
 func equalImpl(a, b any, exactFloat bool) bool {
 	if left, ok := a.(polyRecord); ok {
 		a = left.polyValue()
@@ -593,6 +623,7 @@ func equalImpl(a, b any, exactFloat bool) bool {
 	case bool:
 		right, ok := b.(bool)
 		return ok && left == right
+	// POLYRUST-BEGIN math-float-equality
 	case float64:
 		right, ok := b.(float64)
 		if !ok {
@@ -602,6 +633,7 @@ func equalImpl(a, b any, exactFloat bool) bool {
 			return (math.IsNaN(left) && math.IsNaN(right)) || math.Float64bits(left) == math.Float64bits(right)
 		}
 		return left == right
+	// POLYRUST-END math-float-equality
 	case []any:
 		right, ok := b.([]any)
 		if !ok || len(left) != len(right) {
@@ -734,5 +766,3 @@ func (r *runtime) findImplementation(contract, record int64) int64 {
 	}
 	return -1
 }
-
-var _ = binary.BigEndian

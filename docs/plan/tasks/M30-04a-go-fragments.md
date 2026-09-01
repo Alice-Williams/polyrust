@@ -1,6 +1,6 @@
 # M30-04A — Migrate Go to dependency-complete fragments
 
-- Status: planned
+- Status: complete
 - Depends on: M30-03
 
 ## Current audit finding
@@ -26,3 +26,25 @@ values to decide whether `math` is needed.
 - Nested F64 test values prove dependency propagation without a second walk.
 - `gofmt`, `go vet`, generated native tests, conformance, and public consumer.
 - Three-generation byte determinism.
+
+## Completion evidence
+
+- `GoCode` owns target text and structured imports; nested type, value,
+  parameter, result-conversion, declaration, and portable-test composition
+  preserves requirements. `generated.go` and `generated_test.go` are fragment
+  folds rather than file-sized dependency repair units.
+- `GoImport::parse` rejects empty, rendered, rooted, repeated-separator,
+  traversal, and invalid-character paths. Only `GoRenderer` spells directives.
+- The runtime template is an ordered helper registry with independent
+  checked-integer, F64, bytes-replace, scalar-length, replace-many,
+  truncate-UTF-8, and decode-UTF-8 roots. Common JSON/string infrastructure is
+  explicit. The unused `encoding/binary` placeholder is deleted.
+- Exact empty and one-feature matrices prove the presence and absence of
+  `bytes`, `encoding/json`, `math`, `strconv`, `strings`, and `unicode/utf8`.
+  `StringToUtf8` specifically proves that bytes output does not imply the UTF-8
+  validation package.
+- F64 literals attach `math` in their value fragment, including through nested
+  records. The former nested-value F64 repair scan is deleted.
+- Go backend/native tests run `gofmt`, `go vet`, and `go test`. The entire
+  130-test real-world corpus passes, including generated packages for every
+  optional Go runtime root and every determinism/differential oracle.

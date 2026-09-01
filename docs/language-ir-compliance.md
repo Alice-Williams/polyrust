@@ -17,7 +17,7 @@ not an accepted exception.
 | TypeScript | Pass: `EcmaImport` renderer | Fail: declarations build one body string | Fail: complete runtime is copied as text | Fail: runtime and node shim source bypass source IR | Partial: imports are attached to whole file bodies | **Fail** |
 | JavaScript | Pass: derived `EcmaImport` renderer | Fail: declarations build one body string | Fail: complete derived runtime is copied as text | Fail: runtime source bypasses source IR | Partial: imports are attached to whole file bodies | **Fail** |
 | Python | Pass: structured future/module/from renderer | Fail: declaration text and requirements mutate one unit | Fail: monolithic runtime has a fixed inventory | Pass: generated Python code uses source files | Fail: type/declaration walks separately attach imports | **Fail** |
-| Go | Pass: `GoImport` renderer | Fail: declarations build one body string | Fail: `go_runtime_file` has a fixed import loop | Pass: generated Go code uses source files | Fail: test values are rescanned to decide `math` | **Fail** |
+| Go | Pass: validated path IR; renderer alone spells `import` | Pass: `GoCode` composes types, values, declarations, and portable tests | Pass: exact common/integer/F64/bytes/text helper roots | Pass: every generated Go source role uses a source file | Pass: F64 values own `math`; the nested-value repair scan is deleted | **Pass** |
 | Java | Pass: validated kind/name IR; renderer alone spells `import` | Pass: nested type and declaration `JavaCode` fragments own imports | Pass: checked-program roots resolve ordered common, numeric, and UTF-8 helper closures | Pass: every generated Java source role uses a source file | Pass: source and runtime dependencies originate in the fragment that emits dependent syntax | **Pass** |
 | C++ | Pass: structured system/local includes | Fail: declarations build file-sized strings | Fail: runtime has a fixed 17-header inventory | Pass: generated C++ code uses source files | Fail: header declarations/capabilities are rescanned for includes | **Fail** |
 | C | Pass: renderer owns stripped system/local includes | Fail: generator returns file-sized strings | Fail: runtime header/source use fixed inventories | Pass: generated C code uses source files | Partial: dependencies are attached only at file-unit scope | **Fail** |
@@ -36,8 +36,8 @@ not prove dependency completeness or minimality.
   `crates/backend-typescript/src/lib.rs`.
 - Python runtime inventory and declaration import walks:
   `crates/backend-python/src/lib.rs`.
-- Go runtime loop and portable-test F64 rescan:
-  `crates/backend-go/src/v0.rs`.
+- Go fragment and helper-closure implementation:
+  `crates/backend-go/src/v0.rs` and `crates/backend-go/src/runtime.go`.
 - Java fragment and helper-closure implementation:
   `crates/backend-java/src/lib.rs` and
   `crates/backend-java/src/Runtime.java`.
@@ -84,3 +84,18 @@ all generated packages remain functionally equivalent, and hosted CI is green.
   and UTF-8-only checked programs prove exact mutually exclusive closures.
 - Java 21 native, conformance, and public-consumer targets pass together with
   Java unit tests, Buildifier, Rustfmt, and Clippy.
+
+### Go fragments and runtime (M30-04A)
+
+- `GoCode` composition carries structured import requirements through nested
+  types, values, declarations, result conversion, and portable tests.
+- Go import paths are validated semantic data. Rendered directives, traversal,
+  rooted paths, invalid separators, and invalid characters are rejected.
+- Runtime closure independently selects checked integers, F64, bytes replace,
+  scalar length, replace-many, truncate-UTF-8, and UTF-8 decoding. The fixed
+  import loop and unused `encoding/binary` sentinel are gone.
+- Empty and exact one-feature checked programs prove positive and negative
+  import/helper matrices. Nested F64 values prove `math` propagation without a
+  second value walk.
+- Go unit/native gates (`gofmt`, `go vet`, `go test`), Rustfmt, Clippy, and all
+  130 tests in `//examples/real-world/...` pass.

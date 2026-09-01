@@ -38,12 +38,14 @@ mod declaration;
 mod expression;
 mod json;
 mod validate;
+mod visit;
 
 pub use common::*;
 pub use declaration::*;
 pub use expression::*;
 pub use json::*;
 pub use validate::*;
+pub use visit::*;
 
 #[cfg(test)]
 mod tests;

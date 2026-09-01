@@ -1,6 +1,6 @@
 # M30-04B — Migrate Python to dependency-complete fragments
 
-- Status: planned
+- Status: in-progress
 - Depends on: M30-04A
 
 ## Current audit finding
