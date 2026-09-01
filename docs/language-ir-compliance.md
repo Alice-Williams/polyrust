@@ -18,7 +18,7 @@ not an accepted exception.
 | JavaScript | Pass: derived `EcmaImport` renderer | Fail: declarations build one body string | Fail: complete derived runtime is copied as text | Fail: runtime source bypasses source IR | Partial: imports are attached to whole file bodies | **Fail** |
 | Python | Pass: structured future/module/from renderer | Fail: declaration text and requirements mutate one unit | Fail: monolithic runtime has a fixed inventory | Pass: generated Python code uses source files | Fail: type/declaration walks separately attach imports | **Fail** |
 | Go | Pass: `GoImport` renderer | Fail: declarations build one body string | Fail: `go_runtime_file` has a fixed import loop | Pass: generated Go code uses source files | Fail: test values are rescanned to decide `math` | **Fail** |
-| Java | Pass: renderer alone spells `import` | Fail: declarations build one body string | Fail: `java_runtime_file` has a fixed import loop | Pass: generated Java code uses source files | Fail: `Generated.java` prescans records/enums for imports | **Fail** |
+| Java | Pass: validated kind/name IR; renderer alone spells `import` | Pass: nested type and declaration `JavaCode` fragments own imports | Fail: `java_runtime_file` still has a fixed import loop | Pass: generated Java code uses source files | Pass: `Generated.java` is a fragment fold with no import pre-scan | **Fail** |
 | C++ | Pass: structured system/local includes | Fail: declarations build file-sized strings | Fail: runtime has a fixed 17-header inventory | Pass: generated C++ code uses source files | Fail: header declarations/capabilities are rescanned for includes | **Fail** |
 | C | Pass: renderer owns stripped system/local includes | Fail: generator returns file-sized strings | Fail: runtime header/source use fixed inventories | Pass: generated C code uses source files | Partial: dependencies are attached only at file-unit scope | **Fail** |
 
@@ -51,3 +51,19 @@ A row moves to `Pass` only in the commit that adds all contract tests for that
 surface. Each migration records exact minimal/feature matrix coverage here.
 M30 is complete only when every row passes, the policy test prevents regression,
 all generated packages remain functionally equivalent, and hosted CI is green.
+
+## Migration evidence
+
+### Java source mapping (M30-02)
+
+- Structured Java imports validate qualified names and distinguish normal type
+  imports from static-member imports; rendered directives and wildcards are
+  rejected as data.
+- Type, parameter, contract, record, enum, constant, and function mappings
+  compose `JavaCode` fragments. Nested list types propagate `java.util.List`
+  without a second type walk.
+- Record/enum fragments own collection/map dependencies and `Generated.java`
+  folds declaration fragments; the old declaration pre-scan is deleted.
+- Minimal/rich output and declaration-isolation matrices prove exact presence
+  and absence. Java 21 native, conformance, and public-consumer tests pass with
+  Buildifier, Rustfmt, and Clippy.

@@ -1,6 +1,6 @@
 # M30-03 — Build the Java runtime helper graph
 
-- Status: planned
+- Status: in-progress
 
 ## Goal
 
