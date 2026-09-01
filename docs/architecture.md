@@ -366,16 +366,21 @@ Each backend owns:
 - package layout and build metadata; and
 - semantic helper selection.
 
+The normative dependency-ownership and rendering rules live in the
+[compositional target-language IR contract](language-ir-architecture.md). If
+this overview is less strict or less specific, that contract controls.
+
 Between checked IR and the output manifest, each backend MUST expose two
 separate internal stages. Its language plugin translates checked IR into a
 validated `LanguagePackage` containing deterministic file groups, source-file
 roles, dependencies, helpers, and dependency-bearing target `LanguageUnit`
-nodes. Each unit couples a target-owned syntax document to the complete import
-requirements caused by that mapping. Its syntax renderer consumes only that
+nodes composed from target fragments. Each fragment couples target-owned syntax
+to the complete import and helper requirements caused by that mapping. Its
+syntax renderer consumes only the resulting package; it
 package; it MUST NOT receive a `CheckedProgram`.
 
 Imports, includes, module uses, and equivalent declarations MUST be collected as
-requirements on the same unit while target constructs are mapped. A source file
+requirements on the same fragment while target constructs are mapped. A source file
 has no independent import mutation API: installing translated units is the only
 way it can acquire requirements. A renderer sorts, deduplicates, groups, and
 writes those requirements using target syntax. Backends MUST NOT prepend

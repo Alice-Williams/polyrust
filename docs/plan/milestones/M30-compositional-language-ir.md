@@ -1,6 +1,6 @@
 # M30 — Compositional target-language IR
 
-- Status: planned
+- Status: in-progress
 - Phase: 8
 - Depends on: M26, M29
 
@@ -41,6 +41,8 @@ to the same invariant without sharing target syntax or target-specific ASTs.
 
 ## Implementation checklist
 
+- Freeze a normative architecture contract and evidence-backed baseline audit
+  for shared codegen plus all eight outputs.
 - Add a compositional `LanguageFragment<Import>` abstraction with deterministic
   document concatenation and import merging.
 - Make fragment composition the normal path into a `LanguageUnit`; retain no
@@ -60,6 +62,8 @@ to the same invariant without sharing target syntax or target-specific ASTs.
 
 ## Required exit evidence
 
+- Every row in the compliance ledger is `Pass`; compilation alone is not
+  accepted as dependency-completeness evidence.
 - Core tests prove fragment composition is associative, deterministic, sorted,
   deduplicated, and cannot lose requirements when nested.
 - Java matrix tests independently toggle every import-bearing construct and
