@@ -1,6 +1,6 @@
 # M30-03 — Build the Java runtime helper graph
 
-- Status: in-progress
+- Status: complete
 
 ## Goal
 
@@ -26,3 +26,24 @@ transitive closure of helpers required by the checked program.
 - Minimal and one-feature-at-a-time Java programs prove exact helper and import
   presence/absence.
 - All current Java native, conformance, negative, and public-consumer tests.
+
+## Completion evidence
+
+- `Runtime.java` is parsed into stable, ordered helper fragments; marker lines
+  are build-time metadata and never enter generated source.
+- Common evaluator infrastructure, the checked/wrapping integer family, and
+  UTF-8 encode/decode support are separate graph roots. Each fragment carries
+  the structured imports used by that fragment.
+- Numeric roots come from checked capability evidence. UTF-8 roots come from a
+  semantic IR visitor, because the broader `Bytes` capability is intentionally
+  insufficient to infer UTF-8 support.
+- The former fixed `for import in [...]` inventory is deleted. Graph
+  construction and resolution surface duplicate, missing, cyclic, malformed,
+  and mismatched marker failures as generation diagnostics.
+- Empty, registration, numeric-only, and UTF-8-only tests prove positive and
+  negative helper/import selection. Shared graph tests prove stable ordering,
+  transitive closure, deduplication, missing-root/dependency diagnostics, and
+  cycle diagnostics.
+- `//crates/backend-java:all`, Java 21 native/conformance/public-consumer
+  compilation, `//:rustfmt_test`, `//:rust_clippy_test`, and
+  `//:buildifier_test` pass in the Linux development container.

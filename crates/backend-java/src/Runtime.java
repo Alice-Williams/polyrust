@@ -335,6 +335,7 @@ public final class Runtime {
       case "less_equal": return ok(compare(a, b) <= 0);
       case "greater": return ok(compare(a, b) > 0);
       case "greater_equal": return ok(compare(a, b) >= 0);
+// POLYRUST-BEGIN numeric-cases-primary
       case "int_neg_checked":
       case "int_add_checked":
       case "int_sub_checked":
@@ -364,6 +365,7 @@ public final class Runtime {
         return a instanceof Integer
             ? ok((Integer) a >> (Integer) b)
             : ok((Long) a >> (Integer) b);
+// POLYRUST-END numeric-cases-primary
       case "float_neg": return ok(-((Double) a));
       case "float_trunc": {
         double value = (Double) a;
@@ -418,7 +420,10 @@ public final class Runtime {
       case "result_is_ok": return ok("ok".equals(((PolyValueResult<?, ?>) a).tag()));
       case "result_is_err": return ok("err".equals(((PolyValueResult<?, ?>) a).tag()));
       case "widen_i32_to_i64": return ok(((Integer) a).longValue());
+// POLYRUST-BEGIN numeric-case-narrow
       case "narrow_i64_to_i32_checked": return cast(checkedI32(BigInteger.valueOf((Long) a)));
+// POLYRUST-END numeric-case-narrow
+// POLYRUST-BEGIN utf8-cases
       case "string_to_utf8": {
         byte[] bytes = ((String) a).getBytes(StandardCharsets.UTF_8);
         List<Integer> result = new ArrayList<>();
@@ -426,10 +431,12 @@ public final class Runtime {
         return ok(List.copyOf(result));
       }
       case "string_from_utf8_checked": return stringFromUtf8(asList(a));
+// POLYRUST-END utf8-cases
       default: return fail("invalid_intrinsic", "unknown intrinsic " + name);
     }
   }
 
+// POLYRUST-BEGIN numeric-private-methods
   private PolyResult<Object> checkedInteger(String name, Object a, Object b) {
     boolean wide = a instanceof Long;
     BigInteger left = BigInteger.valueOf(((Number) a).longValue());
@@ -464,6 +471,7 @@ public final class Runtime {
         };
     return a instanceof Long ? ok(wrappingI64(result)) : ok(wrappingI32(result.longValue()));
   }
+// POLYRUST-END numeric-private-methods
 
   private PolyResult<Object> sequence(
       List<Object> expressions, Map<String, Object> environment, Object self) {
@@ -659,6 +667,7 @@ public final class Runtime {
     };
   }
 
+// POLYRUST-BEGIN numeric-static-methods
   static PolyResult<Integer> checkedI32(long value) {
     return checkedI32(BigInteger.valueOf(value));
   }
@@ -689,6 +698,7 @@ public final class Runtime {
     if (wrapped.testBit(63)) wrapped = wrapped.subtract(modulus);
     return wrapped.longValue();
   }
+// POLYRUST-END numeric-static-methods
 
   static PolyResult<Integer> scalarLength(String value) {
     for (int index = 0; index < value.length(); index++) {
@@ -884,6 +894,7 @@ public final class Runtime {
     return value.codePoints().anyMatch(codePoint -> codePoint == target);
   }
 
+// POLYRUST-BEGIN utf8-method
   private static PolyResult<Object> stringFromUtf8(List<Object> values) {
     byte[] bytes = new byte[values.size()];
     for (int index = 0; index < values.size(); index++) {
@@ -901,6 +912,7 @@ public final class Runtime {
       return fail("invalid_utf8", "invalid UTF-8");
     }
   }
+// POLYRUST-END utf8-method
 
   private static List<Integer> immutableIntegers(List<Object> values) {
     List<Integer> result = new ArrayList<>();

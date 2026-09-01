@@ -10,9 +10,12 @@ use portable_codegen::{
     DeclaredDependency, Document as CodeDocument, FileGroup, FileGroupId, FileRole, ImportGroup,
     ImportSet, InjectedHelper, IrVersionRange, LanguageFile, LanguageFragment, LanguagePackage,
     LanguagePlugin, LanguageRenderer, LanguageSourceFile, OptionsSchema, OutputManifest, RawText,
-    TargetId, generate_with_plugin,
+    RuntimeHelper, RuntimeHelperGraph, TargetId, generate_with_plugin,
 };
-use portable_ir::v0::{Declaration, IrVersion, NodeId, TypeRef, Visibility};
+use portable_ir::v0::{
+    Block, ConstantExpression, Declaration, Expression, Intrinsic, IrVersion, NodeId, Statement,
+    TypeRef, Visibility,
+};
 
 const RUNTIME: &str = include_str!("Runtime.java");
 
@@ -165,7 +168,7 @@ impl LanguagePlugin for JavaBackend {
                 .map_err(java_generation_error)?,
                 FileGroup::new(
                     java_group("runtime")?,
-                    vec![LanguageFile::source(java_runtime_file())],
+                    vec![LanguageFile::source(java_runtime_file(program)?)],
                 )
                 .map_err(java_generation_error)?,
                 FileGroup::new(
@@ -277,31 +280,316 @@ impl JavaCode {
     }
 }
 
-fn java_runtime_file() -> LanguageSourceFile<JavaImport> {
+fn java_runtime_file(
+    program: &CheckedProgram,
+) -> Result<LanguageSourceFile<JavaImport>, BackendError> {
+    let (graph, mut roots) = java_runtime_helper_graph()?;
+    if program.capabilities().program().iter().any(|capability| {
+        matches!(
+            capability,
+            Capability::CheckedIntegerArithmetic | Capability::WrappingIntegerArithmetic
+        )
+    }) {
+        roots.push("feature.numeric".to_owned());
+    }
+    if program_uses_intrinsic(program, |operation| {
+        matches!(
+            operation,
+            Intrinsic::StringToUtf8 | Intrinsic::StringFromUtf8Checked
+        )
+    }) {
+        roots.push("feature.utf8".to_owned());
+    }
+
     let mut file = LanguageSourceFile::new(
         "src/main/java/org/polyrust/generated/Runtime.java",
         FileRole::Runtime,
     );
     file.set_preamble(LanguageFragment::new(java_preamble(Some(
-        "// Generated packages copy this dependency-free Java 21 runtime verbatim.",
+        "// Generated Java 21 runtime assembled from checked-program helper roots.",
     ))));
-    let mut body = LanguageFragment::new(CodeDocument::raw_text(RawText::new(RUNTIME)));
-    for import in [
-        "java.math.BigInteger",
-        "java.nio.ByteBuffer",
-        "java.nio.charset.CharacterCodingException",
-        "java.nio.charset.CodingErrorAction",
-        "java.nio.charset.StandardCharsets",
-        "java.util.ArrayList",
-        "java.util.LinkedHashMap",
-        "java.util.List",
-        "java.util.Map",
-        "java.util.Objects",
-    ] {
-        require_java(&mut body, import);
+    file.set_body(graph.resolve(&roots).map_err(java_generation_error)?);
+    Ok(file)
+}
+
+fn java_runtime_helper_graph() -> Result<(RuntimeHelperGraph<JavaImport>, Vec<String>), BackendError>
+{
+    const BEGIN: &str = "// POLYRUST-BEGIN ";
+    const END: &str = "// POLYRUST-END ";
+
+    let mut helpers = Vec::new();
+    let mut common_roots = Vec::new();
+    let mut common_index = 0_u16;
+    let mut order = 0_u16;
+    let mut active: Option<String> = None;
+    let mut source = String::new();
+
+    let emit = |id: String,
+                source: &mut String,
+                order: &mut u16,
+                helpers: &mut Vec<RuntimeHelper<JavaImport>>| {
+        if source.trim().is_empty() {
+            source.clear();
+            return false;
+        }
+        let fragment = java_runtime_fragment(&id, std::mem::take(source));
+        helpers.push(RuntimeHelper::new(id, *order, fragment));
+        *order = order.checked_add(1).expect("runtime helper order fits u16");
+        true
+    };
+
+    for line in RUNTIME.split_inclusive('\n') {
+        let trimmed = line.trim_end_matches(['\r', '\n']);
+        if let Some(id) = trimmed.strip_prefix(BEGIN) {
+            if active.is_some() {
+                return Err(java_generation_error(format!(
+                    "nested Java runtime helper marker {id:?}"
+                )));
+            }
+            let common_id = format!("runtime.common.{common_index:03}");
+            if emit(common_id.clone(), &mut source, &mut order, &mut helpers) {
+                common_roots.push(common_id);
+                common_index += 1;
+            }
+            active = Some(id.to_owned());
+        } else if let Some(id) = trimmed.strip_prefix(END) {
+            let Some(open) = active.take() else {
+                return Err(java_generation_error(format!(
+                    "unmatched Java runtime helper end marker {id:?}"
+                )));
+            };
+            if open != id {
+                return Err(java_generation_error(format!(
+                    "Java runtime helper marker {open:?} closed by {id:?}"
+                )));
+            }
+            if !emit(open, &mut source, &mut order, &mut helpers) {
+                return Err(java_generation_error(format!(
+                    "empty Java runtime helper {id:?}"
+                )));
+            }
+        } else {
+            source.push_str(line);
+        }
     }
-    file.set_body(body);
-    file
+    if let Some(open) = active {
+        return Err(java_generation_error(format!(
+            "unclosed Java runtime helper marker {open:?}"
+        )));
+    }
+    let common_id = format!("runtime.common.{common_index:03}");
+    if emit(common_id.clone(), &mut source, &mut order, &mut helpers) {
+        common_roots.push(common_id);
+    }
+
+    let numeric = LanguageFragment::new(CodeDocument::empty())
+        .with_helper_root("numeric-cases-primary")
+        .with_helper_root("numeric-case-narrow")
+        .with_helper_root("numeric-private-methods")
+        .with_helper_root("numeric-static-methods");
+    helpers.push(RuntimeHelper::new("feature.numeric", u16::MAX - 1, numeric));
+
+    let utf8 = LanguageFragment::new(CodeDocument::empty())
+        .with_helper_root("utf8-cases")
+        .with_helper_root("utf8-method");
+    helpers.push(RuntimeHelper::new("feature.utf8", u16::MAX, utf8));
+
+    let graph = RuntimeHelperGraph::new(helpers).map_err(java_generation_error)?;
+    Ok((graph, common_roots))
+}
+
+fn java_runtime_fragment(id: &str, source: String) -> LanguageFragment<JavaImport> {
+    let mut fragment = LanguageFragment::new(CodeDocument::raw_text(RawText::new(source)));
+    let imports: &[&'static str] = match id {
+        "runtime.common.000" => &[
+            "java.util.ArrayList",
+            "java.util.LinkedHashMap",
+            "java.util.List",
+            "java.util.Map",
+            "java.util.Objects",
+        ],
+        "runtime.common.001" => &["java.util.List"],
+        "runtime.common.002" => &[
+            "java.util.ArrayList",
+            "java.util.LinkedHashMap",
+            "java.util.List",
+            "java.util.Map",
+        ],
+        "runtime.common.003" => &[
+            "java.util.ArrayList",
+            "java.util.List",
+            "java.util.Map",
+            "java.util.Objects",
+        ],
+        "runtime.common.004" => &[
+            "java.util.ArrayList",
+            "java.util.LinkedHashMap",
+            "java.util.List",
+            "java.util.Map",
+        ],
+        "numeric-cases-primary"
+        | "numeric-case-narrow"
+        | "numeric-private-methods"
+        | "numeric-static-methods" => &["java.math.BigInteger"],
+        "utf8-cases" => &[
+            "java.nio.charset.StandardCharsets",
+            "java.util.ArrayList",
+            "java.util.List",
+        ],
+        "utf8-method" => &[
+            "java.nio.ByteBuffer",
+            "java.nio.charset.CharacterCodingException",
+            "java.nio.charset.CodingErrorAction",
+            "java.nio.charset.StandardCharsets",
+            "java.util.List",
+        ],
+        _ => &[],
+    };
+    for import in imports {
+        require_java(&mut fragment, import);
+    }
+    fragment
+}
+
+fn program_uses_intrinsic(
+    program: &CheckedProgram,
+    predicate: impl Fn(Intrinsic) -> bool + Copy,
+) -> bool {
+    program
+        .module()
+        .declarations
+        .iter()
+        .any(|declaration| match declaration {
+            Declaration::Constant(declaration) => {
+                constant_uses_intrinsic(&declaration.value, predicate)
+            }
+            Declaration::Implementation(declaration) => declaration
+                .methods
+                .iter()
+                .any(|method| block_uses_intrinsic(&method.body, predicate)),
+            Declaration::Function(declaration) => {
+                block_uses_intrinsic(&declaration.body, predicate)
+            }
+            Declaration::Alias(_)
+            | Declaration::Record(_)
+            | Declaration::Enum(_)
+            | Declaration::Contract(_)
+            | Declaration::Test(_) => false,
+        })
+}
+
+fn constant_uses_intrinsic(
+    expression: &ConstantExpression,
+    predicate: impl Fn(Intrinsic) -> bool + Copy,
+) -> bool {
+    match expression {
+        ConstantExpression::Literal { .. }
+        | ConstantExpression::Reference { .. }
+        | ConstantExpression::None { .. } => false,
+        ConstantExpression::Record { fields, .. } | ConstantExpression::Enum { fields, .. } => {
+            fields
+                .iter()
+                .any(|field| constant_uses_intrinsic(&field.value, predicate))
+        }
+        ConstantExpression::Some { value, .. }
+        | ConstantExpression::Ok { value, .. }
+        | ConstantExpression::Err { value, .. } => constant_uses_intrinsic(value, predicate),
+        ConstantExpression::List { elements, .. } => elements
+            .iter()
+            .any(|element| constant_uses_intrinsic(element, predicate)),
+        ConstantExpression::Intrinsic {
+            operation,
+            arguments,
+            ..
+        } => {
+            predicate(*operation)
+                || arguments
+                    .iter()
+                    .any(|argument| constant_uses_intrinsic(argument, predicate))
+        }
+    }
+}
+
+fn block_uses_intrinsic(block: &Block, predicate: impl Fn(Intrinsic) -> bool + Copy) -> bool {
+    block.statements.iter().any(|statement| match statement {
+        Statement::Let { value, .. }
+        | Statement::Return {
+            value: Some(value), ..
+        }
+        | Statement::Expression { value, .. } => expression_uses_intrinsic(value, predicate),
+        Statement::ForEach { iterable, body, .. } => {
+            expression_uses_intrinsic(iterable, predicate) || block_uses_intrinsic(body, predicate)
+        }
+        Statement::Return { value: None, .. } => false,
+    }) || block
+        .result
+        .as_deref()
+        .is_some_and(|result| expression_uses_intrinsic(result, predicate))
+}
+
+fn expression_uses_intrinsic(
+    expression: &Expression,
+    predicate: impl Fn(Intrinsic) -> bool + Copy,
+) -> bool {
+    match expression {
+        Expression::Literal { .. }
+        | Expression::Local { .. }
+        | Expression::Constant { .. }
+        | Expression::SelfValue { .. }
+        | Expression::ConstructNone { .. } => false,
+        Expression::ConstructRecord { fields, .. } | Expression::ConstructEnum { fields, .. } => {
+            fields
+                .iter()
+                .any(|field| expression_uses_intrinsic(&field.value, predicate))
+        }
+        Expression::ConstructSome { value, .. }
+        | Expression::ConstructOk { value, .. }
+        | Expression::ConstructErr { value, .. }
+        | Expression::Field { base: value, .. } => expression_uses_intrinsic(value, predicate),
+        Expression::ConstructList { elements, .. } => elements
+            .iter()
+            .any(|element| expression_uses_intrinsic(element, predicate)),
+        Expression::Call { arguments, .. } => arguments
+            .iter()
+            .any(|argument| expression_uses_intrinsic(argument, predicate)),
+        Expression::MethodCall {
+            receiver,
+            arguments,
+            ..
+        } => {
+            expression_uses_intrinsic(receiver, predicate)
+                || arguments
+                    .iter()
+                    .any(|argument| expression_uses_intrinsic(argument, predicate))
+        }
+        Expression::Intrinsic {
+            operation,
+            arguments,
+            ..
+        } => {
+            predicate(*operation)
+                || arguments
+                    .iter()
+                    .any(|argument| expression_uses_intrinsic(argument, predicate))
+        }
+        Expression::If {
+            condition,
+            then_block,
+            else_block,
+            ..
+        } => {
+            expression_uses_intrinsic(condition, predicate)
+                || block_uses_intrinsic(then_block, predicate)
+                || block_uses_intrinsic(else_block, predicate)
+        }
+        Expression::Match { value, arms, .. } => {
+            expression_uses_intrinsic(value, predicate)
+                || arms
+                    .iter()
+                    .any(|arm| block_uses_intrinsic(&arm.body, predicate))
+        }
+        Expression::Block(block) => block_uses_intrinsic(block, predicate),
+    }
 }
 
 fn java_conformance_file() -> LanguageSourceFile<JavaImport> {
@@ -843,11 +1131,34 @@ fn stringify_wide_numbers(value: &mut serde_json::Value) {
 
 const README: &str = "# Generated PolyRust Java package\n\nCompile with Java 21 or newer. The package has no third-party runtime dependencies.\n";
 const INVALID_TYPES_BODY: &str = "final class InvalidTypes {\n  // Must fail: PolyOption tags are represented by a closed Java type, not strings.\n  Runtime.PolyOption<Integer> invalid = \"missing\";\n}\n";
-const CONFORMANCE_BODY: &str = "public final class ConformanceTest {\n  private ConformanceTest() {}\n  public static void main(String[] arguments) {\n    Runtime.PolyResult<Integer> astral = Runtime.scalarLength(\"😀\");\n    List<Integer> original = List.of(1);\n    List<Integer> appended = Runtime.listAppend(original, 2);\n    boolean[] vectors = {\n      Runtime.checkedI32(0L).ok(), Runtime.checkedI32(2147483647L).ok(), Runtime.checkedI32(-2147483648L).ok(), !Runtime.checkedI32(2147483648L).ok(), !Runtime.checkedI32(-2147483649L).ok(),\n      Runtime.checkedI64(java.math.BigInteger.ZERO).ok(), Runtime.checkedI64(java.math.BigInteger.valueOf(Long.MAX_VALUE)).ok(), Runtime.checkedI64(java.math.BigInteger.valueOf(Long.MIN_VALUE)).ok(), !Runtime.checkedI64(java.math.BigInteger.ONE.shiftLeft(63)).ok(), !Runtime.checkedI64(java.math.BigInteger.ONE.shiftLeft(63).negate().subtract(java.math.BigInteger.ONE)).ok(),\n      Runtime.wrappingI32(2147483648L) == Integer.MIN_VALUE, Runtime.wrappingI32(-2147483649L) == Integer.MAX_VALUE, Runtime.wrappingI64(java.math.BigInteger.ONE.shiftLeft(63)) == Long.MIN_VALUE, Runtime.wrappingI64(java.math.BigInteger.ONE.shiftLeft(63).negate().subtract(java.math.BigInteger.ONE)) == Long.MAX_VALUE,\n      Runtime.scalarLength(\"a\").ok(), astral.ok() && astral.value() == 1, !Runtime.scalarLength(\"\\ud800\").ok(), appended.size() == 2, appended != original, Double.doubleToRawLongBits(-0.0d) == Long.MIN_VALUE,\n    };\n    if (vectors.length != 20) throw new AssertionError(\"vector count\");\n    for (boolean vector : vectors) if (!vector) throw new AssertionError(\"conformance vector\");\n  }\n}\n";
+const CONFORMANCE_BODY: &str = r#"public final class ConformanceTest {
+  private ConformanceTest() {}
+  public static void main(String[] arguments) {
+    Runtime.PolyResult<Integer> astral = Runtime.scalarLength("😀");
+    List<Integer> original = List.of(1);
+    List<Integer> appended = Runtime.listAppend(original, 2);
+    boolean[] vectors = {
+      Runtime.scalarLength("a").ok(),
+      astral.ok() && astral.value() == 1,
+      !Runtime.scalarLength("\ud800").ok(),
+      appended.size() == 2,
+      appended != original,
+      original.size() == 1,
+      Double.doubleToRawLongBits(-0.0d) == Long.MIN_VALUE,
+    };
+    if (vectors.length != 7) throw new AssertionError("vector count");
+    for (boolean vector : vectors) if (!vector) throw new AssertionError("conformance vector");
+  }
+}
+"#;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use portable_ir::v0::{
+        DeclarationHeader, Document as IrDocument, FunctionDeclaration, Module, NodeMeta,
+        SourceRef, Value,
+    };
 
     #[test]
     fn keywords_and_types_are_safe() {
@@ -906,7 +1217,10 @@ mod tests {
         assert_eq!(generated.matches("import java.util.List;").count(), 1);
         assert_eq!(generated.matches("import java.util.Map;").count(), 1);
         let runtime = generated_text(&rich, "src/main/java/org/polyrust/generated/Runtime.java");
-        assert_eq!(runtime.matches("import java.math.BigInteger;").count(), 1);
+        assert!(!runtime.contains("import java.math.BigInteger;"));
+        assert!(!runtime.contains("import java.nio.ByteBuffer;"));
+        assert!(!runtime.contains("POLYRUST-BEGIN"));
+        assert!(!runtime.contains("POLYRUST-END"));
         assert!(!generated_text(&rich, "negative/InvalidTypes.java").contains("import "));
 
         let empty = JavaBackend
@@ -920,6 +1234,88 @@ mod tests {
         assert!(!empty_generated.contains("import java.util.Map;"));
         assert!(!empty_generated.contains("import java.util.LinkedHashMap;"));
         assert!(!empty_generated.contains("import java.util.Collections;"));
+        let empty_runtime =
+            generated_text(&empty, "src/main/java/org/polyrust/generated/Runtime.java");
+        assert!(!empty_runtime.contains("import java.math.BigInteger;"));
+        assert!(!empty_runtime.contains("import java.nio.ByteBuffer;"));
+        assert!(!empty_runtime.contains("checkedInteger("));
+        assert!(!empty_runtime.contains("stringFromUtf8("));
+    }
+
+    #[test]
+    fn runtime_helper_roots_have_exact_transitive_import_closures() {
+        let (graph, common) = java_runtime_helper_graph().unwrap();
+
+        let base = graph.resolve(&common).unwrap();
+        let base_imports = fragment_imports(&base);
+        for required in [
+            "java.util.ArrayList",
+            "java.util.LinkedHashMap",
+            "java.util.List",
+            "java.util.Map",
+            "java.util.Objects",
+        ] {
+            assert!(base_imports.contains(&required), "missing {required}");
+        }
+        for optional in [
+            "java.math.BigInteger",
+            "java.nio.ByteBuffer",
+            "java.nio.charset.CharacterCodingException",
+            "java.nio.charset.CodingErrorAction",
+            "java.nio.charset.StandardCharsets",
+        ] {
+            assert!(!base_imports.contains(&optional), "unexpected {optional}");
+        }
+
+        let mut numeric_roots = common.clone();
+        numeric_roots.push("feature.numeric".to_owned());
+        let numeric_imports = fragment_imports(&graph.resolve(&numeric_roots).unwrap());
+        assert!(numeric_imports.contains(&"java.math.BigInteger"));
+        assert!(!numeric_imports.contains(&"java.nio.ByteBuffer"));
+
+        let mut utf8_roots = common;
+        utf8_roots.push("feature.utf8".to_owned());
+        let utf8_imports = fragment_imports(&graph.resolve(&utf8_roots).unwrap());
+        for required in [
+            "java.nio.ByteBuffer",
+            "java.nio.charset.CharacterCodingException",
+            "java.nio.charset.CodingErrorAction",
+            "java.nio.charset.StandardCharsets",
+        ] {
+            assert!(utf8_imports.contains(&required), "missing {required}");
+        }
+        assert!(!utf8_imports.contains(&"java.math.BigInteger"));
+    }
+
+    #[test]
+    fn checked_program_features_select_only_their_java_runtime_closure() {
+        let numeric = JavaBackend
+            .generate(
+                &intrinsic_fixture(Intrinsic::IntAddChecked),
+                &BackendOptions::default(),
+            )
+            .unwrap();
+        let numeric_runtime = generated_text(
+            &numeric,
+            "src/main/java/org/polyrust/generated/Runtime.java",
+        );
+        assert!(numeric_runtime.contains("import java.math.BigInteger;"));
+        assert!(numeric_runtime.contains("checkedInteger("));
+        assert!(!numeric_runtime.contains("import java.nio.ByteBuffer;"));
+        assert!(!numeric_runtime.contains("stringFromUtf8("));
+
+        let utf8 = JavaBackend
+            .generate(
+                &intrinsic_fixture(Intrinsic::StringToUtf8),
+                &BackendOptions::default(),
+            )
+            .unwrap();
+        let utf8_runtime =
+            generated_text(&utf8, "src/main/java/org/polyrust/generated/Runtime.java");
+        assert!(utf8_runtime.contains("import java.nio.ByteBuffer;"));
+        assert!(utf8_runtime.contains("stringFromUtf8("));
+        assert!(!utf8_runtime.contains("import java.math.BigInteger;"));
+        assert!(!utf8_runtime.contains("checkedInteger("));
     }
 
     #[test]
@@ -1014,6 +1410,60 @@ mod tests {
             )
             .unwrap(),
         )
+        .unwrap()
+    }
+
+    fn intrinsic_fixture(operation: Intrinsic) -> CheckedProgram {
+        let source = |id| SourceRef::logical([format!("runtime-feature-{id}")]);
+        let node = |id| NodeMeta::new(NodeId::new(id), source(id));
+        let (arguments, return_type) = match operation {
+            Intrinsic::IntAddChecked => (
+                vec![
+                    Expression::Literal {
+                        node: node(2),
+                        value: Value::I32(20),
+                    },
+                    Expression::Literal {
+                        node: node(3),
+                        value: Value::I32(22),
+                    },
+                ],
+                TypeRef::I32,
+            ),
+            Intrinsic::StringToUtf8 => (
+                vec![Expression::Literal {
+                    node: node(2),
+                    value: Value::String("hello".to_owned()),
+                }],
+                TypeRef::Bytes,
+            ),
+            _ => panic!("test fixture supports numeric and UTF-8 roots only"),
+        };
+        portable_check::v0::check_program(IrDocument::new(
+            IrVersion::CURRENT,
+            Module {
+                name: "runtime_feature".to_owned(),
+                declarations: vec![Declaration::Function(FunctionDeclaration {
+                    header: DeclarationHeader {
+                        node: node(1),
+                        name: "feature".to_owned(),
+                        visibility: Visibility::Public,
+                        documentation: vec![],
+                    },
+                    parameters: vec![],
+                    return_type,
+                    body: Block {
+                        node: node(5),
+                        statements: vec![],
+                        result: Some(Box::new(Expression::Intrinsic {
+                            node: node(4),
+                            operation,
+                            arguments,
+                        })),
+                    },
+                })],
+            },
+        ))
         .unwrap()
     }
 }
