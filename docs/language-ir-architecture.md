@@ -2,6 +2,11 @@
 
 Status: normative for M30 and every later backend change
 
+Accepted by
+[ADR-0003](adr/0003-compositional-target-language-ir.md). Changes to this
+contract require a superseding accepted ADR; a milestone or backend document
+cannot silently weaken it.
+
 This document defines the mandatory boundary between checked PolyRust semantics
 and rendered target source. The key words **MUST**, **MUST NOT**, **SHOULD**, and
 **MAY** are normative.
