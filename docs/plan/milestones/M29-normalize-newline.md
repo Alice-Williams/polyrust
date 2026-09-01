@@ -50,3 +50,15 @@ declaration and remain an explicit admission boundary.
 M29 proves value equivalence. PolyRust `Bytes` is immutable, so generated APIs
 do not reproduce JavaScript typed-array object identity or mutability. Version
 5 always returns a fresh `Uint8Array`, and no admitted result value is lost.
+
+## Local completion evidence
+
+- The focused M29 suite plus repository lint gates pass 18/18 tests, including
+  Buildifier, Rustfmt, Clippy, provenance, evaluator, deterministic generation,
+  differential comparison, eight native packages, and C/C++ sanitizers.
+- All 31 portable vectors pass in the evaluator and every generated target.
+- The differential oracle agrees on 9,338 deterministic text inputs and 31,847
+  deterministic byte inputs.
+- Three complete eight-target generations are byte-identical.
+- The complete uncached repository gate passes 198/198 tests.
+- The complete uncached release gate passes 176/176 tests.

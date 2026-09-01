@@ -185,6 +185,7 @@ test_suite(
         "//examples/real-world/escape-string-regexp:all",
         "//examples/real-world/html-escaper:all",
         "//examples/real-world/is-fullwidth-code-point:all",
+        "//examples/real-world/normalize-newline:all",
         "//examples/real-world/parse-ms:all",
         "//examples/real-world/slash:all",
         "//examples/real-world/strip-bom:all",

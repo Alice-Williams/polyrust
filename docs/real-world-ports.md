@@ -147,6 +147,22 @@ Only one port may be in progress. A port is complete when:
   native generated-package gates, deterministic regeneration, and immutable
   provenance checks.
 
+### [normalize-newline 5.0.0](ports/normalize-newline.md)
+
+- Upstream: [sindresorhus/normalize-newline](https://github.com/sindresorhus/normalize-newline)
+- Revision: `bc6982d73ebd62de3729435d9baf8731ca274f7a`
+- License: MIT
+- Typed API: overloads `normalizeNewline(string): string` and
+  `normalizeNewline(Uint8Array): Uint8Array`
+- Selection evidence: 88,373 npm downloads for the measured week ending
+  29 August 2026.
+- Required PolyRust gap: literal global replacement over immutable arbitrary
+  bytes, including an explicit empty-needle boundary rule.
+- Completion: M29; all 13 valid official assertions, 31 portable vectors,
+  9,338 differential text inputs and 31,847 differential byte inputs, eight
+  native generated-package gates, deterministic regeneration, and immutable
+  provenance checks.
+
 ## Deferred candidate
 
 `juliangruber/balanced-match` is MIT licensed and attractive for a later parser

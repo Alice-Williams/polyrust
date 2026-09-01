@@ -99,6 +99,12 @@ IEEE predicate, but cannot substitute a truthiness or domain check.
 literal needle and literal replacement; no target regular-expression or
 replacement-template syntax is accepted.
 
+`BytesReplaceAll` has the exact signature
+`(Bytes, Bytes, Bytes) -> Bytes`. It scans immutable octets from left to right,
+matches the needle literally, and replaces non-overlapping matches globally.
+Replacement output is never rescanned. An empty needle inserts the replacement
+at every byte boundary, including before the first and after the last byte.
+
 `StringReplaceMany` accepts a source string followed by one or more
 needle/replacement string pairs. The total arity is odd and at least three.
 It scans the original source from left to right at Unicode scalar boundaries,
