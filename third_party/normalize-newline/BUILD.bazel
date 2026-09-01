@@ -1,0 +1,38 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+exports_files(
+    [
+        "LICENSE.MIT.txt",
+        "README.md",
+        "index.js",
+        "package.json",
+        "provenance_test.sh",
+        "upstream.d.ts",
+        "upstream.test.js",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "provenance_test",
+    srcs = ["provenance_test.sh"],
+    data = [
+        "LICENSE.MIT.txt",
+        "README.md",
+        "index.js",
+        "package.json",
+        "upstream.d.ts",
+        "upstream.test.js",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "oracle",
+    srcs = [
+        "LICENSE.MIT.txt",
+        "index.js",
+        "package.json",
+    ],
+    visibility = ["//visibility:public"],
+)

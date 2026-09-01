@@ -1,0 +1,47 @@
+{
+	"name": "normalize-newline",
+	"version": "5.0.0",
+	"description": "Normalize the newline characters in a string to `\\n`",
+	"license": "MIT",
+	"repository": "sindresorhus/normalize-newline",
+	"funding": "https://github.com/sponsors/sindresorhus",
+	"author": {
+		"name": "Sindre Sorhus",
+		"email": "sindresorhus@gmail.com",
+		"url": "https://sindresorhus.com"
+	},
+	"type": "module",
+	"exports": {
+		"types": "./index.d.ts",
+		"default": "./index.js"
+	},
+	"sideEffects": false,
+	"engines": {
+		"node": ">=20"
+	},
+	"scripts": {
+		"test": "xo && ava"
+	},
+	"files": [
+		"index.js",
+		"index.d.ts"
+	],
+	"keywords": [
+		"newline",
+		"linebreak",
+		"line",
+		"lf",
+		"crlf",
+		"eol",
+		"linefeed",
+		"character",
+		"char",
+		"normalize",
+		"convert",
+		"replace"
+	],
+	"devDependencies": {
+		"ava": "^6.4.1",
+		"xo": "^1.2.2"
+	}
+}
