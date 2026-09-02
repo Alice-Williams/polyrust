@@ -10,6 +10,7 @@ rust_library(
     visibility = ["//visibility:public"],
     deps = [
         "//crates/check:portable_check",
+        "//crates/core-ir:portable_core_ir",
         "//crates/diagnostics:portable_diagnostics",
         "//crates/ir:portable_ir",
         "@crates//:serde",
@@ -29,6 +30,13 @@ rust_test(
     deps = ["//crates/build:portable_build"],
 )
 
+rust_test(
+    name = "capability_registry_test",
+    crate = ":portable_codegen",
+    visibility = ["//visibility:public"],
+    deps = ["//crates/build:portable_build"],
+)
+
 rust_doc_test(
     name = "portable_codegen_doc_test",
     crate = ":portable_codegen",
@@ -36,5 +44,10 @@ rust_doc_test(
 
 rust_doc_test(
     name = "typed_pipeline_compile_fail_test",
+    crate = ":portable_codegen",
+)
+
+rust_doc_test(
+    name = "capability_compile_fail_test",
     crate = ":portable_codegen",
 )

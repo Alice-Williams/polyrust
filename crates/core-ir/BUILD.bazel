@@ -10,7 +10,6 @@ rust_library(
     visibility = ["//visibility:public"],
     deps = [
         "//crates/check:portable_check",
-        "//crates/codegen:portable_codegen",
         "//crates/diagnostics:portable_diagnostics",
         "//crates/ir:portable_ir",
         "@crates//:serde",

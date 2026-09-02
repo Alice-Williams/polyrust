@@ -12,7 +12,6 @@ name = "portable_core_ir"
 
 [dependencies]
 portable_check.workspace = true
-portable_codegen.workspace = true
 portable_diagnostics.workspace = true
 portable_ir.workspace = true
 serde.workspace = true

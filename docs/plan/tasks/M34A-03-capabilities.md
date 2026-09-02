@@ -1,6 +1,6 @@
 # M34A-03 — Add exhaustive capability strategies
 
-- Status: planned
+- Status: complete
 - Depends on: M34A-02
 
 ## Goal
@@ -35,3 +35,29 @@ complete, and independently testable.
 
 Commit and push `M34A-03: make capabilities exhaustive` only after focused
 tests and all backend capability tests pass in the dev container.
+
+## Evidence
+
+- `CoreFeature` is a closed family over declarations, types, controls,
+  interfaces, operations, and ownership. Intrinsic operation features embed
+  the exhaustive CoreIR unary/binary/ternary/variadic enums rather than names.
+- Structural collection produces canonical, deduplicated `FeatureUse` values
+  with typed aggregate/callable/interface/variadic shape and nearest source
+  provenance. Tests prove minimality, stability, and absence of unused string
+  features.
+- `SupportDecision<S>` separates native, emulated, and closed-reason
+  unsupported decisions. Preflight validates that every selected strategy has
+  a registered lowering and returns all stable target/source diagnostics.
+- Eight compile-time registries explicitly match all feature families and
+  nested intrinsic variants. JavaScript selects compiler-derived TypeScript;
+  C interface values/dynamic dispatch select function-table emulation.
+- Typed option proof objects are private to successful validation. A
+  panic-on-query registry proves invalid options stop before capability
+  preflight. Matrix tests prove target isolation and atomic all-target failure.
+- CoreIR no longer depends on codegen. Codegen owns `CanonicalCoreAdapter` and
+  depends one-way on CoreIR, allowing capability preflight without a crate
+  cycle.
+- Linux-container Bazel invocation
+  `465786e7-0c2b-4fda-8ab2-99ce7755fb4c` passed codegen, all seven independent
+  backend regression targets (JavaScript remains TypeScript-derived),
+  Buildifier, Rustfmt, and Clippy: 16/16 tests.

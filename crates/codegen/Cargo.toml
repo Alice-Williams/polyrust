@@ -12,6 +12,7 @@ name = "portable_codegen"
 
 [dependencies]
 portable_check.workspace = true
+portable_core_ir.workspace = true
 portable_diagnostics.workspace = true
 portable_ir.workspace = true
 serde.workspace = true

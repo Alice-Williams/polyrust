@@ -13,14 +13,12 @@ use crate::*;
 #[derive(Clone, Copy, Debug, Default)]
 pub struct CanonicalCoreLowerer;
 
-impl portable_codegen::CoreLowerer for CanonicalCoreLowerer {
-    type Core = CoreProgram;
-
-    fn lower_core(&self, program: &CheckedProgram) -> Result<Self::Core, Vec<Diagnostic>> {
+impl CanonicalCoreLowerer {
+    pub fn lower_core(&self, program: &CheckedProgram) -> Result<CoreProgram, Vec<Diagnostic>> {
         lower_checked(program)
     }
 
-    fn verify_core(&self, core: &Self::Core) -> Result<(), Vec<Diagnostic>> {
+    pub fn verify_core(&self, core: &CoreProgram) -> Result<(), Vec<Diagnostic>> {
         crate::verify_core(core)
     }
 }

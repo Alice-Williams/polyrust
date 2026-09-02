@@ -3,12 +3,14 @@
 //! Checked-v0 backend boundary and deterministic in-memory artifact manifests.
 
 mod backend;
+mod capability;
 mod document;
 mod language;
 mod manifest;
 mod typed_pipeline;
 
 pub use backend::*;
+pub use capability::*;
 pub use document::*;
 pub use language::*;
 pub use manifest::*;

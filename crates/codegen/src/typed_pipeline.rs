@@ -54,6 +54,21 @@ pub trait CoreLowerer: Send + Sync + 'static {
     fn verify_core(&self, core: &Self::Core) -> Result<(), Vec<Diagnostic>>;
 }
 
+#[derive(Clone, Copy, Debug, Default)]
+pub struct CanonicalCoreAdapter;
+
+impl CoreLowerer for CanonicalCoreAdapter {
+    type Core = portable_core_ir::CoreProgram;
+
+    fn lower_core(&self, program: &CheckedProgram) -> Result<Self::Core, Vec<Diagnostic>> {
+        portable_core_ir::lower_checked(program)
+    }
+
+    fn verify_core(&self, core: &Self::Core) -> Result<(), Vec<Diagnostic>> {
+        portable_core_ir::verify_core(core)
+    }
+}
+
 /// A verified Core value. Only the compiler adapter can construct it.
 ///
 /// Unchecked input cannot be substituted for this phase:

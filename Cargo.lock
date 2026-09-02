@@ -144,6 +144,7 @@ version = "0.1.0"
 dependencies = [
  "polyrust-build",
  "polyrust-check",
+ "polyrust-core-ir",
  "polyrust-diagnostics",
  "polyrust-ir",
  "serde",
@@ -173,7 +174,6 @@ version = "0.1.0"
 dependencies = [
  "polyrust-build",
  "polyrust-check",
- "polyrust-codegen",
  "polyrust-diagnostics",
  "polyrust-eval",
  "polyrust-ir",
