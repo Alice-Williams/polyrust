@@ -1,6 +1,18 @@
 # M33-01 — Pin stdlib is-negative-zero 0.2.3
 
-- Status: pending
+- Status: complete
+
+## Completion evidence
+
+- Lightweight tag `v0.2.3` resolves to
+  `766200b9eeea46b7f827ac7d63effa6bea65d896`.
+- All 12 retained upstream files hash exactly to their pinned Git blob IDs,
+  including both implementations, both type files, both runtime tests, package
+  metadata, README, NOTICE, and Apache-2.0 license.
+- The offline Bazel provenance target also proves package name, version,
+  license, and the exact `number -> boolean` declaration.
+- Provenance, documentation, and Buildifier tests pass in the Linux
+  development container without an upstream checkout or package install.
 
 ## Goal
 
