@@ -1,7 +1,9 @@
-use portable_check::v0::check_program;
+use portable_check::v0::{Capability, check_program};
 use portable_diagnostics::DiagnosticCode;
 use portable_eval::{EvaluationOutcome, Evaluator};
-use portable_ir::v0::{NodeId, SourceRef, from_json, to_canonical_json};
+use portable_ir::v0::{
+    Declaration, Expression, NodeId, SourceRef, TypeRef, from_json, to_canonical_json,
+};
 
 use super::*;
 
@@ -376,4 +378,98 @@ fn every_declaration_expression_statement_pattern_type_and_value_builder_compile
 
     let document = module.finish_unchecked().expect("all builders complete");
     to_canonical_json(&document).expect("all-builder document is structurally valid");
+}
+
+#[test]
+fn canonical_interface_composition_fixture_checks_all_first_class_positions() {
+    let fixture = interface_composition_fixture();
+    let checked = check_program(fixture.document).expect("canonical interface corpus checks");
+    let interface_expression_count = checked
+        .expression_types()
+        .filter(|(_, ty)| matches!(ty, TypeRef::Interface(_)))
+        .count();
+    assert!(
+        interface_expression_count >= 10,
+        "{interface_expression_count}"
+    );
+    assert!(
+        checked
+            .capabilities()
+            .program()
+            .contains(&Capability::InterfaceDispatch)
+    );
+    assert!(
+        checked
+            .capabilities()
+            .program()
+            .contains(&Capability::FirstClassInterfaceValues)
+    );
+}
+
+#[test]
+fn interface_coercion_witness_determines_the_nominal_result_type() {
+    let mut fixture = interface_composition_fixture();
+    let return_interface = fixture.return_interface.node_id();
+    let function = fixture
+        .document
+        .module
+        .declarations
+        .iter_mut()
+        .find_map(|declaration| match declaration {
+            Declaration::Function(function) if function.header.node.id == return_interface => {
+                Some(function)
+            }
+            _ => None,
+        })
+        .expect("fixture return-interface function exists");
+    let coercion = function
+        .body
+        .result
+        .as_deref_mut()
+        .expect("fixture function returns a coercion");
+    let Expression::CoerceInterface { implementation, .. } = coercion else {
+        panic!("fixture function must use an explicit interface coercion")
+    };
+    *implementation = fixture.measured_implementation.node_id();
+
+    let diagnostics = check_program(fixture.document).unwrap_err();
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == DiagnosticCode::InvalidControlFlow)
+    );
+}
+
+#[test]
+fn record_expressions_do_not_implicitly_coerce_to_interfaces() {
+    let mut fixture = interface_composition_fixture();
+    let return_interface = fixture.return_interface.node_id();
+    let function = fixture
+        .document
+        .module
+        .declarations
+        .iter_mut()
+        .find_map(|declaration| match declaration {
+            Declaration::Function(function) if function.header.node.id == return_interface => {
+                Some(function)
+            }
+            _ => None,
+        })
+        .expect("fixture return-interface function exists");
+    let result = function
+        .body
+        .result
+        .take()
+        .expect("fixture function returns a coercion");
+    let Expression::CoerceInterface { value, .. } = *result else {
+        panic!("fixture function must use an explicit interface coercion")
+    };
+    function.body.result = Some(value);
+
+    let diagnostics = check_program(fixture.document).unwrap_err();
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == DiagnosticCode::InvalidControlFlow)
+    );
 }

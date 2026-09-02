@@ -19,7 +19,6 @@ rust_test(
     crate = ":portable_check",
     data = ["//crates/ir:src/v0/testdata/every-node.poly.json"],
     visibility = ["//visibility:public"],
-    deps = ["//crates/build:portable_build"],
 )
 
 test_suite(
