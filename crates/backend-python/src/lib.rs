@@ -509,7 +509,11 @@ fn python_runtime_fragment(id: &str, source: String) -> LanguageFragment<PythonI
             (standard_group(), python_module("math")),
             (standard_group(), python_module("struct")),
         ],
-        "f64-functions" | "f64-intrinsics" => &[(standard_group(), python_module("math"))],
+        "f64-functions" => &[
+            (standard_group(), python_module("math")),
+            (standard_group(), python_module("struct")),
+        ],
+        "f64-intrinsics" => &[(standard_group(), python_module("math"))],
         "f64-decode" => &[(standard_group(), python_module("struct"))],
         _ => &[],
     };
@@ -990,20 +994,21 @@ mod tests {
 
     #[test]
     fn checked_f64_program_selects_python_math_struct_closure() {
-        let manifest = PythonBackend
-            .generate(
-                &f64_fixture(Intrinsic::FloatIsNegativeZero),
-                &BackendOptions::default(),
-            )
-            .unwrap();
-        let runtime = generated_text(&manifest, "src/generated_polyrust/runtime.py");
-        assert_eq!(runtime.matches("import math").count(), 1);
-        assert_eq!(runtime.matches("import struct").count(), 1);
-        assert!(runtime.contains("def float_div"));
-        assert!(runtime.contains("struct.unpack"));
-        assert!(runtime.contains("float_is_negative_zero"));
-        assert!(runtime.contains("math.copysign(1.0, a) < 0.0"));
-        assert!(!runtime.contains("POLYRUST-BEGIN"));
+        for operation in [Intrinsic::FloatIsNegativeZero, Intrinsic::FloatAbs] {
+            let manifest = PythonBackend
+                .generate(&f64_fixture(operation), &BackendOptions::default())
+                .unwrap();
+            let runtime = generated_text(&manifest, "src/generated_polyrust/runtime.py");
+            assert_eq!(runtime.matches("import math").count(), 1, "{operation:?}");
+            assert_eq!(runtime.matches("import struct").count(), 1, "{operation:?}");
+            assert!(runtime.contains("def float_div"));
+            assert!(runtime.contains("struct.unpack"));
+            assert!(runtime.contains("float_is_negative_zero"));
+            assert!(runtime.contains("math.copysign(1.0, a) < 0.0"));
+            assert!(runtime.contains("def float_abs"));
+            assert!(runtime.contains("bits & 0x7FFF_FFFF_FFFF_FFFF"));
+            assert!(!runtime.contains("POLYRUST-BEGIN"));
+        }
 
         let empty = PythonBackend
             .generate(&empty_fixture(), &BackendOptions::default())

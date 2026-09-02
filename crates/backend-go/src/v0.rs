@@ -1159,6 +1159,11 @@ mod tests {
                 ["bytes", "unicode/utf8"].as_slice(),
             ),
             (
+                Intrinsic::FloatAbs,
+                ["math", "strconv"].as_slice(),
+                ["bytes", "unicode/utf8"].as_slice(),
+            ),
+            (
                 Intrinsic::StringScalarLength,
                 ["unicode/utf8"].as_slice(),
                 ["bytes", "math", "strconv"].as_slice(),
@@ -1196,6 +1201,12 @@ mod tests {
             if operation == Intrinsic::FloatIsNegativeZero {
                 assert!(runtime.contains("case \"float_is_negative_zero\":"));
                 assert!(runtime.contains("math.Float64bits(left) == uint64(1)<<63"));
+            }
+            if operation == Intrinsic::FloatAbs {
+                assert!(runtime.contains("case \"float_abs\":"));
+                assert!(runtime.contains(
+                    "math.Float64frombits(math.Float64bits(left) & (uint64(1)<<63 - 1))"
+                ));
             }
         }
 
@@ -1290,6 +1301,10 @@ mod tests {
             Intrinsic::FloatIsNegativeZero => {
                 (vec![Value::F64(F64Bits::from_f64(-0.0))], TypeRef::Bool)
             }
+            Intrinsic::FloatAbs => (
+                vec![Value::F64(F64Bits(0xfff8_0000_0000_0123))],
+                TypeRef::F64,
+            ),
             Intrinsic::StringScalarLength | Intrinsic::StringUtf16Length => {
                 (vec![Value::String("hello".to_owned())], TypeRef::I64)
             }

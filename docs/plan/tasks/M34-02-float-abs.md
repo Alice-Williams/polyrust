@@ -1,6 +1,6 @@
 # M34-02 — Add portable binary64 absolute value
 
-- Status: planned
+- Status: complete
 
 ## Goal
 
@@ -21,3 +21,21 @@ target-specific comparison, signed-zero, or NaN behavior.
 ## Tests
 
 - Focused IR, checker, evaluator, conformance, and eight-backend Bazel tests.
+
+## Completion evidence
+
+- The IR round-trip and spelling test covers the 70th intrinsic,
+  `float_abs`.
+- Checker tests prove the sole `F64 -> F64` signature and reject zero,
+  wrong-typed, and two-argument invocations with `InvalidInvocation`.
+- Evaluator cases prove exact sign-bit clearing for signed zeros, normal and
+  subnormal values, infinities, signaling NaNs, quiet NaNs, and positive
+  values.
+- Rust, TypeScript/derived JavaScript, Python, Go, Java, C++, and C mappings
+  use representation-preserving lowerings. Focused dependency tests prove no
+  unowned import or helper is added and optional F64 closures remain absent
+  from minimal packages.
+- Three canonical exact-bit vectors pass through the evaluator and every
+  generated target. The focused core/all-backend suite passes 33/33 tests and
+  the canonical all-target conformance run passes 31/31 tests in the Linux
+  development container.

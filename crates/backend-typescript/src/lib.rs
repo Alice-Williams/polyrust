@@ -1413,6 +1413,13 @@ mod tests {
             assert!(!minimal.contains("POLYRUST-"));
             assert!(minimal.contains("float_is_negative_zero"));
             assert!(minimal.contains("Object.is(a, -0)"));
+            assert!(minimal.contains("case \"float_abs\":"));
+            let mask = if javascript {
+                "view.getBigUint64(0) & 0x7fffffffffffffffn"
+            } else {
+                "view.getBigUint64(0) & 0x7fff_ffff_ffff_ffffn"
+            };
+            assert!(minimal.contains(mask));
             for token in [
                 "replaceAllLiteral",
                 "replaceBytesAll",

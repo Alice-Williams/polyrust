@@ -1233,6 +1233,23 @@ mod tests {
         );
         assert!(!negative_zero_runtime.contains("import java.math.BigInteger;"));
         assert!(!negative_zero_runtime.contains("import java.nio.ByteBuffer;"));
+
+        let absolute = JavaBackend
+            .generate(
+                &intrinsic_fixture(Intrinsic::FloatAbs),
+                &BackendOptions::default(),
+            )
+            .unwrap();
+        let absolute_runtime = generated_text(
+            &absolute,
+            "src/main/java/org/polyrust/generated/Runtime.java",
+        );
+        assert!(absolute_runtime.contains("case \"float_abs\":"));
+        assert!(
+            absolute_runtime.contains("Double.doubleToRawLongBits((Double) a) & Long.MAX_VALUE")
+        );
+        assert!(!absolute_runtime.contains("import java.math.BigInteger;"));
+        assert!(!absolute_runtime.contains("import java.nio.ByteBuffer;"));
     }
 
     #[test]
@@ -1360,6 +1377,13 @@ mod tests {
                     value: Value::F64(F64Bits::from_f64(-0.0)),
                 }],
                 TypeRef::Bool,
+            ),
+            Intrinsic::FloatAbs => (
+                vec![Expression::Literal {
+                    node: node(2),
+                    value: Value::F64(F64Bits(0xfff8_0000_0000_0123)),
+                }],
+                TypeRef::F64,
             ),
             _ => panic!("test fixture supports numeric and UTF-8 roots only"),
         };

@@ -198,6 +198,7 @@ impl<'a> Generator<'a> {
                         | Intrinsic::FloatTrunc
                         | Intrinsic::FloatIsNaN
                         | Intrinsic::FloatIsNegativeZero
+                        | Intrinsic::FloatAbs
                         | Intrinsic::FloatAdd
                         | Intrinsic::FloatSub
                         | Intrinsic::FloatMul
@@ -1865,6 +1866,7 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
             Intrinsic::FloatTrunc
             | Intrinsic::FloatIsNaN
             | Intrinsic::FloatIsNegativeZero
+            | Intrinsic::FloatAbs
             | Intrinsic::FloatRemTrunc => Some("runtime.feature.f64"),
             Intrinsic::StringContains | Intrinsic::StringStartsWith | Intrinsic::StringEndsWith => {
                 Some("runtime.feature.string-predicates")
@@ -1964,6 +1966,9 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                 TypeRef::Bool,
                 prelude,
             ),
+            Intrinsic::FloatAbs => {
+                scalar(format!("poly_f64_abs({})", value(0)), TypeRef::F64, prelude)
+            }
             Intrinsic::FloatAdd
             | Intrinsic::FloatSub
             | Intrinsic::FloatMul
@@ -2777,6 +2782,7 @@ mod tests {
         for (operation, root) in [
             (Intrinsic::FloatTrunc, "runtime.feature.f64"),
             (Intrinsic::FloatIsNegativeZero, "runtime.feature.f64"),
+            (Intrinsic::FloatAbs, "runtime.feature.f64"),
             (
                 Intrinsic::StringContains,
                 "runtime.feature.string-predicates",
@@ -2814,7 +2820,9 @@ mod tests {
                     operation,
                     if matches!(
                         operation,
-                        Intrinsic::FloatTrunc | Intrinsic::FloatIsNegativeZero
+                        Intrinsic::FloatTrunc
+                            | Intrinsic::FloatIsNegativeZero
+                            | Intrinsic::FloatAbs
                     ) {
                         vec![float_expression()]
                     } else {
@@ -2834,6 +2842,9 @@ mod tests {
             );
             if operation == Intrinsic::FloatIsNegativeZero {
                 assert_eq!(lowered.value, "poly_f64_is_negative_zero(-0.0)");
+            }
+            if operation == Intrinsic::FloatAbs {
+                assert_eq!(lowered.value, "poly_f64_abs(-0.0)");
             }
         }
     }

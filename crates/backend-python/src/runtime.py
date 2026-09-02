@@ -107,6 +107,11 @@ def float_rem_trunc(left: float, right: float) -> float:
         return math.fmod(left, right)
     except ValueError:
         return math.nan
+
+
+def float_abs(value: float) -> float:
+    bits = int.from_bytes(struct.pack(">d", value), "big")
+    return struct.unpack(">d", (bits & 0x7FFF_FFFF_FFFF_FFFF).to_bytes(8, "big"))[0]
 # POLYRUST-END f64-functions
 
 
@@ -311,6 +316,7 @@ class Runtime:
         if name == "float_trunc": return ok(math.modf(a)[1])
         if name == "float_is_nan": return ok(math.isnan(a))
         if name == "float_is_negative_zero": return ok(a == 0.0 and math.copysign(1.0, a) < 0.0)
+        if name == "float_abs": return ok(float_abs(a))
         if name == "float_add": return ok(a + b)
         if name == "float_sub": return ok(a - b)
         if name == "float_mul": return ok(a * b)

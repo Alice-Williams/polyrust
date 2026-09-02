@@ -855,6 +855,11 @@ impl<'a> Session<'a> {
                 |value| value.to_bits() == (-0.0_f64).to_bits(),
                 self,
             ),
+            FloatAbs => unary_float(
+                arguments,
+                |value| f64::from_bits(value.to_bits() & 0x7fff_ffff_ffff_ffff),
+                self,
+            ),
             FloatAdd => binary_float(arguments, |left, right| left + right, self),
             FloatSub => binary_float(arguments, |left, right| left - right, self),
             FloatMul => binary_float(arguments, |left, right| left * right, self),
@@ -1876,6 +1881,41 @@ mod tests {
                 FloatIsNegativeZero,
                 vec![Value::F64(F64Bits(0xfff8_0000_0000_0001))],
                 Ok(Value::Bool(false)),
+            ),
+            (
+                FloatAbs,
+                vec![Value::F64(F64Bits(0x8000_0000_0000_0000))],
+                Ok(Value::F64(F64Bits(0x0000_0000_0000_0000))),
+            ),
+            (
+                FloatAbs,
+                vec![Value::F64(F64Bits(0xbff0_0000_0000_0000))],
+                Ok(Value::F64(F64Bits(0x3ff0_0000_0000_0000))),
+            ),
+            (
+                FloatAbs,
+                vec![Value::F64(F64Bits(0x8000_0000_0000_0001))],
+                Ok(Value::F64(F64Bits(0x0000_0000_0000_0001))),
+            ),
+            (
+                FloatAbs,
+                vec![Value::F64(F64Bits(0xfff0_0000_0000_0000))],
+                Ok(Value::F64(F64Bits(0x7ff0_0000_0000_0000))),
+            ),
+            (
+                FloatAbs,
+                vec![Value::F64(F64Bits(0xfff8_0000_0000_0123))],
+                Ok(Value::F64(F64Bits(0x7ff8_0000_0000_0123))),
+            ),
+            (
+                FloatAbs,
+                vec![Value::F64(F64Bits(0x7ff0_0000_0000_0123))],
+                Ok(Value::F64(F64Bits(0x7ff0_0000_0000_0123))),
+            ),
+            (
+                FloatAbs,
+                vec![Value::F64(F64Bits(0x7fef_ffff_ffff_ffff))],
+                Ok(Value::F64(F64Bits(0x7fef_ffff_ffff_ffff))),
             ),
             (
                 StringScalarLength,

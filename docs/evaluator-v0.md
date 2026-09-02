@@ -36,9 +36,11 @@ infinities, and NaNs. Equality follows IEEE numeric equality: NaN is unequal
 to every value and positive zero equals negative zero. Ordering with NaN is
 false. `FloatIsNegativeZero` inspects the preserved representation and is true
 only for bits `0x8000000000000000`; negative finite values, negative infinity,
-and negative NaNs remain false. String length counts Unicode scalar values, not
-UTF-8 bytes or grapheme clusters; an astral scalar and a combining scalar each
-count as one. Literal
+and negative NaNs remain false. `FloatAbs` clears only the binary64 sign bit,
+so negative zero becomes positive zero while every NaN exponent/fraction
+payload bit is preserved. String length counts Unicode scalar values, not UTF-8
+bytes or grapheme clusters; an astral scalar and a combining scalar each counts
+as one. Literal
 substring lookup is case-sensitive and returns the leftmost scalar offset as
 `Some(I64)`, `Some(0)` for an empty needle, or `None` when absent. Scalar
 slicing is a total half-open operation: each signed endpoint clamps

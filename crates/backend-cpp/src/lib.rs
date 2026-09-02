@@ -1400,6 +1400,8 @@ mod tests {
         assert!(!runtime.contains("POLYRUST-"));
         assert!(runtime.contains("if (name == \"float_is_negative_zero\")"));
         assert!(runtime.contains("value == 0.0 && std::signbit(value)"));
+        assert!(runtime.contains("if (name == \"float_abs\")"));
+        assert!(runtime.contains("bits & UINT64_C(0x7fffffffffffffff)"));
         assert_eq!(
             include_headers(&runtime),
             string_set(&[

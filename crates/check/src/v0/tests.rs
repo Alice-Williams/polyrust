@@ -1354,6 +1354,52 @@ fn float_is_negative_zero_rejects_wrong_arity_and_operand_types() {
 }
 
 #[test]
+fn float_abs_rejects_wrong_arity_and_operand_types() {
+    for (index, argument_types) in [
+        vec![],
+        vec![TypeRef::Bool],
+        vec![TypeRef::F64, TypeRef::F64],
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let mut factory = Factory::new();
+        let names = (0..argument_types.len())
+            .map(|argument| format!("argument_{argument}"))
+            .collect::<Vec<_>>();
+        let parameters = names
+            .iter()
+            .zip(argument_types)
+            .map(|(name, ty)| factory.parameter(name, ty))
+            .collect();
+        let expression = Expression::Intrinsic {
+            node: factory.node(),
+            operation: Intrinsic::FloatAbs,
+            arguments: names.into_iter().map(|name| factory.local(&name)).collect(),
+        };
+        let body = factory.block(expression);
+        let declaration = Declaration::Function(FunctionDeclaration {
+            header: factory.declaration(&format!("invalid_float_abs_{index}")),
+            parameters,
+            return_type: TypeRef::F64,
+            body,
+        });
+        let diagnostics = check_program(Document::new(
+            IrVersion::CURRENT,
+            Module {
+                name: format!("invalid_float_abs_{index}"),
+                declarations: vec![declaration],
+            },
+        ))
+        .expect_err("invalid FloatAbs arguments must be diagnosed");
+        assert!(
+            codes(&diagnostics).contains(&DiagnosticCode::InvalidInvocation),
+            "case {index}: {diagnostics:#?}"
+        );
+    }
+}
+
+#[test]
 fn string_replace_many_rejects_invalid_pair_shapes_and_operand_types() {
     let cases = [
         vec![],
@@ -1644,7 +1690,7 @@ fn list_index_of_rejects_invalid_operand_shapes_and_types() {
     }
 }
 
-const ALL_INTRINSICS: [Intrinsic; 69] = [
+const ALL_INTRINSICS: [Intrinsic; 70] = [
     Intrinsic::BoolNot,
     Intrinsic::BoolAnd,
     Intrinsic::BoolOr,
@@ -1674,6 +1720,7 @@ const ALL_INTRINSICS: [Intrinsic; 69] = [
     Intrinsic::FloatTrunc,
     Intrinsic::FloatIsNaN,
     Intrinsic::FloatIsNegativeZero,
+    Intrinsic::FloatAbs,
     Intrinsic::FloatAdd,
     Intrinsic::FloatSub,
     Intrinsic::FloatMul,
@@ -1802,6 +1849,7 @@ fn intrinsic_cases() -> Vec<(Intrinsic, Vec<TypeRef>, TypeRef)> {
         (FloatTrunc, vec![TypeRef::F64], TypeRef::F64),
         (FloatIsNaN, vec![TypeRef::F64], TypeRef::Bool),
         (FloatIsNegativeZero, vec![TypeRef::F64], TypeRef::Bool),
+        (FloatAbs, vec![TypeRef::F64], TypeRef::F64),
         (FloatAdd, vec![TypeRef::F64, TypeRef::F64], TypeRef::F64),
         (FloatSub, vec![TypeRef::F64, TypeRef::F64], TypeRef::F64),
         (FloatMul, vec![TypeRef::F64, TypeRef::F64], TypeRef::F64),

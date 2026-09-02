@@ -1444,6 +1444,9 @@ impl Generator<'_> {
             Intrinsic::FloatIsNegativeZero => {
                 format!("Ok({a}.to_bits() == (-0.0_f64).to_bits())")
             }
+            Intrinsic::FloatAbs => {
+                format!("Ok(f64::from_bits({a}.to_bits() & 0x7fff_ffff_ffff_ffff))")
+            }
             Intrinsic::FloatAdd => format!("Ok({a} + {b})"),
             Intrinsic::FloatSub => format!("Ok({a} - {b})"),
             Intrinsic::FloatMul => format!("Ok({a} * {b})"),
@@ -1608,7 +1611,8 @@ impl Generator<'_> {
                     | Intrinsic::WidenI32ToI64 => Some(TypeRef::I64),
                     Intrinsic::NarrowI64ToI32Checked => Some(TypeRef::I32),
                     Intrinsic::StringToUtf8 | Intrinsic::BytesReplaceAll => Some(TypeRef::Bytes),
-                    Intrinsic::StringFromUtf8Checked
+                    Intrinsic::FloatAbs
+                    | Intrinsic::StringFromUtf8Checked
                     | Intrinsic::StringConcat
                     | Intrinsic::StringReplaceAll
                     | Intrinsic::StringReplaceMany
@@ -2341,6 +2345,15 @@ mod tests {
         );
         assert!(negative_zero.imports.is_empty());
         assert!(negative_zero.helper_roots.is_empty());
+
+        let absolute = generator.intrinsic(
+            Intrinsic::FloatAbs,
+            vec![RustCode::new("Ok(f64::from_bits(0xfff8_0000_0000_0123))")],
+            Some(&TypeRef::F64),
+        );
+        assert!(absolute.text.contains("to_bits() & 0x7fff_ffff_ffff_ffff"));
+        assert!(absolute.imports.is_empty());
+        assert!(absolute.helper_roots.is_empty());
     }
 
     #[test]

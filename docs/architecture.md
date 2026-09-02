@@ -211,6 +211,10 @@ and Go does not make their semantics automatically portable.
 - `float_is_negative_zero` is the exact representation predicate
   `bits(value) == 0x8000000000000000`. It is distinct from equality and from
   testing the sign bit: every nonzero value and every NaN returns false.
+- `float_abs` is the representation transform
+  `bits(value) & 0x7fff_ffff_ffff_ffff`. It maps every negative binary64 value
+  to the corresponding positive magnitude without changing exponent or
+  fraction bits, including NaN payloads.
 - Float `rem_trunc` is defined as `a - trunc(a / b) * b`, with IEEE special-value
   behavior specified by conformance vectors rather than a target's `%` default.
 - Float equality is IEEE equality; a separate total-order operation is deferred.

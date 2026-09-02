@@ -42,6 +42,11 @@ bool poly_f64_is_negative_zero(double value) {
   return value == 0.0 && signbit(value);
 }
 
+double poly_f64_abs(double value) {
+  return poly_f64_from_bits(poly_f64_bits(value) &
+                            UINT64_C(0x7fffffffffffffff));
+}
+
 double poly_f64_rem_trunc(double left, double right) {
   return fmod(left, right);
 }

@@ -381,6 +381,12 @@ export class Runtime {
       case "float_trunc": return ok(Math.trunc(a));
       case "float_is_nan": return ok(Number.isNaN(a));
       case "float_is_negative_zero": return ok(Object.is(a, -0));
+      case "float_abs": {
+        const view = new DataView(new ArrayBuffer(8));
+        view.setFloat64(0, a);
+        view.setBigUint64(0, view.getBigUint64(0) & 0x7fff_ffff_ffff_ffffn);
+        return ok(view.getFloat64(0));
+      }
       case "float_add": return ok(a + b);
       case "float_sub": return ok(a - b);
       case "float_mul": return ok(a * b);

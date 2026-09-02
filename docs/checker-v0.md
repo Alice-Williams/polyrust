@@ -116,6 +116,10 @@ IEEE predicate, but cannot substitute a truthiness or domain check.
 subnormals, infinities, and every NaN payload/sign; it is therefore neither
 ordinary IEEE equality nor a general sign-bit predicate.
 
+`FloatAbs` has signature `F64 -> F64` and is serialized as `float_abs`. Its
+result bits are exactly `input_bits & 0x7fff_ffff_ffff_ffff`: the checker does
+not permit integer operands or a target-native overload.
+
 `StringReplaceAll` has the exact signature
 `(String, String, String) -> String`. Its second and third operands are a
 literal needle and literal replacement; no target regular-expression or

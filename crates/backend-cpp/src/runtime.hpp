@@ -819,6 +819,10 @@ class runtime {
       const auto value = std::any_cast<double>(a);
       return succeed(value == 0.0 && std::signbit(value));
     }
+    if (name == "float_abs") {
+      const auto bits = std::bit_cast<std::uint64_t>(std::any_cast<double>(a));
+      return succeed(std::bit_cast<double>(bits & UINT64_C(0x7fffffffffffffff)));
+    }
     if (name == "float_add") return succeed(std::any_cast<double>(a) + std::any_cast<double>(b));
     if (name == "float_sub") return succeed(std::any_cast<double>(a) - std::any_cast<double>(b));
     if (name == "float_mul") return succeed(std::any_cast<double>(a) * std::any_cast<double>(b));

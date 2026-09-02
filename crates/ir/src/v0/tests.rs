@@ -328,6 +328,7 @@ fn all_intrinsics_values_and_constant_nodes_serialize() {
         Intrinsic::FloatTrunc,
         Intrinsic::FloatIsNaN,
         Intrinsic::FloatIsNegativeZero,
+        Intrinsic::FloatAbs,
         Intrinsic::FloatAdd,
         Intrinsic::FloatSub,
         Intrinsic::FloatMul,
@@ -383,6 +384,10 @@ fn all_intrinsics_values_and_constant_nodes_serialize() {
     assert_eq!(
         serde_json::to_string(&Intrinsic::FloatIsNegativeZero).unwrap(),
         "\"float_is_negative_zero\""
+    );
+    assert_eq!(
+        serde_json::to_string(&Intrinsic::FloatAbs).unwrap(),
+        "\"float_abs\""
     );
     assert_eq!(
         serde_json::to_string(&Intrinsic::StringUtf16Length).unwrap(),

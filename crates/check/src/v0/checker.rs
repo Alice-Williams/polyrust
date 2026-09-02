@@ -1794,8 +1794,8 @@ impl Checker<'_> {
     ) -> Option<TypeRef> {
         use Intrinsic::{
             BoolAnd, BoolNot, BoolOr, BytesConcat, BytesIsEmpty, BytesLength, BytesReplaceAll,
-            Equal, FloatAdd, FloatDiv, FloatIsNaN, FloatIsNegativeZero, FloatMul, FloatNeg,
-            FloatRemTrunc, FloatSub, FloatTrunc, Greater, GreaterEqual, IntAddChecked,
+            Equal, FloatAbs, FloatAdd, FloatDiv, FloatIsNaN, FloatIsNegativeZero, FloatMul,
+            FloatNeg, FloatRemTrunc, FloatSub, FloatTrunc, Greater, GreaterEqual, IntAddChecked,
             IntAddWrapping, IntBitAnd, IntBitNot, IntBitOr, IntBitXor, IntDivChecked,
             IntMulChecked, IntMulWrapping, IntNegChecked, IntNegWrapping, IntRemChecked,
             IntShiftLeftChecked, IntShiftRightChecked, IntSubChecked, IntSubWrapping, Less,
@@ -1858,7 +1858,7 @@ impl Checker<'_> {
             {
                 Some(arguments[0].clone())
             }
-            FloatNeg | FloatTrunc if arguments == [TypeRef::F64] => Some(TypeRef::F64),
+            FloatNeg | FloatTrunc | FloatAbs if arguments == [TypeRef::F64] => Some(TypeRef::F64),
             FloatIsNaN | FloatIsNegativeZero if arguments == [TypeRef::F64] => Some(TypeRef::Bool),
             FloatAdd | FloatSub | FloatMul | FloatDiv | FloatRemTrunc
                 if arguments == [TypeRef::F64, TypeRef::F64] =>
