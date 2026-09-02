@@ -287,24 +287,39 @@ impl BackendRegistry {
             .ok_or_else(|| BackendError::Generation {
                 message: format!("backend {target} is not registered"),
             })?;
-        let descriptor = backend.descriptor();
-        let version = program.document().ir_version;
-        if !descriptor.supported_ir.contains(version) {
-            return Err(BackendError::IncompatibleIr {
-                actual: version,
-                supported: descriptor.supported_ir,
-            });
-        }
-        let option_errors = validate_options(&backend.options_schema(), options);
-        if !option_errors.is_empty() {
-            return Err(BackendError::InvalidOptions(option_errors));
-        }
-        let diagnostics = preflight(backend.as_ref(), program);
-        if !diagnostics.is_empty() {
-            return Err(BackendError::UnsupportedCapabilities(diagnostics));
-        }
+        validate_backend_request(backend.as_ref(), program, options)?;
         Ok(backend)
     }
+}
+
+/// Validates a checked program at every public legacy-backend entry point.
+///
+/// The registry calls this before dispatch, and transitional language plugins
+/// call it again from `translate`. The duplicate check is intentional: direct
+/// calls to either safe public API must not bypass version, option, or
+/// capability diagnostics.
+pub fn validate_backend_request(
+    backend: &dyn Backend,
+    program: &CheckedProgram,
+    options: &BackendOptions,
+) -> Result<(), BackendError> {
+    let descriptor = backend.descriptor();
+    let version = program.document().ir_version;
+    if !descriptor.supported_ir.contains(version) {
+        return Err(BackendError::IncompatibleIr {
+            actual: version,
+            supported: descriptor.supported_ir,
+        });
+    }
+    let option_errors = validate_options(&backend.options_schema(), options);
+    if !option_errors.is_empty() {
+        return Err(BackendError::InvalidOptions(option_errors));
+    }
+    let diagnostics = preflight(backend, program);
+    if !diagnostics.is_empty() {
+        return Err(BackendError::UnsupportedCapabilities(diagnostics));
+    }
+    Ok(())
 }
 
 pub(crate) fn validate_options(schema: &OptionsSchema, options: &BackendOptions) -> Vec<String> {
@@ -334,53 +349,79 @@ pub(crate) fn validate_options(schema: &OptionsSchema, options: &BackendOptions)
 }
 
 pub fn preflight(backend: &dyn Backend, program: &CheckedProgram) -> Vec<Diagnostic> {
-    let descriptor = backend.descriptor();
     let mut diagnostics = Vec::new();
     for capability in program.capabilities().program() {
-        if let CapabilitySupport::Unsupported { reason } = backend.support(*capability) {
-            let requiring_nodes: Vec<NodeId> = program
-                .capabilities()
-                .nodes()
-                .filter_map(|(node, capabilities)| {
-                    capabilities.contains(capability).then_some(node)
-                })
-                .collect();
-            let source = program
-                .module()
-                .declarations
-                .iter()
-                .find(|declaration| {
-                    program
-                        .capabilities()
-                        .declaration(declaration.header().node.id)
-                        .is_some_and(|capabilities| capabilities.contains(capability))
-                })
-                .map_or_else(
-                    || SourceRef::logical([format!("module({})", program.module().name)]),
-                    |declaration| declaration.header().node.source.clone(),
-                );
-            let mut diagnostic = Diagnostic::error(
-                DiagnosticCode::UnsupportedCapability,
-                format!(
-                    "backend {} does not support {capability:?}: {reason}",
-                    descriptor.target
-                ),
-                source,
-            );
-            diagnostic.target = Some(descriptor.target.to_string());
-            diagnostic.notes.push(format!(
-                "requiring node IDs: {}",
-                requiring_nodes
-                    .iter()
-                    .map(|node| node.0.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ));
+        if let Some(diagnostic) = unsupported_capability_diagnostic(backend, program, *capability) {
             diagnostics.push(diagnostic);
         }
     }
     portable_diagnostics::sort_diagnostics(&mut diagnostics);
     diagnostics
+}
+
+/// Rejects one capability at a transitional backend's direct translation
+/// boundary without applying the legacy registry's coarser capability table to
+/// otherwise validated feature subsets.
+pub fn validate_backend_capability(
+    backend: &dyn Backend,
+    program: &CheckedProgram,
+    capability: Capability,
+) -> Result<(), BackendError> {
+    match unsupported_capability_diagnostic(backend, program, capability) {
+        Some(diagnostic) => Err(BackendError::UnsupportedCapabilities(vec![diagnostic])),
+        None => Ok(()),
+    }
+}
+
+fn unsupported_capability_diagnostic(
+    backend: &dyn Backend,
+    program: &CheckedProgram,
+    capability: Capability,
+) -> Option<Diagnostic> {
+    if !program.capabilities().program().contains(&capability) {
+        return None;
+    }
+    let CapabilitySupport::Unsupported { reason } = backend.support(capability) else {
+        return None;
+    };
+    let descriptor = backend.descriptor();
+    let requiring_nodes: Vec<NodeId> = program
+        .capabilities()
+        .nodes()
+        .filter_map(|(node, capabilities)| capabilities.contains(&capability).then_some(node))
+        .collect();
+    let source = program
+        .module()
+        .declarations
+        .iter()
+        .find(|declaration| {
+            program
+                .capabilities()
+                .declaration(declaration.header().node.id)
+                .is_some_and(|capabilities| capabilities.contains(&capability))
+        })
+        .map_or_else(
+            || SourceRef::logical([format!("module({})", program.module().name)]),
+            |declaration| declaration.header().node.source.clone(),
+        );
+    let mut diagnostic = Diagnostic::error(
+        DiagnosticCode::UnsupportedCapability,
+        format!(
+            "backend {} does not support {capability:?}: {reason}",
+            descriptor.target
+        ),
+        source,
+    );
+    diagnostic.target = Some(descriptor.target.to_string());
+    diagnostic.notes.push(format!(
+        "requiring node IDs: {}",
+        requiring_nodes
+            .iter()
+            .map(|node| node.0.to_string())
+            .collect::<Vec<_>>()
+            .join(", ")
+    ));
+    Some(diagnostic)
 }
 
 #[cfg(test)]
@@ -422,7 +463,7 @@ mod tests {
         fn descriptor(&self) -> BackendDescriptor {
             BackendDescriptor {
                 target: self.target.clone(),
-                display_name: "Contract mock".to_owned(),
+                display_name: "Backend mock".to_owned(),
                 backend_version: BackendVersion::new(0, 1, 0),
                 supported_ir: self.supported_ir,
             }
@@ -595,7 +636,7 @@ mod tests {
     }
 
     #[test]
-    fn contract_kit_proves_repeatability_and_preserves_backend_errors() {
+    fn interface_kit_proves_repeatability_and_preserves_backend_errors() {
         let program = checked_unicode_program();
         let calls = Arc::new(AtomicUsize::new(0));
         let backend: Arc<dyn Backend> =

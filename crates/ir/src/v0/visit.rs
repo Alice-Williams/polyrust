@@ -26,7 +26,7 @@ pub fn module_uses_intrinsic(
             Declaration::Alias(_)
             | Declaration::Record(_)
             | Declaration::Enum(_)
-            | Declaration::Contract(_)
+            | Declaration::Interface(_)
             | Declaration::Test(_) => false,
         })
 }
@@ -98,6 +98,7 @@ fn expression_uses_intrinsic(
         Expression::ConstructSome { value, .. }
         | Expression::ConstructOk { value, .. }
         | Expression::ConstructErr { value, .. }
+        | Expression::CoerceInterface { value, .. }
         | Expression::Field { base: value, .. } => expression_uses_intrinsic(value, predicate),
         Expression::ConstructList { elements, .. } => elements
             .iter()

@@ -21,7 +21,11 @@ rust_test(
     compile_data = ["//crates/build:testdata/registration.poly.json"],
     crate = ":portable_backend_rust",
     visibility = ["//visibility:public"],
-    deps = ["//crates/eval:portable_eval"],
+    deps = [
+        "//crates/build:portable_build",
+        "//crates/diagnostics:portable_diagnostics",
+        "//crates/eval:portable_eval",
+    ],
 )
 
 sh_test(

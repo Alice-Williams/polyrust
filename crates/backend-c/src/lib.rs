@@ -14,7 +14,7 @@ use portable_codegen::{
     InjectedHelper, IrVersionRange, LanguageFile, LanguageFragment, LanguagePackage,
     LanguagePlugin, LanguageRenderer, LanguageSourceFile, OptionsSchema, OutputManifest, RawText,
     RuntimeHelper, RuntimeHelperGraph, SourceFileRole, TargetId, TextFileRole,
-    generate_with_plugin,
+    generate_with_plugin, validate_backend_capability,
 };
 use portable_ir::v0::IrVersion;
 
@@ -39,9 +39,12 @@ impl Backend for CBackend {
             Capability::UnicodeScalar => CapabilitySupport::Helper {
                 helper: "polyrust.runtime.c.unicode-scalars.v0".into(),
             },
-            Capability::Bytes | Capability::ContractDispatch | Capability::F64 => {
+            Capability::Bytes | Capability::InterfaceDispatch | Capability::F64 => {
                 CapabilitySupport::Native
             }
+            Capability::FirstClassInterfaceValues => CapabilitySupport::Unsupported {
+                reason: "first-class interface values require the M34A-11 typed C backend".into(),
+            },
             Capability::CheckedIntegerArithmetic
             | Capability::ImmutableList
             | Capability::Option
@@ -237,8 +240,10 @@ impl LanguagePlugin for CBackend {
     fn translate(
         &self,
         program: &CheckedProgram,
-        _options: &BackendOptions,
+        options: &BackendOptions,
     ) -> Result<LanguagePackage<Self::Import>, BackendError> {
+        let _ = options;
+        validate_backend_capability(self, program, Capability::FirstClassInterfaceValues)?;
         let generator = Generator::new(program);
         generator.validate()?;
         let header = generator.header();

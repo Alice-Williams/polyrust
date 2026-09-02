@@ -1,6 +1,6 @@
 # M34A-06 — Expand interfaces and composition semantics
 
-- Status: planned
+- Status: complete
 - Depends on: M34A-02, M34A-05
 
 ## Goal
@@ -42,3 +42,23 @@ composition part of the portable checked model without exposing inheritance.
 Commit and push `M34A-06: add first-class interfaces and composition` only
 after IR/checker/evaluator/builder compatibility and canonical fixtures pass in
 the dev container.
+
+## Exit evidence
+
+- Canonical IR 0.2 uses interface terminology; exact IR 0.1 input is covered by
+  an explicit deterministic migration test and inheritance fields are rejected.
+- The shared fixture covers parameters, returns, fields, enum payloads,
+  list/option/result values, locals, multiple conformance, static/dynamic calls,
+  and explicit composition/delegation.
+- Invalid or implicit coercions and interface equality are rejected by stable
+  checker diagnostics; `FirstClassInterfaceValues` is node-attributed.
+- CoreIR preserves the explicit implementation witness and immutable receiver;
+  the evaluator passes all nine canonical cases deterministically.
+- The shared heritage verifier accepts only a final one-edge approved-external
+  adapter with a composed delegate and rejects every forbidden graph shape.
+- Unmigrated legacy backends reject first-class interface values before private
+  translation; embedded runtime readers consume only canonical IR 0.2 keys.
+- In the Linux development container, both named milestone commands, Rustfmt,
+  Clippy, Buildifier, and the complete tracked-scope graph passed uncached:
+  264 of 264 tests. The frozen untracked M34-03 `stdlib-abs` package was the
+  only excluded Bazel package and was not modified.

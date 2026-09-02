@@ -30,7 +30,7 @@
 //! );
 //!
 //! let json = to_canonical_json(&document).expect("valid IR serializes");
-//! assert!(json.starts_with(br#"{"ir_version":"0.1.0""#));
+//! assert!(json.starts_with(br#"{"ir_version":"0.2.0""#));
 //! ```
 
 mod common;

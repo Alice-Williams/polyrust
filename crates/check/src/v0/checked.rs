@@ -21,7 +21,8 @@ impl SymbolId {
 pub enum Capability {
     Bytes,
     CheckedIntegerArithmetic,
-    ContractDispatch,
+    InterfaceDispatch,
+    FirstClassInterfaceValues,
     F64,
     ImmutableList,
     Option,

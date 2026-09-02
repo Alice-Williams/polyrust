@@ -140,7 +140,7 @@ fn positive_document(order_reversed: bool) -> (Document, PositiveIds) {
     let required_id = required_header.node.id;
     let clone_required_header = factory.member("clone_data");
     let clone_required_id = clone_required_header.node.id;
-    let contract = Declaration::Contract(ContractDeclaration {
+    let interface = Declaration::Interface(InterfaceDeclaration {
         header: contract_header,
         methods: vec![
             MethodSignature {
@@ -170,19 +170,19 @@ fn positive_document(order_reversed: bool) -> (Document, PositiveIds) {
     let clone_body = factory.block(self_value);
     let implementation = Declaration::Implementation(ImplementationDeclaration {
         header: implementation_header,
-        contract: contract_id,
+        interface: contract_id,
         record: data_id,
         methods: vec![
             MethodImplementation {
                 header: method_header,
-                contract_method: required_id,
+                interface_method: required_id,
                 parameters: vec![method_parameter],
                 return_type: TypeRef::String,
                 body: method_body,
             },
             MethodImplementation {
                 header: clone_method_header,
-                contract_method: clone_required_id,
+                interface_method: clone_required_id,
                 parameters: vec![],
                 return_type: TypeRef::Named(data_id),
                 body: clone_body,
@@ -325,14 +325,14 @@ fn positive_document(order_reversed: bool) -> (Document, PositiveIds) {
     });
 
     let contract_function_header = factory.declaration("call_contract");
-    let contract_parameter = factory.parameter("value", TypeRef::Contract(contract_id));
+    let contract_parameter = factory.parameter("value", TypeRef::Interface(contract_id));
     let contract_receiver = factory.local("value");
-    let contract_prefix = factory.literal(Value::String("contract=".to_owned()));
+    let contract_prefix = factory.literal(Value::String("interface=".to_owned()));
     let contract_call = Expression::MethodCall {
         node: factory.node(),
         receiver: Box::new(contract_receiver),
-        dispatch: MethodDispatch::Contract {
-            contract: contract_id,
+        dispatch: MethodDispatch::Interface {
+            interface: contract_id,
             method: required_id,
         },
         arguments: vec![contract_prefix],
@@ -368,7 +368,7 @@ fn positive_document(order_reversed: bool) -> (Document, PositiveIds) {
         data,
         choice,
         alias,
-        contract,
+        interface,
         implementation,
         constant,
         compute,
@@ -484,12 +484,12 @@ fn capability_sets_are_minimal_traceable_and_insertion_order_independent() {
             .capabilities()
             .node(ids.method_call)
             .unwrap()
-            .contains(&Capability::ContractDispatch)
+            .contains(&Capability::InterfaceDispatch)
     );
     for required in [
         Capability::Bytes,
         Capability::CheckedIntegerArithmetic,
-        Capability::ContractDispatch,
+        Capability::InterfaceDispatch,
         Capability::F64,
         Capability::ImmutableList,
         Capability::Option,
@@ -525,7 +525,6 @@ fn exhaustive_schema_fixture_is_processed_without_panic() {
     assert_eq!(
         codes(&diagnostics),
         BTreeSet::from([
-            DiagnosticCode::InvalidContractPosition,
             DiagnosticCode::InvalidIdentifier,
             DiagnosticCode::InvalidInvocation,
         ])
@@ -781,15 +780,15 @@ fn match_exhaustiveness_and_duplicate_patterns_are_checked() {
 }
 
 #[test]
-fn missing_and_wrong_contract_methods_are_rejected() {
+fn missing_and_wrong_interface_methods_are_rejected() {
     let mut factory = Factory::new();
     let record_header = factory.declaration("Record");
     let record_id = record_header.node.id;
-    let contract_header = factory.declaration("Contract");
+    let contract_header = factory.declaration("Interface");
     let contract_id = contract_header.node.id;
     let method_header = factory.member("required");
     let method_id = method_header.node.id;
-    let contract = Declaration::Contract(ContractDeclaration {
+    let interface = Declaration::Interface(InterfaceDeclaration {
         header: contract_header,
         methods: vec![MethodSignature {
             header: method_header,
@@ -803,19 +802,19 @@ fn missing_and_wrong_contract_methods_are_rejected() {
     let wrong_body = factory.block(wrong_value);
     let implementation = Declaration::Implementation(ImplementationDeclaration {
         header: factory.declaration("Implementation"),
-        contract: contract_id,
+        interface: contract_id,
         record: record_id,
         methods: vec![
             MethodImplementation {
                 header: wrong_header,
-                contract_method: method_id,
+                interface_method: method_id,
                 parameters: vec![wrong_parameter],
                 return_type: TypeRef::Bool,
                 body: wrong_body,
             },
             MethodImplementation {
                 header: factory.member("extra"),
-                contract_method: NodeId(99_999),
+                interface_method: NodeId(99_999),
                 parameters: vec![],
                 return_type: TypeRef::Unit,
                 body: Block {
@@ -828,7 +827,7 @@ fn missing_and_wrong_contract_methods_are_rejected() {
     });
     let missing = Declaration::Implementation(ImplementationDeclaration {
         header: factory.declaration("MissingImplementation"),
-        contract: contract_id,
+        interface: contract_id,
         record: record_id,
         methods: vec![],
     });
@@ -841,31 +840,61 @@ fn missing_and_wrong_contract_methods_are_rejected() {
                     header: record_header,
                     fields: vec![],
                 }),
-                contract,
+                interface,
                 implementation,
                 missing,
             ],
         },
     ))
     .unwrap_err();
-    assert!(codes(&diagnostics).contains(&DiagnosticCode::ContractNonconformance));
+    assert!(codes(&diagnostics).contains(&DiagnosticCode::InterfaceNonconformance));
     assert!(codes(&diagnostics).contains(&DiagnosticCode::DuplicateDeclaration));
 }
 
 #[test]
-fn contract_storage_and_return_positions_are_rejected() {
+fn interface_storage_return_and_equality_rules_are_explicit() {
     let mut factory = Factory::new();
-    let contract_header = factory.declaration("View");
-    let contract_id = contract_header.node.id;
+    let interface_header = factory.declaration("View");
+    let interface_id = interface_header.node.id;
     let record_header = factory.declaration("Stored");
     let field = FieldDeclaration {
         header: factory.member("view"),
-        ty: TypeRef::Contract(contract_id),
+        ty: TypeRef::Interface(interface_id),
     };
     let function_header = factory.declaration("return_view");
+    let parameter = factory.parameter("view", TypeRef::Interface(interface_id));
+    let result = factory.local("view");
+    let body = factory.block(result);
+    check_program(Document::new(
+        IrVersion::CURRENT,
+        Module {
+            name: "positions".to_owned(),
+            declarations: vec![
+                Declaration::Interface(InterfaceDeclaration {
+                    header: interface_header,
+                    methods: vec![],
+                }),
+                Declaration::Record(RecordDeclaration {
+                    header: record_header,
+                    fields: vec![field],
+                }),
+                Declaration::Function(FunctionDeclaration {
+                    header: function_header,
+                    parameters: vec![parameter],
+                    return_type: TypeRef::Interface(interface_id),
+                    body,
+                }),
+            ],
+        },
+    ))
+    .expect("interface fields and return values are first-class");
+
+    let mut factory = Factory::new();
+    let interface_header = factory.declaration("View");
+    let interface_id = interface_header.node.id;
     let equality_header = factory.declaration("compare_views");
-    let left_parameter = factory.parameter("left", TypeRef::Contract(contract_id));
-    let right_parameter = factory.parameter("right", TypeRef::Contract(contract_id));
+    let left_parameter = factory.parameter("left", TypeRef::Interface(interface_id));
+    let right_parameter = factory.parameter("right", TypeRef::Interface(interface_id));
     let left = factory.local("left");
     let right = factory.local("right");
     let equality = Expression::Intrinsic {
@@ -879,23 +908,9 @@ fn contract_storage_and_return_positions_are_rejected() {
         Module {
             name: "positions".to_owned(),
             declarations: vec![
-                Declaration::Contract(ContractDeclaration {
-                    header: contract_header,
+                Declaration::Interface(InterfaceDeclaration {
+                    header: interface_header,
                     methods: vec![],
-                }),
-                Declaration::Record(RecordDeclaration {
-                    header: record_header,
-                    fields: vec![field],
-                }),
-                Declaration::Function(FunctionDeclaration {
-                    header: function_header,
-                    parameters: vec![],
-                    return_type: TypeRef::Contract(contract_id),
-                    body: Block {
-                        node: factory.node(),
-                        statements: vec![],
-                        result: None,
-                    },
                 }),
                 Declaration::Function(FunctionDeclaration {
                     header: equality_header,
@@ -907,7 +922,93 @@ fn contract_storage_and_return_positions_are_rejected() {
         },
     ))
     .unwrap_err();
-    assert!(codes(&diagnostics).contains(&DiagnosticCode::InvalidContractPosition));
+    assert!(codes(&diagnostics).contains(&DiagnosticCode::InvalidInterfacePosition));
+}
+
+#[test]
+fn canonical_interface_composition_fixture_checks_all_first_class_positions() {
+    let fixture = portable_build::interface_composition_fixture();
+    let checked = check_program(fixture.document).expect("canonical interface corpus checks");
+    let interface_expression_count = checked
+        .expression_types()
+        .filter(|(_, ty)| matches!(ty, TypeRef::Interface(_)))
+        .count();
+    assert!(
+        interface_expression_count >= 10,
+        "{interface_expression_count}"
+    );
+    assert!(
+        checked
+            .capabilities()
+            .program()
+            .contains(&Capability::InterfaceDispatch)
+    );
+    assert!(
+        checked
+            .capabilities()
+            .program()
+            .contains(&Capability::FirstClassInterfaceValues)
+    );
+}
+
+#[test]
+fn interface_coercion_witness_determines_the_nominal_result_type() {
+    let mut fixture = portable_build::interface_composition_fixture();
+    let return_interface = fixture.return_interface.node_id();
+    let function = fixture
+        .document
+        .module
+        .declarations
+        .iter_mut()
+        .find_map(|declaration| match declaration {
+            Declaration::Function(function) if function.header.node.id == return_interface => {
+                Some(function)
+            }
+            _ => None,
+        })
+        .expect("fixture return-interface function exists");
+    let coercion = function
+        .body
+        .result
+        .as_deref_mut()
+        .expect("fixture function returns a coercion");
+    let Expression::CoerceInterface { implementation, .. } = coercion else {
+        panic!("fixture function must use an explicit interface coercion")
+    };
+    *implementation = fixture.measured_implementation.node_id();
+
+    let diagnostics = check_program(fixture.document).unwrap_err();
+    assert!(codes(&diagnostics).contains(&DiagnosticCode::InvalidControlFlow));
+}
+
+#[test]
+fn record_expressions_do_not_implicitly_coerce_to_interfaces() {
+    let mut fixture = portable_build::interface_composition_fixture();
+    let return_interface = fixture.return_interface.node_id();
+    let function = fixture
+        .document
+        .module
+        .declarations
+        .iter_mut()
+        .find_map(|declaration| match declaration {
+            Declaration::Function(function) if function.header.node.id == return_interface => {
+                Some(function)
+            }
+            _ => None,
+        })
+        .expect("fixture return-interface function exists");
+    let result = function
+        .body
+        .result
+        .take()
+        .expect("fixture function returns a coercion");
+    let Expression::CoerceInterface { value, .. } = *result else {
+        panic!("fixture function must use an explicit interface coercion")
+    };
+    function.body.result = Some(value);
+
+    let diagnostics = check_program(fixture.document).unwrap_err();
+    assert!(codes(&diagnostics).contains(&DiagnosticCode::InvalidControlFlow));
 }
 
 #[test]
@@ -1221,6 +1322,7 @@ fn collect_expression_ids(expression: &Expression, ids: &mut BTreeSet<NodeId>) {
         Expression::ConstructSome { value, .. }
         | Expression::ConstructOk { value, .. }
         | Expression::ConstructErr { value, .. }
+        | Expression::CoerceInterface { value, .. }
         | Expression::Field { base: value, .. } => collect_expression_ids(value, ids),
         Expression::ConstructList { elements, .. }
         | Expression::Call {

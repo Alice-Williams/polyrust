@@ -2,13 +2,12 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef};
 use portable_ir::v0::{
-    AliasDeclaration, Block, ConstantDeclaration, ConstantExpression, ContractDeclaration,
-    Declaration, Document, EnumDeclaration, EnumVariant, ExpectedOutcome, Expression,
-    ExpressionField, FieldBinding, FieldDeclaration, FunctionDeclaration,
-    ImplementationDeclaration, Intrinsic, IrVersion, MatchArm, MethodDispatch,
-    MethodImplementation, MethodSignature, Module, NodeId, NodeMeta, Parameter, Pattern,
-    RecordDeclaration, Statement, TestDeclaration, TestInvocation, TypeRef, TypedValue, Value,
-    ValueField, validate_structure,
+    AliasDeclaration, Block, ConstantDeclaration, ConstantExpression, Declaration, Document,
+    EnumDeclaration, EnumVariant, ExpectedOutcome, Expression, ExpressionField, FieldBinding,
+    FieldDeclaration, FunctionDeclaration, ImplementationDeclaration, InterfaceDeclaration,
+    Intrinsic, IrVersion, MatchArm, MethodDispatch, MethodImplementation, MethodSignature, Module,
+    NodeId, NodeMeta, Parameter, Pattern, RecordDeclaration, Statement, TestDeclaration,
+    TestInvocation, TypeRef, TypedValue, Value, ValueField, validate_structure,
 };
 
 use super::{Capability, CapabilityReport, CheckedProgram, SymbolId};
@@ -18,11 +17,11 @@ pub(super) const MAX_DEPTH: usize = 64;
 pub fn check_program(document: Document) -> Result<CheckedProgram, Vec<Diagnostic>> {
     let fallback = SourceRef::logical([format!("module({})", document.module.name)]);
     let mut diagnostics = Vec::new();
-    if !document.ir_version.is_compatible_with(IrVersion::CURRENT) {
+    if document.ir_version != IrVersion::CURRENT {
         diagnostics.push(Diagnostic::error(
             DiagnosticCode::UnsupportedIrMajor,
             format!(
-                "IR version {} is not compatible with checker {}",
+                "IR version {} must be migrated to checker version {}",
                 document.ir_version,
                 IrVersion::CURRENT
             ),
@@ -73,7 +72,7 @@ struct Index<'a> {
     fields: BTreeMap<NodeId, (&'a RecordDeclaration, &'a FieldDeclaration)>,
     enum_fields: BTreeMap<NodeId, (&'a EnumDeclaration, &'a EnumVariant, &'a FieldDeclaration)>,
     variants: BTreeMap<NodeId, (&'a EnumDeclaration, &'a EnumVariant)>,
-    contract_methods: BTreeMap<NodeId, (&'a ContractDeclaration, &'a MethodSignature)>,
+    interface_methods: BTreeMap<NodeId, (&'a InterfaceDeclaration, &'a MethodSignature)>,
     implementation_methods:
         BTreeMap<NodeId, (&'a ImplementationDeclaration, &'a MethodImplementation)>,
 }
@@ -85,7 +84,7 @@ impl<'a> Index<'a> {
             fields: BTreeMap::new(),
             enum_fields: BTreeMap::new(),
             variants: BTreeMap::new(),
-            contract_methods: BTreeMap::new(),
+            interface_methods: BTreeMap::new(),
             implementation_methods: BTreeMap::new(),
         };
         for declaration in &module.declarations {
@@ -110,11 +109,11 @@ impl<'a> Index<'a> {
                         }
                     }
                 }
-                Declaration::Contract(contract) => {
-                    for method in &contract.methods {
+                Declaration::Interface(interface) => {
+                    for method in &interface.methods {
                         index
-                            .contract_methods
-                            .insert(method.header.node.id, (contract, method));
+                            .interface_methods
+                            .insert(method.header.node.id, (interface, method));
                     }
                 }
                 Declaration::Implementation(implementation) => {
@@ -158,9 +157,9 @@ impl<'a> Index<'a> {
         }
     }
 
-    fn contract(&self, id: NodeId) -> Option<&'a ContractDeclaration> {
+    fn interface(&self, id: NodeId) -> Option<&'a InterfaceDeclaration> {
         match self.declaration(id) {
-            Some(Declaration::Contract(contract)) => Some(contract),
+            Some(Declaration::Interface(interface)) => Some(interface),
             _ => None,
         }
     }
@@ -274,7 +273,7 @@ impl Checker<'_> {
             }
             Declaration::Record(record) => self.check_record(record),
             Declaration::Enum(enumeration) => self.check_enum(enumeration),
-            Declaration::Contract(contract) => self.check_contract(contract),
+            Declaration::Interface(interface) => self.check_interface(interface),
             Declaration::Implementation(implementation) => {
                 self.check_implementation(implementation);
             }
@@ -293,7 +292,7 @@ impl Checker<'_> {
         &mut self,
         ty: &TypeRef,
         node: &NodeMeta,
-        position: TypePosition,
+        _position: TypePosition,
         stack: &mut Vec<NodeId>,
     ) -> Option<TypeRef> {
         let normalized = match ty {
@@ -339,17 +338,9 @@ impl Checker<'_> {
                 }
                 ty.clone()
             }
-            TypeRef::Contract(id) => {
-                if self.index.contract(*id).is_none() {
-                    self.unresolved("contract type", *id, &node.source);
-                    return None;
-                }
-                if !matches!(position, TypePosition::DirectParameter) {
-                    self.error(
-                        DiagnosticCode::InvalidContractPosition,
-                        "contract types are allowed only as direct parameters",
-                        node.source.clone(),
-                    );
+            TypeRef::Interface(id) => {
+                if self.index.interface(*id).is_none() {
+                    self.unresolved("interface type", *id, &node.source);
                     return None;
                 }
                 ty.clone()
@@ -437,16 +428,16 @@ impl Checker<'_> {
         }
     }
 
-    fn check_contract(&mut self, contract: &ContractDeclaration) {
+    fn check_interface(&mut self, interface: &InterfaceDeclaration) {
         let mut names = BTreeSet::new();
-        for method in &contract.methods {
+        for method in &interface.methods {
             self.check_identifier(&method.header.name, &method.header.node);
             if !names.insert(method.header.name.as_str()) {
                 self.error(
                     DiagnosticCode::DuplicateDeclaration,
                     format!(
-                        "duplicate method {:?} in contract {:?}",
-                        method.header.name, contract.header.name
+                        "duplicate method {:?} in interface {:?}",
+                        method.header.name, interface.header.name
                     ),
                     method.header.node.source.clone(),
                 );
@@ -886,10 +877,10 @@ impl Checker<'_> {
     }
 
     fn check_implementation(&mut self, implementation: &ImplementationDeclaration) {
-        let Some(contract) = self.index.contract(implementation.contract) else {
+        let Some(interface) = self.index.interface(implementation.interface) else {
             self.unresolved(
-                "implementation contract",
-                implementation.contract,
+                "implementation interface",
+                implementation.interface,
                 &implementation.header.node.source,
             );
             return;
@@ -909,7 +900,7 @@ impl Checker<'_> {
             .iter()
             .filter_map(|declaration| match declaration {
                 Declaration::Implementation(candidate)
-                    if candidate.contract == implementation.contract
+                    if candidate.interface == implementation.interface
                         && candidate.record == implementation.record =>
                 {
                     Some(candidate.header.node.id)
@@ -920,7 +911,7 @@ impl Checker<'_> {
         if duplicates.len() > 1 && duplicates[0] != implementation.header.node.id {
             self.error(
                 DiagnosticCode::DuplicateDeclaration,
-                "duplicate implementation for the same record and contract",
+                "duplicate implementation for the same record and interface",
                 implementation.header.node.source.clone(),
             );
         }
@@ -928,7 +919,7 @@ impl Checker<'_> {
         let mut supplied = BTreeSet::new();
         for method in &implementation.methods {
             self.check_identifier(&method.header.name, &method.header.node);
-            if !supplied.insert(method.contract_method) {
+            if !supplied.insert(method.interface_method) {
                 self.error(
                     DiagnosticCode::DuplicateDeclaration,
                     format!("duplicate implemented method {:?}", method.header.name),
@@ -937,25 +928,25 @@ impl Checker<'_> {
             }
             let Some((owner, required)) = self
                 .index
-                .contract_methods
-                .get(&method.contract_method)
+                .interface_methods
+                .get(&method.interface_method)
                 .copied()
             else {
                 self.error(
-                    DiagnosticCode::ContractNonconformance,
+                    DiagnosticCode::InterfaceNonconformance,
                     format!(
-                        "extra method {:?} does not reference a required contract method",
+                        "extra method {:?} does not reference a required interface method",
                         method.header.name
                     ),
                     method.header.node.source.clone(),
                 );
                 continue;
             };
-            if owner.header.node.id != contract.header.node.id {
+            if owner.header.node.id != interface.header.node.id {
                 self.error(
-                    DiagnosticCode::ContractNonconformance,
+                    DiagnosticCode::InterfaceNonconformance,
                     format!(
-                        "method {:?} belongs to a different contract",
+                        "method {:?} belongs to a different interface",
                         method.header.name
                     ),
                     method.header.node.source.clone(),
@@ -964,9 +955,9 @@ impl Checker<'_> {
             }
             if !self.signatures_match(method, required) {
                 self.error(
-                    DiagnosticCode::ContractNonconformance,
+                    DiagnosticCode::InterfaceNonconformance,
                     format!(
-                        "method {:?} does not match its contract signature",
+                        "method {:?} does not match its interface signature",
                         method.header.name
                     ),
                     method.header.node.source.clone(),
@@ -998,10 +989,10 @@ impl Checker<'_> {
                 );
             }
         }
-        for required in &contract.methods {
+        for required in &interface.methods {
             if !supplied.contains(&required.header.node.id) {
                 self.error(
-                    DiagnosticCode::ContractNonconformance,
+                    DiagnosticCode::InterfaceNonconformance,
                     format!(
                         "implementation is missing method {:?}",
                         required.header.name
@@ -1350,6 +1341,33 @@ impl Checker<'_> {
                 }
                 Some(TypeRef::List(Box::new(element_type.clone())))
             }
+            Expression::CoerceInterface {
+                implementation,
+                value,
+                ..
+            } => {
+                let Some(implementation) = self.index.implementation(*implementation) else {
+                    self.unresolved("implementation", *implementation, &node.source);
+                    return None;
+                };
+                let actual = self.check_expression(
+                    value,
+                    environment,
+                    expected_return,
+                    self_type,
+                    depth + 1,
+                )?;
+                if !self.same_type(
+                    &actual,
+                    &TypeRef::Named(implementation.record),
+                    value.node(),
+                ) {
+                    self.type_error("interface coercion value", value.node());
+                }
+                self.require(node.id, Capability::InterfaceDispatch);
+                self.require(node.id, Capability::FirstClassInterfaceValues);
+                Some(TypeRef::Interface(implementation.interface))
+            }
             Expression::Field { base, field, .. } => {
                 let base = self.check_expression(
                     base,
@@ -1501,20 +1519,40 @@ impl Checker<'_> {
         if actual == expected {
             return true;
         }
-        if let (TypeRef::Named(record), TypeRef::Contract(contract)) = (actual, expected) {
-            return self.document.module.declarations.iter().any(|declaration| {
-                matches!(
-                    declaration,
-                    Declaration::Implementation(implementation)
-                        if implementation.record == *record
-                            && implementation.contract == *contract
-                )
-            });
-        }
-        if matches!(actual, TypeRef::Contract(_)) || matches!(expected, TypeRef::Contract(_)) {
+        if matches!(actual, TypeRef::Interface(_)) || matches!(expected, TypeRef::Interface(_)) {
             return false;
         }
         self.same_type(actual, expected, node)
+    }
+
+    /// Portable test values cannot serialize an interface witness directly.
+    /// At this one boundary a record value may be lifted only when exactly one
+    /// explicit record/interface implementation exists. Ordinary expressions
+    /// must use `Expression::CoerceInterface`.
+    fn is_test_value_assignable(
+        &mut self,
+        actual: &TypeRef,
+        expected: &TypeRef,
+        node: &NodeMeta,
+    ) -> bool {
+        if let (TypeRef::Named(record), TypeRef::Interface(interface)) = (actual, expected) {
+            return self
+                .document
+                .module
+                .declarations
+                .iter()
+                .filter(|declaration| {
+                    matches!(
+                        declaration,
+                        Declaration::Implementation(implementation)
+                            if implementation.record == *record
+                                && implementation.interface == *interface
+                    )
+                })
+                .count()
+                == 1;
+        }
+        self.is_assignable(actual, expected, node)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1673,7 +1711,7 @@ impl Checker<'_> {
             self_type.clone(),
             depth + 1,
         )?;
-        self.require(node.id, Capability::ContractDispatch);
+        self.require(node.id, Capability::InterfaceDispatch);
         match dispatch {
             MethodDispatch::Concrete {
                 implementation,
@@ -1712,17 +1750,18 @@ impl Checker<'_> {
                 );
                 Some(method.return_type.clone())
             }
-            MethodDispatch::Contract { contract, method } => {
-                let Some((owner, method)) = self.index.contract_methods.get(method).copied() else {
-                    self.unresolved("contract method", *method, &node.source);
+            MethodDispatch::Interface { interface, method } => {
+                let Some((owner, method)) = self.index.interface_methods.get(method).copied()
+                else {
+                    self.unresolved("interface method", *method, &node.source);
                     return None;
                 };
-                if owner.header.node.id != *contract
-                    || !self.is_assignable(&receiver_type, &TypeRef::Contract(*contract), node)
+                if owner.header.node.id != *interface
+                    || !self.is_assignable(&receiver_type, &TypeRef::Interface(*interface), node)
                 {
                     self.error(
                         DiagnosticCode::InvalidInvocation,
-                        "contract method receiver or dispatch owner does not match",
+                        "interface method receiver or dispatch owner does not match",
                         node.source.clone(),
                     );
                 }
@@ -1819,10 +1858,10 @@ impl Checker<'_> {
             BoolNot if arguments == [TypeRef::Bool] => Some(TypeRef::Bool),
             BoolAnd | BoolOr if arguments == [TypeRef::Bool, TypeRef::Bool] => Some(TypeRef::Bool),
             Equal | NotEqual if arguments.len() == 2 && arguments[0] == arguments[1] => {
-                if matches!(arguments[0], TypeRef::Contract(_)) {
+                if self.type_contains_interface(&arguments[0], node) {
                     self.error(
-                        DiagnosticCode::InvalidContractPosition,
-                        "contract values cannot be compared for equality",
+                        DiagnosticCode::InvalidInterfacePosition,
+                        "interface values cannot be compared for equality",
                         node.source.clone(),
                     );
                     None
@@ -1984,6 +2023,45 @@ impl Checker<'_> {
             self.require(node.id, Capability::WrappingIntegerArithmetic);
         }
         result
+    }
+
+    fn type_contains_interface(&mut self, ty: &TypeRef, node: &NodeMeta) -> bool {
+        let mut stack = Vec::new();
+        let Some(ty) = self.normalize_type(ty, node, TypePosition::General, &mut stack) else {
+            return false;
+        };
+        match ty {
+            TypeRef::Interface(_) => true,
+            TypeRef::List(inner) | TypeRef::Option(inner) => {
+                self.type_contains_interface(&inner, node)
+            }
+            TypeRef::Result { ok, error } => {
+                self.type_contains_interface(&ok, node)
+                    || self.type_contains_interface(&error, node)
+            }
+            TypeRef::Named(id) => match self.index.declaration(id) {
+                Some(Declaration::Record(record)) => record
+                    .fields
+                    .iter()
+                    .any(|field| self.type_contains_interface(&field.ty, &field.header.node)),
+                Some(Declaration::Enum(enumeration)) => {
+                    enumeration.variants.iter().any(|variant| {
+                        variant.fields.iter().any(|field| {
+                            self.type_contains_interface(&field.ty, &field.header.node)
+                        })
+                    })
+                }
+                _ => false,
+            },
+            TypeRef::Unit
+            | TypeRef::Bool
+            | TypeRef::I32
+            | TypeRef::I64
+            | TypeRef::F64
+            | TypeRef::Char
+            | TypeRef::String
+            | TypeRef::Bytes => false,
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -2327,7 +2405,9 @@ impl Checker<'_> {
         if !self.check_value_against(&value.value, &value.ty, node, 0) {
             self.test_error("typed test value does not match its declared type", test);
         }
-        if expected.is_some_and(|expected| !self.is_assignable(&value.ty, expected, node)) {
+        if expected
+            .is_some_and(|expected| !self.is_test_value_assignable(&value.ty, expected, node))
+        {
             self.test_error(
                 "typed test value does not match the invocation signature",
                 test,
@@ -2422,7 +2502,7 @@ impl Checker<'_> {
                 self.collect_type_capabilities(node, ok);
                 self.collect_type_capabilities(node, error);
             }
-            TypeRef::Contract(_) => self.require(node, Capability::ContractDispatch),
+            TypeRef::Interface(_) => self.require(node, Capability::InterfaceDispatch),
             TypeRef::Unit | TypeRef::Bool | TypeRef::I32 | TypeRef::I64 | TypeRef::Named(_) => {}
         }
     }
@@ -2495,6 +2575,7 @@ fn expression_always_returns(expression: &Expression) -> bool {
             !arms.is_empty() && arms.iter().all(|arm| block_always_returns(&arm.body))
         }
         Expression::Block(block) => block_always_returns(block),
+        Expression::CoerceInterface { value, .. } => expression_always_returns(value),
         _ => false,
     }
 }
@@ -2535,7 +2616,7 @@ fn call_graph(module: &Module, index: &Index<'_>) -> BTreeMap<NodeId, BTreeSet<N
             | Declaration::Alias(_)
             | Declaration::Record(_)
             | Declaration::Enum(_)
-            | Declaration::Contract(_)
+            | Declaration::Interface(_)
             | Declaration::Test(_) => {}
         }
     }
@@ -2591,12 +2672,12 @@ fn collect_expression_calls(
                 MethodDispatch::Concrete { method, .. } => {
                     edges.insert(*method);
                 }
-                MethodDispatch::Contract { contract, method } => {
+                MethodDispatch::Interface { interface, method } => {
                     for (implementation, candidate) in
                         index.implementation_methods.values().copied()
                     {
-                        if implementation.contract == *contract
-                            && candidate.contract_method == *method
+                        if implementation.interface == *interface
+                            && candidate.interface_method == *method
                         {
                             edges.insert(candidate.header.node.id);
                         }
@@ -2615,6 +2696,7 @@ fn collect_expression_calls(
         Expression::ConstructSome { value, .. }
         | Expression::ConstructOk { value, .. }
         | Expression::ConstructErr { value, .. }
+        | Expression::CoerceInterface { value, .. }
         | Expression::Field { base: value, .. } => {
             collect_expression_calls(value, edges, index);
         }

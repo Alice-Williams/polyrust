@@ -11,7 +11,7 @@ use portable_codegen::{
     InjectedHelper, IrVersionRange, LanguageFile, LanguageFragment, LanguagePackage,
     LanguagePlugin, LanguageRenderer, LanguageSourceFile, OptionsSchema, OutputManifest, RawText,
     RuntimeHelper, RuntimeHelperGraph, SourceFileRole, TargetId, TextFileRole,
-    generate_with_plugin,
+    generate_with_plugin, validate_backend_capability,
 };
 use portable_ir::v0::{Declaration, Intrinsic, IrVersion, NodeId, TypeRef, Visibility};
 
@@ -33,12 +33,17 @@ fn support(capability: Capability) -> CapabilitySupport {
             helper: "polyrust.runtime.immutable-list.v0".into(),
         },
         Capability::Bytes
-        | Capability::ContractDispatch
+        | Capability::InterfaceDispatch
         | Capability::F64
         | Capability::Option
         | Capability::Result
         | Capability::WrappingIntegerArithmetic
         | Capability::BoundedIteration => CapabilitySupport::Native,
+        Capability::FirstClassInterfaceValues => CapabilitySupport::Unsupported {
+            reason:
+                "first-class interface values require the M34A-13/M34A-14 typed ECMAScript backends"
+                    .into(),
+        },
     }
 }
 
@@ -335,8 +340,10 @@ impl LanguagePlugin for TypeScriptBackend {
     fn translate(
         &self,
         program: &CheckedProgram,
-        _options: &BackendOptions,
+        options: &BackendOptions,
     ) -> Result<LanguagePackage<Self::Import>, BackendError> {
+        let _ = options;
+        validate_backend_capability(self, program, Capability::FirstClassInterfaceValues)?;
         ecma_package(self, program, false)
     }
 
@@ -352,8 +359,10 @@ impl LanguagePlugin for JavaScriptBackend {
     fn translate(
         &self,
         program: &CheckedProgram,
-        _options: &BackendOptions,
+        options: &BackendOptions,
     ) -> Result<LanguagePackage<Self::Import>, BackendError> {
+        let _ = options;
+        validate_backend_capability(self, program, Capability::FirstClassInterfaceValues)?;
         ecma_package(self, program, true)
     }
 
@@ -823,7 +832,7 @@ impl<'a> Generator<'a> {
                     .collect();
                 let contracts = implementations
                     .iter()
-                    .map(|implementation| type_name(self.name(implementation.contract)))
+                    .map(|implementation| type_name(self.name(implementation.interface)))
                     .collect::<Vec<_>>()
                     .join(", ");
                 let mut requirements = Vec::new();
@@ -953,7 +962,7 @@ impl<'a> Generator<'a> {
                 );
                 code
             }
-            Declaration::Contract(item) => {
+            Declaration::Interface(item) => {
                 let mut requirements = Vec::new();
                 let mut typescript = format!(
                     "{}interface {} {{\n",
@@ -1070,7 +1079,7 @@ impl<'a> Generator<'a> {
                     format!("PolyValueResult<{}, {}>", ok.typescript, error.typescript);
                 result.with_named("./runtime.js", "PolyValueResult", true)
             }
-            TypeRef::Named(id) | TypeRef::Contract(id) => {
+            TypeRef::Named(id) | TypeRef::Interface(id) => {
                 EcmaCode::typescript(type_name(self.name(*id)))
             }
         }
@@ -1347,14 +1356,14 @@ mod tests {
     }
 
     #[test]
-    fn contract_declarations_are_fully_erased_from_javascript() {
+    fn interface_declarations_are_fully_erased_from_javascript() {
         let checked = fixture();
         let generator = Generator::new(&checked);
         for declaration in &checked.module().declarations {
-            if matches!(declaration, Declaration::Contract(_)) {
-                let contract = generator.paired_declaration(declaration);
-                assert!(contract.javascript.is_empty());
-                assert!(!contract.typescript.is_empty());
+            if matches!(declaration, Declaration::Interface(_)) {
+                let interface = generator.paired_declaration(declaration);
+                assert!(interface.javascript.is_empty());
+                assert!(!interface.typescript.is_empty());
             }
         }
         let javascript = JavaScriptBackend

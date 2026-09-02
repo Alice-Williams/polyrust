@@ -4,8 +4,8 @@ use portable_ir::v0::{
 };
 
 use crate::{
-    AliasId, ContractId, EnumFieldId, EnumId, EnumVariantId, FunctionId, ImplementationId,
-    ImplementationMethodId, NamedTypeHandle, RecordFieldId, RecordId,
+    AliasId, EnumFieldId, EnumId, EnumVariantId, FunctionId, ImplementationId,
+    ImplementationMethodId, InterfaceId, NamedTypeHandle, RecordFieldId, RecordId,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -63,8 +63,8 @@ impl Type {
         Self(TypeRef::Named(handle.named_node()))
     }
 
-    pub fn contract(contract: ContractId) -> Self {
-        Self(TypeRef::Contract(contract.node_id()))
+    pub fn interface(interface: InterfaceId) -> Self {
+        Self(TypeRef::Interface(interface.node_id()))
     }
 
     pub fn as_ir(&self) -> &TypeRef {

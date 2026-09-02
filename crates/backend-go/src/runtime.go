@@ -184,7 +184,7 @@ func (r *runtime) invokeMethod(implementationID, methodID int64, receiver any, a
 	for _, raw := range data["methods"].([]any) {
 		method := raw.(map[string]any)
 		header := method["header"].(map[string]any)
-		if number(header["node"].(map[string]any)["id"]) == methodID || number(method["contract_method"]) == methodID {
+		if number(header["node"].(map[string]any)["id"]) == methodID || number(method["interface_method"]) == methodID {
 			return r.invokeBody(method, arguments, receiver)
 		}
 	}
@@ -331,8 +331,8 @@ func (r *runtime) expression(expression map[string]any, environment map[string]a
 		if dispatch["kind"] == "concrete" {
 			implementation = number(target["implementation"])
 		}
-		if dispatch["kind"] == "contract" {
-			implementation = r.findImplementation(number(target["contract"]), r.field(receiver.Value, "__polyDecl").(int64))
+		if dispatch["kind"] == "interface" {
+			implementation = r.findImplementation(number(target["interface"]), r.field(receiver.Value, "__polyDecl").(int64))
 		}
 		return r.invokeMethod(implementation, number(target["method"]), receiver.Value, arguments.Value.([]any))
 	case "if":
@@ -901,11 +901,11 @@ func (r *runtime) fieldName(id int64) string {
 	}
 	return "field"
 }
-func (r *runtime) findImplementation(contract, record int64) int64 {
+func (r *runtime) findImplementation(interfaceID, record int64) int64 {
 	for id, declaration := range r.declarations {
 		if declaration["kind"] == "implementation" {
 			data := declaration["data"].(map[string]any)
-			if number(data["contract"]) == contract && number(data["record"]) == record {
+			if number(data["interface"]) == interfaceID && number(data["record"]) == record {
 				return id
 			}
 		}

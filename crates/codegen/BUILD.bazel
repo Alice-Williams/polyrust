@@ -53,6 +53,12 @@ rust_test(
     deps = ["//crates/build:portable_build"],
 )
 
+test_suite(
+    name = "heritage_test",
+    tests = [":target_ast_test"],
+    visibility = ["//visibility:public"],
+)
+
 rust_test(
     name = "symbol_catalogue_test",
     crate = ":portable_codegen",

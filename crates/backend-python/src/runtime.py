@@ -172,7 +172,7 @@ class Runtime:
         implementation = self.declarations.get(implementation_id)
         if implementation is None or implementation["kind"] != "implementation":
             return fail("invalid_call", f"unknown implementation {implementation_id}")
-        method = next((item for item in implementation["data"]["methods"] if item["header"]["node"]["id"] == method_id or item["contract_method"] == method_id), None)
+        method = next((item for item in implementation["data"]["methods"] if item["header"]["node"]["id"] == method_id or item["interface_method"] == method_id), None)
         return fail("invalid_call", f"unknown method {method_id}") if method is None else self._invoke_body(method, arguments, receiver)
 
     def decode(self, typed: dict[str, Any]) -> Any:
@@ -236,7 +236,7 @@ class Runtime:
             if not receiver.ok: return receiver
             dispatch = data["dispatch"]
             implementation = dispatch["data"].get("implementation")
-            if dispatch["kind"] == "contract": implementation = self._find_implementation(dispatch["data"]["contract"], self._field(receiver.value, "__poly_decl__"))
+            if dispatch["kind"] == "interface": implementation = self._find_implementation(dispatch["data"]["interface"], self._field(receiver.value, "__poly_decl__"))
             return self.invoke_method(implementation, dispatch["data"]["method"], receiver.value, arguments.value)
         if kind == "if":
             condition = self._expression(data["condition"], environment, self_value)
@@ -457,5 +457,5 @@ class Runtime:
                     if field["header"]["node"]["id"] == identifier: return field["header"]["name"]
         return f"field_{identifier}"
 
-    def _find_implementation(self, contract: int, record: int) -> int:
-        return next(identifier for identifier, declaration in self.declarations.items() if declaration["kind"] == "implementation" and declaration["data"]["contract"] == contract and declaration["data"]["record"] == record)
+    def _find_implementation(self, interface_id: int, record: int) -> int:
+        return next(identifier for identifier, declaration in self.declarations.items() if declaration["kind"] == "implementation" and declaration["data"]["interface"] == interface_id and declaration["data"]["record"] == record)

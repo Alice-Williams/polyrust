@@ -5,9 +5,9 @@ use portable_ir::v0::{
 };
 
 use crate::{
-    ConstantExpr, ConstantId, ContractId, ContractMethodId, EnumFieldId, EnumId, EnumVariantId,
-    FunctionId, ImplementationId, ImplementationMethodId, Operation, RecordFieldId, RecordId, Type,
-    Value, constant_field, enum_constant_field,
+    ConstantExpr, ConstantId, EnumFieldId, EnumId, EnumVariantId, FunctionId, ImplementationId,
+    ImplementationMethodId, InterfaceId, InterfaceMethodId, Operation, RecordFieldId, RecordId,
+    Type, Value, constant_field, enum_constant_field,
 };
 
 pub(crate) struct BuildContext {
@@ -198,6 +198,16 @@ impl BodyBuilder<'_> {
         })
     }
 
+    /// Constructs an owned interface value with an explicit conformance
+    /// witness. The checker proves that `value` is the implementation's record.
+    pub fn interface_value(&mut self, implementation: ImplementationId, value: Expr) -> Expr {
+        Expr(Expression::CoerceInterface {
+            node: self.node("interface_value"),
+            implementation: implementation.node_id(),
+            value: Box::new(value.into_ir()),
+        })
+    }
+
     pub fn field(&mut self, base: Expr, field: RecordFieldId) -> Expr {
         Expr(Expression::Field {
             node: self.node("field"),
@@ -236,18 +246,18 @@ impl BodyBuilder<'_> {
         })
     }
 
-    pub fn contract_method(
+    pub fn interface_method(
         &mut self,
         receiver: Expr,
-        contract: ContractId,
-        method: ContractMethodId,
+        interface: InterfaceId,
+        method: InterfaceMethodId,
         arguments: impl IntoIterator<Item = Expr>,
     ) -> Expr {
         Expr(Expression::MethodCall {
-            node: self.node("contract_method"),
+            node: self.node("interface_method"),
             receiver: Box::new(receiver.into_ir()),
-            dispatch: MethodDispatch::Contract {
-                contract: contract.node_id(),
+            dispatch: MethodDispatch::Interface {
+                interface: interface.node_id(),
                 method: method.node_id(),
             },
             arguments: arguments.into_iter().map(Expr::into_ir).collect(),

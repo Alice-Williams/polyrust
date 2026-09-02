@@ -1,16 +1,16 @@
 use portable_check::v0::{CheckedProgram, check_program};
 use portable_diagnostics::{Diagnostic, DiagnosticCode, sort_diagnostics};
 use portable_ir::v0::{
-    AliasDeclaration, ConstantDeclaration, ContractDeclaration, Declaration, DeclarationHeader,
-    Document, EnumDeclaration, EnumVariant, FieldDeclaration, FunctionDeclaration,
-    ImplementationDeclaration, IrVersion, MemberHeader, MethodImplementation, MethodSignature,
-    Module, Parameter as IrParameter, RecordDeclaration, TestDeclaration,
+    AliasDeclaration, ConstantDeclaration, Declaration, DeclarationHeader, Document,
+    EnumDeclaration, EnumVariant, FieldDeclaration, FunctionDeclaration, ImplementationDeclaration,
+    InterfaceDeclaration, IrVersion, MemberHeader, MethodImplementation, MethodSignature, Module,
+    Parameter as IrParameter, RecordDeclaration, TestDeclaration,
 };
 
 use crate::{
-    AliasId, Block, BodyBuilder, BuildContext, ConstantExpr, ConstantId, ContractId,
-    ContractMethodId, EnumFieldId, EnumId, EnumVariantId, Expected, FunctionId, ImplementationId,
-    ImplementationMethodId, Invocation, RecordFieldId, RecordId, TestId, Type, Visibility,
+    AliasId, Block, BodyBuilder, BuildContext, ConstantExpr, ConstantId, EnumFieldId, EnumId,
+    EnumVariantId, Expected, FunctionId, ImplementationId, ImplementationMethodId, InterfaceId,
+    InterfaceMethodId, Invocation, RecordFieldId, RecordId, TestId, Type, Visibility,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -281,25 +281,25 @@ impl EnumVariantBuilder<'_> {
 }
 
 impl ModuleBuilder {
-    pub fn contract<R>(
+    pub fn interface<R>(
         &mut self,
         name: impl Into<String>,
         visibility: Visibility,
         documentation: Vec<String>,
-        configure: impl FnOnce(&mut ContractBuilder<'_>) -> R,
-    ) -> (ContractId, R) {
+        configure: impl FnOnce(&mut InterfaceBuilder<'_>) -> R,
+    ) -> (InterfaceId, R) {
         let name = name.into();
         let header = self.declaration_header(&name, visibility, documentation);
-        let id = ContractId::new(header.node.id);
-        let mut builder = ContractBuilder {
+        let id = InterfaceId::new(header.node.id);
+        let mut builder = InterfaceBuilder {
             context: &mut self.context,
             diagnostics: &mut self.diagnostics,
-            scope: vec![format!("contract({name})")],
+            scope: vec![format!("interface({name})")],
             methods: vec![],
         };
         let result = configure(&mut builder);
         self.declarations
-            .push(Declaration::Contract(ContractDeclaration {
+            .push(Declaration::Interface(InterfaceDeclaration {
                 header,
                 methods: builder.methods,
             }));
@@ -311,7 +311,7 @@ impl ModuleBuilder {
         name: impl Into<String>,
         visibility: Visibility,
         documentation: Vec<String>,
-        contract: ContractId,
+        interface: InterfaceId,
         record: RecordId,
         configure: impl FnOnce(&mut ImplementationBuilder<'_>) -> R,
     ) -> (ImplementationId, R) {
@@ -328,7 +328,7 @@ impl ModuleBuilder {
         self.declarations
             .push(Declaration::Implementation(ImplementationDeclaration {
                 header,
-                contract: contract.node_id(),
+                interface: interface.node_id(),
                 record: record.node_id(),
                 methods: builder.methods,
             }));
@@ -383,21 +383,21 @@ impl ModuleBuilder {
     }
 }
 
-pub struct ContractBuilder<'a> {
+pub struct InterfaceBuilder<'a> {
     context: &'a mut BuildContext,
     diagnostics: &'a mut Vec<Diagnostic>,
     scope: Vec<String>,
     methods: Vec<MethodSignature>,
 }
 
-impl ContractBuilder<'_> {
+impl InterfaceBuilder<'_> {
     pub fn method(
         &mut self,
         name: impl Into<String>,
         documentation: Vec<String>,
         parameters: Vec<Parameter>,
         return_type: Option<Type>,
-    ) -> ContractMethodId {
+    ) -> InterfaceMethodId {
         let name = name.into();
         let header = member_header(
             self.context,
@@ -406,7 +406,7 @@ impl ContractBuilder<'_> {
             name.clone(),
             documentation,
         );
-        let id = ContractMethodId::new(header.node.id);
+        let id = InterfaceMethodId::new(header.node.id);
         let mut scope = self.scope.clone();
         scope.push(format!("method({name})"));
         let parameters = build_parameters(self.context, &scope, parameters);
@@ -418,7 +418,7 @@ impl ContractBuilder<'_> {
             }),
             None => self.diagnostics.push(Diagnostic::error(
                 DiagnosticCode::InvalidStructure,
-                format!("contract method {name:?} is missing a return type"),
+                format!("interface method {name:?} is missing a return type"),
                 header.node.source,
             )),
         }
@@ -437,7 +437,7 @@ impl ImplementationBuilder<'_> {
     pub fn method<R>(
         &mut self,
         name: impl Into<String>,
-        contract_method: ContractMethodId,
+        interface_method: InterfaceMethodId,
         documentation: Vec<String>,
         configure: impl FnOnce(&mut CallableBuilder<'_>) -> R,
     ) -> (ImplementationMethodId, R) {
@@ -457,7 +457,7 @@ impl ImplementationBuilder<'_> {
         if let Some((parameters, return_type, body)) = builder.finish("implementation method") {
             self.methods.push(MethodImplementation {
                 header,
-                contract_method: contract_method.node_id(),
+                interface_method: interface_method.node_id(),
                 parameters,
                 return_type,
                 body,

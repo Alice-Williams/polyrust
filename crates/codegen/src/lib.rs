@@ -5,6 +5,7 @@
 mod backend;
 mod capability;
 mod document;
+mod heritage;
 mod language;
 mod linking;
 mod manifest;
@@ -14,6 +15,7 @@ mod typed_pipeline;
 pub use backend::*;
 pub use capability::*;
 pub use document::*;
+pub use heritage::*;
 pub use language::*;
 pub use linking::*;
 pub use manifest::*;

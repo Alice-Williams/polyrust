@@ -11,7 +11,7 @@ use portable_codegen::{
     InjectedHelper, IrVersionRange, LanguageFile, LanguageFragment, LanguagePackage,
     LanguagePlugin, LanguageRenderer, LanguageSourceFile, OptionsSchema, OutputManifest, RawText,
     RuntimeHelper, RuntimeHelperGraph, SourceFileRole, TargetId, TextFileRole,
-    generate_with_plugin,
+    generate_with_plugin, validate_backend_capability,
 };
 use portable_ir::v0::{Declaration, IrVersion, NodeId, TypeRef, Visibility};
 
@@ -41,12 +41,15 @@ impl Backend for CppBackend {
                 helper: "polyrust.runtime.immutable-list.v0".into(),
             },
             Capability::Bytes
-            | Capability::ContractDispatch
+            | Capability::InterfaceDispatch
             | Capability::F64
             | Capability::Option
             | Capability::Result
             | Capability::WrappingIntegerArithmetic
             | Capability::BoundedIteration => CapabilitySupport::Native,
+            Capability::FirstClassInterfaceValues => CapabilitySupport::Unsupported {
+                reason: "first-class interface values require the M34A-17 typed C++ backend".into(),
+            },
         }
     }
 
@@ -229,8 +232,10 @@ impl LanguagePlugin for CppBackend {
     fn translate(
         &self,
         program: &CheckedProgram,
-        _options: &BackendOptions,
+        options: &BackendOptions,
     ) -> Result<LanguagePackage<Self::Import>, BackendError> {
+        let _ = options;
+        validate_backend_capability(self, program, Capability::FirstClassInterfaceValues)?;
         let generator = Generator::new(program);
         let (source, runtime_roots) = generator.source_file()?;
         let helpers = program
@@ -500,7 +505,7 @@ impl<'a> Generator<'a> {
             CppCode::sequence(
                 declarations
                     .iter()
-                    .filter(|item| matches!(item, Declaration::Contract(_)))
+                    .filter(|item| matches!(item, Declaration::Interface(_)))
                     .map(|item| self.type_declaration(item)),
             ),
             CppCode::sequence(
@@ -529,7 +534,7 @@ impl<'a> Generator<'a> {
                 visibility(item.header.visibility),
                 type_name(&item.header.name)
             )),
-            Declaration::Contract(item) => CppCode::new(format!(
+            Declaration::Interface(item) => CppCode::new(format!(
                 "{}struct {};\n",
                 visibility(item.header.visibility),
                 type_name(&item.header.name)
@@ -548,7 +553,7 @@ impl<'a> Generator<'a> {
 
     fn type_declaration(&self, declaration: &Declaration) -> CppCode {
         match declaration {
-            Declaration::Contract(item) => {
+            Declaration::Interface(item) => {
                 let mut output = format!(
                     "{}struct {} {{\n  virtual ~{}() = default;\n  virtual std::int64_t polyrust_declaration() const noexcept = 0;\n  virtual poly_runtime::aggregate polyrust_value() const = 0;\n",
                     visibility(item.header.visibility),
@@ -575,7 +580,7 @@ impl<'a> Generator<'a> {
                 let bases = implementations
                     .iter()
                     .map(|implementation| {
-                        format!("public {}", type_name(self.name(implementation.contract)))
+                        format!("public {}", type_name(self.name(implementation.interface)))
                     })
                     .collect::<Vec<_>>();
                 let mut output = format!(
@@ -845,7 +850,7 @@ impl<'a> Generator<'a> {
     }
 
     fn argument(&self, ty: &TypeRef, name: &str) -> CppCode {
-        if matches!(ty, TypeRef::Contract(_)) {
+        if matches!(ty, TypeRef::Interface(_)) {
             CppCode::new(format!("{name}.polyrust_value()"))
         } else {
             CppCode::new(format!("poly_runtime::to_any({name})"))
@@ -1058,7 +1063,7 @@ impl<'a> Generator<'a> {
                 CppCode::new(format!("value_result<{ok}, {error}>")).with_text_from([ok, error])
             }
             TypeRef::Named(id) => self.named_ty(*id),
-            TypeRef::Contract(id) => CppCode::new(type_name(self.name(*id))),
+            TypeRef::Interface(id) => CppCode::new(type_name(self.name(*id))),
         }
     }
 

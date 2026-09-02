@@ -7,7 +7,7 @@ pub mod v0;
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use portable_ir::{Contract, Expression, Function, MethodSignature, Module, Record, Type, Value};
+use portable_ir::{Expression, Function, Interface, MethodSignature, Module, Record, Type, Value};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Diagnostic {
@@ -76,9 +76,9 @@ fn check_top_level_names(module: &Module, diagnostics: &mut Vec<Diagnostic>) {
         )
         .chain(
             module
-                .contracts
+                .interfaces
                 .iter()
-                .map(|item| ("contract", item.name.as_str())),
+                .map(|item| ("interface", item.name.as_str())),
         )
         .chain(
             module
@@ -103,13 +103,13 @@ fn check_top_level_names(module: &Module, diagnostics: &mut Vec<Diagnostic>) {
 
     let mut implementations = BTreeSet::new();
     for implementation in &module.implementations {
-        let key = (&implementation.contract, &implementation.record);
+        let key = (&implementation.interface, &implementation.record);
         if !implementations.insert(key) {
             diagnostics.push(Diagnostic::new(
                 "P0003",
                 format!(
                     "duplicate implementation of `{}` for `{}`",
-                    implementation.contract, implementation.record
+                    implementation.interface, implementation.record
                 ),
             ));
         }
@@ -123,13 +123,13 @@ fn check_declared_types(module: &Module, diagnostics: &mut Vec<Diagnostic>) {
     for record in &module.records {
         check_fields(module, record, diagnostics);
     }
-    for contract in &module.contracts {
+    for interface in &module.interfaces {
         let mut names = BTreeSet::new();
-        for method in &contract.methods {
+        for method in &interface.methods {
             if !names.insert(method.name.as_str()) {
                 diagnostics.push(Diagnostic::new(
                     "P0004",
-                    format!("duplicate method `{}` in `{}`", method.name, contract.name),
+                    format!("duplicate method `{}` in `{}`", method.name, interface.name),
                 ));
             }
             check_signature(module, method, diagnostics);
@@ -206,7 +206,7 @@ fn check_parameters(
 fn check_type(module: &Module, ty: &Type, diagnostics: &mut Vec<Diagnostic>) {
     if let Type::Named(name) = ty
         && record(module, name).is_none()
-        && contract(module, name).is_none()
+        && interface(module, name).is_none()
     {
         diagnostics.push(Diagnostic::new("P0100", format!("unknown type `{name}`")));
     }
@@ -226,10 +226,10 @@ fn check_constants(module: &Module, diagnostics: &mut Vec<Diagnostic>) {
 
 fn check_implementations(module: &Module, diagnostics: &mut Vec<Diagnostic>) {
     for implementation in &module.implementations {
-        let Some(contract) = contract(module, &implementation.contract) else {
+        let Some(interface) = interface(module, &implementation.interface) else {
             diagnostics.push(Diagnostic::new(
                 "P0300",
-                format!("unknown contract `{}`", implementation.contract),
+                format!("unknown interface `{}`", implementation.interface),
             ));
             continue;
         };
@@ -241,7 +241,7 @@ fn check_implementations(module: &Module, diagnostics: &mut Vec<Diagnostic>) {
             continue;
         };
 
-        for required in &contract.methods {
+        for required in &interface.methods {
             let Some(method) = implementation
                 .methods
                 .iter()
@@ -251,7 +251,7 @@ fn check_implementations(module: &Module, diagnostics: &mut Vec<Diagnostic>) {
                     "P0302",
                     format!(
                         "implementation `{}` for `{}` is missing method `{}`",
-                        implementation.contract, implementation.record, required.name
+                        implementation.interface, implementation.record, required.name
                     ),
                 ));
                 continue;
@@ -261,20 +261,20 @@ fn check_implementations(module: &Module, diagnostics: &mut Vec<Diagnostic>) {
             {
                 diagnostics.push(Diagnostic::new(
                     "P0303",
-                    format!("method `{}` does not match its contract", method.name),
+                    format!("method `{}` does not match its interface", method.name),
                 ));
             }
             check_body(module, method, Some(receiver), diagnostics);
         }
         for method in &implementation.methods {
-            if !contract
+            if !interface
                 .methods
                 .iter()
                 .any(|required| required.name == method.name)
             {
                 diagnostics.push(Diagnostic::new(
                     "P0304",
-                    format!("extra method `{}` in contract implementation", method.name),
+                    format!("extra method `{}` in interface implementation", method.name),
                 ));
             }
         }
@@ -379,24 +379,24 @@ fn expression_type(
         } => {
             let receiver_type =
                 expression_type(module, receiver, locals, self_record, diagnostics)?;
-            let Type::Named(contract_name) = receiver_type else {
+            let Type::Named(interface_name) = receiver_type else {
                 diagnostics.push(Diagnostic::new(
                     "P0407",
-                    "method receiver must have a named contract type",
+                    "method receiver must have a named interface type",
                 ));
                 return None;
             };
-            let Some(contract) = contract(module, &contract_name) else {
+            let Some(interface) = interface(module, &interface_name) else {
                 diagnostics.push(Diagnostic::new(
                     "P0407",
-                    format!("`{contract_name}` is not a contract receiver"),
+                    format!("`{interface_name}` is not a interface receiver"),
                 ));
                 return None;
             };
-            let Some(signature) = contract.methods.iter().find(|item| item.name == *method) else {
+            let Some(signature) = interface.methods.iter().find(|item| item.name == *method) else {
                 diagnostics.push(Diagnostic::new(
                     "P0408",
-                    format!("contract `{contract_name}` has no method `{method}`"),
+                    format!("interface `{interface_name}` has no method `{method}`"),
                 ));
                 return None;
             };
@@ -483,13 +483,13 @@ fn is_assignable(module: &Module, actual: Option<&Type>, expected: &Type) -> boo
     if actual == Some(expected) {
         return true;
     }
-    let (Some(Type::Named(record)), Type::Named(contract)) = (actual, expected) else {
+    let (Some(Type::Named(record)), Type::Named(interface)) = (actual, expected) else {
         return false;
     };
     module
         .implementations
         .iter()
-        .any(|item| item.record == *record && item.contract == *contract)
+        .any(|item| item.record == *record && item.interface == *interface)
 }
 
 fn value_type(module: &Module, value: &Value, diagnostics: &mut Vec<Diagnostic>) -> Option<Type> {
@@ -546,11 +546,11 @@ fn record<'a>(module: &'a Module, name: &str) -> Option<&'a Record> {
     module.records.iter().find(|record| record.name == name)
 }
 
-fn contract<'a>(module: &'a Module, name: &str) -> Option<&'a Contract> {
+fn interface<'a>(module: &'a Module, name: &str) -> Option<&'a Interface> {
     module
-        .contracts
+        .interfaces
         .iter()
-        .find(|contract| contract.name == name)
+        .find(|interface| interface.name == name)
 }
 
 fn valid_identifier(name: &str) -> bool {
@@ -570,7 +570,7 @@ mod tests {
             name: "demo".into(),
             constants: vec![],
             records: vec![],
-            contracts: vec![],
+            interfaces: vec![],
             implementations: vec![],
             functions: vec![],
             tests: vec![],

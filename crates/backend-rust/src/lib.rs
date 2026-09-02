@@ -55,12 +55,12 @@ fn render_module(module: &Module) -> String {
         output.push_str("}\n\n");
     }
 
-    for contract in &module.contracts {
+    for interface in &module.interfaces {
         output.push_str(&format!(
             "pub trait {} {{\n",
-            rust_type_name(&contract.name)
+            rust_type_name(&interface.name)
         ));
-        for method in &contract.methods {
+        for method in &interface.methods {
             output.push_str(&format!(
                 "    fn {}(&self{}{}) -> {};\n",
                 rust_identifier(&method.name),
@@ -84,7 +84,7 @@ fn render_module(module: &Module) -> String {
     for implementation in &module.implementations {
         output.push_str(&format!(
             "impl {} for {} {{\n",
-            rust_type_name(&implementation.contract),
+            rust_type_name(&implementation.interface),
             rust_type_name(&implementation.record)
         ));
         for method in &implementation.methods {
@@ -172,7 +172,7 @@ fn render_rust_method(module: &Module, method: &Function) -> String {
 
 fn rust_parameter(module: &Module, parameter: &portable_ir::Parameter) -> String {
     let ty = match &parameter.ty {
-        Type::Named(name) if module.contracts.iter().any(|item| item.name == *name) => {
+        Type::Named(name) if module.interfaces.iter().any(|item| item.name == *name) => {
             format!("&dyn {}", rust_type_name(name))
         }
         Type::Named(name) => format!("&{}", rust_type_name(name)),

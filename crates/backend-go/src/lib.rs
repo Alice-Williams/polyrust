@@ -61,12 +61,12 @@ fn render_source(module: &Module) -> String {
         }
         output.push_str("}\n\n");
     }
-    for contract in &module.contracts {
+    for interface in &module.interfaces {
         output.push_str(&format!(
             "type {} interface {{\n",
-            go_exported(&contract.name)
+            go_exported(&interface.name)
         ));
-        for method in &contract.methods {
+        for method in &interface.methods {
             output.push_str(&format!(
                 "\t{}({}) {}\n",
                 go_exported(&method.name),
@@ -84,7 +84,7 @@ fn render_source(module: &Module) -> String {
     for implementation in &module.implementations {
         output.push_str(&format!(
             "var _ {} = {}{{}}\n\n",
-            go_exported(&implementation.contract),
+            go_exported(&implementation.interface),
             go_exported(&implementation.record)
         ));
         for method in &implementation.methods {

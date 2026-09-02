@@ -48,12 +48,12 @@ pub fn program() -> CheckedProgram {
         vec!["A configurable minimum-age validator.".into()],
         |record| record.field("minimum", Type::i64(), vec![]),
     );
-    let (validator, accepts) = module.contract(
+    let (validator, accepts) = module.interface(
         "Validator",
         Visibility::Public,
         vec!["Restricted validation interface.".into()],
-        |contract| {
-            contract.method(
+        |interface| {
+            interface.method(
                 "accepts",
                 vec![],
                 vec![Parameter::new("user", Type::named(user))],
@@ -118,15 +118,15 @@ pub fn program() -> CheckedProgram {
     let abstract_dispatch = module.function(
         "can_register",
         Visibility::Public,
-        vec!["Calls through the portable Validator contract.".into()],
+        vec!["Calls through the portable Validator interface.".into()],
         |function| {
-            function.parameter(Parameter::new("validator", Type::contract(validator)));
+            function.parameter(Parameter::new("validator", Type::interface(validator)));
             function.parameter(Parameter::new("user", Type::named(user)));
             function.returns(Type::bool());
             function.body(|body| {
                 let receiver = body.local("validator");
                 let argument = body.local("user");
-                let accepted = body.contract_method(receiver, validator, accepts, [argument]);
+                let accepted = body.interface_method(receiver, validator, accepts, [argument]);
                 body.block([], Some(accepted))
             });
         },

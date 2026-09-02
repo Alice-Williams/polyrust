@@ -15,7 +15,10 @@ pub struct IrVersion {
 
 impl IrVersion {
     /// The schema emitted by this crate.
-    pub const CURRENT: Self = Self::new(0, 1, 0);
+    pub const CURRENT: Self = Self::new(0, 2, 0);
+
+    /// Last schema generation that used legacy `contract` terminology.
+    pub const LEGACY_CONTRACTS: Self = Self::new(0, 1, 0);
 
     /// Creates a semantic IR version.
     pub const fn new(major: u16, minor: u16, patch: u16) -> Self {
@@ -236,8 +239,8 @@ pub enum TypeRef {
     },
     /// Record, enum, or alias declaration reference.
     Named(NodeId),
-    /// Restricted contract parameter view.
-    Contract(NodeId),
+    /// Nominal, immutable interface value.
+    Interface(NodeId),
 }
 
 /// Exact IEEE-754 binary64 bits, preserving NaNs and negative zero.

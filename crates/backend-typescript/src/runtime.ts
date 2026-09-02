@@ -198,7 +198,7 @@ export class Runtime {
   public invokeMethod(implementationId: number, methodId: number, receiver: unknown, arguments_: readonly unknown[]): PolyResult<unknown> {
     const implementation = this.declarations.get(implementationId);
     if (implementation?.kind !== "implementation") return fail("invalid_call", "unknown implementation " + implementationId);
-    const method = (implementation.data.methods as Json[]).find((candidate) => candidate.header.node.id === methodId || candidate.contract_method === methodId);
+    const method = (implementation.data.methods as Json[]).find((candidate) => candidate.header.node.id === methodId || candidate.interface_method === methodId);
     if (method === undefined) return fail("invalid_call", "unknown method " + methodId);
     return this.invokeBody(method, arguments_, receiver);
   }
@@ -265,8 +265,8 @@ export class Runtime {
         const receiver = this.expression(data.receiver, env, self);
         if (!receiver.ok) return receiver;
         let implementation = data.dispatch.data.implementation as number | undefined;
-        if (data.dispatch.kind === "contract") {
-          implementation = this.findImplementation(data.dispatch.data.contract, (receiver.value as Json).__polyDecl as number);
+        if (data.dispatch.kind === "interface") {
+          implementation = this.findImplementation(data.dispatch.data.interface, (receiver.value as Json).__polyDecl as number);
         }
         return this.invokeMethod(implementation as number, data.dispatch.data.method, receiver.value, values);
       });
@@ -564,9 +564,9 @@ export class Runtime {
     return "field_" + id;
   }
 
-  private findImplementation(contract: number, record: number): number {
+  private findImplementation(interfaceId: number, record: number): number {
     for (const [id, declaration] of this.declarations) {
-      if (declaration.kind === "implementation" && declaration.data.contract === contract && declaration.data.record === record) return id;
+      if (declaration.kind === "implementation" && declaration.data.interface === interfaceId && declaration.data.record === record) return id;
     }
     return -1;
   }

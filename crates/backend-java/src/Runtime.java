@@ -66,7 +66,7 @@ public final class Runtime {
     for (Object raw : asList(asMap(implementation.get("data")).get("methods"))) {
       Map<String, Object> method = asMap(raw);
       long ownId = nodeIdFromHeader(asMap(method.get("header")));
-      if (ownId == methodId || number(method.get("contract_method")) == methodId) {
+      if (ownId == methodId || number(method.get("interface_method")) == methodId) {
         return invokeBody(method, arguments, receiver);
       }
     }
@@ -211,9 +211,9 @@ public final class Runtime {
         Map<String, Object> dispatch = asMap(data.get("dispatch"));
         Map<String, Object> target = asMap(dispatch.get("data"));
         long implementation =
-            "contract".equals(dispatch.get("kind"))
+            "interface".equals(dispatch.get("kind"))
                 ? findImplementation(
-                    number(target.get("contract")),
+                    number(target.get("interface")),
                     number(field(receiver.value(), "__polyDecl")))
                 : number(target.get("implementation"));
         return invokeMethod(
@@ -643,11 +643,11 @@ public final class Runtime {
     return "field_" + identifier;
   }
 
-  private long findImplementation(long contract, long record) {
+  private long findImplementation(long interfaceId, long record) {
     for (Map.Entry<Long, Map<String, Object>> entry : declarations.entrySet()) {
       if ("implementation".equals(entry.getValue().get("kind"))) {
         Map<String, Object> data = asMap(entry.getValue().get("data"));
-        if (number(data.get("contract")) == contract && number(data.get("record")) == record) {
+        if (number(data.get("interface")) == interfaceId && number(data.get("record")) == record) {
           return entry.getKey();
         }
       }

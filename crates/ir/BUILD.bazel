@@ -23,3 +23,9 @@ rust_test(
     crate = ":portable_ir",
     visibility = ["//visibility:public"],
 )
+
+test_suite(
+    name = "interface_model_test",
+    tests = [":portable_ir_test"],
+    visibility = ["//visibility:public"],
+)

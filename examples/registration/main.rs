@@ -5,7 +5,7 @@ use portable_backend_rust::LegacyRustBackend;
 use portable_check::{CheckedModule, check};
 use portable_codegen::legacy::{Backend, GeneratedPackage};
 use portable_ir::{
-    Contract, Expression, Field, Function, Implementation, MethodSignature, Module, Parameter,
+    Expression, Field, Function, Implementation, Interface, MethodSignature, Module, Parameter,
     PortableTest, Record, Type, Value,
 };
 
@@ -42,7 +42,7 @@ fn registration_module() -> CheckedModule {
         name: "registration".into(),
         constants: vec![],
         records: vec![],
-        contracts: vec![],
+        interfaces: vec![],
         implementations: vec![],
         functions: vec![],
         tests: vec![],
@@ -63,7 +63,7 @@ fn registration_module() -> CheckedModule {
         name: "AgeValidator".into(),
         fields: vec![Field::new("minimum", Type::I64)],
     });
-    builder.contracts.push(Contract {
+    builder.interfaces.push(Interface {
         name: "Validator".into(),
         methods: vec![MethodSignature {
             name: "accepts".into(),
@@ -72,7 +72,7 @@ fn registration_module() -> CheckedModule {
         }],
     });
     builder.implementations.push(Implementation {
-        contract: "Validator".into(),
+        interface: "Validator".into(),
         record: "AgeValidator".into(),
         methods: vec![Function {
             name: "accepts".into(),
@@ -123,14 +123,14 @@ fn registration_module() -> CheckedModule {
     );
     add_test(
         &mut builder,
-        "contract accepts adult",
+        "interface accepts adult",
         "can_register",
         vec![validator(18), user("Chloë", 20)],
         true,
     );
     add_test(
         &mut builder,
-        "contract rejects minor",
+        "interface rejects minor",
         "can_register",
         vec![validator(18), user("Dora", 17)],
         false,

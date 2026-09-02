@@ -23,6 +23,19 @@ rust_test(
 )
 
 rust_test(
+    name = "interface_test",
+    srcs = ["testsupport/interface.rs"],
+    crate_name = "interface_test",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":portable_eval",
+        "//crates/build:portable_build",
+        "//crates/check:portable_check",
+        "//crates/ir:portable_ir",
+    ],
+)
+
+rust_test(
     name = "core_ir_parity_test",
     srcs = ["testsupport/core_ir_parity.rs"],
     crate_name = "core_ir_parity_test",

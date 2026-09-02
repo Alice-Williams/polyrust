@@ -71,7 +71,7 @@ impl<'a> SourceIndex<'a> {
                     let id = CoreEnumId::from_index(index.enums.len());
                     index.enums.insert(value.header.node.id, id);
                 }
-                Declaration::Contract(value) => {
+                Declaration::Interface(value) => {
                     let id = CoreInterfaceId::from_index(index.interfaces.len());
                     index.interfaces.insert(value.header.node.id, id);
                 }
@@ -107,7 +107,7 @@ impl<'a> SourceIndex<'a> {
                         }
                     }
                 }
-                Declaration::Contract(interface) => {
+                Declaration::Interface(interface) => {
                     for method in &interface.methods {
                         let id = CoreInterfaceMethodId::from_index(index.interface_methods.len());
                         index.interface_methods.insert(method.header.node.id, id);
@@ -186,7 +186,7 @@ impl<'a> Lowering<'a> {
                 Declaration::Enum(value) => {
                     CoreDeclaration::Enum(self.index.enums[&value.header.node.id])
                 }
-                Declaration::Contract(value) => {
+                Declaration::Interface(value) => {
                     CoreDeclaration::Interface(self.index.interfaces[&value.header.node.id])
                 }
                 Declaration::Implementation(value) => CoreDeclaration::Implementation(
@@ -280,7 +280,7 @@ impl<'a> Lowering<'a> {
                         variants: enum_variants,
                     });
                 }
-                Declaration::Contract(value) => {
+                Declaration::Interface(value) => {
                     let interface = self.index.interfaces[&value.header.node.id];
                     let mut methods = Vec::new();
                     for source_method in &value.methods {
@@ -292,6 +292,7 @@ impl<'a> Lowering<'a> {
                         interface_methods.push(CoreInterfaceMethod {
                             header: member_header(&source_method.header),
                             interface,
+                            receiver: InterfaceReceiver::Immutable,
                             parameters,
                             return_type,
                         });
@@ -303,7 +304,7 @@ impl<'a> Lowering<'a> {
                 }
                 Declaration::Implementation(value) => {
                     let implementation = self.index.implementations[&value.header.node.id];
-                    let interface = self.interface(value.contract, &value.header.node)?;
+                    let interface = self.interface(value.interface, &value.header.node)?;
                     let record = self.record(value.record, &value.header.node)?;
                     let mut methods = Vec::new();
                     for source_method in &value.methods {
@@ -313,7 +314,7 @@ impl<'a> Lowering<'a> {
                         let parameters = self.lower_parameters(&source_method.parameters, true)?;
                         let body = self.lower_block(&source_method.body, Some(record))?;
                         let interface_method = self.interface_method(
-                            source_method.contract_method,
+                            source_method.interface_method,
                             &source_method.header.node,
                         )?;
                         let return_type = self
@@ -446,7 +447,7 @@ impl<'a> Lowering<'a> {
                 ok: self.lower_type(ok, node)?,
                 error: self.lower_type(error, node)?,
             },
-            TypeRef::Contract(id) => CoreType::Interface(self.interface(*id, node)?),
+            TypeRef::Interface(id) => CoreType::Interface(self.interface(*id, node)?),
             TypeRef::Named(id) => match self.index.declarations.get(id).copied() {
                 Some(Declaration::Alias(alias)) => return self.lower_type(&alias.target, node),
                 Some(Declaration::Record(_)) => CoreType::Record(self.record(*id, node)?),
@@ -842,6 +843,14 @@ impl<'a> Lowering<'a> {
                     .collect::<Result<_, _>>()?;
                 CoreExprKind::ConstructList { element, elements }
             }
+            Expression::CoerceInterface {
+                implementation,
+                value,
+                ..
+            } => CoreExprKind::CoerceInterface {
+                implementation: self.implementation(*implementation, node)?,
+                value: self.lower_expression(value, self_record)?,
+            },
             Expression::Field { base, field, .. } => CoreExprKind::Field {
                 value: self.lower_expression(base, self_record)?,
                 field: self.field(*field, node)?,
@@ -878,12 +887,14 @@ impl<'a> Lowering<'a> {
                         receiver,
                         arguments,
                     },
-                    MethodDispatch::Contract { contract, method } => CoreExprKind::InterfaceCall {
-                        interface: self.interface(*contract, node)?,
-                        method: self.interface_method(*method, node)?,
-                        receiver,
-                        arguments,
-                    },
+                    MethodDispatch::Interface { interface, method } => {
+                        CoreExprKind::InterfaceCall {
+                            interface: self.interface(*interface, node)?,
+                            method: self.interface_method(*method, node)?,
+                            receiver,
+                            arguments,
+                        }
+                    }
                 }
             }
             Expression::Intrinsic {
@@ -1400,7 +1411,7 @@ fn declaration_rank(declaration: &Declaration) -> u8 {
         Declaration::Alias(_) => 1,
         Declaration::Record(_) => 2,
         Declaration::Enum(_) => 3,
-        Declaration::Contract(_) => 4,
+        Declaration::Interface(_) => 4,
         Declaration::Implementation(_) => 5,
         Declaration::Function(_) => 6,
         Declaration::Test(_) => 7,

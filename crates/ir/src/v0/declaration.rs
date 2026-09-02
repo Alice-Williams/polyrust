@@ -25,7 +25,7 @@ pub enum Declaration {
     Alias(AliasDeclaration),
     Record(RecordDeclaration),
     Enum(EnumDeclaration),
-    Contract(ContractDeclaration),
+    Interface(InterfaceDeclaration),
     Implementation(ImplementationDeclaration),
     Function(FunctionDeclaration),
     Test(TestDeclaration),
@@ -39,7 +39,7 @@ impl Declaration {
             Self::Alias(declaration) => &declaration.header,
             Self::Record(declaration) => &declaration.header,
             Self::Enum(declaration) => &declaration.header,
-            Self::Contract(declaration) => &declaration.header,
+            Self::Interface(declaration) => &declaration.header,
             Self::Implementation(declaration) => &declaration.header,
             Self::Function(declaration) => &declaration.header,
             Self::Test(declaration) => &declaration.header,
@@ -163,15 +163,15 @@ pub struct EnumVariant {
     pub fields: Vec<FieldDeclaration>,
 }
 
-/// Restricted immutable instance-method contract.
+/// Flat immutable instance-method interface.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ContractDeclaration {
+pub struct InterfaceDeclaration {
     pub header: DeclarationHeader,
     pub methods: Vec<MethodSignature>,
 }
 
-/// Required contract method signature.
+/// Required interface method signature.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MethodSignature {
@@ -188,22 +188,22 @@ pub struct Parameter {
     pub ty: TypeRef,
 }
 
-/// Explicit nominal record-to-contract conformance.
+/// Explicit nominal record-to-interface conformance.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ImplementationDeclaration {
     pub header: DeclarationHeader,
-    pub contract: NodeId,
+    pub interface: NodeId,
     pub record: NodeId,
     pub methods: Vec<MethodImplementation>,
 }
 
-/// Pure immutable-self contract method body.
+/// Pure immutable-self interface method body.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MethodImplementation {
     pub header: MemberHeader,
-    pub contract_method: NodeId,
+    pub interface_method: NodeId,
     pub parameters: Vec<Parameter>,
     pub return_type: TypeRef,
     pub body: Block,

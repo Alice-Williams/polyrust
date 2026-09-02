@@ -202,7 +202,7 @@ struct FixtureIds {
     record: NodeId,
     field: NodeId,
     concrete_function: NodeId,
-    contract_function: NodeId,
+    interface_function: NodeId,
     short_function: NodeId,
     option_function: NodeId,
     first_function: NodeId,
@@ -227,7 +227,7 @@ fn evaluator_fixture() -> (Document, FixtureIds) {
     let contract_id = contract_header.node.id;
     let required_header = factory.member("render");
     let required_id = required_header.node.id;
-    let contract = Declaration::Contract(ContractDeclaration {
+    let interface = Declaration::Interface(InterfaceDeclaration {
         header: contract_header,
         methods: vec![MethodSignature {
             header: required_header,
@@ -249,11 +249,11 @@ fn evaluator_fixture() -> (Document, FixtureIds) {
     });
     let implementation = Declaration::Implementation(ImplementationDeclaration {
         header: implementation_header,
-        contract: contract_id,
+        interface: contract_id,
         record: record_id,
         methods: vec![MethodImplementation {
             header: method_header,
-            contract_method: required_id,
+            interface_method: required_id,
             parameters: vec![],
             return_type: TypeRef::String,
             body: method_body,
@@ -284,14 +284,14 @@ fn evaluator_fixture() -> (Document, FixtureIds) {
 
     let contract_function_header = factory.declaration("call_contract");
     let contract_function = contract_function_header.node.id;
-    let contract_parameter = factory.parameter("value", TypeRef::Contract(contract_id));
+    let contract_parameter = factory.parameter("value", TypeRef::Interface(contract_id));
     let contract_receiver = factory.local("value");
     let contract_call_node = factory.node();
     let contract_call = Expression::MethodCall {
         node: contract_call_node,
         receiver: Box::new(contract_receiver),
-        dispatch: MethodDispatch::Contract {
-            contract: contract_id,
+        dispatch: MethodDispatch::Interface {
+            interface: contract_id,
             method: required_id,
         },
         arguments: vec![],
@@ -419,14 +419,14 @@ fn evaluator_fixture() -> (Document, FixtureIds) {
         record: record_id,
         field: field_id,
         concrete_function,
-        contract_function,
+        interface_function: contract_function,
         short_function,
         option_function,
         first_function,
     };
     let declarations = vec![
         record,
-        contract,
+        interface,
         implementation,
         concrete,
         contract_caller,
@@ -514,8 +514,8 @@ fn checked_fixture_runs_eleven_declared_tests_and_both_dispatch_modes() {
     for (name, function, text) in [
         ("concrete_one", ids.concrete_function, "concrete"),
         ("concrete_two", ids.concrete_function, "second"),
-        ("contract_one", ids.contract_function, "contract"),
-        ("contract_two", ids.contract_function, "dynamic"),
+        ("contract_one", ids.interface_function, "interface"),
+        ("contract_two", ids.interface_function, "dynamic"),
     ] {
         push_test(
             &mut document,
@@ -603,10 +603,10 @@ fn checked_fixture_runs_eleven_declared_tests_and_both_dispatch_modes() {
     );
     assert_eq!(
         evaluator.invoke_function(
-            ids.contract_function,
-            &[label_value(&ids, "contract direct")]
+            ids.interface_function,
+            &[label_value(&ids, "interface direct")]
         ),
-        EvaluationOutcome::Value(Value::String("contract direct".to_owned()))
+        EvaluationOutcome::Value(Value::String("interface direct".to_owned()))
     );
     assert_eq!(
         evaluator.invoke_function(

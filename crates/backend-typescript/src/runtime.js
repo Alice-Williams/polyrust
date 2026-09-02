@@ -181,7 +181,7 @@ export class Runtime {
         const implementation = this.declarations.get(implementationId);
         if (implementation?.kind !== "implementation")
             return fail("invalid_call", "unknown implementation " + implementationId);
-        const method = implementation.data.methods.find((candidate) => candidate.header.node.id === methodId || candidate.contract_method === methodId);
+        const method = implementation.data.methods.find((candidate) => candidate.header.node.id === methodId || candidate.interface_method === methodId);
         if (method === undefined)
             return fail("invalid_call", "unknown method " + methodId);
         return this.invokeBody(method, arguments_, receiver);
@@ -249,8 +249,8 @@ export class Runtime {
                 if (!receiver.ok)
                     return receiver;
                 let implementation = data.dispatch.data.implementation;
-                if (data.dispatch.kind === "contract") {
-                    implementation = this.findImplementation(data.dispatch.data.contract, receiver.value.__polyDecl);
+                if (data.dispatch.kind === "interface") {
+                    implementation = this.findImplementation(data.dispatch.data.interface, receiver.value.__polyDecl);
                 }
                 return this.invokeMethod(implementation, data.dispatch.data.method, receiver.value, values);
             });
@@ -593,9 +593,9 @@ export class Runtime {
         }
         return "field_" + id;
     }
-    findImplementation(contract, record) {
+    findImplementation(interfaceId, record) {
         for (const [id, declaration] of this.declarations) {
-            if (declaration.kind === "implementation" && declaration.data.contract === contract && declaration.data.record === record)
+            if (declaration.kind === "implementation" && declaration.data.interface === interfaceId && declaration.data.record === record)
                 return id;
         }
         return -1;

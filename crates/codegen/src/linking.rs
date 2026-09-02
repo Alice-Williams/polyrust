@@ -1373,7 +1373,7 @@ fn resolve_reference<D: LinkerDialect>(
     if let Some(requirement) = &plan.dependency {
         match requirements.get(&requirement.package) {
             Some(existing) if existing != requirement => diagnostics.push(Diagnostic::error(
-                DiagnosticCode::ContractNonconformance,
+                DiagnosticCode::InterfaceNonconformance,
                 "selected symbols require conflicting package versions or features",
                 located.source.clone(),
             )),
@@ -1603,7 +1603,7 @@ pub fn verify_linked_package<D: LinkerDialect>(
             }
             if !resolved_reference_matches(package, reference, &file_imports) {
                 diagnostics.push(Diagnostic::error(
-                    DiagnosticCode::ContractNonconformance,
+                    DiagnosticCode::InterfaceNonconformance,
                     "resolved reference does not match its typed symbol or import",
                     reference.source.clone(),
                 ));
@@ -1618,7 +1618,7 @@ pub fn verify_linked_package<D: LinkerDialect>(
                 match expected_dependencies.get(&requirement.package) {
                     Some(existing) if existing != &requirement => {
                         diagnostics.push(Diagnostic::error(
-                            DiagnosticCode::ContractNonconformance,
+                            DiagnosticCode::InterfaceNonconformance,
                             "resolved references retain conflicting dependency requirements",
                             reference.source.clone(),
                         ));
@@ -1637,7 +1637,7 @@ pub fn verify_linked_package<D: LinkerDialect>(
             .collect::<Vec<_>>();
         if file.forward_declarations != package.dialect.forward_declarations(file.file, &symbols) {
             diagnostics.push(link_error(
-                DiagnosticCode::ContractNonconformance,
+                DiagnosticCode::InterfaceNonconformance,
                 "forward declarations are not resolver-derived",
                 "forward-declarations",
             ));
@@ -1652,7 +1652,7 @@ pub fn verify_linked_package<D: LinkerDialect>(
     }
     if referenced_imports != declared_imports {
         diagnostics.push(link_error(
-            DiagnosticCode::ContractNonconformance,
+            DiagnosticCode::InterfaceNonconformance,
             "resolved imports are not exactly reference-derived",
             "imports",
         ));
@@ -1669,7 +1669,7 @@ pub fn verify_linked_package<D: LinkerDialect>(
         .collect::<BTreeMap<_, _>>();
     if actual_dependencies != expected_dependencies {
         diagnostics.push(link_error(
-            DiagnosticCode::ContractNonconformance,
+            DiagnosticCode::InterfaceNonconformance,
             "resolved dependencies are not exactly reference-derived",
             "dependencies",
         ));
@@ -1677,7 +1677,7 @@ pub fn verify_linked_package<D: LinkerDialect>(
     let actual_helpers = package.helpers.iter().cloned().collect::<BTreeSet<_>>();
     if actual_helpers.len() != package.helpers.len() || helper_roots != actual_helpers {
         diagnostics.push(link_error(
-            DiagnosticCode::ContractNonconformance,
+            DiagnosticCode::InterfaceNonconformance,
             "resolved helper set is missing roots or contains duplicates",
             "helpers",
         ));
@@ -2955,7 +2955,7 @@ mod tests {
             (CatalogueMode::HelperCycle, DiagnosticCode::AliasCycle),
             (
                 CatalogueMode::DependencyConflict,
-                DiagnosticCode::ContractNonconformance,
+                DiagnosticCode::InterfaceNonconformance,
             ),
         ] {
             let diagnostics = TargetLinker::new(TestDialect(mode))

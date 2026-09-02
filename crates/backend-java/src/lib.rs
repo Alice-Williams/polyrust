@@ -11,7 +11,7 @@ use portable_codegen::{
     InjectedHelper, IrVersionRange, LanguageFile, LanguageFragment, LanguagePackage,
     LanguagePlugin, LanguageRenderer, LanguageSourceFile, OptionsSchema, OutputManifest, RawText,
     RuntimeHelper, RuntimeHelperGraph, SourceFileRole, TargetId, TextFileRole,
-    generate_with_plugin,
+    generate_with_plugin, validate_backend_capability,
 };
 use portable_ir::v0::{Declaration, Intrinsic, IrVersion, NodeId, TypeRef, Visibility};
 
@@ -41,12 +41,16 @@ impl Backend for JavaBackend {
                 helper: "polyrust.runtime.immutable-list.v0".into(),
             },
             Capability::Bytes
-            | Capability::ContractDispatch
+            | Capability::InterfaceDispatch
             | Capability::F64
             | Capability::Option
             | Capability::Result
             | Capability::WrappingIntegerArithmetic
             | Capability::BoundedIteration => CapabilitySupport::Native,
+            Capability::FirstClassInterfaceValues => CapabilitySupport::Unsupported {
+                reason: "first-class interface values require the M34A-10 typed Java backend"
+                    .into(),
+            },
         }
     }
 
@@ -137,8 +141,10 @@ impl LanguagePlugin for JavaBackend {
     fn translate(
         &self,
         program: &CheckedProgram,
-        _options: &BackendOptions,
+        options: &BackendOptions,
     ) -> Result<LanguagePackage<Self::Import>, BackendError> {
+        let _ = options;
+        validate_backend_capability(self, program, Capability::FirstClassInterfaceValues)?;
         let generator = Generator::new(program);
         let helpers = program
             .capabilities()
@@ -597,7 +603,7 @@ impl<'a> Generator<'a> {
             Declaration::Alias(_) | Declaration::Implementation(_) | Declaration::Test(_) => {
                 JavaCode::text("")
             }
-            Declaration::Contract(item) => {
+            Declaration::Interface(item) => {
                 let mut parts = vec![JavaCode::text(format!(
                     "  {}interface {} {{\n",
                     visibility(item.header.visibility),
@@ -619,7 +625,7 @@ impl<'a> Generator<'a> {
                 let implementations = self.implementations(item.header.node.id);
                 let contracts = implementations
                     .iter()
-                    .map(|implementation| type_name(self.name(implementation.contract)))
+                    .map(|implementation| type_name(self.name(implementation.interface)))
                     .collect::<Vec<_>>();
                 let mut implemented = vec!["Runtime.PolyRecord".to_owned()];
                 implemented.extend(contracts);
@@ -835,7 +841,7 @@ impl<'a> Generator<'a> {
                 JavaCode::text(">"),
             ]),
             TypeRef::Named(id) => self.named_ty(*id),
-            TypeRef::Contract(id) => JavaCode::text(type_name(self.name(*id))),
+            TypeRef::Interface(id) => JavaCode::text(type_name(self.name(*id))),
         }
     }
 
@@ -1269,7 +1275,7 @@ mod tests {
                     ]
                 ),
                 Declaration::Function(_) => assert_eq!(imports, ["java.util.List"]),
-                Declaration::Contract(_)
+                Declaration::Interface(_)
                 | Declaration::Implementation(_)
                 | Declaration::Test(_) => assert!(imports.is_empty()),
                 Declaration::Alias(_) | Declaration::Enum(_) | Declaration::Constant(_) => {}

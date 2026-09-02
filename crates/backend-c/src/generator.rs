@@ -65,7 +65,7 @@ impl<'a> Generator<'a> {
                         self.validate_type(&field.ty)?;
                     }
                 }
-                Declaration::Contract(item) => {
+                Declaration::Interface(item) => {
                     for method in &item.methods {
                         for parameter in &method.parameters {
                             self.validate_callable_type(&parameter.ty)?;
@@ -298,7 +298,7 @@ impl<'a> Generator<'a> {
             CCode::sequence(
                 declarations
                     .iter()
-                    .map(|declaration| self.contract_declaration(declaration)),
+                    .map(|declaration| self.interface_declaration(declaration)),
             ),
             CCode::sequence(
                 declarations
@@ -341,13 +341,13 @@ impl<'a> Generator<'a> {
         .with_text_from([target])
     }
 
-    fn contract_declaration(&self, declaration: &Declaration) -> CCode {
-        let Declaration::Contract(item) = declaration else {
+    fn interface_declaration(&self, declaration: &Declaration) -> CCode {
+        let Declaration::Interface(item) = declaration else {
             return CCode::default();
         };
-        let contract = self.contract_name(item.header.node.id);
+        let interface = self.interface_name(item.header.node.id);
         let mut output = format!(
-            "typedef struct {contract} {contract};\ntypedef struct {contract}_vtable {contract}_vtable;\nstruct {contract} {{ const void *context; const {contract}_vtable *vtable; }};\nstruct {contract}_vtable {{\n"
+            "typedef struct {interface} {interface};\ntypedef struct {interface}_vtable {interface}_vtable;\nstruct {interface} {{ const void *context; const {interface}_vtable *vtable; }};\nstruct {interface}_vtable {{\n"
         );
         let mut dependencies = Vec::new();
         for method in &item.methods {
@@ -371,10 +371,10 @@ impl<'a> Generator<'a> {
         };
         CCode::new(format!(
             "{} {}_{}_as_{}(const {} *value);\n",
-            self.contract_name(item.contract),
+            self.interface_name(item.interface),
             self.prefix,
             type_name(self.declaration_name(item.record)),
-            type_name(self.declaration_name(item.contract)),
+            type_name(self.declaration_name(item.interface)),
             self.record_name(item.record)
         ))
     }
@@ -434,7 +434,7 @@ impl<'a> Generator<'a> {
             TypeRef::Named(id) if self.is_record(id) => {
                 CCode::new(format!("const {} *", self.record_name(id)))
             }
-            TypeRef::Contract(id) => CCode::new(self.contract_name(id)),
+            TypeRef::Interface(id) => CCode::new(self.interface_name(id)),
             TypeRef::List(_) => self.ty(ty).map_text(|ty| format!("const {ty} *")),
             other => self.ty(&other),
         }
@@ -451,7 +451,7 @@ impl<'a> Generator<'a> {
             TypeRef::String => CCode::new("poly_string").with_helper_root("runtime.core"),
             TypeRef::Bytes => CCode::new("poly_bytes").with_helper_root("runtime.core"),
             TypeRef::Named(id) => CCode::new(self.named_name(id)),
-            TypeRef::Contract(id) => CCode::new(self.contract_name(id)),
+            TypeRef::Interface(id) => CCode::new(self.interface_name(id)),
             TypeRef::List(_) | TypeRef::Option(_) | TypeRef::Result { .. } => CCode::new(format!(
                 "{}_{}",
                 self.prefix,
@@ -514,7 +514,7 @@ impl<'a> Generator<'a> {
         format!("{}_{}", self.prefix, type_name(self.declaration_name(id)))
     }
 
-    fn contract_name(&self, id: NodeId) -> String {
+    fn interface_name(&self, id: NodeId) -> String {
         format!("{}_{}", self.prefix, type_name(self.declaration_name(id)))
     }
 
@@ -537,7 +537,7 @@ impl<'a> Generator<'a> {
             TypeRef::String => "string".into(),
             TypeRef::Bytes => "bytes".into(),
             TypeRef::Named(id) => format!("named_{}", id.0),
-            TypeRef::Contract(id) => format!("contract_{}", id.0),
+            TypeRef::Interface(id) => format!("contract_{}", id.0),
             TypeRef::List(inner) => format!("list__{}", self.shape_key(&inner)),
             TypeRef::Option(inner) => format!("option__{}", self.shape_key(&inner)),
             TypeRef::Result { ok, error } => format!(
@@ -566,7 +566,7 @@ impl<'a> Generator<'a> {
                         }
                     }
                 }
-                Declaration::Contract(item) => {
+                Declaration::Interface(item) => {
                     for method in &item.methods {
                         for parameter in &method.parameters {
                             self.collect_composites(&parameter.ty, &mut output);
@@ -1183,9 +1183,9 @@ impl<'a> Generator<'a> {
         item: &portable_ir::v0::ImplementationDeclaration,
     ) -> Result<CCode, BackendError> {
         let record = self.declaration_name(item.record);
-        let contract = self.declaration_name(item.contract);
+        let interface = self.declaration_name(item.interface);
         let record_ty = self.record_name(item.record);
-        let contract_ty = self.contract_name(item.contract);
+        let contract_ty = self.interface_name(item.interface);
         let mut callables = Vec::new();
         for method in &item.methods {
             callables.push(self.callable(
@@ -1201,9 +1201,9 @@ impl<'a> Generator<'a> {
                 Some(format!("const {record_ty} *self_value")),
             )?);
         }
-        let contract_declaration = match self.declarations.get(&item.contract) {
-            Some(Declaration::Contract(value)) => value,
-            _ => return self.unsupported("implementation contract is missing"),
+        let contract_declaration = match self.declarations.get(&item.interface) {
+            Some(Declaration::Interface(value)) => value,
+            _ => return self.unsupported("implementation interface is missing"),
         };
         let mut output = String::new();
         let mut dependencies = Vec::new();
@@ -1211,9 +1211,9 @@ impl<'a> Generator<'a> {
             let method = item
                 .methods
                 .iter()
-                .find(|method| method.contract_method == signature.header.node.id)
+                .find(|method| method.interface_method == signature.header.node.id)
                 .ok_or_else(|| BackendError::Generation {
-                    message: "C17 implementation is missing a checked contract method".into(),
+                    message: "C17 implementation is missing a checked interface method".into(),
                 })?;
             let result = self.result_ty(&method.return_type);
             let parameters = self.parameters(&method.parameters);
@@ -1233,13 +1233,13 @@ impl<'a> Generator<'a> {
             "static const {contract_ty}_vtable {}_{}_{}_vtable = {{\n",
             self.prefix,
             type_name(record),
-            type_name(contract)
+            type_name(interface)
         ));
         for signature in &contract_declaration.methods {
             let method = item
                 .methods
                 .iter()
-                .find(|method| method.contract_method == signature.header.node.id)
+                .find(|method| method.interface_method == signature.header.node.id)
                 .expect("checked implementation method");
             output.push_str(&format!(
                 "  .{} = {}_{}_{}_adapter,\n",
@@ -1254,10 +1254,10 @@ impl<'a> Generator<'a> {
             "{contract_ty} {}_{}_as_{}(const {record_ty} *value) {{\n  {contract_ty} result = {{value, &{}_{}_{}_vtable}};\n  return result;\n}}\n\n",
             self.prefix,
             type_name(record),
-            type_name(contract),
+            type_name(interface),
             self.prefix,
             type_name(record),
-            type_name(contract)
+            type_name(interface)
         ));
         Ok(CCode::sequence([
             CCode::sequence(callables),
@@ -1614,12 +1614,12 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                     method.return_type.clone(),
                 )
             }
-            MethodDispatch::Contract { contract, method } => {
+            MethodDispatch::Interface { interface, method } => {
                 let method = self
                     .generator
-                    .contract_method(*contract, *method)
+                    .interface_method(*interface, *method)
                     .ok_or_else(|| BackendError::Generation {
-                        message: "C17 contract method is missing".into(),
+                        message: "C17 interface method is missing".into(),
                     })?;
                 (
                     format!(
@@ -2224,20 +2224,20 @@ impl Generator<'_> {
                 .methods
                 .iter()
                 .find(|candidate| {
-                    candidate.header.node.id == method || candidate.contract_method == method
+                    candidate.header.node.id == method || candidate.interface_method == method
                 })
                 .map(|method| (item, method)),
             _ => None,
         }
     }
 
-    fn contract_method(
+    fn interface_method(
         &self,
-        contract: NodeId,
+        interface: NodeId,
         method: NodeId,
     ) -> Option<&portable_ir::v0::MethodSignature> {
-        match self.declarations.get(&contract) {
-            Some(Declaration::Contract(item)) => item
+        match self.declarations.get(&interface) {
+            Some(Declaration::Interface(item)) => item
                 .methods
                 .iter()
                 .find(|candidate| candidate.header.node.id == method),
@@ -2601,12 +2601,12 @@ impl Generator<'_> {
                     }
                 }
                 cleanups.push(format!("{record_ty}_drop(&{variable});"));
-                if let TypeRef::Contract(contract) = self.resolve_alias(parameter_type) {
+                if let TypeRef::Interface(interface) = self.resolve_alias(parameter_type) {
                     Ok(CCode::new(format!(
                         "{}_{}_as_{}(&{variable})",
                         self.prefix,
                         type_name(&record.header.name),
-                        type_name(self.declaration_name(contract))
+                        type_name(self.declaration_name(interface))
                     ))
                     .with_text_from(requirements))
                 } else {

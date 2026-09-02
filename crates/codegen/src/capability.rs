@@ -82,6 +82,7 @@ pub enum OperationFeature {
     ConstructOk,
     ConstructErr,
     ConstructList,
+    CoerceInterface,
     Field,
     Call,
     StaticMethodCall,
@@ -518,6 +519,10 @@ impl<'a> FeatureCollector<'a> {
                     CoreFeature::Interface(InterfaceFeature::DynamicDispatch),
                     &expression.source,
                 ),
+                CoreExprKind::CoerceInterface { .. } => self.unit(
+                    CoreFeature::Interface(InterfaceFeature::InterfaceValue),
+                    &expression.source,
+                ),
                 CoreExprKind::If { .. } => {
                     self.unit(CoreFeature::Control(ControlFeature::If), &expression.source)
                 }
@@ -620,6 +625,9 @@ fn expression_feature(expression: &CoreExprKind) -> (OperationFeature, FeatureSh
                 field_count: usize_to_u32(elements.len()),
             },
         ),
+        CoreExprKind::CoerceInterface { .. } => {
+            (OperationFeature::CoerceInterface, FeatureShape::Unit)
+        }
         CoreExprKind::Field { .. } => (OperationFeature::Field, FeatureShape::Unit),
         CoreExprKind::Call { arguments, .. } => (
             OperationFeature::Call,
@@ -1094,7 +1102,9 @@ fn operation_strategy(feature: OperationFeature, language: BuiltInLanguage) -> B
         | OperationFeature::ConstructNone
         | OperationFeature::ConstructOk
         | OperationFeature::ConstructErr => TaggedUnion,
-        OperationFeature::InterfaceCall => interface_strategy(language),
+        OperationFeature::CoerceInterface | OperationFeature::InterfaceCall => {
+            interface_strategy(language)
+        }
         OperationFeature::Unary(operation) => match operation {
             CoreUnaryIntrinsic::BoolNot
             | CoreUnaryIntrinsic::IntNegChecked

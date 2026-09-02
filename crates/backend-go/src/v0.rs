@@ -7,7 +7,7 @@ use portable_codegen::{
     InjectedHelper, IrVersionRange, LanguageFile, LanguageFragment, LanguagePackage,
     LanguagePlugin, LanguageRenderer, LanguageSourceFile, OptionsSchema, OutputManifest, RawText,
     RuntimeHelper, RuntimeHelperGraph, SourceFileRole, TargetId, TextFileRole,
-    generate_with_plugin,
+    generate_with_plugin, validate_backend_capability,
 };
 use portable_ir::v0::{
     Declaration, ExpectedOutcome, Intrinsic, IrVersion, NodeId, TestInvocation, TypeRef,
@@ -39,12 +39,15 @@ impl Backend for GoV0Backend {
                 helper: "polyrust.runtime.immutable-list.v0".into(),
             },
             Capability::Bytes
-            | Capability::ContractDispatch
+            | Capability::InterfaceDispatch
             | Capability::F64
             | Capability::Option
             | Capability::Result
             | Capability::WrappingIntegerArithmetic
             | Capability::BoundedIteration => CapabilitySupport::Native,
+            Capability::FirstClassInterfaceValues => CapabilitySupport::Unsupported {
+                reason: "first-class interface values require the M34A-16 typed Go backend".into(),
+            },
         }
     }
     fn options_schema(&self) -> OptionsSchema {
@@ -110,8 +113,10 @@ impl LanguagePlugin for GoV0Backend {
     fn translate(
         &self,
         program: &CheckedProgram,
-        _options: &BackendOptions,
+        options: &BackendOptions,
     ) -> Result<LanguagePackage<Self::Import>, BackendError> {
+        let _ = options;
+        validate_backend_capability(self, program, Capability::FirstClassInterfaceValues)?;
         let generator = Generator::new(program);
         let helpers = program
             .capabilities()
@@ -568,7 +573,7 @@ impl<'a> Generator<'a> {
                 for implementation in self.implementations(item.header.node.id) {
                     output.text.push_str(&format!(
                         "var _ {} = {}{{}}\n\n",
-                        exported(self.name(implementation.contract)),
+                        exported(self.name(implementation.interface)),
                         exported(&item.header.name)
                     ));
                     for method in &implementation.methods {
@@ -629,7 +634,7 @@ impl<'a> Generator<'a> {
                 }
                 output.text.push('\n');
             }
-            Declaration::Contract(item) => {
+            Declaration::Interface(item) => {
                 output.text.push_str(&format!(
                     "type {} interface {{\n\tpolyValue() map[string]any\n",
                     exported(&item.header.name)
@@ -758,7 +763,7 @@ impl<'a> Generator<'a> {
                 let text = format!("PolyValueResult[{}, {}]", ok.text, error.text);
                 GoCode::with_dependencies(text, [ok, error])
             }
-            TypeRef::Named(id) | TypeRef::Contract(id) => GoCode::text(exported(self.name(*id))),
+            TypeRef::Named(id) | TypeRef::Interface(id) => GoCode::text(exported(self.name(*id))),
         }
     }
     fn name(&self, id: NodeId) -> &str {
@@ -840,7 +845,7 @@ impl<'a> Generator<'a> {
                         .methods
                         .iter()
                         .find(|item| {
-                            item.header.node.id == method || item.contract_method == method
+                            item.header.node.id == method || item.interface_method == method
                         })
                         .map(|item| item.header.name.as_str())
                 }

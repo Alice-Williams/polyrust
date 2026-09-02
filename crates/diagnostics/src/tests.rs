@@ -113,7 +113,7 @@ fn multi_label_and_related_location_snapshot_is_stable() {
 #[test]
 fn logical_path_and_missing_source_snapshots_are_stable() {
     let logical = Diagnostic::error(
-        DiagnosticCode::ContractNonconformance,
+        DiagnosticCode::InterfaceNonconformance,
         "missing method",
         SourceRef::logical(["module(example)", "record(User)", "impl(Display)"]),
     );

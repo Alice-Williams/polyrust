@@ -217,15 +217,29 @@ struct Session<'a> {
     limits: EvaluationLimits,
     remaining_fuel: u64,
     call_depth: u32,
+    interface_implementations: BTreeMap<(NodeId, NodeId), NodeId>,
 }
 
 impl<'a> Session<'a> {
-    const fn new(program: &'a CheckedProgram, limits: EvaluationLimits) -> Self {
+    fn new(program: &'a CheckedProgram, limits: EvaluationLimits) -> Self {
+        let interface_implementations = program
+            .module()
+            .declarations
+            .iter()
+            .filter_map(|declaration| match declaration {
+                Declaration::Implementation(implementation) => Some((
+                    (implementation.interface, implementation.record),
+                    implementation.header.node.id,
+                )),
+                _ => None,
+            })
+            .collect();
         Self {
             program,
             limits,
             remaining_fuel: limits.fuel,
             call_depth: 0,
+            interface_implementations,
         }
     }
 
@@ -463,6 +477,38 @@ impl<'a> Session<'a> {
                 }
                 Ok(Flow::Continue(Value::List(values)))
             }
+            Expression::CoerceInterface {
+                implementation,
+                value,
+                ..
+            } => {
+                let flow = self.eval_expression(value, environment, self_value)?;
+                let value = flow_value!(flow);
+                let Value::Record {
+                    declaration: record,
+                    ..
+                } = &value
+                else {
+                    return Err(self.invariant("checked interface coercion value is not a record"));
+                };
+                let valid = self
+                    .program
+                    .module()
+                    .declarations
+                    .iter()
+                    .any(|declaration| {
+                        matches!(
+                            declaration,
+                            Declaration::Implementation(candidate)
+                                if candidate.header.node.id == *implementation
+                                    && candidate.record == *record
+                        )
+                    });
+                if !valid {
+                    return Err(self.invariant("checked interface coercion witness is invalid"));
+                }
+                Ok(Flow::Continue(value))
+            }
             Expression::Field { base, field, .. } => {
                 let flow = self.eval_expression(base, environment, self_value)?;
                 let Value::Record { fields, .. } = flow_value!(flow) else {
@@ -498,8 +544,8 @@ impl<'a> Session<'a> {
                         implementation,
                         method,
                     } => (*implementation, *method),
-                    MethodDispatch::Contract { contract, method } => {
-                        self.resolve_contract_dispatch(&receiver, *contract, *method)?
+                    MethodDispatch::Interface { interface, method } => {
+                        self.resolve_interface_dispatch(&receiver, *interface, *method)?
                     }
                 };
                 self.invoke_method(implementation, method, receiver, &arguments)
@@ -654,36 +700,43 @@ impl<'a> Session<'a> {
         })
     }
 
-    fn resolve_contract_dispatch(
+    fn resolve_interface_dispatch(
         &self,
         receiver: &Value,
-        contract: NodeId,
-        contract_method: NodeId,
+        interface: NodeId,
+        interface_method: NodeId,
     ) -> Result<(NodeId, NodeId), EvaluationError> {
         let Value::Record {
             declaration: record,
             ..
         } = receiver
         else {
-            return Err(self.invariant("checked contract receiver is not a record"));
+            return Err(self.invariant("checked interface receiver is not a record"));
         };
-        self.program
+        let implementation_id = self
+            .interface_implementations
+            .get(&(interface, *record))
+            .copied()
+            .ok_or_else(|| self.invariant("checked interface dispatch witness is absent"))?;
+        let method_id = self
+            .program
             .module()
             .declarations
             .iter()
             .find_map(|declaration| match declaration {
                 Declaration::Implementation(implementation)
-                    if implementation.contract == contract && implementation.record == *record =>
+                    if implementation.header.node.id == implementation_id =>
                 {
                     implementation
                         .methods
                         .iter()
-                        .find(|method| method.contract_method == contract_method)
-                        .map(|method| (implementation.header.node.id, method.header.node.id))
+                        .find(|method| method.interface_method == interface_method)
+                        .map(|method| method.header.node.id)
                 }
                 _ => None,
             })
-            .ok_or_else(|| self.invariant("checked contract dispatch target is absent"))
+            .ok_or_else(|| self.invariant("checked interface dispatch method is absent"))?;
+        Ok((implementation_id, method_id))
     }
 
     fn eval_constant_by_id(&mut self, id: NodeId) -> Result<Value, EvaluationError> {

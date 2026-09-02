@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use portable_build::{
     Expected, Invocation, ModuleBuilder, Operation, Parameter, Type, TypedValue, Value, Visibility,
+    interface_composition_fixture,
 };
 use portable_check::v0::CheckedProgram;
 use portable_diagnostics::DiagnosticCode;
@@ -22,8 +23,8 @@ fn checked_fixture() -> CheckedProgram {
     let (counter, base) = module.record("Counter", Visibility::Public, vec![], |record| {
         record.field("base", Type::i64(), vec![])
     });
-    let (adder, add) = module.contract("Adder", Visibility::Public, vec![], |contract| {
-        contract.method(
+    let (adder, add) = module.interface("Adder", Visibility::Public, vec![], |interface| {
+        interface.method(
             "add",
             vec![],
             vec![Parameter::new("amount", Type::i64())],
@@ -62,13 +63,13 @@ fn checked_fixture() -> CheckedProgram {
         });
     });
     let dynamic_add = module.function("dynamic_add", Visibility::Public, vec![], |function| {
-        function.parameter(Parameter::new("adder", Type::contract(adder)));
+        function.parameter(Parameter::new("adder", Type::interface(adder)));
         function.parameter(Parameter::new("amount", Type::i64()));
         function.returns(Type::i64());
         function.body(|body| {
             let receiver = body.local("adder");
             let amount = body.local("amount");
-            let result = body.contract_method(receiver, adder, add, [amount]);
+            let result = body.interface_method(receiver, adder, add, [amount]);
             body.block([], Some(result))
         });
     });
@@ -194,6 +195,35 @@ fn checked_fixture_lowers_verifies_and_is_byte_deterministic_three_times() {
         .collect::<Vec<_>>();
     assert_eq!(dumps[0], dumps[1]);
     assert_eq!(dumps[1], dumps[2]);
+}
+
+#[test]
+fn canonical_interface_corpus_lowers_explicit_witnesses_and_immutable_receivers() {
+    let fixture = interface_composition_fixture();
+    let checked = portable_check::v0::check_program(fixture.document).unwrap();
+    let core = lower_checked(&checked).unwrap();
+    assert_eq!(verify_core(&core), Ok(()));
+    assert!(
+        core.interface_methods()
+            .iter()
+            .all(|method| { method.receiver == InterfaceReceiver::Immutable })
+    );
+    assert!(
+        core.expressions()
+            .iter()
+            .any(|(_, expression)| matches!(expression.kind, CoreExprKind::CoerceInterface { .. }))
+    );
+    assert!(
+        core.expressions().iter().any(|(_, expression)| matches!(
+            expression.kind,
+            CoreExprKind::StaticMethodCall { .. }
+        ))
+    );
+    assert!(
+        core.expressions()
+            .iter()
+            .any(|(_, expression)| matches!(expression.kind, CoreExprKind::InterfaceCall { .. }))
+    );
 }
 
 #[test]

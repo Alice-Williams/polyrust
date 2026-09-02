@@ -139,6 +139,14 @@ pub enum Expression {
         element_type: TypeRef,
         elements: Vec<Expression>,
     },
+    /// Converts one explicitly implemented record value into an owned nominal
+    /// interface value. The implementation ID is the immutable dispatch
+    /// witness; structural coercion is never inferred from record shape.
+    CoerceInterface {
+        node: NodeMeta,
+        implementation: NodeId,
+        value: Box<Expression>,
+    },
     Field {
         node: NodeMeta,
         base: Box<Expression>,
@@ -189,6 +197,7 @@ impl Expression {
             | Self::ConstructOk { node, .. }
             | Self::ConstructErr { node, .. }
             | Self::ConstructList { node, .. }
+            | Self::CoerceInterface { node, .. }
             | Self::Field { node, .. }
             | Self::Call { node, .. }
             | Self::MethodCall { node, .. }
@@ -221,8 +230,8 @@ pub enum MethodDispatch {
         implementation: NodeId,
         method: NodeId,
     },
-    Contract {
-        contract: NodeId,
+    Interface {
+        interface: NodeId,
         method: NodeId,
     },
 }

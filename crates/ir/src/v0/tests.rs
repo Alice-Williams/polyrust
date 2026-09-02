@@ -75,7 +75,7 @@ fn exhaustive_document() -> Document {
                 },
             ),
             (312, "alias", TypeRef::Named(NodeId(20))),
-            (313, "validator", TypeRef::Contract(NodeId(50))),
+            (313, "validator", TypeRef::Interface(NodeId(50))),
         ]
         .into_iter()
         .map(|(id, name, ty)| FieldDeclaration {
@@ -102,7 +102,7 @@ fn exhaustive_document() -> Document {
         ],
     };
 
-    let contract = ContractDeclaration {
+    let interface = InterfaceDeclaration {
         header: declaration_header(50, "Validator"),
         methods: vec![MethodSignature {
             header: member_header(501, "accepts"),
@@ -116,11 +116,11 @@ fn exhaustive_document() -> Document {
 
     let implementation = ImplementationDeclaration {
         header: declaration_header(60, "EverythingValidator"),
-        contract: NodeId(50),
+        interface: NodeId(50),
         record: NodeId(30),
         methods: vec![MethodImplementation {
             header: member_header(601, "accepts"),
-            contract_method: NodeId(501),
+            interface_method: NodeId(501),
             parameters: vec![Parameter {
                 header: member_header(602, "value"),
                 ty: TypeRef::Named(NodeId(30)),
@@ -134,7 +134,7 @@ fn exhaustive_document() -> Document {
         header: declaration_header(70, "run"),
         parameters: vec![Parameter {
             header: member_header(701, "validator"),
-            ty: TypeRef::Contract(NodeId(50)),
+            ty: TypeRef::Interface(NodeId(50)),
         }],
         return_type: TypeRef::Bool,
         body: Block {
@@ -195,7 +195,7 @@ fn exhaustive_document() -> Document {
                 Declaration::Test(test),
                 Declaration::Function(function),
                 Declaration::Implementation(implementation),
-                Declaration::Contract(contract),
+                Declaration::Interface(interface),
                 Declaration::Enum(enum_declaration),
                 Declaration::Record(record),
                 Declaration::Alias(AliasDeclaration {
@@ -215,7 +215,8 @@ fn exhaustive_document() -> Document {
 
 #[test]
 fn version_parsing_and_compatibility_are_explicit() {
-    assert_eq!("0.1.0".parse(), Ok(IrVersion::CURRENT));
+    assert_eq!("0.2.0".parse(), Ok(IrVersion::CURRENT));
+    assert_eq!("0.1.0".parse(), Ok(IrVersion::LEGACY_CONTRACTS),);
     assert!(
         "0.2.9"
             .parse::<IrVersion>()
@@ -234,6 +235,47 @@ fn version_parsing_and_compatibility_are_explicit() {
             "accepted {invalid:?}"
         );
     }
+}
+
+#[test]
+fn legacy_contract_schema_migrates_explicitly_to_interfaces() {
+    let legacy = br#"{
+        "ir_version":"0.1.0",
+        "module":{"name":"legacy","declarations":[
+            {"kind":"contract","data":{"header":{"node":{"id":1,"source":{"kind":"logical","data":{"segments":["legacy"]}}},"name":"Renderable","visibility":"public","documentation":[]},"methods":[]}}
+        ]},
+        "metadata":{}
+    }"#;
+
+    let migration = migrate_legacy_v0_contracts(legacy).unwrap();
+    assert_eq!(migration.source_version, IrVersion::LEGACY_CONTRACTS);
+    assert_eq!(migration.target_version, IrVersion::CURRENT);
+    assert_eq!(migration.document.ir_version, IrVersion::CURRENT);
+    assert!(matches!(
+        migration.document.module.declarations.as_slice(),
+        [Declaration::Interface(_)]
+    ));
+
+    let canonical = to_canonical_json(&migration.document).unwrap();
+    let canonical_text = std::str::from_utf8(&canonical).unwrap();
+    assert!(canonical_text.contains("\"kind\":\"interface\""));
+    assert!(!canonical_text.contains("\"kind\":\"contract\""));
+    assert_eq!(from_json(legacy).unwrap(), migration.document);
+}
+
+#[test]
+fn portable_interface_schema_has_no_inheritance_field() {
+    let invalid = br#"{
+        "ir_version":"0.2.0",
+        "module":{"name":"invalid","declarations":[
+            {"kind":"interface","data":{"header":{"node":{"id":1,"source":{"kind":"logical","data":{"segments":["invalid"]}}},"name":"Child","visibility":"public","documentation":[]},"methods":[],"extends":2}}
+        ]},
+        "metadata":{}
+    }"#;
+    assert_eq!(
+        from_json(invalid).unwrap_err().kind,
+        JsonErrorKind::UnknownField
+    );
 }
 
 #[test]
@@ -493,6 +535,11 @@ fn every_remaining_syntax_variant_round_trips() {
             element_type: TypeRef::I64,
             elements: vec![base.clone()],
         },
+        Expression::CoerceInterface {
+            node: node(1_025),
+            implementation: NodeId(60),
+            value: Box::new(base.clone()),
+        },
         Expression::Field {
             node: node(1_011),
             base: Box::new(base.clone()),
@@ -515,8 +562,8 @@ fn every_remaining_syntax_variant_round_trips() {
         Expression::MethodCall {
             node: node(1_014),
             receiver: Box::new(base.clone()),
-            dispatch: MethodDispatch::Contract {
-                contract: NodeId(50),
+            dispatch: MethodDispatch::Interface {
+                interface: NodeId(50),
                 method: NodeId(501),
             },
             arguments: vec![],
@@ -812,7 +859,7 @@ impl DeclarationTestExt for Declaration {
             Self::Alias(value) => &mut value.header,
             Self::Record(value) => &mut value.header,
             Self::Enum(value) => &mut value.header,
-            Self::Contract(value) => &mut value.header,
+            Self::Interface(value) => &mut value.header,
             Self::Implementation(value) => &mut value.header,
             Self::Function(value) => &mut value.header,
             Self::Test(value) => &mut value.header,

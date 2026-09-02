@@ -148,8 +148,16 @@ pub struct CoreInterface {
 pub struct CoreInterfaceMethod {
     pub header: CoreMemberHeader,
     pub interface: CoreInterfaceId,
+    pub receiver: InterfaceReceiver,
     pub parameters: Vec<CoreParameter>,
     pub return_type: CoreTypeId,
+}
+
+/// Closed portable receiver semantics for interface methods.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum InterfaceReceiver {
+    Immutable,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -391,6 +399,12 @@ pub enum CoreExprKind {
     ConstructList {
         element: CoreTypeId,
         elements: Vec<CoreExprId>,
+    },
+    /// An owned interface value paired with the exact explicit conformance
+    /// witness selected by the checked source program.
+    CoerceInterface {
+        implementation: CoreImplementationId,
+        value: CoreExprId,
     },
     Field {
         value: CoreExprId,

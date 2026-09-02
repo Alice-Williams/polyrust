@@ -245,7 +245,7 @@ impl Verifier<'_> {
                         false,
                     ),
                     Some(_) => self.error(
-                        DiagnosticCode::ContractNonconformance,
+                        DiagnosticCode::InterfaceNonconformance,
                         "interface method has a different owner",
                         interface.header.source.clone(),
                     ),
@@ -275,7 +275,7 @@ impl Verifier<'_> {
                 })
             {
                 self.error(
-                    DiagnosticCode::ContractNonconformance,
+                    DiagnosticCode::InterfaceNonconformance,
                     "interface method is not indexed by its owner",
                     method.header.source.clone(),
                 );
@@ -317,7 +317,7 @@ impl Verifier<'_> {
                 self.check_source(&method.header.source, "implementation method");
                 if method.implementation != implementation_id {
                     self.error(
-                        DiagnosticCode::ContractNonconformance,
+                        DiagnosticCode::InterfaceNonconformance,
                         "implementation method has a different implementation owner",
                         method.header.source.clone(),
                     );
@@ -336,7 +336,7 @@ impl Verifier<'_> {
                     || required.return_type != method.return_type
                 {
                     self.error(
-                        DiagnosticCode::ContractNonconformance,
+                        DiagnosticCode::InterfaceNonconformance,
                         "implementation method signature does not exactly match its interface method",
                         method.header.source.clone(),
                     );
@@ -358,7 +358,7 @@ impl Verifier<'_> {
             let required = interface.methods.iter().copied().collect::<BTreeSet<_>>();
             if provided != required {
                 self.error(
-                    DiagnosticCode::ContractNonconformance,
+                    DiagnosticCode::InterfaceNonconformance,
                     "implementation does not provide every interface method exactly once",
                     implementation.header.source.clone(),
                 );
@@ -376,7 +376,7 @@ impl Verifier<'_> {
                 })
             {
                 self.error(
-                    DiagnosticCode::ContractNonconformance,
+                    DiagnosticCode::InterfaceNonconformance,
                     "implementation method is not indexed by its owner",
                     method.header.source.clone(),
                 );
@@ -810,6 +810,25 @@ impl Verifier<'_> {
                     }
                 }
                 self.required_type(&CoreType::List(*element), source)
+            }
+            CoreExprKind::CoerceInterface {
+                implementation,
+                value,
+            } => {
+                let implementation = match self.program.implementation(*implementation) {
+                    Some(value) => value,
+                    None => {
+                        self.missing(
+                            "interface coercion implementation",
+                            implementation.index(),
+                            source.clone(),
+                        );
+                        return None;
+                    }
+                };
+                let value_type = self.child_type(id, *value, source)?;
+                self.expect_type(value_type, &CoreType::Record(implementation.record), source);
+                self.required_type(&CoreType::Interface(implementation.interface), source)
             }
             CoreExprKind::Field { value, field } => {
                 let base = self.child_type(id, *value, source)?;
@@ -2049,6 +2068,7 @@ fn expression_children(expression: &CoreExprKind) -> Vec<CoreExprId> {
         CoreExprKind::ConstructSome(value) => vec![*value],
         CoreExprKind::ConstructOk { value, .. }
         | CoreExprKind::ConstructErr { value, .. }
+        | CoreExprKind::CoerceInterface { value, .. }
         | CoreExprKind::Field { value, .. } => vec![*value],
         CoreExprKind::ConstructList { elements, .. } => elements.clone(),
         CoreExprKind::Call { arguments, .. } => arguments.clone(),

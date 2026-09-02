@@ -528,7 +528,7 @@ class runtime {
     for (const auto& raw : list(member(object(member(found->second, "data")), "methods"))) {
       const auto& method = object(raw);
       if (node_id_from_header(object(member(method, "header"))) == method_id
-          || number(member(method, "contract_method")) == method_id) {
+          || number(member(method, "interface_method")) == method_id) {
         return invoke_body(method, arguments, receiver);
       }
     }
@@ -645,8 +645,8 @@ class runtime {
       const auto& dispatch = object(member(data, "dispatch"));
       const auto& target = object(member(dispatch, "data"));
       std::int64_t implementation;
-      if (string(member(dispatch, "kind")) == "contract") {
-        implementation = find_implementation(number(member(target, "contract")),
+      if (string(member(dispatch, "kind")) == "interface") {
+        implementation = find_implementation(number(member(target, "interface")),
                                              std::any_cast<const aggregate&>(receiver.value).declaration);
       } else {
         implementation = number(member(target, "implementation"));
@@ -1196,11 +1196,11 @@ class runtime {
     return "field_" + std::to_string(identifier);
   }
 
-  std::int64_t find_implementation(std::int64_t contract, std::int64_t record) const {
+  std::int64_t find_implementation(std::int64_t interface_id, std::int64_t record) const {
     for (const auto& [identifier, declaration] : declarations_) {
       if (string(member(declaration, "kind")) != "implementation") continue;
       const auto& data = object(member(declaration, "data"));
-      if (number(member(data, "contract")) == contract && number(member(data, "record")) == record) return identifier;
+      if (number(member(data, "interface")) == interface_id && number(member(data, "record")) == record) return identifier;
     }
     return -1;
   }

@@ -9,8 +9,8 @@ pub enum RecordFieldKind {}
 pub enum EnumKind {}
 pub enum EnumVariantKind {}
 pub enum EnumFieldKind {}
-pub enum ContractKind {}
-pub enum ContractMethodKind {}
+pub enum InterfaceKind {}
+pub enum InterfaceMethodKind {}
 pub enum ImplementationKind {}
 pub enum ImplementationMethodKind {}
 pub enum FunctionKind {}
@@ -70,8 +70,8 @@ pub type RecordFieldId = Handle<RecordFieldKind>;
 pub type EnumId = Handle<EnumKind>;
 pub type EnumVariantId = Handle<EnumVariantKind>;
 pub type EnumFieldId = Handle<EnumFieldKind>;
-pub type ContractId = Handle<ContractKind>;
-pub type ContractMethodId = Handle<ContractMethodKind>;
+pub type InterfaceId = Handle<InterfaceKind>;
+pub type InterfaceMethodId = Handle<InterfaceMethodKind>;
 pub type ImplementationId = Handle<ImplementationKind>;
 pub type ImplementationMethodId = Handle<ImplementationMethodKind>;
 pub type FunctionId = Handle<FunctionKind>;

@@ -96,8 +96,17 @@ enum CoreInterfaceExpr {
 }
 ```
 
-There is no implicit structural coercion. The checker may insert a canonical
-coercion only after proving the unique explicit implementation.
+There is no implicit structural coercion and the checker does not rewrite an
+ordinary expression. An authoring frontend must construct `Coerce` with a
+specific implementation ID; the checker proves that the witness implements the
+value's exact record type and determines the resulting nominal interface type.
+
+Canonical portable-test values are the sole boundary exception because the
+closed `Value` algebra deliberately has no interface-value or witness variant.
+When a tested callable expects an interface, the checker accepts a record value
+only if exactly one explicit implementation links that record/interface pair.
+CoreIR and the evaluator resolve that already-proven pair deterministically;
+this exception never applies to program expressions.
 
 ## Value semantics
 
@@ -194,15 +203,17 @@ Each language specification refines the representation and proof.
 
 ## Legacy migration
 
-Serialized v0 `contract` syntax remains readable during the migration and
-lowers canonically to `CoreInterface`. Renaming the public JSON schema requires
-a separately versioned compatibility decision. Target-generation code uses
-`Interface` terminology after CoreIR.
+Serialized IR 0.1 `contract` syntax remains readable only through the explicit
+0.1-to-0.2 migration path. Canonical IR 0.2 serialization uses `interface`,
+`interface_method`, and `interface` dispatch/reference fields; exact 0.2 readers
+reject legacy spellings.
 
-Existing restrictions which permit contracts only in parameter positions are
-removed only when every target supports first-class interface values and all
-composite ownership tests pass. Until then, the checker continues rejecting
-new positions rather than emitting partial behavior.
+The IR 0.2 checker admits every first-class position listed above. During the
+backend migration, a legacy backend that has not implemented interface values
+must declare `FirstClassInterfaceValues` unsupported and reject the program
+with an attributed capability diagnostic before translation. Its language task
+removes that rejection only after its native ownership and composite-value
+tests pass.
 
 ## Required proof
 

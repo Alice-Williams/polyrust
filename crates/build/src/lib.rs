@@ -56,33 +56,35 @@
 //! assert!(Evaluator::new(&checked).run_all_tests().iter().all(|test| test.passed));
 //! ```
 //!
-//! Record handles cannot be used where contract handles are required:
+//! Record handles cannot be used where interface handles are required:
 //!
 //! ```compile_fail
 //! use portable_build::{ModuleBuilder, Type, Visibility};
 //!
 //! let mut module = ModuleBuilder::new("typed");
 //! let (record, ()) = module.record("R", Visibility::Public, vec![], |_| {});
-//! let _wrong = Type::contract(record);
+//! let _wrong = Type::interface(record);
 //! ```
 //!
-//! Contract handles cannot be used as record constructors:
+//! Interface handles cannot be used as record constructors:
 //!
 //! ```compile_fail
 //! use portable_build::{ModuleBuilder, Value, Visibility};
 //!
 //! let mut module = ModuleBuilder::new("typed");
-//! let (contract, ()) = module.contract("C", Visibility::Public, vec![], |_| {});
-//! let _wrong = Value::record(contract, []);
+//! let (interface, ()) = module.interface("C", Visibility::Public, vec![], |_| {});
+//! let _wrong = Value::record(interface, []);
 //! ```
 
 mod body;
 mod handles;
+mod interface_fixture;
 mod module;
 mod value;
 
 pub use body::*;
 pub use handles::*;
+pub use interface_fixture::*;
 pub use module::*;
 pub use portable_ir::v0::{Intrinsic as Operation, Visibility};
 pub use value::*;

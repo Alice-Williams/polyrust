@@ -11,7 +11,7 @@ use portable_codegen::{
     InjectedHelper, IrVersionRange, LanguageFile, LanguageFragment, LanguagePackage,
     LanguagePlugin, LanguageRenderer, LanguageSourceFile, OptionsSchema, OutputManifest, RawText,
     RuntimeHelper, RuntimeHelperGraph, SourceFileRole, TargetId, TextFileRole,
-    generate_with_plugin,
+    generate_with_plugin, validate_backend_capability,
 };
 use portable_ir::v0::{Declaration, Intrinsic, IrVersion, NodeId, TypeRef};
 
@@ -40,12 +40,16 @@ impl Backend for PythonBackend {
                 helper: "polyrust.runtime.immutable-list.v0".into(),
             },
             Capability::Bytes
-            | Capability::ContractDispatch
+            | Capability::InterfaceDispatch
             | Capability::F64
             | Capability::Option
             | Capability::Result
             | Capability::WrappingIntegerArithmetic
             | Capability::BoundedIteration => CapabilitySupport::Native,
+            Capability::FirstClassInterfaceValues => CapabilitySupport::Unsupported {
+                reason: "first-class interface values require the M34A-15 typed Python backend"
+                    .into(),
+            },
         }
     }
     fn options_schema(&self) -> OptionsSchema {
@@ -181,8 +185,10 @@ impl LanguagePlugin for PythonBackend {
     fn translate(
         &self,
         program: &CheckedProgram,
-        _options: &BackendOptions,
+        options: &BackendOptions,
     ) -> Result<LanguagePackage<Self::Import>, BackendError> {
+        let _ = options;
+        validate_backend_capability(self, program, Capability::FirstClassInterfaceValues)?;
         let generator = Generator::new(program);
         let helpers = program
             .capabilities()
@@ -710,7 +716,7 @@ impl<'a> Generator<'a> {
                     names.join(" | ")
                 ));
             }
-            Declaration::Contract(item) => {
+            Declaration::Interface(item) => {
                 output = output
                     .with_future("annotations")
                     .with_from(standard_group(), "typing", "Protocol")
@@ -800,7 +806,7 @@ impl<'a> Generator<'a> {
                     .map_text(|types| format!("PolyValueResult[{types}]"))
                     .with_from(local_group(), ".runtime", "PolyValueResult")
             }
-            TypeRef::Named(id) | TypeRef::Contract(id) => PythonCode::text(type_name(
+            TypeRef::Named(id) | TypeRef::Interface(id) => PythonCode::text(type_name(
                 self.names.get(id).map(String::as_str).unwrap_or("Unknown"),
             )),
         }

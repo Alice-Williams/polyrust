@@ -33,10 +33,11 @@ pub const EXIT_OUTPUT: i32 = 5;
 
 pub const HELP: &str = "polyrust 0.1.0\n\nUSAGE:\n  polyrust check <input.poly.json> [--target <id>] [--json]\n  polyrust emit <input.poly.json> --target <id> --out <directory> [--dry-run] [--json] [--option <name=value>]...\n  polyrust targets [--json]\n  polyrust explain <code> [--json]\n\nEXIT CODES:\n  0 success\n  2 invalid command line\n  3 input parse or semantic check failed\n  4 target, option, preflight, or generation failed\n  5 output transaction failed\n";
 
-const CAPABILITIES: [Capability; 10] = [
+const CAPABILITIES: [Capability; 11] = [
     Capability::Bytes,
     Capability::CheckedIntegerArithmetic,
-    Capability::ContractDispatch,
+    Capability::InterfaceDispatch,
+    Capability::FirstClassInterfaceValues,
     Capability::F64,
     Capability::ImmutableList,
     Capability::Option,
@@ -638,32 +639,32 @@ mod tests {
         let targets = invoke(vec!["targets".into()], default_registry());
         assert_eq!(targets.0, 0);
         assert!(targets.1.contains(
-            "org.polyrust.inspect\tBuilt-in inspection backend\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n"
+            "org.polyrust.inspect\tBuilt-in inspection backend\tbackend 0.1.0\tIR 0.2.0..=0.2.0\n"
         ));
         assert!(
             targets
                 .1
-                .contains("org.polyrust.rust\tRust\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n")
+                .contains("org.polyrust.rust\tRust\tbackend 0.1.0\tIR 0.2.0..=0.2.0\n")
         );
         assert!(
             targets
                 .1
-                .contains("org.polyrust.javascript\tJavaScript\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n")
+                .contains("org.polyrust.javascript\tJavaScript\tbackend 0.1.0\tIR 0.2.0..=0.2.0\n")
         );
         assert!(
             targets
                 .1
-                .contains("org.polyrust.java\tJava\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n")
+                .contains("org.polyrust.java\tJava\tbackend 0.1.0\tIR 0.2.0..=0.2.0\n")
         );
         assert!(
             targets
                 .1
-                .contains("org.polyrust.cpp\tC++\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n")
+                .contains("org.polyrust.cpp\tC++\tbackend 0.1.0\tIR 0.2.0..=0.2.0\n")
         );
         assert!(
             targets
                 .1
-                .contains("org.polyrust.c\tC\tbackend 0.1.0\tIR 0.1.0..=0.1.0\n")
+                .contains("org.polyrust.c\tC\tbackend 0.1.0\tIR 0.2.0..=0.2.0\n")
         );
         assert!(
             targets.1.contains(

@@ -7,7 +7,7 @@ use portable_codegen::{
     ImportGroup, ImportSet, InjectedHelper, IrVersionRange, LanguageFile, LanguageFragment,
     LanguagePackage, LanguagePlugin, LanguageRenderer, LanguageSourceFile, OptionsSchema,
     OutputManifest, RawText, RenderOptions, RuntimeHelper, RuntimeHelperGraph, SourceFileRole,
-    TargetId, TextFileRole, generate_with_plugin, render,
+    TargetId, TextFileRole, generate_with_plugin, render, validate_backend_capability,
 };
 use portable_ir::v0::{
     Block, ConstantExpression, Declaration, EnumVariant, ExpectedOutcome, Expression, Intrinsic,
@@ -39,12 +39,16 @@ impl Backend for RustBackend {
                 helper: "polyrust.runtime.immutable-list.v0".to_owned(),
             },
             Capability::Bytes
-            | Capability::ContractDispatch
+            | Capability::InterfaceDispatch
             | Capability::F64
             | Capability::Option
             | Capability::Result
             | Capability::WrappingIntegerArithmetic
             | Capability::BoundedIteration => CapabilitySupport::Native,
+            Capability::FirstClassInterfaceValues => CapabilitySupport::Unsupported {
+                reason: "first-class interface values require the M34A-12 typed Rust backend"
+                    .to_owned(),
+            },
         }
     }
 
@@ -226,8 +230,10 @@ impl LanguagePlugin for RustBackend {
     fn translate(
         &self,
         program: &CheckedProgram,
-        _options: &BackendOptions,
+        options: &BackendOptions,
     ) -> Result<LanguagePackage<Self::Import>, BackendError> {
+        let _ = options;
+        validate_backend_capability(self, program, Capability::FirstClassInterfaceValues)?;
         let generator = Generator::new(program);
         let cargo = format!(
             "[package]\nname = \"{}\"\nversion = \"0.1.0\"\nedition = \"2024\"\npublish = false\n\n[lib]\npath = \"src/lib.rs\"\n",
@@ -567,16 +573,16 @@ impl<'a> Generator<'a> {
                     }
                     source.push_str("}\n\n");
                 }
-                Declaration::Contract(contract) => {
-                    let documentation = self.documentation(&contract.header.documentation, 0);
+                Declaration::Interface(interface) => {
+                    let documentation = self.documentation(&interface.header.documentation, 0);
                     source.push_str(&documentation.text);
                     requirements.push(documentation);
                     source.push_str(&format!(
                         "{}trait {} {{\n",
-                        visibility(contract.header.visibility),
-                        type_name(&contract.header.name)
+                        visibility(interface.header.visibility),
+                        type_name(&interface.header.name)
                     ));
-                    for method in &contract.methods {
+                    for method in &interface.methods {
                         let documentation = self.documentation(&method.header.documentation, 1);
                         source.push_str(&documentation.text);
                         requirements.push(documentation);
@@ -593,11 +599,11 @@ impl<'a> Generator<'a> {
                     source.push_str("}\n\n");
                 }
                 Declaration::Implementation(implementation) => {
-                    let contract = self.declaration_name(implementation.contract);
+                    let interface = self.declaration_name(implementation.interface);
                     let record = self.declaration_name(implementation.record);
                     source.push_str(&format!(
                         "impl {} for {} {{\n",
-                        type_name(contract),
+                        type_name(interface),
                         type_name(record)
                     ));
                     for method in &implementation.methods {
@@ -674,7 +680,7 @@ impl<'a> Generator<'a> {
         let rendered = RustCode::joined(
             parameters.iter().map(|parameter| {
                 let ty = match &parameter.ty {
-                    TypeRef::Contract(id) => {
+                    TypeRef::Interface(id) => {
                         RustCode::new(format!("&dyn {}", type_name(self.declaration_name(*id))))
                     }
                     other => self.ty(other),
@@ -715,7 +721,7 @@ impl<'a> Generator<'a> {
                 let error = self.ty(error);
                 RustCode::new(format!("Result<{ok}, {error}>")).with_text_from([ok, error])
             }
-            TypeRef::Named(id) | TypeRef::Contract(id) => {
+            TypeRef::Named(id) | TypeRef::Interface(id) => {
                 RustCode::new(type_name(self.declaration_name(*id)))
             }
         }
@@ -984,6 +990,9 @@ impl Generator<'_> {
                 ", ",
             )
             .map_text(|elements| format!("Ok(vec![{elements}])")),
+            Expression::CoerceInterface { .. } => unreachable!(
+                "legacy Rust translation rejects first-class interface values during preflight"
+            ),
             Expression::Field { base, field, .. } => {
                 let copied = self.field_type(*field).is_some_and(|ty| self.is_copy(ty));
                 self.expr(base, indent).map_text(|base| {
@@ -1104,20 +1113,20 @@ impl Generator<'_> {
             format!(", {args}")
         };
         let call = match dispatch {
-            MethodDispatch::Contract { contract, method } => {
-                let method_name = self.contract_method_name(*contract, *method);
+            MethodDispatch::Interface { interface, method } => {
+                let method_name = self.interface_method_name(*interface, *method);
                 format!("__receiver.{}({args})", value_name(method_name))
             }
             MethodDispatch::Concrete {
                 implementation,
                 method,
             } => {
-                let (contract, record, method_name) =
+                let (interface, record, method_name) =
                     self.implementation_method(*implementation, *method);
                 format!(
                     "<{} as {}>::{}(&__receiver{suffix})",
                     type_name(record),
-                    type_name(contract),
+                    type_name(interface),
                     value_name(method_name)
                 )
             }
@@ -1189,7 +1198,7 @@ impl Generator<'_> {
             | TypeRef::I64
             | TypeRef::F64
             | TypeRef::Char
-            | TypeRef::Contract(_) => true,
+            | TypeRef::Interface(_) => true,
             TypeRef::Named(id) => match self.declaration(*id) {
                 Some(Declaration::Alias(alias)) => self.is_copy(&alias.target),
                 _ => false,
@@ -1231,11 +1240,11 @@ impl Generator<'_> {
         None
     }
 
-    fn contract_method_name(&self, contract: NodeId, method: NodeId) -> &str {
-        let Some(Declaration::Contract(contract)) = self.declaration(contract) else {
+    fn interface_method_name(&self, interface: NodeId, method: NodeId) -> &str {
+        let Some(Declaration::Interface(interface)) = self.declaration(interface) else {
             return "missing_method";
         };
-        contract
+        interface
             .methods
             .iter()
             .find(|candidate| candidate.header.node.id == method)
@@ -1245,17 +1254,17 @@ impl Generator<'_> {
     fn implementation_method(&self, implementation: NodeId, method: NodeId) -> (&str, &str, &str) {
         let Some(Declaration::Implementation(implementation)) = self.declaration(implementation)
         else {
-            return ("MissingContract", "MissingRecord", "missing_method");
+            return ("MissingInterface", "MissingRecord", "missing_method");
         };
         let method = implementation
             .methods
             .iter()
             .find(|candidate| {
-                candidate.header.node.id == method || candidate.contract_method == method
+                candidate.header.node.id == method || candidate.interface_method == method
             })
             .map_or("missing_method", |method| method.header.name.as_str());
         (
-            self.declaration_name(implementation.contract),
+            self.declaration_name(implementation.interface),
             self.declaration_name(implementation.record),
             method,
         )
@@ -1803,7 +1812,7 @@ impl Generator<'_> {
                     let setup = self.test_arguments(arguments);
                     output.push_str(&setup.text);
                     dependencies.push(setup);
-                    let (contract, record, method_name) =
+                    let (interface, record, method_name) =
                         self.implementation_method(*implementation, *method);
                     let parameters = match self.declaration(*implementation) {
                         Some(Declaration::Implementation(implementation)) => implementation
@@ -1811,7 +1820,7 @@ impl Generator<'_> {
                             .iter()
                             .find(|candidate| {
                                 candidate.header.node.id == *method
-                                    || candidate.contract_method == *method
+                                    || candidate.interface_method == *method
                             })
                             .map_or(&[][..], |method| method.parameters.as_slice()),
                         _ => &[],
@@ -1822,7 +1831,7 @@ impl Generator<'_> {
                             .iter()
                             .find(|candidate| {
                                 candidate.header.node.id == *method
-                                    || candidate.contract_method == *method
+                                    || candidate.interface_method == *method
                             })
                             .map_or(TypeRef::Unit, |method| method.return_type.clone()),
                         _ => TypeRef::Unit,
@@ -1838,7 +1847,7 @@ impl Generator<'_> {
                         format!(
                             "<{} as {}>::{}(&receiver{suffix})",
                             type_name(record),
-                            type_name(contract),
+                            type_name(interface),
                             value_name(method_name)
                         ),
                         return_type,
@@ -1884,7 +1893,7 @@ impl Generator<'_> {
                 .map(|(index, _)| {
                     if parameters
                         .get(index)
-                        .is_some_and(|parameter| matches!(parameter.ty, TypeRef::Contract(_)))
+                        .is_some_and(|parameter| matches!(parameter.ty, TypeRef::Interface(_)))
                     {
                         format!("&argument_{index}")
                     } else {
@@ -2169,7 +2178,7 @@ mod tests {
         for capability in [
             Capability::Bytes,
             Capability::CheckedIntegerArithmetic,
-            Capability::ContractDispatch,
+            Capability::InterfaceDispatch,
             Capability::F64,
             Capability::ImmutableList,
             Capability::Option,
@@ -2184,6 +2193,25 @@ mod tests {
             ));
         }
         assert!(check_backend_contract(backend, &program, &BackendOptions::default()).is_empty());
+    }
+
+    #[test]
+    fn first_class_interface_values_are_rejected_before_legacy_translation() {
+        let fixture = portable_build::interface_composition_fixture();
+        let program = portable_check::v0::check_program(fixture.document).unwrap();
+        let error = RustBackend
+            .generate(&program, &BackendOptions::default())
+            .unwrap_err();
+        let BackendError::UnsupportedCapabilities(diagnostics) = error else {
+            panic!("first-class interface values must produce a capability diagnostic")
+        };
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].code,
+            portable_diagnostics::DiagnosticCode::UnsupportedCapability
+        );
+        assert_eq!(diagnostics[0].target.as_deref(), Some("org.polyrust.rust"));
+        assert!(diagnostics[0].message.contains("M34A-12"));
     }
 
     #[test]

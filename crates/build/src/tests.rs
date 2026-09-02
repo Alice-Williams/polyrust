@@ -19,8 +19,8 @@ fn checked_demo() -> Demo {
         |record| record.field("text", Type::string(), vec![]),
     );
     let (renderable, render) =
-        module.contract("Renderable", Visibility::Public, vec![], |contract| {
-            contract.method("render", vec![], vec![], Some(Type::string()))
+        module.interface("Renderable", Visibility::Public, vec![], |interface| {
+            interface.method("render", vec![], vec![], Some(Type::string()))
         });
     let (_implementation, _method) = module.implementation(
         "LabelRenderable",
@@ -40,11 +40,11 @@ fn checked_demo() -> Demo {
         },
     );
     let call_render = module.function("call_render", Visibility::Public, vec![], |function| {
-        function.parameter(Parameter::new("value", Type::contract(renderable)));
+        function.parameter(Parameter::new("value", Type::interface(renderable)));
         function.returns(Type::string());
         function.body(|body| {
             let receiver = body.local("value");
-            let value = body.contract_method(receiver, renderable, render, []);
+            let value = body.interface_method(receiver, renderable, render, []);
             body.block([], Some(value))
         });
     });
@@ -134,8 +134,8 @@ fn incomplete_and_duplicate_builders_return_diagnostics_without_panicking() {
     }));
 
     let mut missing_contract_type = ModuleBuilder::new("contract_error");
-    missing_contract_type.contract("C", Visibility::Public, vec![], |contract| {
-        contract.method("missing", vec![], vec![], None);
+    missing_contract_type.interface("C", Visibility::Public, vec![], |interface| {
+        interface.method("missing", vec![], vec![], None);
     });
     assert_eq!(
         missing_contract_type.finish_unchecked().unwrap_err()[0].code,
@@ -169,9 +169,9 @@ fn every_declaration_expression_statement_pattern_type_and_value_builder_compile
             (unit, (data, field))
         });
     let alias = module.alias("Count", Visibility::Public, vec![], Type::i64());
-    let (contract, contract_method) =
-        module.contract("Contract", Visibility::Public, vec![], |contract| {
-            contract.method(
+    let (interface, interface_method) =
+        module.interface("Interface", Visibility::Public, vec![], |interface| {
+            interface.method(
                 "method",
                 vec![],
                 vec![Parameter::documented("input", Type::i64(), ["An input."])],
@@ -182,10 +182,10 @@ fn every_declaration_expression_statement_pattern_type_and_value_builder_compile
         "Implementation",
         Visibility::Package,
         vec![],
-        contract,
+        interface,
         record,
         |implementation| {
-            implementation.method("method", contract_method, vec![], |method| {
+            implementation.method("method", interface_method, vec![], |method| {
                 method.parameter(Parameter::new("input", Type::i64()));
                 method.returns(Type::bool());
                 method.body(|body| {
@@ -233,7 +233,7 @@ fn every_declaration_expression_statement_pattern_type_and_value_builder_compile
         });
     });
     let all = module.function("all", Visibility::Public, vec![], |function| {
-        function.parameter(Parameter::new("contract_value", Type::contract(contract)));
+        function.parameter(Parameter::new("contract_value", Type::interface(interface)));
         function.returns(Type::unit());
         function.body(|body| {
             let literal = body.literal(Value::i64(1));
@@ -265,7 +265,7 @@ fn every_declaration_expression_statement_pattern_type_and_value_builder_compile
             );
             let contract_argument = body.literal(Value::i64(1));
             let _contract =
-                body.contract_method(local, contract, contract_method, [contract_argument]);
+                body.interface_method(local, interface, interface_method, [contract_argument]);
             let left = body.literal(Value::i64(1));
             let right = body.literal(Value::i64(2));
             let _intrinsic = body.intrinsic(Operation::IntAddChecked, [left, right]);
@@ -351,7 +351,7 @@ fn every_declaration_expression_statement_pattern_type_and_value_builder_compile
         Type::named(alias),
         Type::named(record),
         Type::named(enumeration),
-        Type::contract(contract),
+        Type::interface(interface),
     ];
     assert_eq!(types.len(), 15);
     let values = [

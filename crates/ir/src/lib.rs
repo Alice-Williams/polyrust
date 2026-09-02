@@ -96,7 +96,7 @@ pub struct MethodSignature {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Contract {
+pub struct Interface {
     pub name: String,
     pub methods: Vec<MethodSignature>,
 }
@@ -179,7 +179,7 @@ pub struct Function {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Implementation {
-    pub contract: String,
+    pub interface: String,
     pub record: String,
     pub methods: Vec<Function>,
 }
@@ -197,7 +197,7 @@ pub struct Module {
     pub name: String,
     pub constants: Vec<Constant>,
     pub records: Vec<Record>,
-    pub contracts: Vec<Contract>,
+    pub interfaces: Vec<Interface>,
     pub implementations: Vec<Implementation>,
     pub functions: Vec<Function>,
     pub tests: Vec<PortableTest>,
