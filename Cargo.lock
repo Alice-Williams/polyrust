@@ -168,6 +168,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "polyrust-core-ir"
+version = "0.1.0"
+dependencies = [
+ "polyrust-build",
+ "polyrust-check",
+ "polyrust-codegen",
+ "polyrust-diagnostics",
+ "polyrust-eval",
+ "polyrust-ir",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "polyrust-diagnostics"
 version = "0.1.0"
 dependencies = [

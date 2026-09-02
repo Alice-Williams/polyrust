@@ -1,0 +1,42 @@
+load("@rules_rust//rust:defs.bzl", "rust_doc_test", "rust_library", "rust_test")
+
+exports_files(["Cargo.toml"])
+
+rust_library(
+    name = "portable_core_ir",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "portable_core_ir",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+        "//crates/diagnostics:portable_diagnostics",
+        "//crates/ir:portable_ir",
+        "@crates//:serde",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_test(
+    name = "portable_core_ir_test",
+    crate = ":portable_core_ir",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//crates/build:portable_build",
+        "//crates/eval:portable_eval",
+    ],
+)
+
+rust_doc_test(
+    name = "portable_core_ir_doc_test",
+    crate = ":portable_core_ir",
+)
+
+test_suite(
+    name = "all",
+    tests = [
+        ":portable_core_ir_doc_test",
+        ":portable_core_ir_test",
+    ],
+)

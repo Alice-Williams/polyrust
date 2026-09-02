@@ -13,6 +13,7 @@ members = [
     "crates/cli",
     "crates/codegen",
     "crates/conformance",
+    "crates/core-ir",
     "crates/diagnostics",
     "crates/eval",
     "crates/ir",
@@ -52,6 +53,7 @@ portable_build = { package = "polyrust-build", path = "crates/build" }
 portable_check = { package = "polyrust-check", path = "crates/check" }
 portable_codegen = { package = "polyrust-codegen", path = "crates/codegen" }
 portable_conformance = { package = "polyrust-conformance", path = "crates/conformance" }
+portable_core_ir = { package = "polyrust-core-ir", path = "crates/core-ir" }
 portable_diagnostics = { package = "polyrust-diagnostics", path = "crates/diagnostics" }
 portable_eval = { package = "polyrust-eval", path = "crates/eval" }
 portable_ir = { package = "polyrust-ir", path = "crates/ir" }

@@ -21,3 +21,30 @@ rust_test(
     crate = ":portable_eval",
     visibility = ["//visibility:public"],
 )
+
+rust_test(
+    name = "core_ir_parity_test",
+    srcs = ["testsupport/core_ir_parity.rs"],
+    crate_name = "core_ir_parity_test",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":portable_eval",
+        "//crates/check:portable_check",
+        "//crates/core-ir:portable_core_ir",
+        "//crates/ir:portable_ir",
+        "//examples/models-and-validation:model",
+        "//examples/real-world/escape-string-regexp:model",
+        "//examples/real-world/has-flag:model",
+        "//examples/real-world/html-escaper:model",
+        "//examples/real-world/is-fullwidth-code-point:model",
+        "//examples/real-world/normalize-newline:model",
+        "//examples/real-world/parse-ms:model",
+        "//examples/real-world/slash:model",
+        "//examples/real-world/split-on-first:model",
+        "//examples/real-world/stdlib-is-negative-zero:model",
+        "//examples/real-world/strip-bom:model",
+        "//examples/real-world/trim-newlines:model",
+        "//examples/real-world/truncate-utf8-bytes:model",
+        "@crates//:serde_json",
+    ],
+)
