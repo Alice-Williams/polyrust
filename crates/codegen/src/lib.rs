@@ -7,6 +7,7 @@ mod capability;
 mod document;
 mod language;
 mod manifest;
+mod target_ast;
 mod typed_pipeline;
 
 pub use backend::*;
@@ -14,6 +15,7 @@ pub use capability::*;
 pub use document::*;
 pub use language::*;
 pub use manifest::*;
+pub use target_ast::*;
 pub use typed_pipeline::*;
 
 /// Temporary adapter for the pre-v0 prototype emitters. New backends must use

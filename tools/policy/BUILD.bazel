@@ -1,0 +1,11 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+sh_test(
+    name = "typed_generation_source_policy_test",
+    srcs = ["typed_generation_source_policy_test.sh"],
+    data = [
+        "typed_generation_source_policy.py",
+        "//crates/codegen:typed_target_ast_policy_sources",
+    ],
+    visibility = ["//visibility:public"],
+)

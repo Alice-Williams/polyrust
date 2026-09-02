@@ -1,6 +1,6 @@
 # M34A-04 — Establish the typed target-AST framework
 
-- Status: planned
+- Status: complete
 - Depends on: M34A-03
 
 ## Goal
@@ -35,3 +35,30 @@ owns grammar-correct types.
 
 Commit and push `M34A-04: add typed target-AST framework` after focused tests
 and `//crates/codegen:all` pass in the dev container.
+
+## Evidence
+
+- The phase-level `TargetDialect` now has a `TypedAstDialect` extension whose
+  unresolved associated type is compile-time constrained to
+  `TargetAstPackage<Self>`. The package owns category-specific typed IDs,
+  generated declarations, expression and statement arenas, files, groups,
+  template enums, origins, invocation kinds, and provenance.
+- Dialects own their expression, statement, file-item, primitive, constructed,
+  known/runtime symbol, visibility, declaration-kind, and template enums.
+  There is no universal target switch or universal source expression enum.
+- `Expr<D, T>` makes known target expression types phantom-typed. Dynamic
+  input-defined declarations remain typed IDs whose signatures and references
+  are checked by the unresolved verifier. Compile-fail documentation proves
+  both phantom-type and expression/statement category boundaries.
+- The deliberately small test dialect verifies known, runtime, generated, and
+  interface callables; receiver/invocation shape; expression postorder and
+  types; all declaration/reference categories; file/group ownership; safe
+  paths; provenance; stable diagnostics; and three identical canonical dumps.
+- `//tools/policy:typed_generation_source_policy_test` rejects opaque
+  executable variants, source-string/byte fields, document fields, and
+  `String`/`Document` conversions into executable AST categories. Its embedded
+  fault-injection cases prove every prohibition is live.
+- Linux-container Bazel invocation
+  `e55a183d-77ad-43ad-a1c2-7fb6748a463d` passed all codegen tests and doctests,
+  the typed-generation source policy, Buildifier, Rustfmt, and Clippy: 12/12
+  tests.

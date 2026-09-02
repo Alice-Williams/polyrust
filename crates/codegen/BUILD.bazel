@@ -2,6 +2,12 @@ load("@rules_rust//rust:defs.bzl", "rust_doc_test", "rust_library", "rust_test")
 
 exports_files(["Cargo.toml"])
 
+filegroup(
+    name = "typed_target_ast_policy_sources",
+    srcs = ["src/target_ast.rs"],
+    visibility = ["//visibility:public"],
+)
+
 rust_library(
     name = "portable_codegen",
     srcs = glob(["src/**/*.rs"]),
@@ -37,6 +43,13 @@ rust_test(
     deps = ["//crates/build:portable_build"],
 )
 
+rust_test(
+    name = "target_ast_test",
+    crate = ":portable_codegen",
+    visibility = ["//visibility:public"],
+    deps = ["//crates/build:portable_build"],
+)
+
 rust_doc_test(
     name = "portable_codegen_doc_test",
     crate = ":portable_codegen",
@@ -49,5 +62,10 @@ rust_doc_test(
 
 rust_doc_test(
     name = "capability_compile_fail_test",
+    crate = ":portable_codegen",
+)
+
+rust_doc_test(
+    name = "target_ast_compile_fail_test",
     crate = ":portable_codegen",
 )
