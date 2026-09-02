@@ -778,7 +778,7 @@ impl<D: LinkerDialect> ResolvedReferenceMap<D> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResolvedImport<D: LinkerDialect> {
     id: ResolvedImportId,
-    symbol: TargetSymbolRef<D>,
+    symbols: BTreeSet<TargetSymbolRef<D>>,
     original_binding: D::Identifier,
     binding: D::Identifier,
     kind: D::ImportKind,
@@ -791,8 +791,8 @@ impl<D: LinkerDialect> ResolvedImport<D> {
     }
 
     #[cfg(test)]
-    fn symbol(&self) -> &TargetSymbolRef<D> {
-        &self.symbol
+    fn symbols(&self) -> &BTreeSet<TargetSymbolRef<D>> {
+        &self.symbols
     }
 
     pub fn binding(&self) -> &D::Identifier {
@@ -1096,6 +1096,7 @@ impl<D: LinkerDialect> TargetLinker<D> {
         for raw_file in raw_files {
             let mut imports = Vec::new();
             let mut import_lookup = BTreeMap::new();
+            let mut physical_import_lookup = BTreeMap::new();
             let mut references = Vec::new();
             let mut occupied = occupied_names(&self.dialect, &bindings, raw_file.file);
             for located in raw_file.references {
@@ -1106,6 +1107,7 @@ impl<D: LinkerDialect> TargetLinker<D> {
                     &binding_lookup,
                     &mut imports,
                     &mut import_lookup,
+                    &mut physical_import_lookup,
                     &mut occupied,
                     &mut requirements,
                     &mut next_import,
@@ -1877,6 +1879,7 @@ fn resolve_reference<D: LinkerDialect>(
     binding_lookup: &BTreeMap<BindableSymbolId<D>, usize>,
     imports: &mut Vec<ResolvedImport<D>>,
     import_lookup: &mut BTreeMap<TargetSymbolRef<D>, ResolvedImportId>,
+    physical_import_lookup: &mut BTreeMap<(D::ImportKind, D::Identifier), ResolvedImportId>,
     occupied: &mut BTreeSet<(D::Namespace, D::NameKey)>,
     requirements: &mut BTreeMap<D::ExternalPackage, PackageRequirement<D>>,
     next_import: &mut usize,
@@ -1963,6 +1966,24 @@ fn resolve_reference<D: LinkerDialect>(
                     import: *id,
                 });
             }
+            let physical_key = (kind.clone(), plan.name.clone());
+            if let Some(id) = physical_import_lookup.get(&physical_key).copied() {
+                let import = imports.iter_mut().find(|import| import.id == id)?;
+                if import.origin != plan.origin {
+                    diagnostics.push(Diagnostic::error(
+                        DiagnosticCode::InterfaceNonconformance,
+                        "one physical import was assigned conflicting typed origins",
+                        located.source.clone(),
+                    ));
+                    return None;
+                }
+                import.symbols.insert(located.symbol.clone());
+                import_lookup.insert(located.symbol.clone(), id);
+                return Some(ResolvedReference::Imported {
+                    binding: import.binding.clone(),
+                    import: id,
+                });
+            }
             let key = (plan.namespace.clone(), dialect.identifier_key(&plan.name));
             let binding = if occupied.insert(key) {
                 plan.name.clone()
@@ -1993,13 +2014,14 @@ fn resolve_reference<D: LinkerDialect>(
             *next_import += 1;
             imports.push(ResolvedImport {
                 id,
-                symbol: located.symbol.clone(),
+                symbols: BTreeSet::from([located.symbol.clone()]),
                 original_binding: plan.name,
                 binding: binding.clone(),
                 kind,
                 origin: plan.origin,
             });
             import_lookup.insert(located.symbol.clone(), id);
+            physical_import_lookup.insert(physical_key, id);
             Some(ResolvedReference::Imported {
                 binding,
                 import: id,
@@ -2154,6 +2176,9 @@ pub fn verify_linked_package<D: LinkerDialect>(
             ));
         }
         let mut file_imports = BTreeMap::new();
+        let mut physical_imports = BTreeSet::new();
+        let mut expected_import_symbols =
+            BTreeMap::<ResolvedImportId, BTreeSet<TargetSymbolRef<D>>>::new();
         let mut expected_file_dependencies = BTreeSet::new();
         for import in &file.imports {
             if !declared_imports.insert(import.id) {
@@ -2163,11 +2188,22 @@ pub fn verify_linked_package<D: LinkerDialect>(
                     "imports",
                 ));
             }
+            if !physical_imports.insert((import.kind.clone(), import.original_binding.clone())) {
+                diagnostics.push(link_error(
+                    DiagnosticCode::DuplicateDeclaration,
+                    "one physical import appears more than once in a file",
+                    "imports",
+                ));
+            }
             file_imports.insert(import.id, import);
         }
         for reference in &file.references {
             if let ResolvedReference::Imported { import, .. } = reference.resolved {
                 referenced_imports.insert(import);
+                expected_import_symbols
+                    .entry(import)
+                    .or_default()
+                    .insert(reference.symbol.clone());
             }
             if !resolved_reference_matches(package, reference, &file_imports) {
                 diagnostics.push(Diagnostic::error(
@@ -2202,6 +2238,15 @@ pub fn verify_linked_package<D: LinkerDialect>(
                         expected_dependencies.insert(requirement.package.clone(), requirement);
                     }
                 }
+            }
+        }
+        for import in &file.imports {
+            if expected_import_symbols.get(&import.id) != Some(&import.symbols) {
+                diagnostics.push(link_error(
+                    DiagnosticCode::InterfaceNonconformance,
+                    "resolved import symbol membership is not exactly reference-derived",
+                    "imports",
+                ));
             }
         }
         let symbols = file
@@ -2441,9 +2486,15 @@ fn resolved_reference_matches<D: LinkerDialect>(
             },
             DependencyPolicy::Member { owner, member },
         ) => actual_owner == &owner && actual_member == &member,
-        (ResolvedReference::Imported { binding, import }, DependencyPolicy::Import(_)) => imports
-            .get(import)
-            .is_some_and(|record| record.symbol == reference.symbol && &record.binding == binding),
+        (ResolvedReference::Imported { binding, import }, DependencyPolicy::Import(kind)) => {
+            imports.get(import).is_some_and(|record| {
+                record.symbols.contains(&reference.symbol)
+                    && record.original_binding == plan.name
+                    && record.kind == kind
+                    && record.origin == plan.origin
+                    && &record.binding == binding
+            })
+        }
         _ => false,
     }
 }
@@ -3494,7 +3545,7 @@ mod tests {
             constructors: vec![KnownConstructorSpec {
                 symbol: KnownConstructor::NewClock,
                 owner: KnownType::Clock,
-                name: id("new_clock"),
+                name: id("maximum"),
                 alias_stem: "new_clock".to_owned(),
                 qualified_name: Some(QualifiedName::MathClock),
                 origin: SymbolOrigin::ExternalPackage(ExternalPackage::Math),
@@ -4076,10 +4127,14 @@ mod tests {
 
         let file = &linked.files()[0];
         let imports = file.imports();
-        assert_eq!(imports.len(), 3);
+        assert_eq!(imports.len(), 2);
         let clock = imports
             .iter()
-            .find(|import| import.symbol() == &TargetSymbolRef::KnownType(KnownType::Clock))
+            .find(|import| {
+                import
+                    .symbols()
+                    .contains(&TargetSymbolRef::KnownType(KnownType::Clock))
+            })
             .unwrap();
         assert_eq!(clock.original_binding(), &id("Clock"));
         assert_eq!(clock.binding(), &id("Clock_import_2"));
@@ -4123,8 +4178,9 @@ mod tests {
         let symbols = linked.files()[0]
             .imports()
             .iter()
-            .map(|import| import.symbol().clone())
+            .flat_map(|import| import.symbols().iter().cloned())
             .collect::<BTreeSet<_>>();
+        assert_eq!(linked.files()[0].imports().len(), 1);
         assert_eq!(
             symbols,
             BTreeSet::from([
@@ -4275,6 +4331,21 @@ mod tests {
         let mut missing_import = base.clone();
         missing_import.files_mut()[0].imports.pop();
         assert!(verify_linked_package(&missing_import).is_err());
+
+        let mut forged_import_membership = base.clone();
+        let shared_import = forged_import_membership.files_mut()[0]
+            .imports
+            .iter_mut()
+            .find(|import| import.symbols.len() > 1)
+            .expect("fixture has one physical import shared by typed symbols");
+        let removed = shared_import
+            .symbols
+            .iter()
+            .next()
+            .cloned()
+            .expect("shared import has symbols");
+        shared_import.symbols.remove(&removed);
+        assert!(verify_linked_package(&forged_import_membership).is_err());
 
         let mut missing_dependency = base.clone();
         missing_dependency.dependencies_mut().clear();

@@ -1,6 +1,6 @@
 # M34A-10 — Migrate Java 21 to typed generation
 
-- Status: planned
+- Status: complete
 - Depends on: M34A-09
 
 ## Goal
@@ -44,3 +44,34 @@ opaque-runtime/manual-import design.
 
 Commit and push `M34A-10: migrate Java to typed AST` only when all Java and
 shared typed-generation gates pass in the dev container.
+
+## Exit evidence
+
+- `crates/backend-java/src/ast.rs` owns the closed Java syntax, type-use,
+  modifier, heritage, literal, operator, file, and template model. The dialect
+  catalogue and verifier are in `dialect.rs`; exhaustive CoreIR lowering is in
+  `lower.rs`; structural helper declarations are in `runtime.rs`; and
+  `render.rs` is a resolved-only strict Handlebars renderer.
+- The legacy checked-in `Runtime.java`, raw Java document path, `JavaCode`,
+  `RUNTIME`, `require_java`, and `serde_json` interpreter dependency are
+  deleted. The typed-generation source policy now scans every production Java
+  backend Rust source, while the dependency policy admits directives only in a
+  certified typed import template.
+- The shared linker coalesces one physical import used by multiple typed
+  symbols, retains the exact symbol membership on that import, and rejects
+  forged membership. Java tests lock the exact runtime import set and prove
+  that generated files receive only reference-derived imports.
+- The canonical interface corpus proves two flat interfaces on one immutable
+  record, static and dynamic dispatch, first-class interface values in nested
+  type positions, explicit final-field composition, and three-generation
+  determinism. Invalid heritage, modifier, type-use, literal, operator,
+  callable, constructor, and catalogue mutations fail closed.
+- Hermetic Java 21 compilation uses `-Werror -Xlint:all`. Separate public
+  consumer tests, native semantic tests, canonical conformance tests, and
+  deliberate invalid-type compilation tests pass for both the base and
+  interface packages.
+- All 39 tracked historical Java generation/conformance/negative-type targets
+  pass. The final uncached tracked-scope repository graph passes 282 of 282
+  tests in the Linux development container; the user-owned untracked
+  `examples/real-world/stdlib-abs` package is the only exclusion and was not
+  modified.

@@ -13,8 +13,13 @@ name = "portable_backend_java"
 [dependencies]
 portable_check.workspace = true
 portable_codegen.workspace = true
+portable_core_ir.workspace = true
+portable_diagnostics.workspace = true
 portable_ir.workspace = true
-serde_json.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+portable_build.workspace = true
 
 [lints]
 workspace = true

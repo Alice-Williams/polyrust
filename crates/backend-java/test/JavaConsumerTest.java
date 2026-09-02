@@ -16,5 +16,11 @@ public final class JavaConsumerTest {
     if (!dispatched.ok() || !"hello".equals(dispatched.value())) {
       throw new AssertionError("contract dispatch API");
     }
+    try {
+      new Generated.Label(null);
+      throw new AssertionError("null record field accepted");
+    } catch (NullPointerException expected) {
+      // Required boundary rejection.
+    }
   }
 }

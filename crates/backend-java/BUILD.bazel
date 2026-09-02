@@ -1,20 +1,22 @@
 load("@rules_java//java:defs.bzl", "java_test")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 exports_files(["Cargo.toml"])
 
 rust_library(
     name = "portable_backend_java",
     srcs = glob(["src/**/*.rs"]),
-    compile_data = ["src/Runtime.java"],
     crate_name = "portable_backend_java",
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = [
         "//crates/check:portable_check",
         "//crates/codegen:portable_codegen",
+        "//crates/core-ir:portable_core_ir",
+        "//crates/diagnostics:portable_diagnostics",
         "//crates/ir:portable_ir",
-        "@crates//:serde_json",
+        "@crates//:serde",
     ],
 )
 
@@ -23,6 +25,7 @@ rust_test(
     compile_data = ["//crates/build:testdata/registration.poly.json"],
     crate = ":portable_backend_java",
     visibility = ["//visibility:public"],
+    deps = ["//crates/build:portable_build"],
 )
 
 rust_binary(
@@ -35,6 +38,19 @@ rust_binary(
         "//crates/check:portable_check",
         "//crates/codegen:portable_codegen",
         "//crates/ir:portable_ir",
+    ],
+)
+
+rust_binary(
+    name = "generate_interface_fixture",
+    srcs = ["examples/generate_interface.rs"],
+    crate_name = "generate_java_interface_fixture",
+    edition = "2024",
+    deps = [
+        ":portable_backend_java",
+        "//crates/build:portable_build",
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
     ],
 )
 
@@ -53,6 +69,51 @@ genrule(
     tools = [":generate_v0_fixture"],
 )
 
+genrule(
+    name = "generate_interface_package",
+    outs = [
+        "interface-generated/README.md",
+        "interface-generated/negative/InvalidTypes.java",
+        "interface-generated/src/main/java/org/polyrust/generated/Generated.java",
+        "interface-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        "interface-generated/src/test/java/org/polyrust/generated/ConformanceTest.java",
+        "interface-generated/src/test/java/org/polyrust/generated/GeneratedTest.java",
+    ],
+    cmd = "$(location :generate_interface_fixture) $(@D)/interface-generated",
+    tools = [":generate_interface_fixture"],
+)
+
+java_test(
+    name = "generated_interface_native_test",
+    srcs = [
+        ":interface-generated/src/main/java/org/polyrust/generated/Generated.java",
+        ":interface-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        ":interface-generated/src/test/java/org/polyrust/generated/GeneratedTest.java",
+    ],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
+    main_class = "org.polyrust.generated.GeneratedTest",
+    use_testrunner = False,
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "generated_interface_negative_type_test",
+    srcs = ["//tools/java:negative_compile_test.sh"],
+    args = [
+        "$(location :interface-generated/src/main/java/org/polyrust/generated/Runtime.java)",
+        "$(location :interface-generated/negative/InvalidTypes.java)",
+    ],
+    data = [
+        ":interface-generated/negative/InvalidTypes.java",
+        ":interface-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        "@bazel_tools//tools/jdk:current_java_runtime",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 java_test(
     name = "generated_v0_native_test",
     srcs = [
@@ -66,6 +127,21 @@ java_test(
     ],
     main_class = "org.polyrust.generated.GeneratedTest",
     use_testrunner = False,
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "generated_v0_negative_type_test",
+    srcs = ["//tools/java:negative_compile_test.sh"],
+    args = [
+        "$(location :test-generated/src/main/java/org/polyrust/generated/Runtime.java)",
+        "$(location :test-generated/negative/InvalidTypes.java)",
+    ],
+    data = [
+        ":test-generated/negative/InvalidTypes.java",
+        ":test-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        "@bazel_tools//tools/jdk:current_java_runtime",
+    ],
     visibility = ["//visibility:public"],
 )
 

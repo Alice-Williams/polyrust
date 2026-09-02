@@ -654,7 +654,7 @@ mod tests {
         assert!(
             targets
                 .1
-                .contains("org.polyrust.java\tJava\tbackend 0.1.0\tIR 0.2.0..=0.2.0\n")
+                .contains("org.polyrust.java\tJava\tbackend 0.2.0\tIR 0.2.0..=0.2.0\n")
         );
         assert!(
             targets

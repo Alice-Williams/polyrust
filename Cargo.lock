@@ -204,10 +204,13 @@ dependencies = [
 name = "polyrust-backend-java"
 version = "0.1.0"
 dependencies = [
+ "polyrust-build",
  "polyrust-check",
  "polyrust-codegen",
+ "polyrust-core-ir",
+ "polyrust-diagnostics",
  "polyrust-ir",
- "serde_json",
+ "serde",
 ]
 
 [[package]]

@@ -200,6 +200,16 @@ def _inside(index: int, spans: list[tuple[int, int]]) -> bool:
     return any(start <= index < end for start, end in spans)
 
 
+def _is_typed_import_template(mask: str, string: RustString) -> bool:
+    prefix = mask[: string.start]
+    return bool(
+        re.search(
+            r"\btemplate\s*\(\s*(?:[A-Za-z_][A-Za-z0-9_]*::)*Import\s*,\s*$",
+            prefix,
+        )
+    )
+
+
 def rust_template_offenders(relative: str, source: str) -> list[str]:
     strings, mask = rust_strings_and_mask(source)
     renderer_impls = _language_renderer_spans(mask)
@@ -209,9 +219,11 @@ def rust_template_offenders(relative: str, source: str) -> list[str]:
         if _inside(span[0], renderer_impls)
     ] + _test_module_spans(mask)
     return [
-        f"{relative}:{string.line}: dependency directive outside render_imports"
+        f"{relative}:{string.line}: dependency directive outside certified import rendering"
         for string in strings
-        if not _inside(string.start, allowed) and DIRECTIVE.search(string.value)
+        if not _inside(string.start, allowed)
+        and not _is_typed_import_template(mask, string)
+        and DIRECTIVE.search(string.value)
     ]
 
 
@@ -256,12 +268,18 @@ const BODY: &str = "plain body";
 '''
     if rust_template_offenders("allowed.rs", allowed):
         raise AssertionError("renderer or unit-test spelling was rejected")
+    typed = 'template(JavaTemplateId::Import, "import {{path}};\\n", &["path"]);'
+    if rust_template_offenders("typed.rs", typed):
+        raise AssertionError("typed import template was rejected")
     injected = 'const BODY: &str = "body\\nimport forbidden";'
     if not rust_template_offenders("injected.rs", injected):
         raise AssertionError("Rust body directive injection was not detected")
     counterfeit = 'fn render_imports() -> &\'static str { "import forbidden" }'
     if not rust_template_offenders("counterfeit.rs", counterfeit):
         raise AssertionError("non-renderer function inherited renderer permission")
+    wrong_template = 'template(JavaTemplateId::Statement, "import forbidden;\\n", &[]);'
+    if not rust_template_offenders("wrong-template.rs", wrong_template):
+        raise AssertionError("non-import template inherited import permission")
     if not target_template_offenders("crates/backend-c/src/injected.c", "#include <bad.h>\n"):
         raise AssertionError("target template directive injection was not detected")
     fixture = "crates/backend-c/test/c_consumer_test.c"

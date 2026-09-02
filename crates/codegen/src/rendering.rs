@@ -147,13 +147,11 @@ impl<I: CertifiedTemplateId> CertifiedTemplateEngine<I> {
                 }
             }
             let internal_name = format!("__polyrust_certified_{index}");
-            if registry
-                .register_template_string(&internal_name, definition.source)
-                .is_err()
+            if let Err(error) = registry.register_template_string(&internal_name, definition.source)
             {
                 diagnostics.push(registry_error(
                     CertifiedRenderError::InvalidTemplate,
-                    "Handlebars rejected an embedded certified template",
+                    &format!("Handlebars rejected embedded certified template {id:?}: {error}"),
                     source.clone(),
                 ));
                 continue;

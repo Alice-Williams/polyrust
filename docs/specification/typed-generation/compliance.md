@@ -2,30 +2,33 @@
 
 - Status: normative baseline for M34A
 - Baseline date: 2026-09-02
+- Last updated: 2026-09-02
 - Supersedes for new work: `docs/language-ir-compliance.md`
 
 This ledger measures the stronger ADR-0004 contract. The M30 ledger remains
 historical evidence that the existing fragment paths carry dependency metadata;
 it is not evidence of typed executable syntax.
 
-## Baseline audit
+## Current audit
 
-| Surface | CoreIR input | Typed executable AST | Typed symbols and derived dependencies | Structural runtime | Resolved-only strict renderer | Baseline |
+| Surface | CoreIR input | Typed executable AST | Typed symbols and derived dependencies | Structural runtime | Resolved-only strict renderer | Result |
 | --- | --- | --- | --- | --- | --- | --- |
-| Shared codegen | Missing | Missing | Partial fragment metadata | Partial helper closure over documents | Missing | **Fail** |
+| Shared codegen | `CoreProgram` is the only lowering input | Generic checked target AST | Catalogue/linker-derived bindings, imports, files, helpers, and packages | Typed helper DAG and structural items | Certified strict Handlebars over linked packages | **Pass** |
 | Rust | Missing | Missing: `RustCode`/raw documents | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | TypeScript | Missing | Missing: paired `EcmaCode` | Manually attached fragment metadata | Raw runtime source | Paired source path | **Fail** |
 | JavaScript | Missing | Independently paired source exists | Shares manual ECMA metadata | Checked-in/runtime paired text | Not solely compiler-derived | **Fail** |
 | Python | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | Go | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
-| Java | Missing | Missing: `JavaCode`/raw documents | `require_java` accepts qualified-name strings | Included/parceled runtime source | Documents are directly rendered | **Fail** |
+| Java | Exhaustive `CoreProgram` lowering | Closed Java type/expression/statement/declaration/file AST | Closed JDK/runtime catalogues; linker-derived imports with physical deduplication | `JavaRuntimeHelper` expands to typed declarations | Java-owned strict templates receive resolved render views only | **Pass** |
 | C++20 | Missing | Missing: `CppCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 | C17 | Missing | Missing: `CCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 
 ## Evidence locations
 
-- Shared fragment/document escape:
-  `crates/codegen/src/language.rs` and `crates/codegen/src/document.rs`.
+- Shared typed pipeline: `crates/core-ir/src`,
+  `crates/codegen/src/target_ast.rs`, `crates/codegen/src/linking.rs`,
+  `crates/codegen/src/rendering.rs`, `crates/codegen/src/typed_pipeline.rs`,
+  `crates/codegen/src/manifest.rs`, and `crates/codegen/src/compliance.rs`.
 - Rust: `crates/backend-rust/src/v0.rs`.
 - TypeScript/JavaScript: `crates/backend-typescript/src/lib.rs` and
   `crates/backend-typescript/src/runtime.ts`.
@@ -33,15 +36,33 @@ it is not evidence of typed executable syntax.
   `crates/backend-python/src/runtime.py`.
 - Go: `crates/backend-go/src/v0.rs` and
   `crates/backend-go/src/runtime.go`.
-- Java: `crates/backend-java/src/lib.rs` and
-  `crates/backend-java/src/Runtime.java`.
+- Java: `crates/backend-java/src/ast.rs`,
+  `crates/backend-java/src/dialect.rs`, `crates/backend-java/src/lower.rs`,
+  `crates/backend-java/src/runtime.rs`, `crates/backend-java/src/render.rs`, and
+  `crates/backend-java/src/lib.rs`.
 - C++20: `crates/backend-cpp/src/lib.rs` and
   `crates/backend-cpp/src/runtime.hpp`.
 - C17: `crates/backend-c/src/lib.rs`,
   `crates/backend-c/src/generator.rs`, `crates/backend-c/src/runtime.h`, and
   `crates/backend-c/src/runtime.c`.
 
-These locations are migration inputs, not allowlisted final architecture.
+The locations for rows which still fail are migration inputs, not allowlisted
+final architecture. Shared codegen and Java are accepted implementations of
+ADR-0004.
+
+## Java M34A-10 evidence
+
+- The Java backend has no production opaque executable source node, checked-in
+  runtime source, manual import API, or direct manifest construction path.
+- Exact import-set tests include the former runtime dependencies and prove that
+  repeated type/constructor references produce one physical import. Shared
+  linker fault injection rejects forged import membership.
+- Hermetic Java 21 `-Werror -Xlint:all` positive, public-consumer,
+  conformance, interface/composition, and deliberate negative-type tests pass.
+- All 39 tracked historical Java targets pass. The uncached tracked-scope
+  repository gate passes 282 of 282 tests with Rustfmt, Clippy, Buildifier,
+  typed-source policy, template policy, dependency policy, native compilers,
+  sanitizers, and differential conformance included.
 
 ## Pass rule
 
