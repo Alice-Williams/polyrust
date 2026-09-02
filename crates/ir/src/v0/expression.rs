@@ -36,6 +36,7 @@ pub enum Intrinsic {
     FloatTrunc,
     #[serde(rename = "float_is_nan")]
     FloatIsNaN,
+    FloatIsNegativeZero,
     FloatAdd,
     FloatSub,
     FloatMul,

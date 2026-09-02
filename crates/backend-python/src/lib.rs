@@ -991,14 +991,27 @@ mod tests {
     #[test]
     fn checked_f64_program_selects_python_math_struct_closure() {
         let manifest = PythonBackend
-            .generate(&f64_fixture(), &BackendOptions::default())
+            .generate(
+                &f64_fixture(Intrinsic::FloatIsNegativeZero),
+                &BackendOptions::default(),
+            )
             .unwrap();
         let runtime = generated_text(&manifest, "src/generated_polyrust/runtime.py");
         assert_eq!(runtime.matches("import math").count(), 1);
         assert_eq!(runtime.matches("import struct").count(), 1);
         assert!(runtime.contains("def float_div"));
         assert!(runtime.contains("struct.unpack"));
+        assert!(runtime.contains("float_is_negative_zero"));
+        assert!(runtime.contains("math.copysign(1.0, a) < 0.0"));
         assert!(!runtime.contains("POLYRUST-BEGIN"));
+
+        let empty = PythonBackend
+            .generate(&empty_fixture(), &BackendOptions::default())
+            .unwrap();
+        let empty_runtime = generated_text(&empty, "src/generated_polyrust/runtime.py");
+        assert!(!empty_runtime.contains("float_is_negative_zero"));
+        assert!(!empty_runtime.contains("import math"));
+        assert!(!empty_runtime.contains("import struct"));
     }
 
     fn generated_text<'a>(manifest: &'a OutputManifest, path: &str) -> &'a str {
@@ -1026,7 +1039,7 @@ mod tests {
         .unwrap()
     }
 
-    fn f64_fixture() -> CheckedProgram {
+    fn f64_fixture(operation: Intrinsic) -> CheckedProgram {
         let source = |id| SourceRef::logical([format!("python-f64-{id}")]);
         let node = |id| NodeMeta::new(NodeId::new(id), source(id));
         portable_check::v0::check_program(IrDocument::new(
@@ -1041,16 +1054,20 @@ mod tests {
                         documentation: vec![],
                     },
                     parameters: vec![],
-                    return_type: TypeRef::F64,
+                    return_type: if operation == Intrinsic::FloatIsNegativeZero {
+                        TypeRef::Bool
+                    } else {
+                        TypeRef::F64
+                    },
                     body: Block {
                         node: node(4),
                         statements: vec![],
                         result: Some(Box::new(Expression::Intrinsic {
                             node: node(3),
-                            operation: Intrinsic::FloatNeg,
+                            operation,
                             arguments: vec![Expression::Literal {
                                 node: node(2),
-                                value: Value::F64(F64Bits::from_f64(1.5)),
+                                value: Value::F64(F64Bits::from_f64(-0.0)),
                             }],
                         })),
                     },

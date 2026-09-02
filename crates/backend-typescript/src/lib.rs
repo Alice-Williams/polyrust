@@ -1406,8 +1406,13 @@ mod tests {
         ];
         for javascript in [false, true] {
             let (graph, common) = ecma_runtime_helper_graph(javascript).unwrap();
-            let minimal = render_runtime(&graph.resolve(&common).unwrap());
+            let minimal_fragment = graph.resolve(&common).unwrap();
+            assert!(minimal_fragment.imports().is_empty());
+            assert!(minimal_fragment.helper_roots().is_empty());
+            let minimal = render_runtime(&minimal_fragment);
             assert!(!minimal.contains("POLYRUST-"));
+            assert!(minimal.contains("float_is_negative_zero"));
+            assert!(minimal.contains("Object.is(a, -0)"));
             for token in [
                 "replaceAllLiteral",
                 "replaceBytesAll",

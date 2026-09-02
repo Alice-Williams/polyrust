@@ -662,6 +662,7 @@ mod tests {
             string_set(&["stdbool.h", "stddef.h", "stdint.h"])
         );
         assert!(!header.contains("poly_f64_trunc"));
+        assert!(!header.contains("poly_f64_is_negative_zero"));
         assert!(!header.contains("poly_string_replace_all"));
         let source = render_runtime_source(&core);
         assert_eq!(
@@ -671,6 +672,7 @@ mod tests {
         assert_eq!(source.matches("#include \"runtime.h\"").count(), 1);
         assert!(!source.contains("POLYRUST-"));
         assert!(!source.contains("poly_f64_trunc"));
+        assert!(!source.contains("poly_f64_is_negative_zero"));
 
         for (root, present, absent) in [
             (
@@ -711,6 +713,7 @@ mod tests {
             assert!(!rendered.contains("POLYRUST-"));
             if root == "runtime.feature.f64" {
                 assert!(rendered.contains("#include <math.h>"));
+                assert!(rendered.contains("poly_f64_is_negative_zero"));
             } else {
                 assert!(!rendered.contains("#include <math.h>"));
             }
@@ -722,6 +725,7 @@ mod tests {
         let minimal = generated_text(&manifest, "src/runtime.c");
         assert!(!minimal.contains("poly_string_replace_all"));
         assert!(!minimal.contains("poly_f64_trunc"));
+        assert!(!minimal.contains("poly_f64_is_negative_zero"));
         assert!(!minimal.contains("#include <math.h>"));
     }
 

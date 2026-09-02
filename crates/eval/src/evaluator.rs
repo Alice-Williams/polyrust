@@ -850,6 +850,11 @@ impl<'a> Session<'a> {
             FloatNeg => unary_float(arguments, |value| -value, self),
             FloatTrunc => unary_float(arguments, f64::trunc, self),
             FloatIsNaN => unary_float_predicate(arguments, f64::is_nan, self),
+            FloatIsNegativeZero => unary_float_predicate(
+                arguments,
+                |value| value.to_bits() == (-0.0_f64).to_bits(),
+                self,
+            ),
             FloatAdd => binary_float(arguments, |left, right| left + right, self),
             FloatSub => binary_float(arguments, |left, right| left - right, self),
             FloatMul => binary_float(arguments, |left, right| left * right, self),
@@ -1819,6 +1824,58 @@ mod tests {
                 FloatIsNaN,
                 vec![Value::F64(F64Bits(f64::NAN.to_bits()))],
                 Ok(Value::Bool(true)),
+            ),
+            (
+                FloatIsNegativeZero,
+                vec![Value::F64(F64Bits((-0.0_f64).to_bits()))],
+                Ok(Value::Bool(true)),
+            ),
+            (
+                FloatIsNegativeZero,
+                vec![Value::F64(F64Bits(0.0_f64.to_bits()))],
+                Ok(Value::Bool(false)),
+            ),
+            (
+                FloatIsNegativeZero,
+                vec![Value::F64(F64Bits(1.0_f64.to_bits()))],
+                Ok(Value::Bool(false)),
+            ),
+            (
+                FloatIsNegativeZero,
+                vec![Value::F64(F64Bits((-f64::MIN_POSITIVE).to_bits()))],
+                Ok(Value::Bool(false)),
+            ),
+            (
+                FloatIsNegativeZero,
+                vec![Value::F64(F64Bits(f64::from_bits(1).to_bits()))],
+                Ok(Value::Bool(false)),
+            ),
+            (
+                FloatIsNegativeZero,
+                vec![Value::F64(F64Bits(
+                    f64::from_bits(0x8000_0000_0000_0001).to_bits(),
+                ))],
+                Ok(Value::Bool(false)),
+            ),
+            (
+                FloatIsNegativeZero,
+                vec![Value::F64(F64Bits(f64::INFINITY.to_bits()))],
+                Ok(Value::Bool(false)),
+            ),
+            (
+                FloatIsNegativeZero,
+                vec![Value::F64(F64Bits(f64::NEG_INFINITY.to_bits()))],
+                Ok(Value::Bool(false)),
+            ),
+            (
+                FloatIsNegativeZero,
+                vec![Value::F64(F64Bits(0x7ff8_0000_0000_0001))],
+                Ok(Value::Bool(false)),
+            ),
+            (
+                FloatIsNegativeZero,
+                vec![Value::F64(F64Bits(0xfff8_0000_0000_0001))],
+                Ok(Value::Bool(false)),
             ),
             (
                 StringScalarLength,

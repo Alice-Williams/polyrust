@@ -71,6 +71,7 @@ double poly_f64_from_bits(uint64_t bits);
 uint64_t poly_f64_bits(double value);
 double poly_f64_trunc(double value);
 bool poly_f64_is_nan(double value);
+bool poly_f64_is_negative_zero(double value);
 double poly_f64_rem_trunc(double left, double right);
 bool poly_f64_test_equal(double left, double right);
 /* POLYRUST-END runtime.feature.f64 */

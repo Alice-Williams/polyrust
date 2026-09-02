@@ -1,6 +1,6 @@
 # M33-02 — Add portable negative-zero predicate
 
-- Status: pending
+- Status: complete
 
 ## Goal
 
@@ -23,3 +23,18 @@ on ordinary equality, reciprocal side effects, or target-specific bit access.
 ## Tests
 
 - Focused IR, checker, evaluator, conformance, and eight-backend Bazel tests.
+
+## Completion evidence
+
+- The IR round-trip and spelling test covers the 69th intrinsic.
+- Checker tests prove the sole `F64 -> Bool` signature and reject zero, wrong
+  typed, and two-argument invocations with `InvalidInvocation`.
+- Evaluator cases cover both zeros, positive and negative normal/subnormal
+  values, both infinities, and positive/negative NaN payloads.
+- Rust, TypeScript/derived JavaScript, Python, Go, Java, C++, and C mappings
+  have focused lowering and dependency-closure assertions. Minimal runtimes
+  prove removal of the optional F64 closure where applicable; targets whose
+  interpreter core already owns numeric dispatch prove the operation adds no
+  import or helper requirement.
+- Uncached core and all-backend Bazel run: 33/33 tests passed in the Linux
+  development container.

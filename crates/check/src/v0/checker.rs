@@ -1794,17 +1794,18 @@ impl Checker<'_> {
     ) -> Option<TypeRef> {
         use Intrinsic::{
             BoolAnd, BoolNot, BoolOr, BytesConcat, BytesIsEmpty, BytesLength, BytesReplaceAll,
-            Equal, FloatAdd, FloatDiv, FloatIsNaN, FloatMul, FloatNeg, FloatRemTrunc, FloatSub,
-            FloatTrunc, Greater, GreaterEqual, IntAddChecked, IntAddWrapping, IntBitAnd, IntBitNot,
-            IntBitOr, IntBitXor, IntDivChecked, IntMulChecked, IntMulWrapping, IntNegChecked,
-            IntNegWrapping, IntRemChecked, IntShiftLeftChecked, IntShiftRightChecked,
-            IntSubChecked, IntSubWrapping, Less, LessEqual, ListAppend, ListConcat, ListContains,
-            ListGetChecked, ListIndexOf, ListIsEmpty, ListLength, NarrowI64ToI32Checked, NotEqual,
-            OptionIsNone, OptionIsSome, OptionUnwrapOr, ResultIsErr, ResultIsOk, StringConcat,
-            StringContains, StringEndsWith, StringFromUtf8Checked, StringIndexOfLiteral,
-            StringIsEmpty, StringReplaceAll, StringReplaceMany, StringScalarLength,
-            StringSliceScalars, StringStartsWith, StringStripPrefix, StringToUtf8, StringTrimEnd,
-            StringTrimStart, StringTruncateUtf8Bytes, StringUtf16Length, WidenI32ToI64,
+            Equal, FloatAdd, FloatDiv, FloatIsNaN, FloatIsNegativeZero, FloatMul, FloatNeg,
+            FloatRemTrunc, FloatSub, FloatTrunc, Greater, GreaterEqual, IntAddChecked,
+            IntAddWrapping, IntBitAnd, IntBitNot, IntBitOr, IntBitXor, IntDivChecked,
+            IntMulChecked, IntMulWrapping, IntNegChecked, IntNegWrapping, IntRemChecked,
+            IntShiftLeftChecked, IntShiftRightChecked, IntSubChecked, IntSubWrapping, Less,
+            LessEqual, ListAppend, ListConcat, ListContains, ListGetChecked, ListIndexOf,
+            ListIsEmpty, ListLength, NarrowI64ToI32Checked, NotEqual, OptionIsNone, OptionIsSome,
+            OptionUnwrapOr, ResultIsErr, ResultIsOk, StringConcat, StringContains, StringEndsWith,
+            StringFromUtf8Checked, StringIndexOfLiteral, StringIsEmpty, StringReplaceAll,
+            StringReplaceMany, StringScalarLength, StringSliceScalars, StringStartsWith,
+            StringStripPrefix, StringToUtf8, StringTrimEnd, StringTrimStart,
+            StringTruncateUtf8Bytes, StringUtf16Length, WidenI32ToI64,
         };
         let invalid = |checker: &mut Self| {
             checker.error(
@@ -1858,7 +1859,7 @@ impl Checker<'_> {
                 Some(arguments[0].clone())
             }
             FloatNeg | FloatTrunc if arguments == [TypeRef::F64] => Some(TypeRef::F64),
-            FloatIsNaN if arguments == [TypeRef::F64] => Some(TypeRef::Bool),
+            FloatIsNaN | FloatIsNegativeZero if arguments == [TypeRef::F64] => Some(TypeRef::Bool),
             FloatAdd | FloatSub | FloatMul | FloatDiv | FloatRemTrunc
                 if arguments == [TypeRef::F64, TypeRef::F64] =>
             {

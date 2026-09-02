@@ -208,6 +208,9 @@ and Go does not make their semantics automatically portable.
   minimum-value / -1 return a structured arithmetic error.
 - `F64` follows IEEE 754 binary64. Canonical conformance encoding represents NaN,
   infinities, and negative zero with tagged strings so JSON does not erase them.
+- `float_is_negative_zero` is the exact representation predicate
+  `bits(value) == 0x8000000000000000`. It is distinct from equality and from
+  testing the sign bit: every nonzero value and every NaN returns false.
 - Float `rem_trunc` is defined as `a - trunc(a / b) * b`, with IEEE special-value
   behavior specified by conformance vectors rather than a target's `%` default.
 - Float equality is IEEE equality; a separate total-order operation is deferred.

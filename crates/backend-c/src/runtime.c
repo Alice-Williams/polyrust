@@ -38,6 +38,10 @@ double poly_f64_trunc(double value) { return trunc(value); }
 
 bool poly_f64_is_nan(double value) { return isnan(value); }
 
+bool poly_f64_is_negative_zero(double value) {
+  return value == 0.0 && signbit(value);
+}
+
 double poly_f64_rem_trunc(double left, double right) {
   return fmod(left, right);
 }

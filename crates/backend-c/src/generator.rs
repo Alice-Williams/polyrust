@@ -197,6 +197,7 @@ impl<'a> Generator<'a> {
                         | Intrinsic::FloatNeg
                         | Intrinsic::FloatTrunc
                         | Intrinsic::FloatIsNaN
+                        | Intrinsic::FloatIsNegativeZero
                         | Intrinsic::FloatAdd
                         | Intrinsic::FloatSub
                         | Intrinsic::FloatMul
@@ -1861,9 +1862,10 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
         mut prelude: String,
     ) -> Result<CExpression, BackendError> {
         let helper = match operation {
-            Intrinsic::FloatTrunc | Intrinsic::FloatIsNaN | Intrinsic::FloatRemTrunc => {
-                Some("runtime.feature.f64")
-            }
+            Intrinsic::FloatTrunc
+            | Intrinsic::FloatIsNaN
+            | Intrinsic::FloatIsNegativeZero
+            | Intrinsic::FloatRemTrunc => Some("runtime.feature.f64"),
             Intrinsic::StringContains | Intrinsic::StringStartsWith | Intrinsic::StringEndsWith => {
                 Some("runtime.feature.string-predicates")
             }
@@ -1954,6 +1956,11 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
             ),
             Intrinsic::FloatIsNaN => scalar(
                 format!("poly_f64_is_nan({})", value(0)),
+                TypeRef::Bool,
+                prelude,
+            ),
+            Intrinsic::FloatIsNegativeZero => scalar(
+                format!("poly_f64_is_negative_zero({})", value(0)),
                 TypeRef::Bool,
                 prelude,
             ),
@@ -2769,6 +2776,7 @@ mod tests {
         let generator = Generator::new(&program);
         for (operation, root) in [
             (Intrinsic::FloatTrunc, "runtime.feature.f64"),
+            (Intrinsic::FloatIsNegativeZero, "runtime.feature.f64"),
             (
                 Intrinsic::StringContains,
                 "runtime.feature.string-predicates",
@@ -2801,14 +2809,21 @@ mod tests {
             (Intrinsic::StringTrimStart, "runtime.feature.string-trim"),
         ] {
             let mut emitter = FunctionEmitter::new(&generator, &[], false);
-            emitter
+            let lowered = emitter
                 .intrinsic(
                     operation,
-                    vec![
-                        string_expression(),
-                        string_expression(),
-                        string_expression(),
-                    ],
+                    if matches!(
+                        operation,
+                        Intrinsic::FloatTrunc | Intrinsic::FloatIsNegativeZero
+                    ) {
+                        vec![float_expression()]
+                    } else {
+                        vec![
+                            string_expression(),
+                            string_expression(),
+                            string_expression(),
+                        ]
+                    },
                     String::new(),
                 )
                 .unwrap();
@@ -2817,6 +2832,9 @@ mod tests {
                 BTreeSet::from([root.to_owned()]),
                 "{operation:?}"
             );
+            if operation == Intrinsic::FloatIsNegativeZero {
+                assert_eq!(lowered.value, "poly_f64_is_negative_zero(-0.0)");
+            }
         }
     }
 
@@ -2847,6 +2865,15 @@ mod tests {
             prelude: String::new(),
             value: "(poly_string_view){NULL, 0U}".to_owned(),
             ty: TypeRef::String,
+            requirements: CCode::default(),
+        }
+    }
+
+    fn float_expression() -> CExpression {
+        CExpression {
+            prelude: String::new(),
+            value: "-0.0".to_owned(),
+            ty: TypeRef::F64,
             requirements: CCode::default(),
         }
     }

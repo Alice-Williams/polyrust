@@ -620,6 +620,8 @@ func (r *runtime) numericOrCollection(name string, a, b any) PolyResult[any] {
 			return polyOk(any(math.Trunc(left)))
 		case "float_is_nan":
 			return polyOk(any(math.IsNaN(left)))
+		case "float_is_negative_zero":
+			return polyOk(any(math.Float64bits(left) == uint64(1)<<63))
 		case "float_add":
 			return polyOk(any(left + right))
 		case "float_sub":

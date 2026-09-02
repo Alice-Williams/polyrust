@@ -372,6 +372,8 @@ public final class Runtime {
         return ok(value > 0.0 ? Math.floor(value) : Math.ceil(value));
       }
       case "float_is_nan": return ok(Double.isNaN((Double) a));
+      case "float_is_negative_zero":
+        return ok(Double.doubleToRawLongBits((Double) a) == Long.MIN_VALUE);
       case "float_add": return ok((Double) a + (Double) b);
       case "float_sub": return ok((Double) a - (Double) b);
       case "float_mul": return ok((Double) a * (Double) b);

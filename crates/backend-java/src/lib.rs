@@ -1055,8 +1055,8 @@ const CONFORMANCE_BODY: &str = r#"public final class ConformanceTest {
 mod tests {
     use super::*;
     use portable_ir::v0::{
-        Block, DeclarationHeader, Document as IrDocument, Expression, FunctionDeclaration, Module,
-        NodeMeta, SourceRef, Value,
+        Block, DeclarationHeader, Document as IrDocument, Expression, F64Bits, FunctionDeclaration,
+        Module, NodeMeta, SourceRef, Value,
     };
 
     #[test]
@@ -1215,6 +1215,24 @@ mod tests {
         assert!(utf8_runtime.contains("stringFromUtf8("));
         assert!(!utf8_runtime.contains("import java.math.BigInteger;"));
         assert!(!utf8_runtime.contains("checkedInteger("));
+
+        let negative_zero = JavaBackend
+            .generate(
+                &intrinsic_fixture(Intrinsic::FloatIsNegativeZero),
+                &BackendOptions::default(),
+            )
+            .unwrap();
+        let negative_zero_runtime = generated_text(
+            &negative_zero,
+            "src/main/java/org/polyrust/generated/Runtime.java",
+        );
+        assert!(negative_zero_runtime.contains("case \"float_is_negative_zero\":"));
+        assert!(
+            negative_zero_runtime
+                .contains("Double.doubleToRawLongBits((Double) a) == Long.MIN_VALUE")
+        );
+        assert!(!negative_zero_runtime.contains("import java.math.BigInteger;"));
+        assert!(!negative_zero_runtime.contains("import java.nio.ByteBuffer;"));
     }
 
     #[test]
@@ -1335,6 +1353,13 @@ mod tests {
                     value: Value::String("hello".to_owned()),
                 }],
                 TypeRef::Bytes,
+            ),
+            Intrinsic::FloatIsNegativeZero => (
+                vec![Expression::Literal {
+                    node: node(2),
+                    value: Value::F64(F64Bits::from_f64(-0.0)),
+                }],
+                TypeRef::Bool,
             ),
             _ => panic!("test fixture supports numeric and UTF-8 roots only"),
         };

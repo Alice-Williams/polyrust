@@ -1154,6 +1154,11 @@ mod tests {
                 ["bytes", "unicode/utf8"].as_slice(),
             ),
             (
+                Intrinsic::FloatIsNegativeZero,
+                ["math", "strconv"].as_slice(),
+                ["bytes", "unicode/utf8"].as_slice(),
+            ),
+            (
                 Intrinsic::StringScalarLength,
                 ["unicode/utf8"].as_slice(),
                 ["bytes", "math", "strconv"].as_slice(),
@@ -1188,7 +1193,17 @@ mod tests {
                     "{operation:?} unexpectedly imported {path}"
                 );
             }
+            if operation == Intrinsic::FloatIsNegativeZero {
+                assert!(runtime.contains("case \"float_is_negative_zero\":"));
+                assert!(runtime.contains("math.Float64bits(left) == uint64(1)<<63"));
+            }
         }
+
+        let empty_manifest = GoV0Backend
+            .generate(&empty_fixture(), &BackendOptions::default())
+            .unwrap();
+        let empty_runtime = generated_text(&empty_manifest, "runtime.go");
+        assert!(!empty_runtime.contains("float_is_negative_zero"));
     }
 
     #[test]
@@ -1272,6 +1287,9 @@ mod tests {
         let (values, return_type) = match operation {
             Intrinsic::IntAddChecked => (vec![Value::I32(20), Value::I32(22)], TypeRef::I32),
             Intrinsic::FloatNeg => (vec![Value::F64(F64Bits::from_f64(1.5))], TypeRef::F64),
+            Intrinsic::FloatIsNegativeZero => {
+                (vec![Value::F64(F64Bits::from_f64(-0.0))], TypeRef::Bool)
+            }
             Intrinsic::StringScalarLength | Intrinsic::StringUtf16Length => {
                 (vec![Value::String("hello".to_owned())], TypeRef::I64)
             }

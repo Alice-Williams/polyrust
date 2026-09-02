@@ -1441,6 +1441,9 @@ impl Generator<'_> {
             Intrinsic::FloatNeg => format!("Ok(-{a})"),
             Intrinsic::FloatTrunc => format!("Ok({a}.trunc())"),
             Intrinsic::FloatIsNaN => format!("Ok({a}.is_nan())"),
+            Intrinsic::FloatIsNegativeZero => {
+                format!("Ok({a}.to_bits() == (-0.0_f64).to_bits())")
+            }
             Intrinsic::FloatAdd => format!("Ok({a} + {b})"),
             Intrinsic::FloatSub => format!("Ok({a} - {b})"),
             Intrinsic::FloatMul => format!("Ok({a} * {b})"),
@@ -2325,6 +2328,19 @@ mod tests {
             );
             assert!(code.helper_roots.contains(root), "{operation:?}");
         }
+
+        let negative_zero = generator.intrinsic(
+            Intrinsic::FloatIsNegativeZero,
+            vec![RustCode::new("Ok(-0.0_f64)")],
+            Some(&TypeRef::F64),
+        );
+        assert!(
+            negative_zero
+                .text
+                .contains("to_bits() == (-0.0_f64).to_bits()")
+        );
+        assert!(negative_zero.imports.is_empty());
+        assert!(negative_zero.helper_roots.is_empty());
     }
 
     #[test]

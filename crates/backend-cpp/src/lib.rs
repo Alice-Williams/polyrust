@@ -1398,6 +1398,8 @@ mod tests {
         assert_eq!(roots, string_set(&["runtime.full"]));
         let runtime = render_runtime(&roots);
         assert!(!runtime.contains("POLYRUST-"));
+        assert!(runtime.contains("if (name == \"float_is_negative_zero\")"));
+        assert!(runtime.contains("value == 0.0 && std::signbit(value)"));
         assert_eq!(
             include_headers(&runtime),
             string_set(&[

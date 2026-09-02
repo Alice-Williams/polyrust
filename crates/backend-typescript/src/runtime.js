@@ -385,6 +385,7 @@ export class Runtime {
             case "float_neg": return ok(-a);
             case "float_trunc": return ok(Math.trunc(a));
             case "float_is_nan": return ok(Number.isNaN(a));
+            case "float_is_negative_zero": return ok(Object.is(a, -0));
             case "float_add": return ok(a + b);
             case "float_sub": return ok(a - b);
             case "float_mul": return ok(a * b);
