@@ -15,7 +15,7 @@ macro_rules! ast_id {
                 self.0 as usize
             }
 
-            fn from_index(index: usize) -> Self {
+            pub(crate) fn from_index(index: usize) -> Self {
                 Self(u32::try_from(index).expect("target AST arena exceeds u32"))
             }
         }
@@ -302,8 +302,16 @@ impl<D: TypedAstDialect> TargetAstPackage<D> {
         self.types.get(id.index())
     }
 
+    pub fn generated_types(&self) -> impl ExactSizeIterator<Item = &GeneratedType<D>> {
+        self.types.iter()
+    }
+
     pub fn callable(&self, id: GeneratedCallableId) -> Option<&GeneratedCallable<D>> {
         self.callables.get(id.index())
+    }
+
+    pub fn callables(&self) -> impl ExactSizeIterator<Item = &GeneratedCallable<D>> {
+        self.callables.iter()
     }
 
     pub fn interface_method(
@@ -313,8 +321,16 @@ impl<D: TypedAstDialect> TargetAstPackage<D> {
         self.interface_methods.get(id.index())
     }
 
+    pub fn interface_methods(&self) -> impl ExactSizeIterator<Item = &GeneratedInterfaceMethod<D>> {
+        self.interface_methods.iter()
+    }
+
     pub fn value(&self, id: GeneratedValueId) -> Option<&GeneratedValue<D>> {
         self.values.get(id.index())
+    }
+
+    pub fn values(&self) -> impl ExactSizeIterator<Item = &GeneratedValue<D>> {
+        self.values.iter()
     }
 
     pub fn type_parameter(&self, id: TargetTypeParameterId) -> Option<&SourceRef> {
@@ -325,8 +341,27 @@ impl<D: TypedAstDialect> TargetAstPackage<D> {
         self.expressions.get(id.index()).map(|value| &value.ty)
     }
 
+    pub fn expression(
+        &self,
+        id: TargetExprId,
+    ) -> Option<(&TargetTypeRef<D>, &D::Expression, &SourceRef)> {
+        self.expressions
+            .get(id.index())
+            .map(|value| (&value.ty, &value.node, &value.source))
+    }
+
+    pub fn statement(&self, id: TargetStmtId) -> Option<(&D::Statement, &SourceRef)> {
+        self.statements
+            .get(id.index())
+            .map(|value| (&value.node, &value.source))
+    }
+
     pub fn file(&self, id: TargetFileId) -> Option<&TargetFile<D>> {
         self.files.get(id.index())
+    }
+
+    pub fn files(&self) -> impl ExactSizeIterator<Item = &TargetFile<D>> {
+        self.files.iter()
     }
 
     pub fn group(&self, id: TargetFileGroupId) -> Option<&TargetFileGroup> {
@@ -340,6 +375,11 @@ impl<D: TypedAstDialect> TargetAstPackage<D> {
     #[cfg(test)]
     fn expressions_mut(&mut self) -> &mut [TargetExpression<D>] {
         &mut self.expressions
+    }
+
+    #[cfg(test)]
+    pub(crate) fn types_mut(&mut self) -> &mut Vec<GeneratedType<D>> {
+        &mut self.types
     }
 
     #[cfg(test)]
@@ -444,6 +484,10 @@ impl<D: TypedAstDialect> TargetAstBuilder<D> {
                 groups: vec![],
             },
         }
+    }
+
+    pub fn dialect(&self) -> &D {
+        self.package.dialect()
     }
 
     pub fn generated_type(&mut self, value: GeneratedType<D>) -> GeneratedTypeId {

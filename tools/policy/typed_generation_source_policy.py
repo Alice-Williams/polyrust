@@ -26,15 +26,29 @@ FORBIDDEN_DOCUMENT_FIELD = re.compile(
     r"(?m)(?:^|[,{])\s*(?:pub(?:\([^)]*\))?\s+)?"
     r"\w+\s*:\s*(?:Code)?Document\b"
 )
+FORBIDDEN_MANUAL_DEPENDENCY_API = re.compile(
+    r"\b(?:require_(?:java|rust|go|python|typescript|cpp|c)|"
+    r"add_(?:import|include|dependency)|manual_(?:import|include))\s*\("
+)
+FORBIDDEN_DEPENDENCY_TEXT_SCAN = re.compile(
+    r"\.(?:contains|find|starts_with)\s*\(\s*"
+    r"(?:r[#]*\"|\")\s*(?:import\b|#\s*include\b|use\s+)"
+)
 
 
 def offenders(path: str, source: str) -> list[str]:
+    # Repository Rust source keeps its cfg(test) module last. Test fixtures must
+    # be able to spell deliberate violations without granting production code
+    # an escape hatch.
+    source = source.split("#[cfg(test)]", maxsplit=1)[0]
     findings: list[str] = []
     for label, pattern in [
         ("opaque executable enum variant", FORBIDDEN_VARIANT),
         ("opaque executable string/byte field", FORBIDDEN_FIELD),
         ("source/document conversion into executable AST", FORBIDDEN_CONVERSION),
         ("document field in executable AST", FORBIDDEN_DOCUMENT_FIELD),
+        ("manual dependency attachment API", FORBIDDEN_MANUAL_DEPENDENCY_API),
+        ("dependency discovery by text scan", FORBIDDEN_DEPENDENCY_TEXT_SCAN),
     ]:
         for match in pattern.finditer(source):
             line = source.count("\n", 0, match.start()) + 1
@@ -56,10 +70,18 @@ struct AstViolation { message: String }
         "struct Expr { code: String }",
         "struct Expr { body: CodeDocument }",
         "impl From<String> for JavaExpression {}",
+        'require_java(&mut body, "java.math.BigInteger");',
+        'body.contains("import java.util.List");',
     ]
     for injected in rejected:
         if not offenders("injected.rs", injected):
             raise AssertionError(f"injection was not rejected: {injected}")
+    before_tests = 'add_import(symbol);\n#[cfg(test)] mod tests {}'
+    if not offenders("before_tests.rs", before_tests):
+        raise AssertionError("production violation before cfg(test) was hidden")
+    test_only = '#[cfg(test)] mod tests { add_import(symbol); }'
+    if offenders("test_only.rs", test_only):
+        raise AssertionError("deliberate cfg(test) injection was rejected")
 
 
 def main() -> int:
