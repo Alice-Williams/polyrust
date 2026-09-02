@@ -3,11 +3,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef, sort_diagnostics};
 
 use crate::{
-    AstViolation, Expr, GeneratedCallableId, GeneratedInterfaceMethodId, GeneratedTypeId,
-    GeneratedValueId, SourceRole, TargetAstBuilder, TargetAstPackage, TargetCallableSignature,
-    TargetDialect, TargetExprId, TargetExpressionNode, TargetFile, TargetFileId,
-    TargetFileItemNode, TargetResolver, TargetStatementNode, TargetStmtId, TargetTypeMarker,
-    TargetTypeRef, TypedAstDialect, UnresolvedPackage, verify_target_ast,
+    AstViolation, DeclaredDependency, Expr, GeneratedCallableId, GeneratedInterfaceMethodId,
+    GeneratedTypeId, GeneratedValueId, InjectedHelper, PackageEcosystem, SourceRole,
+    TargetArtifact, TargetAstBuilder, TargetAstPackage, TargetCallableSignature, TargetDialect,
+    TargetExprId, TargetExpressionNode, TargetFile, TargetFileId, TargetFileItemNode,
+    TargetResolver, TargetStatementNode, TargetStmtId, TargetTypeMarker, TargetTypeRef,
+    TypedAstDialect, UnresolvedPackage, verify_target_ast,
 };
 
 macro_rules! linker_id {
@@ -226,6 +227,7 @@ pub struct KnownMethodSpec<D: LinkerDialect> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RuntimeHelperSpec<D: LinkerDialect> {
     pub id: D::HelperId,
+    pub capability: D::HelperCapability,
     pub order: u32,
     pub name: D::Identifier,
     pub alias_stem: String,
@@ -277,6 +279,7 @@ pub trait LinkerDialect:
     type ExternalPackage: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
     type PackageFeature: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
     type HelperId: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
+    type HelperCapability: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
     type Identifier: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
     type QualifiedName: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
     type MemberName: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
@@ -286,6 +289,11 @@ pub trait LinkerDialect:
     type ResolvedModule: Clone + std::fmt::Debug + Eq + Send + Sync;
     type ResolvedFileItem: Clone + std::fmt::Debug + Eq + Send + Sync;
 
+    fn package_ecosystem(&self, package: &Self::ExternalPackage) -> PackageEcosystem;
+    fn package_name(&self, package: &Self::ExternalPackage) -> &'static str;
+    fn package_feature_name(&self, feature: &Self::PackageFeature) -> &'static str;
+    fn helper_name(&self, helper: &Self::HelperId) -> &'static str;
+    fn helper_capability_name(&self, capability: &Self::HelperCapability) -> &'static str;
     fn symbol_catalogue(&self) -> SymbolCatalogue<Self>;
     fn identifier_from_candidate(
         &self,
@@ -902,6 +910,7 @@ impl<D: LinkerDialect> LinkedFile<D> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct LinkedRuntimeHelper<D: LinkerDialect> {
     id: D::HelperId,
+    capability: D::HelperCapability,
     order: u32,
     file: TargetFileId,
     items: Vec<D::FileItem>,
@@ -954,6 +963,60 @@ impl<D: LinkerDialect> LinkedTargetPackage<D> {
 
     pub fn dependencies(&self) -> &[ResolvedPackageDependency<D>] {
         &self.dependencies
+    }
+
+    pub(crate) fn artifacts(&self) -> impl ExactSizeIterator<Item = &TargetArtifact> {
+        self.unresolved.artifacts()
+    }
+
+    pub(crate) fn manifest_dependencies(&self) -> Vec<DeclaredDependency> {
+        let mut dependencies = self
+            .dependencies
+            .iter()
+            .map(|dependency| {
+                let requirement = dependency.requirement();
+                let mut features = requirement
+                    .features
+                    .iter()
+                    .map(|feature| self.dialect.package_feature_name(feature).to_owned())
+                    .collect::<Vec<_>>();
+                features.sort();
+                DeclaredDependency {
+                    ecosystem: self
+                        .dialect
+                        .package_ecosystem(&requirement.package)
+                        .as_str()
+                        .to_owned(),
+                    name: self.dialect.package_name(&requirement.package).to_owned(),
+                    requirement: requirement.version_requirement.clone(),
+                    features,
+                }
+            })
+            .collect::<Vec<_>>();
+        dependencies.sort();
+        dependencies
+    }
+
+    pub(crate) fn manifest_helpers(&self) -> Vec<InjectedHelper> {
+        let mut helpers = self
+            .helpers
+            .iter()
+            .filter_map(|helper| {
+                self.files
+                    .iter()
+                    .find(|file| file.file == helper.file)
+                    .map(|file| InjectedHelper {
+                        id: self.dialect.helper_name(&helper.id).to_owned(),
+                        capability: self
+                            .dialect
+                            .helper_capability_name(&helper.capability)
+                            .to_owned(),
+                        files: vec![file.path().as_str().to_owned()],
+                    })
+            })
+            .collect::<Vec<_>>();
+        helpers.sort();
+        helpers
     }
 
     #[cfg(test)]
@@ -1367,6 +1430,7 @@ fn expand_file_helpers<D: LinkerDialect>(
         }
         linked.push(LinkedRuntimeHelper {
             id: spec.id.clone(),
+            capability: spec.capability.clone(),
             order: spec.order,
             file: destination,
             items: spec.items.clone(),
@@ -2296,7 +2360,10 @@ pub fn verify_linked_package<D: LinkerDialect>(
             ));
             continue;
         };
-        if helper.order != spec.order || helper.items != spec.items || helper.source != spec.source
+        if helper.capability != spec.capability
+            || helper.order != spec.order
+            || helper.items != spec.items
+            || helper.source != spec.source
         {
             diagnostics.push(Diagnostic::error(
                 DiagnosticCode::InterfaceNonconformance,
@@ -2670,6 +2737,11 @@ mod tests {
         Cycle,
         Missing,
         Unused,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    enum HelperCapability {
+        Arithmetic,
     }
 
     #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -3084,6 +3156,7 @@ mod tests {
         type ExternalPackage = ExternalPackage;
         type PackageFeature = PackageFeature;
         type HelperId = Helper;
+        type HelperCapability = HelperCapability;
         type Identifier = Identifier;
         type QualifiedName = QualifiedName;
         type MemberName = MemberName;
@@ -3092,6 +3165,40 @@ mod tests {
         type ImportKind = ImportKind;
         type ResolvedModule = Module;
         type ResolvedFileItem = ResolvedItem;
+
+        fn package_ecosystem(&self, package: &Self::ExternalPackage) -> PackageEcosystem {
+            match package {
+                ExternalPackage::Math => PackageEcosystem::Cargo,
+            }
+        }
+
+        fn package_name(&self, package: &Self::ExternalPackage) -> &'static str {
+            match package {
+                ExternalPackage::Math => "math",
+            }
+        }
+
+        fn package_feature_name(&self, feature: &Self::PackageFeature) -> &'static str {
+            match feature {
+                PackageFeature::Fast => "fast",
+            }
+        }
+
+        fn helper_name(&self, helper: &Self::HelperId) -> &'static str {
+            match helper {
+                Helper::Root => "root",
+                Helper::Leaf => "leaf",
+                Helper::Cycle => "cycle",
+                Helper::Missing => "missing",
+                Helper::Unused => "unused",
+            }
+        }
+
+        fn helper_capability_name(&self, capability: &Self::HelperCapability) -> &'static str {
+            match capability {
+                HelperCapability::Arithmetic => "arithmetic",
+            }
+        }
 
         fn symbol_catalogue(&self) -> SymbolCatalogue<Self> {
             catalogue(self.0)
@@ -3441,6 +3548,7 @@ mod tests {
             helpers: vec![
                 RuntimeHelperSpec {
                     id: Helper::Root,
+                    capability: HelperCapability::Arithmetic,
                     order: 20,
                     name: id("runtime_root"),
                     alias_stem: "runtime_root".to_owned(),
@@ -3458,6 +3566,7 @@ mod tests {
                 },
                 RuntimeHelperSpec {
                     id: Helper::Leaf,
+                    capability: HelperCapability::Arithmetic,
                     order: 10,
                     name: id("runtime_leaf"),
                     alias_stem: "runtime_leaf".to_owned(),
@@ -3472,6 +3581,7 @@ mod tests {
                 },
                 RuntimeHelperSpec {
                     id: Helper::Unused,
+                    capability: HelperCapability::Arithmetic,
                     order: 30,
                     name: id("runtime_unused"),
                     alias_stem: "runtime_unused".to_owned(),
@@ -3504,6 +3614,7 @@ mod tests {
                 }];
                 result.helpers.push(RuntimeHelperSpec {
                     id: Helper::Cycle,
+                    capability: HelperCapability::Arithmetic,
                     order: 40,
                     name: id("runtime_cycle"),
                     alias_stem: "runtime_cycle".to_owned(),
@@ -3682,6 +3793,16 @@ mod tests {
             Template::Source,
             source("runtime-file"),
         ));
+        let documentation = builder.artifact(TargetArtifact::Documentation {
+            path: RelativeOutputPath::new("README.md").unwrap(),
+            contents: "# Linked fixture\n".to_owned(),
+            source: source("documentation"),
+        });
+        let asset = builder.artifact(TargetArtifact::Asset {
+            path: RelativeOutputPath::new("assets/proof.bin").unwrap(),
+            contents: vec![0, 255],
+            source: source("asset"),
+        });
         builder.group(TargetFileGroup::new(
             FileGroupRole::Implementation,
             vec![TargetFileMember::Source(file)],
@@ -3691,6 +3812,16 @@ mod tests {
             FileGroupRole::Runtime,
             vec![TargetFileMember::Source(runtime)],
             source("runtime-group"),
+        ));
+        builder.group(TargetFileGroup::new(
+            FileGroupRole::Documentation,
+            vec![TargetFileMember::Artifact(documentation)],
+            source("documentation-group"),
+        ));
+        builder.group(TargetFileGroup::new(
+            FileGroupRole::Assets,
+            vec![TargetFileMember::Artifact(asset)],
+            source("asset-group"),
         ));
         builder.build()
     }
@@ -4167,6 +4298,7 @@ mod tests {
             .clone();
         extra_helper.helpers_mut().push(LinkedRuntimeHelper {
             id: spec.id,
+            capability: spec.capability,
             order: spec.order,
             file: TargetFileId::from_index(1),
             items: spec.items,
@@ -4198,9 +4330,58 @@ mod tests {
                 .unwrap();
             render_linked_package(&TestRenderer, &linked).unwrap()
         };
-        let first = format!("{:#?}", render());
+        let rendered = render();
+        let first = format!("{rendered:#?}");
         assert_eq!(first, format!("{:#?}", render()));
         assert_eq!(first, format!("{:#?}", render()));
+        assert_eq!(
+            rendered
+                .files()
+                .iter()
+                .map(|file| (file.path(), file.role()))
+                .collect::<Vec<_>>(),
+            vec![
+                ("README.md", crate::OutputFileRole::Documentation),
+                ("assets/proof.bin", crate::OutputFileRole::Asset),
+                (
+                    "src/generated.test",
+                    crate::OutputFileRole::ImplementationSource,
+                ),
+                ("src/runtime.test", crate::OutputFileRole::RuntimeSource),
+            ]
+        );
+        assert_eq!(
+            rendered.files()[0].contents(),
+            &crate::OutputContents::Text("# Linked fixture\n".to_owned())
+        );
+        assert_eq!(
+            rendered.files()[1].contents(),
+            &crate::OutputContents::Bytes(vec![0, 255])
+        );
+        assert_eq!(
+            rendered.dependencies(),
+            &[crate::DeclaredDependency {
+                ecosystem: "cargo".to_owned(),
+                name: "math".to_owned(),
+                requirement: "1".to_owned(),
+                features: vec!["fast".to_owned()],
+            }]
+        );
+        assert_eq!(
+            rendered.helpers(),
+            &[
+                crate::InjectedHelper {
+                    id: "leaf".to_owned(),
+                    capability: "arithmetic".to_owned(),
+                    files: vec!["src/runtime.test".to_owned()],
+                },
+                crate::InjectedHelper {
+                    id: "root".to_owned(),
+                    capability: "arithmetic".to_owned(),
+                    files: vec!["src/runtime.test".to_owned()],
+                },
+            ]
+        );
         assert!(first.contains("declaration user;"));
         assert!(first.contains("declaration runtime;"));
         assert!(first.contains("src/generated.test"));

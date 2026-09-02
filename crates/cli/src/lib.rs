@@ -528,7 +528,7 @@ impl Backend for InspectionBackend {
             "declarations": program.module().declarations.len(),
             "capabilities": program.capabilities().program().iter().map(|capability| format!("{capability:?}")).collect::<Vec<_>>(),
         });
-        OutputManifest::new(
+        portable_codegen::legacy::assemble_output_manifest(
             vec![OutputFile::text(
                 "polyrust-inspection.json",
                 format!(
@@ -718,12 +718,13 @@ mod tests {
 
     #[test]
     fn dry_run_manifest_reports_files_dependencies_and_helpers() {
-        let manifest = OutputManifest::new(
+        let manifest = portable_codegen::legacy::assemble_output_manifest(
             vec![OutputFile::text("generated.txt", "ok")],
             vec![DeclaredDependency {
                 ecosystem: "example".into(),
                 name: "runtime".into(),
                 requirement: "1".into(),
+                features: vec![],
             }],
             vec![InjectedHelper {
                 id: "unicode".into(),
@@ -856,8 +857,12 @@ mod tests {
         assert_eq!(fs::read_to_string(output_file).unwrap(), "old");
 
         assert!(
-            OutputManifest::new(vec![OutputFile::text("../invalid", "bad")], vec![], vec![])
-                .is_err()
+            portable_codegen::legacy::assemble_output_manifest(
+                vec![OutputFile::text("../invalid", "bad")],
+                vec![],
+                vec![],
+            )
+            .is_err()
         );
         assert_eq!(fs::read(output.join("sentinel")).unwrap(), before);
         fs::remove_dir_all(sandbox).unwrap();

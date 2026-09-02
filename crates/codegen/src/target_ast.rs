@@ -386,6 +386,20 @@ pub enum PackageEcosystem {
     Zig,
 }
 
+impl PackageEcosystem {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Cargo => "cargo",
+            Self::GoModules => "go_modules",
+            Self::Maven => "maven",
+            Self::Npm => "npm",
+            Self::Python => "python",
+            Self::CMake => "cmake",
+            Self::Zig => "zig",
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PackageManifest {
     pub ecosystem: PackageEcosystem,

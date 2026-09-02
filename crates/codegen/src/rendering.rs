@@ -8,7 +8,7 @@ use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef, sort_diagnosti
 use serde::Serialize;
 
 use crate::{
-    LinkedFile, LinkedTargetPackage, LinkerDialect, RenderedFile, RenderedPackage,
+    LinkedFile, LinkedTargetPackage, LinkerDialect, RenderedFile, RenderedPackage, TargetArtifact,
     verify_linked_package,
 };
 
@@ -46,6 +46,7 @@ pub enum CertifiedRenderError {
     InvalidEncoding,
     FileTooLarge,
     PackageTooLarge,
+    UnsupportedArtifact,
 }
 
 pub struct CertifiedTemplateEngine<I: CertifiedTemplateId> {
@@ -320,7 +321,11 @@ where
                         continue;
                     }
                     package_bytes = package_bytes.saturating_add(output.len());
-                    files.push(RenderedFile::text(file.path().as_str(), output));
+                    files.push(RenderedFile::source(
+                        file.path().as_str(),
+                        file.role(),
+                        output,
+                    ));
                 }
                 Err(kind) => diagnostics.push(render_error(
                     kind,
@@ -334,6 +339,55 @@ where
             Err(mut errors) => diagnostics.append(&mut errors),
         }
     }
+    for artifact in package.artifacts() {
+        match artifact {
+            TargetArtifact::Documentation { path, contents, .. } => {
+                match canonical_source(contents.clone()) {
+                    Ok(contents) if contents.len() <= MAX_RENDERED_FILE_BYTES => {
+                        package_bytes = package_bytes.saturating_add(contents.len());
+                        files.push(RenderedFile::documentation(path.as_str(), contents));
+                    }
+                    Ok(_) => diagnostics.push(artifact_error(
+                        CertifiedRenderError::FileTooLarge,
+                        target,
+                        artifact,
+                        "documentation artifact exceeds the certified size limit",
+                    )),
+                    Err(kind) => diagnostics.push(artifact_error(
+                        kind,
+                        target,
+                        artifact,
+                        "documentation artifact is not canonical UTF-8/LF text",
+                    )),
+                }
+            }
+            TargetArtifact::Asset { path, contents, .. } => {
+                if contents.len() > MAX_RENDERED_FILE_BYTES {
+                    diagnostics.push(artifact_error(
+                        CertifiedRenderError::FileTooLarge,
+                        target,
+                        artifact,
+                        "binary artifact exceeds the certified size limit",
+                    ));
+                } else {
+                    package_bytes = package_bytes.saturating_add(contents.len());
+                    files.push(RenderedFile::asset(path.as_str(), contents.clone()));
+                }
+            }
+            TargetArtifact::Metadata { .. } => diagnostics.push(artifact_error(
+                CertifiedRenderError::UnsupportedArtifact,
+                target,
+                artifact,
+                "typed metadata requires its language renderer/template migration",
+            )),
+            TargetArtifact::DerivedJavaScript { .. } => diagnostics.push(artifact_error(
+                CertifiedRenderError::UnsupportedArtifact,
+                target,
+                artifact,
+                "derived JavaScript requires the pinned TypeScript compiler phase",
+            )),
+        }
+    }
     if package_bytes > MAX_RENDERED_PACKAGE_BYTES {
         diagnostics.push(registry_error(
             CertifiedRenderError::PackageTooLarge,
@@ -343,7 +397,12 @@ where
     }
     sort_diagnostics(&mut diagnostics);
     if diagnostics.is_empty() {
-        Ok(RenderedPackage::new(files, vec![], vec![]))
+        files.sort_by(|left, right| left.path().cmp(right.path()));
+        Ok(RenderedPackage::new(
+            files,
+            package.manifest_dependencies(),
+            package.manifest_helpers(),
+        ))
     } else {
         Err(diagnostics)
     }
@@ -458,6 +517,23 @@ fn render_error<D: LinkerDialect>(
             file.path().as_str()
         ),
         source,
+    )
+}
+
+fn artifact_error(
+    kind: CertifiedRenderError,
+    target: &str,
+    artifact: &TargetArtifact,
+    message: &str,
+) -> Diagnostic {
+    Diagnostic::error(
+        DiagnosticCode::InvalidStructure,
+        format!(
+            "certified renderer {kind:?}; target={target:?}; artifact_role={:?}; path={:?}: {message}",
+            artifact.group_role(),
+            artifact.path().as_str()
+        ),
+        artifact.source().clone(),
     )
 }
 

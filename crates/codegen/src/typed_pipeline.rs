@@ -10,8 +10,10 @@ use portable_check::v0::CheckedProgram;
 use portable_diagnostics::Diagnostic;
 
 use crate::{
-    BackendDescriptor, BackendOptions, DeclaredDependency, InjectedHelper, IrVersionRange,
-    OptionsSchema, OutputContents, OutputFile, OutputManifest, TargetId, validate_options,
+    BackendDescriptor, BackendOptions, CertifiedTemplateId, DeclaredDependency, InjectedHelper,
+    IrVersionRange, LinkedTargetPackage, LinkerDialect, ManifestGeneration, OptionsSchema,
+    OutputContents, OutputFile, OutputFileRole, OutputManifest, ResolvedTemplateRenderer,
+    SourceRole, TargetId, render_linked_package, validate_options,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -197,7 +199,47 @@ impl<D: TargetDialect> ResolvedPackage<D> {
 ///     let _ = renderer.build_render_view(package);
 /// }
 /// ~~~
-pub trait TargetRenderer<D: TargetDialect>: Send + Sync + 'static {
+///
+/// External plugins also cannot replace certified rendering with a custom
+/// renderer that returns arbitrary files:
+///
+/// ~~~compile_fail
+/// use portable_codegen::{
+///     RenderView, RenderedPackage, ResolvedPackage, TargetDialect,
+///     TargetRenderer,
+/// };
+///
+/// struct Dialect;
+/// impl TargetDialect for Dialect {
+///     type Unresolved = ();
+///     type Resolved = ();
+///     fn verify_unresolved(&self, _: &()) -> Result<(), Vec<portable_diagnostics::Diagnostic>> {
+///         Ok(())
+///     }
+///     fn verify_resolved(&self, _: &()) -> Result<(), Vec<portable_diagnostics::Diagnostic>> {
+///         Ok(())
+///     }
+/// }
+/// struct Bypass;
+/// impl TargetRenderer<Dialect> for Bypass {
+///     type View = ();
+///     fn build_render_view(
+///         &self,
+///         _: &ResolvedPackage<Dialect>,
+///     ) -> Result<(), Vec<portable_diagnostics::Diagnostic>> {
+///         Ok(())
+///     }
+///     fn render_view(
+///         &self,
+///         _: &RenderView<Dialect, ()>,
+///     ) -> Result<RenderedPackage, Vec<portable_diagnostics::Diagnostic>> {
+///         unreachable!()
+///     }
+/// }
+/// ~~~
+pub trait TargetRenderer<D: TargetDialect>:
+    private::SealedTargetRenderer + Send + Sync + 'static
+{
     type View: Send + Sync + 'static;
 
     fn build_render_view(
@@ -208,6 +250,61 @@ pub trait TargetRenderer<D: TargetDialect>: Send + Sync + 'static {
         &self,
         view: &RenderView<D, Self::View>,
     ) -> Result<RenderedPackage, Vec<Diagnostic>>;
+}
+
+pub struct CertifiedRendererAdapter<D, R>
+where
+    D: LinkerDialect,
+    D::TemplateId: CertifiedTemplateId,
+    R: ResolvedTemplateRenderer<D>,
+{
+    renderer: R,
+    dialect: PhantomData<fn() -> D>,
+}
+
+impl<D, R> CertifiedRendererAdapter<D, R>
+where
+    D: LinkerDialect,
+    D::TemplateId: CertifiedTemplateId,
+    R: ResolvedTemplateRenderer<D>,
+{
+    pub const fn new(renderer: R) -> Self {
+        Self {
+            renderer,
+            dialect: PhantomData,
+        }
+    }
+}
+
+impl<D, R> private::SealedTargetRenderer for CertifiedRendererAdapter<D, R>
+where
+    D: LinkerDialect,
+    D::TemplateId: CertifiedTemplateId,
+    R: ResolvedTemplateRenderer<D>,
+{
+}
+
+impl<D, R> TargetRenderer<D> for CertifiedRendererAdapter<D, R>
+where
+    D: LinkerDialect,
+    D::TemplateId: CertifiedTemplateId,
+    R: ResolvedTemplateRenderer<D>,
+{
+    type View = LinkedTargetPackage<D>;
+
+    fn build_render_view(
+        &self,
+        package: &ResolvedPackage<D>,
+    ) -> Result<Self::View, Vec<Diagnostic>> {
+        Ok(package.ast().clone())
+    }
+
+    fn render_view(
+        &self,
+        view: &RenderView<D, Self::View>,
+    ) -> Result<RenderedPackage, Vec<Diagnostic>> {
+        render_linked_package(&self.renderer, view.value())
+    }
 }
 
 /// A language-owned render view built from a verified resolved package.
@@ -233,26 +330,60 @@ impl<D: TargetDialect, V> RenderView<D, V> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RenderedFile {
     path: String,
+    role: OutputFileRole,
     contents: OutputContents,
 }
 
 impl RenderedFile {
-    pub fn text(path: impl Into<String>, contents: impl Into<String>) -> Self {
+    pub(crate) fn source(
+        path: impl Into<String>,
+        role: SourceRole,
+        contents: impl Into<String>,
+    ) -> Self {
         Self {
             path: path.into(),
+            role: OutputFileRole::from_source_role(role),
             contents: OutputContents::Text(contents.into()),
         }
     }
 
-    pub fn bytes(path: impl Into<String>, contents: impl Into<Vec<u8>>) -> Self {
+    pub(crate) fn asset(path: impl Into<String>, contents: impl Into<Vec<u8>>) -> Self {
         Self {
             path: path.into(),
+            role: OutputFileRole::Asset,
             contents: OutputContents::Bytes(contents.into()),
         }
     }
+
+    pub(crate) fn documentation(path: impl Into<String>, contents: impl Into<String>) -> Self {
+        Self {
+            path: path.into(),
+            role: OutputFileRole::Documentation,
+            contents: OutputContents::Text(contents.into()),
+        }
+    }
+
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    pub const fn role(&self) -> OutputFileRole {
+        self.role
+    }
+
+    pub fn contents(&self) -> &OutputContents {
+        &self.contents
+    }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+/// Only shared certified rendering can construct a rendered package.
+///
+/// ~~~compile_fail
+/// use portable_codegen::RenderedPackage;
+///
+/// let _ = RenderedPackage::new(vec![], vec![], vec![]);
+/// ~~~
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RenderedPackage {
     files: Vec<RenderedFile>,
     dependencies: Vec<DeclaredDependency>,
@@ -260,7 +391,7 @@ pub struct RenderedPackage {
 }
 
 impl RenderedPackage {
-    pub fn new(
+    pub(crate) fn new(
         files: Vec<RenderedFile>,
         dependencies: Vec<DeclaredDependency>,
         helpers: Vec<InjectedHelper>,
@@ -270,6 +401,18 @@ impl RenderedPackage {
             dependencies,
             helpers,
         }
+    }
+
+    pub fn files(&self) -> &[RenderedFile] {
+        &self.files
+    }
+
+    pub fn dependencies(&self) -> &[DeclaredDependency] {
+        &self.dependencies
+    }
+
+    pub fn helpers(&self) -> &[InjectedHelper] {
+        &self.helpers
     }
 }
 
@@ -376,7 +519,7 @@ where
         let rendered = renderer.render_view(&render_view).map_err(|diagnostics| {
             TypedGenerationError::phase(TypedPipelineStage::Rendering, diagnostics)
         })?;
-        assemble_manifest(rendered).map_err(|diagnostics| {
+        assemble_manifest(&descriptor, actual, options, rendered).map_err(|diagnostics| {
             TypedGenerationError::phase(TypedPipelineStage::ManifestAssembly, diagnostics)
         })
     }
@@ -384,6 +527,7 @@ where
 
 mod private {
     pub trait Sealed {}
+    pub trait SealedTargetRenderer {}
 }
 
 /// Object-safe typed compiler entry. It is sealed so plugins must use the
@@ -486,20 +630,34 @@ pub enum TypedRegistryGenerationError {
     Generation(TypedGenerationError),
 }
 
-fn assemble_manifest(rendered: RenderedPackage) -> Result<OutputManifest, Vec<Diagnostic>> {
+fn assemble_manifest(
+    descriptor: &BackendDescriptor,
+    ir_version: portable_ir::v0::IrVersion,
+    options: &BackendOptions,
+    rendered: RenderedPackage,
+) -> Result<OutputManifest, Vec<Diagnostic>> {
     let files = rendered
         .files
         .into_iter()
         .map(|file| match file.contents {
-            OutputContents::Text(contents) => OutputFile::text(file.path, contents),
-            OutputContents::Bytes(contents) => OutputFile::bytes(file.path, contents),
+            OutputContents::Text(contents) => {
+                OutputFile::classified_text(file.path, file.role, contents)
+            }
+            OutputContents::Bytes(contents) => {
+                OutputFile::classified_bytes(file.path, file.role, contents)
+            }
         })
         .collect();
-    OutputManifest::new(files, rendered.dependencies, rendered.helpers)
+    OutputManifest::new_typed(
+        ManifestGeneration::new(descriptor, ir_version, options),
+        files,
+        rendered.dependencies,
+        rendered.helpers,
+    )
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use std::sync::{Arc, Mutex};
 
     use portable_diagnostics::{DiagnosticCode, SourceRef};
@@ -652,12 +810,21 @@ mod tests {
                 "src/generated.test"
             };
             Ok(RenderedPackage::new(
-                vec![RenderedFile::text(path, format!("{}\n", view.value()))],
+                vec![
+                    RenderedFile::asset("assets/proof.bin", [0, 1, 255]),
+                    RenderedFile::source(
+                        path,
+                        SourceRole::Implementation,
+                        format!("{}\n", view.value()),
+                    ),
+                ],
                 vec![],
                 vec![],
             ))
         }
     }
+
+    impl private::SealedTargetRenderer for TestRenderer {}
 
     #[derive(Clone)]
     struct TestPlugin {
@@ -729,6 +896,11 @@ mod tests {
         (trace, Arc::new(adapter), target)
     }
 
+    pub(crate) fn compliance_adapter() -> (Arc<dyn TypedCompiler>, CheckedProgram) {
+        let (_, compiler, _) = adapter("program", false);
+        (compiler, checked_program())
+    }
+
     #[test]
     fn adapter_runs_every_phase_once_in_order_and_is_deterministic() {
         let (trace, compiler, target) = adapter("program", false);
@@ -737,6 +909,17 @@ mod tests {
         let first = registry
             .compile(&target, &checked_program(), &BackendOptions::default())
             .unwrap();
+        assert_eq!(first.schema_version(), 2);
+        let generation = first.generation().expect("typed generation identity");
+        assert_eq!(generation.target(), "org.polyrust.typed-test");
+        assert_eq!(generation.backend_version(), "0.1.0");
+        assert_eq!(generation.ir_version(), "0.2.0");
+        assert!(generation.options().is_empty());
+        let generated = first.file("src/generated.test").unwrap();
+        assert_eq!(generated.role(), OutputFileRole::ImplementationSource);
+        assert_eq!(generated.media_type(), crate::OutputMediaType::Utf8Text);
+        assert!(!generated.executable());
+        assert!(generated.content_hash().as_str().starts_with("fnv1a64:"));
         assert_eq!(
             trace.lock().unwrap().as_slice(),
             [

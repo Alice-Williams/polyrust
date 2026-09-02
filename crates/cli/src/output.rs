@@ -400,7 +400,7 @@ mod tests {
     }
 
     fn manifest(files: &[(&str, &str)]) -> OutputManifest {
-        OutputManifest::new(
+        portable_codegen::legacy::assemble_output_manifest(
             files
                 .iter()
                 .map(|(path, text)| OutputFile::text(*path, *text))

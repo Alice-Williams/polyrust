@@ -4,6 +4,7 @@
 
 mod backend;
 mod capability;
+mod compliance;
 mod document;
 mod heritage;
 mod language;
@@ -15,6 +16,7 @@ mod typed_pipeline;
 
 pub use backend::*;
 pub use capability::*;
+pub use compliance::*;
 pub use document::*;
 pub use heritage::*;
 pub use language::*;
@@ -29,6 +31,21 @@ pub use typed_pipeline::*;
 #[doc(hidden)]
 pub mod legacy {
     use portable_check::CheckedModule;
+
+    use crate::{DeclaredDependency, InjectedHelper, OutputFile, OutputManifest};
+
+    /// Transitional manifest assembler for pre-M34A backends and CLI tests.
+    ///
+    /// This is deliberately isolated under `legacy`; typed plugins cannot
+    /// provide a manifest to the sealed compiler adapter. M34A-18 removes this
+    /// escape after every built-in and external example uses the typed path.
+    pub fn assemble_output_manifest(
+        files: Vec<OutputFile>,
+        dependencies: Vec<DeclaredDependency>,
+        helpers: Vec<InjectedHelper>,
+    ) -> Result<OutputManifest, Vec<portable_diagnostics::Diagnostic>> {
+        OutputManifest::new(files, dependencies, helpers)
+    }
 
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub struct GeneratedFile {

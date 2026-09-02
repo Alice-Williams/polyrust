@@ -46,6 +46,30 @@ rust_test(
     deps = ["//crates/build:portable_build"],
 )
 
+test_suite(
+    name = "manifest_v2_test",
+    tests = [":portable_codegen_test"],
+    visibility = ["//visibility:public"],
+)
+
+test_suite(
+    name = "plugin_adapter_test",
+    tests = [
+        ":typed_pipeline_compile_fail_test",
+        ":typed_pipeline_test",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+test_suite(
+    name = "typed_backend_contract_test",
+    tests = [
+        ":typed_pipeline_compile_fail_test",
+        ":typed_pipeline_test",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 rust_test(
     name = "capability_registry_test",
     crate = ":portable_codegen",
