@@ -73,6 +73,21 @@ rust_test(
     deps = ["//crates/build:portable_build"],
 )
 
+test_suite(
+    name = "runtime_helper_graph_v2_test",
+    tests = [":target_linker_test"],
+    visibility = ["//visibility:public"],
+)
+
+test_suite(
+    name = "typed_package_test",
+    tests = [
+        ":target_ast_compile_fail_test",
+        ":target_ast_test",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 rust_doc_test(
     name = "portable_codegen_doc_test",
     crate = ":portable_codegen",

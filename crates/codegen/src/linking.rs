@@ -4,10 +4,10 @@ use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef, sort_diagnosti
 
 use crate::{
     AstViolation, Expr, GeneratedCallableId, GeneratedInterfaceMethodId, GeneratedTypeId,
-    GeneratedValueId, TargetAstBuilder, TargetAstPackage, TargetCallableSignature, TargetDialect,
-    TargetExprId, TargetExpressionNode, TargetFileId, TargetResolver, TargetStatementNode,
-    TargetStmtId, TargetTypeMarker, TargetTypeRef, TypedAstDialect, UnresolvedPackage,
-    verify_target_ast,
+    GeneratedValueId, SourceRole, TargetAstBuilder, TargetAstPackage, TargetCallableSignature,
+    TargetDialect, TargetExprId, TargetExpressionNode, TargetFile, TargetFileId,
+    TargetFileItemNode, TargetResolver, TargetStatementNode, TargetStmtId, TargetTypeMarker,
+    TargetTypeRef, TypedAstDialect, UnresolvedPackage, verify_target_ast,
 };
 
 macro_rules! linker_id {
@@ -226,10 +226,13 @@ pub struct KnownMethodSpec<D: LinkerDialect> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RuntimeHelperSpec<D: LinkerDialect> {
     pub id: D::HelperId,
+    pub order: u32,
     pub name: D::Identifier,
     pub alias_stem: String,
     pub namespace: D::Namespace,
-    pub references: Vec<TargetSymbolRef<D>>,
+    pub items: Vec<D::FileItem>,
+    pub placement: D::FilePlacement,
+    pub visibility: D::Visibility,
     pub source: SourceRef,
 }
 
@@ -246,6 +249,7 @@ pub struct SymbolCatalogue<D: LinkerDialect> {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FileItemRoots<D: LinkerDialect> {
+    pub declarations: Vec<GeneratedSymbolId>,
     pub expressions: Vec<TargetExprId>,
     pub statements: Vec<TargetStmtId>,
     pub symbols: Vec<TargetSymbolRef<D>>,
@@ -254,6 +258,7 @@ pub struct FileItemRoots<D: LinkerDialect> {
 impl<D: LinkerDialect> Default for FileItemRoots<D> {
     fn default() -> Self {
         Self {
+            declarations: vec![],
             expressions: vec![],
             statements: vec![],
             symbols: vec![],
@@ -313,6 +318,10 @@ pub trait LinkerDialect:
     fn statement_references(&self, statement: &Self::Statement) -> Vec<TargetSymbolRef<Self>>;
     fn file_item_roots(&self, item: &Self::FileItem) -> FileItemRoots<Self>;
 
+    fn permits_file_cycle(&self, _files: &[TargetFileId]) -> bool {
+        false
+    }
+
     fn forward_declarations(
         &self,
         _file: TargetFileId,
@@ -366,6 +375,27 @@ impl<D: LinkerDialect> SymbolCatalogue<D> {
             self.helpers.iter().map(|spec| (&spec.id, &spec.source)),
             "runtime helper",
         );
+        check_unique(
+            &mut diagnostics,
+            self.helpers.iter().map(|spec| (&spec.order, &spec.source)),
+            "runtime helper order",
+        );
+        for helper in &self.helpers {
+            if dialect.is_public(&helper.visibility) {
+                diagnostics.push(Diagnostic::error(
+                    DiagnosticCode::InvalidStructure,
+                    "runtime helpers cannot be exposed as public declarations",
+                    helper.source.clone(),
+                ));
+            }
+            if helper.items.is_empty() {
+                diagnostics.push(Diagnostic::error(
+                    DiagnosticCode::InvalidStructure,
+                    "runtime helper must expand to structural target AST items",
+                    helper.source.clone(),
+                ));
+            }
+        }
 
         for spec in &self.callables {
             validate_callable_pattern(&mut diagnostics, &spec.signature, &spec.source);
@@ -752,9 +782,11 @@ impl<D: LinkerDialect> LinkedReference<D> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LinkedFile<D: LinkerDialect> {
     file: TargetFileId,
+    dependencies: Vec<TargetFileId>,
     references: Vec<LinkedReference<D>>,
     imports: Vec<ResolvedImport<D>>,
     forward_declarations: Vec<GeneratedSymbolId>,
+    helpers: Vec<D::HelperId>,
 }
 
 impl<D: LinkerDialect> LinkedFile<D> {
@@ -766,12 +798,51 @@ impl<D: LinkerDialect> LinkedFile<D> {
         &self.references
     }
 
+    pub fn dependencies(&self) -> &[TargetFileId] {
+        &self.dependencies
+    }
+
     pub fn imports(&self) -> &[ResolvedImport<D>] {
         &self.imports
     }
 
     pub fn forward_declarations(&self) -> &[GeneratedSymbolId] {
         &self.forward_declarations
+    }
+
+    pub fn helpers(&self) -> &[D::HelperId] {
+        &self.helpers
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LinkedRuntimeHelper<D: LinkerDialect> {
+    id: D::HelperId,
+    order: u32,
+    file: TargetFileId,
+    items: Vec<D::FileItem>,
+    source: SourceRef,
+}
+
+impl<D: LinkerDialect> LinkedRuntimeHelper<D> {
+    pub fn id(&self) -> &D::HelperId {
+        &self.id
+    }
+
+    pub const fn order(&self) -> u32 {
+        self.order
+    }
+
+    pub const fn file(&self) -> TargetFileId {
+        self.file
+    }
+
+    pub fn items(&self) -> &[D::FileItem] {
+        &self.items
+    }
+
+    pub fn source(&self) -> &SourceRef {
+        &self.source
     }
 }
 
@@ -782,7 +853,7 @@ pub struct LinkedTargetPackage<D: LinkerDialect> {
     bindings: Vec<ResolvedBinding<D>>,
     files: Vec<LinkedFile<D>>,
     dependencies: Vec<ResolvedPackageDependency<D>>,
-    helpers: Vec<D::HelperId>,
+    helpers: Vec<LinkedRuntimeHelper<D>>,
     catalogue: SymbolCatalogue<D>,
 }
 
@@ -803,7 +874,7 @@ impl<D: LinkerDialect> LinkedTargetPackage<D> {
         &self.dependencies
     }
 
-    pub fn helpers(&self) -> &[D::HelperId] {
+    pub fn helpers(&self) -> &[LinkedRuntimeHelper<D>] {
         &self.helpers
     }
 
@@ -822,7 +893,7 @@ impl<D: LinkerDialect> LinkedTargetPackage<D> {
     }
 
     #[cfg(test)]
-    fn helpers_mut(&mut self) -> &mut Vec<D::HelperId> {
+    fn helpers_mut(&mut self) -> &mut Vec<LinkedRuntimeHelper<D>> {
         &mut self.helpers
     }
 }
@@ -847,12 +918,23 @@ impl<D: LinkerDialect> TargetLinker<D> {
 
         let mut diagnostics = Vec::new();
         let mut raw_files = collect_references(&self.dialect, unresolved, &mut diagnostics);
-        let selected_helpers = expand_file_helpers(&catalogue, &mut raw_files, &mut diagnostics);
+        let selected_helpers = expand_file_helpers(
+            &self.dialect,
+            unresolved,
+            &catalogue,
+            &mut raw_files,
+            &mut diagnostics,
+        );
+        derive_and_validate_file_graph(&self.dialect, unresolved, &mut raw_files, &mut diagnostics);
+        let selected_helper_ids = selected_helpers
+            .iter()
+            .map(|helper| helper.id.clone())
+            .collect::<BTreeSet<_>>();
         let bindings = allocate_bindings(
             &self.dialect,
             unresolved,
             &catalogue,
-            &selected_helpers,
+            &selected_helper_ids,
             &mut diagnostics,
         );
         let binding_lookup = bindings
@@ -900,9 +982,11 @@ impl<D: LinkerDialect> TargetLinker<D> {
                 .forward_declarations(raw_file.file, &unresolved_refs);
             files.push(LinkedFile {
                 file: raw_file.file,
+                dependencies: raw_file.dependencies,
                 references,
                 imports,
                 forward_declarations,
+                helpers: raw_file.helpers,
             });
         }
 
@@ -919,7 +1003,7 @@ impl<D: LinkerDialect> TargetLinker<D> {
                 .into_values()
                 .map(|requirement| ResolvedPackageDependency { requirement })
                 .collect(),
-            helpers: selected_helpers.into_iter().collect(),
+            helpers: selected_helpers,
             catalogue,
         };
         verify_linked_package(&linked)?;
@@ -945,6 +1029,8 @@ struct LocatedSymbol<D: LinkerDialect> {
 struct RawFile<D: LinkerDialect> {
     file: TargetFileId,
     references: Vec<LocatedSymbol<D>>,
+    helpers: Vec<D::HelperId>,
+    dependencies: Vec<TargetFileId>,
 }
 
 fn collect_references<D: LinkerDialect>(
@@ -955,48 +1041,56 @@ fn collect_references<D: LinkerDialect>(
     let mut files = Vec::new();
     for (file_index, file) in package.files().enumerate() {
         let file_id = TargetFileId::from_index(file_index);
-        let mut references = Vec::new();
-        let mut visited_expressions = BTreeSet::new();
-        let mut visited_statements = BTreeSet::new();
-        for item in &file.items {
-            let roots = dialect.file_item_roots(item);
-            references.extend(roots.symbols.into_iter().map(|symbol| LocatedSymbol {
-                symbol,
-                source: file.source.clone(),
-            }));
-            for statement in roots.statements {
-                if !visited_statements.insert(statement) {
-                    continue;
-                }
-                let Some((node, source)) = package.statement(statement) else {
-                    diagnostics.push(Diagnostic::error(
-                        DiagnosticCode::UnresolvedReference,
-                        "linker file item refers to a missing statement",
-                        file.source.clone(),
-                    ));
-                    continue;
-                };
-                references.extend(
-                    dialect
-                        .statement_references(node)
-                        .into_iter()
-                        .map(|symbol| LocatedSymbol {
-                            symbol,
-                            source: source.clone(),
-                        }),
-                );
-                for expression in node.child_expressions() {
-                    collect_expression(
-                        dialect,
-                        package,
-                        expression,
-                        &mut visited_expressions,
-                        &mut references,
-                        diagnostics,
-                    );
-                }
+        let references =
+            collect_item_references(dialect, package, file.items(), file.source(), diagnostics);
+        files.push(RawFile {
+            file: file_id,
+            references,
+            helpers: vec![],
+            dependencies: vec![],
+        });
+    }
+    files
+}
+
+fn collect_item_references<D: LinkerDialect>(
+    dialect: &D,
+    package: &TargetAstPackage<D>,
+    items: &[D::FileItem],
+    item_source: &SourceRef,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Vec<LocatedSymbol<D>> {
+    let mut references = Vec::new();
+    let mut visited_expressions = BTreeSet::new();
+    let mut visited_statements = BTreeSet::new();
+    for item in items {
+        let roots = dialect.file_item_roots(item);
+        references.extend(roots.symbols.into_iter().map(|symbol| LocatedSymbol {
+            symbol,
+            source: item_source.clone(),
+        }));
+        for statement in roots.statements {
+            if !visited_statements.insert(statement) {
+                continue;
             }
-            for expression in roots.expressions {
+            let Some((node, source)) = package.statement(statement) else {
+                diagnostics.push(Diagnostic::error(
+                    DiagnosticCode::UnresolvedReference,
+                    "linker file item refers to a missing statement",
+                    item_source.clone(),
+                ));
+                continue;
+            };
+            references.extend(
+                dialect
+                    .statement_references(node)
+                    .into_iter()
+                    .map(|symbol| LocatedSymbol {
+                        symbol,
+                        source: source.clone(),
+                    }),
+            );
+            for expression in node.child_expressions() {
                 collect_expression(
                     dialect,
                     package,
@@ -1007,12 +1101,18 @@ fn collect_references<D: LinkerDialect>(
                 );
             }
         }
-        files.push(RawFile {
-            file: file_id,
-            references,
-        });
+        for expression in roots.expressions {
+            collect_expression(
+                dialect,
+                package,
+                expression,
+                &mut visited_expressions,
+                &mut references,
+                diagnostics,
+            );
+        }
     }
-    files
+    references
 }
 
 fn collect_expression<D: LinkerDialect>(
@@ -1049,48 +1149,93 @@ fn collect_expression<D: LinkerDialect>(
 }
 
 fn expand_file_helpers<D: LinkerDialect>(
+    dialect: &D,
+    package: &TargetAstPackage<D>,
     catalogue: &SymbolCatalogue<D>,
     files: &mut [RawFile<D>],
     diagnostics: &mut Vec<Diagnostic>,
-) -> BTreeSet<D::HelperId> {
+) -> Vec<LinkedRuntimeHelper<D>> {
     let mut selected = BTreeSet::new();
-    for file in files {
-        let roots = file
-            .references
-            .iter()
-            .filter_map(|reference| match &reference.symbol {
-                TargetSymbolRef::RuntimeHelper(helper) => {
-                    Some((helper.clone(), reference.source.clone()))
-                }
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        let mut states = BTreeMap::new();
-        let mut expanded = Vec::new();
-        for (helper, source) in roots {
-            expand_helper(
-                catalogue,
-                &helper,
-                &source,
-                &mut states,
-                &mut selected,
-                &mut expanded,
-                diagnostics,
-            );
-        }
-        file.references.extend(expanded);
+    let roots = files
+        .iter()
+        .flat_map(|file| {
+            file.references
+                .iter()
+                .filter_map(|reference| match &reference.symbol {
+                    TargetSymbolRef::RuntimeHelper(helper) => {
+                        Some((helper.clone(), reference.source.clone()))
+                    }
+                    _ => None,
+                })
+        })
+        .collect::<Vec<_>>();
+    let mut states = BTreeMap::new();
+    let mut helper_references = BTreeMap::new();
+    for (helper, source) in roots {
+        expand_helper(
+            dialect,
+            package,
+            catalogue,
+            &helper,
+            &source,
+            &mut states,
+            &mut selected,
+            &mut helper_references,
+            diagnostics,
+        );
     }
-    selected
+
+    let mut selected_specs = selected
+        .iter()
+        .filter_map(|id| catalogue.helper(id))
+        .collect::<Vec<_>>();
+    selected_specs.sort_by_key(|spec| (spec.order, spec.id.clone()));
+    let mut linked = Vec::new();
+    for spec in selected_specs {
+        let destinations = package
+            .files()
+            .enumerate()
+            .filter(|(_, file)| {
+                file.role() == SourceRole::Runtime && file.placement() == &spec.placement
+            })
+            .map(|(index, _)| TargetFileId::from_index(index))
+            .collect::<Vec<_>>();
+        if destinations.len() != 1 {
+            diagnostics.push(Diagnostic::error(
+                DiagnosticCode::InvalidStructure,
+                "runtime helper placement must select exactly one typed runtime file",
+                spec.source.clone(),
+            ));
+            continue;
+        }
+        let destination = destinations[0];
+        if let Some(raw_file) = files.iter_mut().find(|file| file.file == destination) {
+            raw_file.helpers.push(spec.id.clone());
+            if let Some(references) = helper_references.remove(&spec.id) {
+                raw_file.references.extend(references);
+            }
+        }
+        linked.push(LinkedRuntimeHelper {
+            id: spec.id.clone(),
+            order: spec.order,
+            file: destination,
+            items: spec.items.clone(),
+            source: spec.source.clone(),
+        });
+    }
+    linked
 }
 
 #[allow(clippy::too_many_arguments)]
 fn expand_helper<D: LinkerDialect>(
+    dialect: &D,
+    package: &TargetAstPackage<D>,
     catalogue: &SymbolCatalogue<D>,
     helper: &D::HelperId,
     requested_at: &SourceRef,
     states: &mut BTreeMap<D::HelperId, u8>,
     selected: &mut BTreeSet<D::HelperId>,
-    expanded: &mut Vec<LocatedSymbol<D>>,
+    helper_references: &mut BTreeMap<D::HelperId, Vec<LocatedSymbol<D>>>,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
     match states.get(helper) {
@@ -1113,26 +1258,223 @@ fn expand_helper<D: LinkerDialect>(
         ));
         return;
     };
+    let context = package.context();
+    for item in &spec.items {
+        diagnostics.extend(item.verify(&context).into_iter().map(|violation| {
+            Diagnostic::error(violation.code, violation.message, spec.source.clone())
+        }));
+    }
+    let references =
+        collect_item_references(dialect, package, &spec.items, &spec.source, diagnostics);
     states.insert(helper.clone(), 1);
-    for reference in &spec.references {
-        if let TargetSymbolRef::RuntimeHelper(child) = reference {
+    for reference in &references {
+        if let TargetSymbolRef::RuntimeHelper(child) = &reference.symbol {
             expand_helper(
+                dialect,
+                package,
                 catalogue,
                 child,
                 &spec.source,
                 states,
                 selected,
-                expanded,
+                helper_references,
                 diagnostics,
             );
         }
-        expanded.push(LocatedSymbol {
-            symbol: reference.clone(),
-            source: spec.source.clone(),
-        });
     }
     states.insert(helper.clone(), 2);
     selected.insert(helper.clone());
+    helper_references.insert(helper.clone(), references);
+}
+
+fn derive_and_validate_file_graph<D: LinkerDialect>(
+    dialect: &D,
+    package: &TargetAstPackage<D>,
+    files: &mut [RawFile<D>],
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    let mut declarations = BTreeMap::new();
+    for (file_index, file) in package.files().enumerate() {
+        let file_id = TargetFileId::from_index(file_index);
+        for declaration in file
+            .items()
+            .iter()
+            .flat_map(|item| dialect.file_item_roots(item).declarations)
+        {
+            if generated_symbol_source(package, declaration).is_none() {
+                diagnostics.push(Diagnostic::error(
+                    DiagnosticCode::UnresolvedReference,
+                    "file item declares a missing generated symbol",
+                    file.source().clone(),
+                ));
+            } else if declarations.insert(declaration, file_id).is_some() {
+                diagnostics.push(Diagnostic::error(
+                    DiagnosticCode::DuplicateDeclaration,
+                    "generated symbol is declared in more than one source file",
+                    file.source().clone(),
+                ));
+            }
+        }
+    }
+    for symbol in (0..package.generated_types().len())
+        .map(|index| GeneratedSymbolId::Type(GeneratedTypeId::from_index(index)))
+        .chain(
+            (0..package.callables().len())
+                .map(|index| GeneratedSymbolId::Callable(GeneratedCallableId::from_index(index))),
+        )
+    {
+        if !declarations.contains_key(&symbol) {
+            diagnostics.push(Diagnostic::error(
+                DiagnosticCode::InvalidStructure,
+                "generated top-level symbol is not placed in a source file",
+                generated_symbol_source(package, symbol)
+                    .cloned()
+                    .unwrap_or_else(|| SourceRef::logical(["target-linker", "file-graph"])),
+            ));
+        }
+    }
+
+    let mut graph = BTreeMap::new();
+    for raw_file in files.iter_mut() {
+        let from_role = package.file(raw_file.file).map(TargetFile::role);
+        let mut edges = BTreeSet::new();
+        for reference in &raw_file.references {
+            let TargetSymbolRef::Generated(symbol) = reference.symbol else {
+                continue;
+            };
+            let Some(destination) = declarations.get(&symbol).copied() else {
+                diagnostics.push(Diagnostic::error(
+                    DiagnosticCode::UnresolvedReference,
+                    "generated symbol reference has no structural source-file declaration",
+                    reference.source.clone(),
+                ));
+                continue;
+            };
+            if destination == raw_file.file {
+                continue;
+            }
+            edges.insert(destination);
+            let to_role = package.file(destination).map(TargetFile::role);
+            if violates_file_visibility(dialect, package, from_role, to_role, symbol) {
+                diagnostics.push(Diagnostic::error(
+                    DiagnosticCode::InvalidStructure,
+                    "cross-file reference violates source-role or public-API visibility",
+                    reference.source.clone(),
+                ));
+            }
+        }
+        raw_file.dependencies = edges.iter().copied().collect();
+        graph.insert(raw_file.file, edges);
+    }
+
+    if let Some(cycle) = find_file_cycle(&graph)
+        && !dialect.permits_file_cycle(&cycle)
+    {
+        diagnostics.push(Diagnostic::error(
+            DiagnosticCode::InvalidStructure,
+            "target source-file dependency graph contains a forbidden cycle",
+            SourceRef::logical(["target-linker", "file-cycle"]),
+        ));
+    }
+}
+
+fn generated_symbol_source<D: LinkerDialect>(
+    package: &TargetAstPackage<D>,
+    symbol: GeneratedSymbolId,
+) -> Option<&SourceRef> {
+    match symbol {
+        GeneratedSymbolId::Type(id) => package.generated_type(id).map(|value| &value.source),
+        GeneratedSymbolId::Callable(id) => package.callable(id).map(|value| &value.source),
+        GeneratedSymbolId::InterfaceMethod(id) => {
+            package.interface_method(id).map(|value| &value.source)
+        }
+        GeneratedSymbolId::Value(id) => package.value(id).map(|value| &value.source),
+    }
+}
+
+fn generated_symbol_is_public<D: LinkerDialect>(
+    dialect: &D,
+    package: &TargetAstPackage<D>,
+    symbol: GeneratedSymbolId,
+) -> bool {
+    match symbol {
+        GeneratedSymbolId::Type(id) => package
+            .generated_type(id)
+            .is_some_and(|value| dialect.is_public(&value.visibility)),
+        GeneratedSymbolId::Callable(id) => package
+            .callable(id)
+            .is_some_and(|value| dialect.is_public(&value.visibility)),
+        GeneratedSymbolId::InterfaceMethod(id) => package
+            .interface_method(id)
+            .and_then(|value| package.generated_type(value.owner))
+            .is_some_and(|owner| dialect.is_public(&owner.visibility)),
+        GeneratedSymbolId::Value(_) => false,
+    }
+}
+
+fn violates_file_visibility<D: LinkerDialect>(
+    dialect: &D,
+    package: &TargetAstPackage<D>,
+    from: Option<SourceRole>,
+    to: Option<SourceRole>,
+    symbol: GeneratedSymbolId,
+) -> bool {
+    let (Some(from), Some(to)) = (from, to) else {
+        return true;
+    };
+    let from_is_test = matches!(
+        from,
+        SourceRole::NativeTest | SourceRole::Conformance | SourceRole::NegativeTest
+    );
+    let to_is_test = matches!(
+        to,
+        SourceRole::NativeTest | SourceRole::Conformance | SourceRole::NegativeTest
+    );
+    (from == SourceRole::Runtime && to != SourceRole::Runtime)
+        || (!from_is_test && to_is_test)
+        || (from == SourceRole::PublicApi
+            && (to == SourceRole::Implementation
+                || !generated_symbol_is_public(dialect, package, symbol)))
+}
+
+fn find_file_cycle(
+    graph: &BTreeMap<TargetFileId, BTreeSet<TargetFileId>>,
+) -> Option<Vec<TargetFileId>> {
+    fn visit(
+        node: TargetFileId,
+        graph: &BTreeMap<TargetFileId, BTreeSet<TargetFileId>>,
+        states: &mut BTreeMap<TargetFileId, u8>,
+        stack: &mut Vec<TargetFileId>,
+    ) -> Option<Vec<TargetFileId>> {
+        match states.get(&node) {
+            Some(2) => return None,
+            Some(1) => {
+                let start = stack.iter().position(|candidate| candidate == &node)?;
+                return Some(stack[start..].to_vec());
+            }
+            _ => {}
+        }
+        states.insert(node, 1);
+        stack.push(node);
+        if let Some(edges) = graph.get(&node) {
+            for edge in edges {
+                if let Some(cycle) = visit(*edge, graph, states, stack) {
+                    return Some(cycle);
+                }
+            }
+        }
+        stack.pop();
+        states.insert(node, 2);
+        None
+    }
+
+    let mut states = BTreeMap::new();
+    for node in graph.keys() {
+        if let Some(cycle) = visit(*node, graph, &mut states, &mut Vec::new()) {
+            return Some(cycle);
+        }
+    }
+    None
 }
 
 #[derive(Clone)]
@@ -1578,6 +1920,17 @@ pub fn verify_linked_package<D: LinkerDialect>(
     let mut declared_imports = BTreeSet::new();
     let mut expected_dependencies = BTreeMap::new();
     let mut helper_roots = BTreeSet::new();
+    let declaration_files = package
+        .unresolved
+        .files()
+        .enumerate()
+        .flat_map(|(file_index, file)| {
+            file.items()
+                .iter()
+                .flat_map(|item| package.dialect.file_item_roots(item).declarations)
+                .map(move |symbol| (symbol, TargetFileId::from_index(file_index)))
+        })
+        .collect::<BTreeMap<_, _>>();
     for file in &package.files {
         if !files.insert(file.file) {
             diagnostics.push(link_error(
@@ -1587,6 +1940,7 @@ pub fn verify_linked_package<D: LinkerDialect>(
             ));
         }
         let mut file_imports = BTreeMap::new();
+        let mut expected_file_dependencies = BTreeSet::new();
         for import in &file.imports {
             if !declared_imports.insert(import.id) {
                 diagnostics.push(link_error(
@@ -1610,6 +1964,12 @@ pub fn verify_linked_package<D: LinkerDialect>(
             }
             if let TargetSymbolRef::RuntimeHelper(helper) = &reference.symbol {
                 helper_roots.insert(helper.clone());
+            }
+            if let TargetSymbolRef::Generated(symbol) = &reference.symbol
+                && let Some(destination) = declaration_files.get(symbol)
+                && destination != &file.file
+            {
+                expected_file_dependencies.insert(*destination);
             }
             if let Some(plan) =
                 reference_plan(&package.dialect, &package.catalogue, &reference.symbol)
@@ -1640,6 +2000,13 @@ pub fn verify_linked_package<D: LinkerDialect>(
                 DiagnosticCode::InterfaceNonconformance,
                 "forward declarations are not resolver-derived",
                 "forward-declarations",
+            ));
+        }
+        if file.dependencies != expected_file_dependencies.into_iter().collect::<Vec<_>>() {
+            diagnostics.push(link_error(
+                DiagnosticCode::InterfaceNonconformance,
+                "cross-file dependency edges are not exactly reference-derived",
+                "file-dependencies",
             ));
         }
     }
@@ -1674,13 +2041,70 @@ pub fn verify_linked_package<D: LinkerDialect>(
             "dependencies",
         ));
     }
-    let actual_helpers = package.helpers.iter().cloned().collect::<BTreeSet<_>>();
+    let actual_helpers = package
+        .helpers
+        .iter()
+        .map(|helper| helper.id.clone())
+        .collect::<BTreeSet<_>>();
     if actual_helpers.len() != package.helpers.len() || helper_roots != actual_helpers {
         diagnostics.push(link_error(
             DiagnosticCode::InterfaceNonconformance,
             "resolved helper set is missing roots or contains duplicates",
             "helpers",
         ));
+    }
+    if package
+        .helpers
+        .windows(2)
+        .any(|pair| (pair[0].order, &pair[0].id) >= (pair[1].order, &pair[1].id))
+    {
+        diagnostics.push(link_error(
+            DiagnosticCode::InterfaceNonconformance,
+            "resolved helpers are not in deterministic catalogue order",
+            "helpers",
+        ));
+    }
+    for helper in &package.helpers {
+        let Some(spec) = package.catalogue.helper(&helper.id) else {
+            diagnostics.push(Diagnostic::error(
+                DiagnosticCode::UnresolvedReference,
+                "resolved helper has no typed catalogue declaration",
+                helper.source.clone(),
+            ));
+            continue;
+        };
+        if helper.order != spec.order || helper.items != spec.items || helper.source != spec.source
+        {
+            diagnostics.push(Diagnostic::error(
+                DiagnosticCode::InterfaceNonconformance,
+                "resolved helper does not match its structural catalogue declaration",
+                helper.source.clone(),
+            ));
+        }
+        match package.unresolved.file(helper.file) {
+            Some(file)
+                if file.role() == SourceRole::Runtime && file.placement() == &spec.placement => {}
+            _ => diagnostics.push(Diagnostic::error(
+                DiagnosticCode::InvalidStructure,
+                "resolved helper is not placed in its typed runtime file",
+                helper.source.clone(),
+            )),
+        }
+    }
+    for file in &package.files {
+        let expected = package
+            .helpers
+            .iter()
+            .filter(|helper| helper.file == file.file)
+            .map(|helper| helper.id.clone())
+            .collect::<Vec<_>>();
+        if file.helpers != expected {
+            diagnostics.push(link_error(
+                DiagnosticCode::InterfaceNonconformance,
+                "runtime helper declarations are not exactly file-placement-derived",
+                "helpers",
+            ));
+        }
     }
     sort_diagnostics(&mut diagnostics);
     if diagnostics.is_empty() {
@@ -1871,9 +2295,9 @@ fn validate_dependency<D: LinkerDialect>(
 mod tests {
     use super::*;
     use crate::{
-        GeneratedCallable, GeneratedOrigin, GeneratedType, GeneratedValue, SynthesisReason,
-        TargetExpressionNode, TargetFile, TargetFileGroup, TargetFileItemNode, TargetFileRole,
-        TargetStatementNode,
+        FileGroupRole, GeneratedCallable, GeneratedOrigin, GeneratedType, GeneratedValue,
+        RelativeOutputPath, SourceRole, SynthesisReason, TargetExpressionNode, TargetFile,
+        TargetFileGroup, TargetFileItemNode, TargetFileMember, TargetStatementNode,
     };
 
     #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -1883,6 +2307,11 @@ mod tests {
         BadSignature,
         MissingHelper,
         HelperCycle,
+        HelperIllegalPlacement,
+        PublicHelper,
+        DuplicateHelperOrder,
+        DuplicateHelper,
+        PermittedFileCycle,
         DependencyConflict,
     }
 
@@ -1949,6 +2378,19 @@ mod tests {
     #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
     enum Template {
         Source,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    enum Module {
+        Generated,
+        Runtime,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    enum Placement {
+        Implementation,
+        Runtime,
+        MissingRuntime,
     }
 
     #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -2054,7 +2496,11 @@ mod tests {
     #[derive(Clone, Debug, PartialEq, Eq)]
     enum FileItem {
         Root(TargetStmtId),
-        Declaration,
+        Declaration(GeneratedSymbolId),
+        RuntimeDeclaration {
+            helper: Helper,
+            symbols: Vec<TargetSymbolRef<TestDialect>>,
+        },
     }
 
     struct I64Marker;
@@ -2154,6 +2600,8 @@ mod tests {
         type DeclarationKind = DeclarationKind;
         type SymbolOrigin = AstOrigin;
         type TemplateId = Template;
+        type ModuleDeclaration = Module;
+        type FilePlacement = Placement;
         type Expression = Expression;
         type Statement = Statement;
         type FileItem = FileItem;
@@ -2191,6 +2639,14 @@ mod tests {
                     "receiver/invocation mismatch",
                 )]
             }
+        }
+
+        fn verify_source_file(
+            &self,
+            _file: &TargetFile<Self>,
+            _context: &crate::TargetAstContext<'_, Self>,
+        ) -> Vec<AstViolation> {
+            vec![]
         }
     }
 
@@ -2305,7 +2761,7 @@ mod tests {
                         "file root statement is missing",
                     )]
                 }
-                Self::Root(_) | Self::Declaration => vec![],
+                Self::Root(_) | Self::Declaration(_) | Self::RuntimeDeclaration { .. } => vec![],
             }
         }
     }
@@ -2443,8 +2899,22 @@ mod tests {
                     statements: vec![*statement],
                     ..FileItemRoots::default()
                 },
-                FileItem::Declaration => FileItemRoots::default(),
+                FileItem::Declaration(symbol) => FileItemRoots {
+                    declarations: vec![*symbol],
+                    ..FileItemRoots::default()
+                },
+                FileItem::RuntimeDeclaration { helper, symbols } => {
+                    let _typed_identity = helper;
+                    FileItemRoots {
+                        symbols: symbols.clone(),
+                        ..FileItemRoots::default()
+                    }
+                }
             }
+        }
+
+        fn permits_file_cycle(&self, _files: &[TargetFileId]) -> bool {
+            self.0 == CatalogueMode::PermittedFileCycle
         }
 
         fn forward_declarations(
@@ -2586,29 +3056,47 @@ mod tests {
             helpers: vec![
                 RuntimeHelperSpec {
                     id: Helper::Root,
+                    order: 20,
                     name: id("runtime_root"),
                     alias_stem: "runtime_root".to_owned(),
                     namespace: Namespace::Value,
-                    references: vec![
-                        TargetSymbolRef::RuntimeHelper(Helper::Leaf),
-                        TargetSymbolRef::KnownType(KnownType::Clock),
-                    ],
+                    items: vec![FileItem::RuntimeDeclaration {
+                        helper: Helper::Root,
+                        symbols: vec![
+                            TargetSymbolRef::RuntimeHelper(Helper::Leaf),
+                            TargetSymbolRef::KnownType(KnownType::Clock),
+                        ],
+                    }],
+                    placement: Placement::Runtime,
+                    visibility: Visibility::Private,
                     source: source("helper-root"),
                 },
                 RuntimeHelperSpec {
                     id: Helper::Leaf,
+                    order: 10,
                     name: id("runtime_leaf"),
                     alias_stem: "runtime_leaf".to_owned(),
                     namespace: Namespace::Value,
-                    references: vec![TargetSymbolRef::KnownCallable(KnownCallable::Maximum)],
+                    items: vec![FileItem::RuntimeDeclaration {
+                        helper: Helper::Leaf,
+                        symbols: vec![TargetSymbolRef::KnownCallable(KnownCallable::Maximum)],
+                    }],
+                    placement: Placement::Runtime,
+                    visibility: Visibility::Private,
                     source: source("helper-leaf"),
                 },
                 RuntimeHelperSpec {
                     id: Helper::Unused,
+                    order: 30,
                     name: id("runtime_unused"),
                     alias_stem: "runtime_unused".to_owned(),
                     namespace: Namespace::Value,
-                    references: vec![],
+                    items: vec![FileItem::RuntimeDeclaration {
+                        helper: Helper::Unused,
+                        symbols: vec![],
+                    }],
+                    placement: Placement::Runtime,
+                    visibility: Visibility::Private,
                     source: source("helper-unused"),
                 },
             ],
@@ -2619,21 +3107,46 @@ mod tests {
                 result.callables[0].signature.result = TypePattern::Exact(bool_type());
             }
             CatalogueMode::MissingHelper => {
-                result.helpers[0].references =
-                    vec![TargetSymbolRef::RuntimeHelper(Helper::Missing)];
+                result.helpers[0].items = vec![FileItem::RuntimeDeclaration {
+                    helper: Helper::Root,
+                    symbols: vec![TargetSymbolRef::RuntimeHelper(Helper::Missing)],
+                }];
             }
             CatalogueMode::HelperCycle => {
-                result.helpers[0].references = vec![TargetSymbolRef::RuntimeHelper(Helper::Cycle)];
+                result.helpers[0].items = vec![FileItem::RuntimeDeclaration {
+                    helper: Helper::Root,
+                    symbols: vec![TargetSymbolRef::RuntimeHelper(Helper::Cycle)],
+                }];
                 result.helpers.push(RuntimeHelperSpec {
                     id: Helper::Cycle,
+                    order: 40,
                     name: id("runtime_cycle"),
                     alias_stem: "runtime_cycle".to_owned(),
                     namespace: Namespace::Value,
-                    references: vec![TargetSymbolRef::RuntimeHelper(Helper::Root)],
+                    items: vec![FileItem::RuntimeDeclaration {
+                        helper: Helper::Cycle,
+                        symbols: vec![TargetSymbolRef::RuntimeHelper(Helper::Root)],
+                    }],
+                    placement: Placement::Runtime,
+                    visibility: Visibility::Private,
                     source: source("helper-cycle"),
                 });
             }
-            CatalogueMode::Normal | CatalogueMode::DependencyConflict => {}
+            CatalogueMode::HelperIllegalPlacement => {
+                result.helpers[0].placement = Placement::MissingRuntime;
+            }
+            CatalogueMode::PublicHelper => {
+                result.helpers[0].visibility = Visibility::Public;
+            }
+            CatalogueMode::DuplicateHelperOrder => {
+                result.helpers[1].order = result.helpers[0].order;
+            }
+            CatalogueMode::DuplicateHelper => {
+                result.helpers.push(result.helpers[0].clone());
+            }
+            CatalogueMode::Normal
+            | CatalogueMode::PermittedFileCycle
+            | CatalogueMode::DependencyConflict => {}
         }
         result
     }
@@ -2761,17 +3274,127 @@ mod tests {
             },
             source("statement"),
         );
-        let file = builder.file(TargetFile {
-            path: "src/generated.test".to_owned(),
-            role: TargetFileRole::Source,
-            items: vec![FileItem::Declaration, FileItem::Root(statement)],
-            template: Template::Source,
-            source: source("file"),
+        let file = builder.file(TargetFile::new(
+            RelativeOutputPath::new("src/generated.test").unwrap(),
+            SourceRole::Implementation,
+            Module::Generated,
+            Placement::Implementation,
+            vec![
+                FileItem::Declaration(GeneratedSymbolId::Type(generated_type)),
+                FileItem::Declaration(GeneratedSymbolId::Type(_private_type)),
+                FileItem::Declaration(GeneratedSymbolId::Callable(callable)),
+                FileItem::Root(statement),
+            ],
+            Template::Source,
+            source("file"),
+        ));
+        let runtime = builder.file(TargetFile::new(
+            RelativeOutputPath::new("src/runtime.test").unwrap(),
+            SourceRole::Runtime,
+            Module::Runtime,
+            Placement::Runtime,
+            vec![],
+            Template::Source,
+            source("runtime-file"),
+        ));
+        builder.group(TargetFileGroup::new(
+            FileGroupRole::Implementation,
+            vec![TargetFileMember::Source(file)],
+            source("implementation-group"),
+        ));
+        builder.group(TargetFileGroup::new(
+            FileGroupRole::Runtime,
+            vec![TargetFileMember::Source(runtime)],
+            source("runtime-group"),
+        ));
+        builder.build()
+    }
+
+    fn file_graph_package(
+        mode: CatalogueMode,
+        left_role: SourceRole,
+        right_role: SourceRole,
+        right_visibility: Visibility,
+        cycle: bool,
+    ) -> TargetAstPackage<TestDialect> {
+        let mut builder = TargetAstBuilder::new(TestDialect(mode));
+        let left = builder.generated_type(GeneratedType {
+            name: "Left".to_owned(),
+            kind: DeclarationKind::Record,
+            visibility: Visibility::Public,
+            origin: GeneratedOrigin::Synthesized(SynthesisReason::PackageEntryPoint),
+            source: source("left"),
         });
-        builder.group(TargetFileGroup {
-            files: vec![file],
-            source: source("group"),
+        let right = builder.generated_type(GeneratedType {
+            name: "Right".to_owned(),
+            kind: DeclarationKind::Record,
+            visibility: right_visibility,
+            origin: GeneratedOrigin::Synthesized(SynthesisReason::PackageEntryPoint),
+            source: source("right"),
         });
+        let literal = builder.expression::<I64Marker>(Expression::I64(1), source("literal"));
+        let left_statement = builder.statement(
+            Statement {
+                expression: literal.id(),
+                symbols: vec![TargetSymbolRef::Generated(GeneratedSymbolId::Type(right))],
+            },
+            source("left-reference"),
+        );
+        let right_statement = builder.statement(
+            Statement {
+                expression: literal.id(),
+                symbols: if cycle {
+                    vec![TargetSymbolRef::Generated(GeneratedSymbolId::Type(left))]
+                } else {
+                    vec![]
+                },
+            },
+            source("right-reference"),
+        );
+        let left_file = builder.file(TargetFile::new(
+            RelativeOutputPath::new("src/a.test").unwrap(),
+            left_role,
+            Module::Generated,
+            Placement::Implementation,
+            vec![
+                FileItem::Declaration(GeneratedSymbolId::Type(left)),
+                FileItem::Root(left_statement),
+            ],
+            Template::Source,
+            source("left-file"),
+        ));
+        let right_file = builder.file(TargetFile::new(
+            RelativeOutputPath::new("src/b.test").unwrap(),
+            right_role,
+            Module::Generated,
+            Placement::Implementation,
+            vec![
+                FileItem::Declaration(GeneratedSymbolId::Type(right)),
+                FileItem::Root(right_statement),
+            ],
+            Template::Source,
+            source("right-file"),
+        ));
+        let group_role = |role| match role {
+            SourceRole::PublicApi => FileGroupRole::PublicApi,
+            SourceRole::Implementation => FileGroupRole::Implementation,
+            SourceRole::Runtime => FileGroupRole::Runtime,
+            SourceRole::NativeTest => FileGroupRole::NativeTests,
+            SourceRole::Conformance => FileGroupRole::Conformance,
+            SourceRole::NegativeTest => FileGroupRole::NegativeTests,
+        };
+        let mut groups = BTreeMap::new();
+        groups
+            .entry(group_role(left_role))
+            .or_insert_with(Vec::new)
+            .push(TargetFileMember::Source(left_file));
+        groups
+            .entry(group_role(right_role))
+            .or_insert_with(Vec::new)
+            .push(TargetFileMember::Source(right_file));
+        for (role, members) in groups {
+            builder.group(TargetFileGroup::new(role, members, source("graph-group")));
+        }
         builder.build()
     }
 
@@ -2780,6 +3403,7 @@ mod tests {
             TargetSymbolRef::KnownType(KnownType::Clock),
             TargetSymbolRef::RuntimeCallable(RuntimeCallable::IsPositive),
             TargetSymbolRef::KnownField(KnownField::Epoch),
+            TargetSymbolRef::RuntimeHelper(Helper::Root),
             TargetSymbolRef::RuntimeHelper(Helper::Root),
         ]
     }
@@ -2856,6 +3480,22 @@ mod tests {
             codes(bad.symbol_catalogue().verify(&bad).unwrap_err())
                 .contains(&DiagnosticCode::TypeMismatch)
         );
+        for mode in [
+            CatalogueMode::PublicHelper,
+            CatalogueMode::DuplicateHelperOrder,
+            CatalogueMode::DuplicateHelper,
+        ] {
+            let errors = codes(
+                TestDialect(mode)
+                    .symbol_catalogue()
+                    .verify(&TestDialect(mode))
+                    .unwrap_err(),
+            );
+            assert!(
+                errors.contains(&DiagnosticCode::InvalidStructure)
+                    || errors.contains(&DiagnosticCode::DuplicateDeclaration)
+            );
+        }
     }
 
     #[test]
@@ -2865,14 +3505,40 @@ mod tests {
             .link_ast(&package(CatalogueMode::Normal, full_symbols()))
             .unwrap();
         assert_eq!(verify_linked_package(&linked), Ok(()));
-        assert_eq!(linked.files().len(), 1);
+        assert_eq!(linked.files().len(), 2);
         assert_eq!(linked.dependencies().len(), 1);
         assert_eq!(
             linked.dependencies()[0].requirement().version_requirement,
             "1"
         );
-        assert_eq!(linked.helpers(), &[Helper::Root, Helper::Leaf]);
-        assert!(!linked.helpers().contains(&Helper::Unused));
+        assert_eq!(
+            linked
+                .helpers()
+                .iter()
+                .map(LinkedRuntimeHelper::id)
+                .cloned()
+                .collect::<Vec<_>>(),
+            vec![Helper::Leaf, Helper::Root]
+        );
+        assert!(
+            !linked
+                .helpers()
+                .iter()
+                .any(|helper| helper.id() == &Helper::Unused)
+        );
+        assert_eq!(linked.files()[1].helpers(), &[Helper::Leaf, Helper::Root]);
+        assert!(
+            linked
+                .helpers()
+                .iter()
+                .all(|helper| helper.file().index() == 1)
+        );
+        assert!(
+            linked
+                .helpers()
+                .iter()
+                .all(|helper| !helper.items().is_empty())
+        );
 
         let file = &linked.files()[0];
         let imports = file.imports();
@@ -2957,12 +3623,95 @@ mod tests {
                 CatalogueMode::DependencyConflict,
                 DiagnosticCode::InterfaceNonconformance,
             ),
+            (
+                CatalogueMode::HelperIllegalPlacement,
+                DiagnosticCode::InvalidStructure,
+            ),
         ] {
             let diagnostics = TargetLinker::new(TestDialect(mode))
                 .link_ast(&package(mode, full_symbols()))
                 .unwrap_err();
             assert!(codes(diagnostics).contains(&expected), "mode {mode:?}");
         }
+    }
+
+    #[test]
+    fn file_graph_rejects_private_api_runtime_user_and_test_only_edges() {
+        for (left_role, right_role, visibility) in [
+            (
+                SourceRole::PublicApi,
+                SourceRole::PublicApi,
+                Visibility::Private,
+            ),
+            (
+                SourceRole::PublicApi,
+                SourceRole::Implementation,
+                Visibility::Public,
+            ),
+            (
+                SourceRole::Runtime,
+                SourceRole::Implementation,
+                Visibility::Public,
+            ),
+            (
+                SourceRole::Implementation,
+                SourceRole::NativeTest,
+                Visibility::Public,
+            ),
+        ] {
+            let diagnostics = TargetLinker::new(TestDialect(CatalogueMode::Normal))
+                .link_ast(&file_graph_package(
+                    CatalogueMode::Normal,
+                    left_role,
+                    right_role,
+                    visibility,
+                    false,
+                ))
+                .unwrap_err();
+            assert!(
+                diagnostics.iter().any(|diagnostic| diagnostic
+                    .message
+                    .contains("source-role or public-API visibility")),
+                "{left_role:?} -> {right_role:?}: {diagnostics:#?}"
+            );
+        }
+    }
+
+    #[test]
+    fn file_graph_cycles_require_an_explicit_dialect_policy() {
+        let forbidden = TargetLinker::new(TestDialect(CatalogueMode::Normal))
+            .link_ast(&file_graph_package(
+                CatalogueMode::Normal,
+                SourceRole::Implementation,
+                SourceRole::Implementation,
+                Visibility::Public,
+                true,
+            ))
+            .unwrap_err();
+        assert!(
+            forbidden
+                .iter()
+                .any(|diagnostic| diagnostic.message.contains("forbidden cycle"))
+        );
+
+        let permitted = TargetLinker::new(TestDialect(CatalogueMode::PermittedFileCycle))
+            .link_ast(&file_graph_package(
+                CatalogueMode::PermittedFileCycle,
+                SourceRole::Implementation,
+                SourceRole::Implementation,
+                Visibility::Public,
+                true,
+            ))
+            .unwrap();
+        assert_eq!(
+            permitted.files()[0].dependencies(),
+            &[TargetFileId::from_index(1)]
+        );
+        assert_eq!(
+            permitted.files()[1].dependencies(),
+            &[TargetFileId::from_index(0)]
+        );
+        assert_eq!(verify_linked_package(&permitted), Ok(()));
     }
 
     #[test]
@@ -2997,8 +3746,25 @@ mod tests {
         missing_dependency.dependencies_mut().clear();
         assert!(verify_linked_package(&missing_dependency).is_err());
 
+        let mut forged_file_edge = base.clone();
+        forged_file_edge.files_mut()[0]
+            .dependencies
+            .push(TargetFileId::from_index(1));
+        assert!(verify_linked_package(&forged_file_edge).is_err());
+
         let mut extra_helper = base;
-        extra_helper.helpers_mut().push(Helper::Unused);
+        let spec = extra_helper
+            .catalogue
+            .helper(&Helper::Unused)
+            .unwrap()
+            .clone();
+        extra_helper.helpers_mut().push(LinkedRuntimeHelper {
+            id: spec.id,
+            order: spec.order,
+            file: TargetFileId::from_index(1),
+            items: spec.items,
+            source: spec.source,
+        });
         assert!(verify_linked_package(&extra_helper).is_err());
     }
 

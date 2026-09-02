@@ -30,6 +30,7 @@ ast_id!(GeneratedInterfaceMethodId);
 ast_id!(GeneratedValueId);
 ast_id!(TargetTypeParameterId);
 ast_id!(TargetFileId);
+ast_id!(TargetArtifactId);
 ast_id!(TargetFileGroupId);
 
 /// Target-language grammar and catalogue contract used by the typed AST.
@@ -50,6 +51,8 @@ pub trait TypedAstDialect:
     type DeclarationKind: Clone + Debug + Eq + Ord + Send + Sync;
     type SymbolOrigin: Clone + Debug + Eq + Ord + Send + Sync;
     type TemplateId: Clone + Debug + Eq + Ord + Send + Sync;
+    type ModuleDeclaration: Clone + Debug + Eq + Ord + Send + Sync;
+    type FilePlacement: Clone + Debug + Eq + Ord + Send + Sync;
     type Expression: TargetExpressionNode<Self>;
     type Statement: TargetStatementNode<Self>;
     type FileItem: TargetFileItemNode<Self>;
@@ -65,6 +68,18 @@ pub trait TypedAstDialect:
     ) -> TargetCallableSignature<Self>;
 
     fn verify_signature(&self, signature: &TargetCallableSignature<Self>) -> Vec<AstViolation>;
+
+    /// Applies target-language compilation-unit rules before resolution.
+    ///
+    /// Dialects use closed module and placement enums here. Java can enforce
+    /// one public top-level type per compilation unit; C and C++ can distinguish
+    /// declarations, definitions, and complete-type placement without filenames
+    /// or template text becoming semantic switches.
+    fn verify_source_file(
+        &self,
+        file: &TargetFile<Self>,
+        context: &TargetAstContext<'_, Self>,
+    ) -> Vec<AstViolation>;
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -253,30 +268,237 @@ struct TargetStatement<D: TypedAstDialect> {
     source: SourceRef,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RelativeOutputPath(String);
+
+impl RelativeOutputPath {
+    pub fn new(path: impl Into<String>) -> Result<Self, AstViolation> {
+        let path = path.into();
+        if safe_target_path(&path) {
+            Ok(Self(path))
+        } else {
+            Err(AstViolation::new(
+                DiagnosticCode::UnsafeOutputPath,
+                format!("target output path {path:?} is unsafe"),
+            ))
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum TargetFileRole {
-    Source,
+pub enum SourceRole {
+    PublicApi,
+    Implementation,
     Runtime,
-    Test,
+    NativeTest,
     Conformance,
     NegativeTest,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FileGroupRole {
+    PublicApi,
+    Implementation,
+    Runtime,
+    NativeTests,
+    Conformance,
+    NegativeTests,
     Metadata,
     Documentation,
+    Assets,
+    DerivedJavaScript,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TargetFile<D: TypedAstDialect> {
-    pub path: String,
-    pub role: TargetFileRole,
-    pub items: Vec<D::FileItem>,
-    pub template: D::TemplateId,
-    pub source: SourceRef,
+    path: RelativeOutputPath,
+    role: SourceRole,
+    module: D::ModuleDeclaration,
+    placement: D::FilePlacement,
+    items: Vec<D::FileItem>,
+    template: D::TemplateId,
+    source: SourceRef,
+}
+
+impl<D: TypedAstDialect> TargetFile<D> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        path: RelativeOutputPath,
+        role: SourceRole,
+        module: D::ModuleDeclaration,
+        placement: D::FilePlacement,
+        items: Vec<D::FileItem>,
+        template: D::TemplateId,
+        source: SourceRef,
+    ) -> Self {
+        Self {
+            path,
+            role,
+            module,
+            placement,
+            items,
+            template,
+            source,
+        }
+    }
+
+    pub fn path(&self) -> &RelativeOutputPath {
+        &self.path
+    }
+
+    pub const fn role(&self) -> SourceRole {
+        self.role
+    }
+
+    pub fn module(&self) -> &D::ModuleDeclaration {
+        &self.module
+    }
+
+    pub fn placement(&self) -> &D::FilePlacement {
+        &self.placement
+    }
+
+    pub fn items(&self) -> &[D::FileItem] {
+        &self.items
+    }
+
+    pub fn template(&self) -> &D::TemplateId {
+        &self.template
+    }
+
+    pub fn source(&self) -> &SourceRef {
+        &self.source
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum PackageEcosystem {
+    Cargo,
+    GoModules,
+    Maven,
+    Npm,
+    Python,
+    CMake,
+    Zig,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PackageManifest {
+    pub ecosystem: PackageEcosystem,
+    pub package_name: String,
+    pub version: String,
+    pub dependencies: std::collections::BTreeMap<String, String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum PinnedTypeScriptCompiler {
+    WorkspaceToolchain,
+}
+
+/// Non-source artifacts are structurally separate from executable target AST.
+/// In particular, JavaScript carries only compiler-output provenance here: it
+/// cannot be independently lowered or supplied as executable text.
+///
+/// ```compile_fail
+/// use portable_codegen::{TargetArtifact, TargetFile, TypedAstDialect};
+///
+/// fn cannot_turn_artifact_into_source<D: TypedAstDialect>(
+///     artifact: TargetArtifact,
+/// ) -> TargetFile<D> {
+///     artifact.into()
+/// }
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TargetArtifact {
+    Metadata {
+        path: RelativeOutputPath,
+        manifest: PackageManifest,
+        source: SourceRef,
+    },
+    Documentation {
+        path: RelativeOutputPath,
+        contents: String,
+        source: SourceRef,
+    },
+    Asset {
+        path: RelativeOutputPath,
+        contents: Vec<u8>,
+        source: SourceRef,
+    },
+    DerivedJavaScript {
+        path: RelativeOutputPath,
+        compiler: PinnedTypeScriptCompiler,
+        source_map: bool,
+        source: SourceRef,
+    },
+}
+
+impl TargetArtifact {
+    pub fn path(&self) -> &RelativeOutputPath {
+        match self {
+            Self::Metadata { path, .. }
+            | Self::Documentation { path, .. }
+            | Self::Asset { path, .. }
+            | Self::DerivedJavaScript { path, .. } => path,
+        }
+    }
+
+    pub fn source(&self) -> &SourceRef {
+        match self {
+            Self::Metadata { source, .. }
+            | Self::Documentation { source, .. }
+            | Self::Asset { source, .. }
+            | Self::DerivedJavaScript { source, .. } => source,
+        }
+    }
+
+    pub const fn group_role(&self) -> FileGroupRole {
+        match self {
+            Self::Metadata { .. } => FileGroupRole::Metadata,
+            Self::Documentation { .. } => FileGroupRole::Documentation,
+            Self::Asset { .. } => FileGroupRole::Assets,
+            Self::DerivedJavaScript { .. } => FileGroupRole::DerivedJavaScript,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TargetFileMember {
+    Source(TargetFileId),
+    Artifact(TargetArtifactId),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TargetFileGroup {
-    pub files: Vec<TargetFileId>,
-    pub source: SourceRef,
+    role: FileGroupRole,
+    members: Vec<TargetFileMember>,
+    source: SourceRef,
+}
+
+impl TargetFileGroup {
+    pub fn new(role: FileGroupRole, members: Vec<TargetFileMember>, source: SourceRef) -> Self {
+        Self {
+            role,
+            members,
+            source,
+        }
+    }
+
+    pub const fn role(&self) -> FileGroupRole {
+        self.role
+    }
+
+    pub fn members(&self) -> &[TargetFileMember] {
+        &self.members
+    }
+
+    pub fn source(&self) -> &SourceRef {
+        &self.source
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -290,10 +512,15 @@ pub struct TargetAstPackage<D: TypedAstDialect> {
     expressions: Vec<TargetExpression<D>>,
     statements: Vec<TargetStatement<D>>,
     files: Vec<TargetFile<D>>,
+    artifacts: Vec<TargetArtifact>,
     groups: Vec<TargetFileGroup>,
 }
 
 impl<D: TypedAstDialect> TargetAstPackage<D> {
+    pub(crate) fn context(&self) -> TargetAstContext<'_, D> {
+        TargetAstContext { package: self }
+    }
+
     pub fn dialect(&self) -> &D {
         &self.dialect
     }
@@ -364,8 +591,20 @@ impl<D: TypedAstDialect> TargetAstPackage<D> {
         self.files.iter()
     }
 
+    pub fn artifact(&self, id: TargetArtifactId) -> Option<&TargetArtifact> {
+        self.artifacts.get(id.index())
+    }
+
+    pub fn artifacts(&self) -> impl ExactSizeIterator<Item = &TargetArtifact> {
+        self.artifacts.iter()
+    }
+
     pub fn group(&self, id: TargetFileGroupId) -> Option<&TargetFileGroup> {
         self.groups.get(id.index())
+    }
+
+    pub fn groups(&self) -> impl ExactSizeIterator<Item = &TargetFileGroup> {
+        self.groups.iter()
     }
 
     pub fn canonical_dump(&self) -> String {
@@ -481,6 +720,7 @@ impl<D: TypedAstDialect> TargetAstBuilder<D> {
                 expressions: vec![],
                 statements: vec![],
                 files: vec![],
+                artifacts: vec![],
                 groups: vec![],
             },
         }
@@ -562,6 +802,12 @@ impl<D: TypedAstDialect> TargetAstBuilder<D> {
     pub fn file(&mut self, file: TargetFile<D>) -> TargetFileId {
         let id = TargetFileId::from_index(self.package.files.len());
         self.package.files.push(file);
+        id
+    }
+
+    pub fn artifact(&mut self, artifact: TargetArtifact) -> TargetArtifactId {
+        let id = TargetArtifactId::from_index(self.package.artifacts.len());
+        self.package.artifacts.push(artifact);
         id
     }
 
@@ -668,39 +914,112 @@ pub fn verify_target_ast<D: TypedAstDialect>(
             &statement.source,
         );
     }
+    let mut paths = std::collections::BTreeMap::new();
+    let mut previous_source_path: Option<&str> = None;
     for file in &package.files {
-        check_source(&mut diagnostics, &file.source, "target file");
-        if !safe_target_path(&file.path) {
+        check_source(&mut diagnostics, file.source(), "target source file");
+        check_output_path(&mut diagnostics, file.path(), file.source(), &mut paths);
+        if previous_source_path.is_some_and(|previous| previous >= file.path().as_str()) {
             diagnostics.push(Diagnostic::error(
-                DiagnosticCode::UnsafeOutputPath,
-                format!("target AST file path {:?} is unsafe", file.path),
-                file.source.clone(),
+                DiagnosticCode::InvalidStructure,
+                "target source files are not in deterministic path order",
+                file.source().clone(),
             ));
         }
-        for item in &file.items {
-            add_violations(&mut diagnostics, item.verify(&context), &file.source);
+        previous_source_path = Some(file.path().as_str());
+        for item in file.items() {
+            add_violations(&mut diagnostics, item.verify(&context), file.source());
         }
+        add_violations(
+            &mut diagnostics,
+            package.dialect.verify_source_file(file, &context),
+            file.source(),
+        );
+    }
+    let mut previous_artifact_path: Option<&str> = None;
+    for artifact in &package.artifacts {
+        check_source(&mut diagnostics, artifact.source(), "target artifact");
+        check_output_path(
+            &mut diagnostics,
+            artifact.path(),
+            artifact.source(),
+            &mut paths,
+        );
+        if previous_artifact_path.is_some_and(|previous| previous >= artifact.path().as_str()) {
+            diagnostics.push(Diagnostic::error(
+                DiagnosticCode::InvalidStructure,
+                "target artifacts are not in deterministic path order",
+                artifact.source().clone(),
+            ));
+        }
+        previous_artifact_path = Some(artifact.path().as_str());
+        check_artifact(&mut diagnostics, artifact);
     }
     let mut grouped = std::collections::BTreeSet::new();
+    let mut previous_group_role = None;
     for group in &package.groups {
-        check_source(&mut diagnostics, &group.source, "target file group");
-        for file in &group.files {
-            if package.file(*file).is_none() {
-                missing(&mut diagnostics, "group file", &group.source);
+        check_source(&mut diagnostics, group.source(), "target file group");
+        if previous_group_role.is_some_and(|previous| previous > group.role()) {
+            diagnostics.push(Diagnostic::error(
+                DiagnosticCode::InvalidStructure,
+                "target file groups are not in deterministic role order",
+                group.source().clone(),
+            ));
+        }
+        previous_group_role = Some(group.role());
+        let mut previous_member_path: Option<&str> = None;
+        for member in group.members() {
+            let member_path = match member {
+                TargetFileMember::Source(file) => {
+                    let Some(file) = package.file(*file) else {
+                        missing(&mut diagnostics, "group source file", group.source());
+                        continue;
+                    };
+                    if group.role() != source_group_role(file.role()) {
+                        diagnostics.push(Diagnostic::error(
+                            DiagnosticCode::InvalidStructure,
+                            "source file role does not match its structural group role",
+                            group.source().clone(),
+                        ));
+                    }
+                    file.path().as_str()
+                }
+                TargetFileMember::Artifact(artifact) => {
+                    let Some(artifact) = package.artifact(*artifact) else {
+                        missing(&mut diagnostics, "group artifact", group.source());
+                        continue;
+                    };
+                    if group.role() != artifact.group_role() {
+                        diagnostics.push(Diagnostic::error(
+                            DiagnosticCode::InvalidStructure,
+                            "artifact kind does not match its structural group role",
+                            group.source().clone(),
+                        ));
+                    }
+                    artifact.path().as_str()
+                }
+            };
+            if previous_member_path.is_some_and(|previous| previous >= member_path) {
+                diagnostics.push(Diagnostic::error(
+                    DiagnosticCode::InvalidStructure,
+                    "target file-group members are not in deterministic path order",
+                    group.source().clone(),
+                ));
             }
-            if !grouped.insert(*file) {
+            previous_member_path = Some(member_path);
+            if !grouped.insert(*member) {
                 diagnostics.push(Diagnostic::error(
                     DiagnosticCode::DuplicateDeclaration,
-                    "target file appears in more than one group",
-                    group.source.clone(),
+                    "target file or artifact appears in more than one group",
+                    group.source().clone(),
                 ));
             }
         }
     }
-    if grouped.len() != package.files.len() {
+    if grouped.len() != package.files.len() + package.artifacts.len() {
         diagnostics.push(Diagnostic::error(
             DiagnosticCode::InvalidStructure,
-            "not every target file belongs to exactly one group",
+            "not every target source file and artifact belongs to exactly one group",
             root_source(package),
         ));
     }
@@ -797,12 +1116,103 @@ fn check_source(diagnostics: &mut Vec<Diagnostic>, source: &SourceRef, category:
 }
 
 fn safe_target_path(path: &str) -> bool {
-    !path.is_empty()
-        && !path.contains('\\')
-        && !std::path::Path::new(path).is_absolute()
-        && path
-            .split('/')
-            .all(|component| !component.is_empty() && component != "." && component != "..")
+    if path.is_empty()
+        || path.contains('\\')
+        || path.contains(':')
+        || path.chars().any(char::is_control)
+        || std::path::Path::new(path).is_absolute()
+    {
+        return false;
+    }
+    path.split('/').all(|component| {
+        if component.is_empty() || component == "." || component == ".." {
+            return false;
+        }
+        let folded = component.to_ascii_lowercase();
+        let stem = folded.split('.').next().unwrap_or_default();
+        !matches!(
+            folded.as_str(),
+            ".git" | "bazel-bin" | "bazel-out" | "bazel-testlogs"
+        ) && !matches!(stem, "con" | "prn" | "aux" | "nul")
+            && !(stem.len() == 4
+                && (stem.starts_with("com") || stem.starts_with("lpt"))
+                && stem.as_bytes()[3].is_ascii_digit()
+                && stem.as_bytes()[3] != b'0')
+    })
+}
+
+fn check_output_path<'a>(
+    diagnostics: &mut Vec<Diagnostic>,
+    path: &'a RelativeOutputPath,
+    source: &SourceRef,
+    paths: &mut std::collections::BTreeMap<String, &'a str>,
+) {
+    if !safe_target_path(path.as_str()) {
+        diagnostics.push(Diagnostic::error(
+            DiagnosticCode::UnsafeOutputPath,
+            format!("target output path {:?} is unsafe", path.as_str()),
+            source.clone(),
+        ));
+    }
+    let key = path.as_str().to_ascii_lowercase();
+    if let Some(existing) = paths.insert(key, path.as_str()) {
+        diagnostics.push(Diagnostic::error(
+            DiagnosticCode::UnsafeOutputPath,
+            format!(
+                "target output paths {:?} and {:?} collide after normalization",
+                existing,
+                path.as_str()
+            ),
+            source.clone(),
+        ));
+    }
+}
+
+fn source_group_role(role: SourceRole) -> FileGroupRole {
+    match role {
+        SourceRole::PublicApi => FileGroupRole::PublicApi,
+        SourceRole::Implementation => FileGroupRole::Implementation,
+        SourceRole::Runtime => FileGroupRole::Runtime,
+        SourceRole::NativeTest => FileGroupRole::NativeTests,
+        SourceRole::Conformance => FileGroupRole::Conformance,
+        SourceRole::NegativeTest => FileGroupRole::NegativeTests,
+    }
+}
+
+fn check_artifact(diagnostics: &mut Vec<Diagnostic>, artifact: &TargetArtifact) {
+    match artifact {
+        TargetArtifact::Metadata {
+            manifest, source, ..
+        } => {
+            if manifest.package_name.is_empty()
+                || manifest.version.is_empty()
+                || manifest.package_name.chars().any(char::is_control)
+                || manifest.version.chars().any(char::is_control)
+                || manifest
+                    .dependencies
+                    .iter()
+                    .any(|(name, version)| name.is_empty() || version.is_empty())
+            {
+                diagnostics.push(Diagnostic::error(
+                    DiagnosticCode::InvalidStructure,
+                    "typed package manifest contains invalid metadata",
+                    source.clone(),
+                ));
+            }
+        }
+        TargetArtifact::DerivedJavaScript { path, .. }
+            if !path.as_str().ends_with(".js") && !path.as_str().ends_with(".js.map") =>
+        {
+            diagnostics.push(Diagnostic::error(
+                DiagnosticCode::InvalidStructure,
+                "TypeScript compiler output must use a JavaScript or source-map path",
+                artifact.source().clone(),
+            ));
+        }
+        TargetArtifact::Documentation { .. }
+        | TargetArtifact::Asset { .. }
+        | TargetArtifact::DerivedJavaScript { .. } => {}
+    }
 }
 
 fn missing(diagnostics: &mut Vec<Diagnostic>, category: &str, source: &SourceRef) {
@@ -893,6 +1303,22 @@ mod tests {
         TestFile,
     }
 
+    #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    enum TestModule {
+        Generated,
+        Tests,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    enum TestPlacement {
+        General,
+        CHeader,
+        CImplementation,
+        CppHeader,
+        CppImplementation,
+        JavaCompilationUnit,
+    }
+
     #[derive(Clone, Debug, PartialEq, Eq)]
     enum TestExpression {
         BoolLiteral(bool),
@@ -964,6 +1390,8 @@ mod tests {
         type DeclarationKind = TestDeclarationKind;
         type SymbolOrigin = TestSymbolOrigin;
         type TemplateId = TestTemplate;
+        type ModuleDeclaration = TestModule;
+        type FilePlacement = TestPlacement;
         type Expression = TestExpression;
         type Statement = TestStatement;
         type FileItem = TestFileItem;
@@ -1000,6 +1428,39 @@ mod tests {
                     DiagnosticCode::InvalidInvocation,
                     "receiver does not agree with invocation kind",
                 )]
+            }
+        }
+
+        fn verify_source_file(
+            &self,
+            file: &TargetFile<Self>,
+            context: &TargetAstContext<'_, Self>,
+        ) -> Vec<AstViolation> {
+            match file.placement() {
+                TestPlacement::JavaCompilationUnit => {
+                    let public_types = file
+                        .items()
+                        .iter()
+                        .filter_map(|item| match item {
+                            TestFileItem::Type(id) => context.generated_type(*id),
+                            _ => None,
+                        })
+                        .filter(|ty| ty.visibility == TestVisibility::Public)
+                        .count();
+                    if public_types > 1 {
+                        vec![violation(
+                            DiagnosticCode::InvalidStructure,
+                            "Java compilation unit contains more than one public type",
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                TestPlacement::CHeader
+                | TestPlacement::CImplementation
+                | TestPlacement::CppHeader
+                | TestPlacement::CppImplementation
+                | TestPlacement::General => vec![],
             }
         }
     }
@@ -1318,30 +1779,40 @@ mod tests {
         let _return_statement =
             builder.statement(TestStatement::Return(call.id()), source("return-statement"));
         let statement = builder.statement(TestStatement::Evaluate(call.id()), source("statement"));
-        let file = builder.file(TargetFile {
-            path: "src/generated.polytest".to_owned(),
-            role: TargetFileRole::Source,
-            items: vec![
+        let file = builder.file(TargetFile::new(
+            RelativeOutputPath::new("src/generated.polytest").unwrap(),
+            SourceRole::PublicApi,
+            TestModule::Generated,
+            TestPlacement::General,
+            vec![
                 TestFileItem::Type(interface_type),
                 TestFileItem::Callable(callable),
                 TestFileItem::InterfaceMethod(interface_method),
                 TestFileItem::Value(value),
                 TestFileItem::Statement(statement),
             ],
-            template: TestTemplate::SourceFile,
-            source: source("file"),
-        });
-        let _test_file = builder.file(TargetFile {
-            path: "test/generated_test.polytest".to_owned(),
-            role: TargetFileRole::Test,
-            items: vec![],
-            template: TestTemplate::TestFile,
-            source: source("test-file"),
-        });
-        builder.group(TargetFileGroup {
-            files: vec![file, TargetFileId::from_index(1)],
-            source: source("group"),
-        });
+            TestTemplate::SourceFile,
+            source("file"),
+        ));
+        let test_file = builder.file(TargetFile::new(
+            RelativeOutputPath::new("test/generated_test.polytest").unwrap(),
+            SourceRole::NativeTest,
+            TestModule::Tests,
+            TestPlacement::General,
+            vec![],
+            TestTemplate::TestFile,
+            source("test-file"),
+        ));
+        builder.group(TargetFileGroup::new(
+            FileGroupRole::PublicApi,
+            vec![TargetFileMember::Source(file)],
+            source("public-api-group"),
+        ));
+        builder.group(TargetFileGroup::new(
+            FileGroupRole::NativeTests,
+            vec![TargetFileMember::Source(test_file)],
+            source("test-group"),
+        ));
         (
             builder.build(),
             FixtureIds {
@@ -1376,8 +1847,8 @@ mod tests {
         assert_eq!(package.value(ids.value).unwrap().ty, integer());
         assert_eq!(package.expression_type(ids.sum), Some(&integer()));
         assert_eq!(package.expression_type(ids.call), Some(&integer()));
-        assert_eq!(package.file(ids.file).unwrap().items.len(), 5);
-        assert_eq!(package.groups[0].files.len(), 2);
+        assert_eq!(package.file(ids.file).unwrap().items().len(), 5);
+        assert_eq!(package.groups[0].members().len(), 1);
         assert!(TargetAstContext { package: &package }.contains_statement(ids.statement));
     }
 
@@ -1430,11 +1901,13 @@ mod tests {
         package.type_parameters[0] = SourceRef::logical(Vec::<String>::new());
         package.statements[ids.statement.index()].node =
             TestStatement::Evaluate(TargetExprId::from_index(99));
-        package.files[ids.file.index()].path = "../escaped.polytest".to_owned();
+        package.files[ids.file.index()].path = RelativeOutputPath("../escaped.polytest".to_owned());
         package.files[ids.file.index()]
             .items
             .push(TestFileItem::Callable(GeneratedCallableId::from_index(99)));
-        package.groups_mut()[0].files.push(ids.file);
+        package.groups_mut()[0]
+            .members
+            .push(TargetFileMember::Source(ids.file));
 
         let diagnostics = verify_target_ast(&package).unwrap_err();
         let codes = diagnostics
@@ -1459,7 +1932,7 @@ mod tests {
     #[test]
     fn ungrouped_files_and_forward_expression_references_are_rejected() {
         let (mut package, _) = valid_fixture();
-        package.groups_mut()[0].files.pop();
+        package.groups_mut()[0].members.pop();
         package.expressions_mut()[0].node = TestExpression::Add {
             left: TargetExprId::from_index(1),
             right: TargetExprId::from_index(1),
@@ -1471,5 +1944,147 @@ mod tests {
             .collect::<BTreeSet<_>>();
         assert!(codes.contains(&DiagnosticCode::InvalidStructure));
         assert!(codes.contains(&DiagnosticCode::InvalidControlFlow));
+    }
+
+    #[test]
+    fn normalized_path_constructor_rejects_escape_reserved_and_ambiguous_paths() {
+        for path in [
+            "",
+            "/absolute.rs",
+            r"C:\absolute.rs",
+            r"dir\mixed.rs",
+            "dir//empty.rs",
+            "dir/./dot.rs",
+            "dir/../escape.rs",
+            "dir/nul.rs",
+            ".git/config",
+            "bazel-out/file",
+            "control/\0.rs",
+        ] {
+            assert!(
+                RelativeOutputPath::new(path).is_err(),
+                "unsafe path was accepted: {path:?}"
+            );
+        }
+        assert_eq!(
+            RelativeOutputPath::new("src/generated.rs")
+                .unwrap()
+                .as_str(),
+            "src/generated.rs"
+        );
+    }
+
+    #[test]
+    fn typed_non_source_artifacts_and_derived_javascript_verify() {
+        let (mut package, _) = valid_fixture();
+        package.artifacts = vec![
+            TargetArtifact::DerivedJavaScript {
+                path: RelativeOutputPath::new("dist/generated.js").unwrap(),
+                compiler: PinnedTypeScriptCompiler::WorkspaceToolchain,
+                source_map: true,
+                source: source("javascript"),
+            },
+            TargetArtifact::Documentation {
+                path: RelativeOutputPath::new("docs/README.md").unwrap(),
+                contents: "Generated package documentation.".to_owned(),
+                source: source("documentation"),
+            },
+            TargetArtifact::Metadata {
+                path: RelativeOutputPath::new("package.json").unwrap(),
+                manifest: PackageManifest {
+                    ecosystem: PackageEcosystem::Npm,
+                    package_name: "typed-package".to_owned(),
+                    version: "1.0.0".to_owned(),
+                    dependencies: std::collections::BTreeMap::new(),
+                },
+                source: source("metadata"),
+            },
+            TargetArtifact::Asset {
+                path: RelativeOutputPath::new("static/logo.bin").unwrap(),
+                contents: vec![0, 1, 2],
+                source: source("asset"),
+            },
+        ];
+        package.groups.extend([
+            TargetFileGroup::new(
+                FileGroupRole::Metadata,
+                vec![TargetFileMember::Artifact(TargetArtifactId::from_index(2))],
+                source("metadata-group"),
+            ),
+            TargetFileGroup::new(
+                FileGroupRole::Documentation,
+                vec![TargetFileMember::Artifact(TargetArtifactId::from_index(1))],
+                source("documentation-group"),
+            ),
+            TargetFileGroup::new(
+                FileGroupRole::Assets,
+                vec![TargetFileMember::Artifact(TargetArtifactId::from_index(3))],
+                source("asset-group"),
+            ),
+            TargetFileGroup::new(
+                FileGroupRole::DerivedJavaScript,
+                vec![TargetFileMember::Artifact(TargetArtifactId::from_index(0))],
+                source("javascript-group"),
+            ),
+        ]);
+        assert_eq!(verify_target_ast(&package), Ok(()));
+        assert_eq!(
+            package
+                .artifact(TargetArtifactId::from_index(0))
+                .unwrap()
+                .group_role(),
+            FileGroupRole::DerivedJavaScript
+        );
+    }
+
+    #[test]
+    fn collision_role_bypass_ordering_and_java_public_type_faults_are_rejected() {
+        let (mut package, ids) = valid_fixture();
+        package.artifacts.push(TargetArtifact::Documentation {
+            path: RelativeOutputPath("SRC/GENERATED.POLYTEST".to_owned()),
+            contents: String::new(),
+            source: source("collision"),
+        });
+        package.groups.push(TargetFileGroup::new(
+            FileGroupRole::Metadata,
+            vec![TargetFileMember::Artifact(TargetArtifactId::from_index(0))],
+            source("wrong-role"),
+        ));
+        package.files.swap(0, 1);
+        package.files[1].placement = TestPlacement::JavaCompilationUnit;
+        package.types[1].visibility = TestVisibility::Public;
+        package.files[1]
+            .items
+            .push(TestFileItem::Type(GeneratedTypeId::from_index(1)));
+        assert!(
+            package.files[1]
+                .items
+                .contains(&TestFileItem::Type(ids.interface_type))
+        );
+
+        let diagnostics = verify_target_ast(&package).unwrap_err();
+        let codes = diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.code)
+            .collect::<BTreeSet<_>>();
+        assert!(codes.contains(&DiagnosticCode::UnsafeOutputPath));
+        assert!(codes.contains(&DiagnosticCode::InvalidStructure));
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| { diagnostic.message.contains("more than one public type") })
+        );
+    }
+
+    #[test]
+    fn c_cpp_and_java_compilation_unit_placements_are_closed_typed_values() {
+        let placements = [
+            TestPlacement::CHeader,
+            TestPlacement::CImplementation,
+            TestPlacement::CppHeader,
+            TestPlacement::CppImplementation,
+            TestPlacement::JavaCompilationUnit,
+        ];
+        assert_eq!(placements.len(), 5);
     }
 }

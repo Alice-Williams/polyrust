@@ -1,6 +1,6 @@
 # M34A-07 — Make runtimes, files, and packages structural
 
-- Status: planned
+- Status: complete
 - Depends on: M34A-05
 
 ## Goal
@@ -37,3 +37,38 @@ runtime source blobs or file-body documents.
 
 Commit and push `M34A-07: make helpers and packages structural` only after
 focused/shared package and security tests pass in the dev container.
+
+## Exit evidence
+
+- `RelativeOutputPath` is a validated opaque type. Source and non-source
+  artifacts use disjoint Rust types; normalized case-insensitive collisions,
+  traversal, absolute/drive/UNC-style paths, control bytes, ambiguous
+  separators, and reserved output/device names are rejected.
+- Source roles, file-group roles, package ecosystems, pinned TypeScript
+  derivation, dialect module declarations, and dialect file placements are
+  typed enums/associated types. Groups prove exact membership, role
+  consistency, and deterministic ordering.
+- Metadata, documentation, assets, and compiler-derived JavaScript are
+  structural non-source artifact variants. JavaScript has no independently
+  lowered executable body; source files contain only typed AST items.
+- Helper catalogue entries contain ordered typed AST items, placement,
+  visibility, and provenance. Helper references are discovered by traversing
+  those items with the same verifier used for generated declarations; no
+  helper carries a manual dependency/import list.
+- The linker computes one deterministic transitive helper closure, emits every
+  selected helper exactly once into its uniquely matching runtime file, and
+  rejects missing, duplicate, cyclic, public, empty, or illegally placed
+  helpers. Optional helpers and their exclusive dependencies remain absent.
+- Generated declaration ownership and cross-file edges are reference-derived.
+  The verifier rejects forged edges, private public-API dependencies,
+  public-API-to-implementation edges, runtime-to-user edges, production-to-test
+  edges, duplicate/unplaced declarations, and cycles unless a typed dialect
+  policy explicitly permits the exact cycle.
+- The dialect file-verification hook uses typed modules/placements and has
+  proofs for Java's one-public-type rule plus C/C++ declaration,
+  implementation, header, and complete-type placement values.
+- In the Linux development container, both named milestone gates passed
+  uncached. Rustfmt, Clippy, Buildifier, the typed-generation source policy,
+  and repository source policy passed; the complete tracked-scope graph passed
+  uncached, 264 of 264 tests. The frozen untracked M34-03 `stdlib-abs`
+  package was the only excluded Bazel package and was not modified.
