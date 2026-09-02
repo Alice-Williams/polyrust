@@ -104,3 +104,4 @@ contract as every other target.
 - [M31 — has-flag equivalence port](milestones/M31-has-flag.md) — complete
 - [M32 — split-on-first equivalence port](milestones/M32-split-on-first.md) — complete
 - [M33 — stdlib is-negative-zero equivalence port](milestones/M33-stdlib-is-negative-zero.md) — complete
+- [M34 — stdlib abs equivalence port](milestones/M34-stdlib-abs.md) — in progress

@@ -25,7 +25,21 @@ Only one port may be in progress. A port is complete when:
 
 ## In-progress port
 
-No port is currently in progress.
+### @stdlib/math-base-special-abs 0.2.3
+
+- Upstream:
+  [stdlib-js/math-base-special-abs](https://github.com/stdlib-js/math-base-special-abs)
+- Revision: `fbdc5b76328d9f376ea1851c0e6c84bde50278bf`
+- License: Apache-2.0
+- Source language: JavaScript and C with a TypeScript declaration
+- Typed API: `abs(x: number): number`
+- Selection evidence: 874,139 npm downloads for the measured week ending
+  29 August 2026.
+- Required PolyRust gap: exact binary64 absolute value, defined by clearing
+  only the sign bit so signed zero and signed NaN payloads are deterministic.
+- Planned completion: M34; all official assertions, exact-bit differential
+  proof, eight native generated packages, public consumers, sanitizers,
+  deterministic regeneration, and immutable provenance checks.
 
 ## Completed ports
 

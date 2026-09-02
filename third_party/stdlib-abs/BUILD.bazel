@@ -1,0 +1,64 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+exports_files(
+    [
+        "LICENSE.Apache-2.0.txt",
+        "NOTICE.txt",
+        "README.md",
+        "bitwise.js",
+        "high.js",
+        "index.js",
+        "main.js",
+        "native.js",
+        "package.json",
+        "provenance_test.sh",
+        "upstream.bitwise.test.js",
+        "upstream.c",
+        "upstream.d.ts",
+        "upstream.h",
+        "upstream.high.test.js",
+        "upstream.native.test.js",
+        "upstream.test.js",
+        "upstream.type.test.ts",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "provenance_test",
+    srcs = ["provenance_test.sh"],
+    data = [
+        "LICENSE.Apache-2.0.txt",
+        "NOTICE.txt",
+        "README.md",
+        "bitwise.js",
+        "high.js",
+        "index.js",
+        "main.js",
+        "native.js",
+        "package.json",
+        "upstream.bitwise.test.js",
+        "upstream.c",
+        "upstream.d.ts",
+        "upstream.h",
+        "upstream.high.test.js",
+        "upstream.native.test.js",
+        "upstream.test.js",
+        "upstream.type.test.ts",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "oracle",
+    srcs = [
+        "LICENSE.Apache-2.0.txt",
+        "NOTICE.txt",
+        "bitwise.js",
+        "high.js",
+        "index.js",
+        "main.js",
+        "package.json",
+    ],
+    visibility = ["//visibility:public"],
+)
