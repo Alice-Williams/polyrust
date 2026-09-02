@@ -253,5 +253,7 @@ at `64cec7defbad6b61c56511fc5a986fdb1b08ecf2`.
 - The source-policy gate, exact backend dependency matrices, three-generation
   determinism, and all 16 has-flag proof targets pass after the extension. The
   uncached repository-wide gate passes 216/216 tests and the uncached release
-  gate passes 193/193 tests; hosted-CI evidence is recorded in the final M31
-  checkpoint.
+  gate passes 193/193 tests. Hosted workflow
+  [33584299238](https://github.com/Alice-Williams/polyrust/actions/runs/33584299238)
+  passes the implementation commit across both determinism hosts, cross-host
+  manifest comparison, and cache-cold/cache-warm complete release gates.

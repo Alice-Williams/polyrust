@@ -1,6 +1,6 @@
 # M31 — has-flag 5.0.1 equivalence port
 
-- Status: in-progress
+- Status: complete
 - Phase: 6
 - Depends on: M30
 
@@ -65,8 +65,12 @@ PolyRust `String` domain.
   passes 193/193 tests, including Buildifier, Rustfmt, Clippy, documentation,
   dependency-boundary, source-policy, fault-injection, every earlier port, and
   all generated-language native gates.
-- Hosted-CI evidence is added in the final M31 documentation checkpoint after
-  the implementation commit is pushed and its workflow succeeds.
+- Implementation commit `45a5a701b1bd2b77f459ac1a5a0764815912f474`
+  is pushed to `main`. Hosted workflow
+  [33584299238](https://github.com/Alice-Williams/polyrust/actions/runs/33584299238)
+  passes Rust stable and 1.98, the Windows host/container contract, Ubuntu
+  22.04 and 24.04 determinism, cross-host manifest comparison, fast checks,
+  and cache-cold/cache-warm complete release gates.
 
 ## Scope boundary
 
