@@ -25,20 +25,7 @@ Only one port may be in progress. A port is complete when:
 
 ## In-progress port
 
-### @stdlib/math-base-assert-is-negative-zero 0.2.3
-
-- Upstream:
-  [stdlib-js/math-base-assert-is-negative-zero](https://github.com/stdlib-js/math-base-assert-is-negative-zero)
-- Revision: `766200b9eeea46b7f827ac7d63effa6bea65d896`
-- License: Apache-2.0
-- Typed API: `isNegativeZero(x: number): boolean`
-- Selection evidence: 274,168 npm downloads for the measured week ending
-  29 August 2026.
-- Required PolyRust gap: exact IEEE-754 negative-zero classification, distinct
-  from both ordinary equality and generic sign-bit testing.
-- Admission boundary: the declaration accepts only `number`. Official
-  JavaScript non-number calls are retained as invalid-type evidence and are not
-  part of the portable `F64` domain.
+No port is currently in progress.
 
 ## Completed ports
 
@@ -216,6 +203,23 @@ Only one port may be in progress. A port is complete when:
   differential comparisons, eight native generated-package gates,
   three-generation determinism, C allocation-failure/sanitizer proof, and
   immutable provenance checks.
+
+### [@stdlib/math-base-assert-is-negative-zero 0.2.3](ports/stdlib-is-negative-zero.md)
+
+- Upstream:
+  [stdlib-js/math-base-assert-is-negative-zero](https://github.com/stdlib-js/math-base-assert-is-negative-zero)
+- Revision: `766200b9eeea46b7f827ac7d63effa6bea65d896`
+- License: Apache-2.0
+- Typed API: `isNegativeZero(x: number): boolean`
+- Selection evidence: 274,168 npm downloads for the measured week ending
+  29 August 2026.
+- Required PolyRust gap: exact IEEE-754 negative-zero classification, distinct
+  from both ordinary equality and generic sign-bit testing.
+- Admission boundary: the declaration accepts only `number`. Official
+  JavaScript non-number calls remain invalid-type evidence outside `F64`.
+- Completion: M33; 22 exact-bit portable vectors, 86,018 exact-bit
+  differential inputs, all eight native generated packages, public consumers,
+  sanitizers, deterministic regeneration, and immutable provenance checks.
 
 ## Deferred candidates
 

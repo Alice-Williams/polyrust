@@ -1,6 +1,6 @@
 # Target-language IR compliance ledger
 
-Status: M30 complete — all shared and target rows pass; M31/M32 extensions
+Status: M30 complete — all shared and target rows pass; M31/M32/M33 extensions
 audited
 
 This ledger audits the eight supported outputs against the normative
@@ -287,3 +287,28 @@ at `64cec7defbad6b61c56511fc5a986fdb1b08ecf2`.
   `84a81eb92f54cfbc37a4dd6013bee036c14d4939` across both determinism hosts,
   cross-host manifest comparison, pinned/stable Rust, fast checks, and
   cache-cold/cache-warm complete release gates.
+
+### M33 extension audit
+
+- `FloatIsNegativeZero` is a general checked `F64 -> Bool` operation with one
+  exact representation-level meaning. The checked package model contains no
+  target or upstream-specific branch.
+- Rust, TypeScript/derived JavaScript, Java, and C++ require no new dependency
+  for the operation. Focused matrices prove their existing mapping or
+  interpreter fragment contains the exact lowering without adding imports or
+  helper roots.
+- Python and Go select their optional F64 closures, whose fragments already
+  own the required structured `math`/`struct` imports. C's intrinsic mapping
+  directly owns `runtime.feature.f64`, and that helper owns `<math.h>` plus the
+  predicate declaration/definition. Empty/minimal fixtures prove those
+  optional closures disappear when no F64 mapping requires them.
+- No backend added a rendered directive, fixed import inventory, parallel
+  dependency repair scan, package-specific intrinsic, or syntax-aware
+  renderer. JavaScript remains byte-for-byte compiler-derived from the
+  TypeScript runtime.
+- Focused lowering/dependency matrices, source-policy checks, 22 portable
+  exact-bit vectors, 86,018 upstream differential inputs, and all 17 M33
+  targets pass. The uncached repository-wide regression passes 250/250 tests;
+  the uncached release gate passes 227/227 tests, including every earlier port,
+  Buildifier, Rustfmt, Clippy, public consumers, sanitizers, dependency
+  boundaries, and source-policy fault injection.
