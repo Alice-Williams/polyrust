@@ -57,3 +57,18 @@ anything. Every required item is release-blocking.
   dependent byte-for-byte comparison passed.
 - Hosted cache-cold complete gate: pass in four minutes. The immediately
   following cache-warm complete gate: pass in 42 seconds.
+
+## Post-v0.1 architecture release evidence
+
+- [M30 compositional target-language IR](plan/milestones/M30-compositional-language-ir.md):
+  complete. Shared codegen plus Rust, TypeScript, JavaScript, Python, Go, Java,
+  C++, and C are `Pass` in the
+  [compliance ledger](language-ir-compliance.md).
+- Local Linux-container evidence at the M30 release checkpoint: complete
+  uncached repository gate 201/201 and dedicated uncached release gate 178/178,
+  including Buildifier, Rustfmt, Clippy, target-native checks, public consumers,
+  differential tests, C/C++ sanitizers, compile-fail role tests, and deliberate
+  source-policy failure injection.
+- [Hosted workflow run 33577166696](https://github.com/Alice-Williams/polyrust/actions/runs/33577166696):
+  pass at `64cec7defbad6b61c56511fc5a986fdb1b08ecf2`, including a clean
+  cache-cold complete gate and its cache-warm repeat.

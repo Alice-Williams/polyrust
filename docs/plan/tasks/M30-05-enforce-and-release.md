@@ -1,6 +1,6 @@
 # M30-05 — Enforce the import boundary and release
 
-- Status: in-progress
+- Status: complete
 
 ## Goal
 
@@ -22,7 +22,7 @@ Make compositional dependency ownership a permanent checked invariant.
 - `bazel test //... --nocache_test_results --test_output=errors`
 - `bazel test //:release_gate --nocache_test_results --test_output=errors`
 
-## Local release-candidate evidence
+## Release evidence
 
 - The source-policy positive suite and deliberate Rust/template injection suite
   pass. The compile-fail doctests prove that raw text roles cannot construct
@@ -31,5 +31,13 @@ Make compositional dependency ownership a permanent checked invariant.
   and Buildifier focused gates pass 8/8 targets.
 - The complete uncached repository gate passes 201/201 tests.
 - The dedicated uncached release gate passes 178/178 tests.
-- The task remains `in-progress` until this candidate is pushed and its hosted
-  workflow is green, as required by the definition of done.
+- Hosted workflow
+  [33577166696](https://github.com/Alice-Williams/polyrust/actions/runs/33577166696)
+  passes at `64cec7defbad6b61c56511fc5a986fdb1b08ecf2`: Windows contract,
+  Rust 1.98.0 and stable, fast checks, two-host deterministic manifests,
+  cross-host byte comparison, and cache-cold/cache-warm release gates are all
+  green.
+- The first clean candidate run exposed that the new shell policy runner lacked
+  its tracked executable bit. Commit `64cec7d` records mode `100755`; the green
+  clean-checkout gate proves the Windows bind mount can no longer mask that
+  failure.

@@ -56,7 +56,7 @@ through the identical checker and MUST NOT access checked-program constructors o
 backend APIs directly. Such frontends accept only syntax with specified PolyRust
 semantics; ordinary Rust semantics are not inherited automatically.
 
-## 2. Proposed Cargo workspace
+## 2. Cargo workspace boundaries
 
 ```text
 polyrust/
@@ -72,7 +72,10 @@ polyrust/
     polyrust-backend-typescript/
     polyrust-backend-python/
     polyrust-backend-go/
-    polyrust-conformance/    evaluator/native differential harness
+    polyrust-backend-java/
+    polyrust-backend-cpp/
+    polyrust-backend-c/
+    polyrust-conformance/    evaluator/eight-output differential harness
     polyrust-cli/
   conformance/               shared programs and canonical vectors
   examples/
@@ -422,9 +425,28 @@ same scan.
 | immutable list | owned/borrowed safe wrapper or `Vec` by value | `ReadonlyArray` plus copy helpers | tuple or non-mutating generated API | defined slice wrapper/copy discipline |
 | Unicode scalar iteration | `.chars()` | code-point iterator with surrogate validation | code points with surrogate rejection | `range` plus UTF-8 validation |
 
-The concrete `Option`, `Result`, enum, and list public shapes require snapshots and
-API review in each backend task. Go pointer use is an implementation/API-layout
-choice, never an exposed PolyRust semantic.
+The TypeScript backend also emits JavaScript by erasing type-only syntax from
+the same dependency-bearing `EcmaCode` traversal; JavaScript is an output, not a
+separate backend crate.
+
+The expanded output mappings are:
+
+| PolyRust concept | JavaScript | Java | C++20 | C17 |
+| --- | --- | --- | --- | --- |
+| `Unit` | `undefined` runtime value | boxed `Void` | `std::monostate` | module-prefixed unit struct |
+| `I32` | `number` plus checked helpers | boxed `Integer` | `std::int32_t` | `int32_t` |
+| `I64` | `bigint` plus helpers | boxed `Long` | `std::int64_t` | `int64_t` |
+| `Char` | validated one-scalar string | validated `String` | `char32_t` | validated `uint32_t` scalar |
+| `Option<T>` | tagged runtime object | `Runtime.PolyOption<T>` | `std::optional<T>` | deterministic monomorphized struct |
+| `Result<T,E>` | tagged runtime object | `Runtime.PolyValueResult<T,E>` | `value_result<T,E>` | deterministic monomorphized struct |
+| tagged enum | tagged runtime object | sealed interface plus record variants | tag/payload value type | enum tag plus union payload |
+| restricted contract | type syntax erased; generated dispatch retained | interface plus record implementation | abstract interface plus record implementation | borrowed context plus typed vtable |
+| portable test | Node test runner | generated `main` assertion runner | generated `main` assertion runner | generated `main` with explicit allocator/cleanup |
+| immutable list | copied runtime array | immutable-copy `List<T>` discipline | value `std::vector<T>` | owned monomorphized list plus clone/drop |
+
+The concrete `Option`, `Result`, enum, and list public shapes are snapshot- and
+API-tested in each backend. Go pointer use and C/C++ internal addresses are
+implementation/API-layout choices, never exposed PolyRust reference semantics.
 
 ## 8. Diagnostics
 
@@ -473,8 +495,8 @@ required capabilities
 
 For each required target, native generated tests execute the declared cases and a
 generated runner encodes canonical results. The harness compares evaluator,
-Rust, TypeScript, JavaScript, Python, Go, and Java results after canonical
-encoding.
+Rust, TypeScript, JavaScript, Python, Go, Java, C++, and C results after
+canonical encoding.
 
 Tests MUST cover boundary integers, overflow, negative zero, NaN, Unicode scalar
 length, nested `Option`/`Result`, every enum variant, evaluation order, short
@@ -503,8 +525,10 @@ circuiting, list non-aliasing, reserved identifiers, and empty collections.
 3. Golden snapshots for complete packages and difficult syntax fragments.
 4. Regeneration tests proving byte-identical output.
 5. Generated portable tests in every target's native test framework.
-6. Native checks: Rust format/clippy/test; TypeScript format/typecheck/test;
-   Python format/typecheck/compile/test; Go format/vet/test.
+6. Native checks: Rust format/clippy/test; TypeScript and JavaScript
+   format/typecheck/test; Python format/typecheck/compile/test; Go
+   format/vet/test; Java compile/test; and C++20/C17 warnings-as-errors,
+   public-consumer, style, native, conformance, and sanitizer tests.
 7. Differential conformance against the evaluator.
 8. Property tests for serialization round trips, name allocation, numeric helper
    boundaries, and path rejection.

@@ -1,6 +1,6 @@
 # M30 — Compositional target-language IR
 
-- Status: in-progress
+- Status: complete
 - Phase: 8
 - Depends on: M26, M29
 

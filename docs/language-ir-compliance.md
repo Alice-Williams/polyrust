@@ -1,6 +1,6 @@
 # Target-language IR compliance ledger
 
-Status: M30 release-candidate audit — all shared and target rows pass
+Status: M30 complete — all shared and target rows pass
 
 This ledger audits the eight supported outputs against the normative
 [compositional target-language IR contract](language-ir-architecture.md).
@@ -61,6 +61,10 @@ A row moves to `Pass` only in the commit that adds all contract tests for that
 surface. Each migration records exact minimal/feature matrix coverage here.
 M30 is complete only when every row passes, the policy test prevents regression,
 all generated packages remain functionally equivalent, and hosted CI is green.
+
+That closure condition is satisfied by hosted workflow
+[33577166696](https://github.com/Alice-Williams/polyrust/actions/runs/33577166696)
+at `64cec7defbad6b61c56511fc5a986fdb1b08ecf2`.
 
 ## Migration evidence
 
