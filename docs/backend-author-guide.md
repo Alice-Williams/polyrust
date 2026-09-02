@@ -13,8 +13,12 @@ the template. Its [implementation](../examples/external-backend/src/lib.rs):
 1. defines a namespaced `TargetId` and supported `IrVersionRange`;
 2. reports support for every capability before generation;
 3. declares its option schema;
-4. consumes only `CheckedProgram` and returns an in-memory `OutputManifest`;
-5. registers through `BackendRegistry`, explicitly preflights, generates, and
+4. implements `LanguagePlugin` over `CheckedProgram` with a structured import
+   key, dependency-bearing fragments, a runtime-helper graph, stable file group,
+   and closed `LanguageSourceFile`;
+5. implements a `LanguageRenderer` that sees only `ImportSet` and is the sole
+   producer of dependency-directive syntax; and
+6. registers through `BackendRegistry`, explicitly preflights, generates, and
    calls `check_backend_contract` to prove deterministic behavior.
 
 Run the template proof with:
@@ -46,7 +50,8 @@ intrinsics, and capabilities to target constructs. It returns a
 
 - stable file groups such as metadata, runtime, source, tests, conformance, and
   negative tests;
-- a role for every file;
+- `SourceFileRole` for every generated source file and `TextFileRole` only for
+  metadata, documentation, and text assets;
 - closed `LanguageUnit` values composed from dependency-complete target
   fragments for preamble, body, and epilogue syntax;
 - target import and helper requirements attached to the exact fragment that
@@ -70,3 +75,9 @@ The `Document` inside a fragment is target syntax IR, not permission to make
 semantic decisions during rendering. A mapping selects names, target types,
 helpers, and imports while it creates the fragment. Naked documents and
 file-sized dependency repair passes are forbidden.
+
+The source-policy test reads all backend production sources. Adding a new
+checked-in target template or handwritten native fixture requires adding it to
+the backend's `language_ir_policy_sources` filegroup. A fixture containing
+literal dependency directives additionally requires a path-exact, reviewed
+entry in `tools/source-policy/source_policy.py`; production templates never do.

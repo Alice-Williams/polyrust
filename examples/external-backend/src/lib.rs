@@ -5,8 +5,10 @@ use std::{collections::BTreeMap, sync::Arc};
 use portable_check::v0::{Capability, CheckedProgram};
 use portable_codegen::{
     Backend, BackendDescriptor, BackendError, BackendOptions, BackendRegistry, BackendVersion,
-    CapabilitySupport, IrVersionRange, OptionsSchema, OutputFile, OutputManifest, TargetId,
-    check_backend_contract, preflight,
+    CapabilitySupport, Document, FileGroup, FileGroupId, ImportGroup, ImportSet, IrVersionRange,
+    LanguageFile, LanguageFragment, LanguagePackage, LanguagePlugin, LanguageRenderer,
+    LanguageSourceFile, OptionsSchema, OutputManifest, RawText, RuntimeHelper, RuntimeHelperGraph,
+    SourceFileRole, TargetId, check_backend_contract, generate_with_plugin, preflight,
 };
 use portable_ir::v0::IrVersion;
 
@@ -33,21 +35,81 @@ impl Backend for TextSummaryBackend {
     fn generate(
         &self,
         program: &CheckedProgram,
-        _options: &BackendOptions,
+        options: &BackendOptions,
     ) -> Result<OutputManifest, BackendError> {
-        OutputManifest::new(
-            vec![OutputFile::text(
-                "SUMMARY.txt",
-                format!(
-                    "module={}\ndeclarations={}\n",
-                    program.module().name,
-                    program.module().declarations.len()
-                ),
-            )],
-            vec![],
-            vec![],
+        generate_with_plugin(self, program, options)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum SummaryImport {
+    CheckedModule,
+}
+
+struct SummaryRenderer;
+
+impl LanguageRenderer<SummaryImport> for SummaryRenderer {
+    fn render_imports(&self, imports: &ImportSet<SummaryImport>) -> Result<Document, String> {
+        let lines = imports
+            .groups()
+            .flat_map(|(_, group)| group.iter())
+            .map(|import| match import {
+                SummaryImport::CheckedModule => "requires checked-module",
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        Ok(Document::raw_text(RawText::new(lines)))
+    }
+}
+
+impl LanguagePlugin for TextSummaryBackend {
+    type Import = SummaryImport;
+    type Renderer = SummaryRenderer;
+
+    fn translate(
+        &self,
+        program: &CheckedProgram,
+        _options: &BackendOptions,
+    ) -> Result<LanguagePackage<Self::Import>, BackendError> {
+        let import_group = ImportGroup::new(10, "checked-input").map_err(generation_error)?;
+        let summary = LanguageFragment::new(Document::raw_text(RawText::new(format!(
+            "module={}\ndeclarations={}",
+            program.module().name,
+            program.module().declarations.len()
+        ))))
+        .with_import(import_group, SummaryImport::CheckedModule)
+        .with_helper_root("runtime.format");
+
+        let helpers = RuntimeHelperGraph::new([RuntimeHelper::new(
+            "runtime.format",
+            0,
+            LanguageFragment::new(Document::raw_text(RawText::new(
+                "format=polyrust-summary-v0\n",
+            ))),
+        )])
+        .map_err(generation_error)?;
+        let runtime = helpers
+            .resolve(summary.helper_roots())
+            .map_err(generation_error)?;
+
+        let mut source = LanguageSourceFile::new("SUMMARY.txt", SourceFileRole::Source);
+        source.set_body(LanguageFragment::sequence([runtime, summary]));
+        let group = FileGroup::new(
+            FileGroupId::parse("source").map_err(generation_error)?,
+            vec![LanguageFile::source(source)],
         )
-        .map_err(BackendError::UnsupportedCapabilities)
+        .map_err(generation_error)?;
+        LanguagePackage::new(vec![group], vec![], vec![]).map_err(generation_error)
+    }
+
+    fn renderer(&self) -> Self::Renderer {
+        SummaryRenderer
+    }
+}
+
+fn generation_error(error: impl ToString) -> BackendError {
+    BackendError::Generation {
+        message: error.to_string(),
     }
 }
 
@@ -75,6 +137,9 @@ fn external_backend_registers_preflights_generates_and_passes_contract() {
             .file("SUMMARY.txt")
             .expect("summary artifact")
             .contents(),
-        &portable_codegen::OutputContents::Text("module=external_example\ndeclarations=0\n".into())
+        &portable_codegen::OutputContents::Text(
+            "requires checked-module\n\nformat=polyrust-summary-v0\nmodule=external_example\ndeclarations=0\n"
+                .into()
+        )
     );
 }

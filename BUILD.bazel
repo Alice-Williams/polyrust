@@ -194,6 +194,8 @@ test_suite(
         "//tools/dependency-boundaries:dependency_boundaries_test",
         "//tools/release:failure_injection_test",
         "//tools/release:policy_test",
+        "//tools/source-policy:failure_injection_test",
+        "//tools/source-policy:source_policy_test",
     ],
     visibility = ["//visibility:public"],
 )

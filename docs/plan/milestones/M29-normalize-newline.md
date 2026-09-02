@@ -1,6 +1,6 @@
 # M29 — normalize-newline equivalence port
 
-- Status: in-progress
+- Status: complete
 - Phase: 6
 - Depends on: M24, M26, M28
 

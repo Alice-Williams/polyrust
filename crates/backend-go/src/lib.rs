@@ -7,6 +7,10 @@ pub use v0::GoV0Backend;
 /// Legacy Go source backend for the executable prototype.
 use portable_check::CheckedModule;
 use portable_codegen::legacy::{Backend, GeneratedFile, GeneratedPackage};
+use portable_codegen::{
+    Document as CodeDocument, ImportGroup, ImportSet, LanguageRenderer, RawText, RenderOptions,
+    render,
+};
 use portable_ir::{Expression, Function, Module, Type, Value};
 
 pub struct GoBackend;
@@ -124,8 +128,22 @@ fn render_tests(module: &Module) -> String {
     let package = go_package(&module.name);
     let mut output =
         format!("// Code generated from portable tests. DO NOT EDIT.\npackage {package}\n");
+    let mut imports = ImportSet::default();
     if !module.tests.is_empty() {
-        output.push_str("\nimport \"testing\"\n");
+        imports.require(
+            ImportGroup::new(10, "standard").expect("static import group is valid"),
+            LegacyGoImport::Testing,
+        );
+    }
+    let import_document = LegacyGoRenderer
+        .render_imports(&imports)
+        .expect("static legacy imports are renderable");
+    let import_text =
+        render(&import_document, RenderOptions::default()).expect("dependency document is bounded");
+    if !import_text.is_empty() {
+        output.push('\n');
+        output.push_str(&import_text);
+        output.push('\n');
     }
     output.push('\n');
     for test in &module.tests {
@@ -148,6 +166,27 @@ fn render_tests(module: &Module) -> String {
         ));
     }
     output
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum LegacyGoImport {
+    Testing,
+}
+
+struct LegacyGoRenderer;
+
+impl LanguageRenderer<LegacyGoImport> for LegacyGoRenderer {
+    fn render_imports(&self, imports: &ImportSet<LegacyGoImport>) -> Result<CodeDocument, String> {
+        let lines = imports
+            .groups()
+            .flat_map(|(_, imports)| imports.iter())
+            .map(|import| match import {
+                LegacyGoImport::Testing => "import \"testing\"",
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        Ok(CodeDocument::raw_text(RawText::new(lines)))
+    }
 }
 
 fn go_parameter(parameter: &portable_ir::Parameter) -> String {

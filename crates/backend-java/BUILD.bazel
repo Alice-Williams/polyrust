@@ -100,3 +100,15 @@ java_test(
     use_testrunner = False,
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "language_ir_policy_sources",
+    srcs = glob(
+        [
+            "src/**/*",
+            "test/**/*",
+        ],
+        allow_empty = True,
+    ),
+    visibility = ["//visibility:public"],
+)

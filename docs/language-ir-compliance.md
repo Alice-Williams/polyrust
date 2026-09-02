@@ -1,6 +1,6 @@
 # Target-language IR compliance ledger
 
-Status: M30 migration baseline
+Status: M30 release-candidate audit — all shared and target rows pass
 
 This ledger audits the eight supported outputs against the normative
 [compositional target-language IR contract](language-ir-architecture.md).
@@ -12,7 +12,7 @@ not an accepted exception.
 
 | Surface | Structured renderer | Mapping-local fragments | Helper graph/minimal runtime | Source-role closure | No repair scan | Baseline result |
 | --- | --- | --- | --- | --- | --- | --- |
-| Shared codegen | Pass: renderer sees `ImportSet` only | Pass: associative `LanguageFragment` composition closes immutable units | Pass: deterministic closure rejects invalid, duplicate, missing, and cyclic helper graphs | Partial: source roles can still use raw `Text` | Pass: closed units expose no document/dependency repair API | **Fail** |
+| Shared codegen | Pass: renderer sees `ImportSet` only | Pass: associative `LanguageFragment` composition closes immutable units | Pass: deterministic closure rejects invalid, duplicate, missing, and cyclic helper graphs | Pass: disjoint role types and private variants make raw source files unconstructable | Pass: closed units expose no document/dependency repair API | **Pass** |
 | Rust | Pass: validated module/use IR; renderer alone spells directives | Pass: `RustCode` composes every syntax mapping and portable test | Pass: exact common/replacement/truncation/shift helper closure | Pass: every generated Rust source role uses a source file | Pass: intrinsic mappings directly own helper roots | **Pass** |
 | TypeScript | Pass: validated default/named/type-only/export IR; renderer alone spells directives | Pass: paired `EcmaCode` composes types, declarations, and tests | Pass: exact intrinsic-selected paired helper closure | Pass: every generated TypeScript source role uses a source file | Pass: mapping-local fragments replace file-wide attachment | **Pass** |
 | JavaScript | Pass: the same validated `EcmaImport` IR with type-only erasure | Pass: erased syntax comes from the same `EcmaCode` traversal | Pass: compiler-derived runtime has the same helper IDs and roots | Pass: every generated JavaScript source role uses a source file | Pass: no parallel declaration or dependency scan remains | **Pass** |
@@ -26,9 +26,16 @@ The audit deliberately does not infer compliance from successful compilation.
 The current full and release gates prove functional generated output; they do
 not prove dependency completeness or minimality.
 
+`Pass` in this ledger is deliberately narrower than complete PolyIR feature
+coverage. It means that every construct the backend accepts obeys the
+dependency-ownership contract and that unsupported constructs fail with a
+diagnostic before rendering. The separate target-expansion milestones track
+semantic coverage; in particular, M22/M22B remains in progress without
+weakening the C row here.
+
 ## Evidence locations
 
-- Shared mutable unit and source-role bypass APIs:
+- Shared fragments, helper closure, and role-safe file APIs:
   `crates/codegen/src/language.rs`.
 - Rust fragments and helper-closure implementation:
   `crates/backend-rust/src/v0.rs`.
@@ -199,3 +206,29 @@ all generated packages remain functionally equivalent, and hosted CI is green.
 - Three-generation determinism, header self-containment, C17
   warnings-as-errors, ABI/ownership, native, conformance, public-consumer,
   style, ASan/UBSan, Rustfmt, Clippy, and all 130 real-world tests pass.
+
+### Shared enforcement and extension proof (M30-05)
+
+- `SourceFileRole` is accepted only by `LanguageSourceFile`; `TextFileRole` is
+  accepted only by raw text files; byte files are assets. Private
+  `LanguageFile` variants prevent direct construction from bypassing those
+  roles. Shared unit tests and Bazel Rust doctests prove both positive and
+  compile-fail boundaries.
+- `//tools/source-policy:source_policy_test` scans every backend production Rust
+  string and checked-in target template. Dependency directives are legal only
+  inside `render_imports`; handwritten C, C++, and Java consumers use a
+  path-exact allowlist. A separate fault-injection target proves Rust/template
+  injections fail, a same-named free function receives no renderer permission,
+  and copied fixture paths receive no exception. The external-backend proof is
+  scanned with the built-in targets.
+- The historical Go registration fixture now supplies its conditional test
+  dependency to an import renderer instead of embedding a directive in the
+  generated body.
+- `examples/external-backend` implements the same public `LanguagePlugin`
+  boundary with a structured import key, mapping-local fragment, helper graph,
+  closed source file, syntax-only renderer, registry, preflight, and repeated
+  generation contract proof.
+- The complete uncached repository test run passes 201/201 tests. The dedicated
+  uncached release gate passes 178/178 tests, including Buildifier, Rustfmt,
+  Clippy, all target-native checks, public consumers, differential tests,
+  C/C++ sanitizers, documentation checks, and both source-policy tests.

@@ -8,6 +8,12 @@ exports_files(
     visibility = ["//visibility:public"],
 )
 
+filegroup(
+    name = "language_ir_policy_sources",
+    srcs = glob(["src/**/*"]),
+    visibility = ["//visibility:public"],
+)
+
 rust_test(
     name = "external_backend_test",
     srcs = ["src/lib.rs"],

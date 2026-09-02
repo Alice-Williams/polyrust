@@ -45,6 +45,47 @@ pub enum FileRole {
     Asset,
 }
 
+/// Roles whose contents must be assembled from closed target-language units.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum SourceFileRole {
+    Source,
+    Runtime,
+    Test,
+    Conformance,
+    NegativeTest,
+}
+
+impl From<SourceFileRole> for FileRole {
+    fn from(role: SourceFileRole) -> Self {
+        match role {
+            SourceFileRole::Source => Self::Source,
+            SourceFileRole::Runtime => Self::Runtime,
+            SourceFileRole::Test => Self::Test,
+            SourceFileRole::Conformance => Self::Conformance,
+            SourceFileRole::NegativeTest => Self::NegativeTest,
+        }
+    }
+}
+
+/// Roles allowed to bypass target-language rendering because they are not
+/// generated source code.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TextFileRole {
+    Metadata,
+    Documentation,
+    Asset,
+}
+
+impl From<TextFileRole> for FileRole {
+    fn from(role: TextFileRole) -> Self {
+        match role {
+            TextFileRole::Metadata => Self::Metadata,
+            TextFileRole::Documentation => Self::Documentation,
+            TextFileRole::Asset => Self::Asset,
+        }
+    }
+}
+
 /// Target-owned ordering bucket for imports, such as future, standard-library,
 /// package, and relative imports.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -439,10 +480,17 @@ impl fmt::Display for HelperGraphError {
 impl std::error::Error for HelperGraphError {}
 
 /// A source file after target translation but before syntax rendering.
+///
+/// Non-source roles cannot enter this API:
+///
+/// ```compile_fail
+/// use portable_codegen::{LanguageSourceFile, TextFileRole};
+/// let _ = LanguageSourceFile::<String>::new("README.md", TextFileRole::Documentation);
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LanguageSourceFile<I: Ord> {
     path: String,
-    role: FileRole,
+    role: SourceFileRole,
     preamble: Option<LanguageUnit<I>>,
     body: Option<LanguageUnit<I>>,
     epilogue: Option<LanguageUnit<I>>,
@@ -450,7 +498,7 @@ pub struct LanguageSourceFile<I: Ord> {
 }
 
 impl<I: Ord> LanguageSourceFile<I> {
-    pub fn new(path: impl Into<String>, role: FileRole) -> Self {
+    pub fn new(path: impl Into<String>, role: SourceFileRole) -> Self {
         Self {
             path: path.into(),
             role,
@@ -466,7 +514,7 @@ impl<I: Ord> LanguageSourceFile<I> {
     }
 
     pub fn role(&self) -> FileRole {
-        self.role
+        self.role.into()
     }
 
     pub fn set_preamble(&mut self, unit: impl Into<LanguageUnit<I>>) {
@@ -502,8 +550,22 @@ impl<I: Ord> LanguageSourceFile<I> {
     }
 }
 
+/// A role-safe generated package file.
+///
+/// Source-bearing variants are private and can only be created from a closed
+/// `LanguageSourceFile`. Text constructors accept only non-source roles.
+///
+/// ```compile_fail
+/// use portable_codegen::{FileRole, LanguageFile};
+/// let _ = LanguageFile::<String>::text("src/lib.rs", FileRole::Source, "source");
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum LanguageFile<I: Ord> {
+pub struct LanguageFile<I: Ord> {
+    kind: LanguageFileKind<I>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum LanguageFileKind<I: Ord> {
     Source(LanguageSourceFile<I>),
     Text {
         path: String,
@@ -519,36 +581,42 @@ pub enum LanguageFile<I: Ord> {
 
 impl<I: Ord> LanguageFile<I> {
     pub fn source(file: LanguageSourceFile<I>) -> Self {
-        Self::Source(file)
-    }
-
-    pub fn text(path: impl Into<String>, role: FileRole, contents: impl Into<String>) -> Self {
-        Self::Text {
-            path: path.into(),
-            role,
-            contents: contents.into(),
+        Self {
+            kind: LanguageFileKind::Source(file),
         }
     }
 
-    pub fn bytes(path: impl Into<String>, role: FileRole, contents: impl Into<Vec<u8>>) -> Self {
-        Self::Bytes {
-            path: path.into(),
-            role,
-            contents: contents.into(),
+    pub fn text(path: impl Into<String>, role: TextFileRole, contents: impl Into<String>) -> Self {
+        Self {
+            kind: LanguageFileKind::Text {
+                path: path.into(),
+                role: role.into(),
+                contents: contents.into(),
+            },
+        }
+    }
+
+    pub fn bytes(path: impl Into<String>, contents: impl Into<Vec<u8>>) -> Self {
+        Self {
+            kind: LanguageFileKind::Bytes {
+                path: path.into(),
+                role: FileRole::Asset,
+                contents: contents.into(),
+            },
         }
     }
 
     pub fn path(&self) -> &str {
-        match self {
-            Self::Source(file) => file.path(),
-            Self::Text { path, .. } | Self::Bytes { path, .. } => path,
+        match &self.kind {
+            LanguageFileKind::Source(file) => file.path(),
+            LanguageFileKind::Text { path, .. } | LanguageFileKind::Bytes { path, .. } => path,
         }
     }
 
     pub fn role(&self) -> FileRole {
-        match self {
-            Self::Source(file) => file.role(),
-            Self::Text { role, .. } | Self::Bytes { role, .. } => *role,
+        match &self.kind {
+            LanguageFileKind::Source(file) => file.role(),
+            LanguageFileKind::Text { role, .. } | LanguageFileKind::Bytes { role, .. } => *role,
         }
     }
 }
@@ -696,9 +764,9 @@ impl std::error::Error for LanguagePackageError {}
 /// syntax:
 ///
 /// ```compile_fail
-/// use portable_codegen::{FileRole, ImportGroup, LanguageSourceFile};
+/// use portable_codegen::{ImportGroup, LanguageSourceFile, SourceFileRole};
 ///
-/// let mut file = LanguageSourceFile::<String>::new("src/example", FileRole::Source);
+/// let mut file = LanguageSourceFile::<String>::new("src/example", SourceFileRole::Source);
 /// file.require_import(ImportGroup::new(10, "standard").unwrap(), "value".into());
 /// ```
 pub trait LanguageRenderer<I: Ord> {
@@ -736,17 +804,17 @@ pub fn render_language_package<I: Clone + Ord>(
     let mut output = Vec::new();
     for group in &package.groups {
         for file in &group.files {
-            match file {
-                LanguageFile::Source(file) => {
+            match &file.kind {
+                LanguageFileKind::Source(file) => {
                     output.push(OutputFile::text(
                         file.path(),
                         render_source(file, renderer)?,
                     ));
                 }
-                LanguageFile::Text { path, contents, .. } => {
+                LanguageFileKind::Text { path, contents, .. } => {
                     output.push(OutputFile::text(path, contents));
                 }
-                LanguageFile::Bytes { path, contents, .. } => {
+                LanguageFileKind::Bytes { path, contents, .. } => {
                     output.push(OutputFile::bytes(path, contents.clone()));
                 }
             }
@@ -983,7 +1051,7 @@ mod tests {
 
     #[test]
     fn groups_files_and_imports_are_sorted_and_deduplicated() {
-        let mut source = LanguageSourceFile::new("src/lib.test", FileRole::Source);
+        let mut source = LanguageSourceFile::new("src/lib.test", SourceFileRole::Source);
         let mut preamble = LanguageFragment::new(Document::raw_text(RawText::new("// preamble")));
         assert!(preamble.require_import(import_group(10, "standard"), TestImport("zeta")));
         let mut body = LanguageFragment::new(Document::raw_text(RawText::new("body")));
@@ -1000,7 +1068,7 @@ mod tests {
             id("metadata"),
             vec![LanguageFile::text(
                 "project.toml",
-                FileRole::Metadata,
+                TextFileRole::Metadata,
                 "meta\n",
             )],
         )
@@ -1017,7 +1085,8 @@ mod tests {
 
     #[test]
     fn a_file_without_import_requirements_has_no_import_section() {
-        let mut source = LanguageSourceFile::<TestImport>::new("src/empty.test", FileRole::Source);
+        let mut source =
+            LanguageSourceFile::<TestImport>::new("src/empty.test", SourceFileRole::Source);
         source.set_body(LanguageFragment::new(Document::raw_text(RawText::new(
             "body",
         ))));
@@ -1035,6 +1104,23 @@ mod tests {
     }
 
     #[test]
+    fn file_constructors_preserve_disjoint_source_and_raw_roles() {
+        let source = LanguageFile::<TestImport>::source(LanguageSourceFile::new(
+            "src/lib.test",
+            SourceFileRole::Source,
+        ));
+        let metadata = LanguageFile::<TestImport>::text(
+            "project.toml",
+            TextFileRole::Metadata,
+            "name = 'example'",
+        );
+        let asset = LanguageFile::<TestImport>::bytes("icon.bin", [0_u8, 1_u8]);
+        assert_eq!(source.role(), FileRole::Source);
+        assert_eq!(metadata.role(), FileRole::Metadata);
+        assert_eq!(asset.role(), FileRole::Asset);
+    }
+
+    #[test]
     fn invalid_empty_duplicate_groups_and_duplicate_paths_are_rejected() {
         assert!(FileGroupId::parse("Bad Group").is_err());
         assert!(ImportGroup::new(0, "Bad Group").is_err());
@@ -1044,12 +1130,12 @@ mod tests {
         );
         let first = FileGroup::<TestImport>::new(
             id("first"),
-            vec![LanguageFile::text("same", FileRole::Metadata, "a")],
+            vec![LanguageFile::text("same", TextFileRole::Metadata, "a")],
         )
         .unwrap();
         let second = FileGroup::<TestImport>::new(
             id("second"),
-            vec![LanguageFile::text("same", FileRole::Metadata, "b")],
+            vec![LanguageFile::text("same", TextFileRole::Metadata, "b")],
         )
         .unwrap();
         assert!(matches!(
@@ -1058,12 +1144,12 @@ mod tests {
         ));
         let one = FileGroup::<TestImport>::new(
             id("same"),
-            vec![LanguageFile::text("one", FileRole::Metadata, "a")],
+            vec![LanguageFile::text("one", TextFileRole::Metadata, "a")],
         )
         .unwrap();
         let two = FileGroup::<TestImport>::new(
             id("same"),
-            vec![LanguageFile::text("two", FileRole::Metadata, "b")],
+            vec![LanguageFile::text("two", TextFileRole::Metadata, "b")],
         )
         .unwrap();
         assert_eq!(
@@ -1082,7 +1168,7 @@ mod tests {
 
     #[test]
     fn renderer_failures_are_not_hidden() {
-        let mut source = LanguageSourceFile::new("src/lib.test", FileRole::Source);
+        let mut source = LanguageSourceFile::new("src/lib.test", SourceFileRole::Source);
         let mut body = LanguageFragment::new(Document::empty());
         body.require_import(import_group(10, "standard"), TestImport("alpha"));
         source.set_body(body);

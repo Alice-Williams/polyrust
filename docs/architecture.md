@@ -1,6 +1,8 @@
 # PolyRust v0 technical specification
 
-Status: design draft
+Status: normative for implemented v0 behavior. Sections explicitly marked as
+future, proposed, or deferred are non-commitments until their owning milestone
+is accepted.
 
 The words MUST, MUST NOT, SHOULD, and MAY describe intended requirements for the
 v0.1 implementation. This document specifies behavior; the exact Rust API may
@@ -376,8 +378,8 @@ validated `LanguagePackage` containing deterministic file groups, source-file
 roles, dependencies, helpers, and dependency-bearing target `LanguageUnit`
 nodes composed from target fragments. Each fragment couples target-owned syntax
 to the complete import and helper requirements caused by that mapping. Its
-syntax renderer consumes only the resulting package; it
-package; it MUST NOT receive a `CheckedProgram`.
+syntax renderer consumes only the resulting package; it MUST NOT receive a
+`CheckedProgram`.
 
 Imports, includes, module uses, and equivalent declarations MUST be collected as
 requirements on the same fragment while target constructs are mapped. A source file
@@ -386,6 +388,22 @@ way it can acquire requirements. A renderer sorts, deduplicates, groups, and
 writes those requirements using target syntax. Backends MUST NOT prepend
 unconditional catch-all import blocks merely to make later string assembly
 compile. Files whose units have no requirements emit no import section.
+
+The public file API makes source-role closure structural. `SourceFileRole`
+contains only source, runtime, test, conformance, and negative-test roles and is
+accepted only by `LanguageSourceFile`. `TextFileRole` contains only metadata,
+documentation, and text-asset roles and is accepted only by the raw text
+constructor. `LanguageFile` variants are private, so a backend cannot construct
+a raw source-role file by bypassing those constructors. Bazel compile-fail
+doctests protect this separation.
+
+A repository source-policy gate scans every backend runtime/body template and
+Rust target string. Dependency directives are accepted only inside a
+`LanguageRenderer::render_imports` implementation. Handwritten native consumer
+fixtures are admitted by an exact path allowlist, and fault-injection tests prove
+that a same-named free function, or moving or copying a fixture exception, does
+not inherit permission. The external-backend extension proof is part of the
+same scan.
 
 ## 7. Required target mappings
 

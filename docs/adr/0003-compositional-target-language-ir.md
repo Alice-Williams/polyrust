@@ -56,8 +56,10 @@ until exact positive/negative matrices and native gates pass.
 ## Enforcement
 
 `LanguageFragment`, closed `LanguageUnit`, and `RuntimeHelperGraph` tests enforce
-composition and closure semantics. The per-target M30-04 tasks require minimal
-and one-feature matrices plus native compilation. M30-05 adds a source-policy
-test for rendered directives and raw source-role bypasses. The
+composition and closure semantics. `SourceFileRole`, `TextFileRole`, and private
+`LanguageFile` variants prevent raw source-role bypasses; Bazel compile-fail
+doctests prove the public boundary. The repository source-policy and deliberate
+injection tests reject dependency directives outside renderers and exact native
+fixture exceptions. The
 [compliance ledger](../language-ir-compliance.md) may mark a surface `Pass` only
 in the commit that adds its executable evidence.

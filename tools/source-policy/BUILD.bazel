@@ -1,0 +1,26 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+sh_test(
+    name = "source_policy_test",
+    srcs = ["source_policy_test.sh"],
+    data = [
+        "source_policy.py",
+        "//crates/backend-c:language_ir_policy_sources",
+        "//crates/backend-cpp:language_ir_policy_sources",
+        "//crates/backend-go:language_ir_policy_sources",
+        "//crates/backend-java:language_ir_policy_sources",
+        "//crates/backend-python:language_ir_policy_sources",
+        "//crates/backend-rust:language_ir_policy_sources",
+        "//crates/backend-typescript:language_ir_policy_sources",
+        "//examples/external-backend:language_ir_policy_sources",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "failure_injection_test",
+    srcs = ["source_policy_test.sh"],
+    args = ["self-test"],
+    data = ["source_policy.py"],
+    visibility = ["//visibility:public"],
+)
