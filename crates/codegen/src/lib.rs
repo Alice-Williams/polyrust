@@ -6,11 +6,13 @@ mod backend;
 mod document;
 mod language;
 mod manifest;
+mod typed_pipeline;
 
 pub use backend::*;
 pub use document::*;
 pub use language::*;
 pub use manifest::*;
+pub use typed_pipeline::*;
 
 /// Temporary adapter for the pre-v0 prototype emitters. New backends must use
 /// the checked [`Backend`] contract at this crate's root.

@@ -1,6 +1,6 @@
 # M34A-01 — Enforce pipeline phase ownership
 
-- Status: planned
+- Status: complete
 - Depends on: M34A-00
 
 ## Goal
@@ -36,3 +36,18 @@ through safe public APIs.
 
 Commit and push `M34A-01: enforce typed pipeline phases` only when all focused
 tests and existing `//crates/codegen:all` pass in the dev container.
+
+## Evidence
+
+- `crates/codegen/src/typed_pipeline.rs` defines the sealed object-safe
+  compiler adapter, verified Core/unresolved/resolved/render-view phases,
+  renderer output, typed registry, sorted stage diagnostics, and manifest-only
+  final assembly.
+- Rustdoc compile-fail cases reject unchecked lowering, forged unresolved
+  packages, unresolved rendering, and direct typed-compiler implementations.
+- Unit fault injection covers every phase and proves no later phase runs after
+  failure; invalid options stop before Core lowering; unsafe output paths fail
+  atomically at manifest assembly; repeated compilation is byte-identical.
+- Linux-container Bazel invocation
+  `f7cdc364-f55e-4b37-817b-88d3db59114d` passed
+  `//crates/codegen:all`, Buildifier, Rustfmt, and Clippy.

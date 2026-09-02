@@ -307,7 +307,7 @@ impl BackendRegistry {
     }
 }
 
-fn validate_options(schema: &OptionsSchema, options: &BackendOptions) -> Vec<String> {
+pub(crate) fn validate_options(schema: &OptionsSchema, options: &BackendOptions) -> Vec<String> {
     let mut errors = Vec::new();
     for name in schema.keys() {
         if schema[name].required && options.get(name).is_none() {

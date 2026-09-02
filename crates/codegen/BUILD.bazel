@@ -23,7 +23,18 @@ rust_test(
     deps = ["//crates/build:portable_build"],
 )
 
+rust_test(
+    name = "typed_pipeline_test",
+    crate = ":portable_codegen",
+    deps = ["//crates/build:portable_build"],
+)
+
 rust_doc_test(
     name = "portable_codegen_doc_test",
+    crate = ":portable_codegen",
+)
+
+rust_doc_test(
+    name = "typed_pipeline_compile_fail_test",
     crate = ":portable_codegen",
 )
