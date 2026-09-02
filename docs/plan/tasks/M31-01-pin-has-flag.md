@@ -1,6 +1,6 @@
 # M31-01 — Pin has-flag 5.0.1
 
-- Status: planned
+- Status: complete
 
 ## Goal
 
