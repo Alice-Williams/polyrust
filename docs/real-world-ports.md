@@ -23,6 +23,23 @@ Only one port may be in progress. A port is complete when:
 5. regeneration is byte-identical; and
 6. provenance, gaps filled, and reproduction commands are documented.
 
+## In-progress port
+
+### @stdlib/math-base-assert-is-negative-zero 0.2.3
+
+- Upstream:
+  [stdlib-js/math-base-assert-is-negative-zero](https://github.com/stdlib-js/math-base-assert-is-negative-zero)
+- Revision: `766200b9eeea46b7f827ac7d63effa6bea65d896`
+- License: Apache-2.0
+- Typed API: `isNegativeZero(x: number): boolean`
+- Selection evidence: 274,168 npm downloads for the measured week ending
+  29 August 2026.
+- Required PolyRust gap: exact IEEE-754 negative-zero classification, distinct
+  from both ordinary equality and generic sign-bit testing.
+- Admission boundary: the declaration accepts only `number`. Official
+  JavaScript non-number calls are retained as invalid-type evidence and are not
+  part of the portable `F64` domain.
+
 ## Completed ports
 
 ### [escape-string-regexp 5.0.0](ports/escape-string-regexp.md)
@@ -200,11 +217,19 @@ Only one port may be in progress. A port is complete when:
   three-generation determinism, C allocation-failure/sanitizer proof, and
   immutable provenance checks.
 
-## Deferred candidate
+## Deferred candidates
 
-`juliangruber/balanced-match` is MIT licensed and attractive for a later parser
-case, but its current API accepts arbitrary JavaScript `RegExp` values. Native
-regex engines in Rust, TypeScript, JavaScript, Python, Go, and Java do not share one complete
-language or matching model. It remains deferred until PolyRust specifies an
-honest portable regex subset or implements one common engine; a literal-only
-partial port would not satisfy this track's completion policy.
+- `juliangruber/balanced-match` is MIT licensed and attractive for a later
+  parser case, but its current API accepts arbitrary JavaScript `RegExp` values.
+  Native regex engines in the supported targets do not share one complete
+  language or matching model. It remains deferred until PolyRust specifies an
+  honest portable regex subset or implements one common engine.
+- `sindresorhus/strip-final-newline` 4.0.0 is MIT licensed and has an attractive
+  string/`Uint8Array` API, but its documented binary result is a mutable
+  `subarray` view of the input. That observable aliasing conflicts with
+  PolyRust's normative immutable `Bytes` value semantics.
+- `inspect-js/is-negative-zero` 2.0.3 is MIT licensed and widely used, but its
+  declaration accepts `unknown` and its official API includes dynamic strings,
+  objects, arrays, functions, booleans, `null`, and `undefined`. A numeric-only
+  port would be incomplete. M33 instead uses stdlib's number-specific API for
+  the same reusable IEEE predicate.
