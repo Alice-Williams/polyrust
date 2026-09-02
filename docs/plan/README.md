@@ -101,3 +101,4 @@ contract as every other target.
 - [M27 — parse-ms equivalence port](milestones/M27-parse-ms.md) — complete
 - [M28 — is-fullwidth-code-point equivalence port](milestones/M28-is-fullwidth-code-point.md) — complete
 - [M29 — normalize-newline equivalence port](milestones/M29-normalize-newline.md) — complete
+- [M31 — has-flag equivalence port](milestones/M31-has-flag.md) — in-progress
