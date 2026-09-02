@@ -1450,6 +1450,7 @@ impl Generator<'_> {
                 format!("{{ let mut value = {a}; value.push_str(&{b}); Ok(value) }}")
             }
             Intrinsic::StringScalarLength => format!("Ok({a}.chars().count() as i64)"),
+            Intrinsic::StringUtf16Length => format!("Ok({a}.encode_utf16().count() as i64)"),
             Intrinsic::StringIsEmpty => format!("Ok({a}.is_empty())"),
             Intrinsic::StringContains => format!("Ok({a}.contains({b}.as_str()))"),
             Intrinsic::StringStartsWith => format!("Ok({a}.starts_with({b}.as_str()))"),
@@ -1495,6 +1496,9 @@ impl Generator<'_> {
                 format!("{{ let mut value = {a}; value.push({b}); Ok(value) }}")
             }
             Intrinsic::ListContains => format!("Ok({a}.contains(&{b}))"),
+            Intrinsic::ListIndexOf => {
+                format!("Ok({a}.iter().position(|item| item == &{b}).map(|index| index as i64))")
+            }
             Intrinsic::OptionIsSome => format!("Ok({a}.is_some())"),
             Intrinsic::OptionIsNone => format!("Ok({a}.is_none())"),
             Intrinsic::OptionUnwrapOr => format!("Ok({a}.unwrap_or({b}))"),
@@ -1589,6 +1593,7 @@ impl Generator<'_> {
                     | Intrinsic::ResultIsOk
                     | Intrinsic::ResultIsErr => Some(TypeRef::Bool),
                     Intrinsic::StringScalarLength
+                    | Intrinsic::StringUtf16Length
                     | Intrinsic::BytesLength
                     | Intrinsic::ListLength
                     | Intrinsic::WidenI32ToI64 => Some(TypeRef::I64),
@@ -1606,6 +1611,7 @@ impl Generator<'_> {
                         TypeRef::List(element) => Some(*element),
                         _ => None,
                     },
+                    Intrinsic::ListIndexOf => Some(TypeRef::Option(Box::new(TypeRef::I64))),
                     Intrinsic::OptionUnwrapOr => match first {
                         TypeRef::Option(inner) => Some(*inner),
                         _ => None,

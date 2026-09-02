@@ -53,6 +53,21 @@ PolyRust `String` domain.
 - The completed milestone is committed, pushed, and green in hosted CI before
   another repository is selected.
 
+## Local completion evidence
+
+- `//examples/real-world/has-flag:all` passes 16/16 port targets, including
+  exact provenance, 25 evaluator/eight-target vectors, 42,273 differential
+  comparisons, three-generation determinism, native consumers, style checks,
+  and C/C++ sanitizers.
+- `bazel test //... --nocache_test_results --test_output=errors` passes
+  216/216 tests in the Linux development container.
+- `bazel test //:release_gate --nocache_test_results --test_output=errors`
+  passes 193/193 tests, including Buildifier, Rustfmt, Clippy, documentation,
+  dependency-boundary, source-policy, fault-injection, every earlier port, and
+  all generated-language native gates.
+- Hosted-CI evidence is added in the final M31 documentation checkpoint after
+  the implementation commit is pushed and its workflow succeeds.
+
 ## Scope boundary
 
 M31 proves the dependency-free decision function when `argv` is supplied.

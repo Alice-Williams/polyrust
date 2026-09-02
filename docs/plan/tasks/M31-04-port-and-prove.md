@@ -1,6 +1,16 @@
 # M31-04 — Port and prove has-flag
 
-- Status: planned
+- Status: complete
+
+## Completion evidence
+
+- One checked model implements the explicit-`argv` API with general PolyIR
+  operations and 25 evaluator/native vectors.
+- The differential oracle passes 42,273 admitted comparisons against the exact
+  retained implementation.
+- The port-specific gate passes all 16 targets: provenance, model,
+  determinism, differential, eight generated packages, Java/C/C++ native
+  consumers, style checks, and C/C++ sanitizers.
 
 ## Goal
 
@@ -23,4 +33,4 @@ pinned JavaScript implementation in every supported output.
 
 ## Tests
 
-- `bazel test //examples/real-world/has-flag:all`
+- `bazel test //examples/real-world/has-flag:all --nocache_test_results --test_output=errors`

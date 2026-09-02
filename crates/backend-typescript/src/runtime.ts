@@ -364,6 +364,9 @@ export class Runtime {
       case "float_rem_trunc": return ok(a % b);
       case "string_concat": return ok(a + b);
       case "string_scalar_length": return scalarLength(a);
+      // POLYRUST-BEGIN case.string-utf16-length
+      case "string_utf16_length": return ok(BigInt(a.length));
+      // POLYRUST-END case.string-utf16-length
       case "string_is_empty": return ok(a.length === 0);
       case "string_contains": return ok(a.includes(b));
       case "string_starts_with": return ok(a.startsWith(b));
@@ -401,6 +404,12 @@ export class Runtime {
       case "list_get_checked": return Number(b) >= 0 && Number(b) < a.length ? ok(a[Number(b)]) : fail("index_out_of_bounds", "list index out of bounds");
       case "list_append": return ok(listAppend(a, b));
       case "list_contains": return ok(a.some((item: unknown) => this.equal(item, b)));
+      // POLYRUST-BEGIN case.list-index-of
+      case "list_index_of": {
+        const index = a.findIndex((item: unknown) => this.equal(item, b));
+        return ok(index < 0 ? none<bigint>() : some(BigInt(index)));
+      }
+      // POLYRUST-END case.list-index-of
       case "option_is_some": return ok(a.tag === "some");
       case "option_is_none": return ok(a.tag === "none");
       case "option_unwrap_or": return ok(a.tag === "some" ? a.value : b);

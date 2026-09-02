@@ -126,6 +126,36 @@ bool poly_utf8_valid(poly_string_view value, size_t *scalar_count) {
 }
 /* POLYRUST-END runtime.core.utf8 */
 
+/* POLYRUST-BEGIN runtime.feature.string-utf16-length */
+poly_error_code poly_string_utf16_length(poly_string_view value,
+                                         int64_t *output) {
+  size_t offset = 0U;
+  int64_t length = INT64_C(0);
+  if (output == NULL) {
+    return POLY_INVARIANT_VIOLATION;
+  }
+  *output = INT64_C(0);
+  if (value.length != 0U && value.data == NULL) {
+    return POLY_INVALID_UTF8;
+  }
+  while (offset < value.length) {
+    size_t width = 0U;
+    int64_t increment;
+    if (!valid_scalar(value.data + offset, value.length - offset, &width)) {
+      return POLY_INVALID_UTF8;
+    }
+    increment = width == 4U ? INT64_C(2) : INT64_C(1);
+    if (length > INT64_MAX - increment) {
+      return POLY_INVARIANT_VIOLATION;
+    }
+    length += increment;
+    offset += width;
+  }
+  *output = length;
+  return POLY_OK;
+}
+/* POLYRUST-END runtime.feature.string-utf16-length */
+
 /* POLYRUST-BEGIN runtime.core.ownership */
 static bool bytes_clone(poly_allocator allocator, const uint8_t *source,
                         size_t length, uint8_t **output) {

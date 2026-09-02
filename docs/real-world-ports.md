@@ -163,6 +163,20 @@ Only one port may be in progress. A port is complete when:
   native generated-package gates, deterministic regeneration, and immutable
   provenance checks.
 
+### [has-flag 5.0.1](ports/has-flag.md)
+
+- Upstream: [sindresorhus/has-flag](https://github.com/sindresorhus/has-flag)
+- Revision: `63fde682532a6e0bb155125d03a66989e0b0ce24`
+- License: MIT
+- Admitted typed API:
+  `has_flag(flag: String, argv: List<String>) -> Bool`; upstream's omitted
+  `argv` default is an effectful host-adapter boundary.
+- Required PolyRust gaps: well-formed UTF-16 code-unit length and structural
+  first-index lookup returning `Option<I64>`.
+- Completion: M31; all 11 official assertions, 25 portable vectors, 42,273
+  differential comparisons, eight native generated-package gates,
+  deterministic regeneration, sanitizers, and immutable provenance checks.
+
 ## Deferred candidate
 
 `juliangruber/balanced-match` is MIT licensed and attractive for a later parser

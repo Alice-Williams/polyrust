@@ -1,6 +1,15 @@
 # M31-02 — Add portable UTF-16 code-unit length
 
-- Status: planned
+- Status: complete
+
+## Completion evidence
+
+- IR serialization, checker signatures, evaluator semantics, conformance
+  vectors, and all eight target implementations cover the operation.
+- Boundary tests cover empty, ASCII, BMP, combining, supplementary, and mixed
+  values; checker tests reject non-string and wrong-arity calls.
+- `//examples/real-world/has-flag:all` proves the BMP, combining, and astral
+  behavior in every generated language.
 
 ## Goal
 

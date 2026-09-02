@@ -864,6 +864,13 @@ impl<'a> Session<'a> {
                 let value = string(arguments.first(), self)?;
                 Ok(Value::I64(usize_to_i64(value.chars().count(), self)?))
             }
+            StringUtf16Length => {
+                let value = string(arguments.first(), self)?;
+                Ok(Value::I64(usize_to_i64(
+                    value.encode_utf16().count(),
+                    self,
+                )?))
+            }
             StringIsEmpty => Ok(Value::Bool(string(arguments.first(), self)?.is_empty())),
             StringContains => {
                 let (left, right) = strings(arguments, self)?;
@@ -1146,6 +1153,18 @@ impl<'a> Session<'a> {
                         .iter()
                         .any(|element| semantic_equal(element, &arguments[1])),
                 ))
+            }
+            ListIndexOf => {
+                let elements = list(arguments.first(), self)?;
+                let index = elements
+                    .iter()
+                    .position(|element| semantic_equal(element, &arguments[1]))
+                    .map(|index| usize_to_i64(index, self))
+                    .transpose()?;
+                Ok(match index {
+                    Some(index) => Value::Some(Box::new(Value::I64(index))),
+                    None => Value::None,
+                })
             }
             OptionIsSome => Ok(Value::Bool(matches!(
                 arguments.first(),
@@ -1772,6 +1791,36 @@ mod tests {
                 Ok(Value::I64(4)),
             ),
             (
+                StringUtf16Length,
+                vec![Value::String(String::new())],
+                Ok(Value::I64(0)),
+            ),
+            (
+                StringUtf16Length,
+                vec![Value::String("ascii".into())],
+                Ok(Value::I64(5)),
+            ),
+            (
+                StringUtf16Length,
+                vec![Value::String("é".into())],
+                Ok(Value::I64(1)),
+            ),
+            (
+                StringUtf16Length,
+                vec![Value::String("e\u{301}".into())],
+                Ok(Value::I64(2)),
+            ),
+            (
+                StringUtf16Length,
+                vec![Value::String("🦀".into())],
+                Ok(Value::I64(2)),
+            ),
+            (
+                StringUtf16Length,
+                vec![Value::String("a🦀e\u{301}".into())],
+                Ok(Value::I64(5)),
+            ),
+            (
                 StringContains,
                 vec![Value::String("x🦀y".into()), Value::String("🦀".into())],
                 Ok(Value::Bool(true)),
@@ -1909,6 +1958,56 @@ mod tests {
                 ListAppend,
                 vec![Value::List(vec![Value::I32(1)]), Value::I32(2)],
                 Ok(Value::List(vec![Value::I32(1), Value::I32(2)])),
+            ),
+            (
+                ListIndexOf,
+                vec![Value::List(vec![]), Value::I64(1)],
+                Ok(Value::None),
+            ),
+            (
+                ListIndexOf,
+                vec![Value::List(vec![Value::I64(1)]), Value::I64(2)],
+                Ok(Value::None),
+            ),
+            (
+                ListIndexOf,
+                vec![
+                    Value::List(vec![Value::I64(1), Value::I64(2), Value::I64(1)]),
+                    Value::I64(1),
+                ],
+                Ok(Value::Some(Box::new(Value::I64(0)))),
+            ),
+            (
+                ListIndexOf,
+                vec![
+                    Value::List(vec![Value::I64(1), Value::I64(2), Value::I64(3)]),
+                    Value::I64(2),
+                ],
+                Ok(Value::Some(Box::new(Value::I64(1)))),
+            ),
+            (
+                ListIndexOf,
+                vec![
+                    Value::List(vec![Value::List(vec![Value::String("nested".into())])]),
+                    Value::List(vec![Value::String("nested".into())]),
+                ],
+                Ok(Value::Some(Box::new(Value::I64(0)))),
+            ),
+            (
+                ListIndexOf,
+                vec![
+                    Value::List(vec![Value::F64(F64Bits(f64::NAN.to_bits()))]),
+                    Value::F64(F64Bits(f64::NAN.to_bits())),
+                ],
+                Ok(Value::None),
+            ),
+            (
+                ListIndexOf,
+                vec![
+                    Value::List(vec![Value::F64(F64Bits((-0.0_f64).to_bits()))]),
+                    Value::F64(F64Bits(0.0_f64.to_bits())),
+                ],
+                Ok(Value::Some(Box::new(Value::I64(0)))),
             ),
             (
                 OptionUnwrapOr,

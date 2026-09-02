@@ -24,6 +24,31 @@ func NewPolyList[T any](items ...T) PolyList[T] {
 func (value PolyList[T]) Len() int32                { return int32(len(value.items)) }
 func (value PolyList[T]) Values() []T               { return append([]T(nil), value.items...) }
 func (value PolyList[T]) append(item T) PolyList[T] { return NewPolyList(append(value.items, item)...) }
+func (value PolyList[T]) polyRuntimeValue() any {
+	items := make([]any, len(value.items))
+	for index, item := range value.items {
+		items[index] = toRuntimeValue(item)
+	}
+	return items
+}
+
+func (value PolyOption[T]) polyRuntimeValue() any {
+	result := map[string]any{"tag": value.Tag}
+	if value.Tag == "some" {
+		result["value"] = toRuntimeValue(value.Value)
+	}
+	return result
+}
+
+func (value PolyValueResult[T, E]) polyRuntimeValue() any {
+	result := map[string]any{"tag": value.Tag}
+	if value.Tag == "ok" {
+		result["value"] = toRuntimeValue(value.Value)
+	} else if value.Tag == "err" {
+		result["error"] = toRuntimeValue(value.Error)
+	}
+	return result
+}
 
 type PolyBytes struct{ items []byte }
 
@@ -69,6 +94,23 @@ func castResult[T any](value PolyResult[any]) PolyResult[T] {
 }
 
 type polyRecord interface{ polyValue() map[string]any }
+type polyRuntimeValue interface{ polyRuntimeValue() any }
+
+func toRuntimeValue(value any) any {
+	if portable, ok := value.(polyRuntimeValue); ok {
+		return portable.polyRuntimeValue()
+	}
+	if record, ok := value.(polyRecord); ok {
+		raw := record.polyValue()
+		result := make(map[string]any, len(raw))
+		for name, field := range raw {
+			result[name] = toRuntimeValue(field)
+		}
+		return result
+	}
+	return value
+}
+
 type runtime struct {
 	declarations map[int64]map[string]any
 	constants    map[int64]PolyResult[any]
@@ -133,9 +175,9 @@ func (r *runtime) invokeBody(callable map[string]any, arguments []any, self any)
 	environment := map[string]any{}
 	for index, raw := range callable["parameters"].([]any) {
 		parameter := raw.(map[string]any)
-		environment[parameter["header"].(map[string]any)["name"].(string)] = arguments[index]
+		environment[parameter["header"].(map[string]any)["name"].(string)] = toRuntimeValue(arguments[index])
 	}
-	_, result := r.block(callable["body"].(map[string]any), environment, self)
+	_, result := r.block(callable["body"].(map[string]any), environment, toRuntimeValue(self))
 	return result
 }
 
@@ -368,6 +410,20 @@ func (r *runtime) intrinsic(name string, values []any) PolyResult[any] {
 		}
 		return polyOk(any(int32(utf8.RuneCountInString(a.(string)))))
 	// POLYRUST-END utf8-scalar-case
+	// POLYRUST-BEGIN utf16-length-case
+	case "string_utf16_length":
+		if !utf8.ValidString(a.(string)) {
+			return polyFail[any]("invalid_unicode", "invalid scalar string")
+		}
+		length := int64(0)
+		for _, scalar := range a.(string) {
+			length++
+			if scalar > 0xffff {
+				length++
+			}
+		}
+		return polyOk(any(length))
+	// POLYRUST-END utf16-length-case
 	case "string_is_empty":
 		return polyOk(any(a.(string) == ""))
 	case "string_contains":
@@ -426,6 +482,20 @@ func (r *runtime) intrinsic(name string, values []any) PolyResult[any] {
 		}
 		return polyOk(any(string(raw)))
 	// POLYRUST-END utf8-from-bytes-case
+	case "option_is_some":
+		return polyOk(any(a.(map[string]any)["tag"] == "some"))
+	case "option_is_none":
+		return polyOk(any(a.(map[string]any)["tag"] == "none"))
+	case "option_unwrap_or":
+		option := a.(map[string]any)
+		if option["tag"] == "some" {
+			return polyOk(option["value"])
+		}
+		return polyOk(b)
+	case "result_is_ok":
+		return polyOk(any(a.(map[string]any)["tag"] == "ok"))
+	case "result_is_err":
+		return polyOk(any(a.(map[string]any)["tag"] == "err"))
 	}
 	return r.numericOrCollection(name, a, b)
 }
@@ -537,6 +607,15 @@ func (r *runtime) numericOrCollection(name string, a, b any) PolyResult[any] {
 				}
 			}
 			return polyOk(any(false))
+		// POLYRUST-BEGIN list-index-of-case
+		case "list_index_of":
+			for index, item := range list {
+				if equal(item, b) {
+					return polyOk(any(map[string]any{"tag": "some", "value": int64(index)}))
+				}
+			}
+			return polyOk(any(map[string]any{"tag": "none"}))
+		// POLYRUST-END list-index-of-case
 		}
 	}
 	return polyFail[any]("unsupported", "intrinsic not implemented: "+name)

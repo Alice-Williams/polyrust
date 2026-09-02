@@ -277,6 +277,8 @@ fn go_runtime_file(program: &CheckedProgram) -> Result<LanguageSourceFile<GoImpo
     }
     for (operation, root) in [
         (Intrinsic::StringScalarLength, "feature.utf8-scalar"),
+        (Intrinsic::StringUtf16Length, "feature.utf16-length"),
+        (Intrinsic::ListIndexOf, "feature.list-index-of"),
         (Intrinsic::StringReplaceMany, "feature.replace-many"),
         (Intrinsic::StringTruncateUtf8Bytes, "feature.truncate-utf8"),
         (Intrinsic::StringFromUtf8Checked, "feature.from-utf8"),
@@ -402,6 +404,16 @@ fn go_runtime_helper_graph() -> Result<(RuntimeHelperGraph<GoImport>, Vec<String
         feature(&["utf8-scalar-case"]),
     ));
     helpers.push(RuntimeHelper::new(
+        "feature.utf16-length",
+        u16::MAX - 3,
+        feature(&["utf16-length-case"]),
+    ));
+    helpers.push(RuntimeHelper::new(
+        "feature.list-index-of",
+        u16::MAX - 3,
+        feature(&["list-index-of-case"]),
+    ));
+    helpers.push(RuntimeHelper::new(
         "feature.replace-many",
         u16::MAX - 2,
         feature(&["utf8-replace-many-case", "utf8-replace-many-function"]),
@@ -435,7 +447,10 @@ fn go_runtime_fragment(id: &str, source: String) -> LanguageFragment<GoImport> {
         | "math-float-dispatch"
         | "math-checked32"
         | "math-float-equality" => &["math"],
-        "utf8-scalar-case" | "utf8-from-bytes-case" | "utf8-truncate-function" => &["unicode/utf8"],
+        "utf8-scalar-case"
+        | "utf16-length-case"
+        | "utf8-from-bytes-case"
+        | "utf8-truncate-function" => &["unicode/utf8"],
         "utf8-replace-many-function" => &["strings", "unicode/utf8"],
         _ => &[],
     };
@@ -771,7 +786,7 @@ impl<'a> Generator<'a> {
             ExpectedOutcome::Value(expected) => {
                 let expected = self.value(expected);
                 let text = format!(
-                    "func Test{}(t *testing.T) {{\n\tgot := {}\n\tif !got.Ok || !testEqual(got.Value, {}) {{ t.Fatalf(\"unexpected result: %#v\", got) }}\n}}\n\n",
+                    "func Test{}(t *testing.T) {{\n\tgot := {}\n\tif !got.Ok || !testEqual(got.Value, {}) {{ t.Fatalf(\"unexpected result: value=%#v error=%#v\", got.Value, got.Error) }}\n}}\n\n",
                     exported(&test.header.name),
                     call.text,
                     expected.text,
@@ -830,6 +845,15 @@ impl<'a> Generator<'a> {
                     .collect::<Vec<_>>()
                     .join(", ")
             )),
+            (Value::List(values), TypeRef::List(inner)) => {
+                let element = self.ty(inner);
+                let items = GoCode::joined(
+                    ", ",
+                    values.iter().map(|value| self.raw_value(value, inner)),
+                );
+                let text = format!("NewPolyList[{}]({})", element.text, items.text);
+                GoCode::with_dependencies(text, [element, items])
+            }
             (
                 Value::Record {
                     declaration,
@@ -1098,6 +1122,11 @@ mod tests {
                 ["bytes", "math", "strconv"].as_slice(),
             ),
             (
+                Intrinsic::StringUtf16Length,
+                ["unicode/utf8"].as_slice(),
+                ["bytes", "math", "strconv"].as_slice(),
+            ),
+            (
                 Intrinsic::BytesReplaceAll,
                 ["bytes"].as_slice(),
                 ["math", "strconv", "unicode/utf8"].as_slice(),
@@ -1142,6 +1171,28 @@ mod tests {
         assert_eq!(code.imports, BTreeSet::from([go_import("math")]));
     }
 
+    #[test]
+    fn generated_runtime_normalizes_typed_composites_at_the_ir_boundary() {
+        let manifest = GoV0Backend
+            .generate(&fixture(), &BackendOptions::default())
+            .unwrap();
+        let runtime = generated_text(&manifest, "runtime.go");
+        assert!(runtime.contains("func (value PolyList[T]) polyRuntimeValue() any"));
+        assert!(runtime.contains("func (value PolyOption[T]) polyRuntimeValue() any"));
+        assert!(runtime.contains("func (value PolyValueResult[T, E]) polyRuntimeValue() any"));
+        assert!(runtime.contains("= toRuntimeValue(arguments[index])"));
+        assert!(runtime.contains("environment, toRuntimeValue(self)"));
+        for intrinsic in [
+            "option_is_some",
+            "option_is_none",
+            "option_unwrap_or",
+            "result_is_ok",
+            "result_is_err",
+        ] {
+            assert!(runtime.contains(&format!("case {intrinsic:?}:")));
+        }
+    }
+
     fn generated_text<'a>(manifest: &'a OutputManifest, path: &str) -> &'a str {
         match manifest.file(path).unwrap().contents() {
             portable_codegen::OutputContents::Text(text) => text,
@@ -1184,7 +1235,7 @@ mod tests {
         let (values, return_type) = match operation {
             Intrinsic::IntAddChecked => (vec![Value::I32(20), Value::I32(22)], TypeRef::I32),
             Intrinsic::FloatNeg => (vec![Value::F64(F64Bits::from_f64(1.5))], TypeRef::F64),
-            Intrinsic::StringScalarLength => {
+            Intrinsic::StringScalarLength | Intrinsic::StringUtf16Length => {
                 (vec![Value::String("hello".to_owned())], TypeRef::I64)
             }
             Intrinsic::BytesReplaceAll => (

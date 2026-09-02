@@ -1,6 +1,6 @@
 # M31-05 — Document and release-gate M31
 
-- Status: planned
+- Status: in-progress
 
 ## Goal
 
@@ -21,3 +21,13 @@ prove M31 does not regress any completed port.
 
 - `bazel test //... --nocache_test_results --test_output=errors`
 - `bazel test //:release_gate --nocache_test_results --test_output=errors`
+
+## Local evidence
+
+- The uncached full repository gate passes 216/216 tests.
+- The uncached release gate passes 193/193 tests.
+- Buildifier, Rustfmt, Clippy, documentation, dependency-boundary,
+  source-policy, and source-policy fault-injection targets pass.
+- Every earlier real-world port's evaluator, deterministic generation,
+  differential oracle, eight generated packages, Java/C/C++ consumers, and
+  C/C++ sanitizer targets remain green.

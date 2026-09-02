@@ -426,8 +426,10 @@ inline std::size_t utf8_scalar_width(std::uint8_t byte) {
   return 0;
 }
 
-inline bool valid_utf8(const bytes_value& bytes, std::size_t* scalar_count = nullptr) {
+inline bool valid_utf8(const bytes_value& bytes, std::size_t* scalar_count = nullptr,
+                       std::size_t* utf16_count = nullptr) {
   std::size_t count = 0;
+  std::size_t code_units = 0;
   for (std::size_t offset = 0; offset < bytes.size();) {
     const std::size_t width = utf8_scalar_width(bytes[offset]);
     if (width == 0 || offset + width > bytes.size()) return false;
@@ -442,8 +444,10 @@ inline bool valid_utf8(const bytes_value& bytes, std::size_t* scalar_count = nul
         || (scalar >= 0xD800 && scalar <= 0xDFFF)) return false;
     offset += width;
     ++count;
+    code_units += scalar > 0xFFFF ? 2 : 1;
   }
   if (scalar_count != nullptr) *scalar_count = count;
+  if (utf16_count != nullptr) *utf16_count = code_units;
   return true;
 }
 
@@ -823,6 +827,12 @@ class runtime {
       return valid_utf8(bytes, &count) ? succeed(static_cast<std::int64_t>(count))
                                        : fail("invalid_unicode", "invalid Unicode scalar sequence");
     }
+    if (name == "string_utf16_length") {
+      bytes_value bytes(string(a).begin(), string(a).end());
+      std::size_t count = 0;
+      return valid_utf8(bytes, nullptr, &count) ? succeed(static_cast<std::int64_t>(count))
+                                                : fail("invalid_unicode", "invalid Unicode scalar sequence");
+    }
     if (name == "string_is_empty") return succeed(string(a).empty());
     if (name == "string_contains") return succeed(string(a).find(string(b)) != std::string::npos);
     if (name == "string_starts_with") return succeed(string(a).starts_with(string(b)));
@@ -865,6 +875,15 @@ class runtime {
     }
     if (name == "list_contains") {
       return succeed(std::any_of(list(a).begin(), list(a).end(), [&](const any& item) { return semantic_equal(item, b); }));
+    }
+    if (name == "list_index_of") {
+      const auto& values = list(a);
+      for (std::size_t index = 0; index < values.size(); ++index) {
+        if (semantic_equal(values[index], b)) {
+          return succeed(option_value{true, static_cast<std::int64_t>(index)});
+        }
+      }
+      return succeed(option_value{false, {}});
     }
     if (name == "option_is_some") return succeed(std::any_cast<const option_value&>(a).some);
     if (name == "option_is_none") return succeed(!std::any_cast<const option_value&>(a).some);

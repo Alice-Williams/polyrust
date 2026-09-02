@@ -1409,7 +1409,97 @@ fn string_truncate_utf8_bytes_rejects_invalid_operand_shapes_and_types() {
     }
 }
 
-const ALL_INTRINSICS: [Intrinsic; 64] = [
+#[test]
+fn string_utf16_length_rejects_invalid_operand_shapes_and_types() {
+    let cases = [
+        vec![],
+        vec![Value::I64(1)],
+        vec![Value::String("left".into()), Value::String("right".into())],
+    ];
+    for (index, arguments) in cases.into_iter().enumerate() {
+        let mut factory = Factory::new();
+        let expressions = arguments
+            .into_iter()
+            .map(|value| factory.literal(value))
+            .collect();
+        let expression = Expression::Intrinsic {
+            node: factory.node(),
+            operation: Intrinsic::StringUtf16Length,
+            arguments: expressions,
+        };
+        let body = factory.block(expression);
+        let declaration = Declaration::Function(FunctionDeclaration {
+            header: factory.declaration(&format!("invalid_utf16_length_{index}")),
+            parameters: vec![],
+            return_type: TypeRef::I64,
+            body,
+        });
+        let diagnostics = check_program(Document::new(
+            IrVersion::CURRENT,
+            Module {
+                name: format!("invalid_utf16_length_{index}"),
+                declarations: vec![declaration],
+            },
+        ))
+        .expect_err("invalid StringUtf16Length arguments must be diagnosed");
+        assert!(
+            codes(&diagnostics).contains(&DiagnosticCode::InvalidInvocation),
+            "case {index}: {diagnostics:#?}"
+        );
+    }
+}
+
+#[test]
+fn list_index_of_rejects_invalid_operand_shapes_and_types() {
+    let cases = [
+        vec![TypeRef::List(Box::new(TypeRef::I64))],
+        vec![TypeRef::List(Box::new(TypeRef::I64)), TypeRef::String],
+        vec![TypeRef::I64, TypeRef::I64],
+        vec![
+            TypeRef::List(Box::new(TypeRef::I64)),
+            TypeRef::I64,
+            TypeRef::I64,
+        ],
+    ];
+    for (index, argument_types) in cases.into_iter().enumerate() {
+        let mut factory = Factory::new();
+        let names = (0..argument_types.len())
+            .map(|argument| format!("argument_{argument}"))
+            .collect::<Vec<_>>();
+        let parameters = names
+            .iter()
+            .zip(argument_types)
+            .map(|(name, ty)| factory.parameter(name, ty))
+            .collect();
+        let expressions = names.into_iter().map(|name| factory.local(&name)).collect();
+        let expression = Expression::Intrinsic {
+            node: factory.node(),
+            operation: Intrinsic::ListIndexOf,
+            arguments: expressions,
+        };
+        let body = factory.block(expression);
+        let declaration = Declaration::Function(FunctionDeclaration {
+            header: factory.declaration(&format!("invalid_list_index_of_{index}")),
+            parameters,
+            return_type: TypeRef::Option(Box::new(TypeRef::I64)),
+            body,
+        });
+        let diagnostics = check_program(Document::new(
+            IrVersion::CURRENT,
+            Module {
+                name: format!("invalid_list_index_of_{index}"),
+                declarations: vec![declaration],
+            },
+        ))
+        .expect_err("invalid ListIndexOf arguments must be diagnosed");
+        assert!(
+            codes(&diagnostics).contains(&DiagnosticCode::InvalidInvocation),
+            "case {index}: {diagnostics:#?}"
+        );
+    }
+}
+
+const ALL_INTRINSICS: [Intrinsic; 66] = [
     Intrinsic::BoolNot,
     Intrinsic::BoolAnd,
     Intrinsic::BoolOr,
@@ -1445,6 +1535,7 @@ const ALL_INTRINSICS: [Intrinsic; 64] = [
     Intrinsic::FloatRemTrunc,
     Intrinsic::StringConcat,
     Intrinsic::StringScalarLength,
+    Intrinsic::StringUtf16Length,
     Intrinsic::StringIsEmpty,
     Intrinsic::StringContains,
     Intrinsic::StringStartsWith,
@@ -1465,6 +1556,7 @@ const ALL_INTRINSICS: [Intrinsic; 64] = [
     Intrinsic::ListAppend,
     Intrinsic::ListConcat,
     Intrinsic::ListContains,
+    Intrinsic::ListIndexOf,
     Intrinsic::OptionIsSome,
     Intrinsic::OptionIsNone,
     Intrinsic::OptionUnwrapOr,
@@ -1576,6 +1668,7 @@ fn intrinsic_cases() -> Vec<(Intrinsic, Vec<TypeRef>, TypeRef)> {
             TypeRef::String,
         ),
         (StringScalarLength, vec![TypeRef::String], TypeRef::I64),
+        (StringUtf16Length, vec![TypeRef::String], TypeRef::I64),
         (StringIsEmpty, vec![TypeRef::String], TypeRef::Bool),
         (
             StringContains,
@@ -1653,6 +1746,11 @@ fn intrinsic_cases() -> Vec<(Intrinsic, Vec<TypeRef>, TypeRef)> {
             ListContains,
             vec![list.clone(), TypeRef::I64],
             TypeRef::Bool,
+        ),
+        (
+            ListIndexOf,
+            vec![list.clone(), TypeRef::I64],
+            TypeRef::Option(Box::new(TypeRef::I64)),
         ),
         (OptionIsSome, vec![option.clone()], TypeRef::Bool),
         (OptionIsNone, vec![option.clone()], TypeRef::Bool),

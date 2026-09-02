@@ -470,6 +470,8 @@ fn ecma_runtime_file(
     };
     let (graph, mut roots) = ecma_runtime_helper_graph(javascript)?;
     for (operation, root) in [
+        (Intrinsic::StringUtf16Length, "feature.string-utf16-length"),
+        (Intrinsic::ListIndexOf, "feature.list-index-of"),
         (Intrinsic::StringReplaceAll, "feature.string-replace-all"),
         (Intrinsic::BytesReplaceAll, "feature.bytes-replace-all"),
         (Intrinsic::StringReplaceMany, "feature.string-replace-many"),
@@ -538,6 +540,11 @@ fn ecma_runtime_helper_graph(
         )
     };
     for (index, (id, dependencies)) in [
+        (
+            "feature.string-utf16-length",
+            &["case.string-utf16-length"][..],
+        ),
+        ("feature.list-index-of", &["case.list-index-of"][..]),
         (
             "feature.string-replace-all",
             &["top.string-replace-all", "case.string-replace-all"][..],

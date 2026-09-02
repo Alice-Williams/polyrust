@@ -74,6 +74,10 @@ bool poly_f64_is_nan(double value);
 double poly_f64_rem_trunc(double left, double right);
 bool poly_f64_test_equal(double left, double right);
 /* POLYRUST-END runtime.feature.f64 */
+/* POLYRUST-BEGIN runtime.feature.string-utf16-length */
+poly_error_code poly_string_utf16_length(poly_string_view value,
+                                           int64_t *output);
+/* POLYRUST-END runtime.feature.string-utf16-length */
 /* POLYRUST-BEGIN runtime.feature.string-predicates */
 bool poly_string_starts_with(poly_string_view source, poly_string_view prefix);
 bool poly_string_ends_with(poly_string_view source, poly_string_view suffix);

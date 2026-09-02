@@ -1,6 +1,15 @@
 # M31-03 — Add portable list first-index lookup
 
-- Status: planned
+- Status: complete
+
+## Completion evidence
+
+- IR serialization, checker signatures, evaluator semantics, conformance
+  vectors, and all eight target implementations cover the operation.
+- Evaluator tests cover empty, absent, first, middle, duplicate, nested, NaN,
+  and negative-zero values; checker tests reject invalid signatures.
+- C's `List<String>`/`Option<I64>` ABI support and Go's typed-composite runtime
+  bridge were closed as reusable backend gaps, not port-specific behavior.
 
 ## Goal
 

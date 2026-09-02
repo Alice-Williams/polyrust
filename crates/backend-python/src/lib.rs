@@ -13,7 +13,7 @@ use portable_codegen::{
     RuntimeHelper, RuntimeHelperGraph, SourceFileRole, TargetId, TextFileRole,
     generate_with_plugin,
 };
-use portable_ir::v0::{Declaration, IrVersion, NodeId, TypeRef};
+use portable_ir::v0::{Declaration, Intrinsic, IrVersion, NodeId, TypeRef};
 
 const RUNTIME: &str = include_str!("runtime.py");
 
@@ -352,6 +352,16 @@ fn runtime_file(
     if program.capabilities().program().contains(&Capability::F64) {
         roots.push("feature.f64".to_owned());
     }
+    if portable_ir::v0::module_uses_intrinsic(program.module(), |operation| {
+        operation == Intrinsic::StringUtf16Length
+    }) {
+        roots.push("feature.string-utf16-length".to_owned());
+    }
+    if portable_ir::v0::module_uses_intrinsic(program.module(), |operation| {
+        operation == Intrinsic::ListIndexOf
+    }) {
+        roots.push("feature.list-index-of".to_owned());
+    }
     let mut file =
         LanguageSourceFile::new("src/generated_polyrust/runtime.py", SourceFileRole::Runtime);
     file.set_body(graph.resolve(&roots).map_err(generation_error)?);
@@ -441,6 +451,16 @@ fn python_runtime_helper_graph()
         |fragment, dependency| fragment.with_helper_root(dependency),
     );
     helpers.push(RuntimeHelper::new("feature.f64", u16::MAX, f64));
+    helpers.push(RuntimeHelper::new(
+        "feature.string-utf16-length",
+        u16::MAX - 1,
+        LanguageFragment::new(CodeDocument::empty()).with_helper_root("case.string-utf16-length"),
+    ));
+    helpers.push(RuntimeHelper::new(
+        "feature.list-index-of",
+        u16::MAX - 2,
+        LanguageFragment::new(CodeDocument::empty()).with_helper_root("case.list-index-of"),
+    ));
     Ok((
         RuntimeHelperGraph::new(helpers).map_err(generation_error)?,
         common_roots,

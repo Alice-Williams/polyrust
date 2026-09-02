@@ -236,3 +236,22 @@ at `64cec7defbad6b61c56511fc5a986fdb1b08ecf2`.
   uncached release gate passes 178/178 tests, including Buildifier, Rustfmt,
   Clippy, all target-native checks, public consumers, differential tests,
   C/C++ sanitizers, documentation checks, and both source-policy tests.
+
+### M31 extension audit
+
+- `StringUtf16Length` and `ListIndexOf` are ordinary checked operations. Each
+  target mapping owns its syntax, structured dependency requirements, and any
+  runtime-helper root in one compositional fragment; no file-wide repair scan
+  or fixed import inventory was reintroduced.
+- Go's typed-composite conversion is centralized at the generated runtime
+  invocation boundary and recursively normalizes nested list, option, result,
+  and record values. It adds no target directive and remains part of the
+  runtime common closure.
+- C's new list/option ABI and lowering paths compose `CCode` fragments and
+  select their precise helper roots. Unsupported list or option shapes remain
+  diagnostics before rendering.
+- The source-policy gate, exact backend dependency matrices, three-generation
+  determinism, and all 16 has-flag proof targets pass after the extension. The
+  uncached repository-wide gate passes 216/216 tests and the uncached release
+  gate passes 193/193 tests; hosted-CI evidence is recorded in the final M31
+  checkpoint.

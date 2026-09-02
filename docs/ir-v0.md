@@ -121,10 +121,10 @@ set covers:
 - checked and wrapping signed integer arithmetic, bitwise operations, and checked
   shifts;
 - IEEE binary64 arithmetic and truncating remainder;
-- Unicode-scalar string operations, including global literal replacement whose
-  replacement text has no interpolation syntax and boundary trimming by an
-  explicit scalar set;
-- immutable bytes/list operations;
+- Unicode-scalar string operations, including distinct scalar and well-formed
+  UTF-16 code-unit length, global literal replacement whose replacement text
+  has no interpolation syntax, and boundary trimming by an explicit scalar set;
+- immutable bytes/list operations, including sentinel-free first-index lookup;
 - option/result queries;
 - explicit integer and UTF-8 conversions.
 

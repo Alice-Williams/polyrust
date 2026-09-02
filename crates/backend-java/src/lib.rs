@@ -298,6 +298,16 @@ fn java_runtime_file(
     }) {
         roots.push("feature.utf8".to_owned());
     }
+    if portable_ir::v0::module_uses_intrinsic(program.module(), |operation| {
+        operation == Intrinsic::StringUtf16Length
+    }) {
+        roots.push("feature.string-utf16-length".to_owned());
+    }
+    if portable_ir::v0::module_uses_intrinsic(program.module(), |operation| {
+        operation == Intrinsic::ListIndexOf
+    }) {
+        roots.push("feature.list-index-of".to_owned());
+    }
 
     let mut file = LanguageSourceFile::new(
         "src/main/java/org/polyrust/generated/Runtime.java",
@@ -391,6 +401,16 @@ fn java_runtime_helper_graph() -> Result<(RuntimeHelperGraph<JavaImport>, Vec<St
         .with_helper_root("utf8-cases")
         .with_helper_root("utf8-method");
     helpers.push(RuntimeHelper::new("feature.utf8", u16::MAX, utf8));
+    helpers.push(RuntimeHelper::new(
+        "feature.string-utf16-length",
+        u16::MAX - 2,
+        LanguageFragment::new(CodeDocument::empty()).with_helper_root("string-utf16-length-case"),
+    ));
+    helpers.push(RuntimeHelper::new(
+        "feature.list-index-of",
+        u16::MAX - 3,
+        LanguageFragment::new(CodeDocument::empty()).with_helper_root("list-index-of-case"),
+    ));
 
     let graph = RuntimeHelperGraph::new(helpers).map_err(java_generation_error)?;
     Ok((graph, common_roots))

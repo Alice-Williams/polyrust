@@ -318,6 +318,9 @@ class Runtime:
         # POLYRUST-END f64-intrinsics
         if name == "string_concat": return ok(a + b)
         if name == "string_scalar_length": return scalar_length(a)
+        # POLYRUST-BEGIN case.string-utf16-length
+        if name == "string_utf16_length": return ok(len(a.encode("utf-16-le")) // 2)
+        # POLYRUST-END case.string-utf16-length
         if name == "string_is_empty": return ok(not a)
         if name == "string_contains": return ok(b in a)
         if name == "string_starts_with": return ok(a.startswith(b))
@@ -335,6 +338,12 @@ class Runtime:
         if name == "list_get_checked": return ok(a[b]) if 0 <= b < len(a) else fail("index_out_of_bounds", "list index out of bounds")
         if name == "list_append": return ok(a + (b,))
         if name == "list_contains": return ok(any(semantic_equal(item, b) for item in a))
+        # POLYRUST-BEGIN case.list-index-of
+        if name == "list_index_of":
+            for index, item in enumerate(a):
+                if semantic_equal(item, b): return ok(PolyOption("some", index))
+            return ok(PolyOption("none"))
+        # POLYRUST-END case.list-index-of
         if name == "option_is_some": return ok(a.tag == "some")
         if name == "option_is_none": return ok(a.tag == "none")
         if name == "option_unwrap_or": return ok(a.value if a.tag == "some" else b)

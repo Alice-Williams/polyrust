@@ -218,8 +218,10 @@ and Go does not make their semantics automatically portable.
 
 - `String` is a sequence of Unicode scalar values. Ill-formed surrogate values
   are not representable.
-- String length and indexing, if provided, operate on scalar values, not UTF-8
-  bytes or UTF-16 code units.
+- General string length and indexing, if provided, operate on scalar values,
+  not target-native storage units. An explicitly named interoperation measure
+  MAY expose another encoding unit when its semantics are fully portable;
+  `StringUtf16Length` counts the well-formed UTF-16 encoding's code units.
 - v0 SHOULD include scalar iteration but MAY omit random indexing until its error
   type is finalized.
 - `Bytes` is an immutable sequence of octets and never implicitly converts to

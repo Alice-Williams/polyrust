@@ -334,6 +334,7 @@ fn all_intrinsics_values_and_constant_nodes_serialize() {
         Intrinsic::FloatRemTrunc,
         Intrinsic::StringConcat,
         Intrinsic::StringScalarLength,
+        Intrinsic::StringUtf16Length,
         Intrinsic::StringIsEmpty,
         Intrinsic::StringContains,
         Intrinsic::StringStartsWith,
@@ -354,6 +355,7 @@ fn all_intrinsics_values_and_constant_nodes_serialize() {
         Intrinsic::ListAppend,
         Intrinsic::ListConcat,
         Intrinsic::ListContains,
+        Intrinsic::ListIndexOf,
         Intrinsic::OptionIsSome,
         Intrinsic::OptionIsNone,
         Intrinsic::OptionUnwrapOr,
@@ -374,6 +376,14 @@ fn all_intrinsics_values_and_constant_nodes_serialize() {
     assert_eq!(
         serde_json::to_string(&Intrinsic::FloatIsNaN).unwrap(),
         "\"float_is_nan\""
+    );
+    assert_eq!(
+        serde_json::to_string(&Intrinsic::StringUtf16Length).unwrap(),
+        "\"string_utf16_length\""
+    );
+    assert_eq!(
+        serde_json::to_string(&Intrinsic::ListIndexOf).unwrap(),
+        "\"list_index_of\""
     );
 
     let values = vec![

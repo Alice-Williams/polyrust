@@ -104,8 +104,10 @@ impl<'a> Generator<'a> {
     fn validate_callable_type(&self, ty: &TypeRef) -> Result<(), BackendError> {
         self.validate_type(ty)?;
         match self.resolve_alias(ty) {
+            TypeRef::List(inner) if *inner == TypeRef::String => Ok(()),
+            TypeRef::Option(inner) if *inner == TypeRef::I64 => Ok(()),
             TypeRef::List(_) | TypeRef::Option(_) | TypeRef::Result { .. } => self.unsupported(
-                "container ABI is defined, but callable container lowering is not complete yet",
+                "callable container lowering currently admits List<String> and Option<I64>",
             ),
             TypeRef::Named(id) if self.is_enum(id) => self
                 .unsupported("enum ABI is defined, but callable enum lowering is not complete yet"),
@@ -186,6 +188,7 @@ impl<'a> Generator<'a> {
                         | Intrinsic::FloatDiv
                         | Intrinsic::FloatRemTrunc
                         | Intrinsic::StringConcat
+                        | Intrinsic::StringUtf16Length
                         | Intrinsic::StringIsEmpty
                         | Intrinsic::StringContains
                         | Intrinsic::StringStartsWith
@@ -197,6 +200,10 @@ impl<'a> Generator<'a> {
                         | Intrinsic::StringTrimStart
                         | Intrinsic::StringTrimEnd
                         | Intrinsic::BytesReplaceAll
+                        | Intrinsic::ListIndexOf
+                        | Intrinsic::OptionIsSome
+                        | Intrinsic::OptionIsNone
+                        | Intrinsic::OptionUnwrapOr
                 ) {
                     return self
                         .unsupported(&format!("intrinsic {operation:?} is not lowered yet"));
@@ -409,6 +416,7 @@ impl<'a> Generator<'a> {
                 CCode::new(format!("const {} *", self.record_name(id)))
             }
             TypeRef::Contract(id) => CCode::new(self.contract_name(id)),
+            TypeRef::List(_) => self.ty(ty).map_text(|ty| format!("const {ty} *")),
             other => self.ty(&other),
         }
     }
@@ -439,6 +447,14 @@ impl<'a> Generator<'a> {
             && (self.is_record(id) || self.is_enum(id))
         {
             return CCode::new(format!("{}_call_result", self.named_name(id)));
+        }
+        if matches!(
+            &resolved,
+            TypeRef::List(_) | TypeRef::Option(_) | TypeRef::Result { .. }
+        ) {
+            return self
+                .ty(&resolved)
+                .map_text(|ty| format!("{ty}_call_result"));
         }
         let suffix = match resolved {
             TypeRef::Unit => "unit",
@@ -997,7 +1013,7 @@ impl<'a> Generator<'a> {
             }
             TypeRef::Option(inner) => {
                 let mut text = format!(
-                    "bool {name}_clone(poly_allocator allocator, const {name} *source, {name} *output) {{\n  {name} result = {{0}};\n  if (output == NULL) {{ return false; }}\n  *output = result;\n  if (source == NULL) {{ return false; }}\n  result.has_value = source->has_value;\n  if (source->has_value) {{\n"
+                    "bool {name}_clone(poly_allocator allocator, const {name} *source, {name} *output) {{\n  {name} result = {{0}};\n  (void)allocator;\n  if (output == NULL) {{ return false; }}\n  *output = result;\n  if (source == NULL) {{ return false; }}\n  result.has_value = source->has_value;\n  if (source->has_value) {{\n"
                 );
                 let clone = self.clone_statement(
                     &inner,
@@ -1749,6 +1765,7 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
             }
             Intrinsic::StringStripPrefix => Some("runtime.feature.string-strip-prefix"),
             Intrinsic::StringConcat => Some("runtime.feature.string-concat"),
+            Intrinsic::StringUtf16Length => Some("runtime.feature.string-utf16-length"),
             Intrinsic::StringReplaceAll => Some("runtime.feature.string-replace-all"),
             Intrinsic::BytesReplaceAll => Some("runtime.feature.bytes-replace-all"),
             Intrinsic::StringReplaceMany => Some("runtime.feature.string-replace-many"),
@@ -1855,6 +1872,40 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                 TypeRef::F64,
                 prelude,
             ),
+            Intrinsic::StringUtf16Length => {
+                let temporary = self.temporary(|name| format!("int64_t {name} = INT64_C(0);"));
+                let status = self.temporary(|name| format!("poly_error_code {name} = POLY_OK;"));
+                prelude.push_str(&format!(
+                    "{status} = poly_string_utf16_length({}, &{temporary});\nif ({status} != POLY_OK) {{ error = (poly_error){{{status}, {status} == POLY_INVALID_UTF8 ? \"invalid UTF-8\" : \"UTF-16 length overflow\"}}; goto fail; }}\n",
+                    value(0)
+                ));
+                scalar(temporary, TypeRef::I64, prelude)
+            }
+            Intrinsic::ListIndexOf => {
+                let option_ty = TypeRef::Option(Box::new(TypeRef::I64));
+                let option = self.generator.ty(&option_ty);
+                let temporary = self.temporary(|name| format!("{option} {name} = {{0}};"));
+                let index = self.temporary(|name| format!("size_t {name} = 0U;"));
+                let equals = match self.generator.resolve_alias(&values[1].ty) {
+                    TypeRef::String => format!(
+                        "poly_string_equal(poly_string_borrow(&{}->data[{index}]), {})",
+                        value(0),
+                        value(1)
+                    ),
+                    _ => {
+                        return self.generator.unsupported(
+                            "ListIndexOf C17 lowering currently supports String elements",
+                        );
+                    }
+                };
+                prelude.push_str(&format!(
+                    "for ({index} = 0U; {index} < {}->length; ++{index}) {{\n  if ({equals}) {{ {temporary}.has_value = true; {temporary}.payload.value = (int64_t){index}; break; }}\n}}\n",
+                    value(0)
+                ));
+                let mut result = scalar(temporary, option_ty, prelude);
+                result.requirements = CCode::sequence([result.requirements, option]);
+                result
+            }
             Intrinsic::StringIsEmpty => scalar(
                 format!("({}).length == 0U", value(0)),
                 TypeRef::Bool,
@@ -1966,6 +2017,21 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                     prelude,
                 )
             }
+            Intrinsic::OptionIsSome => {
+                scalar(format!("({}).has_value", value(0)), TypeRef::Bool, prelude)
+            }
+            Intrinsic::OptionIsNone => {
+                scalar(format!("!({}).has_value", value(0)), TypeRef::Bool, prelude)
+            }
+            Intrinsic::OptionUnwrapOr => scalar(
+                format!(
+                    "({0}).has_value ? ({0}).payload.value : ({1})",
+                    value(0),
+                    value(1)
+                ),
+                values[1].ty.clone(),
+                prelude,
+            ),
             _ => {
                 return self
                     .generator
@@ -2154,6 +2220,12 @@ impl Generator<'_> {
                     "    {}_bytes_result_drop(&result);\n",
                     self.prefix
                 )),
+                TypeRef::List(_) | TypeRef::Option(_) | TypeRef::Result { .. } => {
+                    output.push_str(&format!(
+                        "    {}_call_result_drop(&result);\n",
+                        self.ty(&return_type).text
+                    ));
+                }
                 _ => {}
             }
             for cleanup in cleanups.iter().rev() {
@@ -2207,6 +2279,20 @@ impl Generator<'_> {
                 ))
                 .with_text_from([expected])
                 .with_helper_root("runtime.core"))
+            }
+            (TypeRef::Option(inner), Value::None) if *inner == TypeRef::I64 => {
+                Ok(CCode::new(format!("{actual}.has_value")))
+            }
+            (TypeRef::Option(inner), Value::Some(value)) if *inner == TypeRef::I64 => {
+                let Value::I64(expected) = value.as_ref() else {
+                    return self.unsupported("Option<I64> test expectation has a non-I64 value");
+                };
+                let expected = i64_literal(*expected);
+                Ok(CCode::new(format!(
+                    "!{actual}.has_value || {actual}.payload.value != {}",
+                    expected.text
+                ))
+                .with_text_from([expected]))
             }
             (
                 TypeRef::Named(_),
@@ -2263,6 +2349,40 @@ impl Generator<'_> {
             ))
             .with_system("stdint.h")
             .with_helper_root("runtime.feature.f64")),
+            (Value::List(values), TypeRef::List(inner)) if *inner == TypeRef::String => {
+                let variable = format!("argument_{test_index}_{argument_index}");
+                let items = format!("{variable}_items");
+                let list_ty = self.ty(&TypeRef::List(inner.clone()));
+                let mut requirements = Vec::new();
+                if values.is_empty() {
+                    output.push_str(&format!("    {list_ty} {variable} = {{0}};\n"));
+                } else {
+                    output.push_str(&format!(
+                        "    poly_string {items}[{}] = {{0}};\n    {list_ty} {variable} = {{{items}, 0U, {}U, {{0}}}};\n",
+                        values.len(),
+                        values.len()
+                    ));
+                    for (value_index, value) in values.iter().enumerate() {
+                        let Value::String(value) = value else {
+                            return self.unsupported(
+                                "List<String> portable-test argument contains a non-string value",
+                            );
+                        };
+                        let view = string_view(value.as_bytes());
+                        output.push_str(&format!(
+                            "    if (poly_string_clone(allocator, {}, &{items}[{value_index}]) != POLY_OK) {{ {list_ty}_drop(&{variable}); return {}; }}\n    {variable}.length = {}U;\n",
+                            view.text,
+                            100 + test_index,
+                            value_index + 1
+                        ));
+                        requirements.push(view.with_helper_root("runtime.core"));
+                    }
+                }
+                cleanups.push(format!("{list_ty}_drop(&{variable});"));
+                Ok(CCode::new(format!("&{variable}"))
+                    .with_text_from([list_ty])
+                    .with_text_from(requirements))
+            }
             (
                 Value::Record {
                     declaration,
@@ -2516,6 +2636,10 @@ mod tests {
                 "runtime.feature.string-strip-prefix",
             ),
             (Intrinsic::StringConcat, "runtime.feature.string-concat"),
+            (
+                Intrinsic::StringUtf16Length,
+                "runtime.feature.string-utf16-length",
+            ),
             (
                 Intrinsic::StringReplaceAll,
                 "runtime.feature.string-replace-all",

@@ -1799,11 +1799,12 @@ impl Checker<'_> {
             IntBitOr, IntBitXor, IntDivChecked, IntMulChecked, IntMulWrapping, IntNegChecked,
             IntNegWrapping, IntRemChecked, IntShiftLeftChecked, IntShiftRightChecked,
             IntSubChecked, IntSubWrapping, Less, LessEqual, ListAppend, ListConcat, ListContains,
-            ListGetChecked, ListIsEmpty, ListLength, NarrowI64ToI32Checked, NotEqual, OptionIsNone,
-            OptionIsSome, OptionUnwrapOr, ResultIsErr, ResultIsOk, StringConcat, StringContains,
-            StringEndsWith, StringFromUtf8Checked, StringIsEmpty, StringReplaceAll,
+            ListGetChecked, ListIndexOf, ListIsEmpty, ListLength, NarrowI64ToI32Checked, NotEqual,
+            OptionIsNone, OptionIsSome, OptionUnwrapOr, ResultIsErr, ResultIsOk, StringConcat,
+            StringContains, StringEndsWith, StringFromUtf8Checked, StringIsEmpty, StringReplaceAll,
             StringReplaceMany, StringScalarLength, StringStartsWith, StringStripPrefix,
-            StringToUtf8, StringTrimEnd, StringTrimStart, StringTruncateUtf8Bytes, WidenI32ToI64,
+            StringToUtf8, StringTrimEnd, StringTrimStart, StringTruncateUtf8Bytes,
+            StringUtf16Length, WidenI32ToI64,
         };
         let invalid = |checker: &mut Self| {
             checker.error(
@@ -1866,7 +1867,9 @@ impl Checker<'_> {
             StringConcat if arguments == [TypeRef::String, TypeRef::String] => {
                 Some(TypeRef::String)
             }
-            StringScalarLength if arguments == [TypeRef::String] => Some(TypeRef::I64),
+            StringScalarLength | StringUtf16Length if arguments == [TypeRef::String] => {
+                Some(TypeRef::I64)
+            }
             StringIsEmpty if arguments == [TypeRef::String] => Some(TypeRef::Bool),
             StringContains | StringStartsWith | StringEndsWith
                 if arguments == [TypeRef::String, TypeRef::String] =>
@@ -1927,6 +1930,12 @@ impl Checker<'_> {
                     && matches!(&arguments[0], TypeRef::List(element) if **element == arguments[1]) =>
             {
                 Some(TypeRef::Bool)
+            }
+            ListIndexOf
+                if arguments.len() == 2
+                    && matches!(&arguments[0], TypeRef::List(element) if **element == arguments[1]) =>
+            {
+                Some(TypeRef::Option(Box::new(TypeRef::I64)))
             }
             OptionIsSome | OptionIsNone if matches!(arguments, [TypeRef::Option(_)]) => {
                 Some(TypeRef::Bool)

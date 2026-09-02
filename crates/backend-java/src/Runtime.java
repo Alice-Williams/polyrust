@@ -379,6 +379,9 @@ public final class Runtime {
       case "float_rem_trunc": return ok((Double) a % (Double) b);
       case "string_concat": return ok((String) a + (String) b);
       case "string_scalar_length": return cast(scalarLength((String) a));
+// POLYRUST-BEGIN string-utf16-length-case
+      case "string_utf16_length": return ok((long) ((String) a).length());
+// POLYRUST-END string-utf16-length-case
       case "string_is_empty": return ok(((String) a).isEmpty());
       case "string_contains": return ok(((String) a).contains((String) b));
       case "string_starts_with": return ok(((String) a).startsWith((String) b));
@@ -413,6 +416,15 @@ public final class Runtime {
       }
       case "list_append": return ok(listAppend(asList(a), b));
       case "list_contains": return ok(asList(a).stream().anyMatch(item -> semanticEqual(item, b)));
+// POLYRUST-BEGIN list-index-of-case
+      case "list_index_of": {
+        List<Object> list = asList(a);
+        for (int index = 0; index < list.size(); index++) {
+          if (semanticEqual(list.get(index), b)) return ok(PolyOption.some((long) index));
+        }
+        return ok(PolyOption.none());
+      }
+// POLYRUST-END list-index-of-case
       case "option_is_some": return ok("some".equals(((PolyOption<?>) a).tag()));
       case "option_is_none": return ok("none".equals(((PolyOption<?>) a).tag()));
       case "option_unwrap_or":
