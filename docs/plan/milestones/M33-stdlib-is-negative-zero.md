@@ -1,6 +1,6 @@
 # M33 — stdlib is-negative-zero 0.2.3 equivalence port
 
-- Status: in progress
+- Status: complete
 - Phase: 6
 - Depends on: M32
 
@@ -70,6 +70,23 @@ capability repair scan, or target-dependent approximation.
   container, including Buildifier, Rustfmt, and Clippy.
 - The completed milestone is committed, pushed, and green in hosted CI before
   another repository is selected.
+
+## Completion evidence
+
+- All 12 retained upstream blobs pass immutable offline provenance checks.
+- The evaluator and all eight generated packages pass the 22 exact-bit
+  portable vectors; the retained JavaScript oracle agrees on all 86,018
+  differential inputs.
+- The M33 suite passes 17/17 targets. The complete uncached repository gate
+  passes 250/250 tests and the complete uncached release gate passes 227/227
+  tests in the Linux development container.
+- Hosted workflow
+  [33599714820](https://github.com/Alice-Williams/polyrust/actions/runs/33599714820)
+  passes implementation/documentation commit
+  `7820c55a69de282018923c55f617f41d5e12bf0d` across both determinism hosts,
+  cross-host manifest comparison, pinned/stable Rust, fast checks, the
+  Windows host/container contract, and cache-cold/cache-warm complete release
+  gates.
 
 ## Scope boundary
 

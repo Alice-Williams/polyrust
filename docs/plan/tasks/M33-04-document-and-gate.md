@@ -1,6 +1,6 @@
 # M33-04 — Document and release-gate M33
 
-- Status: in progress
+- Status: complete
 
 ## Goal
 
@@ -25,7 +25,7 @@ port.
 - `bazel test //... --nocache_test_results --test_output=errors`
 - `bazel test //:release_gate --nocache_test_results --test_output=errors`
 
-## Local completion evidence
+## Completion evidence
 
 - The strict architecture, semantic references, task set, compatibility
   ledger, and dedicated port report describe the implemented admission and
@@ -34,4 +34,10 @@ port.
   release targets.
 - The uncached repository-wide run passes 250/250 tests and the uncached
   release gate passes 227/227 tests in the Linux development container.
-- Hosted CI remains the final closure condition.
+- Hosted workflow
+  [33599714820](https://github.com/Alice-Williams/polyrust/actions/runs/33599714820)
+  passes implementation/documentation commit
+  `7820c55a69de282018923c55f617f41d5e12bf0d` across both determinism hosts,
+  cross-host manifest comparison, pinned/stable Rust, fast checks, the
+  Windows host/container contract, and cache-cold/cache-warm complete release
+  gates.

@@ -311,4 +311,10 @@ at `64cec7defbad6b61c56511fc5a986fdb1b08ecf2`.
   targets pass. The uncached repository-wide regression passes 250/250 tests;
   the uncached release gate passes 227/227 tests, including every earlier port,
   Buildifier, Rustfmt, Clippy, public consumers, sanitizers, dependency
-  boundaries, and source-policy fault injection.
+  boundaries, and source-policy fault injection. Hosted workflow
+  [33599714820](https://github.com/Alice-Williams/polyrust/actions/runs/33599714820)
+  passes implementation/documentation commit
+  `7820c55a69de282018923c55f617f41d5e12bf0d` across both determinism hosts,
+  cross-host manifest comparison, pinned/stable Rust, fast checks, the
+  Windows host/container contract, and cache-cold/cache-warm complete release
+  gates.
