@@ -11,6 +11,12 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
+filegroup(
+    name = "typed_renderer_policy_sources",
+    srcs = ["src/rendering.rs"],
+    visibility = ["//visibility:public"],
+)
+
 rust_library(
     name = "portable_codegen",
     srcs = glob(["src/**/*.rs"]),
@@ -22,6 +28,7 @@ rust_library(
         "//crates/core-ir:portable_core_ir",
         "//crates/diagnostics:portable_diagnostics",
         "//crates/ir:portable_ir",
+        "@crates//:handlebars",
         "@crates//:serde",
         "@crates//:serde_json",
     ],
@@ -88,6 +95,12 @@ test_suite(
     visibility = ["//visibility:public"],
 )
 
+test_suite(
+    name = "handlebars_renderer_test",
+    tests = [":portable_codegen_test"],
+    visibility = ["//visibility:public"],
+)
+
 rust_doc_test(
     name = "portable_codegen_doc_test",
     crate = ":portable_codegen",
@@ -105,6 +118,11 @@ rust_doc_test(
 
 rust_doc_test(
     name = "target_ast_compile_fail_test",
+    crate = ":portable_codegen",
+)
+
+rust_doc_test(
+    name = "renderer_compile_fail_test",
     crate = ":portable_codegen",
 )
 

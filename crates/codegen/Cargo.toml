@@ -11,6 +11,7 @@ publish.workspace = true
 name = "portable_codegen"
 
 [dependencies]
+handlebars.workspace = true
 portable_check.workspace = true
 portable_core_ir.workspace = true
 portable_diagnostics.workspace = true

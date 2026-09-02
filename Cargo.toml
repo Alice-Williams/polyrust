@@ -42,6 +42,7 @@ repository = "https://github.com/Alice-Williams/polyrust"
 publish = false
 
 [workspace.dependencies]
+handlebars = { version = "=6.4.4", default-features = false }
 portable_backend_c = { package = "polyrust-backend-c", path = "crates/backend-c" }
 portable_backend_go = { package = "polyrust-backend-go", path = "crates/backend-go" }
 portable_backend_cpp = { package = "polyrust-backend-cpp", path = "crates/backend-cpp" }

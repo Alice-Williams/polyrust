@@ -11,17 +11,38 @@ from pathlib import Path
 
 
 ALLOWED_REGISTRY = {
-    "itoa": "1.0.18",
-    "memchr": "2.8.3",
-    "proc-macro2": "1.0.107",
-    "quote": "1.0.47",
-    "serde": "1.0.229",
-    "serde_core": "1.0.229",
-    "serde_derive": "1.0.229",
-    "serde_json": "1.0.151",
-    "syn": "3.0.4",
-    "unicode-ident": "1.0.24",
-    "zmij": "1.0.23",
+    ("darling", "0.20.11"),
+    ("darling_core", "0.20.11"),
+    ("darling_macro", "0.20.11"),
+    ("derive_builder", "0.20.2"),
+    ("derive_builder_core", "0.20.2"),
+    ("derive_builder_macro", "0.20.2"),
+    ("fnv", "1.0.7"),
+    ("handlebars", "6.4.4"),
+    ("ident_case", "1.0.1"),
+    ("itoa", "1.0.18"),
+    ("log", "0.4.34"),
+    ("memchr", "2.8.3"),
+    ("num-modular", "0.6.5"),
+    ("num-order", "1.2.0"),
+    ("pest", "2.9.0"),
+    ("pest_derive", "2.9.0"),
+    ("pest_generator", "2.9.0"),
+    ("pest_meta", "2.9.0"),
+    ("proc-macro2", "1.0.107"),
+    ("quote", "1.0.47"),
+    ("serde", "1.0.229"),
+    ("serde_core", "1.0.229"),
+    ("serde_derive", "1.0.229"),
+    ("serde_json", "1.0.151"),
+    ("strsim", "0.11.1"),
+    ("syn", "2.0.119"),
+    ("syn", "3.0.4"),
+    ("thiserror", "2.0.20"),
+    ("thiserror-impl", "2.0.20"),
+    ("ucd-trie", "0.1.7"),
+    ("unicode-ident", "1.0.24"),
+    ("zmij", "1.0.23"),
 }
 
 PINNED_TEXT = {
@@ -62,11 +83,14 @@ def require(condition: bool, message: str) -> None:
 def verify_lock(lock: Path) -> None:
     packages = tomllib.loads(lock.read_text(encoding="utf-8"))["package"]
     registry = {
-        package["name"]: package["version"]
+        (package["name"], package["version"])
         for package in packages
         if str(package.get("source", "")).startswith("registry+")
     }
-    require(registry == ALLOWED_REGISTRY, f"dependency policy violation: {registry}")
+    require(
+        registry == ALLOWED_REGISTRY,
+        f"dependency policy violation: {sorted(registry)}",
+    )
 
 
 def verify_safety(rust_sources: list[Path], go_sources: list[Path]) -> None:

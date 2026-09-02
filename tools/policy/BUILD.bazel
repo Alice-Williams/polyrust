@@ -9,3 +9,13 @@ sh_test(
     ],
     visibility = ["//visibility:public"],
 )
+
+sh_test(
+    name = "template_policy_test",
+    srcs = ["template_policy_test.sh"],
+    data = [
+        "template_policy.py",
+        "//crates/codegen:typed_renderer_policy_sources",
+    ],
+    visibility = ["//visibility:public"],
+)

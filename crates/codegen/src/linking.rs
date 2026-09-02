@@ -283,6 +283,8 @@ pub trait LinkerDialect:
     type Namespace: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
     type NameKey: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
     type ImportKind: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
+    type ResolvedModule: Clone + std::fmt::Debug + Eq + Send + Sync;
+    type ResolvedFileItem: Clone + std::fmt::Debug + Eq + Send + Sync;
 
     fn symbol_catalogue(&self) -> SymbolCatalogue<Self>;
     fn identifier_from_candidate(
@@ -317,6 +319,17 @@ pub trait LinkerDialect:
     fn expression_references(&self, expression: &Self::Expression) -> Vec<TargetSymbolRef<Self>>;
     fn statement_references(&self, statement: &Self::Statement) -> Vec<TargetSymbolRef<Self>>;
     fn file_item_roots(&self, item: &Self::FileItem) -> FileItemRoots<Self>;
+    fn resolve_module(
+        &self,
+        module: &Self::ModuleDeclaration,
+    ) -> Result<Self::ResolvedModule, AstViolation>;
+    fn resolve_file_item(
+        &self,
+        package: &TargetAstPackage<Self>,
+        item: &Self::FileItem,
+        references: &ResolvedReferenceMap<Self>,
+    ) -> Result<Self::ResolvedFileItem, AstViolation>;
+    fn verify_resolved_file_item(&self, item: &Self::ResolvedFileItem) -> Vec<AstViolation>;
 
     fn permits_file_cycle(&self, _files: &[TargetFileId]) -> bool {
         false
@@ -684,7 +697,8 @@ pub struct ResolvedBinding<D: LinkerDialect> {
 }
 
 impl<D: LinkerDialect> ResolvedBinding<D> {
-    pub fn symbol(&self) -> &BindableSymbolId<D> {
+    #[cfg(test)]
+    fn symbol(&self) -> &BindableSymbolId<D> {
         &self.symbol
     }
 
@@ -715,6 +729,44 @@ pub enum ResolvedReference<D: LinkerDialect> {
     },
 }
 
+/// Read-only symbol spelling table available to a dialect's resolver.
+///
+/// Only the shared linker constructs this map. Renderers never receive it or
+/// any unresolved target symbol reference.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ResolvedReferenceMap<D: LinkerDialect> {
+    references: BTreeMap<TargetSymbolRef<D>, ResolvedReference<D>>,
+}
+
+impl<D: LinkerDialect> ResolvedReferenceMap<D> {
+    pub fn get(&self, symbol: &TargetSymbolRef<D>) -> Option<&ResolvedReference<D>> {
+        self.references.get(symbol)
+    }
+
+    fn from_linked(
+        references: &[LinkedReference<D>],
+        source: &SourceRef,
+        diagnostics: &mut Vec<Diagnostic>,
+    ) -> Self {
+        let mut resolved = BTreeMap::new();
+        for reference in references {
+            if let Some(previous) =
+                resolved.insert(reference.symbol.clone(), reference.resolved.clone())
+                && previous != reference.resolved
+            {
+                diagnostics.push(Diagnostic::error(
+                    DiagnosticCode::InterfaceNonconformance,
+                    "one typed symbol resolved to inconsistent spellings in one file",
+                    source.clone(),
+                ));
+            }
+        }
+        Self {
+            references: resolved,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResolvedImport<D: LinkerDialect> {
     id: ResolvedImportId,
@@ -730,7 +782,8 @@ impl<D: LinkerDialect> ResolvedImport<D> {
         self.id
     }
 
-    pub fn symbol(&self) -> &TargetSymbolRef<D> {
+    #[cfg(test)]
+    fn symbol(&self) -> &TargetSymbolRef<D> {
         &self.symbol
     }
 
@@ -759,22 +812,15 @@ impl<D: LinkerDialect> ResolvedPackageDependency<D> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LinkedReference<D: LinkerDialect> {
+struct LinkedReference<D: LinkerDialect> {
     source: SourceRef,
     symbol: TargetSymbolRef<D>,
     resolved: ResolvedReference<D>,
 }
 
 impl<D: LinkerDialect> LinkedReference<D> {
-    pub fn source(&self) -> &SourceRef {
-        &self.source
-    }
-
-    pub fn symbol(&self) -> &TargetSymbolRef<D> {
-        &self.symbol
-    }
-
-    pub fn resolved(&self) -> &ResolvedReference<D> {
+    #[cfg(test)]
+    fn resolved(&self) -> &ResolvedReference<D> {
         &self.resolved
     }
 }
@@ -782,6 +828,13 @@ impl<D: LinkerDialect> LinkedReference<D> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LinkedFile<D: LinkerDialect> {
     file: TargetFileId,
+    path: crate::RelativeOutputPath,
+    role: SourceRole,
+    module: D::ResolvedModule,
+    placement: D::FilePlacement,
+    template: D::TemplateId,
+    items: Vec<D::ResolvedFileItem>,
+    source: SourceRef,
     dependencies: Vec<TargetFileId>,
     references: Vec<LinkedReference<D>>,
     imports: Vec<ResolvedImport<D>>,
@@ -794,7 +847,36 @@ impl<D: LinkerDialect> LinkedFile<D> {
         self.file
     }
 
-    pub fn references(&self) -> &[LinkedReference<D>] {
+    pub fn path(&self) -> &crate::RelativeOutputPath {
+        &self.path
+    }
+
+    pub const fn role(&self) -> SourceRole {
+        self.role
+    }
+
+    pub fn module(&self) -> &D::ResolvedModule {
+        &self.module
+    }
+
+    pub fn placement(&self) -> &D::FilePlacement {
+        &self.placement
+    }
+
+    pub fn template(&self) -> &D::TemplateId {
+        &self.template
+    }
+
+    pub fn items(&self) -> &[D::ResolvedFileItem] {
+        &self.items
+    }
+
+    pub fn source(&self) -> &SourceRef {
+        &self.source
+    }
+
+    #[cfg(test)]
+    fn references(&self) -> &[LinkedReference<D>] {
         &self.references
     }
 
@@ -806,17 +888,19 @@ impl<D: LinkerDialect> LinkedFile<D> {
         &self.imports
     }
 
-    pub fn forward_declarations(&self) -> &[GeneratedSymbolId] {
+    #[cfg(test)]
+    fn forward_declarations(&self) -> &[GeneratedSymbolId] {
         &self.forward_declarations
     }
 
-    pub fn helpers(&self) -> &[D::HelperId] {
+    #[cfg(test)]
+    fn helpers(&self) -> &[D::HelperId] {
         &self.helpers
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LinkedRuntimeHelper<D: LinkerDialect> {
+struct LinkedRuntimeHelper<D: LinkerDialect> {
     id: D::HelperId,
     order: u32,
     file: TargetFileId,
@@ -825,24 +909,14 @@ pub struct LinkedRuntimeHelper<D: LinkerDialect> {
 }
 
 impl<D: LinkerDialect> LinkedRuntimeHelper<D> {
+    #[cfg(test)]
     pub fn id(&self) -> &D::HelperId {
         &self.id
     }
 
-    pub const fn order(&self) -> u32 {
-        self.order
-    }
-
+    #[cfg(test)]
     pub const fn file(&self) -> TargetFileId {
         self.file
-    }
-
-    pub fn items(&self) -> &[D::FileItem] {
-        &self.items
-    }
-
-    pub fn source(&self) -> &SourceRef {
-        &self.source
     }
 }
 
@@ -857,12 +931,20 @@ pub struct LinkedTargetPackage<D: LinkerDialect> {
     catalogue: SymbolCatalogue<D>,
 }
 
+/// A resolved package does not expose its unresolved AST.
+///
+/// ```compile_fail
+/// use portable_codegen::{LinkedTargetPackage, LinkerDialect};
+///
+/// fn cannot_recover_unresolved<D: LinkerDialect>(
+///     package: &LinkedTargetPackage<D>,
+/// ) {
+///     let _ = package.unresolved();
+/// }
+/// ```
 impl<D: LinkerDialect> LinkedTargetPackage<D> {
-    pub fn unresolved(&self) -> &TargetAstPackage<D> {
-        &self.unresolved
-    }
-
-    pub fn bindings(&self) -> &[ResolvedBinding<D>] {
+    #[cfg(test)]
+    fn bindings(&self) -> &[ResolvedBinding<D>] {
         &self.bindings
     }
 
@@ -874,11 +956,13 @@ impl<D: LinkerDialect> LinkedTargetPackage<D> {
         &self.dependencies
     }
 
-    pub fn helpers(&self) -> &[LinkedRuntimeHelper<D>] {
+    #[cfg(test)]
+    fn helpers(&self) -> &[LinkedRuntimeHelper<D>] {
         &self.helpers
     }
 
-    pub fn canonical_dump(&self) -> String {
+    #[cfg(test)]
+    fn canonical_dump(&self) -> String {
         format!("{self:#?}")
     }
 
@@ -980,8 +1064,74 @@ impl<D: LinkerDialect> TargetLinker<D> {
             let forward_declarations = self
                 .dialect
                 .forward_declarations(raw_file.file, &unresolved_refs);
+            let source_file = unresolved
+                .file(raw_file.file)
+                .expect("raw linker file was collected from this package");
+            let reference_map = ResolvedReferenceMap::from_linked(
+                &references,
+                source_file.source(),
+                &mut diagnostics,
+            );
+            let module = match self.dialect.resolve_module(source_file.module()) {
+                Ok(module) => module,
+                Err(violation) => {
+                    diagnostics.push(Diagnostic::error(
+                        violation.code,
+                        violation.message,
+                        source_file.source().clone(),
+                    ));
+                    continue;
+                }
+            };
+            let mut items = Vec::new();
+            let unresolved_items = source_file
+                .items()
+                .iter()
+                .map(|item| (item, source_file.source()))
+                .chain(
+                    selected_helpers
+                        .iter()
+                        .filter(|helper| helper.file == raw_file.file)
+                        .flat_map(|helper| {
+                            helper.items.iter().map(move |item| (item, &helper.source))
+                        }),
+                );
+            for (item, source) in unresolved_items {
+                match self
+                    .dialect
+                    .resolve_file_item(unresolved, item, &reference_map)
+                {
+                    Ok(item) => {
+                        diagnostics.extend(
+                            self.dialect
+                                .verify_resolved_file_item(&item)
+                                .into_iter()
+                                .map(|violation| {
+                                    Diagnostic::error(
+                                        violation.code,
+                                        violation.message,
+                                        source.clone(),
+                                    )
+                                }),
+                        );
+                        items.push(item);
+                    }
+                    Err(violation) => diagnostics.push(Diagnostic::error(
+                        violation.code,
+                        violation.message,
+                        source.clone(),
+                    )),
+                }
+            }
             files.push(LinkedFile {
                 file: raw_file.file,
+                path: source_file.path().clone(),
+                role: source_file.role(),
+                module,
+                placement: source_file.placement().clone(),
+                template: source_file.template().clone(),
+                items,
+                source: source_file.source().clone(),
                 dependencies: raw_file.dependencies,
                 references,
                 imports,
@@ -2009,6 +2159,79 @@ pub fn verify_linked_package<D: LinkerDialect>(
                 "file-dependencies",
             ));
         }
+        let Some(source_file) = package.unresolved.file(file.file) else {
+            diagnostics.push(link_error(
+                DiagnosticCode::UnresolvedReference,
+                "resolved file has no unresolved source-file identity",
+                "files",
+            ));
+            continue;
+        };
+        if file.path != *source_file.path()
+            || file.role != source_file.role()
+            || file.placement != *source_file.placement()
+            || file.template != *source_file.template()
+            || file.source != *source_file.source()
+        {
+            diagnostics.push(Diagnostic::error(
+                DiagnosticCode::InterfaceNonconformance,
+                "resolved file metadata does not match structural source-file metadata",
+                file.source.clone(),
+            ));
+        }
+        match package.dialect.resolve_module(source_file.module()) {
+            Ok(expected) if expected == file.module => {}
+            _ => diagnostics.push(Diagnostic::error(
+                DiagnosticCode::InterfaceNonconformance,
+                "resolved module does not match dialect resolution",
+                file.source.clone(),
+            )),
+        }
+        let reference_map =
+            ResolvedReferenceMap::from_linked(&file.references, &file.source, &mut diagnostics);
+        let mut expected_items = Vec::new();
+        let unresolved_items = source_file
+            .items()
+            .iter()
+            .map(|item| (item, source_file.source()))
+            .chain(
+                package
+                    .helpers
+                    .iter()
+                    .filter(|helper| helper.file == file.file)
+                    .flat_map(|helper| helper.items.iter().map(move |item| (item, &helper.source))),
+            );
+        for (item, source) in unresolved_items {
+            match package
+                .dialect
+                .resolve_file_item(&package.unresolved, item, &reference_map)
+            {
+                Ok(item) => {
+                    diagnostics.extend(
+                        package
+                            .dialect
+                            .verify_resolved_file_item(&item)
+                            .into_iter()
+                            .map(|violation| {
+                                Diagnostic::error(violation.code, violation.message, source.clone())
+                            }),
+                    );
+                    expected_items.push(item);
+                }
+                Err(violation) => diagnostics.push(Diagnostic::error(
+                    violation.code,
+                    violation.message,
+                    source.clone(),
+                )),
+            }
+        }
+        if file.items != expected_items {
+            diagnostics.push(Diagnostic::error(
+                DiagnosticCode::InterfaceNonconformance,
+                "resolved file items are not the exact dialect rewrite of source/helper AST",
+                file.source.clone(),
+            ));
+        }
     }
     if files.len() != package.unresolved.files().len() {
         diagnostics.push(link_error(
@@ -2295,10 +2518,13 @@ fn validate_dependency<D: LinkerDialect>(
 mod tests {
     use super::*;
     use crate::{
-        FileGroupRole, GeneratedCallable, GeneratedOrigin, GeneratedType, GeneratedValue,
-        RelativeOutputPath, SourceRole, SynthesisReason, TargetExpressionNode, TargetFile,
+        CertifiedTemplateEngine, CertifiedTemplateId, EmbeddedTemplate, FileGroupRole,
+        GeneratedCallable, GeneratedOrigin, GeneratedType, GeneratedValue, RelativeOutputPath,
+        ResolvedTemplateRenderer, SourceRole, SynthesisReason, TargetExpressionNode, TargetFile,
         TargetFileGroup, TargetFileItemNode, TargetFileMember, TargetStatementNode,
+        render_linked_package,
     };
+    use serde::Serialize;
 
     #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
     enum CatalogueMode {
@@ -2378,6 +2604,14 @@ mod tests {
     #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
     enum Template {
         Source,
+        Declaration,
+    }
+
+    impl CertifiedTemplateId for Template {
+        fn all() -> &'static [Self] {
+            const ALL: &[Template] = &[Template::Source, Template::Declaration];
+            ALL
+        }
     }
 
     #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -2501,6 +2735,81 @@ mod tests {
             helper: Helper,
             symbols: Vec<TargetSymbolRef<TestDialect>>,
         },
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    enum ResolvedItemKind {
+        Root,
+        Declaration(GeneratedSymbolId),
+        RuntimeDeclaration(Helper),
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    struct ResolvedItem {
+        kind: ResolvedItemKind,
+        references: Vec<ResolvedReference<TestDialect>>,
+    }
+
+    #[derive(Serialize)]
+    struct RenderedSourceView {
+        declarations: Vec<String>,
+    }
+
+    #[derive(Serialize)]
+    struct RenderedDeclarationView {
+        keyword: &'static str,
+        name: &'static str,
+    }
+
+    struct TestRenderer;
+
+    impl ResolvedTemplateRenderer<TestDialect> for TestRenderer {
+        type FileView = RenderedSourceView;
+
+        fn target_name(&self) -> &'static str {
+            "linker-test"
+        }
+
+        fn templates(&self) -> Vec<EmbeddedTemplate<Template>> {
+            vec![
+                EmbeddedTemplate::new(
+                    Template::Source,
+                    "{{#each declarations}}{{this}}\n{{/each}}",
+                    &["declarations"],
+                ),
+                EmbeddedTemplate::new(
+                    Template::Declaration,
+                    "{{keyword}} {{name}};",
+                    &["keyword", "name"],
+                ),
+            ]
+        }
+
+        fn build_file_view(
+            &self,
+            _package: &LinkedTargetPackage<TestDialect>,
+            file: &LinkedFile<TestDialect>,
+            templates: &mut CertifiedTemplateEngine<Template>,
+        ) -> Result<Self::FileView, Vec<Diagnostic>> {
+            let mut declarations = Vec::new();
+            for item in file.items() {
+                let name = match &item.kind {
+                    ResolvedItemKind::Root => "root",
+                    ResolvedItemKind::Declaration(_) => "user",
+                    ResolvedItemKind::RuntimeDeclaration(_) => "runtime",
+                };
+                declarations.push(templates.render(
+                    &Template::Declaration,
+                    &RenderedDeclarationView {
+                        keyword: "declaration",
+                        name,
+                    },
+                    self.target_name(),
+                    file,
+                )?);
+            }
+            Ok(RenderedSourceView { declarations })
+        }
     }
 
     struct I64Marker;
@@ -2781,6 +3090,8 @@ mod tests {
         type Namespace = Namespace;
         type NameKey = String;
         type ImportKind = ImportKind;
+        type ResolvedModule = Module;
+        type ResolvedFileItem = ResolvedItem;
 
         fn symbol_catalogue(&self) -> SymbolCatalogue<Self> {
             catalogue(self.0)
@@ -2911,6 +3222,80 @@ mod tests {
                     }
                 }
             }
+        }
+
+        fn resolve_module(
+            &self,
+            module: &Self::ModuleDeclaration,
+        ) -> Result<Self::ResolvedModule, AstViolation> {
+            Ok(module.clone())
+        }
+
+        fn resolve_file_item(
+            &self,
+            package: &TargetAstPackage<Self>,
+            item: &Self::FileItem,
+            references: &ResolvedReferenceMap<Self>,
+        ) -> Result<Self::ResolvedFileItem, AstViolation> {
+            fn resolve_symbols(
+                symbols: impl IntoIterator<Item = TargetSymbolRef<TestDialect>>,
+                references: &ResolvedReferenceMap<TestDialect>,
+            ) -> Result<Vec<ResolvedReference<TestDialect>>, AstViolation> {
+                symbols
+                    .into_iter()
+                    .map(|symbol| {
+                        references.get(&symbol).cloned().ok_or_else(|| {
+                            AstViolation::new(
+                                DiagnosticCode::UnresolvedReference,
+                                "resolved item cannot retain an unresolved symbol",
+                            )
+                        })
+                    })
+                    .collect()
+            }
+
+            match item {
+                FileItem::Declaration(symbol) => Ok(ResolvedItem {
+                    kind: ResolvedItemKind::Declaration(*symbol),
+                    references: vec![],
+                }),
+                FileItem::RuntimeDeclaration { helper, symbols } => Ok(ResolvedItem {
+                    kind: ResolvedItemKind::RuntimeDeclaration(helper.clone()),
+                    references: resolve_symbols(symbols.clone(), references)?,
+                }),
+                FileItem::Root(statement) => {
+                    let Some((statement, _)) = package.statement(*statement) else {
+                        return Err(AstViolation::new(
+                            DiagnosticCode::UnresolvedReference,
+                            "resolved root refers to a missing statement",
+                        ));
+                    };
+                    let mut symbols = statement.symbols.clone();
+                    let mut expressions = vec![statement.expression];
+                    let mut visited = BTreeSet::new();
+                    while let Some(expression) = expressions.pop() {
+                        if !visited.insert(expression) {
+                            continue;
+                        }
+                        let Some((_, node, _)) = package.expression(expression) else {
+                            return Err(AstViolation::new(
+                                DiagnosticCode::UnresolvedReference,
+                                "resolved root reached a missing expression",
+                            ));
+                        };
+                        symbols.extend(self.expression_references(node));
+                        expressions.extend(node.child_expressions());
+                    }
+                    Ok(ResolvedItem {
+                        kind: ResolvedItemKind::Root,
+                        references: resolve_symbols(symbols, references)?,
+                    })
+                }
+            }
+        }
+
+        fn verify_resolved_file_item(&self, _item: &Self::ResolvedFileItem) -> Vec<AstViolation> {
+            vec![]
         }
 
         fn permits_file_cycle(&self, _files: &[TargetFileId]) -> bool {
@@ -3527,6 +3912,24 @@ mod tests {
                 .any(|helper| helper.id() == &Helper::Unused)
         );
         assert_eq!(linked.files()[1].helpers(), &[Helper::Leaf, Helper::Root]);
+        assert!(linked.files()[1].items().iter().any(|item| matches!(
+            item.kind,
+            ResolvedItemKind::RuntimeDeclaration(Helper::Leaf)
+        )));
+        assert!(
+            linked
+                .files()
+                .iter()
+                .flat_map(LinkedFile::items)
+                .flat_map(|item| &item.references)
+                .all(|reference| matches!(
+                    reference,
+                    ResolvedReference::Local(_)
+                        | ResolvedReference::Imported { .. }
+                        | ResolvedReference::Qualified(_)
+                        | ResolvedReference::Member { .. }
+                ))
+        );
         assert!(
             linked
                 .helpers()
@@ -3537,7 +3940,7 @@ mod tests {
             linked
                 .helpers()
                 .iter()
-                .all(|helper| !helper.items().is_empty())
+                .all(|helper| !helper.items.is_empty())
         );
 
         let file = &linked.files()[0];
@@ -3752,6 +4155,10 @@ mod tests {
             .push(TargetFileId::from_index(1));
         assert!(verify_linked_package(&forged_file_edge).is_err());
 
+        let mut missing_resolved_item = base.clone();
+        missing_resolved_item.files_mut()[0].items.clear();
+        assert!(verify_linked_package(&missing_resolved_item).is_err());
+
         let mut extra_helper = base;
         let spec = extra_helper
             .catalogue
@@ -3781,6 +4188,23 @@ mod tests {
         assert_eq!(first, resolve());
         assert!(first.contains("ResolvedImport"));
         assert!(!first.contains("import Clock"));
+    }
+
+    #[test]
+    fn resolved_user_and_runtime_items_share_certified_templates() {
+        let render = || {
+            let linked = TargetLinker::new(TestDialect(CatalogueMode::Normal))
+                .link_ast(&package(CatalogueMode::Normal, full_symbols()))
+                .unwrap();
+            render_linked_package(&TestRenderer, &linked).unwrap()
+        };
+        let first = format!("{:#?}", render());
+        assert_eq!(first, format!("{:#?}", render()));
+        assert_eq!(first, format!("{:#?}", render()));
+        assert!(first.contains("declaration user;"));
+        assert!(first.contains("declaration runtime;"));
+        assert!(first.contains("src/generated.test"));
+        assert!(first.contains("src/runtime.test"));
     }
 
     #[test]

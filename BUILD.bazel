@@ -228,6 +228,7 @@ test_suite(
         "//examples/real-world/trim-newlines:all",
         "//examples/real-world/truncate-utf8-bytes:all",
         "//tools/dependency-boundaries:dependency_boundaries_test",
+        "//tools/policy:template_policy_test",
         "//tools/policy:typed_generation_source_policy_test",
         "//tools/release:failure_injection_test",
         "//tools/release:policy_test",

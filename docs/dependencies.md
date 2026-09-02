@@ -9,12 +9,27 @@ transitive graphs.
 
 | Dependency | Locked version | Purpose | License |
 | --- | --- | --- | --- |
+| `handlebars` | 6.4.4 (default features disabled) | Strict, embedded, presentation-only rendering of resolved target AST views | MIT |
 | `serde` | 1.0.229 | Strict derives for the versioned IR schema | Apache-2.0 OR MIT |
 | `serde_json` | 1.0.151 | Bounded JSON decoding and deterministic compact encoding | Apache-2.0 OR MIT |
 
-Neither dependency exposes filesystem, network, process, or target-language
-behavior. Their transitive packages and checksums are recorded in `Cargo.lock`
-and imported into Bazel through `rules_rust` crate universe.
+The serialization dependencies expose no filesystem, network, process, or
+target-language behavior. The renderer dependency is restricted as described
+below. All transitive packages and checksums are recorded in `Cargo.lock` and
+imported into Bazel through `rules_rust` crate universe.
+
+`handlebars` is compiled without default or optional features. In particular,
+the certified renderer does not include directory loading, development
+auto-reload, Rhai/script helpers, or `rust-embed`; templates are static strings
+embedded in the owning language crate. The shared adapter enables strict mode,
+disables HTML escaping, registers no custom helpers, and validates the closed
+template set before rendering. Version 6.4.4 is pinned exactly rather than by a
+compatible range.
+
+The complete normal dependency closure was audited from locked Cargo metadata.
+Every package reports an MIT, Apache-2.0, Unicode-3.0, or Unlicense-compatible
+expression, and the release policy pins every `(crate, version)` pair so that
+parallel versions cannot be hidden by a name-only allowlist.
 
 ## Build and development dependencies
 
