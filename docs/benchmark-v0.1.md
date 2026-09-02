@@ -11,10 +11,12 @@ Run it in the pinned Linux development container:
 bazelisk test //crates/benchmark:generation_benchmark_test --test_output=all
 ```
 
-The Bazel test launches `generation_benchmark`, measures child peak RSS with
-Linux `getrusage`, records wall time and platform information, verifies exactly
-1,000 declarations and eight targets, and fails either limit. It prints one
-canonical JSON measurement suitable for attaching to CI evidence.
+The Bazel test launches `generation_benchmark` as an `exclusive` test, measures
+child peak RSS with Linux `getrusage`, records wall time and platform
+information, verifies exactly 1,000 declarations and eight targets, and fails
+either limit. Exclusive scheduling prevents unrelated native and sanitizer
+tests from turning shared-runner contention into a benchmark failure. It prints
+one canonical JSON measurement suitable for attaching to CI evidence.
 
 ## Baseline measurement
 

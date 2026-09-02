@@ -29,5 +29,8 @@ sh_test(
         "measure.py",
         ":generation_benchmark",
     ],
+    # Wall-clock limits are meaningful only without concurrent sanitizer and
+    # native suites competing for the same hosted runner.
+    tags = ["exclusive"],
     visibility = ["//visibility:public"],
 )
