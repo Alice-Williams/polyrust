@@ -94,6 +94,7 @@ contract as every other target.
 - [M24 — Language package IR and dynamic imports](milestones/M24-language-package-ir.md) — complete
 - [M26 — Dependency-bearing flat language IR](milestones/M26-flat-language-ir.md) — complete
 - [M30 — Compositional target-language IR](milestones/M30-compositional-language-ir.md) — complete
+- [M34A — Typed target-AST architecture migration](milestones/M34A-typed-target-ast.md) — in progress
 
 ### Phase 6 continuation — Real-world compatibility
 
@@ -104,4 +105,4 @@ contract as every other target.
 - [M31 — has-flag equivalence port](milestones/M31-has-flag.md) — complete
 - [M32 — split-on-first equivalence port](milestones/M32-split-on-first.md) — complete
 - [M33 — stdlib is-negative-zero equivalence port](milestones/M33-stdlib-is-negative-zero.md) — complete
-- [M34 — stdlib abs equivalence port](milestones/M34-stdlib-abs.md) — in progress
+- [M34 — stdlib abs equivalence port](milestones/M34-stdlib-abs.md) — blocked by M34A after M34-02

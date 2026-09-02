@@ -1,5 +1,10 @@
 # C and C++ generated API contract
 
+Status: historical v0 ABI contract. The C and C++ target-generation and
+interface representations are superseded for M34A by the
+[C17](specification/typed-generation/languages/c.md) and
+[C++20](specification/typed-generation/languages/cpp.md) specifications.
+
 ## Shared semantic boundary
 
 Both backends consume only `CheckedProgram`. They preserve the portable IR's

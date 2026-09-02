@@ -2,6 +2,11 @@
 
 Status: frozen for the v0 required backends (M08).
 
+This document describes the implemented legacy adapter. ADR-0004 replaces its
+target-generation path during M34A with the verified CoreIR -> target AST ->
+resolved package -> render-view pipeline while preserving the checked-input
+security boundary and external registry contract.
+
 ## Boundary
 
 Every backend implements `portable_codegen::Backend`. Its generation method

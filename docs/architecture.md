@@ -4,6 +4,11 @@ Status: normative for implemented v0 behavior. Sections explicitly marked as
 future, proposed, or deferred are non-commitments until their owning milestone
 is accepted.
 
+Target-generation architecture is superseded for M34A by accepted ADR-0004 and
+the [typed-generation specification](specification/typed-generation/README.md).
+The mappings below document the currently implemented legacy path; they do not
+establish ADR-0004 compliance.
+
 The words MUST, MUST NOT, SHOULD, and MAY describe intended requirements for the
 v0.1 implementation. This document specifies behavior; the exact Rust API may
 evolve during implementation.

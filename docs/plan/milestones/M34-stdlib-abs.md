@@ -1,8 +1,12 @@
 # M34 — stdlib abs 0.2.3 equivalence port
 
-- Status: in-progress
+- Status: blocked after M34-02 by M34A
 - Phase: 6
 - Depends on: M33
+
+M34-01 and M34-02 are complete. M34-03 is frozen until
+[M34A](M34A-typed-target-ast.md) replaces every legacy target-generation path;
+the current uncommitted partial package is not milestone evidence.
 
 ## Outcome
 
@@ -24,11 +28,12 @@ M34 adds one target-independent operation:
 This exact definition avoids target-specific differences in signed-zero and
 NaN handling.
 
-Every backend must lower the operation through the M30 compositional
-target-language IR contract. The mapping that emits target syntax owns its
-validated imports/includes and helper roots. A backend must not introduce a
-package-specific intrinsic, fixed dependency inventory, raw directive,
-capability repair scan, or target-dependent approximation.
+Every backend must lower the operation through the ADR-0004 typed-generation
+pipeline. Its typed target operation owns semantic selection, while imports,
+includes, helper closure, and files are derived by the target resolver. A
+backend must not introduce a package-specific intrinsic, raw executable source,
+fixed dependency inventory, manual dependency list, capability repair scan, or
+target-dependent approximation.
 
 ## Implementation checklist
 

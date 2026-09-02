@@ -1,10 +1,14 @@
 # ADR-0003: Dependency-complete compositional target-language IR
 
-- Status: accepted
+- Status: superseded by ADR-0004 for target-generation architecture
 - Milestone: M30
 - Date: 2026-09-01
 
 ## Context
+
+> Historical note: this decision remains the record of the M30
+> dependency-fragment migration. ADR-0004 and the typed-generation
+> specification replace it for all new backend work.
 
 M26 moved imports out of renderer-owned target switches, but several backends
 still emit file-sized strings and then repair their dependencies with a second

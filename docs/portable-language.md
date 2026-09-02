@@ -2,6 +2,12 @@
 
 Status: proposed capability roadmap
 
+The M34A
+[interface/composition specification](specification/typed-generation/layers/06-interfaces-and-composition.md)
+supersedes the restricted-contract roadmap below for the accepted migration.
+Legacy `contract` syntax and parameter-only use remain readable until the
+M34A checker/evaluator task expands and versions the surface deliberately.
+
 ## Product model
 
 PolyRust defines one extensible, language-neutral programming model. Authors use

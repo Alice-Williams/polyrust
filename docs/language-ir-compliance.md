@@ -1,10 +1,16 @@
 # Target-language IR compliance ledger
 
-Status: M30 complete — all shared and target rows pass; M31/M32/M33 extensions
+Status: historical M30 dependency-fragment ledger — all listed M30 rows passed;
+M31/M32/M33 extensions
 audited
 
 This ledger audits the eight supported outputs against the normative
 [compositional target-language IR contract](language-ir-architecture.md).
+
+ADR-0004 defines a stronger contract. Current status against that contract is
+recorded in the
+[typed-generation compliance ledger](specification/typed-generation/compliance.md);
+the passes below MUST NOT be interpreted as typed executable AST compliance.
 `Pass` requires executable evidence. `Partial` identifies an existing useful
 boundary that does not satisfy the complete invariant. `Fail` is migration work,
 not an accepted exception.

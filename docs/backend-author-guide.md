@@ -1,5 +1,10 @@
 # Backend author guide
 
+> M34A migration notice: this guide describes the implemented M30 fragment API.
+> New backends MUST follow the
+> [typed-generation specification](specification/typed-generation/README.md);
+> this guide will be rewritten as the new plugin API lands.
+
 A backend is an extension over public, versioned crates: `polyrust-codegen`
 provides `Backend`, registry, preflight, manifest, and contract-test APIs;
 `polyrust-check` provides `v0::CheckedProgram`; and `polyrust-ir` provides the

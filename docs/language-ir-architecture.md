@@ -1,6 +1,11 @@
 # Compositional target-language IR contract
 
-Status: normative for M30 and every later backend change
+Status: historical M30 contract; superseded by ADR-0004 for new backend work
+
+The normative replacement is the
+[typed-generation specification](specification/typed-generation/README.md).
+This document remains as evidence for the completed dependency-fragment
+migration and MUST NOT be used to claim typed-target-AST compliance.
 
 Accepted by
 [ADR-0003](adr/0003-compositional-target-language-ir.md). Changes to this
