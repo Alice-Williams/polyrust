@@ -1,6 +1,7 @@
 # Target-language IR compliance ledger
 
-Status: M30 complete — all shared and target rows pass
+Status: M30 complete — all shared and target rows pass; M31/M32 extensions
+audited
 
 This ledger audits the eight supported outputs against the normative
 [compositional target-language IR contract](language-ir-architecture.md).
@@ -280,5 +281,9 @@ at `64cec7defbad6b61c56511fc5a986fdb1b08ecf2`.
 - The exact dependency/helper matrices, source-policy tests,
   three-generation determinism, all 17 split-on-first targets, and every
   earlier port remain green. The uncached repository-wide gate passes 233/233
-  tests and the uncached release gate passes 210/210 tests. Hosted-CI evidence
-  is recorded when the pushed M32 implementation closes.
+  tests and the uncached release gate passes 210/210 tests. Hosted workflow
+  [33592407791](https://github.com/Alice-Williams/polyrust/actions/runs/33592407791)
+  passes implementation commit
+  `84a81eb92f54cfbc37a4dd6013bee036c14d4939` across both determinism hosts,
+  cross-host manifest comparison, pinned/stable Rust, fast checks, and
+  cache-cold/cache-warm complete release gates.

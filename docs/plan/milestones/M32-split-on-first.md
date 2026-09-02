@@ -1,6 +1,6 @@
 # M32 — split-on-first 3.0.0 equivalence port
 
-- Status: in progress
+- Status: complete
 - Phase: 6
 - Depends on: M31
 
@@ -81,7 +81,12 @@ separator. Lone surrogates remain outside the PolyRust `String` domain.
   uncached release gate passes 210/210 tests, including every earlier
   native/differential port, Buildifier, Rustfmt, Clippy, both source-policy
   targets, public consumers, and sanitizers.
-- Hosted-CI evidence remains the only open exit item.
+- Hosted workflow
+  [33592407791](https://github.com/Alice-Williams/polyrust/actions/runs/33592407791)
+  passes implementation commit
+  `84a81eb92f54cfbc37a4dd6013bee036c14d4939` across both determinism hosts,
+  cross-host manifest comparison, pinned/stable Rust, fast checks, and
+  cache-cold/cache-warm complete release gates.
 
 ## Required exit evidence
 
