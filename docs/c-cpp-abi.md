@@ -37,13 +37,15 @@ without signed-overflow undefined behavior. Builds use `-std=c++20`,
 
 ## C17 mapping
 
-M22B is implementing this normative mapping in slices. The checked scalar,
+M22B implements this normative mapping in explicit slices. The checked scalar,
 UTF-8 string, allocator, contract-vtable, and concrete aggregate ABI slices are
 active. Aggregate layouts and recursive ownership operations are generated and
-tested. Scalar-field record construction and binary64 arithmetic are active;
-owned aggregate construction, matching, container intrinsics, general integer
-arithmetic, and bounded iteration remain diagnostic-only. The backend never exposes
-placeholder `void *` containers.
+tested. Scalar-field record construction, binary64 arithmetic, `List<String>`
+callable transport and construction, `Option<I64>`, and the admitted
+list/string operations are active. General owned aggregate construction,
+matching, other container shapes, general integer arithmetic, and bounded
+iteration remain diagnostic-only. The backend never exposes placeholder
+`void *` containers.
 
 ### Names and monomorphization
 
@@ -62,6 +64,11 @@ The bytes must be well-formed UTF-8 for `String` and may contain zero bytes.
 Owned string/byte/list results contain package-allocated storage plus length and
 capacity. Every owned public type has generated `_clone` and `_drop`
 functions. Empty values use a null pointer with zero length/capacity.
+Dynamic `List<String>` construction evaluates elements left to right exactly
+once, clones each string into list-owned storage, records initialization
+incrementally, and unwinds the initialized prefix plus backing allocation on
+failure. Callable list results are deep-owned and never retain a pointer to a
+function-local list.
 
 ### Records, enums, options, and results
 

@@ -1,11 +1,22 @@
 # M32-05 — Document and release-gate M32
 
-- Status: pending
+- Status: in progress
 
 ## Goal
 
 Record provenance, version boundaries, reusable string semantics, and proof
 evidence, then prove M32 does not regress any completed port.
+
+## Local evidence
+
+- The strict architecture, checker, evaluator, portable-language,
+  compatibility, ABI, port, milestone, and task documents describe the
+  implemented boundary.
+- The port suite passes 17/17 targets; the uncached repository and release
+  gates pass 233/233 and 210/210 tests respectively.
+- Every M30 source-policy invariant and every M31/earlier compatibility port
+  remains green. Hosted CI for the pushed implementation is still required
+  before this task can move to complete.
 
 ## Definition of done
 

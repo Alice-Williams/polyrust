@@ -871,6 +871,41 @@ impl<'a> Session<'a> {
                     self,
                 )?))
             }
+            StringIndexOfLiteral => {
+                let (source, needle) = strings(arguments, self)?;
+                let Some(byte_offset) = source.find(needle) else {
+                    return Ok(Value::None);
+                };
+                let scalar_offset = source[..byte_offset].chars().count();
+                Ok(Value::Some(Box::new(Value::I64(usize_to_i64(
+                    scalar_offset,
+                    self,
+                )?))))
+            }
+            StringSliceScalars => {
+                let source = string(arguments.first(), self)?;
+                let start = i64_value(arguments.get(1), self)?;
+                let end = i64_value(arguments.get(2), self)?;
+                let scalar_len = usize_to_i64(source.chars().count(), self)?;
+                let start = start.clamp(0, scalar_len);
+                let end = end.clamp(0, scalar_len);
+                if start >= end {
+                    return Ok(Value::String(String::new()));
+                }
+                let start = usize::try_from(start)
+                    .map_err(|_| self.invariant("clamped scalar start does not fit usize"))?;
+                let end = usize::try_from(end)
+                    .map_err(|_| self.invariant("clamped scalar end does not fit usize"))?;
+                let byte_start = source
+                    .char_indices()
+                    .nth(start)
+                    .map_or(source.len(), |(offset, _)| offset);
+                let byte_end = source
+                    .char_indices()
+                    .nth(end)
+                    .map_or(source.len(), |(offset, _)| offset);
+                Ok(Value::String(source[byte_start..byte_end].to_owned()))
+            }
             StringIsEmpty => Ok(Value::Bool(string(arguments.first(), self)?.is_empty())),
             StringContains => {
                 let (left, right) = strings(arguments, self)?;
@@ -1819,6 +1854,45 @@ mod tests {
                 StringUtf16Length,
                 vec![Value::String("a🦀e\u{301}".into())],
                 Ok(Value::I64(5)),
+            ),
+            (
+                StringIndexOfLiteral,
+                vec![Value::String("abc".into()), Value::String(String::new())],
+                Ok(Value::Some(Box::new(Value::I64(0)))),
+            ),
+            (
+                StringIndexOfLiteral,
+                vec![Value::String("abc".into()), Value::String("z".into())],
+                Ok(Value::None),
+            ),
+            (
+                StringIndexOfLiteral,
+                vec![Value::String("🦀a🦀b".into()), Value::String("🦀b".into())],
+                Ok(Value::Some(Box::new(Value::I64(2)))),
+            ),
+            (
+                StringIndexOfLiteral,
+                vec![Value::String("aaaa".into()), Value::String("aa".into())],
+                Ok(Value::Some(Box::new(Value::I64(0)))),
+            ),
+            (
+                StringSliceScalars,
+                vec![
+                    Value::String("a🦀e\u{301}z".into()),
+                    Value::I64(1),
+                    Value::I64(4),
+                ],
+                Ok(Value::String("🦀e\u{301}".into())),
+            ),
+            (
+                StringSliceScalars,
+                vec![Value::String("abc".into()), Value::I64(-5), Value::I64(99)],
+                Ok(Value::String("abc".into())),
+            ),
+            (
+                StringSliceScalars,
+                vec![Value::String("abc".into()), Value::I64(2), Value::I64(1)],
+                Ok(Value::String(String::new())),
             ),
             (
                 StringContains,

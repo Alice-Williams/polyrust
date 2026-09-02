@@ -151,6 +151,21 @@ impl<'a> Generator<'a> {
                 }
                 Ok(())
             }
+            Expression::ConstructList {
+                element_type,
+                elements,
+                ..
+            } => {
+                if self.resolve_alias(element_type) != TypeRef::String {
+                    return self.unsupported(
+                        "list construction currently supports String elements in C17",
+                    );
+                }
+                for element in elements {
+                    self.validate_expression(element)?;
+                }
+                Ok(())
+            }
             Expression::Field { base, .. } => self.validate_expression(base),
             Expression::MethodCall {
                 receiver,
@@ -189,6 +204,8 @@ impl<'a> Generator<'a> {
                         | Intrinsic::FloatRemTrunc
                         | Intrinsic::StringConcat
                         | Intrinsic::StringUtf16Length
+                        | Intrinsic::StringIndexOfLiteral
+                        | Intrinsic::StringSliceScalars
                         | Intrinsic::StringIsEmpty
                         | Intrinsic::StringContains
                         | Intrinsic::StringStartsWith
@@ -1340,6 +1357,13 @@ impl<'a> Generator<'a> {
                 "  poly_bytes final_value = {{0}};\n  if (!poly_bytes_clone(allocator, {}, &final_value)) {{ error = (poly_error){{POLY_ALLOCATION_FAILED, \"allocation failed\"}}; goto fail; }}\n",
                 expression.value
             )),
+            TypeRef::List(_) => {
+                let list_ty = self.ty(return_type);
+                output.push_str(&format!(
+                    "  {list_ty} final_value = {{0}};\n  if (!{list_ty}_clone(allocator, {}, &final_value)) {{ error = (poly_error){{POLY_ALLOCATION_FAILED, \"allocation failed\"}}; goto fail; }}\n",
+                    expression.value
+                ));
+            }
             _ => output.push_str(&format!(
                 "  {} final_value = {};\n",
                 self.ty(return_type),
@@ -1481,6 +1505,11 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                 fields,
                 ..
             } => self.construct_record(*declaration, fields),
+            Expression::ConstructList {
+                element_type,
+                elements,
+                ..
+            } => self.construct_list(element_type, elements),
             Expression::Field { base, field, .. } => {
                 let base = self.expression(base)?;
                 let (name, ty) =
@@ -1498,6 +1527,7 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                         TypeRef::Named(id) if self.generator.is_record(id) => {
                             format!("&{access}")
                         }
+                        TypeRef::List(_) => format!("&{access}"),
                         _ => access,
                     },
                     ty: ty.clone(),
@@ -1651,6 +1681,49 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
         })
     }
 
+    fn construct_list(
+        &mut self,
+        element_type: &TypeRef,
+        elements: &[Expression],
+    ) -> Result<CExpression, BackendError> {
+        if self.generator.resolve_alias(element_type) != TypeRef::String {
+            return self
+                .generator
+                .unsupported("validated list construction has a non-String element type");
+        }
+        let ty = TypeRef::List(Box::new(element_type.clone()));
+        let list_ty = self.generator.ty(&ty);
+        let temporary = self.temporary(|name| format!("{list_ty} {name} = {{0}};"));
+        self.cleanups.push(format!("{list_ty}_drop(&{temporary});"));
+        let mut requirements = CCode::new("").with_text_from([list_ty.clone()]);
+        let mut prelude = format!("{temporary}.allocator = allocator;\n");
+        if !elements.is_empty() {
+            prelude.push_str(&format!(
+                "if (allocator.allocate == NULL || allocator.deallocate == NULL || {0}U > SIZE_MAX / sizeof(*{1}.data)) {{ error = (poly_error){{POLY_ALLOCATION_FAILED, \"allocation failed\"}}; goto fail; }}\n{1}.data = allocator.allocate(allocator.context, {0}U * sizeof(*{1}.data));\nif ({1}.data == NULL) {{ error = (poly_error){{POLY_ALLOCATION_FAILED, \"allocation failed\"}}; goto fail; }}\n{1}.capacity = {0}U;\n",
+                elements.len(),
+                temporary
+            ));
+            requirements = requirements.with_system("stdint.h");
+        }
+        for (index, element) in elements.iter().enumerate() {
+            let value = self.expression(element)?;
+            prelude.push_str(&value.prelude);
+            let status = self.temporary(|name| format!("poly_error_code {name} = POLY_OK;"));
+            prelude.push_str(&format!(
+                "{status} = poly_string_clone(allocator, {}, &{temporary}.data[{index}]);\nif ({status} != POLY_OK) {{ error = (poly_error){{{status}, {status} == POLY_INVALID_UTF8 ? \"invalid UTF-8\" : \"allocation failed\"}}; goto fail; }}\n{temporary}.length = {}U;\n",
+                value.value,
+                index + 1
+            ));
+            requirements = CCode::sequence([requirements, value.requirements]);
+        }
+        Ok(CExpression {
+            prelude,
+            value: format!("&{temporary}"),
+            ty,
+            requirements: requirements.with_helper_root("runtime.core"),
+        })
+    }
+
     fn if_expression(
         &mut self,
         condition: &Expression,
@@ -1687,6 +1760,31 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                         condition.requirements,
                         then_value.requirements,
                         else_value.requirements,
+                    ]),
+                })
+            }
+            TypeRef::List(_) => {
+                let list_ty = self.generator.ty(&ty);
+                let temporary = self.temporary(|name| format!("{list_ty} {name} = {{0}};"));
+                self.cleanups.push(format!("{list_ty}_drop(&{temporary});"));
+                let prelude = format!(
+                    "{}if ({}) {{\n{}  if (!{list_ty}_clone(allocator, {}, &{temporary})) {{ error = (poly_error){{POLY_ALLOCATION_FAILED, \"allocation failed\"}}; goto fail; }}\n}} else {{\n{}  if (!{list_ty}_clone(allocator, {}, &{temporary})) {{ error = (poly_error){{POLY_ALLOCATION_FAILED, \"allocation failed\"}}; goto fail; }}\n}}\n",
+                    condition.prelude,
+                    condition.value,
+                    indent(&then_value.prelude, 2),
+                    then_value.value,
+                    indent(&else_value.prelude, 2),
+                    else_value.value,
+                );
+                Ok(CExpression {
+                    prelude,
+                    value: format!("&{temporary}"),
+                    ty,
+                    requirements: CCode::sequence([
+                        condition.requirements,
+                        then_value.requirements,
+                        else_value.requirements,
+                        list_ty,
                     ]),
                 })
             }
@@ -1740,6 +1838,12 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                 ));
                 format!("poly_bytes_borrow(&{temporary}.value)")
             }
+            TypeRef::List(_) => {
+                let list_ty = self.generator.ty(&ty);
+                self.cleanups
+                    .push(format!("{list_ty}_call_result_drop(&{temporary});"));
+                format!("&{temporary}.value")
+            }
             _ => format!("{temporary}.value"),
         };
         Ok(CExpression {
@@ -1766,6 +1870,8 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
             Intrinsic::StringStripPrefix => Some("runtime.feature.string-strip-prefix"),
             Intrinsic::StringConcat => Some("runtime.feature.string-concat"),
             Intrinsic::StringUtf16Length => Some("runtime.feature.string-utf16-length"),
+            Intrinsic::StringIndexOfLiteral => Some("runtime.feature.string-index-of-literal"),
+            Intrinsic::StringSliceScalars => Some("runtime.feature.string-slice-scalars"),
             Intrinsic::StringReplaceAll => Some("runtime.feature.string-replace-all"),
             Intrinsic::BytesReplaceAll => Some("runtime.feature.bytes-replace-all"),
             Intrinsic::StringReplaceMany => Some("runtime.feature.string-replace-many"),
@@ -1881,6 +1987,20 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                 ));
                 scalar(temporary, TypeRef::I64, prelude)
             }
+            Intrinsic::StringIndexOfLiteral => {
+                let option_ty = TypeRef::Option(Box::new(TypeRef::I64));
+                let option = self.generator.ty(&option_ty);
+                let temporary = self.temporary(|name| format!("{option} {name} = {{0}};"));
+                let status = self.temporary(|name| format!("poly_error_code {name} = POLY_OK;"));
+                prelude.push_str(&format!(
+                    "{status} = poly_string_index_of_literal({}, {}, &{temporary}.payload.value, &{temporary}.has_value);\nif ({status} != POLY_OK) {{ error = (poly_error){{{status}, {status} == POLY_INVALID_UTF8 ? \"invalid UTF-8\" : \"string index overflow\"}}; goto fail; }}\n",
+                    value(0),
+                    value(1)
+                ));
+                let mut result = scalar(temporary, option_ty, prelude);
+                result.requirements = CCode::sequence([result.requirements, option]);
+                result
+            }
             Intrinsic::ListIndexOf => {
                 let option_ty = TypeRef::Option(Box::new(TypeRef::I64));
                 let option = self.generator.ty(&option_ty);
@@ -1930,6 +2050,7 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
             | Intrinsic::StringStripPrefix
             | Intrinsic::StringReplaceAll
             | Intrinsic::StringReplaceMany
+            | Intrinsic::StringSliceScalars
             | Intrinsic::StringTruncateUtf8Bytes
             | Intrinsic::StringTrimStart
             | Intrinsic::StringTrimEnd => {
@@ -1973,6 +2094,12 @@ impl<'generator, 'program> FunctionEmitter<'generator, 'program> {
                             value(0)
                         )
                     }
+                    Intrinsic::StringSliceScalars => format!(
+                        "poly_string_slice_scalars(allocator, {}, {}, {}, &{temporary})",
+                        value(0),
+                        value(1),
+                        value(2)
+                    ),
                     Intrinsic::StringTruncateUtf8Bytes => format!(
                         "poly_string_truncate_utf8_bytes(allocator, {}, {}, &{temporary})",
                         value(0),
@@ -2293,6 +2420,21 @@ impl Generator<'_> {
                     expected.text
                 ))
                 .with_text_from([expected]))
+            }
+            (TypeRef::List(inner), Value::List(values)) if *inner == TypeRef::String => {
+                let mut mismatches =
+                    vec![CCode::new(format!("{actual}.length != {}U", values.len()))];
+                if !values.is_empty() {
+                    mismatches.push(CCode::new(format!("{actual}.data == NULL")));
+                }
+                for (index, value) in values.iter().enumerate() {
+                    mismatches.push(self.test_mismatch(
+                        &format!("{actual}.data[{index}]"),
+                        value,
+                        &inner,
+                    )?);
+                }
+                Ok(CCode::joined(mismatches, " || "))
             }
             (
                 TypeRef::Named(_),

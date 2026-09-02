@@ -358,6 +358,16 @@ fn runtime_file(
         roots.push("feature.string-utf16-length".to_owned());
     }
     if portable_ir::v0::module_uses_intrinsic(program.module(), |operation| {
+        operation == Intrinsic::StringIndexOfLiteral
+    }) {
+        roots.push("feature.string-index-of-literal".to_owned());
+    }
+    if portable_ir::v0::module_uses_intrinsic(program.module(), |operation| {
+        operation == Intrinsic::StringSliceScalars
+    }) {
+        roots.push("feature.string-slice-scalars".to_owned());
+    }
+    if portable_ir::v0::module_uses_intrinsic(program.module(), |operation| {
         operation == Intrinsic::ListIndexOf
     }) {
         roots.push("feature.list-index-of".to_owned());
@@ -457,8 +467,19 @@ fn python_runtime_helper_graph()
         LanguageFragment::new(CodeDocument::empty()).with_helper_root("case.string-utf16-length"),
     ));
     helpers.push(RuntimeHelper::new(
-        "feature.list-index-of",
+        "feature.string-index-of-literal",
         u16::MAX - 2,
+        LanguageFragment::new(CodeDocument::empty())
+            .with_helper_root("case.string-index-of-literal"),
+    ));
+    helpers.push(RuntimeHelper::new(
+        "feature.string-slice-scalars",
+        u16::MAX - 3,
+        LanguageFragment::new(CodeDocument::empty()).with_helper_root("case.string-slice-scalars"),
+    ));
+    helpers.push(RuntimeHelper::new(
+        "feature.list-index-of",
+        u16::MAX - 4,
         LanguageFragment::new(CodeDocument::empty()).with_helper_root("case.list-index-of"),
     ));
     Ok((

@@ -1,6 +1,15 @@
 # M32-03 — Add portable scalar-range string slicing
 
-- Status: pending
+- Status: complete
+
+## Completion evidence
+
+- The 68th serialized v0 operation has the sole checked signature
+  `String × I64 × I64 -> String`.
+- Evaluator cases prove independent negative/oversized clamping, full, empty,
+  reversed, NUL, combining, BMP, and astral ranges.
+- All eight generated packages execute the operation natively through
+  dependency-complete target fragments.
 
 ## Goal
 

@@ -1801,10 +1801,10 @@ impl Checker<'_> {
             IntSubChecked, IntSubWrapping, Less, LessEqual, ListAppend, ListConcat, ListContains,
             ListGetChecked, ListIndexOf, ListIsEmpty, ListLength, NarrowI64ToI32Checked, NotEqual,
             OptionIsNone, OptionIsSome, OptionUnwrapOr, ResultIsErr, ResultIsOk, StringConcat,
-            StringContains, StringEndsWith, StringFromUtf8Checked, StringIsEmpty, StringReplaceAll,
-            StringReplaceMany, StringScalarLength, StringStartsWith, StringStripPrefix,
-            StringToUtf8, StringTrimEnd, StringTrimStart, StringTruncateUtf8Bytes,
-            StringUtf16Length, WidenI32ToI64,
+            StringContains, StringEndsWith, StringFromUtf8Checked, StringIndexOfLiteral,
+            StringIsEmpty, StringReplaceAll, StringReplaceMany, StringScalarLength,
+            StringSliceScalars, StringStartsWith, StringStripPrefix, StringToUtf8, StringTrimEnd,
+            StringTrimStart, StringTruncateUtf8Bytes, StringUtf16Length, WidenI32ToI64,
         };
         let invalid = |checker: &mut Self| {
             checker.error(
@@ -1869,6 +1869,12 @@ impl Checker<'_> {
             }
             StringScalarLength | StringUtf16Length if arguments == [TypeRef::String] => {
                 Some(TypeRef::I64)
+            }
+            StringIndexOfLiteral if arguments == [TypeRef::String, TypeRef::String] => {
+                Some(TypeRef::Option(Box::new(TypeRef::I64)))
+            }
+            StringSliceScalars if arguments == [TypeRef::String, TypeRef::I64, TypeRef::I64] => {
+                Some(TypeRef::String)
             }
             StringIsEmpty if arguments == [TypeRef::String] => Some(TypeRef::Bool),
             StringContains | StringStartsWith | StringEndsWith

@@ -77,7 +77,7 @@ are unreachable. Enum payload patterns bind every field exactly once.
 
 ## Intrinsics and purity
 
-All 66 v0 intrinsics have explicit arity, operand, and result rules in the
+All 68 v0 intrinsics have explicit arity, operand, and result rules in the
 checker. Integer operations require an unambiguous common width. Operations
 named `Checked` retain their value result type; their runtime failure becomes a
 structured evaluator outcome in M05. Checked and wrapping arithmetic are
@@ -92,6 +92,12 @@ scalars count as one and supplementary scalars count as two.
 eligible for portable equality. It returns the zero-based first matching index
 or `None` and uses structural/IEEE equality rather than target identity or
 coercion.
+
+`StringIndexOfLiteral` has the single signature
+`String × String -> Option<I64>`. `StringSliceScalars` has the single
+signature `String × I64 × I64 -> String`. Neither operation accepts bytes,
+floating-point indices, target-native regular expressions, or an implicit
+index unit.
 
 `FloatTrunc` has signature `F64 -> F64`. It rounds toward zero while preserving
 IEEE signed zero, NaN, and infinities. Portable-test expectation comparison is

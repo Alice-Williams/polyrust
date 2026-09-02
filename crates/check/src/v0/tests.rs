@@ -1450,6 +1450,105 @@ fn string_utf16_length_rejects_invalid_operand_shapes_and_types() {
 }
 
 #[test]
+fn string_index_of_literal_rejects_invalid_operand_shapes_and_types() {
+    let cases = [
+        vec![],
+        vec![Value::String("source".into())],
+        vec![Value::String("source".into()), Value::I64(1)],
+        vec![
+            Value::String("source".into()),
+            Value::String("needle".into()),
+            Value::String("extra".into()),
+        ],
+    ];
+    for (index, values) in cases.into_iter().enumerate() {
+        let mut factory = Factory::new();
+        let arguments = values
+            .into_iter()
+            .map(|value| factory.literal(value))
+            .collect();
+        let expression = Expression::Intrinsic {
+            node: factory.node(),
+            operation: Intrinsic::StringIndexOfLiteral,
+            arguments,
+        };
+        let body = factory.block(expression);
+        let declaration = Declaration::Function(FunctionDeclaration {
+            header: factory.declaration(&format!("invalid_string_index_{index}")),
+            parameters: vec![],
+            return_type: TypeRef::Option(Box::new(TypeRef::I64)),
+            body,
+        });
+        let diagnostics = check_program(Document::new(
+            IrVersion::CURRENT,
+            Module {
+                name: format!("invalid_string_index_{index}"),
+                declarations: vec![declaration],
+            },
+        ))
+        .expect_err("invalid StringIndexOfLiteral arguments must be diagnosed");
+        assert!(
+            codes(&diagnostics).contains(&DiagnosticCode::InvalidInvocation),
+            "case {index}: {diagnostics:#?}"
+        );
+    }
+}
+
+#[test]
+fn string_slice_scalars_rejects_invalid_operand_shapes_and_types() {
+    let cases = [
+        vec![Value::String("source".into()), Value::I64(0)],
+        vec![
+            Value::String("source".into()),
+            Value::String("0".into()),
+            Value::I64(1),
+        ],
+        vec![
+            Value::String("source".into()),
+            Value::I64(0),
+            Value::String("1".into()),
+        ],
+        vec![
+            Value::String("source".into()),
+            Value::I64(0),
+            Value::I64(1),
+            Value::I64(2),
+        ],
+    ];
+    for (index, values) in cases.into_iter().enumerate() {
+        let mut factory = Factory::new();
+        let arguments = values
+            .into_iter()
+            .map(|value| factory.literal(value))
+            .collect();
+        let expression = Expression::Intrinsic {
+            node: factory.node(),
+            operation: Intrinsic::StringSliceScalars,
+            arguments,
+        };
+        let body = factory.block(expression);
+        let declaration = Declaration::Function(FunctionDeclaration {
+            header: factory.declaration(&format!("invalid_string_slice_{index}")),
+            parameters: vec![],
+            return_type: TypeRef::String,
+            body,
+        });
+        let diagnostics = check_program(Document::new(
+            IrVersion::CURRENT,
+            Module {
+                name: format!("invalid_string_slice_{index}"),
+                declarations: vec![declaration],
+            },
+        ))
+        .expect_err("invalid StringSliceScalars arguments must be diagnosed");
+        assert!(
+            codes(&diagnostics).contains(&DiagnosticCode::InvalidInvocation),
+            "case {index}: {diagnostics:#?}"
+        );
+    }
+}
+
+#[test]
 fn list_index_of_rejects_invalid_operand_shapes_and_types() {
     let cases = [
         vec![TypeRef::List(Box::new(TypeRef::I64))],
@@ -1499,7 +1598,7 @@ fn list_index_of_rejects_invalid_operand_shapes_and_types() {
     }
 }
 
-const ALL_INTRINSICS: [Intrinsic; 66] = [
+const ALL_INTRINSICS: [Intrinsic; 68] = [
     Intrinsic::BoolNot,
     Intrinsic::BoolAnd,
     Intrinsic::BoolOr,
@@ -1536,6 +1635,8 @@ const ALL_INTRINSICS: [Intrinsic; 66] = [
     Intrinsic::StringConcat,
     Intrinsic::StringScalarLength,
     Intrinsic::StringUtf16Length,
+    Intrinsic::StringIndexOfLiteral,
+    Intrinsic::StringSliceScalars,
     Intrinsic::StringIsEmpty,
     Intrinsic::StringContains,
     Intrinsic::StringStartsWith,
@@ -1669,6 +1770,16 @@ fn intrinsic_cases() -> Vec<(Intrinsic, Vec<TypeRef>, TypeRef)> {
         ),
         (StringScalarLength, vec![TypeRef::String], TypeRef::I64),
         (StringUtf16Length, vec![TypeRef::String], TypeRef::I64),
+        (
+            StringIndexOfLiteral,
+            vec![TypeRef::String, TypeRef::String],
+            TypeRef::Option(Box::new(TypeRef::I64)),
+        ),
+        (
+            StringSliceScalars,
+            vec![TypeRef::String, TypeRef::I64, TypeRef::I64],
+            TypeRef::String,
+        ),
         (StringIsEmpty, vec![TypeRef::String], TypeRef::Bool),
         (
             StringContains,

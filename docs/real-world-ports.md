@@ -177,9 +177,7 @@ Only one port may be in progress. A port is complete when:
   differential comparisons, eight native generated-package gates,
   deterministic regeneration, sanitizers, and immutable provenance checks.
 
-## Port in progress
-
-### [split-on-first 3.0.0](plan/milestones/M32-split-on-first.md)
+### [split-on-first 3.0.0](ports/split-on-first.md)
 
 - Upstream: [sindresorhus/split-on-first](https://github.com/sindresorhus/split-on-first)
 - Revision: `d6bf86163df4e6490b134c303477644a52736997`
@@ -191,10 +189,16 @@ Only one port may be in progress. A port is complete when:
 - Selection evidence: 3,071,139 downloads of version 3.0.0 and 18,534,394
   package downloads for the measured week ending 29 August 2026.
 - Required PolyRust gaps: literal first-substring lookup returning an explicit
-  optional scalar index, and total half-open slicing by scalar offsets.
+  optional scalar index, total half-open slicing by scalar offsets, and
+  allocator-safe C17 construction of the already supported `List<String>`
+  result family.
 - Version boundary: v4's later arbitrary JavaScript `RegExp` overload is not
   part of the pinned v3 API and remains deferred until a portable regex subset
   is specified.
+- Completion: M32; all six official assertions, 32 portable vectors, 58,274
+  differential comparisons, eight native generated-package gates,
+  three-generation determinism, C allocation-failure/sanitizer proof, and
+  immutable provenance checks.
 
 ## Deferred candidate
 

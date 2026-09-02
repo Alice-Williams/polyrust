@@ -222,6 +222,12 @@ and Go does not make their semantics automatically portable.
   not target-native storage units. An explicitly named interoperation measure
   MAY expose another encoding unit when its semantics are fully portable;
   `StringUtf16Length` counts the well-formed UTF-16 encoding's code units.
+- `StringIndexOfLiteral` returns the leftmost exact, case-sensitive substring
+  position as `Option<I64>` in scalar units. The empty needle is present at
+  zero; absence is never encoded as a sentinel integer.
+- `StringSliceScalars` is a total half-open slice. It clamps each signed
+  endpoint independently to `[0, scalar_len]`, returns empty when
+  `start >= end`, and cannot split a scalar.
 - v0 SHOULD include scalar iteration but MAY omit random indexing until its error
   type is finalized.
 - `Bytes` is an immutable sequence of octets and never implicitly converts to

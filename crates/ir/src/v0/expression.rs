@@ -44,6 +44,8 @@ pub enum Intrinsic {
     StringConcat,
     StringScalarLength,
     StringUtf16Length,
+    StringIndexOfLiteral,
+    StringSliceScalars,
     StringIsEmpty,
     StringContains,
     StringStartsWith,

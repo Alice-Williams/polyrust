@@ -304,6 +304,16 @@ fn java_runtime_file(
         roots.push("feature.string-utf16-length".to_owned());
     }
     if portable_ir::v0::module_uses_intrinsic(program.module(), |operation| {
+        operation == Intrinsic::StringIndexOfLiteral
+    }) {
+        roots.push("feature.string-index-of-literal".to_owned());
+    }
+    if portable_ir::v0::module_uses_intrinsic(program.module(), |operation| {
+        operation == Intrinsic::StringSliceScalars
+    }) {
+        roots.push("feature.string-slice-scalars".to_owned());
+    }
+    if portable_ir::v0::module_uses_intrinsic(program.module(), |operation| {
         operation == Intrinsic::ListIndexOf
     }) {
         roots.push("feature.list-index-of".to_owned());
@@ -407,8 +417,19 @@ fn java_runtime_helper_graph() -> Result<(RuntimeHelperGraph<JavaImport>, Vec<St
         LanguageFragment::new(CodeDocument::empty()).with_helper_root("string-utf16-length-case"),
     ));
     helpers.push(RuntimeHelper::new(
-        "feature.list-index-of",
+        "feature.string-index-of-literal",
         u16::MAX - 3,
+        LanguageFragment::new(CodeDocument::empty())
+            .with_helper_root("string-index-of-literal-case"),
+    ));
+    helpers.push(RuntimeHelper::new(
+        "feature.string-slice-scalars",
+        u16::MAX - 4,
+        LanguageFragment::new(CodeDocument::empty()).with_helper_root("string-slice-scalars-case"),
+    ));
+    helpers.push(RuntimeHelper::new(
+        "feature.list-index-of",
+        u16::MAX - 5,
         LanguageFragment::new(CodeDocument::empty()).with_helper_root("list-index-of-case"),
     ));
 

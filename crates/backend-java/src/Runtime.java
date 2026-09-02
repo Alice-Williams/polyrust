@@ -382,6 +382,28 @@ public final class Runtime {
 // POLYRUST-BEGIN string-utf16-length-case
       case "string_utf16_length": return ok((long) ((String) a).length());
 // POLYRUST-END string-utf16-length-case
+// POLYRUST-BEGIN string-index-of-literal-case
+      case "string_index_of_literal": {
+        String source = (String) a;
+        int utf16Index = source.indexOf((String) b);
+        return ok(
+            utf16Index < 0
+                ? PolyOption.none()
+                : PolyOption.some((long) source.codePointCount(0, utf16Index)));
+      }
+// POLYRUST-END string-index-of-literal-case
+// POLYRUST-BEGIN string-slice-scalars-case
+      case "string_slice_scalars": {
+        String source = (String) a;
+        long length = source.codePointCount(0, source.length());
+        long start = Math.max(0L, Math.min((Long) b, length));
+        long end = Math.max(0L, Math.min((Long) c, length));
+        if (start >= end) return ok("");
+        int utf16Start = source.offsetByCodePoints(0, (int) start);
+        int utf16End = source.offsetByCodePoints(0, (int) end);
+        return ok(source.substring(utf16Start, utf16End));
+      }
+// POLYRUST-END string-slice-scalars-case
       case "string_is_empty": return ok(((String) a).isEmpty());
       case "string_contains": return ok(((String) a).contains((String) b));
       case "string_starts_with": return ok(((String) a).startsWith((String) b));

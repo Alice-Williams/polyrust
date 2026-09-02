@@ -278,6 +278,14 @@ fn go_runtime_file(program: &CheckedProgram) -> Result<LanguageSourceFile<GoImpo
     for (operation, root) in [
         (Intrinsic::StringScalarLength, "feature.utf8-scalar"),
         (Intrinsic::StringUtf16Length, "feature.utf16-length"),
+        (
+            Intrinsic::StringIndexOfLiteral,
+            "feature.string-index-of-literal",
+        ),
+        (
+            Intrinsic::StringSliceScalars,
+            "feature.string-slice-scalars",
+        ),
         (Intrinsic::ListIndexOf, "feature.list-index-of"),
         (Intrinsic::StringReplaceMany, "feature.replace-many"),
         (Intrinsic::StringTruncateUtf8Bytes, "feature.truncate-utf8"),
@@ -409,6 +417,16 @@ fn go_runtime_helper_graph() -> Result<(RuntimeHelperGraph<GoImport>, Vec<String
         feature(&["utf16-length-case"]),
     ));
     helpers.push(RuntimeHelper::new(
+        "feature.string-index-of-literal",
+        u16::MAX - 3,
+        feature(&["utf8-index-of-literal-case"]),
+    ));
+    helpers.push(RuntimeHelper::new(
+        "feature.string-slice-scalars",
+        u16::MAX - 3,
+        feature(&["utf8-slice-scalars-case"]),
+    ));
+    helpers.push(RuntimeHelper::new(
         "feature.list-index-of",
         u16::MAX - 3,
         feature(&["list-index-of-case"]),
@@ -449,8 +467,10 @@ fn go_runtime_fragment(id: &str, source: String) -> LanguageFragment<GoImport> {
         | "math-float-equality" => &["math"],
         "utf8-scalar-case"
         | "utf16-length-case"
+        | "utf8-slice-scalars-case"
         | "utf8-from-bytes-case"
         | "utf8-truncate-function" => &["unicode/utf8"],
+        "utf8-index-of-literal-case" => &["strings", "unicode/utf8"],
         "utf8-replace-many-function" => &["strings", "unicode/utf8"],
         _ => &[],
     };
@@ -691,6 +711,11 @@ impl<'a> Generator<'a> {
             && matches!(self.declaration_by_id(*id), Some(Declaration::Record(_)))
         {
             return GoCode::text(format!("polyResult{}({call})", exported(self.name(*id))));
+        }
+        if let TypeRef::List(inner) = ty {
+            return self
+                .ty(inner)
+                .map_text(|inner| format!("castListResult[{inner}]({call})"));
         }
         self.ty(ty)
             .map_text(|ty| format!("castResult[{ty}]({call})"))
@@ -1040,6 +1065,18 @@ mod tests {
             .unwrap();
         assert_eq!(first.canonical_json(), second.canonical_json());
         assert_eq!(Generator::new(&checked).ty(&TypeRef::I64).text, "int64");
+    }
+
+    #[test]
+    fn list_results_use_the_type_directed_runtime_adapter() {
+        let checked = fixture();
+        let converted = Generator::new(&checked)
+            .convert_result(&TypeRef::List(Box::new(TypeRef::String)), "runtimeCall()");
+        assert_eq!(converted.text, "castListResult[string](runtimeCall())");
+        let manifest = GoV0Backend
+            .generate(&checked, &BackendOptions::default())
+            .unwrap();
+        assert!(generated_text(&manifest, "runtime.go").contains("func castListResult[T any]"));
     }
     #[test]
     fn strings_use_only_valid_go_escapes_and_preserve_unicode() {

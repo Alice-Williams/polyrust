@@ -93,6 +93,25 @@ func castResult[T any](value PolyResult[any]) PolyResult[T] {
 	return polyOk(typed)
 }
 
+func castListResult[T any](value PolyResult[any]) PolyResult[PolyList[T]] {
+	if !value.Ok {
+		return polyFail[PolyList[T]](value.Error.Code, value.Error.Message)
+	}
+	raw, ok := value.Value.([]any)
+	if !ok {
+		return polyFail[PolyList[T]]("internal_type", "checked list result type mismatch")
+	}
+	items := make([]T, len(raw))
+	for index, item := range raw {
+		typed, ok := item.(T)
+		if !ok {
+			return polyFail[PolyList[T]]("internal_type", "checked list element type mismatch")
+		}
+		items[index] = typed
+	}
+	return polyOk(NewPolyList(items...))
+}
+
 type polyRecord interface{ polyValue() map[string]any }
 type polyRuntimeValue interface{ polyRuntimeValue() any }
 
@@ -424,6 +443,44 @@ func (r *runtime) intrinsic(name string, values []any) PolyResult[any] {
 		}
 		return polyOk(any(length))
 	// POLYRUST-END utf16-length-case
+	// POLYRUST-BEGIN utf8-index-of-literal-case
+	case "string_index_of_literal":
+		source, needle := a.(string), b.(string)
+		if !utf8.ValidString(source) || !utf8.ValidString(needle) {
+			return polyFail[any]("invalid_unicode", "invalid scalar string")
+		}
+		byteIndex := strings.Index(source, needle)
+		if byteIndex < 0 {
+			return polyOk(any(map[string]any{"tag": "none"}))
+		}
+		return polyOk(any(map[string]any{
+			"tag": "some", "value": int64(utf8.RuneCountInString(source[:byteIndex])),
+		}))
+	// POLYRUST-END utf8-index-of-literal-case
+	// POLYRUST-BEGIN utf8-slice-scalars-case
+	case "string_slice_scalars":
+		source := a.(string)
+		if !utf8.ValidString(source) {
+			return polyFail[any]("invalid_unicode", "invalid scalar string")
+		}
+		scalars := []rune(source)
+		length := int64(len(scalars))
+		start, end := b.(int64), c.(int64)
+		if start < 0 {
+			start = 0
+		} else if start > length {
+			start = length
+		}
+		if end < 0 {
+			end = 0
+		} else if end > length {
+			end = length
+		}
+		if start >= end {
+			return polyOk(any(""))
+		}
+		return polyOk(any(string(scalars[int(start):int(end)])))
+	// POLYRUST-END utf8-slice-scalars-case
 	case "string_is_empty":
 		return polyOk(any(a.(string) == ""))
 	case "string_contains":
@@ -686,6 +743,12 @@ func equalImpl(a, b any, exactFloat bool) bool {
 	}
 	if right, ok := b.(polyRecord); ok {
 		b = right.polyValue()
+	}
+	if left, ok := a.(polyRuntimeValue); ok {
+		a = left.polyRuntimeValue()
+	}
+	if right, ok := b.(polyRuntimeValue); ok {
+		b = right.polyRuntimeValue()
 	}
 	switch left := a.(type) {
 	case nil:

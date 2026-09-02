@@ -195,7 +195,7 @@ specified behavior.
 | Integer bitwise | `bit_not`, `bit_and`, `bit_or`, `bit_xor` | Exact-width bit pattern |
 | Integer shifts | `shift_left_checked`, `shift_right_checked` | Invalid counts return structured error; signed right shift is specified |
 | Float | `neg`, `add`, `sub`, `mul`, `div`, `rem_trunc`, `trunc`, `is_nan` | IEEE 754 binary64, including NaN/infinities/negative zero; remainder uses truncating quotient; `trunc` rounds toward zero; `is_nan` recognizes every NaN payload/sign and no other value |
-| String | `concat`, `scalar_len`, `utf16_len`, `is_empty`, `contains`, `starts_with`, `ends_with`, `replace_all_literal`, `truncate_utf8_bytes`, `trim_start_set`, `trim_end_set` | Unicode scalar semantics; both lengths return `I64`; `scalar_len` counts scalar values while `utf16_len` counts code units in the well-formed UTF-16 encoding; replacement is global, left-to-right, non-overlapping, and literal; UTF-8 truncation accepts an explicit `F64` byte budget and never splits a scalar; trim operands are scalar sets |
+| String | `concat`, `scalar_len`, `utf16_len`, `index_of_literal`, `slice_scalars`, `is_empty`, `contains`, `starts_with`, `ends_with`, `replace_all_literal`, `truncate_utf8_bytes`, `trim_start_set`, `trim_end_set` | Unicode scalar semantics; lengths return `I64`; literal lookup returns the leftmost scalar offset as `Option<I64>`; half-open scalar slicing clamps both signed endpoints; replacement is global, left-to-right, non-overlapping, and literal; UTF-8 truncation accepts an explicit `F64` byte budget and never splits a scalar; trim operands are scalar sets |
 | Bytes | `concat`, `replace_all`, `len`, `is_empty` | Immutable octet sequence; replacement is literal, global, left-to-right, and non-overlapping; an empty needle inserts at every byte boundary; `len` returns `I64`; indexing waits for unsigned-byte design |
 | List | `len`, `is_empty`, `get_checked`, `append`, `concat`, `contains`, `index_of` | Immutable; length/index use `I64`; `get_checked` returns `Option<T>`; `index_of` returns the first structural/IEEE-equal position as `Option<I64>`; updates return a new list |
 | Option | `some`, `none`, `is_some`, `is_none`, `unwrap_or`, exhaustive match | No implicit null |
@@ -209,7 +209,7 @@ specified behavior.
 | --- | --- | --- |
 | Integer | saturating arithmetic, power, rotate | Which widths enter Next together? |
 | Float | floor/ceil/round, min/max variants, remaining classification | Preserve NaN and signed-zero rules |
-| String | scalar slicing, split | Define indices and locale independence |
+| String | split, scalar iteration | Define allocation, empty-separator, and iterator capabilities |
 | List | insert/remove, map/filter/fold/zip | Requires callable/closure design or named-function references |
 | Ordered map/set | get/insert/remove/keys/values/iteration | Define key eligibility and insertion ordering |
 | Parse/format | numeric and structured text formatting | Must not inherit host locale |

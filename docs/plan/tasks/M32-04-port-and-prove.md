@@ -1,6 +1,18 @@
 # M32-04 — Port and prove split-on-first
 
-- Status: pending
+- Status: complete
+
+## Completion evidence
+
+- One checked function composes lookup, option inspection, clamped slicing,
+  prefix removal, conditionals, and list construction without package-specific
+  semantics.
+- All six official assertions and 26 added boundary vectors pass in the
+  evaluator and all eight generated packages.
+- The exact retained implementation agrees over 58,274 deterministic admitted
+  inputs; three full eight-package generations are byte-identical.
+- The port-specific Bazel suite passes 17/17 targets, including native linters,
+  consumers, strict compilers, style checks, and C/C++ sanitizers.
 
 ## Goal
 

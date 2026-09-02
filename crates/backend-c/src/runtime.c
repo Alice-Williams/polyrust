@@ -156,6 +156,101 @@ poly_error_code poly_string_utf16_length(poly_string_view value,
 }
 /* POLYRUST-END runtime.feature.string-utf16-length */
 
+/* POLYRUST-BEGIN runtime.feature.string-index-of-literal */
+poly_error_code poly_string_index_of_literal(poly_string_view source,
+                                             poly_string_view needle,
+                                             int64_t *index,
+                                             bool *found) {
+  size_t offset = 0U;
+  int64_t scalar_index = INT64_C(0);
+  if (index == NULL || found == NULL) {
+    return POLY_INVARIANT_VIOLATION;
+  }
+  *index = INT64_C(0);
+  *found = false;
+  if (!poly_utf8_valid(source, NULL) || !poly_utf8_valid(needle, NULL)) {
+    return POLY_INVALID_UTF8;
+  }
+  if (needle.length == 0U) {
+    *found = true;
+    return POLY_OK;
+  }
+  if (needle.length > source.length) {
+    return POLY_OK;
+  }
+  while (offset <= source.length - needle.length) {
+    size_t width = 0U;
+    if (memcmp(source.data + offset, needle.data, needle.length) == 0) {
+      *index = scalar_index;
+      *found = true;
+      return POLY_OK;
+    }
+    if (!valid_scalar(source.data + offset, source.length - offset, &width)) {
+      return POLY_INVALID_UTF8;
+    }
+    if (scalar_index == INT64_MAX) {
+      return POLY_INVARIANT_VIOLATION;
+    }
+    ++scalar_index;
+    offset += width;
+  }
+  return POLY_OK;
+}
+/* POLYRUST-END runtime.feature.string-index-of-literal */
+
+/* POLYRUST-BEGIN runtime.feature.string-slice-scalars */
+poly_error_code poly_string_slice_scalars(poly_allocator allocator,
+                                          poly_string_view source,
+                                          int64_t start,
+                                          int64_t end,
+                                          poly_string *output) {
+  size_t scalar_count = 0U;
+  size_t byte_start = 0U;
+  size_t byte_end;
+  size_t scalar_index;
+  poly_string_view slice;
+  if (output == NULL) {
+    return POLY_INVARIANT_VIOLATION;
+  }
+  if (!poly_utf8_valid(source, &scalar_count)) {
+    return POLY_INVALID_UTF8;
+  }
+  if (scalar_count > (size_t)INT64_MAX) {
+    return POLY_INVARIANT_VIOLATION;
+  }
+  if (start < INT64_C(0)) {
+    start = INT64_C(0);
+  } else if (start > (int64_t)scalar_count) {
+    start = (int64_t)scalar_count;
+  }
+  if (end < INT64_C(0)) {
+    end = INT64_C(0);
+  } else if (end > (int64_t)scalar_count) {
+    end = (int64_t)scalar_count;
+  }
+  if (start >= end) {
+    return poly_string_clone(allocator, (poly_string_view){NULL, 0U}, output);
+  }
+  for (scalar_index = 0U; scalar_index < (size_t)start; ++scalar_index) {
+    size_t width = 0U;
+    (void)valid_scalar(source.data + byte_start, source.length - byte_start,
+                       &width);
+    byte_start += width;
+  }
+  byte_end = byte_start;
+  for (scalar_index = (size_t)start; scalar_index < (size_t)end;
+       ++scalar_index) {
+    size_t width = 0U;
+    (void)valid_scalar(source.data + byte_end, source.length - byte_end,
+                       &width);
+    byte_end += width;
+  }
+  slice.data = source.data + byte_start;
+  slice.length = byte_end - byte_start;
+  return poly_string_clone(allocator, slice, output);
+}
+/* POLYRUST-END runtime.feature.string-slice-scalars */
+
 /* POLYRUST-BEGIN runtime.core.ownership */
 static bool bytes_clone(poly_allocator allocator, const uint8_t *source,
                         size_t length, uint8_t **output) {

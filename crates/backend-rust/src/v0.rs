@@ -1451,6 +1451,12 @@ impl Generator<'_> {
             }
             Intrinsic::StringScalarLength => format!("Ok({a}.chars().count() as i64)"),
             Intrinsic::StringUtf16Length => format!("Ok({a}.encode_utf16().count() as i64)"),
+            Intrinsic::StringIndexOfLiteral => format!(
+                "Ok({a}.find({b}.as_str()).map(|byte_index| {a}[..byte_index].chars().count() as i64))"
+            ),
+            Intrinsic::StringSliceScalars => format!(
+                "{{ let scalar_len = {a}.chars().count() as i64; let start = {b}.clamp(0, scalar_len); let end = {c}.clamp(0, scalar_len); if start >= end {{ Ok(String::new()) }} else {{ Ok({a}.chars().skip(start as usize).take((end - start) as usize).collect::<String>()) }} }}"
+            ),
             Intrinsic::StringIsEmpty => format!("Ok({a}.is_empty())"),
             Intrinsic::StringContains => format!("Ok({a}.contains({b}.as_str()))"),
             Intrinsic::StringStartsWith => format!("Ok({a}.starts_with({b}.as_str()))"),
@@ -1603,6 +1609,7 @@ impl Generator<'_> {
                     | Intrinsic::StringConcat
                     | Intrinsic::StringReplaceAll
                     | Intrinsic::StringReplaceMany
+                    | Intrinsic::StringSliceScalars
                     | Intrinsic::StringTruncateUtf8Bytes
                     | Intrinsic::StringStripPrefix
                     | Intrinsic::StringTrimStart
@@ -1611,7 +1618,9 @@ impl Generator<'_> {
                         TypeRef::List(element) => Some(*element),
                         _ => None,
                     },
-                    Intrinsic::ListIndexOf => Some(TypeRef::Option(Box::new(TypeRef::I64))),
+                    Intrinsic::StringIndexOfLiteral | Intrinsic::ListIndexOf => {
+                        Some(TypeRef::Option(Box::new(TypeRef::I64)))
+                    }
                     Intrinsic::OptionUnwrapOr => match first {
                         TypeRef::Option(inner) => Some(*inner),
                         _ => None,
@@ -1897,6 +1906,9 @@ impl Generator<'_> {
                         value.0
                     ))
                 }
+            }
+            (TypeRef::List(_), Value::List(values)) if values.is_empty() => {
+                RustCode::new(format!("        assert!({actual}.is_empty());\n"))
             }
             (
                 TypeRef::Named(_),

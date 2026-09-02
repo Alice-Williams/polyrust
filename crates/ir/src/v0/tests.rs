@@ -335,6 +335,8 @@ fn all_intrinsics_values_and_constant_nodes_serialize() {
         Intrinsic::StringConcat,
         Intrinsic::StringScalarLength,
         Intrinsic::StringUtf16Length,
+        Intrinsic::StringIndexOfLiteral,
+        Intrinsic::StringSliceScalars,
         Intrinsic::StringIsEmpty,
         Intrinsic::StringContains,
         Intrinsic::StringStartsWith,
@@ -380,6 +382,14 @@ fn all_intrinsics_values_and_constant_nodes_serialize() {
     assert_eq!(
         serde_json::to_string(&Intrinsic::StringUtf16Length).unwrap(),
         "\"string_utf16_length\""
+    );
+    assert_eq!(
+        serde_json::to_string(&Intrinsic::StringIndexOfLiteral).unwrap(),
+        "\"string_index_of_literal\""
+    );
+    assert_eq!(
+        serde_json::to_string(&Intrinsic::StringSliceScalars).unwrap(),
+        "\"string_slice_scalars\""
     );
     assert_eq!(
         serde_json::to_string(&Intrinsic::ListIndexOf).unwrap(),

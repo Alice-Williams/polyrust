@@ -833,6 +833,45 @@ class runtime {
       return valid_utf8(bytes, nullptr, &count) ? succeed(static_cast<std::int64_t>(count))
                                                 : fail("invalid_unicode", "invalid Unicode scalar sequence");
     }
+    if (name == "string_index_of_literal") {
+      const auto& source = string(a);
+      const auto& needle = string(b);
+      const bytes_value source_bytes(source.begin(), source.end());
+      const bytes_value needle_bytes(needle.begin(), needle.end());
+      if (!valid_utf8(source_bytes) || !valid_utf8(needle_bytes)) {
+        return fail("invalid_unicode", "invalid Unicode scalar sequence");
+      }
+      const std::size_t found = source.find(needle);
+      if (found == std::string::npos) return succeed(option_value{false, {}});
+      std::int64_t scalar_index = 0;
+      for (std::size_t offset = 0; offset < found; ++scalar_index) {
+        offset += utf8_scalar_width(static_cast<std::uint8_t>(source[offset]));
+      }
+      return succeed(option_value{true, scalar_index});
+    }
+    if (name == "string_slice_scalars") {
+      const auto& source = string(a);
+      const bytes_value source_bytes(source.begin(), source.end());
+      std::size_t scalar_count = 0;
+      if (!valid_utf8(source_bytes, &scalar_count)) {
+        return fail("invalid_unicode", "invalid Unicode scalar sequence");
+      }
+      const std::int64_t length = static_cast<std::int64_t>(scalar_count);
+      const std::int64_t start =
+          std::clamp(std::any_cast<std::int64_t>(b), INT64_C(0), length);
+      const std::int64_t end =
+          std::clamp(std::any_cast<std::int64_t>(c), INT64_C(0), length);
+      if (start >= end) return succeed(std::string{});
+      std::size_t byte_start = 0;
+      for (std::int64_t index = 0; index < start; ++index) {
+        byte_start += utf8_scalar_width(static_cast<std::uint8_t>(source[byte_start]));
+      }
+      std::size_t byte_end = byte_start;
+      for (std::int64_t index = start; index < end; ++index) {
+        byte_end += utf8_scalar_width(static_cast<std::uint8_t>(source[byte_end]));
+      }
+      return succeed(source.substr(byte_start, byte_end - byte_start));
+    }
     if (name == "string_is_empty") return succeed(string(a).empty());
     if (name == "string_contains") return succeed(string(a).find(string(b)) != std::string::npos);
     if (name == "string_starts_with") return succeed(string(a).starts_with(string(b)));

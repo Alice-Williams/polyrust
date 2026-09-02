@@ -27,6 +27,27 @@ export const scalarLength = (value) => {
     }
     return ok([...value].length);
 };
+// POLYRUST-BEGIN top.string-index-of-literal
+export const indexOfLiteralScalars = (source, needle) => {
+    const utf16Index = source.indexOf(needle);
+    if (utf16Index < 0)
+        return ok(none());
+    const prefixLength = scalarLength(source.slice(0, utf16Index));
+    if (!prefixLength.ok)
+        return prefixLength;
+    return ok(some(BigInt(prefixLength.value)));
+};
+// POLYRUST-END top.string-index-of-literal
+// POLYRUST-BEGIN top.string-slice-scalars
+export const sliceScalars = (source, rawStart, rawEnd) => {
+    const scalars = Array.from(source);
+    const length = BigInt(scalars.length);
+    const clamp = (value) => value < 0n ? 0n : value > length ? length : value;
+    const start = clamp(rawStart);
+    const end = clamp(rawEnd);
+    return start >= end ? "" : scalars.slice(Number(start), Number(end)).join("");
+};
+// POLYRUST-END top.string-slice-scalars
 // POLYRUST-BEGIN top.string-replace-all
 export const replaceAllLiteral = (source, needle, replacement) => {
     if (needle !== "")
@@ -374,6 +395,12 @@ export class Runtime {
             // POLYRUST-BEGIN case.string-utf16-length
             case "string_utf16_length": return ok(BigInt(a.length));
             // POLYRUST-END case.string-utf16-length
+            // POLYRUST-BEGIN case.string-index-of-literal
+            case "string_index_of_literal": return indexOfLiteralScalars(a, b);
+            // POLYRUST-END case.string-index-of-literal
+            // POLYRUST-BEGIN case.string-slice-scalars
+            case "string_slice_scalars": return ok(sliceScalars(a, b, c));
+            // POLYRUST-END case.string-slice-scalars
             case "string_is_empty": return ok(a.length === 0);
             case "string_contains": return ok(a.includes(b));
             case "string_starts_with": return ok(a.startsWith(b));

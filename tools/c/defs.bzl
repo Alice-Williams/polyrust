@@ -3,8 +3,12 @@
 load("@rules_cc//cc:defs.bzl", "cc_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
-def generated_c_tests():
-    """Defines strict native, style, ASan, and UBSan tests for generated C17."""
+def generated_c_tests(public_api_test = None):
+    """Defines strict native, style, ASan, and UBSan tests for generated C17.
+
+    Args:
+      public_api_test: Optional external C consumer with ownership/failure tests.
+    """
     common = [
         ":generated/c/src/generated.c",
         ":generated/c/src/generated.h",
@@ -45,3 +49,17 @@ def generated_c_tests():
         includes = ["generated/c/src"],
         linkopts = ["-lm"],
     )
+    if public_api_test:
+        cc_test(
+            name = "c_public_api_test",
+            srcs = common + [public_api_test],
+            copts = options,
+            includes = ["generated/c/src"],
+            linkopts = ["-lm"],
+        )
+        sh_test(
+            name = "c_public_api_sanitizer_test",
+            srcs = ["//tools/c:test_public_api_sanitizers.sh"],
+            args = ["$(location %s)" % public_api_test],
+            data = common + [public_api_test],
+        )

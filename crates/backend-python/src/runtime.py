@@ -321,6 +321,18 @@ class Runtime:
         # POLYRUST-BEGIN case.string-utf16-length
         if name == "string_utf16_length": return ok(len(a.encode("utf-16-le")) // 2)
         # POLYRUST-END case.string-utf16-length
+        # POLYRUST-BEGIN case.string-index-of-literal
+        if name == "string_index_of_literal":
+            index = a.find(b)
+            return ok(PolyOption("none") if index < 0 else PolyOption("some", index))
+        # POLYRUST-END case.string-index-of-literal
+        # POLYRUST-BEGIN case.string-slice-scalars
+        if name == "string_slice_scalars":
+            length = len(a)
+            start = max(0, min(b, length))
+            end = max(0, min(c, length))
+            return ok("" if start >= end else a[start:end])
+        # POLYRUST-END case.string-slice-scalars
         if name == "string_is_empty": return ok(not a)
         if name == "string_contains": return ok(b in a)
         if name == "string_starts_with": return ok(a.startswith(b))

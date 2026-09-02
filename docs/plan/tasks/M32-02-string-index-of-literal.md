@@ -1,6 +1,15 @@
 # M32-02 — Add portable literal substring first-index lookup
 
-- Status: pending
+- Status: complete
+
+## Completion evidence
+
+- The 67th serialized v0 operation has the sole checked signature
+  `String × String -> Option<I64>`.
+- Evaluator cases cover empty, absent, prefix, middle, suffix, overlap, NUL,
+  combining, BMP, and astral behavior.
+- Every target selects and executes its own dependency-complete lowering; all
+  32 portable vectors and 58,274 upstream comparisons pass.
 
 ## Goal
 

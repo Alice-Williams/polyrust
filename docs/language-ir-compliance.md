@@ -257,3 +257,28 @@ at `64cec7defbad6b61c56511fc5a986fdb1b08ecf2`.
   [33584299238](https://github.com/Alice-Williams/polyrust/actions/runs/33584299238)
   passes the implementation commit across both determinism hosts, cross-host
   manifest comparison, and cache-cold/cache-warm complete release gates.
+
+### M32 extension audit
+
+- `StringIndexOfLiteral` and `StringSliceScalars` are general checked
+  operations with one target-independent meaning. In every backend, the
+  operation mapping owns the emitted syntax, validated imports/includes, and
+  exact runtime-helper roots as one compositional fragment.
+- None of the eight mappings introduced a fixed import inventory, rendered
+  directive in a raw source string, capability rescan, or post-generation
+  dependency repair. JavaScript remains compiler-derived from the paired
+  TypeScript runtime and uses the same helper IDs.
+- C `ConstructList<String>` lowering composes ordinary `CCode` fragments,
+  admits no unsupported element type, evaluates and clones each element once,
+  tracks partial initialization, and unwinds all allocation failures. Its
+  external public-API harness proves every observed failure edge with strict
+  C17, ASan, and UBSan.
+- Go converts the admitted `List<String>` result at the generated invocation
+  boundary and compares composite public values through their semantic runtime
+  representation. Rust's empty-list assertion is type-inference independent.
+  These are reusable result-boundary mappings, not package-specific source.
+- The exact dependency/helper matrices, source-policy tests,
+  three-generation determinism, all 17 split-on-first targets, and every
+  earlier port remain green. The uncached repository-wide gate passes 233/233
+  tests and the uncached release gate passes 210/210 tests. Hosted-CI evidence
+  is recorded when the pushed M32 implementation closes.

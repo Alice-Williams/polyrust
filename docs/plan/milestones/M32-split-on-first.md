@@ -35,6 +35,11 @@ raw backend source, target semantic branch, or direct runtime import is allowed.
 Every backend must lower these operations through dependency-complete
 compositional language fragments as required by M30.
 
+The runtime result is an empty or two-element `List<String>`. M32 therefore
+also completes C17's existing `List<String>` ABI by adding allocator-safe
+`ConstructList` expression lowering. This is a backend completeness gap, not a
+new portable semantic operation; all other backends already construct lists.
+
 JavaScript indexes and slices by well-formed UTF-16 code units. PolyRust uses
 Unicode scalar offsets for both operations. For admitted well-formed Unicode
 strings, a match starts and ends on scalar boundaries, so this internal choice
@@ -51,6 +56,8 @@ separator. Lone surrogates remain outside the PolyRust `String` domain.
   access at test time.
 - Implement, serialize, check, evaluate, and lower both general string
   operations in every supported backend.
+- Complete C17 dynamic `List<String>` construction with single-evaluation,
+  partial-initialization cleanup, and allocation-failure proof.
 - Retain all six valid official result assertions and the invalid-input oracle
   evidence; add empty, absent, boundary, overlap, combining, BMP, astral, NUL,
   CR/LF, and repeated-separator vectors.
@@ -58,6 +65,23 @@ separator. Lone surrogates remain outside the PolyRust `String` domain.
   implementation over a deterministic cross-product corpus.
 - Generate, format, lint, compile, and natively test all eight packages,
   including public Java/C/C++ consumers and C/C++ sanitizers.
+
+## Local completion evidence
+
+- The retained implementation passes provenance verification for all seven
+  pinned blobs.
+- The six official assertions plus 26 boundary vectors pass in the evaluator
+  and all eight generated packages. The deterministic differential oracle
+  agrees on all 58,274 admitted comparisons.
+- The port suite passes 17/17 targets, including three-generation
+  determinism, public consumers, strict native toolchains, and C/C++
+  sanitizers. The external C allocation harness also passes every observed
+  allocation-failure edge.
+- The complete uncached repository gate passes 233/233 tests. The complete
+  uncached release gate passes 210/210 tests, including every earlier
+  native/differential port, Buildifier, Rustfmt, Clippy, both source-policy
+  targets, public consumers, and sanitizers.
+- Hosted-CI evidence remains the only open exit item.
 
 ## Required exit evidence
 

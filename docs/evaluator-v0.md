@@ -35,7 +35,12 @@ Binary64 operations preserve the result bits, including negative zero,
 infinities, and NaNs. Equality follows IEEE numeric equality: NaN is unequal
 to every value and positive zero equals negative zero. Ordering with NaN is
 false. String length counts Unicode scalar values, not UTF-8 bytes or grapheme
-clusters; an astral scalar and a combining scalar each count as one.
+clusters; an astral scalar and a combining scalar each count as one. Literal
+substring lookup is case-sensitive and returns the leftmost scalar offset as
+`Some(I64)`, `Some(0)` for an empty needle, or `None` when absent. Scalar
+slicing is a total half-open operation: each signed endpoint clamps
+independently to the input's scalar range, a reversed or empty range returns
+empty, and the selected scalar sequence is preserved without normalization.
 String replacement is global, left-to-right, and non-overlapping. Both the
 needle and replacement are literal strings, so text such as `$&` has no
 special meaning. An empty needle inserts the replacement at Unicode-scalar
