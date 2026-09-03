@@ -36,16 +36,24 @@ fn core_members() -> Vec<JavaMember> {
             record_components: vec![],
             heritage: JavaHeritage::None,
             permits: vec![],
-            members: vec![JavaMember::Method(JavaMethod {
-                declared: JavaMethodDeclaration::Structural,
-                annotations: vec![],
-                modifiers: vec![JavaModifier::Public, JavaModifier::Abstract],
-                type_parameters: vec![],
-                return_type: JavaType::primitive(JavaPrimitive::Boolean),
-                name: identifier("semanticEquals"),
-                parameters: vec![parameter(JavaType::known(JavaKnownType::Object), "other")],
-                body: None,
-            })],
+            members: [
+                JavaRuntimeMember::SemanticEquals,
+                JavaRuntimeMember::DeepEquals,
+            ]
+            .into_iter()
+            .map(|member| {
+                JavaMember::Method(JavaMethod {
+                    declared: JavaMethodDeclaration::Structural,
+                    annotations: vec![],
+                    modifiers: vec![JavaModifier::Public, JavaModifier::Abstract],
+                    type_parameters: vec![],
+                    return_type: JavaType::primitive(JavaPrimitive::Boolean),
+                    name: identifier(member.name()),
+                    parameters: vec![parameter(JavaType::known(JavaKnownType::Object), "other")],
+                    body: None,
+                })
+            })
+            .collect(),
         }),
         JavaMember::NestedType(record(JavaKnownType::RuntimeUnit, "Unit", vec![], vec![])),
         JavaMember::NestedType(scalar_type()),
@@ -91,23 +99,17 @@ fn core_members() -> Vec<JavaMember> {
                 ],
             )))],
         ),
-        semantic_equality_method(),
-        static_method(
-            vec![],
-            JavaType::primitive(JavaPrimitive::Boolean),
-            "deepEqual",
-            vec![
-                parameter(JavaType::known(JavaKnownType::Object), "left"),
-                parameter(JavaType::known(JavaKnownType::Object), "right"),
-            ],
-            vec![JavaStmt::Return(Some(known_call(
-                JavaKnownCallable::ObjectsDeepEquals,
-                vec![
-                    local(JavaType::known(JavaKnownType::Object), "left"),
-                    local(JavaType::known(JavaKnownType::Object), "right"),
-                ],
-            )))],
+        equality_dispatch_method(
+            JavaRuntimeCallable::SemanticEqual,
+            JavaRuntimeMember::SemanticEquals,
+            false,
         ),
+        equality_dispatch_method(
+            JavaRuntimeCallable::DeepEqual,
+            JavaRuntimeMember::DeepEquals,
+            true,
+        ),
+        validate_public_value_method(),
     ]
     .into_iter()
     .chain([
@@ -303,6 +305,15 @@ fn validated_result_type() -> JavaTypeDeclaration {
         ),
         boolean.clone(),
     );
+    let components = vec![
+        component(boolean.clone(), "ok", JavaRuntimeMember::ResultOk),
+        component(t.clone(), "value", JavaRuntimeMember::ResultValue),
+        component(error.clone(), "error", JavaRuntimeMember::ResultError),
+    ];
+    let comparison_type = generic(
+        JavaKnownType::RuntimeResult,
+        vec![JavaType::Wildcard { bound: None }],
+    );
     JavaTypeDeclaration {
         declared: None,
         kind: JavaDeclarationKind::Record,
@@ -310,12 +321,10 @@ fn validated_result_type() -> JavaTypeDeclaration {
         modifiers: vec![JavaModifier::Static],
         name: identifier("PolyResult"),
         type_parameters: vec![identifier("T")],
-        record_components: vec![
-            component(boolean.clone(), "ok", JavaRuntimeMember::ResultOk),
-            component(t.clone(), "value", JavaRuntimeMember::ResultValue),
-            component(error.clone(), "error", JavaRuntimeMember::ResultError),
-        ],
-        heritage: JavaHeritage::None,
+        record_components: components.clone(),
+        heritage: JavaHeritage::Interfaces(vec![JavaType::known(
+            JavaKnownType::RuntimeSemanticValue,
+        )]),
         permits: vec![],
         members: vec![
             JavaMember::Constructor(JavaConstructor {
@@ -339,8 +348,22 @@ fn validated_result_type() -> JavaTypeDeclaration {
                         )]),
                         else_block: None,
                     },
-                    assign_component(owner.clone(), "ok", boolean, ok),
-                    assign_component(owner.clone(), "value", t.clone(), value),
+                    assign_component(owner.clone(), "ok", boolean, ok.clone()),
+                    assign_component(
+                        owner.clone(),
+                        "value",
+                        t.clone(),
+                        conditional(
+                            ok.clone(),
+                            runtime_call(
+                                JavaRuntimeCallable::ValidatePublicValue,
+                                vec![value.clone()],
+                                t.clone(),
+                            ),
+                            value,
+                            t.clone(),
+                        ),
+                    ),
                     assign_component(owner.clone(), "error", error.clone(), failure),
                 ]),
             }),
@@ -360,7 +383,7 @@ fn validated_result_type() -> JavaTypeDeclaration {
                 "cannot read value from a failed PolyResult",
             ),
             guarded_accessor(
-                owner,
+                owner.clone(),
                 "error",
                 error,
                 structural_field(
@@ -373,11 +396,29 @@ fn validated_result_type() -> JavaTypeDeclaration {
                 ),
                 "cannot read error from a successful PolyResult",
             ),
+            tagged_equality_method(
+                owner.clone(),
+                comparison_type.clone(),
+                &components,
+                JavaRuntimeCallable::SemanticEqual,
+                JavaRuntimeMember::SemanticEquals,
+            ),
+            tagged_equality_method(
+                owner,
+                comparison_type,
+                &components,
+                JavaRuntimeCallable::DeepEqual,
+                JavaRuntimeMember::DeepEquals,
+            ),
         ],
     }
 }
 
-fn semantic_equality_method() -> JavaMember {
+fn equality_dispatch_method(
+    callable: JavaRuntimeCallable,
+    value_member: JavaRuntimeMember,
+    bit_exact_float: bool,
+) -> JavaMember {
     let object = JavaType::known(JavaKnownType::Object);
     let double = JavaType::Boxed(JavaPrimitive::Double);
     let boolean = JavaType::primitive(JavaPrimitive::Boolean);
@@ -394,10 +435,37 @@ fn semantic_equality_method() -> JavaMember {
         vec![],
         int.clone(),
     );
+    let float_equal = if bit_exact_float {
+        binary(
+            JavaBinaryOperator::Equal,
+            known_call(
+                JavaKnownCallable::DoubleToRawLongBits,
+                vec![local(double.clone(), "leftDouble")],
+            ),
+            known_call(
+                JavaKnownCallable::DoubleToRawLongBits,
+                vec![local(double.clone(), "rightDouble")],
+            ),
+            boolean.clone(),
+        )
+    } else {
+        binary(
+            JavaBinaryOperator::Equal,
+            cast(
+                JavaType::primitive(JavaPrimitive::Double),
+                local(double.clone(), "leftDouble"),
+            ),
+            cast(
+                JavaType::primitive(JavaPrimitive::Double),
+                local(double.clone(), "rightDouble"),
+            ),
+            boolean.clone(),
+        )
+    };
     static_method(
         vec![],
         boolean.clone(),
-        JavaRuntimeCallable::SemanticEqual.name(),
+        callable.name(),
         vec![
             parameter(object.clone(), "left"),
             parameter(object.clone(), "right"),
@@ -418,18 +486,7 @@ fn semantic_equality_method() -> JavaMember {
                     ),
                     boolean.clone(),
                 ),
-                then_block: JavaBlock::new(vec![JavaStmt::Return(Some(binary(
-                    JavaBinaryOperator::Equal,
-                    cast(
-                        JavaType::primitive(JavaPrimitive::Double),
-                        local(double.clone(), "leftDouble"),
-                    ),
-                    cast(
-                        JavaType::primitive(JavaPrimitive::Double),
-                        local(double, "rightDouble"),
-                    ),
-                    boolean.clone(),
-                )))]),
+                then_block: JavaBlock::new(vec![JavaStmt::Return(Some(float_equal))]),
                 else_block: None,
             },
             JavaStmt::If {
@@ -483,7 +540,7 @@ fn semantic_equality_method() -> JavaMember {
                                 condition: unary(
                                     JavaUnaryOperator::Not,
                                     runtime_call(
-                                        JavaRuntimeCallable::SemanticEqual,
+                                        callable,
                                         vec![
                                             known_method_call(
                                                 JavaKnownMethod::ListGet,
@@ -525,7 +582,7 @@ fn semantic_equality_method() -> JavaMember {
                 ),
                 then_block: JavaBlock::new(vec![JavaStmt::Return(Some(member_call(
                     local(semantic, "semanticValue"),
-                    JavaRuntimeMember::SemanticEquals,
+                    value_member,
                     vec![local(object.clone(), "right")],
                     boolean,
                 )))]),
@@ -535,6 +592,97 @@ fn semantic_equality_method() -> JavaMember {
                 JavaKnownCallable::ObjectsDeepEquals,
                 vec![local(object.clone(), "left"), local(object, "right")],
             ))),
+        ],
+    )
+}
+
+fn validate_public_value_method() -> JavaMember {
+    let t = type_variable("T");
+    let object = JavaType::known(JavaKnownType::Object);
+    let string = JavaType::known(JavaKnownType::String);
+    let list = generic(
+        JavaKnownType::List,
+        vec![JavaType::Wildcard { bound: None }],
+    );
+    let int = JavaType::primitive(JavaPrimitive::Int);
+    let boolean = JavaType::primitive(JavaPrimitive::Boolean);
+    let values = local(list.clone(), "values");
+    let index = local(int.clone(), "index");
+    static_method(
+        vec![identifier("T")],
+        t.clone(),
+        JavaRuntimeCallable::ValidatePublicValue.name(),
+        vec![parameter(t.clone(), "value")],
+        vec![
+            JavaStmt::Expression(known_generic_call(
+                JavaKnownCallable::ObjectsRequireNonNull,
+                vec![local(t.clone(), "value")],
+                t.clone(),
+            )),
+            JavaStmt::If {
+                condition: instance_of(
+                    local(t.clone(), "value"),
+                    string.clone(),
+                    Some(identifier("scalarString")),
+                ),
+                then_block: JavaBlock::new(vec![JavaStmt::Expression(runtime_call(
+                    JavaRuntimeCallable::RequireScalarString,
+                    vec![local(string.clone(), "scalarString")],
+                    string,
+                ))]),
+                else_block: None,
+            },
+            JavaStmt::If {
+                condition: instance_of(
+                    local(t.clone(), "value"),
+                    list.clone(),
+                    Some(identifier("values")),
+                ),
+                then_block: JavaBlock::new(vec![
+                    JavaStmt::Local {
+                        finality: JavaLocalFinality::Mutable,
+                        ty: int.clone(),
+                        name: identifier("index"),
+                        value: Some(int_literal(0)),
+                    },
+                    JavaStmt::While {
+                        condition: binary(
+                            JavaBinaryOperator::Less,
+                            index.clone(),
+                            known_method_call(
+                                JavaKnownMethod::ListSize,
+                                values.clone(),
+                                vec![],
+                                int.clone(),
+                            ),
+                            boolean,
+                        ),
+                        body: JavaBlock::new(vec![
+                            JavaStmt::Expression(runtime_call(
+                                JavaRuntimeCallable::ValidatePublicValue,
+                                vec![known_method_call(
+                                    JavaKnownMethod::ListGet,
+                                    values.clone(),
+                                    vec![index.clone()],
+                                    object.clone(),
+                                )],
+                                object,
+                            )),
+                            JavaStmt::Assign {
+                                target: index.clone(),
+                                value: binary(
+                                    JavaBinaryOperator::Add,
+                                    index.clone(),
+                                    int_literal(1),
+                                    int,
+                                ),
+                            },
+                        ]),
+                    },
+                ]),
+                else_block: None,
+            },
+            JavaStmt::Return(Some(local(t, "value"))),
         ],
     )
 }
@@ -693,6 +841,14 @@ fn validated_option_type() -> JavaTypeDeclaration {
         ),
         boolean.clone(),
     );
+    let components = vec![
+        component(boolean.clone(), "some", JavaRuntimeMember::OptionSome),
+        component(t.clone(), "value", JavaRuntimeMember::OptionValue),
+    ];
+    let comparison_type = generic(
+        JavaKnownType::RuntimeOption,
+        vec![JavaType::Wildcard { bound: None }],
+    );
     JavaTypeDeclaration {
         declared: None,
         kind: JavaDeclarationKind::Record,
@@ -700,11 +856,10 @@ fn validated_option_type() -> JavaTypeDeclaration {
         modifiers: vec![JavaModifier::Static],
         name: identifier("PolyOption"),
         type_parameters: vec![identifier("T")],
-        record_components: vec![
-            component(boolean.clone(), "some", JavaRuntimeMember::OptionSome),
-            component(t.clone(), "value", JavaRuntimeMember::OptionValue),
-        ],
-        heritage: JavaHeritage::None,
+        record_components: components.clone(),
+        heritage: JavaHeritage::Interfaces(vec![JavaType::known(
+            JavaKnownType::RuntimeSemanticValue,
+        )]),
         permits: vec![],
         members: vec![
             JavaMember::Constructor(JavaConstructor {
@@ -722,8 +877,22 @@ fn validated_option_type() -> JavaTypeDeclaration {
                         )]),
                         else_block: None,
                     },
-                    assign_component(owner.clone(), "some", boolean.clone(), some),
-                    assign_component(owner.clone(), "value", t.clone(), value),
+                    assign_component(owner.clone(), "some", boolean.clone(), some.clone()),
+                    assign_component(
+                        owner.clone(),
+                        "value",
+                        t.clone(),
+                        conditional(
+                            some.clone(),
+                            runtime_call(
+                                JavaRuntimeCallable::ValidatePublicValue,
+                                vec![value.clone()],
+                                t.clone(),
+                            ),
+                            value,
+                            t.clone(),
+                        ),
+                    ),
                 ]),
             }),
             guarded_accessor(
@@ -732,10 +901,24 @@ fn validated_option_type() -> JavaTypeDeclaration {
                 t,
                 unary(
                     JavaUnaryOperator::Not,
-                    structural_field(this_value(owner), "some", boolean.clone()),
+                    structural_field(this_value(owner.clone()), "some", boolean.clone()),
                     boolean,
                 ),
                 "cannot read value from None",
+            ),
+            tagged_equality_method(
+                owner.clone(),
+                comparison_type.clone(),
+                &components,
+                JavaRuntimeCallable::SemanticEqual,
+                JavaRuntimeMember::SemanticEquals,
+            ),
+            tagged_equality_method(
+                owner,
+                comparison_type,
+                &components,
+                JavaRuntimeCallable::DeepEqual,
+                JavaRuntimeMember::DeepEquals,
             ),
         ],
     }
@@ -803,6 +986,18 @@ fn validated_value_result_type() -> JavaTypeDeclaration {
         ),
         boolean.clone(),
     );
+    let components = vec![
+        component(boolean.clone(), "ok", JavaRuntimeMember::ValueResultOk),
+        component(t.clone(), "value", JavaRuntimeMember::ValueResultValue),
+        component(e.clone(), "error", JavaRuntimeMember::ValueResultError),
+    ];
+    let comparison_type = generic(
+        JavaKnownType::RuntimeValueResult,
+        vec![
+            JavaType::Wildcard { bound: None },
+            JavaType::Wildcard { bound: None },
+        ],
+    );
     JavaTypeDeclaration {
         declared: None,
         kind: JavaDeclarationKind::Record,
@@ -810,12 +1005,10 @@ fn validated_value_result_type() -> JavaTypeDeclaration {
         modifiers: vec![JavaModifier::Static],
         name: identifier("PolyValueResult"),
         type_parameters: vec![identifier("T"), identifier("E")],
-        record_components: vec![
-            component(boolean.clone(), "ok", JavaRuntimeMember::ValueResultOk),
-            component(t.clone(), "value", JavaRuntimeMember::ValueResultValue),
-            component(e.clone(), "error", JavaRuntimeMember::ValueResultError),
-        ],
-        heritage: JavaHeritage::None,
+        record_components: components.clone(),
+        heritage: JavaHeritage::Interfaces(vec![JavaType::known(
+            JavaKnownType::RuntimeSemanticValue,
+        )]),
         permits: vec![],
         members: vec![
             JavaMember::Constructor(JavaConstructor {
@@ -834,9 +1027,37 @@ fn validated_value_result_type() -> JavaTypeDeclaration {
                         )]),
                         else_block: None,
                     },
-                    assign_component(owner.clone(), "ok", boolean.clone(), ok),
-                    assign_component(owner.clone(), "value", t.clone(), value),
-                    assign_component(owner.clone(), "error", e.clone(), error),
+                    assign_component(owner.clone(), "ok", boolean.clone(), ok.clone()),
+                    assign_component(
+                        owner.clone(),
+                        "value",
+                        t.clone(),
+                        conditional(
+                            ok.clone(),
+                            runtime_call(
+                                JavaRuntimeCallable::ValidatePublicValue,
+                                vec![value.clone()],
+                                t.clone(),
+                            ),
+                            value,
+                            t.clone(),
+                        ),
+                    ),
+                    assign_component(
+                        owner.clone(),
+                        "error",
+                        e.clone(),
+                        conditional(
+                            ok.clone(),
+                            error.clone(),
+                            runtime_call(
+                                JavaRuntimeCallable::ValidatePublicValue,
+                                vec![error],
+                                e.clone(),
+                            ),
+                            e.clone(),
+                        ),
+                    ),
                 ]),
             }),
             guarded_accessor(
@@ -854,8 +1075,22 @@ fn validated_value_result_type() -> JavaTypeDeclaration {
                 owner.clone(),
                 "error",
                 e,
-                structural_field(this_value(owner), "ok", boolean),
+                structural_field(this_value(owner.clone()), "ok", boolean),
                 "cannot read error from Ok",
+            ),
+            tagged_equality_method(
+                owner.clone(),
+                comparison_type.clone(),
+                &components,
+                JavaRuntimeCallable::SemanticEqual,
+                JavaRuntimeMember::SemanticEquals,
+            ),
+            tagged_equality_method(
+                owner,
+                comparison_type,
+                &components,
+                JavaRuntimeCallable::DeepEqual,
+                JavaRuntimeMember::DeepEquals,
             ),
         ],
     }
@@ -864,8 +1099,27 @@ fn validated_value_result_type() -> JavaTypeDeclaration {
 fn bytes_members() -> Vec<JavaMember> {
     let integer = JavaType::Boxed(JavaPrimitive::Int);
     let list = generic(JavaKnownType::List, vec![integer.clone()]);
+    let byte = JavaType::primitive(JavaPrimitive::Byte);
+    let byte_array = JavaType::Array {
+        component: Box::new(byte.clone()),
+        ownership: JavaArrayOwnership::DefensiveCopyBoundary,
+    };
+    let mutable_byte_array = JavaType::Array {
+        component: Box::new(byte.clone()),
+        ownership: JavaArrayOwnership::InternalMutable,
+    };
     let bytes = JavaType::known(JavaKnownType::RuntimeBytes);
-    let copied = local(list.clone(), "copy");
+    let boolean = JavaType::primitive(JavaPrimitive::Boolean);
+    let int = JavaType::primitive(JavaPrimitive::Int);
+    let components = vec![component(
+        byte_array.clone(),
+        "values",
+        JavaRuntimeMember::BytesValues,
+    )];
+    let source = local(byte_array.clone(), "source");
+    let copied = local(mutable_byte_array.clone(), "copy");
+    let index = local(int.clone(), "index");
+    let field = structural_field(this_value(bytes.clone()), "values", byte_array.clone());
     vec![
         JavaMember::NestedType(JavaTypeDeclaration {
             declared: None,
@@ -874,11 +1128,7 @@ fn bytes_members() -> Vec<JavaMember> {
             modifiers: vec![JavaModifier::Static],
             name: identifier("Bytes"),
             type_parameters: vec![],
-            record_components: vec![component(
-                list.clone(),
-                "values",
-                JavaRuntimeMember::BytesValues,
-            )],
+            record_components: components.clone(),
             heritage: JavaHeritage::Interfaces(vec![JavaType::known(
                 JavaKnownType::RuntimeSemanticValue,
             )]),
@@ -887,62 +1137,141 @@ fn bytes_members() -> Vec<JavaMember> {
                 JavaMember::Constructor(JavaConstructor {
                     modifiers: vec![JavaModifier::Public],
                     name: identifier("Bytes"),
-                    parameters: vec![parameter(list.clone(), "values")],
+                    parameters: vec![parameter(byte_array.clone(), "values")],
                     body: JavaBlock::new(vec![
                         JavaStmt::Local {
                             finality: JavaLocalFinality::Final,
-                            ty: list.clone(),
-                            name: identifier("copy"),
+                            ty: byte_array.clone(),
+                            name: identifier("source"),
                             value: Some(known_generic_call(
-                                JavaKnownCallable::ListCopyOf,
-                                vec![local(list.clone(), "values")],
-                                list.clone(),
+                                JavaKnownCallable::ObjectsRequireNonNull,
+                                vec![local(byte_array.clone(), "values")],
+                                byte_array.clone(),
                             )),
                         },
-                        JavaStmt::ForEach {
-                            binding_type: integer.clone(),
-                            binding: identifier("item"),
-                            iterable: copied.clone(),
-                            body: JavaBlock::new(vec![JavaStmt::If {
-                                condition: binary(
-                                    JavaBinaryOperator::LogicalOr,
-                                    binary(
-                                        JavaBinaryOperator::Less,
-                                        cast(
-                                            JavaType::primitive(JavaPrimitive::Int),
-                                            local(integer.clone(), "item"),
-                                        ),
-                                        int_literal(0),
-                                        JavaType::primitive(JavaPrimitive::Boolean),
-                                    ),
-                                    binary(
-                                        JavaBinaryOperator::Greater,
-                                        cast(
-                                            JavaType::primitive(JavaPrimitive::Int),
-                                            local(integer.clone(), "item"),
-                                        ),
-                                        int_literal(255),
-                                        JavaType::primitive(JavaPrimitive::Boolean),
-                                    ),
-                                    JavaType::primitive(JavaPrimitive::Boolean),
-                                ),
-                                then_block: JavaBlock::new(vec![illegal_argument(
-                                    "byte value is outside 0..255",
-                                )]),
-                                else_block: None,
-                            }]),
+                        JavaStmt::Local {
+                            finality: JavaLocalFinality::Final,
+                            ty: mutable_byte_array.clone(),
+                            name: identifier("copy"),
+                            value: Some(new_array(byte.clone(), array_length(source.clone()))),
                         },
-                        assign_component(bytes.clone(), "values", list.clone(), copied),
+                        JavaStmt::Local {
+                            finality: JavaLocalFinality::Mutable,
+                            ty: int.clone(),
+                            name: identifier("index"),
+                            value: Some(int_literal(0)),
+                        },
+                        JavaStmt::While {
+                            condition: binary(
+                                JavaBinaryOperator::Less,
+                                index.clone(),
+                                array_length(source.clone()),
+                                boolean.clone(),
+                            ),
+                            body: JavaBlock::new(vec![
+                                JavaStmt::Assign {
+                                    target: array_index(
+                                        copied.clone(),
+                                        index.clone(),
+                                        byte.clone(),
+                                    ),
+                                    value: array_index(source.clone(), index.clone(), byte.clone()),
+                                },
+                                JavaStmt::Assign {
+                                    target: index.clone(),
+                                    value: binary(
+                                        JavaBinaryOperator::Add,
+                                        index.clone(),
+                                        int_literal(1),
+                                        int.clone(),
+                                    ),
+                                },
+                            ]),
+                        },
+                        JavaStmt::Local {
+                            finality: JavaLocalFinality::Final,
+                            ty: byte_array.clone(),
+                            name: identifier("frozen"),
+                            value: Some(fresh_copy_to_boundary(copied.clone(), byte_array.clone())),
+                        },
+                        assign_component(
+                            bytes.clone(),
+                            "values",
+                            byte_array.clone(),
+                            local(byte_array.clone(), "frozen"),
+                        ),
                     ]),
                 }),
-                semantic_method(
+                JavaMember::Method(JavaMethod {
+                    declared: JavaMethodDeclaration::Structural,
+                    annotations: vec![],
+                    modifiers: vec![JavaModifier::Public],
+                    type_parameters: vec![],
+                    return_type: byte_array.clone(),
+                    name: identifier("values"),
+                    parameters: vec![],
+                    body: Some(JavaBlock::new(vec![
+                        JavaStmt::Local {
+                            finality: JavaLocalFinality::Final,
+                            ty: mutable_byte_array.clone(),
+                            name: identifier("copy"),
+                            value: Some(new_array(byte.clone(), array_length(field.clone()))),
+                        },
+                        JavaStmt::Local {
+                            finality: JavaLocalFinality::Mutable,
+                            ty: int.clone(),
+                            name: identifier("index"),
+                            value: Some(int_literal(0)),
+                        },
+                        JavaStmt::While {
+                            condition: binary(
+                                JavaBinaryOperator::Less,
+                                index.clone(),
+                                array_length(field.clone()),
+                                boolean.clone(),
+                            ),
+                            body: JavaBlock::new(vec![
+                                JavaStmt::Assign {
+                                    target: array_index(
+                                        copied.clone(),
+                                        index.clone(),
+                                        byte.clone(),
+                                    ),
+                                    value: array_index(field.clone(), index.clone(), byte.clone()),
+                                },
+                                JavaStmt::Assign {
+                                    target: index.clone(),
+                                    value: binary(
+                                        JavaBinaryOperator::Add,
+                                        index.clone(),
+                                        int_literal(1),
+                                        int.clone(),
+                                    ),
+                                },
+                            ]),
+                        },
+                        JavaStmt::Local {
+                            finality: JavaLocalFinality::Final,
+                            ty: byte_array.clone(),
+                            name: identifier("frozen"),
+                            value: Some(fresh_copy_to_boundary(copied.clone(), byte_array.clone())),
+                        },
+                        JavaStmt::Return(Some(local(byte_array.clone(), "frozen"))),
+                    ])),
+                }),
+                runtime_record_equality_method(
                     bytes.clone(),
                     bytes.clone(),
-                    &[component(
-                        list.clone(),
-                        "values",
-                        JavaRuntimeMember::BytesValues,
-                    )],
+                    &components,
+                    JavaRuntimeCallable::SemanticEqual,
+                    JavaRuntimeMember::SemanticEquals,
+                ),
+                runtime_record_equality_method(
+                    bytes.clone(),
+                    bytes.clone(),
+                    &components,
+                    JavaRuntimeCallable::DeepEqual,
+                    JavaRuntimeMember::DeepEquals,
                 ),
             ],
         }),
@@ -951,11 +1280,114 @@ fn bytes_members() -> Vec<JavaMember> {
             bytes.clone(),
             "bytesOf",
             vec![parameter(list.clone(), "values")],
-            vec![JavaStmt::Return(Some(new_known(
-                JavaKnownConstructor::RuntimeBytes,
-                bytes.clone(),
-                vec![local(list, "values")],
-            )))],
+            {
+                let immutable = local(list.clone(), "immutable");
+                let item = local(integer.clone(), "item");
+                vec![
+                    JavaStmt::Local {
+                        finality: JavaLocalFinality::Final,
+                        ty: list.clone(),
+                        name: identifier("immutable"),
+                        value: Some(known_generic_call(
+                            JavaKnownCallable::ListCopyOf,
+                            vec![local(list.clone(), "values")],
+                            list.clone(),
+                        )),
+                    },
+                    JavaStmt::Local {
+                        finality: JavaLocalFinality::Final,
+                        ty: mutable_byte_array.clone(),
+                        name: identifier("copy"),
+                        value: Some(new_array(
+                            byte.clone(),
+                            known_method_call(
+                                JavaKnownMethod::ListSize,
+                                immutable.clone(),
+                                vec![],
+                                int.clone(),
+                            ),
+                        )),
+                    },
+                    JavaStmt::Local {
+                        finality: JavaLocalFinality::Mutable,
+                        ty: int.clone(),
+                        name: identifier("index"),
+                        value: Some(int_literal(0)),
+                    },
+                    JavaStmt::While {
+                        condition: binary(
+                            JavaBinaryOperator::Less,
+                            index.clone(),
+                            known_method_call(
+                                JavaKnownMethod::ListSize,
+                                immutable.clone(),
+                                vec![],
+                                int.clone(),
+                            ),
+                            boolean.clone(),
+                        ),
+                        body: JavaBlock::new(vec![
+                            JavaStmt::Local {
+                                finality: JavaLocalFinality::Final,
+                                ty: integer.clone(),
+                                name: identifier("item"),
+                                value: Some(known_method_call(
+                                    JavaKnownMethod::ListGet,
+                                    immutable.clone(),
+                                    vec![index.clone()],
+                                    integer.clone(),
+                                )),
+                            },
+                            JavaStmt::If {
+                                condition: binary(
+                                    JavaBinaryOperator::LogicalOr,
+                                    binary(
+                                        JavaBinaryOperator::Less,
+                                        cast(int.clone(), item.clone()),
+                                        int_literal(0),
+                                        boolean.clone(),
+                                    ),
+                                    binary(
+                                        JavaBinaryOperator::Greater,
+                                        cast(int.clone(), item.clone()),
+                                        int_literal(255),
+                                        boolean.clone(),
+                                    ),
+                                    boolean.clone(),
+                                ),
+                                then_block: JavaBlock::new(vec![illegal_argument(
+                                    "byte value is outside 0..255",
+                                )]),
+                                else_block: None,
+                            },
+                            JavaStmt::Assign {
+                                target: array_index(copied.clone(), index.clone(), byte.clone()),
+                                value: cast(byte.clone(), cast(int.clone(), item)),
+                            },
+                            JavaStmt::Assign {
+                                target: index.clone(),
+                                value: binary(
+                                    JavaBinaryOperator::Add,
+                                    index.clone(),
+                                    int_literal(1),
+                                    int.clone(),
+                                ),
+                            },
+                        ]),
+                    },
+                    JavaStmt::Local {
+                        finality: JavaLocalFinality::Final,
+                        ty: byte_array.clone(),
+                        name: identifier("frozen"),
+                        value: Some(fresh_copy_to_boundary(copied.clone(), byte_array.clone())),
+                    },
+                    JavaStmt::Return(Some(new_known(
+                        JavaKnownConstructor::RuntimeBytes,
+                        bytes.clone(),
+                        vec![local(byte_array.clone(), "frozen")],
+                    ))),
+                ]
+            },
         ),
     ]
     .into_iter()
@@ -1007,6 +1439,7 @@ fn runtime_method(value: JavaRuntimeCallable) -> JavaMember {
         | JavaRuntimeCallable::StringSliceScalars
         | JavaRuntimeCallable::StringToUtf8
         | JavaRuntimeCallable::StringFromUtf8 => unicode_method(value),
+        JavaRuntimeCallable::BytesToList => bytes_to_list_method(value),
         JavaRuntimeCallable::BytesLength
         | JavaRuntimeCallable::BytesIsEmpty
         | JavaRuntimeCallable::BytesConcat
@@ -1027,6 +1460,7 @@ fn runtime_method(value: JavaRuntimeCallable) -> JavaMember {
         | JavaRuntimeCallable::Fail
         | JavaRuntimeCallable::DeepEqual
         | JavaRuntimeCallable::SemanticEqual
+        | JavaRuntimeCallable::ValidatePublicValue
         | JavaRuntimeCallable::OptionNone
         | JavaRuntimeCallable::OptionSome
         | JavaRuntimeCallable::OptionIsSome
@@ -1585,14 +2019,15 @@ fn unicode_method(value: JavaRuntimeCallable) -> JavaMember {
     let character = JavaType::primitive(JavaPrimitive::Char);
     let int = JavaType::primitive(JavaPrimitive::Int);
     let long = JavaType::primitive(JavaPrimitive::Long);
-    let integer = JavaType::Boxed(JavaPrimitive::Int);
     let bytes = JavaType::known(JavaKnownType::RuntimeBytes);
     let byte_array = JavaType::Array {
         component: Box::new(byte.clone()),
         ownership: JavaArrayOwnership::InternalMutable,
     };
-    let integer_list = generic(JavaKnownType::List, vec![integer.clone()]);
-    let integer_array_list = generic(JavaKnownType::ArrayList, vec![integer.clone()]);
+    let public_byte_array = JavaType::Array {
+        component: Box::new(byte.clone()),
+        ownership: JavaArrayOwnership::DefensiveCopyBoundary,
+    };
     let result_i64 = generic(
         JavaKnownType::RuntimeResult,
         vec![JavaType::Boxed(JavaPrimitive::Long)],
@@ -1907,7 +2342,6 @@ fn unicode_method(value: JavaRuntimeCallable) -> JavaMember {
         }
         JavaRuntimeCallable::StringToUtf8 => {
             let raw = local(byte_array.clone(), "raw");
-            let output = local(integer_array_list.clone(), "output");
             static_method(
                 vec![],
                 bytes.clone(),
@@ -1927,44 +2361,21 @@ fn unicode_method(value: JavaRuntimeCallable) -> JavaMember {
                     },
                     JavaStmt::Local {
                         finality: JavaLocalFinality::Final,
-                        ty: integer_array_list.clone(),
-                        name: identifier("output"),
-                        value: Some(new_known(
-                            JavaKnownConstructor::ArrayList,
-                            integer_array_list,
-                            vec![],
-                        )),
+                        ty: public_byte_array.clone(),
+                        name: identifier("encoded"),
+                        value: Some(fresh_copy_to_boundary(raw, public_byte_array.clone())),
                     },
-                    JavaStmt::ForEach {
-                        binding_type: byte,
-                        binding: identifier("item"),
-                        iterable: raw,
-                        body: JavaBlock::new(vec![JavaStmt::Expression(known_method_call(
-                            JavaKnownMethod::ArrayListAdd,
-                            output.clone(),
-                            vec![known_call(
-                                JavaKnownCallable::ByteToUnsignedInt,
-                                vec![local(JavaType::primitive(JavaPrimitive::Byte), "item")],
-                            )],
-                            JavaType::primitive(JavaPrimitive::Boolean),
-                        ))]),
-                    },
-                    JavaStmt::Return(Some(runtime_call(
-                        JavaRuntimeCallable::BytesOf,
-                        vec![output],
+                    JavaStmt::Return(Some(new_known(
+                        JavaKnownConstructor::RuntimeBytes,
                         bytes,
+                        vec![local(public_byte_array.clone(), "encoded")],
                     ))),
                 ],
             )
         }
-        JavaRuntimeCallable::StringFromUtf8 => string_from_utf8_method(
-            value,
-            string,
-            bytes,
-            byte_array,
-            integer_list,
-            result_string,
-        ),
+        JavaRuntimeCallable::StringFromUtf8 => {
+            string_from_utf8_method(value, string, bytes, public_byte_array, result_string)
+        }
         _ => unreachable!(),
     }
 }
@@ -2262,18 +2673,12 @@ fn string_from_utf8_method(
     value: JavaRuntimeCallable,
     string: JavaType,
     bytes: JavaType,
-    byte_array: JavaType,
-    integer_list: JavaType,
+    public_byte_array: JavaType,
     result_string: JavaType,
 ) -> JavaMember {
-    let byte = JavaType::primitive(JavaPrimitive::Byte);
-    let int = JavaType::primitive(JavaPrimitive::Int);
-    let boolean = JavaType::primitive(JavaPrimitive::Boolean);
     let decoder = JavaType::known(JavaKnownType::CharsetDecoder);
     let char_buffer = JavaType::known(JavaKnownType::CharBuffer);
-    let values = local(integer_list.clone(), "values");
-    let raw = local(byte_array.clone(), "raw");
-    let index = local(int.clone(), "index");
+    let raw = local(public_byte_array.clone(), "raw");
     let decoder_value = local(decoder.clone(), "decoder");
     let report = known_field(JavaKnownField::CodingErrorReport);
     static_method(
@@ -2284,63 +2689,9 @@ fn string_from_utf8_method(
         vec![
             JavaStmt::Local {
                 finality: JavaLocalFinality::Final,
-                ty: integer_list.clone(),
-                name: identifier("values"),
-                value: Some(bytes_values(local(bytes, "value"), integer_list.clone())),
-            },
-            JavaStmt::Local {
-                finality: JavaLocalFinality::Final,
-                ty: byte_array.clone(),
+                ty: public_byte_array.clone(),
                 name: identifier("raw"),
-                value: Some(new_array(
-                    byte.clone(),
-                    known_method_call(
-                        JavaKnownMethod::ListSize,
-                        values.clone(),
-                        vec![],
-                        int.clone(),
-                    ),
-                )),
-            },
-            JavaStmt::Local {
-                finality: JavaLocalFinality::Mutable,
-                ty: int.clone(),
-                name: identifier("index"),
-                value: Some(int_literal(0)),
-            },
-            JavaStmt::While {
-                condition: binary(
-                    JavaBinaryOperator::Less,
-                    index.clone(),
-                    known_method_call(
-                        JavaKnownMethod::ListSize,
-                        values.clone(),
-                        vec![],
-                        int.clone(),
-                    ),
-                    boolean,
-                ),
-                body: JavaBlock::new(vec![
-                    JavaStmt::Assign {
-                        target: array_index(raw.clone(), index.clone(), byte.clone()),
-                        value: cast(
-                            byte,
-                            cast(
-                                int.clone(),
-                                known_method_call(
-                                    JavaKnownMethod::ListGet,
-                                    values,
-                                    vec![index.clone()],
-                                    JavaType::Boxed(JavaPrimitive::Int),
-                                ),
-                            ),
-                        ),
-                    },
-                    JavaStmt::Assign {
-                        target: index.clone(),
-                        value: binary(JavaBinaryOperator::Add, index, int_literal(1), int),
-                    },
-                ]),
+                value: Some(bytes_values(local(bytes, "value"), public_byte_array)),
             },
             JavaStmt::Local {
                 finality: JavaLocalFinality::Final,
@@ -3074,10 +3425,71 @@ fn list_method(value: JavaRuntimeCallable) -> JavaMember {
     }
 }
 
+fn bytes_to_list_method(value: JavaRuntimeCallable) -> JavaMember {
+    let byte = JavaType::primitive(JavaPrimitive::Byte);
+    let byte_array = JavaType::Array {
+        component: Box::new(byte.clone()),
+        ownership: JavaArrayOwnership::DefensiveCopyBoundary,
+    };
+    let integer = JavaType::Boxed(JavaPrimitive::Int);
+    let list = generic(JavaKnownType::List, vec![integer.clone()]);
+    let array_list = generic(JavaKnownType::ArrayList, vec![integer]);
+    let bytes = JavaType::known(JavaKnownType::RuntimeBytes);
+    let raw = local(byte_array.clone(), "raw");
+    let output = local(array_list.clone(), "output");
+    static_method(
+        vec![],
+        list.clone(),
+        value.name(),
+        vec![parameter(bytes.clone(), "value")],
+        vec![
+            JavaStmt::Local {
+                finality: JavaLocalFinality::Final,
+                ty: byte_array.clone(),
+                name: identifier("raw"),
+                value: Some(bytes_values(local(bytes, "value"), byte_array)),
+            },
+            JavaStmt::Local {
+                finality: JavaLocalFinality::Final,
+                ty: array_list.clone(),
+                name: identifier("output"),
+                value: Some(new_known(
+                    JavaKnownConstructor::ArrayList,
+                    array_list,
+                    vec![],
+                )),
+            },
+            JavaStmt::ForEach {
+                binding_type: byte.clone(),
+                binding: identifier("item"),
+                iterable: raw,
+                body: JavaBlock::new(vec![JavaStmt::Expression(known_method_call(
+                    JavaKnownMethod::ArrayListAdd,
+                    output.clone(),
+                    vec![known_call(
+                        JavaKnownCallable::ByteToUnsignedInt,
+                        vec![local(byte, "item")],
+                    )],
+                    JavaType::primitive(JavaPrimitive::Boolean),
+                ))]),
+            },
+            JavaStmt::Return(Some(known_generic_call(
+                JavaKnownCallable::ListCopyOf,
+                vec![output],
+                list,
+            ))),
+        ],
+    )
+}
+
 fn bytes_method(value: JavaRuntimeCallable) -> JavaMember {
     let integer = JavaType::Boxed(JavaPrimitive::Int);
     let list = generic(JavaKnownType::List, vec![integer.clone()]);
     let array_list = generic(JavaKnownType::ArrayList, vec![integer.clone()]);
+    let byte_array = JavaType::Array {
+        component: Box::new(JavaType::primitive(JavaPrimitive::Byte)),
+        ownership: JavaArrayOwnership::DefensiveCopyBoundary,
+    };
     let bytes = JavaType::known(JavaKnownType::RuntimeBytes);
     let boolean = JavaType::primitive(JavaPrimitive::Boolean);
     let int = JavaType::primitive(JavaPrimitive::Int);
@@ -3090,12 +3502,7 @@ fn bytes_method(value: JavaRuntimeCallable) -> JavaMember {
             vec![parameter(bytes.clone(), "value")],
             vec![JavaStmt::Return(Some(cast(
                 long,
-                known_method_call(
-                    JavaKnownMethod::ListSize,
-                    bytes_values(local(bytes, "value"), list),
-                    vec![],
-                    int,
-                ),
+                array_length(bytes_values(local(bytes, "value"), byte_array.clone())),
             )))],
         ),
         JavaRuntimeCallable::BytesIsEmpty => static_method(
@@ -3103,10 +3510,10 @@ fn bytes_method(value: JavaRuntimeCallable) -> JavaMember {
             boolean.clone(),
             value.name(),
             vec![parameter(bytes.clone(), "value")],
-            vec![JavaStmt::Return(Some(known_method_call(
-                JavaKnownMethod::ListIsEmpty,
-                bytes_values(local(bytes, "value"), list),
-                vec![],
+            vec![JavaStmt::Return(Some(binary(
+                JavaBinaryOperator::Equal,
+                array_length(bytes_values(local(bytes, "value"), byte_array)),
+                int_literal(0),
                 boolean,
             )))],
         ),
@@ -3123,8 +3530,16 @@ fn bytes_method(value: JavaRuntimeCallable) -> JavaMember {
                 vec![runtime_call(
                     JavaRuntimeCallable::ListConcat,
                     vec![
-                        bytes_values(local(bytes.clone(), "left"), list.clone()),
-                        bytes_values(local(bytes, "right"), list.clone()),
+                        runtime_call(
+                            JavaRuntimeCallable::BytesToList,
+                            vec![local(bytes.clone(), "left")],
+                            list.clone(),
+                        ),
+                        runtime_call(
+                            JavaRuntimeCallable::BytesToList,
+                            vec![local(bytes, "right")],
+                            list.clone(),
+                        ),
                     ],
                     list,
                 )],
@@ -3132,9 +3547,21 @@ fn bytes_method(value: JavaRuntimeCallable) -> JavaMember {
             )))],
         ),
         JavaRuntimeCallable::BytesReplaceAll => {
-            let source = bytes_values(local(bytes.clone(), "source"), list.clone());
-            let needle = bytes_values(local(bytes.clone(), "needle"), list.clone());
-            let replacement = bytes_values(local(bytes.clone(), "replacement"), list.clone());
+            let source = runtime_call(
+                JavaRuntimeCallable::BytesToList,
+                vec![local(bytes.clone(), "source")],
+                list.clone(),
+            );
+            let needle = runtime_call(
+                JavaRuntimeCallable::BytesToList,
+                vec![local(bytes.clone(), "needle")],
+                list.clone(),
+            );
+            let replacement = runtime_call(
+                JavaRuntimeCallable::BytesToList,
+                vec![local(bytes.clone(), "replacement")],
+                list.clone(),
+            );
             let result = local(array_list.clone(), "result");
             let offset = local(int.clone(), "offset");
             let needle_size = known_method_call(
@@ -3366,7 +3793,20 @@ fn record(
                 .collect(),
         )
     };
-    let semantic = semantic_method(self_type, comparison_type, &record_components);
+    let semantic = runtime_record_equality_method(
+        self_type.clone(),
+        comparison_type.clone(),
+        &record_components,
+        JavaRuntimeCallable::SemanticEqual,
+        JavaRuntimeMember::SemanticEquals,
+    );
+    let deep = runtime_record_equality_method(
+        self_type,
+        comparison_type,
+        &record_components,
+        JavaRuntimeCallable::DeepEqual,
+        JavaRuntimeMember::DeepEquals,
+    );
     JavaTypeDeclaration {
         declared: None,
         kind: JavaDeclarationKind::Record,
@@ -3379,14 +3819,16 @@ fn record(
             JavaKnownType::RuntimeSemanticValue,
         )]),
         permits: vec![],
-        members: vec![semantic],
+        members: vec![semantic, deep],
     }
 }
 
-fn semantic_method(
+fn runtime_record_equality_method(
     self_type: JavaType,
     comparison_type: JavaType,
     components: &[JavaRecordComponent],
+    callable: JavaRuntimeCallable,
+    member: JavaRuntimeMember,
 ) -> JavaMember {
     let object = JavaType::known(JavaKnownType::Object);
     let boolean = JavaType::primitive(JavaPrimitive::Boolean);
@@ -3399,33 +3841,41 @@ fn semantic_method(
     let equal = components
         .iter()
         .fold(bool_literal(true), |equal, component| {
+            let comparison_component =
+                comparison_component_type(&component.ty, &this.ty, &comparison_type);
             binary(
                 JavaBinaryOperator::LogicalAnd,
                 equal,
                 runtime_call(
-                    JavaRuntimeCallable::SemanticEqual,
+                    callable,
                     vec![
-                        member_call(
-                            this.clone(),
-                            match component.origin {
-                                JavaRecordComponentOrigin::Runtime(member) => member,
-                                JavaRecordComponentOrigin::Core(_) => {
-                                    unreachable!("runtime semantic records have runtime components")
-                                }
-                            },
-                            vec![],
-                            component.ty.clone(),
+                        cast(
+                            object.clone(),
+                            member_call(
+                                this.clone(),
+                                match component.origin {
+                                    JavaRecordComponentOrigin::Runtime(member) => member,
+                                    JavaRecordComponentOrigin::Core(_) => unreachable!(
+                                        "runtime semantic records have runtime components"
+                                    ),
+                                },
+                                vec![],
+                                component.ty.clone(),
+                            ),
                         ),
-                        member_call(
-                            other.clone(),
-                            match component.origin {
-                                JavaRecordComponentOrigin::Runtime(member) => member,
-                                JavaRecordComponentOrigin::Core(_) => {
-                                    unreachable!("runtime semantic records have runtime components")
-                                }
-                            },
-                            vec![],
-                            component.ty.clone(),
+                        cast(
+                            object.clone(),
+                            member_call(
+                                other.clone(),
+                                match component.origin {
+                                    JavaRecordComponentOrigin::Runtime(member) => member,
+                                    JavaRecordComponentOrigin::Core(_) => unreachable!(
+                                        "runtime semantic records have runtime components"
+                                    ),
+                                },
+                                vec![],
+                                comparison_component,
+                            ),
                         ),
                     ],
                     boolean.clone(),
@@ -3439,7 +3889,7 @@ fn semantic_method(
         modifiers: vec![JavaModifier::Public],
         type_parameters: vec![],
         return_type: boolean.clone(),
-        name: identifier("semanticEquals"),
+        name: identifier(member.name()),
         parameters: vec![parameter(object.clone(), "other")],
         body: Some(JavaBlock::new(vec![
             JavaStmt::If {
@@ -3458,6 +3908,112 @@ fn semantic_method(
             JavaStmt::Return(Some(equal)),
         ])),
     })
+}
+
+fn tagged_equality_method(
+    self_type: JavaType,
+    comparison_type: JavaType,
+    components: &[JavaRecordComponent],
+    callable: JavaRuntimeCallable,
+    member: JavaRuntimeMember,
+) -> JavaMember {
+    let object = JavaType::known(JavaKnownType::Object);
+    let boolean = JavaType::primitive(JavaPrimitive::Boolean);
+    let other = local(comparison_type.clone(), "otherValue");
+    let this = this_value(self_type);
+    let equal = components
+        .iter()
+        .fold(bool_literal(true), |equal, component| {
+            let comparison_component = match component.ty {
+                JavaType::TypeVariable(_) => object.clone(),
+                _ => component.ty.clone(),
+            };
+            binary(
+                JavaBinaryOperator::LogicalAnd,
+                equal,
+                runtime_call(
+                    callable,
+                    vec![
+                        cast(
+                            object.clone(),
+                            structural_field(
+                                this.clone(),
+                                component.name.as_str(),
+                                component.ty.clone(),
+                            ),
+                        ),
+                        cast(
+                            object.clone(),
+                            structural_field(
+                                other.clone(),
+                                component.name.as_str(),
+                                comparison_component,
+                            ),
+                        ),
+                    ],
+                    boolean.clone(),
+                ),
+                boolean.clone(),
+            )
+        });
+    JavaMember::Method(JavaMethod {
+        declared: JavaMethodDeclaration::Structural,
+        annotations: vec![JavaAnnotation::Override],
+        modifiers: vec![JavaModifier::Public],
+        type_parameters: vec![],
+        return_type: boolean.clone(),
+        name: identifier(member.name()),
+        parameters: vec![parameter(object.clone(), "other")],
+        body: Some(JavaBlock::new(vec![
+            JavaStmt::If {
+                condition: unary(
+                    JavaUnaryOperator::Not,
+                    instance_of(
+                        local(object, "other"),
+                        comparison_type,
+                        Some(identifier("otherValue")),
+                    ),
+                    boolean.clone(),
+                ),
+                then_block: JavaBlock::new(vec![JavaStmt::Return(Some(bool_literal(false)))]),
+                else_block: None,
+            },
+            JavaStmt::Return(Some(equal)),
+        ])),
+    })
+}
+
+fn comparison_component_type(
+    component: &JavaType,
+    self_type: &JavaType,
+    comparison_type: &JavaType,
+) -> JavaType {
+    let JavaType::TypeVariable(component_name) = component else {
+        return component.clone();
+    };
+    let (
+        JavaType::Generic {
+            arguments: self_arguments,
+            ..
+        },
+        JavaType::Generic {
+            arguments: comparison_arguments,
+            ..
+        },
+    ) = (self_type, comparison_type)
+    else {
+        return component.clone();
+    };
+    self_arguments
+        .iter()
+        .zip(comparison_arguments)
+        .find_map(|(self_argument, comparison_argument)| match self_argument {
+            JavaType::TypeVariable(name) if name == component_name => {
+                Some(comparison_argument.clone())
+            }
+            _ => None,
+        })
+        .unwrap_or_else(|| component.clone())
 }
 fn static_method(
     type_parameters: Vec<JavaIdentifier>,
@@ -3543,6 +4099,16 @@ fn cast(target: JavaType, value: JavaExpr) -> JavaExpr {
         },
     }
 }
+fn fresh_copy_to_boundary(value: JavaExpr, target: JavaType) -> JavaExpr {
+    JavaExpr {
+        ty: target,
+        precedence: value.precedence,
+        kind: JavaExprKind::ArrayOwnershipTransition {
+            transition: JavaArrayOwnershipTransition::FreshCopyToBoundary,
+            value: Box::new(value),
+        },
+    }
+}
 fn instance_of(value: JavaExpr, target: JavaType, binding: Option<JavaIdentifier>) -> JavaExpr {
     JavaExpr {
         ty: JavaType::primitive(JavaPrimitive::Boolean),
@@ -3576,6 +4142,9 @@ fn array_index(array: JavaExpr, index: JavaExpr, component: JavaType) -> JavaExp
             index: Box::new(index),
         },
     }
+}
+fn array_length(array: JavaExpr) -> JavaExpr {
+    structural_field(array, "length", JavaType::primitive(JavaPrimitive::Int))
 }
 fn structural_field(receiver: JavaExpr, name: &str, ty: JavaType) -> JavaExpr {
     JavaExpr {
@@ -3642,8 +4211,8 @@ fn guarded_accessor(
         ])),
     })
 }
-fn bytes_values(receiver: JavaExpr, list_type: JavaType) -> JavaExpr {
-    member_call(receiver, JavaRuntimeMember::BytesValues, vec![], list_type)
+fn bytes_values(receiver: JavaExpr, array_type: JavaType) -> JavaExpr {
+    member_call(receiver, JavaRuntimeMember::BytesValues, vec![], array_type)
 }
 fn bool_literal(value: bool) -> JavaExpr {
     JavaExpr::literal(

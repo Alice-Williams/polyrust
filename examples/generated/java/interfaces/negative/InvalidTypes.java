@@ -4,5 +4,5 @@ package org.polyrust.generated;
 final class InvalidTypes {
   private InvalidTypes() {
   }
-  final org.polyrust.generated.Runtime.PolyOption<Integer> invalid = "missing";
+  final int invalid = "missing";
 }

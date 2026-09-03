@@ -3,7 +3,6 @@ package org.polyrust.generated;
 
 import java.util.List;
 import java.util.Objects;
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -18,10 +17,18 @@ public final class Runtime {
   }
   public static interface SemanticValue {
     public abstract boolean semanticEquals(final Object other);
+    public abstract boolean deepEquals(final Object other);
   }
   public static record Unit() implements org.polyrust.generated.Runtime.SemanticValue {
     @Override
     public boolean semanticEquals(final Object other) {
+      if ((!(other instanceof org.polyrust.generated.Runtime.Unit otherValue))) {
+        return false;
+       }
+      return true;
+    }
+    @Override
+    public boolean deepEquals(final Object other) {
       if ((!(other instanceof org.polyrust.generated.Runtime.Unit otherValue))) {
         return false;
        }
@@ -42,13 +49,13 @@ public final class Runtime {
       this.message = org.polyrust.generated.Runtime.requireScalarString(message);
     }
   }
-  public static record PolyResult<T>(boolean ok, T value, org.polyrust.generated.Runtime.PolyError error) {
+  public static record PolyResult<T>(boolean ok, T value, org.polyrust.generated.Runtime.PolyError error) implements org.polyrust.generated.Runtime.SemanticValue {
     public PolyResult(final boolean ok, final T value, final org.polyrust.generated.Runtime.PolyError error) {
       if (((ok && ((value == null) || (error != null))) || ((!ok) && ((value != null) || (error == null))))) {
         throw new IllegalArgumentException("PolyResult tag and payloads disagree");
        }
       this.ok = ok;
-      this.value = value;
+      this.value = (ok ? org.polyrust.generated.Runtime.validatePublicValue(value) : value);
       this.error = error;
     }
     public T value() {
@@ -62,6 +69,20 @@ public final class Runtime {
         throw new IllegalStateException("cannot read error from a successful PolyResult");
        }
       return this.error;
+    }
+    @Override
+    public boolean semanticEquals(final Object other) {
+      if ((!(other instanceof org.polyrust.generated.Runtime.PolyResult<?> otherValue))) {
+        return false;
+       }
+      return (((true && org.polyrust.generated.Runtime.semanticEqual(((Object) this.ok), ((Object) otherValue.ok))) && org.polyrust.generated.Runtime.semanticEqual(((Object) this.value), ((Object) otherValue.value))) && org.polyrust.generated.Runtime.semanticEqual(((Object) this.error), ((Object) otherValue.error)));
+    }
+    @Override
+    public boolean deepEquals(final Object other) {
+      if ((!(other instanceof org.polyrust.generated.Runtime.PolyResult<?> otherValue))) {
+        return false;
+       }
+      return (((true && org.polyrust.generated.Runtime.deepEqual(((Object) this.ok), ((Object) otherValue.ok))) && org.polyrust.generated.Runtime.deepEqual(((Object) this.value), ((Object) otherValue.value))) && org.polyrust.generated.Runtime.deepEqual(((Object) this.error), ((Object) otherValue.error)));
     }
   }
   public static <T> org.polyrust.generated.Runtime.PolyResult<T> ok(final T value) {
@@ -93,7 +114,40 @@ public final class Runtime {
     return Objects.deepEquals(left, right);
   }
   public static boolean deepEqual(final Object left, final Object right) {
+    if (((left instanceof Double leftDouble) && (right instanceof Double rightDouble))) {
+      return (Double.doubleToRawLongBits(leftDouble) == Double.doubleToRawLongBits(rightDouble));
+     }
+    if (((left instanceof List<?> leftList) && (right instanceof List<?> rightList))) {
+      if ((leftList.size() != rightList.size())) {
+        return false;
+       }
+      int index = 0;
+      while ((index < leftList.size())) {
+        if ((!org.polyrust.generated.Runtime.deepEqual(leftList.get(index), rightList.get(index)))) {
+          return false;
+         }
+        index = (index + 1);
+      }
+      return true;
+     }
+    if ((left instanceof org.polyrust.generated.Runtime.SemanticValue semanticValue)) {
+      return semanticValue.deepEquals(right);
+     }
     return Objects.deepEquals(left, right);
+  }
+  public static <T> T validatePublicValue(final T value) {
+    Objects.requireNonNull(value);
+    if ((value instanceof String scalarString)) {
+      org.polyrust.generated.Runtime.requireScalarString(scalarString);
+     }
+    if ((value instanceof List<?> values)) {
+      int index = 0;
+      while ((index < values.size())) {
+        org.polyrust.generated.Runtime.validatePublicValue(values.get(index));
+        index = (index + 1);
+      }
+     }
+    return value;
   }
   public static String requireScalarString(final String value) {
     Objects.requireNonNull(value);
@@ -137,13 +191,13 @@ public final class Runtime {
      }
     return 1;
   }
-  public static record PolyOption<T>(boolean some, T value) {
+  public static record PolyOption<T>(boolean some, T value) implements org.polyrust.generated.Runtime.SemanticValue {
     public PolyOption(final boolean some, final T value) {
       if (((some && (value == null)) || ((!some) && (!(value == null))))) {
         throw new IllegalArgumentException("PolyOption tag and payload disagree");
        }
       this.some = some;
-      this.value = value;
+      this.value = (some ? org.polyrust.generated.Runtime.validatePublicValue(value) : value);
     }
     public T value() {
       if ((!this.some)) {
@@ -151,15 +205,29 @@ public final class Runtime {
        }
       return this.value;
     }
+    @Override
+    public boolean semanticEquals(final Object other) {
+      if ((!(other instanceof org.polyrust.generated.Runtime.PolyOption<?> otherValue))) {
+        return false;
+       }
+      return ((true && org.polyrust.generated.Runtime.semanticEqual(((Object) this.some), ((Object) otherValue.some))) && org.polyrust.generated.Runtime.semanticEqual(((Object) this.value), ((Object) otherValue.value)));
+    }
+    @Override
+    public boolean deepEquals(final Object other) {
+      if ((!(other instanceof org.polyrust.generated.Runtime.PolyOption<?> otherValue))) {
+        return false;
+       }
+      return ((true && org.polyrust.generated.Runtime.deepEqual(((Object) this.some), ((Object) otherValue.some))) && org.polyrust.generated.Runtime.deepEqual(((Object) this.value), ((Object) otherValue.value)));
+    }
   }
-  public static record PolyValueResult<T, E>(boolean ok, T value, E error) {
+  public static record PolyValueResult<T, E>(boolean ok, T value, E error) implements org.polyrust.generated.Runtime.SemanticValue {
     public PolyValueResult(final boolean ok, final T value, final E error) {
       if (((ok && ((value == null) || (!(error == null)))) || ((!ok) && ((!(value == null)) || (error == null))))) {
         throw new IllegalArgumentException("PolyValueResult tag and payloads disagree");
        }
       this.ok = ok;
-      this.value = value;
-      this.error = error;
+      this.value = (ok ? org.polyrust.generated.Runtime.validatePublicValue(value) : value);
+      this.error = (ok ? error : org.polyrust.generated.Runtime.validatePublicValue(error));
     }
     public T value() {
       if ((!this.ok)) {
@@ -172,6 +240,20 @@ public final class Runtime {
         throw new IllegalStateException("cannot read error from Ok");
        }
       return this.error;
+    }
+    @Override
+    public boolean semanticEquals(final Object other) {
+      if ((!(other instanceof org.polyrust.generated.Runtime.PolyValueResult<?, ?> otherValue))) {
+        return false;
+       }
+      return (((true && org.polyrust.generated.Runtime.semanticEqual(((Object) this.ok), ((Object) otherValue.ok))) && org.polyrust.generated.Runtime.semanticEqual(((Object) this.value), ((Object) otherValue.value))) && org.polyrust.generated.Runtime.semanticEqual(((Object) this.error), ((Object) otherValue.error)));
+    }
+    @Override
+    public boolean deepEquals(final Object other) {
+      if ((!(other instanceof org.polyrust.generated.Runtime.PolyValueResult<?, ?> otherValue))) {
+        return false;
+       }
+      return (((true && org.polyrust.generated.Runtime.deepEqual(((Object) this.ok), ((Object) otherValue.ok))) && org.polyrust.generated.Runtime.deepEqual(((Object) this.value), ((Object) otherValue.value))) && org.polyrust.generated.Runtime.deepEqual(((Object) this.error), ((Object) otherValue.error)));
     }
   }
   public static <T> org.polyrust.generated.Runtime.PolyOption<T> optionNone() {
@@ -200,132 +282,6 @@ public final class Runtime {
   }
   public static <T, E> E valueResultError(final org.polyrust.generated.Runtime.PolyValueResult<T, E> value) {
     return value.error();
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Integer> checkedNegI32(final int value) {
-    final long candidate = (-((long) value));
-    if (((candidate < ((long) Integer.MIN_VALUE)) || (candidate > ((long) Integer.MAX_VALUE)))) {
-      return org.polyrust.generated.Runtime.fail("checked_overflow", "checked_overflow");
-     }
-    return org.polyrust.generated.Runtime.ok(((int) candidate));
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Long> checkedNegI64(final long value) {
-    final BigInteger candidate = BigInteger.valueOf(value).negate();
-    if (((candidate.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) || (candidate.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0))) {
-      return org.polyrust.generated.Runtime.fail("checked_overflow", "checked_overflow");
-     }
-    return org.polyrust.generated.Runtime.ok(candidate.longValue());
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Integer> checkedAddI32(final int left, final int right) {
-    final long candidate = (((long) left) + ((long) right));
-    if (((candidate < ((long) Integer.MIN_VALUE)) || (candidate > ((long) Integer.MAX_VALUE)))) {
-      return org.polyrust.generated.Runtime.fail("checked_overflow", "checked_overflow");
-     }
-    return org.polyrust.generated.Runtime.ok(((int) candidate));
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Long> checkedAddI64(final long left, final long right) {
-    final BigInteger candidate = BigInteger.valueOf(left).add(BigInteger.valueOf(right));
-    if (((candidate.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) || (candidate.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0))) {
-      return org.polyrust.generated.Runtime.fail("checked_overflow", "checked_overflow");
-     }
-    return org.polyrust.generated.Runtime.ok(candidate.longValue());
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Integer> checkedSubI32(final int left, final int right) {
-    final long candidate = (((long) left) - ((long) right));
-    if (((candidate < ((long) Integer.MIN_VALUE)) || (candidate > ((long) Integer.MAX_VALUE)))) {
-      return org.polyrust.generated.Runtime.fail("checked_overflow", "checked_overflow");
-     }
-    return org.polyrust.generated.Runtime.ok(((int) candidate));
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Long> checkedSubI64(final long left, final long right) {
-    final BigInteger candidate = BigInteger.valueOf(left).subtract(BigInteger.valueOf(right));
-    if (((candidate.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) || (candidate.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0))) {
-      return org.polyrust.generated.Runtime.fail("checked_overflow", "checked_overflow");
-     }
-    return org.polyrust.generated.Runtime.ok(candidate.longValue());
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Integer> checkedMulI32(final int left, final int right) {
-    final long candidate = (((long) left) * ((long) right));
-    if (((candidate < ((long) Integer.MIN_VALUE)) || (candidate > ((long) Integer.MAX_VALUE)))) {
-      return org.polyrust.generated.Runtime.fail("checked_overflow", "checked_overflow");
-     }
-    return org.polyrust.generated.Runtime.ok(((int) candidate));
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Long> checkedMulI64(final long left, final long right) {
-    final BigInteger candidate = BigInteger.valueOf(left).multiply(BigInteger.valueOf(right));
-    if (((candidate.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) || (candidate.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0))) {
-      return org.polyrust.generated.Runtime.fail("checked_overflow", "checked_overflow");
-     }
-    return org.polyrust.generated.Runtime.ok(candidate.longValue());
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Integer> checkedDivI32(final int left, final int right) {
-    if ((right == 0)) {
-      return org.polyrust.generated.Runtime.fail("division_by_zero", "division_by_zero");
-     }
-    if (((left == Integer.MIN_VALUE) && (right == -1))) {
-      return org.polyrust.generated.Runtime.fail("checked_overflow", "checked_overflow");
-     }
-    return org.polyrust.generated.Runtime.ok((left / right));
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Long> checkedDivI64(final long left, final long right) {
-    if ((right == 0L)) {
-      return org.polyrust.generated.Runtime.fail("division_by_zero", "division_by_zero");
-     }
-    if (((left == Long.MIN_VALUE) && (right == -1L))) {
-      return org.polyrust.generated.Runtime.fail("checked_overflow", "checked_overflow");
-     }
-    return org.polyrust.generated.Runtime.ok((left / right));
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Integer> checkedRemI32(final int left, final int right) {
-    if ((right == 0)) {
-      return org.polyrust.generated.Runtime.fail("remainder_by_zero", "remainder_by_zero");
-     }
-    return org.polyrust.generated.Runtime.ok((left % right));
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Long> checkedRemI64(final long left, final long right) {
-    if ((right == 0L)) {
-      return org.polyrust.generated.Runtime.fail("remainder_by_zero", "remainder_by_zero");
-     }
-    return org.polyrust.generated.Runtime.ok((left % right));
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Integer> checkedShiftLeftI32(final int left, final int right) {
-    if (((right < 0) || (right >= 32))) {
-      return org.polyrust.generated.Runtime.fail("invalid_shift", "invalid_shift");
-     }
-    return org.polyrust.generated.Runtime.ok((left << right));
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Long> checkedShiftLeftI64(final long left, final long right) {
-    if (((right < 0L) || (right >= 64L))) {
-      return org.polyrust.generated.Runtime.fail("invalid_shift", "invalid_shift");
-     }
-    return org.polyrust.generated.Runtime.ok((left << ((int) right)));
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Integer> checkedShiftRightI32(final int left, final int right) {
-    if (((right < 0) || (right >= 32))) {
-      return org.polyrust.generated.Runtime.fail("invalid_shift", "invalid_shift");
-     }
-    return org.polyrust.generated.Runtime.ok((left >> right));
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Long> checkedShiftRightI64(final long left, final long right) {
-    if (((right < 0L) || (right >= 64L))) {
-      return org.polyrust.generated.Runtime.fail("invalid_shift", "invalid_shift");
-     }
-    return org.polyrust.generated.Runtime.ok((left >> ((int) right)));
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<Integer> narrowI64ToI32(final long value) {
-    final long candidate = value;
-    if (((candidate < ((long) Integer.MIN_VALUE)) || (candidate > ((long) Integer.MAX_VALUE)))) {
-      return org.polyrust.generated.Runtime.fail("narrowing_out_of_range", "narrowing_out_of_range");
-     }
-    return org.polyrust.generated.Runtime.ok(((int) candidate));
-  }
-  public static double floatTrunc(final double value) {
-    return ((value > Double.longBitsToDouble(0L)) ? Math.floor(value) : Math.ceil(value));
-  }
-  public static boolean floatIsNegativeZero(final double value) {
-    return (Double.doubleToRawLongBits(value) == Long.MIN_VALUE);
-  }
-  public static double floatAbs(final double value) {
-    return Double.longBitsToDouble((Double.doubleToRawLongBits(value) & Long.MAX_VALUE));
   }
   public static org.polyrust.generated.Runtime.PolyResult<Long> scalarLength(final String value) {
     final int length = value.length();
@@ -364,20 +320,11 @@ public final class Runtime {
   }
   public static org.polyrust.generated.Runtime.Bytes stringToUtf8(final String value) {
     final byte[] raw = value.getBytes(StandardCharsets.UTF_8);
-    final ArrayList<Integer> output = new ArrayList<Integer>();
-    for (byte item : raw) {
-      output.add(Byte.toUnsignedInt(item));
-    }
-    return org.polyrust.generated.Runtime.bytesOf(output);
+    final byte[] encoded = raw;
+    return new org.polyrust.generated.Runtime.Bytes(encoded);
   }
   public static org.polyrust.generated.Runtime.PolyResult<String> stringFromUtf8(final org.polyrust.generated.Runtime.Bytes value) {
-    final List<Integer> values = value.values();
-    final byte[] raw = new byte[values.size()];
-    int index = 0;
-    while ((index < values.size())) {
-      raw[index] = ((byte) ((int) values.get(index)));
-      index = (index + 1);
-    }
+    final byte[] raw = value.values();
     final CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
     decoder.onMalformedInput(CodingErrorAction.REPORT);
     decoder.onUnmappableCharacter(CodingErrorAction.REPORT);
@@ -387,53 +334,92 @@ public final class Runtime {
       return org.polyrust.generated.Runtime.fail("invalid_utf8", "invalid_utf8");
      }
   }
-  public static record Bytes(List<Integer> values) implements org.polyrust.generated.Runtime.SemanticValue {
-    public Bytes(final List<Integer> values) {
-      final List<Integer> copy = List.copyOf(values);
-      for (Integer item : copy) {
-        if (((((int) item) < 0) || (((int) item) > 255))) {
-          throw new IllegalArgumentException("byte value is outside 0..255");
-         }
+  public static record Bytes(byte[] values) implements org.polyrust.generated.Runtime.SemanticValue {
+    public Bytes(final byte[] values) {
+      final byte[] source = Objects.requireNonNull(values);
+      final byte[] copy = new byte[source.length];
+      int index = 0;
+      while ((index < source.length)) {
+        copy[index] = source[index];
+        index = (index + 1);
       }
-      this.values = copy;
+      final byte[] frozen = copy;
+      this.values = frozen;
+    }
+    public byte[] values() {
+      final byte[] copy = new byte[this.values.length];
+      int index = 0;
+      while ((index < this.values.length)) {
+        copy[index] = this.values[index];
+        index = (index + 1);
+      }
+      final byte[] frozen = copy;
+      return frozen;
     }
     @Override
     public boolean semanticEquals(final Object other) {
       if ((!(other instanceof org.polyrust.generated.Runtime.Bytes otherValue))) {
         return false;
        }
-      return (true && org.polyrust.generated.Runtime.semanticEqual(this.values(), otherValue.values()));
+      return (true && org.polyrust.generated.Runtime.semanticEqual(((Object) this.values()), ((Object) otherValue.values())));
+    }
+    @Override
+    public boolean deepEquals(final Object other) {
+      if ((!(other instanceof org.polyrust.generated.Runtime.Bytes otherValue))) {
+        return false;
+       }
+      return (true && org.polyrust.generated.Runtime.deepEqual(((Object) this.values()), ((Object) otherValue.values())));
     }
   }
   public static org.polyrust.generated.Runtime.Bytes bytesOf(final List<Integer> values) {
-    return new org.polyrust.generated.Runtime.Bytes(values);
+    final List<Integer> immutable = List.copyOf(values);
+    final byte[] copy = new byte[immutable.size()];
+    int index = 0;
+    while ((index < immutable.size())) {
+      final Integer item = immutable.get(index);
+      if (((((int) item) < 0) || (((int) item) > 255))) {
+        throw new IllegalArgumentException("byte value is outside 0..255");
+       }
+      copy[index] = ((byte) ((int) item));
+      index = (index + 1);
+    }
+    final byte[] frozen = copy;
+    return new org.polyrust.generated.Runtime.Bytes(frozen);
+  }
+  public static List<Integer> bytesToList(final org.polyrust.generated.Runtime.Bytes value) {
+    final byte[] raw = value.values();
+    final ArrayList<Integer> output = new ArrayList<Integer>();
+    for (byte item : raw) {
+      output.add(Byte.toUnsignedInt(item));
+    }
+    return List.copyOf(output);
   }
   public static long bytesLength(final org.polyrust.generated.Runtime.Bytes value) {
-    return ((long) value.values().size());
+    return ((long) value.values().length);
   }
   public static boolean bytesIsEmpty(final org.polyrust.generated.Runtime.Bytes value) {
-    return value.values().isEmpty();
+    return (value.values().length == 0);
   }
   public static org.polyrust.generated.Runtime.Bytes bytesConcat(final org.polyrust.generated.Runtime.Bytes left, final org.polyrust.generated.Runtime.Bytes right) {
-    return org.polyrust.generated.Runtime.bytesOf(org.polyrust.generated.Runtime.listConcat(left.values(), right.values()));
+    return org.polyrust.generated.Runtime.bytesOf(org.polyrust.generated.Runtime.listConcat(org.polyrust.generated.Runtime.bytesToList(left), org.polyrust.generated.Runtime.bytesToList(right)));
   }
   public static org.polyrust.generated.Runtime.Bytes bytesReplaceAll(final org.polyrust.generated.Runtime.Bytes source, final org.polyrust.generated.Runtime.Bytes needle, final org.polyrust.generated.Runtime.Bytes replacement) {
     final ArrayList<Integer> result = new ArrayList<Integer>();
-    if (needle.values().isEmpty()) {
-      result.addAll(replacement.values());
-      for (Integer item : source.values()) {
+    if (org.polyrust.generated.Runtime.bytesToList(needle).isEmpty()) {
+      result.addAll(org.polyrust.generated.Runtime.bytesToList(replacement));
+      for (Integer item : org.polyrust.generated.Runtime.bytesToList(source)) {
         result.add(item);
-        result.addAll(replacement.values());
+        result.addAll(org.polyrust.generated.Runtime.bytesToList(replacement));
       }
       return org.polyrust.generated.Runtime.bytesOf(result);
      }
     int offset = 0;
-    while ((offset < source.values().size())) {
-      if ((((offset + needle.values().size()) <= source.values().size()) && Objects.deepEquals(source.values().subList(offset, (offset + needle.values().size())), needle.values()))) {
-        result.addAll(replacement.values());
-        offset = (offset + needle.values().size());
+    while ((offset < org.polyrust.generated.Runtime.bytesToList(source).size())) {
+      if ((((offset + org.polyrust.generated.Runtime.bytesToList(needle).size()) <= org.polyrust.generated.Runtime.bytesToList(source).size()) && Objects.deepEquals(org.polyrust.generated.Runtime.bytesToList(source).subList(offset, (offset + org.polyrust.generated.Runtime.bytesToList(needle).size())), org.polyrust.generated.Runtime.bytesToList(needle)))) {
+        result.addAll(org.polyrust.generated.Runtime.bytesToList(replacement));
+        offset = (offset + org.polyrust.generated.Runtime.bytesToList(needle).size());
        } else {
-        result.add(source.values().get(offset));
+        result.add(org.polyrust.generated.Runtime.bytesToList(source).get(offset));
         offset = (offset + 1);
       }
     }

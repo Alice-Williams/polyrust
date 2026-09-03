@@ -6,6 +6,7 @@ edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 publish.workspace = true
+autoexamples = false
 
 [lib]
 name = "portable_backend_rust"
@@ -22,3 +23,7 @@ portable_eval.workspace = true
 
 [lints]
 workspace = true
+
+[[example]]
+name = "generate_rust_v0"
+path = "examples/generate_v0.rs"

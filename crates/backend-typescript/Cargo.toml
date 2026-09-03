@@ -6,6 +6,7 @@ edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 publish.workspace = true
+autoexamples = false
 
 [lib]
 name = "portable_backend_typescript"
@@ -18,3 +19,11 @@ serde_json.workspace = true
 
 [lints]
 workspace = true
+
+[[example]]
+name = "generate_javascript_v0"
+path = "examples/generate_javascript_v0.rs"
+
+[[example]]
+name = "generate_typescript_v0"
+path = "examples/generate_v0.rs"

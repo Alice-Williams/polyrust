@@ -1,4 +1,5 @@
 exports_files([
     "defs.bzl",
     "negative_compile_test.sh",
+    "sealed_interface_negative_test.sh",
 ])

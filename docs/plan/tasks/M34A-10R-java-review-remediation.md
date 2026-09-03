@@ -103,4 +103,56 @@ source parsing, and unrelated renderer conveniences do not block completion.
   BUILD file names a missing `differential_test.sh`; it was not modified.
 - The independent `//:release_gate` matrix passed 230 of 230 tests uncached
   from the same final tree.
-- Fresh blind review round 2: pending against the pushed remediation commit.
+- Fresh blind review round 2 at `e03a6334189bfd8ac1064d168235c1c76a4c8311`:
+  eight core findings accepted. These cover recursive option/result equality,
+  deep public-value normalization, immutable closed interface values,
+  Java-specific member-shape preflight, nested constant intrinsics, actual
+  enum-keyed strategy consumption and minimal helper roots, remaining verifier
+  trust-boundary holes, and the normative `byte[]` representation for bytes.
+- Optional external-adapter implementation is not promoted into scope. The
+  unused and unresolved AST variant will be removed because the specification
+  permits but does not require Java framework inheritance support.
+- The report's literal `javac --release 21` follow-up is rejected as a core
+  defect: Bazel's hermetic `-source 21 -target 21 --system <JDK-21-image>`
+  invocation enforces the same source, bytecode, and Java 21 platform API
+  boundary. It remains an evidence wording cleanup, not a semantic gap.
+- Hosted CI for `e03a633` reproduced a previously latent cold-Cargo race:
+  auto-discovered `generate_v0` examples from seven packages collided on one
+  output path. Round 2 assigns unique Cargo example target names and proves the
+  fix from a clean checkout.
+- Round 2 remediation represents bytes as defensively copied `byte[]` and gives
+  every tagged/generated value typed equality methods. `semanticEquals` keeps
+  portable IEEE language equality (NaN unequal, signed zero equal), while
+  `deepEquals` recursively compares raw F64 bits for conformance expectations.
+  The AST has an explicit
+  enum-valued fresh-array ownership transition; its positive and negative
+  verifier fixtures prevent mutable arrays from escaping by an ordinary cast.
+- Generated public parameter and record-component boundaries now perform
+  recursive `CoreTypeId`-directed reconstruction for lists, options, and
+  results. The separately compiled semantic-edge consumer mutates both inner
+  and outer source lists and proves no alias survives; it also proves nested
+  malformed UTF-16 is rejected. No erased cast or reflection is used.
+- Portable Java interfaces are sealed with an exact typed permits set derived
+  from checked implementations. A deliberate external implementation fails
+  under hermetic Java 21 compilation, and an interface without a generated
+  implementation stops during shape preflight.
+- Capability selection is validated feature-for-feature, including support
+  mode and enum-valued lowering strategy, before any symbols or files are
+  registered. The native conformance file no longer injects unselected
+  operations, and a minimal program proves optional helpers stay absent.
+- The Java AST verifier now covers authoritative generated/local references,
+  true Java erasure, checked exceptions, modifier contexts, foreach element
+  types, and complete interface implementations. Focused negative fixtures
+  exercise each rejected shape.
+- The specified uncached Java/codegen/policy gate passed 28 of 28 targets after
+  round 2 remediation. The regenerated v0 and interface snapshots passed their
+  byte-for-byte comparison target.
+- The complete tracked repository replay passed 291 of 291 targets uncached in
+  the Linux development container, including Rustfmt, Clippy, Buildifier,
+  source/template/dependency policy, every Java positive and compile-fail
+  target, native compilers, sanitizers, and differential conformance. The
+  user-owned untracked `examples/real-world/stdlib-abs` work remains excluded
+  and untouched.
+- The independently composed `//:release_gate` replay passed 230 of 230 targets
+  uncached from the same final tree. Checkpoint commit/push and a fresh blind
+  review remain pending.

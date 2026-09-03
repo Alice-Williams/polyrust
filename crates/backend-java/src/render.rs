@@ -1413,6 +1413,9 @@ fn render_expr(
                 file,
             )
         }
+        JavaExprKind::ArrayOwnershipTransition { value, .. } => {
+            render_expr(value, names, templates, file)
+        }
         JavaExprKind::InstanceOf {
             value,
             target,
@@ -1589,7 +1592,6 @@ fn render_heritage(
             .map(|value| render_java_type(value, names))
             .collect::<Result<Vec<_>, Vec<Diagnostic>>>()
             .map(|values| format!(" implements {}", values.join(", "))),
-        JavaHeritage::ExternalAdapter { .. } => Ok(" extends ApprovedFrameworkAdapter".to_owned()),
     }
 }
 

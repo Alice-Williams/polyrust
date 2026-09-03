@@ -401,7 +401,7 @@ impl JavaKnownCallable {
                 None,
                 vec![JavaType::Array {
                     component: Box::new(JavaType::primitive(JavaPrimitive::Byte)),
-                    ownership: JavaArrayOwnership::InternalMutable,
+                    ownership: JavaArrayOwnership::DefensiveCopyBoundary,
                 }],
                 JavaType::known(JavaKnownType::ByteBuffer),
             ),
@@ -542,10 +542,10 @@ impl JavaKnownConstructor {
             }
             Self::RuntimeOption => vec![boolean, t.clone()],
             Self::RuntimeValueResult => vec![boolean, t, e],
-            Self::RuntimeBytes => vec![JavaType::generic(
-                JavaKnownType::List,
-                vec![JavaType::Boxed(JavaPrimitive::Int)],
-            )],
+            Self::RuntimeBytes => vec![JavaType::Array {
+                component: Box::new(JavaType::primitive(JavaPrimitive::Byte)),
+                ownership: JavaArrayOwnership::DefensiveCopyBoundary,
+            }],
             Self::RuntimeScalar => vec![JavaType::primitive(JavaPrimitive::Int)],
             Self::RuntimeUnit => vec![],
         };
@@ -1024,6 +1024,7 @@ pub enum JavaRuntimeCallable {
     Fail,
     DeepEqual,
     SemanticEqual,
+    ValidatePublicValue,
     RequireScalarString,
     CompareScalarStrings,
     OptionNone,
@@ -1065,6 +1066,7 @@ pub enum JavaRuntimeCallable {
     StringToUtf8,
     StringFromUtf8,
     BytesOf,
+    BytesToList,
     BytesLength,
     BytesIsEmpty,
     BytesConcat,
@@ -1080,11 +1082,12 @@ pub enum JavaRuntimeCallable {
 }
 
 impl JavaRuntimeCallable {
-    pub const ALL: [Self; 57] = [
+    pub const ALL: [Self; 59] = [
         Self::Ok,
         Self::Fail,
         Self::DeepEqual,
         Self::SemanticEqual,
+        Self::ValidatePublicValue,
         Self::RequireScalarString,
         Self::CompareScalarStrings,
         Self::OptionNone,
@@ -1126,6 +1129,7 @@ impl JavaRuntimeCallable {
         Self::StringToUtf8,
         Self::StringFromUtf8,
         Self::BytesOf,
+        Self::BytesToList,
         Self::BytesLength,
         Self::BytesIsEmpty,
         Self::BytesConcat,
@@ -1146,6 +1150,7 @@ impl JavaRuntimeCallable {
             | Self::Fail
             | Self::DeepEqual
             | Self::SemanticEqual
+            | Self::ValidatePublicValue
             | Self::RequireScalarString
             | Self::CompareScalarStrings => JavaRuntimeHelper::Core,
             Self::OptionNone
@@ -1187,6 +1192,7 @@ impl JavaRuntimeCallable {
             | Self::StringTrimStart
             | Self::StringTrimEnd => JavaRuntimeHelper::StringOperations,
             Self::BytesOf
+            | Self::BytesToList
             | Self::BytesLength
             | Self::BytesIsEmpty
             | Self::BytesConcat
@@ -1208,6 +1214,7 @@ impl JavaRuntimeCallable {
             Self::Fail => "fail",
             Self::DeepEqual => "deepEqual",
             Self::SemanticEqual => "semanticEqual",
+            Self::ValidatePublicValue => "validatePublicValue",
             Self::RequireScalarString => "requireScalarString",
             Self::CompareScalarStrings => "compareScalarStrings",
             Self::OptionNone => "optionNone",
@@ -1249,6 +1256,7 @@ impl JavaRuntimeCallable {
             Self::StringToUtf8 => "stringToUtf8",
             Self::StringFromUtf8 => "stringFromUtf8",
             Self::BytesOf => "bytesOf",
+            Self::BytesToList => "bytesToList",
             Self::BytesLength => "bytesLength",
             Self::BytesIsEmpty => "bytesIsEmpty",
             Self::BytesConcat => "bytesConcat",
@@ -1270,6 +1278,7 @@ impl JavaRuntimeCallable {
             Self::Fail => "org.polyrust.generated.Runtime.fail",
             Self::DeepEqual => "org.polyrust.generated.Runtime.deepEqual",
             Self::SemanticEqual => "org.polyrust.generated.Runtime.semanticEqual",
+            Self::ValidatePublicValue => "org.polyrust.generated.Runtime.validatePublicValue",
             Self::RequireScalarString => "org.polyrust.generated.Runtime.requireScalarString",
             Self::CompareScalarStrings => "org.polyrust.generated.Runtime.compareScalarStrings",
             Self::OptionNone => "org.polyrust.generated.Runtime.optionNone",
@@ -1313,6 +1322,7 @@ impl JavaRuntimeCallable {
             Self::StringToUtf8 => "org.polyrust.generated.Runtime.stringToUtf8",
             Self::StringFromUtf8 => "org.polyrust.generated.Runtime.stringFromUtf8",
             Self::BytesOf => "org.polyrust.generated.Runtime.bytesOf",
+            Self::BytesToList => "org.polyrust.generated.Runtime.bytesToList",
             Self::BytesLength => "org.polyrust.generated.Runtime.bytesLength",
             Self::BytesIsEmpty => "org.polyrust.generated.Runtime.bytesIsEmpty",
             Self::BytesConcat => "org.polyrust.generated.Runtime.bytesConcat",
@@ -1370,6 +1380,7 @@ impl JavaRuntimeCallable {
             Self::DeepEqual | Self::SemanticEqual => {
                 signature(None, vec![object.clone(), object], boolean)
             }
+            Self::ValidatePublicValue => signature(None, vec![t.clone()], t),
             Self::RequireScalarString => signature(None, vec![string.clone()], string),
             Self::CompareScalarStrings => signature(None, vec![string.clone(), string], int),
             Self::OptionNone => signature(None, vec![], option_t),
@@ -1422,6 +1433,7 @@ impl JavaRuntimeCallable {
             Self::StringToUtf8 => signature(None, vec![string], bytes),
             Self::StringFromUtf8 => signature(None, vec![bytes], result_string),
             Self::BytesOf => signature(None, vec![integer_list], bytes),
+            Self::BytesToList => signature(None, vec![bytes], integer_list),
             Self::BytesLength => signature(None, vec![bytes], long),
             Self::BytesIsEmpty => signature(None, vec![bytes], boolean),
             Self::BytesConcat => signature(None, vec![bytes.clone(), bytes.clone()], bytes),
@@ -2321,25 +2333,6 @@ mod tests {
             portable_codegen::SourceRole::NegativeTest,
             JavaFilePlacement::NegativeTest,
             portable_codegen::FileGroupRole::NegativeTests,
-        )
-        .unwrap_err();
-        assert!(
-            diagnostics
-                .iter()
-                .any(|diagnostic| diagnostic.code == DiagnosticCode::InvalidStructure)
-        );
-
-        let diagnostics = verify_single_file(
-            declaration(
-                JavaHeritage::ExternalAdapter {
-                    base: JavaExternalBase::ApprovedFrameworkAdapter,
-                    delegated_field: JavaIdentifier::from_portable("component"),
-                },
-                vec![],
-            ),
-            portable_codegen::SourceRole::PublicApi,
-            JavaFilePlacement::Main,
-            portable_codegen::FileGroupRole::PublicApi,
         )
         .unwrap_err();
         assert!(

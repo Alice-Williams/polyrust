@@ -73,12 +73,7 @@ impl<'a> Lowering<'a> {
     }
 
     fn lower(mut self) -> Result<TargetAstPackage<JavaDialect>, Vec<Diagnostic>> {
-        let expected = portable_codegen::collect_core_features(self.core).len();
-        if self.capabilities.selected().len() != expected {
-            return Err(vec![diagnostic(
-                "Java lowering received an incomplete capability selection",
-            )]);
-        }
+        self.capabilities.validate_for(self.core)?;
         self.register_types();
         self.register_values_and_callables()?;
         let negative = self.negative_file()?;
@@ -164,7 +159,7 @@ impl<'a> Lowering<'a> {
                     let item = self.core.interface(id).expect("verified interface");
                     let generated = self.builder.generated_type(GeneratedType {
                         name: item.header.name.clone(),
-                        kind: JavaDeclarationKind::Interface,
+                        kind: JavaDeclarationKind::SealedInterface,
                         visibility: java_visibility(item.header.visibility),
                         origin: GeneratedOrigin::CoreDeclaration(*declaration),
                         source: item.header.source.clone(),
@@ -348,192 +343,6 @@ impl<'a> Lowering<'a> {
     }
 
     fn conformance_file(&mut self) -> Result<portable_codegen::TargetFileId, Vec<Diagnostic>> {
-        let boolean = JavaType::primitive(JavaPrimitive::Boolean);
-        let int = JavaType::primitive(JavaPrimitive::Int);
-        let long = JavaType::primitive(JavaPrimitive::Long);
-        let string = JavaType::known(JavaKnownType::String);
-        let result_long = JavaType::generic(
-            JavaKnownType::RuntimeResult,
-            vec![JavaType::Boxed(JavaPrimitive::Long)],
-        );
-        let result_int = JavaType::generic(
-            JavaKnownType::RuntimeResult,
-            vec![JavaType::Boxed(JavaPrimitive::Int)],
-        );
-        let integer_list = JavaType::generic(
-            JavaKnownType::List,
-            vec![JavaType::Boxed(JavaPrimitive::Int)],
-        );
-        let astral = identifier("astral");
-        let invalid = identifier("invalid");
-        let overflow = identifier("overflow");
-        let original = identifier("original");
-        let appended = identifier("appended");
-        let statements = vec![
-            JavaStmt::Local {
-                finality: JavaLocalFinality::Final,
-                ty: result_long.clone(),
-                name: astral.clone(),
-                value: Some(runtime_call(
-                    JavaRuntimeCallable::ScalarLength,
-                    vec![string_literal("😀")],
-                    result_long.clone(),
-                )),
-            },
-            assert_true(
-                binary(
-                    JavaBinaryOperator::LogicalAnd,
-                    member_call(
-                        JavaExpr::local(result_long.clone(), astral.clone()),
-                        "ok",
-                        vec![],
-                        boolean.clone(),
-                        JavaMemberOrigin::Runtime(JavaRuntimeMember::ResultOk),
-                    ),
-                    binary(
-                        JavaBinaryOperator::Equal,
-                        member_call(
-                            JavaExpr::local(result_long.clone(), astral),
-                            "value",
-                            vec![],
-                            long.clone(),
-                            JavaMemberOrigin::Runtime(JavaRuntimeMember::ResultValue),
-                        ),
-                        i64_literal(1),
-                        boolean.clone(),
-                    ),
-                    boolean.clone(),
-                ),
-                "astral scalar length",
-            ),
-            JavaStmt::Local {
-                finality: JavaLocalFinality::Final,
-                ty: result_long.clone(),
-                name: invalid.clone(),
-                value: Some(runtime_call(
-                    JavaRuntimeCallable::ScalarLength,
-                    vec![JavaExpr::literal(
-                        string,
-                        JavaLiteral::Utf16Units(vec![0xd800]),
-                    )],
-                    result_long.clone(),
-                )),
-            },
-            assert_true(
-                unary(
-                    JavaUnaryOperator::Not,
-                    member_call(
-                        JavaExpr::local(result_long, invalid),
-                        "ok",
-                        vec![],
-                        boolean.clone(),
-                        JavaMemberOrigin::Runtime(JavaRuntimeMember::ResultOk),
-                    ),
-                    boolean.clone(),
-                ),
-                "unpaired surrogate rejection",
-            ),
-            JavaStmt::Local {
-                finality: JavaLocalFinality::Final,
-                ty: result_int.clone(),
-                name: overflow.clone(),
-                value: Some(runtime_call(
-                    JavaRuntimeCallable::CheckedAddI32,
-                    vec![i32_literal(i32::MAX), i32_literal(1)],
-                    result_int.clone(),
-                )),
-            },
-            assert_true(
-                unary(
-                    JavaUnaryOperator::Not,
-                    member_call(
-                        JavaExpr::local(result_int, overflow),
-                        "ok",
-                        vec![],
-                        boolean.clone(),
-                        JavaMemberOrigin::Runtime(JavaRuntimeMember::ResultOk),
-                    ),
-                    boolean.clone(),
-                ),
-                "checked overflow",
-            ),
-            assert_true(
-                runtime_call(
-                    JavaRuntimeCallable::FloatIsNegativeZero,
-                    vec![f64_literal(0x8000_0000_0000_0000)],
-                    boolean.clone(),
-                ),
-                "negative zero bits",
-            ),
-            assert_true(
-                unary(
-                    JavaUnaryOperator::Not,
-                    runtime_call(
-                        JavaRuntimeCallable::SemanticEqual,
-                        vec![
-                            f64_literal(0x7ff8_0000_0000_0001),
-                            f64_literal(0x7ff8_0000_0000_0001),
-                        ],
-                        boolean.clone(),
-                    ),
-                    boolean.clone(),
-                ),
-                "NaN semantic inequality",
-            ),
-            JavaStmt::Local {
-                finality: JavaLocalFinality::Final,
-                ty: integer_list.clone(),
-                name: original.clone(),
-                value: Some(known_generic_call(
-                    JavaKnownCallable::ListOf,
-                    vec![i32_literal(1)],
-                    integer_list.clone(),
-                )),
-            },
-            JavaStmt::Local {
-                finality: JavaLocalFinality::Final,
-                ty: integer_list.clone(),
-                name: appended.clone(),
-                value: Some(runtime_call(
-                    JavaRuntimeCallable::ListAppend,
-                    vec![
-                        JavaExpr::local(integer_list.clone(), original.clone()),
-                        i32_literal(2),
-                    ],
-                    integer_list.clone(),
-                )),
-            },
-            assert_true(
-                binary(
-                    JavaBinaryOperator::Equal,
-                    member_call(
-                        JavaExpr::local(integer_list.clone(), appended),
-                        "size",
-                        vec![],
-                        int.clone(),
-                        JavaMemberOrigin::Known(JavaKnownMethod::ListSize),
-                    ),
-                    i32_literal(2),
-                    boolean.clone(),
-                ),
-                "append result",
-            ),
-            assert_true(
-                binary(
-                    JavaBinaryOperator::Equal,
-                    member_call(
-                        JavaExpr::local(integer_list, original),
-                        "size",
-                        vec![],
-                        int,
-                        JavaMemberOrigin::Known(JavaKnownMethod::ListSize),
-                    ),
-                    i32_literal(1),
-                    boolean,
-                ),
-                "immutable list input",
-            ),
-        ];
         let declaration = JavaTypeDeclaration {
             declared: None,
             kind: JavaDeclarationKind::FinalClass,
@@ -561,7 +370,7 @@ impl<'a> Lowering<'a> {
                         name: identifier("arguments"),
                         final_parameter: true,
                     }],
-                    body: Some(JavaBlock::new(statements)),
+                    body: Some(JavaBlock::new(vec![])),
                 }),
             ],
         };
@@ -580,10 +389,6 @@ impl<'a> Lowering<'a> {
     }
 
     fn negative_file(&mut self) -> Result<portable_codegen::TargetFileId, Vec<Diagnostic>> {
-        let option_integer = JavaType::generic(
-            JavaKnownType::RuntimeOption,
-            vec![JavaType::Boxed(JavaPrimitive::Int)],
-        );
         let declaration = JavaTypeDeclaration {
             declared: None,
             kind: JavaDeclarationKind::FinalClass,
@@ -598,7 +403,7 @@ impl<'a> Lowering<'a> {
                 JavaMember::Constructor(private_constructor("InvalidTypes")),
                 JavaMember::CompileFailField(JavaCompileFailField {
                     modifiers: vec![JavaModifier::Final],
-                    expected_type: option_integer,
+                    expected_type: JavaType::primitive(JavaPrimitive::Int),
                     name: identifier("invalid"),
                     initializer: string_literal("missing"),
                 }),
@@ -627,7 +432,18 @@ impl<'a> Lowering<'a> {
                 record.header.visibility,
                 &record.fields,
             )?),
-            JavaMember::Method(self.semantic_method(self.records[&id], &record.fields)?),
+            JavaMember::Method(self.value_equality_method(
+                self.records[&id],
+                &record.fields,
+                JavaRuntimeCallable::SemanticEqual,
+                JavaRuntimeMember::SemanticEquals,
+            )?),
+            JavaMember::Method(self.value_equality_method(
+                self.records[&id],
+                &record.fields,
+                JavaRuntimeCallable::DeepEqual,
+                JavaRuntimeMember::DeepEquals,
+            )?),
         ];
         let mut interfaces = vec![JavaType::known(JavaKnownType::RuntimeSemanticValue)];
         for declaration in &self.core.module().declarations {
@@ -735,7 +551,18 @@ impl<'a> Lowering<'a> {
                         enumeration.header.visibility,
                         &variant.fields,
                     )?),
-                    JavaMember::Method(self.semantic_method(variant_type, &variant.fields)?),
+                    JavaMember::Method(self.value_equality_method(
+                        variant_type,
+                        &variant.fields,
+                        JavaRuntimeCallable::SemanticEqual,
+                        JavaRuntimeMember::SemanticEquals,
+                    )?),
+                    JavaMember::Method(self.value_equality_method(
+                        variant_type,
+                        &variant.fields,
+                        JavaRuntimeCallable::DeepEqual,
+                        JavaRuntimeMember::DeepEquals,
+                    )?),
                 ],
             });
         }
@@ -757,30 +584,8 @@ impl<'a> Lowering<'a> {
             let ty = self.ty(field.ty)?;
             let field_name = identifier(&field.header.name);
             let input = JavaExpr::local(ty.clone(), field_name.clone());
-            let value = if matches!(self.core.types().get(field.ty), Some(CoreType::String)) {
-                runtime_call(
-                    JavaRuntimeCallable::RequireScalarString,
-                    vec![input],
-                    ty.clone(),
-                )
-            } else {
-                match &ty {
-                    JavaType::Primitive(_) | JavaType::Boxed(_) => input,
-                    JavaType::Generic {
-                        raw: JavaTypeName::Known(JavaKnownType::List),
-                        ..
-                    } => known_generic_call(JavaKnownCallable::ListCopyOf, vec![input], ty.clone()),
-                    JavaType::Reference(_)
-                    | JavaType::Array { .. }
-                    | JavaType::Generic { .. }
-                    | JavaType::Wildcard { .. }
-                    | JavaType::TypeVariable(_) => known_generic_call(
-                        JavaKnownCallable::ObjectsRequireNonNull,
-                        vec![input],
-                        ty.clone(),
-                    ),
-                }
-            };
+            let normalized = self.normalize_boundary_value(field.ty, input)?;
+            statements.extend(normalized.statements);
             parameters.push(JavaParameter {
                 ty: ty.clone(),
                 name: field_name.clone(),
@@ -804,7 +609,7 @@ impl<'a> Lowering<'a> {
                         },
                     },
                 },
-                value,
+                value: normalized.value,
             });
         }
         Ok(JavaConstructor {
@@ -815,10 +620,12 @@ impl<'a> Lowering<'a> {
         })
     }
 
-    fn semantic_method(
+    fn value_equality_method(
         &self,
         owner: GeneratedTypeId,
         fields: &[CoreFieldId],
+        callable: JavaRuntimeCallable,
+        member: JavaRuntimeMember,
     ) -> Result<JavaMethod, Vec<Diagnostic>> {
         let object = JavaType::known(JavaKnownType::Object);
         let boolean = JavaType::primitive(JavaPrimitive::Boolean);
@@ -837,7 +644,7 @@ impl<'a> Lowering<'a> {
                 JavaBinaryOperator::LogicalAnd,
                 equal,
                 runtime_call(
-                    JavaRuntimeCallable::SemanticEqual,
+                    callable,
                     vec![
                         member_call(
                             this.clone(),
@@ -865,7 +672,7 @@ impl<'a> Lowering<'a> {
             modifiers: vec![JavaModifier::Public],
             type_parameters: vec![],
             return_type: boolean.clone(),
-            name: identifier("semanticEquals"),
+            name: identifier(member.name()),
             parameters: vec![JavaParameter {
                 ty: object.clone(),
                 name: identifier("other"),
@@ -895,6 +702,17 @@ impl<'a> Lowering<'a> {
         id: CoreInterfaceId,
     ) -> Result<JavaTypeDeclaration, Vec<Diagnostic>> {
         let interface = self.core.interface(id).expect("verified interface");
+        let permits = self
+            .core
+            .implementations()
+            .iter()
+            .filter(|implementation| implementation.interface == id)
+            .map(|implementation| {
+                JavaType::Reference(JavaTypeName::Generated(
+                    self.records[&implementation.record],
+                ))
+            })
+            .collect();
         let mut members = Vec::new();
         for method_id in &interface.methods {
             let method = self
@@ -914,14 +732,14 @@ impl<'a> Lowering<'a> {
         }
         Ok(JavaTypeDeclaration {
             declared: Some(self.interfaces[&id]),
-            kind: JavaDeclarationKind::Interface,
+            kind: JavaDeclarationKind::SealedInterface,
             visibility: java_visibility(interface.header.visibility),
             modifiers: vec![JavaModifier::Static],
             name: identifier(&interface.header.name),
             type_parameters: vec![],
             record_components: vec![],
             heritage: JavaHeritage::None,
-            permits: vec![],
+            permits,
             members,
         })
     }
@@ -1022,34 +840,206 @@ impl<'a> Lowering<'a> {
             let input_name = JavaIdentifier::new(format!("__polyrust_input_{index}"))
                 .expect("internal Java parameter identifier is valid");
             let input = JavaExpr::local(ty.clone(), input_name.clone());
-            let normalized = match self.core.types().get(parameter.ty) {
-                Some(CoreType::String) => runtime_call(
-                    JavaRuntimeCallable::RequireScalarString,
-                    vec![input],
-                    ty.clone(),
-                ),
-                Some(CoreType::List(_)) => {
-                    known_generic_call(JavaKnownCallable::ListCopyOf, vec![input], ty.clone())
-                }
-                _ => known_generic_call(
-                    JavaKnownCallable::ObjectsRequireNonNull,
-                    vec![input],
-                    ty.clone(),
-                ),
-            };
+            let normalized = self.normalize_boundary_value(parameter.ty, input)?;
             parameters.push(JavaParameter {
                 ty: ty.clone(),
                 name: input_name,
                 final_parameter: true,
             });
+            boundary.extend(normalized.statements);
             boundary.push(JavaStmt::Local {
                 finality: JavaLocalFinality::Final,
                 ty,
                 name: identifier(&parameter.header.name),
-                value: Some(normalized),
+                value: Some(normalized.value),
             });
         }
         Ok((parameters, boundary))
+    }
+
+    fn normalize_boundary_value(
+        &self,
+        core_type: CoreTypeId,
+        input: JavaExpr,
+    ) -> Result<ExprPlan, Vec<Diagnostic>> {
+        let Some(kind) = self.core.types().get(core_type) else {
+            return Err(vec![diagnostic("missing boundary CoreIR type")]);
+        };
+        match kind {
+            CoreType::Unit
+            | CoreType::Char
+            | CoreType::Bytes
+            | CoreType::Record(_)
+            | CoreType::Enum(_)
+            | CoreType::Interface(_) => Ok(ExprPlan::pure(known_generic_call(
+                JavaKnownCallable::ObjectsRequireNonNull,
+                vec![input.clone()],
+                input.ty,
+            ))),
+            CoreType::String => Ok(ExprPlan::pure(runtime_call(
+                JavaRuntimeCallable::RequireScalarString,
+                vec![input.clone()],
+                input.ty,
+            ))),
+            CoreType::Bool | CoreType::I32 | CoreType::I64 | CoreType::F64 => {
+                Ok(ExprPlan::pure(input))
+            }
+            CoreType::List(element) => self.normalize_boundary_list(*element, input),
+            CoreType::Option(inner) => self.normalize_boundary_option(*inner, input),
+            CoreType::Result { ok, error } => self.normalize_boundary_result(*ok, *error, input),
+        }
+    }
+
+    fn normalize_boundary_list(
+        &self,
+        element: CoreTypeId,
+        input: JavaExpr,
+    ) -> Result<ExprPlan, Vec<Diagnostic>> {
+        let list_type = input.ty.clone();
+        let element_type = self.ty(element)?.boxed();
+        let mutable_type = JavaType::Generic {
+            raw: JavaTypeName::Known(JavaKnownType::ArrayList),
+            arguments: vec![element_type.clone()],
+        };
+        let (output_name, output) = self.temporary("boundaryList", mutable_type.clone());
+        let (item_name, item) = self.temporary("boundaryItem", element_type.clone());
+        let normalized = self.normalize_boundary_value(element, item)?;
+        let mut loop_body = normalized.statements;
+        loop_body.push(JavaStmt::Expression(member_call(
+            output.clone(),
+            JavaKnownMethod::ArrayListAdd.name().text(),
+            vec![normalized.value],
+            JavaType::primitive(JavaPrimitive::Boolean),
+            JavaMemberOrigin::Known(JavaKnownMethod::ArrayListAdd),
+        )));
+        Ok(ExprPlan {
+            statements: vec![
+                JavaStmt::Local {
+                    finality: JavaLocalFinality::Final,
+                    ty: mutable_type.clone(),
+                    name: output_name,
+                    value: Some(new_known(
+                        JavaKnownConstructor::ArrayList,
+                        mutable_type,
+                        vec![],
+                    )),
+                },
+                JavaStmt::ForEach {
+                    binding_type: element_type,
+                    binding: item_name,
+                    iterable: input,
+                    body: JavaBlock::new(loop_body),
+                },
+            ],
+            value: known_generic_call(JavaKnownCallable::ListCopyOf, vec![output], list_type),
+        })
+    }
+
+    fn normalize_boundary_option(
+        &self,
+        inner: CoreTypeId,
+        input: JavaExpr,
+    ) -> Result<ExprPlan, Vec<Diagnostic>> {
+        let option_type = input.ty.clone();
+        let (result_name, result) = self.temporary("boundaryOption", option_type.clone());
+        let payload = runtime_call(
+            JavaRuntimeCallable::OptionValue,
+            vec![input.clone()],
+            self.ty(inner)?.boxed(),
+        );
+        let normalized = self.normalize_boundary_value(inner, payload)?;
+        let mut some_statements = normalized.statements;
+        some_statements.push(JavaStmt::Assign {
+            target: result.clone(),
+            value: runtime_call(
+                JavaRuntimeCallable::OptionSome,
+                vec![normalized.value],
+                option_type.clone(),
+            ),
+        });
+        Ok(ExprPlan {
+            statements: vec![
+                JavaStmt::Local {
+                    finality: JavaLocalFinality::Mutable,
+                    ty: option_type.clone(),
+                    name: result_name,
+                    value: None,
+                },
+                JavaStmt::If {
+                    condition: runtime_call(
+                        JavaRuntimeCallable::OptionIsSome,
+                        vec![input],
+                        JavaType::primitive(JavaPrimitive::Boolean),
+                    ),
+                    then_block: JavaBlock::new(some_statements),
+                    else_block: Some(JavaBlock::new(vec![JavaStmt::Assign {
+                        target: result.clone(),
+                        value: runtime_call(JavaRuntimeCallable::OptionNone, vec![], option_type),
+                    }])),
+                },
+            ],
+            value: result,
+        })
+    }
+
+    fn normalize_boundary_result(
+        &self,
+        ok: CoreTypeId,
+        error: CoreTypeId,
+        input: JavaExpr,
+    ) -> Result<ExprPlan, Vec<Diagnostic>> {
+        let result_type = input.ty.clone();
+        let (result_name, result) = self.temporary("boundaryResult", result_type.clone());
+        let ok_value = runtime_call(
+            JavaRuntimeCallable::ValueResultValue,
+            vec![input.clone()],
+            self.ty(ok)?.boxed(),
+        );
+        let normalized_ok = self.normalize_boundary_value(ok, ok_value)?;
+        let mut ok_statements = normalized_ok.statements;
+        ok_statements.push(JavaStmt::Assign {
+            target: result.clone(),
+            value: runtime_call(
+                JavaRuntimeCallable::ValueResultOk,
+                vec![normalized_ok.value],
+                result_type.clone(),
+            ),
+        });
+        let error_value = runtime_call(
+            JavaRuntimeCallable::ValueResultError,
+            vec![input.clone()],
+            self.ty(error)?.boxed(),
+        );
+        let normalized_error = self.normalize_boundary_value(error, error_value)?;
+        let mut error_statements = normalized_error.statements;
+        error_statements.push(JavaStmt::Assign {
+            target: result.clone(),
+            value: runtime_call(
+                JavaRuntimeCallable::ValueResultErr,
+                vec![normalized_error.value],
+                result_type.clone(),
+            ),
+        });
+        Ok(ExprPlan {
+            statements: vec![
+                JavaStmt::Local {
+                    finality: JavaLocalFinality::Mutable,
+                    ty: result_type,
+                    name: result_name,
+                    value: None,
+                },
+                JavaStmt::If {
+                    condition: runtime_call(
+                        JavaRuntimeCallable::ValueResultIsOk,
+                        vec![input],
+                        JavaType::primitive(JavaPrimitive::Boolean),
+                    ),
+                    then_block: JavaBlock::new(ok_statements),
+                    else_block: Some(JavaBlock::new(error_statements)),
+                },
+            ],
+            value: result,
+        })
     }
 
     fn native_test_file(&mut self) -> Result<portable_codegen::TargetFileId, Vec<Diagnostic>> {
@@ -2209,126 +2199,177 @@ impl<'a> Lowering<'a> {
         &self,
         value: &CoreConstantExpr,
     ) -> Result<(JavaExpr, JavaType), Vec<Diagnostic>> {
+        let core_type = self.constant_type(value)?;
+        let java_type = self.ty(core_type)?;
+        Ok((self.constant_expr(value, core_type)?, java_type))
+    }
+
+    fn constant_type(&self, value: &CoreConstantExpr) -> Result<CoreTypeId, Vec<Diagnostic>> {
         match &value.kind {
-            CoreConstantExprKind::Literal(value) => self.literal_untyped(value),
-            CoreConstantExprKind::Constant(id) => {
-                let constant = self.core.constant(*id).expect("verified constant");
-                let ty = self.ty(constant.ty)?;
-                Ok((
-                    JavaExpr {
-                        ty: ty.clone(),
-                        precedence: JavaPrecedence::Primary,
-                        kind: JavaExprKind::Value(JavaValueRef::Generated(
-                            GeneratedSymbolId::Value(self.constants[id]),
-                        )),
-                    },
-                    ty,
-                ))
-            }
+            CoreConstantExprKind::Literal(value) => self.constant_value_type(value),
+            CoreConstantExprKind::Constant(id) => Ok(self
+                .core
+                .constant(*id)
+                .expect("verified constant reference")
+                .ty),
             CoreConstantExprKind::Record { record, .. } => {
-                let ty = JavaType::Reference(JavaTypeName::Generated(self.records[record]));
-                let id = self.find_type(&CoreType::Record(*record))?;
-                Ok((self.constant_expr(value, id)?, ty))
+                self.find_type(&CoreType::Record(*record))
             }
             CoreConstantExprKind::Enum { enumeration, .. } => {
-                let ty = JavaType::Reference(JavaTypeName::Generated(self.enums[enumeration]));
-                let id = self.find_type(&CoreType::Enum(*enumeration))?;
-                Ok((self.constant_expr(value, id)?, ty))
+                self.find_type(&CoreType::Enum(*enumeration))
             }
             CoreConstantExprKind::Some(inner) => {
-                let (inner, inner_ty) = self.constant_untyped(inner)?;
-                let ty = JavaType::generic(JavaKnownType::RuntimeOption, vec![inner_ty.boxed()]);
-                Ok((
-                    runtime_call(JavaRuntimeCallable::OptionSome, vec![inner], ty.clone()),
-                    ty,
-                ))
+                let inner = self.constant_type(inner)?;
+                self.find_type(&CoreType::Option(inner))
             }
-            CoreConstantExprKind::None { inner } => {
-                let ty =
-                    JavaType::generic(JavaKnownType::RuntimeOption, vec![self.ty(*inner)?.boxed()]);
-                Ok((
-                    runtime_call(JavaRuntimeCallable::OptionNone, vec![], ty.clone()),
-                    ty,
-                ))
-            }
+            CoreConstantExprKind::None { inner } => self.find_type(&CoreType::Option(*inner)),
             CoreConstantExprKind::Ok { value, error } => {
-                let (value, value_ty) = self.constant_untyped(value)?;
-                let ty = JavaType::generic(
-                    JavaKnownType::RuntimeValueResult,
-                    vec![value_ty.boxed(), self.ty(*error)?.boxed()],
-                );
-                Ok((
-                    runtime_call(JavaRuntimeCallable::ValueResultOk, vec![value], ty.clone()),
-                    ty,
-                ))
+                let ok = self.constant_type(value)?;
+                self.find_type(&CoreType::Result { ok, error: *error })
             }
             CoreConstantExprKind::Err { value, ok } => {
-                let (value, value_ty) = self.constant_untyped(value)?;
-                let ty = JavaType::generic(
-                    JavaKnownType::RuntimeValueResult,
-                    vec![self.ty(*ok)?.boxed(), value_ty.boxed()],
-                );
-                Ok((
-                    runtime_call(JavaRuntimeCallable::ValueResultErr, vec![value], ty.clone()),
-                    ty,
-                ))
+                let error = self.constant_type(value)?;
+                self.find_type(&CoreType::Result { ok: *ok, error })
             }
-            CoreConstantExprKind::List { element, elements } => {
-                let ty = JavaType::generic(JavaKnownType::List, vec![self.ty(*element)?.boxed()]);
-                let elements = elements
-                    .iter()
-                    .map(|value| self.constant_expr(value, *element))
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok((
-                    known_generic_call(JavaKnownCallable::ListOf, elements, ty.clone()),
-                    ty,
-                ))
-            }
-            CoreConstantExprKind::Intrinsic(_) => Err(vec![Diagnostic::error(
-                DiagnosticCode::InvalidStructure,
-                "nested constant intrinsic requires its declared result type",
-                value.source.clone(),
-            )]),
+            CoreConstantExprKind::List { element, .. } => self.find_type(&CoreType::List(*element)),
+            CoreConstantExprKind::Intrinsic(intrinsic) => self.constant_intrinsic_type(intrinsic),
         }
     }
 
-    fn literal_untyped(&self, value: &CoreValue) -> Result<(JavaExpr, JavaType), Vec<Diagnostic>> {
-        Ok(match value {
-            CoreValue::Unit => (unit_value(), JavaType::known(JavaKnownType::RuntimeUnit)),
-            CoreValue::Bool(value) => (
-                bool_literal(*value),
-                JavaType::primitive(JavaPrimitive::Boolean),
-            ),
-            CoreValue::I32(value) => (i32_literal(*value), JavaType::primitive(JavaPrimitive::Int)),
-            CoreValue::I64(value) => (
-                i64_literal(*value),
-                JavaType::primitive(JavaPrimitive::Long),
-            ),
-            CoreValue::F64(value) => (
-                f64_literal(value.0),
-                JavaType::primitive(JavaPrimitive::Double),
-            ),
-            CoreValue::Char(value) => {
-                let ty = JavaType::known(JavaKnownType::RuntimeScalar);
-                (scalar_literal(*value), ty)
+    fn constant_value_type(&self, value: &CoreValue) -> Result<CoreTypeId, Vec<Diagnostic>> {
+        match value {
+            CoreValue::Unit => self.find_type(&CoreType::Unit),
+            CoreValue::Bool(_) => self.find_type(&CoreType::Bool),
+            CoreValue::I32(_) => self.find_type(&CoreType::I32),
+            CoreValue::I64(_) => self.find_type(&CoreType::I64),
+            CoreValue::F64(_) => self.find_type(&CoreType::F64),
+            CoreValue::Char(_) => self.find_type(&CoreType::Char),
+            CoreValue::String(_) => self.find_type(&CoreType::String),
+            CoreValue::Bytes(_) => self.find_type(&CoreType::Bytes),
+            CoreValue::List(values) if !values.is_empty() => {
+                let element = self.constant_value_type(&values[0])?;
+                self.find_type(&CoreType::List(element))
             }
-            CoreValue::String(value) => {
-                let ty = JavaType::known(JavaKnownType::String);
-                (string_literal(value), ty)
+            CoreValue::Some(value) => {
+                let inner = self.constant_value_type(value)?;
+                self.find_type(&CoreType::Option(inner))
             }
-            CoreValue::Bytes(_)
-            | CoreValue::List(_)
-            | CoreValue::None
-            | CoreValue::Some(_)
-            | CoreValue::Ok(_)
-            | CoreValue::Err(_)
-            | CoreValue::Record { .. }
-            | CoreValue::Enum { .. } => {
-                return Err(vec![diagnostic(
-                    "compound literal in a nested constant intrinsic requires an explicit type",
-                )]);
+            CoreValue::Record { record, .. } => self.find_type(&CoreType::Record(*record)),
+            CoreValue::Enum { enumeration, .. } => self.find_type(&CoreType::Enum(*enumeration)),
+            CoreValue::None | CoreValue::List(_) | CoreValue::Ok(_) | CoreValue::Err(_) => {
+                Err(vec![Diagnostic::error(
+                    DiagnosticCode::InvalidStructure,
+                    "verified nested constant value has no inferable declared Core type",
+                    source("constant-type"),
+                )])
             }
-        })
+        }
+    }
+
+    fn constant_intrinsic_type(
+        &self,
+        value: &CoreIntrinsicExpr<CoreConstantExpr>,
+    ) -> Result<CoreTypeId, Vec<Diagnostic>> {
+        use CoreBinaryIntrinsic as B;
+        use CoreUnaryIntrinsic as U;
+
+        let result = match value {
+            CoreIntrinsicExpr::Unary { operation, operand } => {
+                let operand = self.constant_type(operand)?;
+                match operation {
+                    U::BoolNot
+                    | U::FloatIsNaN
+                    | U::FloatIsNegativeZero
+                    | U::StringIsEmpty
+                    | U::BytesIsEmpty
+                    | U::ListIsEmpty
+                    | U::OptionIsSome
+                    | U::OptionIsNone
+                    | U::ResultIsOk
+                    | U::ResultIsErr => CoreType::Bool,
+                    U::IntNegChecked | U::IntNegWrapping | U::IntBitNot => {
+                        return Ok(operand);
+                    }
+                    U::FloatNeg | U::FloatTrunc | U::FloatAbs => CoreType::F64,
+                    U::StringScalarLength
+                    | U::StringUtf16Length
+                    | U::BytesLength
+                    | U::ListLength
+                    | U::WidenI32ToI64 => CoreType::I64,
+                    U::NarrowI64ToI32Checked => CoreType::I32,
+                    U::StringToUtf8 => CoreType::Bytes,
+                    U::StringFromUtf8Checked => CoreType::String,
+                }
+            }
+            CoreIntrinsicExpr::Binary {
+                operation,
+                left,
+                right,
+            } => {
+                let left = self.constant_type(left)?;
+                let right = self.constant_type(right)?;
+                match operation {
+                    B::BoolAnd
+                    | B::BoolOr
+                    | B::Equal
+                    | B::NotEqual
+                    | B::Less
+                    | B::LessEqual
+                    | B::Greater
+                    | B::GreaterEqual
+                    | B::StringContains
+                    | B::StringStartsWith
+                    | B::StringEndsWith
+                    | B::ListContains => CoreType::Bool,
+                    B::IntAddChecked
+                    | B::IntSubChecked
+                    | B::IntMulChecked
+                    | B::IntDivChecked
+                    | B::IntRemChecked
+                    | B::IntAddWrapping
+                    | B::IntSubWrapping
+                    | B::IntMulWrapping
+                    | B::IntBitAnd
+                    | B::IntBitOr
+                    | B::IntBitXor
+                    | B::IntShiftLeftChecked
+                    | B::IntShiftRightChecked
+                    | B::ListAppend
+                    | B::ListConcat => return Ok(left),
+                    B::FloatAdd | B::FloatSub | B::FloatMul | B::FloatDiv | B::FloatRemTrunc => {
+                        CoreType::F64
+                    }
+                    B::StringConcat
+                    | B::StringStripPrefix
+                    | B::StringTruncateUtf8Bytes
+                    | B::StringTrimStart
+                    | B::StringTrimEnd => CoreType::String,
+                    B::BytesConcat => CoreType::Bytes,
+                    B::StringIndexOfLiteral | B::ListIndexOf => {
+                        let i64_type = self.find_type(&CoreType::I64)?;
+                        return self.find_type(&CoreType::Option(i64_type));
+                    }
+                    B::ListGetChecked => match self.core.types().get(left) {
+                        Some(CoreType::List(inner)) => return Ok(*inner),
+                        _ => {
+                            return Err(vec![diagnostic(
+                                "verified list-get constant operand is not a list",
+                            )]);
+                        }
+                    },
+                    B::OptionUnwrapOr => return Ok(right),
+                }
+            }
+            CoreIntrinsicExpr::Ternary { operation, .. } => match operation {
+                CoreTernaryIntrinsic::StringSliceScalars
+                | CoreTernaryIntrinsic::StringReplaceAll => CoreType::String,
+                CoreTernaryIntrinsic::BytesReplaceAll => CoreType::Bytes,
+            },
+            CoreIntrinsicExpr::Variadic { operation, .. } => match operation {
+                CoreVariadicIntrinsic::StringReplaceMany => CoreType::String,
+            },
+        };
+        self.find_type(&result)
     }
 
     fn find_type(&self, wanted: &CoreType) -> Result<CoreTypeId, Vec<Diagnostic>> {

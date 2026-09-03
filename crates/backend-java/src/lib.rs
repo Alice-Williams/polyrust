@@ -256,19 +256,7 @@ mod tests {
         assert_eq!(imports.len(), unique.len(), "duplicate import: {imports:?}");
         assert_eq!(
             unique,
-            BTreeSet::from([
-                "java.math.BigInteger",
-                "java.nio.ByteBuffer",
-                "java.nio.CharBuffer",
-                "java.nio.charset.CharacterCodingException",
-                "java.nio.charset.Charset",
-                "java.nio.charset.CharsetDecoder",
-                "java.nio.charset.CodingErrorAction",
-                "java.nio.charset.StandardCharsets",
-                "java.util.ArrayList",
-                "java.util.List",
-                "java.util.Objects",
-            ])
+            BTreeSet::from(["java.util.List", "java.util.Objects"])
         );
     }
 

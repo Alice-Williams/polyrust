@@ -12,6 +12,54 @@ fn main() {
     assert!(arguments.next().is_none(), "unexpected argument");
 
     let mut module = ModuleBuilder::new("java_semantic_edges");
+    let nested_string_constant = module.constant(
+        "NESTED_STRING_CONSTANT",
+        Visibility::Public,
+        vec![],
+        Type::string(),
+        |body| {
+            let first = body.constant_literal(Value::string("a"));
+            let second = body.constant_literal(Value::string("b"));
+            let nested = body.constant_intrinsic(Operation::StringConcat, [first, second]);
+            let third = body.constant_literal(Value::string("c"));
+            body.constant_intrinsic(Operation::StringConcat, [nested, third])
+        },
+    );
+    let compound_bytes_constant = module.constant(
+        "COMPOUND_BYTES_CONSTANT",
+        Visibility::Public,
+        vec![],
+        Type::bytes(),
+        |body| {
+            let first = body.constant_literal(Value::bytes([1, 2]));
+            let second = body.constant_literal(Value::bytes([3, 4]));
+            body.constant_intrinsic(Operation::BytesConcat, [first, second])
+        },
+    );
+    let read_nested_string = module.function(
+        "read_nested_string",
+        Visibility::Public,
+        vec![],
+        |function| {
+            function.returns(Type::string());
+            function.body(|body| {
+                let value = body.constant(nested_string_constant);
+                body.block([], Some(value))
+            });
+        },
+    );
+    let read_compound_bytes = module.function(
+        "read_compound_bytes",
+        Visibility::Public,
+        vec![],
+        |function| {
+            function.returns(Type::bytes());
+            function.body(|body| {
+                let value = body.constant(compound_bytes_constant);
+                body.block([], Some(value))
+            });
+        },
+    );
     let string_less = module.function("string_less", Visibility::Public, vec![], |function| {
         function.parameter(Parameter::new("left", Type::string()));
         function.parameter(Parameter::new("right", Type::string()));
@@ -65,6 +113,33 @@ fn main() {
             body.block([], Some(value))
         });
     });
+    module.function("echo_nested_list", Visibility::Public, vec![], |function| {
+        function.parameter(Parameter::new(
+            "values",
+            Type::list(Type::list(Type::string())),
+        ));
+        function.returns(Type::list(Type::list(Type::string())));
+        function.body(|body| {
+            let value = body.local("values");
+            body.block([], Some(value))
+        });
+    });
+    module.function(
+        "echo_nested_option",
+        Visibility::Public,
+        vec![],
+        |function| {
+            function.parameter(Parameter::new(
+                "value",
+                Type::option(Type::list(Type::list(Type::string()))),
+            ));
+            function.returns(Type::option(Type::list(Type::list(Type::string()))));
+            function.body(|body| {
+                let value = body.local("value");
+                body.block([], Some(value))
+            });
+        },
+    );
 
     let astral = "\u{10000}";
     let bmp = "\u{e000}";
@@ -110,6 +185,20 @@ fn main() {
         vec![],
         Invocation::function(short_circuit, []),
         Expected::value(TypedValue::new(Type::bool(), Value::bool(false))),
+    );
+    module.portable_test(
+        "nested_infallible_constant_intrinsics",
+        Visibility::Package,
+        vec![],
+        Invocation::function(read_nested_string, []),
+        Expected::value(TypedValue::new(Type::string(), Value::string("abc"))),
+    );
+    module.portable_test(
+        "compound_constant_intrinsic_operands",
+        Visibility::Package,
+        vec![],
+        Invocation::function(read_compound_bytes, []),
+        Expected::value(TypedValue::new(Type::bytes(), Value::bytes([1, 2, 3, 4]))),
     );
 
     let checked = module.finish().expect("semantic edge fixture checks");

@@ -129,6 +129,22 @@ java_test(
 )
 
 java_test(
+    name = "generated_semantic_edge_public_value_test",
+    srcs = [
+        "test/JavaRuntimeValueConsumerTest.java",
+        ":semantic-edge-generated/src/main/java/org/polyrust/generated/Generated.java",
+        ":semantic-edge-generated/src/main/java/org/polyrust/generated/Runtime.java",
+    ],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
+    main_class = "org.polyrust.consumer.JavaRuntimeValueConsumerTest",
+    use_testrunner = False,
+    visibility = ["//visibility:public"],
+)
+
+java_test(
     name = "generated_interface_native_test",
     srcs = [
         ":interface-generated/src/main/java/org/polyrust/generated/Generated.java",
@@ -203,6 +219,23 @@ sh_test(
     ],
     data = [
         "test/JavaInterfaceInvalidGeneratedApi.java",
+        ":interface-generated/src/main/java/org/polyrust/generated/Generated.java",
+        ":interface-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        "@bazel_tools//tools/jdk:current_java_runtime",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "generated_interface_hostile_implementation_test",
+    srcs = ["//tools/java:sealed_interface_negative_test.sh"],
+    args = [
+        "$(location :interface-generated/src/main/java/org/polyrust/generated/Runtime.java)",
+        "$(location :interface-generated/src/main/java/org/polyrust/generated/Generated.java)",
+        "$(location test/JavaInterfaceHostileImplementation.java)",
+    ],
+    data = [
+        "test/JavaInterfaceHostileImplementation.java",
         ":interface-generated/src/main/java/org/polyrust/generated/Generated.java",
         ":interface-generated/src/main/java/org/polyrust/generated/Runtime.java",
         "@bazel_tools//tools/jdk:current_java_runtime",

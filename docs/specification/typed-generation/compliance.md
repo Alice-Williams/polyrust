@@ -19,7 +19,7 @@ it is not evidence of typed executable syntax.
 | JavaScript | Missing | Independently paired source exists | Shares manual ECMA metadata | Checked-in/runtime paired text | Not solely compiler-derived | **Fail** |
 | Python | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | Go | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
-| Java | Exhaustive `CoreProgram` lowering | Closed Java type/expression/statement/declaration/file AST | Closed JDK/runtime catalogues; linker-derived imports with physical deduplication | `JavaRuntimeHelper` expands to typed declarations | Java-owned strict templates receive resolved render views only | **Pass** |
+| Java | Exhaustive `CoreProgram` lowering under remediation | Closed AST with verifier gaps under remediation | Closed catalogues and derived imports; shape checks under remediation | Structural helpers; deep value invariants under remediation | Java-owned strict resolved views | **Fail** |
 | C++20 | Missing | Missing: `CppCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 | C17 | Missing | Missing: `CCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 
@@ -47,10 +47,14 @@ it is not evidence of typed executable syntax.
   `crates/backend-c/src/runtime.c`.
 
 The locations for rows which still fail are migration inputs, not allowlisted
-final architecture. Shared codegen and Java are accepted implementations of
-ADR-0004.
+final architecture. Shared codegen is the accepted implementation framework;
+Java remains the first migration candidate until its blind-review loop closes.
 
 ## Java M34A-10 evidence
+
+The evidence below passed at `e03a633`, but a fresh blind review demonstrated
+remaining semantic, boundary, preflight, and verifier defects. It is retained as
+test evidence rather than a current **Pass** claim while M34A-10R is open.
 
 - The Java backend has no production opaque executable source node, checked-in
   runtime source, manual import API, or direct manifest construction path.
@@ -63,6 +67,15 @@ ADR-0004.
   repository gate passes 288 of 288 tests with Rustfmt, Clippy, Buildifier,
   typed-source policy, template policy, dependency policy, native compilers,
   sanitizers, and differential conformance included.
+- Round 2 remediation after that review adds recursive semantic equality,
+  `byte[]` value ownership, exact shape preflight, feature/mode/strategy
+  selection validation, sealed closed interface values, type-directed deep
+  public-boundary reconstruction, and the completed AST verifier checks. Its
+  focused Java/codegen/policy gate passes 28 of 28 targets, its complete
+  tracked repository replay passes 291 of 291 targets uncached, and its
+  independent release-gate replay passes 230 of 230 targets uncached. The row
+  remains **Fail** until a pushed immutable checkpoint receives a clean fresh
+  blind review and closes M34A-10R.
 
 ## Pass rule
 

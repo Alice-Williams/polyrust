@@ -40,6 +40,13 @@ The dialect owns:
 Primitive versus boxed use is explicit and checked. No executable Java source
 string enters the AST.
 
+Array ownership is part of `JavaType`. The only metadata-only change admitted
+by the executable AST is the enum-valued `FreshCopyToBoundary` transition from
+an internally allocated mutable array to a defensive-copy boundary. The
+verifier rejects every other source/target pairing; rendering this proof node
+emits its operand without a Java cast because ownership is a generator
+invariant, not a Java runtime type.
+
 ## 4. Type mapping
 
 | CoreIR type | Java representation |
@@ -62,6 +69,15 @@ Generic boxing decisions are represented in `JavaType`, not inferred while
 rendering. Arrays and mutable collection references MUST NOT escape portable
 value boundaries.
 
+Public callable parameters and generated record components are normalized by
+a `CoreTypeId`-directed lowering plan. Lists are rebuilt element-by-element and
+sealed with `List.copyOf`; nested lists, options, and results recurse through
+their exact checked payload types. Strings are scalar-validated at every
+recursive position. This plan MUST NOT use erased casts, reflection, or a
+renderer-side type test. Generated return values may reuse already-normalized
+values, but every path by which an external value enters generated code MUST
+execute the type-directed plan.
+
 ## 5. Declarations and control
 
 - Constants are `static final` values; only Java constant expressions receive
@@ -73,14 +89,23 @@ value boundaries.
 - Normal portable `Result` flow uses tagged values, not exceptions.
 - Checked arithmetic, shift, float-bit, UTF-8/scalar, bytes, and collection
   behavior use known typed callables/helpers.
+- Language equality and conformance equality are distinct typed operations.
+  Recursive `semanticEquals` follows IEEE language behavior; recursive
+  `deepEquals` compares F64 raw bits so expected-value tests distinguish signed
+  zero and retain NaN payloads. Generated and runtime value types implement
+  both methods explicitly.
 
 ## 6. Interfaces, composition, and target heritage
 
-Portable interfaces lower to flat Java interfaces with no `extends` clause.
-Immutable generated records/final classes explicitly `implement` them. Multiple
+Portable interfaces lower to flat sealed Java interfaces with no `extends`
+clause. Their `permits` list is derived exactly from checked implementation
+declarations, and immutable generated records/final classes explicitly
+`implement` them. An interface with no generated implementation is an explicit
+unsupported Java shape rather than an open extension point. Multiple
 independent interface conformances are allowed. First-class interface values
-use native Java interface dispatch, while generated APIs avoid `null` and do
-not expose object identity as portable behavior.
+use native Java interface dispatch, while generated APIs avoid `null`, reject
+external implementations at Java compilation time, and do not expose object
+identity as portable behavior.
 
 Composition uses final named fields and explicit delegation. Default methods,
 interface-extension chains, abstract reusable base classes, and inherited state

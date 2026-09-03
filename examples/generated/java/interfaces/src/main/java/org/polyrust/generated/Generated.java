@@ -19,6 +19,13 @@ public final class Generated {
       return (true && org.polyrust.generated.Runtime.semanticEqual(this.text(), otherValue.text()));
     }
     @Override
+    public boolean deepEquals(final Object other) {
+      if ((!(other instanceof Label otherValue))) {
+        return false;
+       }
+      return (true && org.polyrust.generated.Runtime.deepEqual(this.text(), otherValue.text()));
+    }
+    @Override
     public org.polyrust.generated.Runtime.PolyResult<String> label(final String __polyrust_input_0) {
       final String prefix = org.polyrust.generated.Runtime.requireScalarString(__polyrust_input_0);
       return org.polyrust.generated.Runtime.ok((prefix + this.text()));
@@ -43,6 +50,13 @@ public final class Generated {
        }
       return (true && org.polyrust.generated.Runtime.semanticEqual(this.renderer(), otherValue.renderer()));
     }
+    @Override
+    public boolean deepEquals(final Object other) {
+      if ((!(other instanceof Service otherValue))) {
+        return false;
+       }
+      return (true && org.polyrust.generated.Runtime.deepEqual(this.renderer(), otherValue.renderer()));
+    }
   }
   public static sealed interface Envelope permits EnvelopeWrapped {
   }
@@ -57,11 +71,18 @@ public final class Generated {
        }
       return (true && org.polyrust.generated.Runtime.semanticEqual(this.renderer(), otherValue.renderer()));
     }
+    @Override
+    public boolean deepEquals(final Object other) {
+      if ((!(other instanceof EnvelopeWrapped otherValue))) {
+        return false;
+       }
+      return (true && org.polyrust.generated.Runtime.deepEqual(this.renderer(), otherValue.renderer()));
+    }
   }
-  public static interface Labelled {
+  public static sealed interface Labelled permits Label {
     public abstract org.polyrust.generated.Runtime.PolyResult<String> label(final String prefix);
   }
-  public static interface Measured {
+  public static sealed interface Measured permits Label {
     public abstract org.polyrust.generated.Runtime.PolyResult<Long> measure();
   }
   public static org.polyrust.generated.Runtime.PolyResult<String> composition_dispatch(final Label __polyrust_input_0) {

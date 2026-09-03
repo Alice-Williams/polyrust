@@ -1,6 +1,5 @@
 package org.polyrust.consumer;
 
-import java.util.ArrayList;
 import java.util.List;
 import org.polyrust.generated.Generated;
 import org.polyrust.generated.Runtime;
@@ -28,26 +27,13 @@ public final class JavaConsumerTest {
     expectIllegalArgument(() -> new Runtime.Scalar(0xD800), "surrogate scalar accepted");
     expectIllegalArgument(() -> new Runtime.Scalar(0x110000), "out-of-range scalar accepted");
     expectIllegalArgument(
-        () -> new Runtime.PolyOption<String>(false, "payload"),
-        "contradictory option accepted");
-    expectIllegalArgument(
         () ->
             new Runtime.PolyResult<String>(
                 true, "value", new Runtime.PolyError("unexpected", "unexpected")),
         "contradictory result accepted");
     expectIllegalArgument(
-        () -> new Runtime.PolyValueResult<String, String>(false, "value", "error"),
-        "contradictory value result accepted");
-    expectIllegalArgument(() -> new Runtime.Bytes(List.of(-1)), "negative byte accepted");
-    expectIllegalArgument(() -> new Runtime.Bytes(List.of(256)), "large byte accepted");
-
-    Runtime.PolyOption<String> none = Runtime.optionNone();
-    try {
-      none.value();
-      throw new AssertionError("None payload was readable");
-    } catch (IllegalStateException expected) {
-      // Required partial-accessor rejection.
-    }
+        () -> Runtime.ok(List.of(List.of("\uD800"))),
+        "nested unpaired surrogate accepted");
     Runtime.PolyResult<String> failed = Runtime.fail("expected", "failure");
     try {
       failed.value();
@@ -56,11 +42,28 @@ public final class JavaConsumerTest {
       // Required partial-accessor rejection.
     }
 
-    ArrayList<Integer> mutable = new ArrayList<>(List.of(1, 2));
-    Runtime.Bytes bytes = new Runtime.Bytes(mutable);
-    mutable.set(0, 99);
-    if (!bytes.values().equals(List.of(1, 2))) {
-      throw new AssertionError("Bytes retained a mutable input alias");
+    double nan = Double.longBitsToDouble(0x7ff8000000000001L);
+    assertSemanticUnequal(Runtime.ok(nan), Runtime.ok(nan), "result NaN");
+    assertSemanticEqual(Runtime.ok(0.0), Runtime.ok(-0.0), "result signed zero");
+    assertSemanticUnequal(
+        Runtime.ok(List.of(List.of(nan))),
+        Runtime.ok(List.of(List.of(nan))),
+        "nested result-list NaN");
+    assertSemanticEqual(
+        Runtime.ok(List.of(List.of(0.0))),
+        Runtime.ok(List.of(List.of(-0.0))),
+        "nested result-list signed zero");
+  }
+
+  private static void assertSemanticEqual(Object left, Object right, String message) {
+    if (!Runtime.semanticEqual(left, right)) {
+      throw new AssertionError(message + " should be equal");
+    }
+  }
+
+  private static void assertSemanticUnequal(Object left, Object right, String message) {
+    if (Runtime.semanticEqual(left, right)) {
+      throw new AssertionError(message + " should be unequal");
     }
   }
 

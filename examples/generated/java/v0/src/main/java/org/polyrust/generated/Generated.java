@@ -18,11 +18,18 @@ public final class Generated {
       return (true && org.polyrust.generated.Runtime.semanticEqual(this.text(), otherValue.text()));
     }
     @Override
+    public boolean deepEquals(final Object other) {
+      if ((!(other instanceof Label otherValue))) {
+        return false;
+       }
+      return (true && org.polyrust.generated.Runtime.deepEqual(this.text(), otherValue.text()));
+    }
+    @Override
     public org.polyrust.generated.Runtime.PolyResult<String> render() {
       return org.polyrust.generated.Runtime.ok(this.text());
     }
   }
-  public static interface Renderable {
+  public static sealed interface Renderable permits Label {
     public abstract org.polyrust.generated.Runtime.PolyResult<String> render();
   }
   public static org.polyrust.generated.Runtime.PolyResult<String> call_render(final Renderable __polyrust_input_0) {

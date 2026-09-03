@@ -6,6 +6,7 @@ edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 publish.workspace = true
+autoexamples = false
 
 [lib]
 name = "portable_backend_java"
@@ -23,3 +24,15 @@ portable_build.workspace = true
 
 [lints]
 workspace = true
+
+[[example]]
+name = "generate_java_interface"
+path = "examples/generate_interface.rs"
+
+[[example]]
+name = "generate_java_semantic_edges"
+path = "examples/generate_semantic_edges.rs"
+
+[[example]]
+name = "generate_java_v0"
+path = "examples/generate_v0.rs"
