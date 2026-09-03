@@ -86,6 +86,12 @@ test evidence rather than a current **Pass** claim while M34A-10R is open.
   method shape preflight, privileged literal placement, and Java statement/
   switch grammar. All are accepted, so Java remains **Fail** pending round 4
   remediation, replayed gates, and another fresh blind review.
+- Fresh blind review round 5 of pushed checkpoint `bbf91d2b` validated the
+  round 4 repairs but found four further blockers: public implementation helper
+  callables bypass scalar-string normalization, non-local lexical bindings may
+  redeclare enclosing names, catch clauses lack subtype-dominance checks, and
+  constructors lack blank-final definite-assignment proof. All are accepted;
+  Java remains **Fail** pending round 5 remediation and a clean fresh review.
 
 ## Pass rule
 

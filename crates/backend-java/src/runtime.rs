@@ -4073,7 +4073,7 @@ fn static_method(
     JavaMember::Method(JavaMethod {
         declared: JavaMethodDeclaration::Structural,
         annotations: vec![],
-        modifiers: vec![JavaModifier::Public, JavaModifier::Static],
+        modifiers: vec![JavaModifier::Static],
         type_parameters,
         return_type,
         name: identifier(name),
@@ -4680,6 +4680,36 @@ mod tests {
                 })
                 .unwrap_or_else(|| panic!("missing raw tagged factory {name}"));
             assert_eq!(method.modifiers, vec![JavaModifier::Static]);
+        }
+    }
+
+    #[test]
+    fn runtime_helper_methods_are_package_scoped() {
+        for helper in JavaRuntimeHelper::ALL {
+            let items = helper_items(helper);
+            let [
+                JavaFileItem::RuntimeMembers {
+                    helper: actual_helper,
+                    members,
+                },
+            ] = items.as_slice()
+            else {
+                panic!("runtime helper must produce exactly one typed member group");
+            };
+            assert_eq!(*actual_helper, helper);
+
+            for method in members.iter().filter_map(|member| match member {
+                JavaMember::Method(method) => Some(method),
+                _ => None,
+            }) {
+                assert_eq!(
+                    method.modifiers,
+                    vec![JavaModifier::Static],
+                    "top-level runtime helper {} from {} must not be callable outside the generated package",
+                    method.name.as_str(),
+                    helper.name(),
+                );
+            }
         }
     }
 

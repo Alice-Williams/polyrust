@@ -40,5 +40,14 @@ final class JavaRuntimeTaggedConstruction {
           java.util.List<java.util.List<String>>, java.util.List<java.util.List<String>>>
       VALUE_RESULT_ERR_FACTORY = org.polyrust.generated.Runtime.valueResultErr(VALUES);
 
+  private static final String STRING_HELPER =
+      org.polyrust.generated.Runtime.stringReplaceAll("\uD800", "", "-");
+  private static final org.polyrust.generated.Runtime.PolyResult<Integer> INTEGER_HELPER =
+      org.polyrust.generated.Runtime.checkedRemI32(Integer.MIN_VALUE, -1);
+  private static final boolean EQUALITY_HELPER =
+      org.polyrust.generated.Runtime.semanticEqual(VALUES, VALUES);
+  private static final org.polyrust.generated.Runtime.Bytes BYTES_HELPER =
+      org.polyrust.generated.Runtime.bytesOf(java.util.List.of(1, 2));
+
   private JavaRuntimeTaggedConstruction() {}
 }

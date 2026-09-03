@@ -35,6 +35,10 @@ readonly expected_diagnostics=(
   "PolyValueResult(boolean,T,E) has private access"
   "valueResultOk(T) is not public in Runtime"
   "valueResultErr(E) is not public in Runtime"
+  "stringReplaceAll(String,String,String) is not public in Runtime"
+  "checkedRemI32(int,int) is not public in Runtime"
+  "semanticEqual(Object,Object) is not public in Runtime"
+  "bytesOf(List<Integer>) is not public in Runtime"
 )
 for expected in "${expected_diagnostics[@]}"; do
   if ! grep -Fq "${expected}" "${diagnostics}"; then

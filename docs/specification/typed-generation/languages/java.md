@@ -47,6 +47,10 @@ value; they cannot appear in generated public values, ordinary locals,
 arguments, fields, or returns. Expression statements are limited to Java's
 statement-expression grammar. Switch arms must have selector-compatible,
 unique, non-dominated patterns and render the complete Java `case` grammar.
+Lexical bindings from locals, parameters, foreach, catch, switch patterns, and
+`instanceof` flow scopes must be unique throughout every overlapping Java
+scope. Catch clauses are ordered and no later type may be a subtype of an
+earlier catch.
 
 Array ownership is part of `JavaType`. The only metadata-only change admitted
 by the executable AST is the enum-valued `FreshCopyToBoundary` transition from
@@ -102,6 +106,10 @@ option/result branch.
 - Constants are `static final` values; only Java constant expressions receive
   compile-time-constant treatment.
 - Records/final classes validate and copy mutable inputs in typed constructors.
+- Every blank instance-final field is assigned exactly once on every normally
+  completing constructor path. An initialized final cannot be assigned again,
+  and conditional, repeated, loop-dependent, or early-return omissions fail
+  target AST verification before rendering.
 - Tagged matches lower to exhaustive verified switches or explicit tag
   switches according to the selected Java 21 strategy.
 - Explicit temporaries preserve CoreIR receiver and argument order.
@@ -168,7 +176,10 @@ imports directly.
 declarations and dependencies. Runtime option/result, exact arithmetic,
 floating-point, Unicode, bytes, immutable collections, and interface support
 are structural AST. There is no `RUNTIME` source constant and no verbatim
-runtime body.
+runtime body. Runtime value types and the accessors required by portable public
+signatures may be public, but implementation helper callables are package
+private. External code enters through generated, type-directed public APIs,
+never directly through an unnormalized runtime helper.
 
 ## 9. File and package policy
 

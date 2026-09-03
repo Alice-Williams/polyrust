@@ -1687,6 +1687,7 @@ impl JavaFieldRef {
 struct JavaFieldMetadata {
     ty: JavaType,
     final_field: bool,
+    blank_final: bool,
 }
 
 fn structural_field_metadata(
@@ -1698,6 +1699,7 @@ fn structural_field_metadata(
         return Some(JavaFieldMetadata {
             ty: JavaType::primitive(JavaPrimitive::Int),
             final_field: true,
+            blank_final: false,
         });
     }
     let declaration = find_type_declaration(owner, context)?;
@@ -1710,6 +1712,7 @@ fn structural_field_metadata(
         return Some(JavaFieldMetadata {
             ty: substitute_type_variables(&component.ty, &substitutions),
             final_field: true,
+            blank_final: true,
         });
     }
     declaration.members.iter().find_map(|member| match member {
@@ -1719,6 +1722,8 @@ fn structural_field_metadata(
             Some(JavaFieldMetadata {
                 ty: substitute_type_variables(&field.ty, &substitutions),
                 final_field: field.modifiers.contains(&JavaModifier::Final),
+                blank_final: field.modifiers.contains(&JavaModifier::Final)
+                    && field.initializer.is_none(),
             })
         }
         _ => None,
@@ -2089,6 +2094,24 @@ struct JavaLexicalScope {
 }
 
 impl JavaLexicalScope {
+    fn bind(
+        &mut self,
+        name: JavaIdentifier,
+        binding: JavaLexicalBinding,
+        duplicate_message: &'static str,
+        violations: &mut Vec<AstViolation>,
+    ) -> bool {
+        if self.bindings.contains_key(&name) {
+            violations.push(AstViolation::new(
+                DiagnosticCode::DuplicateDeclaration,
+                duplicate_message,
+            ));
+            return false;
+        }
+        self.bindings.insert(name, binding);
+        true
+    }
+
     #[cfg(test)]
     fn for_method(method: &JavaMethod) -> (Self, Vec<AstViolation>) {
         Self::for_method_in_owner(method, None)
@@ -2118,22 +2141,15 @@ impl JavaLexicalScope {
         };
         let mut violations = Vec::new();
         for parameter in &method.parameters {
-            if scope
-                .bindings
-                .insert(
-                    parameter.name.clone(),
-                    JavaLexicalBinding {
-                        ty: parameter.ty.clone(),
-                        mutable: !parameter.final_parameter,
-                    },
-                )
-                .is_some()
-            {
-                violations.push(AstViolation::new(
-                    DiagnosticCode::DuplicateDeclaration,
-                    "Java method parameter is declared more than once",
-                ));
-            }
+            scope.bind(
+                parameter.name.clone(),
+                JavaLexicalBinding {
+                    ty: parameter.ty.clone(),
+                    mutable: !parameter.final_parameter,
+                },
+                "Java method parameter is declared more than once",
+                &mut violations,
+            );
         }
         (scope, violations)
     }
@@ -2172,6 +2188,7 @@ fn declared_instance_fields(
                 JavaFieldMetadata {
                     ty: component.ty.clone(),
                     final_field: true,
+                    blank_final: true,
                 },
             )
         })
@@ -2185,6 +2202,8 @@ fn declared_instance_fields(
                 JavaFieldMetadata {
                     ty: field.ty.clone(),
                     final_field: field.modifiers.contains(&JavaModifier::Final),
+                    blank_final: field.modifiers.contains(&JavaModifier::Final)
+                        && field.initializer.is_none(),
                 },
             );
         }
@@ -2320,6 +2339,7 @@ fn verify_assignment_target(
                 (JavaFieldRef::Known(_), _) => Some(JavaFieldMetadata {
                     ty: field.ty(),
                     final_field: true,
+                    blank_final: false,
                 }),
                 (JavaFieldRef::Structural { name, .. }, Some(context)) => {
                     structural_field_metadata(&receiver.ty, name, context).or_else(|| {
@@ -2342,6 +2362,7 @@ fn verify_assignment_target(
                     Some(JavaFieldMetadata {
                         ty: ty.clone(),
                         final_field: true,
+                        blank_final: true,
                     })
                 }
                 _ => None,
@@ -2351,6 +2372,12 @@ fn verify_assignment_target(
                     "assignment field type disagrees with its declaration",
                 )],
                 Some(metadata) if !metadata.final_field => vec![],
+                Some(metadata) if metadata.final_field && !metadata.blank_final => {
+                    vec![AstViolation::new(
+                        DiagnosticCode::InvalidControlFlow,
+                        "initialized final Java fields cannot be assigned",
+                    )]
+                }
                 Some(_)
                     if scope.constructor
                         && matches!(receiver.kind, JavaExprKind::Value(JavaValueRef::This))
@@ -2548,6 +2575,17 @@ fn is_checked_exception(value: JavaKnownType) -> bool {
     matches!(value, JavaKnownType::CharacterCodingException)
 }
 
+fn admitted_throwable_is_supertype_of(supertype: JavaKnownType, subtype: JavaKnownType) -> bool {
+    supertype == subtype
+        || matches!(
+            (supertype, subtype),
+            (
+                JavaKnownType::RuntimeException,
+                JavaKnownType::IllegalArgumentException | JavaKnownType::IllegalStateException
+            )
+        )
+}
+
 #[cfg(test)]
 fn verify_block_scope(
     block: &JavaBlock,
@@ -2577,22 +2615,15 @@ fn verify_block_scope_in_context(
                 if let Some(value) = value {
                     violations.extend(verify_expr_scope(value, scope));
                 }
-                if scope
-                    .bindings
-                    .insert(
-                        name.clone(),
-                        JavaLexicalBinding {
-                            ty: ty.clone(),
-                            mutable: *finality == JavaLocalFinality::Mutable,
-                        },
-                    )
-                    .is_some()
-                {
-                    violations.push(AstViolation::new(
-                        DiagnosticCode::DuplicateDeclaration,
-                        "Java local shadows a name already declared in this portable scope",
-                    ));
-                }
+                scope.bind(
+                    name.clone(),
+                    JavaLexicalBinding {
+                        ty: ty.clone(),
+                        mutable: *finality == JavaLocalFinality::Mutable,
+                    },
+                    "Java local shadows a name already declared in this portable scope",
+                    &mut violations,
+                );
             }
             JavaStmt::Assign { target, value } => {
                 violations.extend(verify_expr_scope(target, scope));
@@ -2627,7 +2658,7 @@ fn verify_block_scope_in_context(
             } => {
                 violations.extend(verify_expr_scope(condition, scope));
                 let mut then_scope = scope.clone();
-                collect_positive_pattern_bindings(condition, &mut then_scope);
+                collect_positive_pattern_bindings(condition, &mut then_scope, &mut violations);
                 violations.extend(verify_block_scope_in_context(
                     then_block,
                     &mut then_scope,
@@ -2657,12 +2688,14 @@ fn verify_block_scope_in_context(
                         ..
                     } = &operand.kind
                 {
-                    scope.bindings.insert(
+                    scope.bind(
                         binding.clone(),
                         JavaLexicalBinding {
                             ty: target.clone(),
                             mutable: false,
                         },
+                        "Java instanceof flow binding conflicts with an overlapping lexical binding",
+                        &mut violations,
                     );
                 }
             }
@@ -2674,12 +2707,14 @@ fn verify_block_scope_in_context(
             } => {
                 violations.extend(verify_expr_scope(iterable, scope));
                 let mut body_scope = scope.clone();
-                body_scope.bindings.insert(
+                body_scope.bind(
                     binding.clone(),
                     JavaLexicalBinding {
                         ty: binding_type.clone(),
                         mutable: false,
                     },
+                    "Java foreach binding conflicts with an overlapping lexical binding",
+                    &mut violations,
                 );
                 violations.extend(verify_block_scope_in_context(
                     body,
@@ -2692,6 +2727,7 @@ fn verify_block_scope_in_context(
             JavaStmt::While { condition, body } => {
                 violations.extend(verify_expr_scope(condition, scope));
                 let mut body_scope = scope.clone();
+                collect_positive_pattern_bindings(condition, &mut body_scope, &mut violations);
                 violations.extend(verify_block_scope_in_context(
                     body,
                     &mut body_scope,
@@ -2705,12 +2741,14 @@ fn verify_block_scope_in_context(
                 for arm in arms {
                     let mut arm_scope = scope.clone();
                     if let JavaPattern::Type { ty, binding } = &arm.pattern {
-                        arm_scope.bindings.insert(
+                        arm_scope.bind(
                             binding.clone(),
                             JavaLexicalBinding {
                                 ty: ty.clone(),
                                 mutable: false,
                             },
+                            "Java switch type-pattern binding conflicts with an overlapping lexical binding",
+                            &mut violations,
                         );
                     }
                     violations.extend(verify_block_scope_in_context(
@@ -2733,12 +2771,14 @@ fn verify_block_scope_in_context(
                 ));
                 for catch in catches {
                     let mut catch_scope = scope.clone();
-                    catch_scope.bindings.insert(
+                    catch_scope.bind(
                         catch.binding.clone(),
                         JavaLexicalBinding {
                             ty: catch.exception_type.clone(),
                             mutable: false,
                         },
+                        "Java catch binding conflicts with an overlapping lexical binding",
+                        &mut violations,
                     );
                     violations.extend(verify_block_scope_in_context(
                         &catch.body,
@@ -2759,19 +2799,25 @@ fn verify_block_scope_in_context(
     violations
 }
 
-fn collect_positive_pattern_bindings(value: &JavaExpr, scope: &mut JavaLexicalScope) {
+fn collect_positive_pattern_bindings(
+    value: &JavaExpr,
+    scope: &mut JavaLexicalScope,
+    violations: &mut Vec<AstViolation>,
+) {
     match &value.kind {
         JavaExprKind::InstanceOf {
             target,
             binding: Some(binding),
             ..
         } => {
-            scope.bindings.insert(
+            scope.bind(
                 binding.clone(),
                 JavaLexicalBinding {
                     ty: target.clone(),
                     mutable: false,
                 },
+                "Java instanceof flow binding conflicts with an overlapping lexical binding",
+                violations,
             );
         }
         JavaExprKind::Binary {
@@ -2779,8 +2825,8 @@ fn collect_positive_pattern_bindings(value: &JavaExpr, scope: &mut JavaLexicalSc
             left,
             right,
         } => {
-            collect_positive_pattern_bindings(left, scope);
-            collect_positive_pattern_bindings(right, scope);
+            collect_positive_pattern_bindings(left, scope, violations);
+            collect_positive_pattern_bindings(right, scope, violations);
         }
         _ => {}
     }
@@ -2813,6 +2859,304 @@ fn statement_guarantees_exit(statement: &JavaStmt) -> bool {
         }
         _ => false,
     }
+}
+
+type JavaFinalAssignmentState = BTreeSet<JavaIdentifier>;
+type JavaFinalAssignmentStates = BTreeSet<JavaFinalAssignmentState>;
+
+#[derive(Default)]
+struct JavaFinalAssignmentOutcome {
+    fallthrough: JavaFinalAssignmentStates,
+    constructor_returns: JavaFinalAssignmentStates,
+}
+
+fn declaration_blank_instance_finals(
+    declaration: &JavaTypeDeclaration,
+) -> BTreeSet<JavaIdentifier> {
+    let mut fields = declaration
+        .record_components
+        .iter()
+        .map(|component| component.name.clone())
+        .collect::<BTreeSet<_>>();
+    fields.extend(
+        declaration
+            .members
+            .iter()
+            .filter_map(|member| match member {
+                JavaMember::Field(field)
+                    if !field.modifiers.contains(&JavaModifier::Static)
+                        && field.modifiers.contains(&JavaModifier::Final)
+                        && field.initializer.is_none() =>
+                {
+                    Some(field.name.clone())
+                }
+                _ => None,
+            }),
+    );
+    fields
+}
+
+fn assigned_blank_final<'a>(
+    target: &'a JavaExpr,
+    blank_finals: &BTreeSet<JavaIdentifier>,
+) -> Option<&'a JavaIdentifier> {
+    let JavaExprKind::Field { receiver, field } = &target.kind else {
+        return None;
+    };
+    if !matches!(receiver.kind, JavaExprKind::Value(JavaValueRef::This)) {
+        return None;
+    }
+    let name = match field {
+        JavaFieldRef::Structural { name, .. } | JavaFieldRef::Generated { name, .. } => name,
+        JavaFieldRef::Known(_) => return None,
+    };
+    blank_finals.contains(name).then_some(name)
+}
+
+fn block_assigns_blank_final(block: &JavaBlock, blank_finals: &BTreeSet<JavaIdentifier>) -> bool {
+    block.statements.iter().any(|statement| match statement {
+        JavaStmt::Assign { target, .. } => assigned_blank_final(target, blank_finals).is_some(),
+        JavaStmt::If {
+            then_block,
+            else_block,
+            ..
+        } => {
+            block_assigns_blank_final(then_block, blank_finals)
+                || else_block
+                    .as_ref()
+                    .is_some_and(|block| block_assigns_blank_final(block, blank_finals))
+        }
+        JavaStmt::ForEach { body, .. } | JavaStmt::While { body, .. } => {
+            block_assigns_blank_final(body, blank_finals)
+        }
+        JavaStmt::Switch { arms, .. } => arms
+            .iter()
+            .any(|arm| block_assigns_blank_final(&arm.body, blank_finals)),
+        JavaStmt::TryCatch { try_block, catches } => {
+            block_assigns_blank_final(try_block, blank_finals)
+                || catches
+                    .iter()
+                    .any(|catch| block_assigns_blank_final(&catch.body, blank_finals))
+        }
+        JavaStmt::Local { .. }
+        | JavaStmt::Expression(_)
+        | JavaStmt::Return(_)
+        | JavaStmt::Throw(_)
+        | JavaStmt::ThrowAssertion(_)
+        | JavaStmt::Break
+        | JavaStmt::Continue => false,
+    })
+}
+
+fn analyze_constructor_final_assignments(
+    block: &JavaBlock,
+    incoming: JavaFinalAssignmentStates,
+    blank_finals: &BTreeSet<JavaIdentifier>,
+    violations: &mut Vec<AstViolation>,
+) -> JavaFinalAssignmentOutcome {
+    let mut fallthrough = incoming;
+    let mut constructor_returns = JavaFinalAssignmentStates::new();
+    for statement in &block.statements {
+        if fallthrough.is_empty() {
+            break;
+        }
+        let outcome = analyze_constructor_final_assignment_statement(
+            statement,
+            fallthrough,
+            blank_finals,
+            violations,
+        );
+        fallthrough = outcome.fallthrough;
+        constructor_returns.extend(outcome.constructor_returns);
+    }
+    JavaFinalAssignmentOutcome {
+        fallthrough,
+        constructor_returns,
+    }
+}
+
+fn analyze_constructor_final_assignment_statement(
+    statement: &JavaStmt,
+    incoming: JavaFinalAssignmentStates,
+    blank_finals: &BTreeSet<JavaIdentifier>,
+    violations: &mut Vec<AstViolation>,
+) -> JavaFinalAssignmentOutcome {
+    match statement {
+        JavaStmt::Assign { target, .. } => {
+            let mut fallthrough = JavaFinalAssignmentStates::new();
+            if let Some(field) = assigned_blank_final(target, blank_finals) {
+                let duplicate = incoming.iter().any(|state| state.contains(field));
+                if duplicate {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::InvalidControlFlow,
+                        format!(
+                            "blank final Java field `{}` can be assigned more than once on a constructor path",
+                            field.as_str()
+                        ),
+                    ));
+                }
+                for mut state in incoming {
+                    state.insert(field.clone());
+                    fallthrough.insert(state);
+                }
+            } else {
+                fallthrough = incoming;
+            }
+            JavaFinalAssignmentOutcome {
+                fallthrough,
+                ..JavaFinalAssignmentOutcome::default()
+            }
+        }
+        JavaStmt::Return(_) => JavaFinalAssignmentOutcome {
+            constructor_returns: incoming,
+            ..JavaFinalAssignmentOutcome::default()
+        },
+        JavaStmt::Throw(_) | JavaStmt::ThrowAssertion(_) => JavaFinalAssignmentOutcome::default(),
+        JavaStmt::If {
+            then_block,
+            else_block,
+            ..
+        } => {
+            let then_outcome = analyze_constructor_final_assignments(
+                then_block,
+                incoming.clone(),
+                blank_finals,
+                violations,
+            );
+            let else_outcome = if let Some(block) = else_block {
+                analyze_constructor_final_assignments(block, incoming, blank_finals, violations)
+            } else {
+                JavaFinalAssignmentOutcome {
+                    fallthrough: incoming,
+                    ..JavaFinalAssignmentOutcome::default()
+                }
+            };
+            JavaFinalAssignmentOutcome {
+                fallthrough: then_outcome
+                    .fallthrough
+                    .union(&else_outcome.fallthrough)
+                    .cloned()
+                    .collect(),
+                constructor_returns: then_outcome
+                    .constructor_returns
+                    .union(&else_outcome.constructor_returns)
+                    .cloned()
+                    .collect(),
+            }
+        }
+        JavaStmt::ForEach { body, .. } | JavaStmt::While { body, .. } => {
+            if block_assigns_blank_final(body, blank_finals) {
+                violations.push(AstViolation::new(
+                    DiagnosticCode::InvalidControlFlow,
+                    "blank final Java fields cannot be assigned in a portable constructor loop",
+                ));
+            }
+            let body_outcome = analyze_constructor_final_assignments(
+                body,
+                incoming.clone(),
+                blank_finals,
+                violations,
+            );
+            JavaFinalAssignmentOutcome {
+                fallthrough: incoming,
+                constructor_returns: body_outcome.constructor_returns,
+            }
+        }
+        JavaStmt::Switch { arms, .. } => {
+            let mut outcome = JavaFinalAssignmentOutcome::default();
+            for arm in arms {
+                let arm_outcome = analyze_constructor_final_assignments(
+                    &arm.body,
+                    incoming.clone(),
+                    blank_finals,
+                    violations,
+                );
+                outcome.fallthrough.extend(arm_outcome.fallthrough);
+                outcome
+                    .constructor_returns
+                    .extend(arm_outcome.constructor_returns);
+            }
+            if !arms
+                .iter()
+                .any(|arm| matches!(arm.pattern, JavaPattern::Default))
+            {
+                outcome.fallthrough.extend(incoming);
+            }
+            outcome
+        }
+        JavaStmt::TryCatch { try_block, catches } => {
+            if block_assigns_blank_final(try_block, blank_finals)
+                || catches
+                    .iter()
+                    .any(|catch| block_assigns_blank_final(&catch.body, blank_finals))
+            {
+                violations.push(AstViolation::new(
+                    DiagnosticCode::InvalidControlFlow,
+                    "blank final Java assignment inside portable try/catch is not supported by sound definite-assignment analysis",
+                ));
+            }
+            let mut outcome = analyze_constructor_final_assignments(
+                try_block,
+                incoming.clone(),
+                blank_finals,
+                violations,
+            );
+            for catch in catches {
+                let catch_outcome = analyze_constructor_final_assignments(
+                    &catch.body,
+                    incoming.clone(),
+                    blank_finals,
+                    violations,
+                );
+                outcome.fallthrough.extend(catch_outcome.fallthrough);
+                outcome
+                    .constructor_returns
+                    .extend(catch_outcome.constructor_returns);
+            }
+            outcome
+        }
+        JavaStmt::Break | JavaStmt::Continue => JavaFinalAssignmentOutcome::default(),
+        JavaStmt::Local { .. } | JavaStmt::Expression(_) => JavaFinalAssignmentOutcome {
+            fallthrough: incoming,
+            ..JavaFinalAssignmentOutcome::default()
+        },
+    }
+}
+
+fn verify_constructor_final_assignments(
+    constructor: &JavaConstructor,
+    declaration: &JavaTypeDeclaration,
+) -> Vec<AstViolation> {
+    let blank_finals = declaration_blank_instance_finals(declaration);
+    if blank_finals.is_empty() {
+        return vec![];
+    }
+    let mut initial = JavaFinalAssignmentStates::new();
+    initial.insert(JavaFinalAssignmentState::new());
+    let mut violations = Vec::new();
+    let outcome = analyze_constructor_final_assignments(
+        &constructor.body,
+        initial,
+        &blank_finals,
+        &mut violations,
+    );
+    let normally_completing = outcome
+        .fallthrough
+        .union(&outcome.constructor_returns)
+        .cloned()
+        .collect::<JavaFinalAssignmentStates>();
+    for state in normally_completing {
+        for missing in blank_finals.difference(&state) {
+            violations.push(AstViolation::new(
+                DiagnosticCode::InvalidControlFlow,
+                format!(
+                    "Java constructor can complete normally without assigning blank final field `{}`",
+                    missing.as_str()
+                ),
+            ));
+        }
+    }
+    violations
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -3042,10 +3386,20 @@ impl JavaStmt {
                 }
                 let thrown = block_checked_exceptions(try_block, context);
                 let mut caught_types = BTreeSet::new();
+                let mut prior_caught_types = Vec::new();
                 for catch in catches {
                     violations.extend(catch.exception_type.verify(JavaTypeUse::Parameter));
                     match throwable_known_type(&catch.exception_type) {
                         Some(caught) => {
+                            if prior_caught_types.iter().any(|prior| {
+                                *prior != caught
+                                    && admitted_throwable_is_supertype_of(*prior, caught)
+                            }) {
+                                violations.push(AstViolation::new(
+                                    DiagnosticCode::InvalidControlFlow,
+                                    "Java catch clause is dominated by an earlier admitted throwable supertype",
+                                ));
+                            }
                             if !caught_types.insert(caught) {
                                 violations.push(AstViolation::new(
                                     DiagnosticCode::DuplicateDeclaration,
@@ -3058,6 +3412,7 @@ impl JavaStmt {
                                     "Java checked catch cannot be reached from its try block",
                                 ));
                             }
+                            prior_caught_types.push(caught);
                         }
                         None => violations.push(type_error(
                             "Java catch parameter must have a known throwable type",
@@ -4030,6 +4385,12 @@ impl JavaMember {
                     false,
                     Some(context),
                 ));
+                if let Some(declaration) = declaration {
+                    violations.extend(verify_constructor_final_assignments(
+                        constructor,
+                        declaration,
+                    ));
+                }
                 let unhandled = block_checked_exceptions(&constructor.body, context);
                 if !unhandled.is_empty() {
                     violations.push(AstViolation::new(
@@ -4255,6 +4616,18 @@ impl JavaTypeDeclaration {
                 }
             }
             violations.extend(member.verify_with_owner(context, owner.as_ref(), Some(self)));
+        }
+        if self.kind == JavaDeclarationKind::FinalClass
+            && !declaration_blank_instance_finals(self).is_empty()
+            && !self
+                .members
+                .iter()
+                .any(|member| matches!(member, JavaMember::Constructor(_)))
+        {
+            violations.push(AstViolation::new(
+                DiagnosticCode::InvalidControlFlow,
+                "implicit Java constructor cannot initialize declared blank final instance fields",
+            ));
         }
         violations.extend(verify_interface_conformance(self, context));
         violations
@@ -5404,6 +5777,36 @@ mod tests {
         }
     }
 
+    fn instanceof(value: JavaExpr, target: JavaType, binding: &str) -> JavaExpr {
+        JavaExpr {
+            ty: JavaType::primitive(JavaPrimitive::Boolean),
+            precedence: JavaPrecedence::Relational,
+            kind: JavaExprKind::InstanceOf {
+                value: Box::new(value),
+                target,
+                binding: Some(JavaIdentifier::from_portable(binding)),
+            },
+        }
+    }
+
+    fn this_field(owner: JavaType, ty: JavaType, name: &str) -> JavaExpr {
+        JavaExpr {
+            ty: ty.clone(),
+            precedence: JavaPrecedence::Primary,
+            kind: JavaExprKind::Field {
+                receiver: Box::new(JavaExpr {
+                    ty: owner,
+                    precedence: JavaPrecedence::Primary,
+                    kind: JavaExprKind::Value(JavaValueRef::This),
+                }),
+                field: JavaFieldRef::Structural {
+                    name: JavaIdentifier::from_portable(name),
+                    ty,
+                },
+            },
+        }
+    }
+
     fn fixture_core_field() -> CoreFieldId {
         let checked = portable_check::v0::check_program(
             portable_ir::v0::from_json(include_bytes!(
@@ -6050,6 +6453,361 @@ mod tests {
             vec![(vec![], caught)],
         );
         assert!(verification.is_ok(), "{verification:?}");
+    }
+
+    #[test]
+    fn nested_bindings_reject_outer_collisions_and_never_replace_the_outer_binding() {
+        let boolean = JavaType::primitive(JavaPrimitive::Boolean);
+        let object = JavaType::known(JavaKnownType::Object);
+        let string = JavaType::known(JavaKnownType::String);
+        let runtime_exception = JavaType::known(JavaKnownType::RuntimeException);
+        let strings = JavaType::generic(JavaKnownType::List, vec![string.clone()]);
+        let preserve_outer_string = |name: &str| JavaStmt::Local {
+            finality: JavaLocalFinality::Final,
+            ty: string.clone(),
+            name: JavaIdentifier::from_portable("preserved"),
+            value: Some(JavaExpr::local(
+                string.clone(),
+                JavaIdentifier::from_portable(name),
+            )),
+        };
+        let preserve_outer_object = |name: &str| JavaStmt::Local {
+            finality: JavaLocalFinality::Final,
+            ty: object.clone(),
+            name: JavaIdentifier::from_portable("preserved"),
+            value: Some(JavaExpr::local(
+                object.clone(),
+                JavaIdentifier::from_portable(name),
+            )),
+        };
+
+        let declaration = fixture_declaration(vec![
+            structural_method(
+                "foreachCollision",
+                JavaType::primitive(JavaPrimitive::Void),
+                vec![
+                    parameter(strings.clone(), "values"),
+                    parameter(string.clone(), "item"),
+                ],
+                JavaBlock::new(vec![JavaStmt::ForEach {
+                    binding_type: string.clone(),
+                    binding: JavaIdentifier::from_portable("item"),
+                    iterable: JavaExpr::local(strings, JavaIdentifier::from_portable("values")),
+                    body: JavaBlock::new(vec![preserve_outer_string("item")]),
+                }]),
+            ),
+            structural_method(
+                "switchCollision",
+                JavaType::primitive(JavaPrimitive::Void),
+                vec![parameter(object.clone(), "selector")],
+                JavaBlock::new(vec![JavaStmt::Switch {
+                    value: JavaExpr::local(
+                        object.clone(),
+                        JavaIdentifier::from_portable("selector"),
+                    ),
+                    arms: vec![
+                        JavaSwitchArm {
+                            pattern: JavaPattern::Type {
+                                ty: string.clone(),
+                                binding: JavaIdentifier::from_portable("selector"),
+                            },
+                            body: JavaBlock::new(vec![preserve_outer_object("selector")]),
+                        },
+                        JavaSwitchArm {
+                            pattern: JavaPattern::Default,
+                            body: JavaBlock::new(vec![]),
+                        },
+                    ],
+                }]),
+            ),
+            structural_method(
+                "catchCollision",
+                JavaType::primitive(JavaPrimitive::Void),
+                vec![parameter(string.clone(), "failure")],
+                JavaBlock::new(vec![JavaStmt::TryCatch {
+                    try_block: JavaBlock::new(vec![]),
+                    catches: vec![JavaCatch {
+                        exception_type: runtime_exception,
+                        binding: JavaIdentifier::from_portable("failure"),
+                        body: JavaBlock::new(vec![preserve_outer_string("failure")]),
+                    }],
+                }]),
+            ),
+            structural_method(
+                "outerFlowCollision",
+                JavaType::primitive(JavaPrimitive::Void),
+                vec![
+                    parameter(object.clone(), "input"),
+                    parameter(string.clone(), "text"),
+                ],
+                JavaBlock::new(vec![JavaStmt::If {
+                    condition: instanceof(
+                        JavaExpr::local(object.clone(), JavaIdentifier::from_portable("input")),
+                        string.clone(),
+                        "text",
+                    ),
+                    then_block: JavaBlock::new(vec![preserve_outer_string("text")]),
+                    else_block: None,
+                }]),
+            ),
+            structural_method(
+                "duplicateFlowCollision",
+                JavaType::primitive(JavaPrimitive::Void),
+                vec![
+                    parameter(object.clone(), "left"),
+                    parameter(object.clone(), "right"),
+                ],
+                JavaBlock::new(vec![JavaStmt::If {
+                    condition: JavaExpr {
+                        ty: boolean,
+                        precedence: JavaPrecedence::LogicalAnd,
+                        kind: JavaExprKind::Binary {
+                            operator: JavaBinaryOperator::LogicalAnd,
+                            left: Box::new(instanceof(
+                                JavaExpr::local(
+                                    object.clone(),
+                                    JavaIdentifier::from_portable("left"),
+                                ),
+                                string.clone(),
+                                "text",
+                            )),
+                            right: Box::new(instanceof(
+                                JavaExpr::local(object, JavaIdentifier::from_portable("right")),
+                                string,
+                                "text",
+                            )),
+                        },
+                    },
+                    then_block: JavaBlock::new(vec![]),
+                    else_block: None,
+                }]),
+            ),
+        ]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], declaration)],
+        )
+        .unwrap_err();
+        let duplicates = diagnostics
+            .iter()
+            .filter(|value| value.code == DiagnosticCode::DuplicateDeclaration)
+            .count();
+        assert_eq!(duplicates, 5, "{diagnostics:?}");
+        assert!(
+            diagnostics
+                .iter()
+                .all(|value| value.code != DiagnosticCode::TypeMismatch),
+            "a rejected nested binding replaced its authoritative outer binding: {diagnostics:?}"
+        );
+    }
+
+    #[test]
+    fn catch_order_uses_the_admitted_throwable_hierarchy() {
+        assert!(admitted_throwable_is_supertype_of(
+            JavaKnownType::RuntimeException,
+            JavaKnownType::IllegalArgumentException,
+        ));
+        assert!(admitted_throwable_is_supertype_of(
+            JavaKnownType::RuntimeException,
+            JavaKnownType::IllegalStateException,
+        ));
+        assert!(!admitted_throwable_is_supertype_of(
+            JavaKnownType::IllegalArgumentException,
+            JavaKnownType::RuntimeException,
+        ));
+        assert!(!admitted_throwable_is_supertype_of(
+            JavaKnownType::RuntimeException,
+            JavaKnownType::CharacterCodingException,
+        ));
+
+        let catch = |exception, binding: &str| JavaCatch {
+            exception_type: JavaType::known(exception),
+            binding: JavaIdentifier::from_portable(binding),
+            body: JavaBlock::new(vec![]),
+        };
+        let method = |catches| {
+            structural_method(
+                "catchOrder",
+                JavaType::primitive(JavaPrimitive::Void),
+                vec![],
+                JavaBlock::new(vec![JavaStmt::TryCatch {
+                    try_block: JavaBlock::new(vec![]),
+                    catches,
+                }]),
+            )
+        };
+        let invalid = fixture_declaration(vec![method(vec![
+            catch(JavaKnownType::RuntimeException, "runtime"),
+            catch(JavaKnownType::IllegalArgumentException, "argument"),
+        ])]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], invalid)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidControlFlow
+                && value.message.contains("dominated by an earlier")
+        }));
+
+        let valid = fixture_declaration(vec![method(vec![
+            catch(JavaKnownType::IllegalArgumentException, "argument"),
+            catch(JavaKnownType::RuntimeException, "runtime"),
+        ])]);
+        let verification = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], valid)],
+        );
+        assert!(verification.is_ok(), "{verification:?}");
+    }
+
+    #[test]
+    fn blank_final_fields_are_assigned_exactly_once_on_every_normal_constructor_exit() {
+        let int = JavaType::primitive(JavaPrimitive::Int);
+        let boolean = JavaType::primitive(JavaPrimitive::Boolean);
+        let owner = JavaType::known(JavaKnownType::RuntimeError);
+        let assignment = || JavaStmt::Assign {
+            target: this_field(owner.clone(), int.clone(), "value"),
+            value: JavaExpr::literal(int.clone(), JavaLiteral::I32(1)),
+        };
+        let constructor = |parameters, statements| {
+            JavaMember::Constructor(JavaConstructor {
+                modifiers: vec![],
+                name: JavaIdentifier::from_portable("PolyError"),
+                parameters,
+                body: JavaBlock::new(statements),
+            })
+        };
+        let declaration = |initializer: Option<JavaExpr>, constructor: Option<JavaMember>| {
+            let mut members = vec![JavaMember::Field(JavaField {
+                declared: None,
+                modifiers: vec![JavaModifier::Private, JavaModifier::Final],
+                ty: int.clone(),
+                name: JavaIdentifier::from_portable("value"),
+                initializer,
+            })];
+            members.extend(constructor);
+            let mut declaration = fixture_declaration(members);
+            declaration.name = JavaIdentifier::from_portable("PolyError");
+            declaration
+        };
+        let verify = |declaration| {
+            verify_fixture(
+                portable_codegen::TargetAstBuilder::new(JavaDialect),
+                vec![(vec![], declaration)],
+            )
+        };
+
+        let straight_line = declaration(None, Some(constructor(vec![], vec![assignment()])));
+        let verification = verify(straight_line);
+        assert!(verification.is_ok(), "{verification:?}");
+
+        let both_branches = declaration(
+            None,
+            Some(constructor(
+                vec![parameter(boolean.clone(), "condition")],
+                vec![JavaStmt::If {
+                    condition: JavaExpr::local(
+                        boolean.clone(),
+                        JavaIdentifier::from_portable("condition"),
+                    ),
+                    then_block: JavaBlock::new(vec![assignment()]),
+                    else_block: Some(JavaBlock::new(vec![assignment()])),
+                }],
+            )),
+        );
+        let verification = verify(both_branches);
+        assert!(verification.is_ok(), "{verification:?}");
+
+        let conditional_missing = declaration(
+            None,
+            Some(constructor(
+                vec![parameter(boolean.clone(), "condition")],
+                vec![JavaStmt::If {
+                    condition: JavaExpr::local(
+                        boolean.clone(),
+                        JavaIdentifier::from_portable("condition"),
+                    ),
+                    then_block: JavaBlock::new(vec![assignment()]),
+                    else_block: None,
+                }],
+            )),
+        );
+        let diagnostics = verify(conditional_missing).unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidControlFlow
+                && value
+                    .message
+                    .contains("without assigning blank final field")
+        }));
+
+        let duplicate = declaration(
+            None,
+            Some(constructor(vec![], vec![assignment(), assignment()])),
+        );
+        let diagnostics = verify(duplicate).unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidControlFlow
+                && value.message.contains("more than once")
+        }));
+
+        let early_return = declaration(
+            None,
+            Some(constructor(
+                vec![parameter(boolean.clone(), "condition")],
+                vec![
+                    JavaStmt::If {
+                        condition: JavaExpr::local(
+                            boolean.clone(),
+                            JavaIdentifier::from_portable("condition"),
+                        ),
+                        then_block: JavaBlock::new(vec![JavaStmt::Return(None)]),
+                        else_block: None,
+                    },
+                    assignment(),
+                ],
+            )),
+        );
+        let diagnostics = verify(early_return).unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidControlFlow
+                && value
+                    .message
+                    .contains("without assigning blank final field")
+        }));
+
+        let loop_assignment = declaration(
+            None,
+            Some(constructor(
+                vec![parameter(boolean.clone(), "condition")],
+                vec![JavaStmt::While {
+                    condition: JavaExpr::local(boolean, JavaIdentifier::from_portable("condition")),
+                    body: JavaBlock::new(vec![assignment()]),
+                }],
+            )),
+        );
+        let diagnostics = verify(loop_assignment).unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidControlFlow
+                && value.message.contains("constructor loop")
+        }));
+
+        let initialized = declaration(
+            Some(JavaExpr::literal(int.clone(), JavaLiteral::I32(0))),
+            Some(constructor(vec![], vec![assignment()])),
+        );
+        let diagnostics = verify(initialized).unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidControlFlow
+                && value.message.contains("initialized final")
+        }));
+
+        let implicit = declaration(None, None);
+        let diagnostics = verify(implicit).unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidControlFlow
+                && value.message.contains("implicit Java constructor")
+        }));
     }
 
     #[test]

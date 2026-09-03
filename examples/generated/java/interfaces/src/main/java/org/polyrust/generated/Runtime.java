@@ -109,7 +109,7 @@ public final class Runtime {
   static <T> org.polyrust.generated.Runtime.PolyResult<T> fail(final String code, final String message) {
     return new org.polyrust.generated.Runtime.PolyResult<T>(false, null, new org.polyrust.generated.Runtime.PolyError(code, message));
   }
-  public static boolean semanticEqual(final Object left, final Object right) {
+  static boolean semanticEqual(final Object left, final Object right) {
     if (((left instanceof Double leftDouble) && (right instanceof Double rightDouble))) {
       return (((double) leftDouble) == ((double) rightDouble));
      }
@@ -131,7 +131,7 @@ public final class Runtime {
      }
     return Objects.deepEquals(left, right);
   }
-  public static boolean deepEqual(final Object left, final Object right) {
+  static boolean deepEqual(final Object left, final Object right) {
     if (((left instanceof Double leftDouble) && (right instanceof Double rightDouble))) {
       return (Double.doubleToRawLongBits(leftDouble) == Double.doubleToRawLongBits(rightDouble));
      }
@@ -153,7 +153,7 @@ public final class Runtime {
      }
     return Objects.deepEquals(left, right);
   }
-  public static String requireScalarString(final String value) {
+  static String requireScalarString(final String value) {
     Objects.requireNonNull(value);
     final int length = value.length();
     int index = 0;
@@ -173,7 +173,7 @@ public final class Runtime {
     }
     return value;
   }
-  public static int compareScalarStrings(final String left, final String right) {
+  static int compareScalarStrings(final String left, final String right) {
     org.polyrust.generated.Runtime.requireScalarString(left);
     org.polyrust.generated.Runtime.requireScalarString(right);
     int leftIndex = 0;
@@ -301,10 +301,10 @@ public final class Runtime {
   static <T> org.polyrust.generated.Runtime.PolyOption<T> optionSome(final T value) {
     return new org.polyrust.generated.Runtime.PolyOption<T>(true, value);
   }
-  public static <T> boolean optionIsSome(final org.polyrust.generated.Runtime.PolyOption<T> value) {
+  static <T> boolean optionIsSome(final org.polyrust.generated.Runtime.PolyOption<T> value) {
     return value.some();
   }
-  public static <T> T optionValue(final org.polyrust.generated.Runtime.PolyOption<T> value) {
+  static <T> T optionValue(final org.polyrust.generated.Runtime.PolyOption<T> value) {
     return value.value();
   }
   static <T, E> org.polyrust.generated.Runtime.PolyValueResult<T, E> valueResultOk(final T value) {
@@ -313,16 +313,16 @@ public final class Runtime {
   static <T, E> org.polyrust.generated.Runtime.PolyValueResult<T, E> valueResultErr(final E error) {
     return new org.polyrust.generated.Runtime.PolyValueResult<T, E>(false, null, error);
   }
-  public static <T, E> boolean valueResultIsOk(final org.polyrust.generated.Runtime.PolyValueResult<T, E> value) {
+  static <T, E> boolean valueResultIsOk(final org.polyrust.generated.Runtime.PolyValueResult<T, E> value) {
     return value.ok();
   }
-  public static <T, E> T valueResultValue(final org.polyrust.generated.Runtime.PolyValueResult<T, E> value) {
+  static <T, E> T valueResultValue(final org.polyrust.generated.Runtime.PolyValueResult<T, E> value) {
     return value.value();
   }
-  public static <T, E> E valueResultError(final org.polyrust.generated.Runtime.PolyValueResult<T, E> value) {
+  static <T, E> E valueResultError(final org.polyrust.generated.Runtime.PolyValueResult<T, E> value) {
     return value.error();
   }
-  public static org.polyrust.generated.Runtime.PolyResult<Long> scalarLength(final String value) {
+  static org.polyrust.generated.Runtime.PolyResult<Long> scalarLength(final String value) {
     final int length = value.length();
     int index = 0;
     while ((index < length)) {
@@ -341,14 +341,14 @@ public final class Runtime {
     }
     return org.polyrust.generated.Runtime.ok(((long) value.codePointCount(0, length)));
   }
-  public static org.polyrust.generated.Runtime.PolyOption<Long> stringIndexOfLiteral(final String source, final String needle) {
+  static org.polyrust.generated.Runtime.PolyOption<Long> stringIndexOfLiteral(final String source, final String needle) {
     final int offset = source.indexOf(needle);
     if ((offset < 0)) {
       return org.polyrust.generated.Runtime.optionNone();
      }
     return org.polyrust.generated.Runtime.optionSome(((long) source.codePointCount(0, offset)));
   }
-  public static String stringSliceScalars(final String source, final long start, final long end) {
+  static String stringSliceScalars(final String source, final long start, final long end) {
     final int scalarLength = source.codePointCount(0, source.length());
     final long clampedStart = ((start < 0L) ? 0L : ((start > ((long) scalarLength)) ? ((long) scalarLength) : start));
     final long clampedEnd = ((end < 0L) ? 0L : ((end > ((long) scalarLength)) ? ((long) scalarLength) : end));
@@ -357,12 +357,12 @@ public final class Runtime {
      }
     return source.substring(source.offsetByCodePoints(0, ((int) clampedStart)), source.offsetByCodePoints(0, ((int) clampedEnd)));
   }
-  public static org.polyrust.generated.Runtime.Bytes stringToUtf8(final String value) {
+  static org.polyrust.generated.Runtime.Bytes stringToUtf8(final String value) {
     final byte[] raw = value.getBytes(StandardCharsets.UTF_8);
     final byte[] encoded = raw;
     return new org.polyrust.generated.Runtime.Bytes(encoded);
   }
-  public static org.polyrust.generated.Runtime.PolyResult<String> stringFromUtf8(final org.polyrust.generated.Runtime.Bytes value) {
+  static org.polyrust.generated.Runtime.PolyResult<String> stringFromUtf8(final org.polyrust.generated.Runtime.Bytes value) {
     final byte[] raw = value.values();
     final CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
     decoder.onMalformedInput(CodingErrorAction.REPORT);
@@ -410,7 +410,7 @@ public final class Runtime {
       return (true && org.polyrust.generated.Runtime.deepEqual(((Object) this.values()), ((Object) otherValue.values())));
     }
   }
-  public static org.polyrust.generated.Runtime.Bytes bytesOf(final List<Integer> values) {
+  static org.polyrust.generated.Runtime.Bytes bytesOf(final List<Integer> values) {
     final List<Integer> immutable = List.copyOf(values);
     final byte[] copy = new byte[immutable.size()];
     int index = 0;
@@ -425,7 +425,7 @@ public final class Runtime {
     final byte[] frozen = copy;
     return new org.polyrust.generated.Runtime.Bytes(frozen);
   }
-  public static List<Integer> bytesToList(final org.polyrust.generated.Runtime.Bytes value) {
+  static List<Integer> bytesToList(final org.polyrust.generated.Runtime.Bytes value) {
     final byte[] raw = value.values();
     final ArrayList<Integer> output = new ArrayList<Integer>();
     for (byte item : raw) {
@@ -433,16 +433,16 @@ public final class Runtime {
     }
     return List.copyOf(output);
   }
-  public static long bytesLength(final org.polyrust.generated.Runtime.Bytes value) {
+  static long bytesLength(final org.polyrust.generated.Runtime.Bytes value) {
     return ((long) value.values().length);
   }
-  public static boolean bytesIsEmpty(final org.polyrust.generated.Runtime.Bytes value) {
+  static boolean bytesIsEmpty(final org.polyrust.generated.Runtime.Bytes value) {
     return (value.values().length == 0);
   }
-  public static org.polyrust.generated.Runtime.Bytes bytesConcat(final org.polyrust.generated.Runtime.Bytes left, final org.polyrust.generated.Runtime.Bytes right) {
+  static org.polyrust.generated.Runtime.Bytes bytesConcat(final org.polyrust.generated.Runtime.Bytes left, final org.polyrust.generated.Runtime.Bytes right) {
     return org.polyrust.generated.Runtime.bytesOf(org.polyrust.generated.Runtime.listConcat(org.polyrust.generated.Runtime.bytesToList(left), org.polyrust.generated.Runtime.bytesToList(right)));
   }
-  public static org.polyrust.generated.Runtime.Bytes bytesReplaceAll(final org.polyrust.generated.Runtime.Bytes source, final org.polyrust.generated.Runtime.Bytes needle, final org.polyrust.generated.Runtime.Bytes replacement) {
+  static org.polyrust.generated.Runtime.Bytes bytesReplaceAll(final org.polyrust.generated.Runtime.Bytes source, final org.polyrust.generated.Runtime.Bytes needle, final org.polyrust.generated.Runtime.Bytes replacement) {
     final ArrayList<Integer> result = new ArrayList<Integer>();
     if (org.polyrust.generated.Runtime.bytesToList(needle).isEmpty()) {
       result.addAll(org.polyrust.generated.Runtime.bytesToList(replacement));
@@ -464,32 +464,32 @@ public final class Runtime {
     }
     return org.polyrust.generated.Runtime.bytesOf(result);
   }
-  public static <T> List<T> listCopy(final List<T> values) {
+  static <T> List<T> listCopy(final List<T> values) {
     return List.copyOf(values);
   }
-  public static <T> long listLength(final List<T> values) {
+  static <T> long listLength(final List<T> values) {
     return ((long) values.size());
   }
-  public static <T> boolean listIsEmpty(final List<T> values) {
+  static <T> boolean listIsEmpty(final List<T> values) {
     return values.isEmpty();
   }
-  public static <T> org.polyrust.generated.Runtime.PolyResult<T> listGet(final List<T> values, final long index) {
+  static <T> org.polyrust.generated.Runtime.PolyResult<T> listGet(final List<T> values, final long index) {
     if (((index < 0L) || (index >= ((long) values.size())))) {
       return org.polyrust.generated.Runtime.fail("index_out_of_bounds", "index_out_of_bounds");
      }
     return org.polyrust.generated.Runtime.ok(values.get(((int) index)));
   }
-  public static <T> List<T> listAppend(final List<T> values, final T item) {
+  static <T> List<T> listAppend(final List<T> values, final T item) {
     final ArrayList<T> result = new ArrayList<T>(values);
     result.add(item);
     return List.copyOf(result);
   }
-  public static <T> List<T> listConcat(final List<T> left, final List<T> right) {
+  static <T> List<T> listConcat(final List<T> left, final List<T> right) {
     final ArrayList<T> result = new ArrayList<T>(left);
     result.addAll(right);
     return List.copyOf(result);
   }
-  public static <T> boolean listContains(final List<T> values, final T item) {
+  static <T> boolean listContains(final List<T> values, final T item) {
     for (T candidate : values) {
       if (org.polyrust.generated.Runtime.semanticEqual(candidate, item)) {
         return true;
@@ -497,7 +497,7 @@ public final class Runtime {
     }
     return false;
   }
-  public static <T> org.polyrust.generated.Runtime.PolyOption<Long> listIndexOf(final List<T> values, final T item) {
+  static <T> org.polyrust.generated.Runtime.PolyOption<Long> listIndexOf(final List<T> values, final T item) {
     long index = 0L;
     for (T candidate : values) {
       if (org.polyrust.generated.Runtime.semanticEqual(candidate, item)) {

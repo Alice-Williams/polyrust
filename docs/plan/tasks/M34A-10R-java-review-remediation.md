@@ -241,3 +241,38 @@ source parsing, and unrelated renderer conveniences do not block completion.
   passed 230 of 230 tests, and a fresh Cargo target passed
   `cargo test --workspace --all-features --locked`. Checkpoint commit, push,
   hosted CI, and the next fresh blind review remain pending.
+- Round 4 checkpoint `bbf91d2b72ffd9897112526686c5f6f9999cfb51`
+  was pushed and remotely verified. Fresh Sol/xhigh blind review round 5
+  validated the four round 4 repairs and found four additional core blockers;
+  all are accepted.
+- Implementation-only runtime helper callables must become package private so
+  external Java cannot bypass generated type-directed normalization with
+  malformed UTF-16. The separate consumer will use only generated portable APIs
+  and required public runtime value types; deliberate negative compilation
+  evidence will protect the helper boundary.
+- Target AST verification must reject overlapping foreach, catch, switch
+  pattern, and `instanceof` flow bindings; reject catch types dominated by an
+  earlier supertype; and prove every blank instance-final field is assigned
+  exactly once on every normally completing constructor path.
+- Hosted CI run `33720668611` for the round 4 checkpoint passed every job,
+  including both Ubuntu determinism jobs, the clean release gate, and the
+  executable snapshot comparison scripts.
+- Round 5 makes every implementation-only runtime helper package private and
+  proves the boundary with a separately compiled public consumer plus negative
+  external compilation tests. Public generated APIs remain the only route to
+  operations that require type-directed normalization.
+- Java lexical verification now uses non-overwriting bindings for parameters,
+  locals, foreach variables, catch variables, switch patterns, and positive
+  `instanceof` flow scopes. Catch verification rejects the admitted subtype
+  relationships when an earlier supertype would dominate a later clause.
+- Constructor path analysis now proves exact assignment of every blank
+  instance-final field on every normal exit, rejects duplicate and initialized
+  final assignments, and conservatively rejects loop- or try-dependent final
+  writes that cannot satisfy the portable proof.
+- Round 5's uncached focused Java/codegen/policy/snapshot and lint gate passed
+  34 of 34 tests. The complete tracked repository replay passed 292 of 292
+  tests, excluding only the untouched user-owned untracked
+  `examples/real-world/stdlib-abs/` package. The independent release gate
+  passed 230 of 230 tests, and a fresh Cargo target passed
+  `cargo test --workspace --all-features --locked`. Checkpoint commit, push,
+  hosted CI, and the next fresh blind review remain pending.

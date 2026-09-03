@@ -101,7 +101,7 @@ public final class Runtime {
   static <T> org.polyrust.generated.Runtime.PolyResult<T> fail(final String code, final String message) {
     return new org.polyrust.generated.Runtime.PolyResult<T>(false, null, new org.polyrust.generated.Runtime.PolyError(code, message));
   }
-  public static boolean semanticEqual(final Object left, final Object right) {
+  static boolean semanticEqual(final Object left, final Object right) {
     if (((left instanceof Double leftDouble) && (right instanceof Double rightDouble))) {
       return (((double) leftDouble) == ((double) rightDouble));
      }
@@ -123,7 +123,7 @@ public final class Runtime {
      }
     return Objects.deepEquals(left, right);
   }
-  public static boolean deepEqual(final Object left, final Object right) {
+  static boolean deepEqual(final Object left, final Object right) {
     if (((left instanceof Double leftDouble) && (right instanceof Double rightDouble))) {
       return (Double.doubleToRawLongBits(leftDouble) == Double.doubleToRawLongBits(rightDouble));
      }
@@ -145,7 +145,7 @@ public final class Runtime {
      }
     return Objects.deepEquals(left, right);
   }
-  public static String requireScalarString(final String value) {
+  static String requireScalarString(final String value) {
     Objects.requireNonNull(value);
     final int length = value.length();
     int index = 0;
@@ -165,7 +165,7 @@ public final class Runtime {
     }
     return value;
   }
-  public static int compareScalarStrings(final String left, final String right) {
+  static int compareScalarStrings(final String left, final String right) {
     org.polyrust.generated.Runtime.requireScalarString(left);
     org.polyrust.generated.Runtime.requireScalarString(right);
     int leftIndex = 0;

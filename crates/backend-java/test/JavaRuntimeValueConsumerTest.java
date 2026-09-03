@@ -5,12 +5,6 @@ public final class JavaRuntimeValueConsumerTest {
 
   public static void main(String[] arguments) {
     expectIllegalArgument(
-        () -> org.polyrust.generated.Runtime.bytesOf(java.util.List.of(-1)),
-        "negative byte accepted");
-    expectIllegalArgument(
-        () -> org.polyrust.generated.Runtime.bytesOf(java.util.List.of(256)),
-        "large byte accepted");
-    expectIllegalArgument(
         () ->
             org.polyrust.generated.Generated
                 .__polyrust_someOfOption19_List12_List6_String(
@@ -18,7 +12,7 @@ public final class JavaRuntimeValueConsumerTest {
         "nested unpaired surrogate accepted");
 
     org.polyrust.generated.Runtime.PolyResult<Integer> i32RemainderOverflow =
-        org.polyrust.generated.Runtime.checkedRemI32(Integer.MIN_VALUE, -1);
+        org.polyrust.generated.Generated.checked_rem_i32(Integer.MIN_VALUE, -1);
     assertCheckedOverflow(i32RemainderOverflow, "i32 remainder");
     try {
       i32RemainderOverflow.value();
@@ -28,14 +22,14 @@ public final class JavaRuntimeValueConsumerTest {
     }
     assertSemanticEqual(
         i32RemainderOverflow,
-        org.polyrust.generated.Runtime.checkedRemI32(Integer.MIN_VALUE, -1),
+        org.polyrust.generated.Generated.checked_rem_i32(Integer.MIN_VALUE, -1),
         "failed result payload");
     assertDeepEqual(
-        org.polyrust.generated.Runtime.checkedRemI32(5, 2),
-        org.polyrust.generated.Runtime.checkedRemI32(5, 2),
+        org.polyrust.generated.Generated.checked_rem_i32(5, 2),
+        org.polyrust.generated.Generated.checked_rem_i32(5, 2),
         "successful result payload");
     assertCheckedOverflow(
-        org.polyrust.generated.Runtime.checkedRemI64(Long.MIN_VALUE, -1L), "i64 remainder");
+        org.polyrust.generated.Generated.checked_rem_i64(Long.MIN_VALUE, -1L), "i64 remainder");
 
     org.polyrust.generated.Runtime.PolyOption<java.util.List<java.util.List<String>>> none =
         org.polyrust.generated.Generated.__polyrust_noneOfOption19_List12_List6_String();
@@ -222,26 +216,30 @@ public final class JavaRuntimeValueConsumerTest {
     }
   }
 
-  private static void assertSemanticEqual(Object left, Object right, String message) {
-    if (!org.polyrust.generated.Runtime.semanticEqual(left, right)) {
+  private static void assertSemanticEqual(
+      org.polyrust.generated.Runtime.SemanticValue left, Object right, String message) {
+    if (!left.semanticEquals(right)) {
       throw new AssertionError(message + " should be equal");
     }
   }
 
-  private static void assertSemanticUnequal(Object left, Object right, String message) {
-    if (org.polyrust.generated.Runtime.semanticEqual(left, right)) {
+  private static void assertSemanticUnequal(
+      org.polyrust.generated.Runtime.SemanticValue left, Object right, String message) {
+    if (left.semanticEquals(right)) {
       throw new AssertionError(message + " should be unequal");
     }
   }
 
-  private static void assertDeepEqual(Object left, Object right, String message) {
-    if (!org.polyrust.generated.Runtime.deepEqual(left, right)) {
+  private static void assertDeepEqual(
+      org.polyrust.generated.Runtime.SemanticValue left, Object right, String message) {
+    if (!left.deepEquals(right)) {
       throw new AssertionError(message + " should be bit-exactly equal");
     }
   }
 
-  private static void assertDeepUnequal(Object left, Object right, String message) {
-    if (org.polyrust.generated.Runtime.deepEqual(left, right)) {
+  private static void assertDeepUnequal(
+      org.polyrust.generated.Runtime.SemanticValue left, Object right, String message) {
+    if (left.deepEquals(right)) {
       throw new AssertionError(message + " should be bit-exactly unequal");
     }
   }
