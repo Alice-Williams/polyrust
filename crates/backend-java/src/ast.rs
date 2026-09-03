@@ -2875,10 +2875,10 @@ fn verify_block_scope_in_context(
             JavaStmt::While { condition, body } => {
                 violations.extend(verify_expr_scope(condition, scope));
                 match java_loop_condition(condition) {
-                    JavaLoopCondition::Never if !body.statements.is_empty() => {
+                    JavaLoopCondition::Never => {
                         violations.push(AstViolation::new(
                             DiagnosticCode::InvalidControlFlow,
-                            "nonempty Java while(false) body is unreachable",
+                            "Java while(false) body is unreachable",
                         ));
                     }
                     JavaLoopCondition::UnsupportedConstantForm => {
@@ -2887,9 +2887,7 @@ fn verify_block_scope_in_context(
                             "Java loop condition uses a compile-time form outside the admitted reachability grammar",
                         ));
                     }
-                    JavaLoopCondition::Always
-                    | JavaLoopCondition::Never
-                    | JavaLoopCondition::Dynamic => {}
+                    JavaLoopCondition::Always | JavaLoopCondition::Dynamic => {}
                 }
                 let mut body_scope = scope.clone();
                 collect_positive_pattern_bindings(condition, &mut body_scope);
@@ -6971,12 +6969,7 @@ mod tests {
             vec![],
             JavaBlock::new(vec![JavaStmt::While {
                 condition: JavaExpr::literal(boolean.clone(), JavaLiteral::Boolean(false)),
-                body: JavaBlock::new(vec![JavaStmt::Local {
-                    finality: JavaLocalFinality::Final,
-                    ty: int.clone(),
-                    name: JavaIdentifier::from_portable("unreachable"),
-                    value: Some(JavaExpr::literal(int.clone(), JavaLiteral::I32(1))),
-                }]),
+                body: JavaBlock::new(vec![]),
             }]),
         )]);
         let diagnostics = verify_fixture(

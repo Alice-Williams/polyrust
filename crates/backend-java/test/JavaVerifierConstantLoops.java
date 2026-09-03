@@ -9,8 +9,6 @@ public final class JavaVerifierConstantLoops {
     }
 
     static void statementInsideFalseLoop() {
-        while (false) {
-            int unreachable = 1;
-        }
+        while (false) {}
     }
 }

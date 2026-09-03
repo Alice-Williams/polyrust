@@ -346,3 +346,22 @@ source parsing, and unrelated renderer conveniences do not block completion.
   Cargo target passed `cargo test --workspace --all-features --locked`,
   including every doctest. Checkpoint commit/push, hosted CI, and a fresh blind
   review remain pending.
+- Round 8 checkpoint `e5bfefa7beb0b48d65661ac4b5b315afbd37c324`
+  was committed, pushed to `origin/main`, and remotely verified. Fresh
+  Sol/xhigh blind review round 9 validated the dependency ordering, loop-break,
+  and evaluation-order repairs, but demonstrated three further core gaps; all
+  are accepted.
+- Hosted CI run `33739356159` passed every job for the exact round 8
+  checkpoint.
+- Round 9 materializes every portable `Evaluate` value as a typed final local
+  after its expression-plan prefixes, rejects every constant-false Java loop,
+  and verifies that a sole public top-level type matches the `.java` basename.
+  Proof includes a checked portable local-expression Evaluate which generates,
+  compiles, and executes in the semantic-edge package; forged filename and
+  empty-loop target-AST regressions; and hermetic Java 21 negative compilation
+  fixtures for the empty loop and mismatched public filename. The uncached
+  Java/codegen/policy/snapshot/lint gate passed 37 of 37 tests, the complete
+  tracked-repository replay passed 294 of 294 tests, and the independently
+  composed release gate passed 232 of 232 tests. A fresh Cargo target passed
+  `cargo test --workspace --all-features --locked`, including every doctest.
+  Checkpoint push, hosted CI, and another fresh blind review remain pending.

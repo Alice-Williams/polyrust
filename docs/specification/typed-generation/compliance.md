@@ -118,6 +118,19 @@ test evidence rather than a current **Pass** claim while M34A-10R is open.
   Cargo workspace/all-features/locked target including doctests. Java remains
   **Fail** until the immutable pushed checkpoint receives successful hosted CI
   and a clean fresh blind review.
+- Fresh blind review round 9 of pushed checkpoint `e5bfefa` validated the
+  round 8 fixes but found three more core gaps: advertised portable `Evaluate`
+  could become a verifier-forbidden Java expression statement, an empty
+  `while (false) {}` was accepted despite Java 21 rejecting its unreachable
+  body statement, and a public top-level type was not required to match its
+  source filename. All are accepted. Java remains **Fail** pending round 9
+  regression evidence, gates, push, hosted CI, and another fresh blind review.
+- Round 9 regression evidence passes: 37 of 37 uncached focused
+  Java/codegen/policy/snapshot/lint tests, 294 of 294 uncached tracked-repository
+  tests, 232 of 232 independently composed release-gate tests, and a fresh
+  Cargo workspace/all-features/locked target including doctests. Java remains
+  **Fail** until the immutable pushed checkpoint receives successful hosted CI
+  and a clean fresh blind review.
 
 ## Pass rule
 

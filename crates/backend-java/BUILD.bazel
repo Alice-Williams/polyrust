@@ -197,6 +197,7 @@ sh_test(
         "$(location test/JavaVerifierUnreachable.java)",
         "$(location test/JavaVerifierFieldInitializer.java)",
         "$(location test/JavaVerifierConstantLoops.java)",
+        "$(location test/JavaVerifierWrongFilename.java)",
     ],
     data = [
         "test/JavaVerifierBlankFinalRead.java",
@@ -205,6 +206,7 @@ sh_test(
         "test/JavaVerifierPatternCollision.java",
         "test/JavaVerifierUnassignedLocal.java",
         "test/JavaVerifierUnreachable.java",
+        "test/JavaVerifierWrongFilename.java",
         "@bazel_tools//tools/jdk:current_java_runtime",
     ],
     visibility = ["//visibility:public"],

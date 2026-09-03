@@ -474,4 +474,34 @@ mod tests {
             "the nontrivial left operand must be evaluated exactly once"
         );
     }
+
+    #[test]
+    fn portable_evaluate_lowers_to_a_valid_java_local() {
+        let mut module = ModuleBuilder::new("java_evaluate");
+        module.function("visit", Visibility::Public, vec![], |function| {
+            function.parameter(Parameter::new("value", Type::i64()));
+            function.returns(Type::unit());
+            function.body(|body| {
+                let value = body.local("value");
+                let evaluate = body.expression_statement(value);
+                let unit = body.literal(Value::unit());
+                body.block([evaluate], Some(unit))
+            });
+        });
+
+        let checked = module.finish().expect("Evaluate fixture checks");
+        let manifest = JavaBackend
+            .generate(&checked, &BackendOptions::default())
+            .expect("valid Evaluate fixture generates");
+        let generated = generated_text(
+            &manifest,
+            "src/main/java/org/polyrust/generated/Generated.java",
+        );
+        assert_eq!(
+            generated.matches("final long __polyrust_evaluate_").count(),
+            1,
+            "portable Evaluate is materialized as a legal Java local initializer"
+        );
+        assert!(!generated.lines().any(|line| line.trim() == "value;"));
+    }
 }

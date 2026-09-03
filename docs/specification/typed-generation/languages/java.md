@@ -124,10 +124,11 @@ option/result branch.
   Return, throw, break, continue, exhaustive branch, exhaustive switch, and
   try/catch completion are determined structurally before rendering.
 - Loop reachability follows the admitted Java constant-boolean grammar. A
-  constant-false loop may have only an empty body, and a constant-true loop
-  cannot complete normally unless a reachable `break` targets that exact loop.
-  Breaks owned by nested loops or switches do not count. Constant forms outside
-  the admitted grammar fail closed rather than being treated as dynamic.
+  constant-false loop is rejected because even its empty body statement is
+  unreachable, and a constant-true loop cannot complete normally unless a
+  reachable `break` targets that exact loop. Breaks owned by nested loops or
+  switches do not count. Constant forms outside the admitted grammar fail
+  closed rather than being treated as dynamic.
 - Field initializers have an explicit static or instance lexical scope. They
   cannot refer to locals, use `this` from static context, read a constructor-
   assigned blank final, or allow an unhandled checked exception.
@@ -138,6 +139,10 @@ option/result branch.
   its source evaluation point before a later child can execute; a composed
   Java expression cannot duplicate a source expression or let later fallible
   work overtake an earlier allocation or call.
+- Portable `Evaluate` and ignored statement-body results are materialized as
+  typed final local initializers. They never rely on Java's narrower
+  expression-statement grammar, and their expression-plan prefixes still
+  propagate portable failures before the result is discarded.
 - Normal portable `Result` flow uses tagged values, not exceptions.
 - Checked arithmetic, shift, float-bit, UTF-8/scalar, bytes, and collection
   behavior use known typed callables/helpers.
@@ -213,7 +218,8 @@ generated/runtime/test roots, and deterministic dependency-safe member order
 are represented by typed file roles. Split declarations, constant dependency
 cycles, and circular/self field initialization are rejected. File paths are
 derived from validated package/type identities, never supplied as executable
-fragments.
+fragments. When a compilation unit contains one public top-level type, its
+basename MUST equal that type's identifier plus `.java`.
 
 ## 10. Rendering
 

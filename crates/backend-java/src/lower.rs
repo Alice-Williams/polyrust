@@ -1275,24 +1275,28 @@ impl<'a> Lowering<'a> {
                 }
                 CoreStatement::Evaluate { value, .. } => {
                     let plan = self.expr_plan(*value, callable_return)?;
-                    statements.extend(plan.statements);
-                    statements.push(JavaStmt::Expression(plan.value));
+                    self.append_evaluation(&mut statements, plan);
                 }
             }
         }
         if let Some(result) = block.result {
             let plan = self.expr_plan(result, callable_return)?;
-            statements.extend(plan.statements);
-            statements.push(match mode {
+            match mode {
                 BlockMode::ReturnResult => {
-                    JavaStmt::Return(Some(self.success_result(plan.value, callable_return)?))
+                    statements.extend(plan.statements);
+                    statements.push(JavaStmt::Return(Some(
+                        self.success_result(plan.value, callable_return)?,
+                    )));
                 }
-                BlockMode::AssignResult { ref target } => JavaStmt::Assign {
-                    target: target.as_ref().clone(),
-                    value: plan.value,
-                },
-                BlockMode::StatementBody => JavaStmt::Expression(plan.value),
-            });
+                BlockMode::AssignResult { ref target } => {
+                    statements.extend(plan.statements);
+                    statements.push(JavaStmt::Assign {
+                        target: target.as_ref().clone(),
+                        value: plan.value,
+                    });
+                }
+                BlockMode::StatementBody => self.append_evaluation(&mut statements, plan),
+            }
         } else {
             match mode {
                 BlockMode::ReturnResult => statements.push(JavaStmt::Return(Some(
@@ -1306,6 +1310,18 @@ impl<'a> Lowering<'a> {
             }
         }
         Ok(JavaBlock::new(statements))
+    }
+
+    fn append_evaluation(&self, statements: &mut Vec<JavaStmt>, mut plan: ExprPlan) {
+        statements.append(&mut plan.statements);
+        let ty = plan.value.ty.clone();
+        let (name, _) = self.temporary("evaluate", ty.clone());
+        statements.push(JavaStmt::Local {
+            finality: JavaLocalFinality::Final,
+            ty,
+            name,
+            value: Some(plan.value),
+        });
     }
 
     fn expr_plan(

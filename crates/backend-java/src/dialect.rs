@@ -1609,16 +1609,33 @@ impl TypedAstDialect for JavaDialect {
         let public_types = file
             .items()
             .iter()
-            .filter(|item| {
-                matches!(item, JavaFileItem::Type { declaration, .. }
-                if declaration.visibility == JavaVisibility::Public)
+            .filter_map(|item| match item {
+                JavaFileItem::Type { declaration, .. }
+                    if declaration.visibility == JavaVisibility::Public =>
+                {
+                    Some(declaration)
+                }
+                JavaFileItem::Type { .. } | JavaFileItem::RuntimeMembers { .. } => None,
             })
-            .count();
-        if public_types > 1 {
+            .collect::<Vec<_>>();
+        if public_types.len() > 1 {
             violations.push(AstViolation::new(
                 DiagnosticCode::InvalidStructure,
                 "Java compilation unit has more than one public top-level type",
             ));
+        }
+        if let [public_type] = public_types.as_slice() {
+            let actual = file.path().as_str().rsplit('/').next().unwrap_or_default();
+            let expected = format!("{}.java", public_type.name.as_str());
+            if actual != expected {
+                violations.push(AstViolation::new(
+                    DiagnosticCode::InvalidStructure,
+                    format!(
+                        "Java public top-level type `{}` must be declared in `{expected}`",
+                        public_type.name.as_str()
+                    ),
+                ));
+            }
         }
         if file.template() != &JavaTemplateId::CompilationUnit {
             violations.push(AstViolation::new(
@@ -2194,7 +2211,8 @@ mod tests {
         }
     }
 
-    fn verify_single_file(
+    fn verify_file_at_path(
+        path: &str,
         declaration: JavaTypeDeclaration,
         role: portable_codegen::SourceRole,
         placement: JavaFilePlacement,
@@ -2202,7 +2220,7 @@ mod tests {
     ) -> Result<(), Vec<Diagnostic>> {
         let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
         let file = builder.file(TargetFile::new(
-            portable_codegen::RelativeOutputPath::new("Fixture.java").unwrap(),
+            portable_codegen::RelativeOutputPath::new(path).unwrap(),
             role,
             JavaPackage::Generated,
             placement,
@@ -2219,6 +2237,15 @@ mod tests {
             source("group"),
         ));
         portable_codegen::verify_target_ast(&builder.build())
+    }
+
+    fn verify_single_file(
+        declaration: JavaTypeDeclaration,
+        role: portable_codegen::SourceRole,
+        placement: JavaFilePlacement,
+        group_role: portable_codegen::FileGroupRole,
+    ) -> Result<(), Vec<Diagnostic>> {
+        verify_file_at_path("Fixture.java", declaration, role, placement, group_role)
     }
 
     #[test]
@@ -2366,5 +2393,26 @@ mod tests {
                 .iter()
                 .any(|diagnostic| { diagnostic.code == DiagnosticCode::InterfaceNonconformance })
         );
+    }
+
+    #[test]
+    fn public_top_level_type_must_match_its_java_filename() {
+        let mut wrong = declaration(JavaHeritage::None, vec![]);
+        wrong.visibility = JavaVisibility::Public;
+        wrong.name = JavaIdentifier::from_portable("Wrong");
+        let diagnostics = verify_file_at_path(
+            "Other.java",
+            wrong,
+            portable_codegen::SourceRole::PublicApi,
+            JavaFilePlacement::Main,
+            portable_codegen::FileGroupRole::PublicApi,
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidStructure
+                && diagnostic
+                    .message
+                    .contains("must be declared in `Wrong.java`")
+        }));
     }
 }

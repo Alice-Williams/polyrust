@@ -252,6 +252,17 @@ fn main() {
             body.block([], Some(value))
         });
     });
+    let evaluate_local =
+        module.function("evaluate_local", Visibility::Public, vec![], |function| {
+            function.parameter(Parameter::new("value", Type::i64()));
+            function.returns(Type::i64());
+            function.body(|body| {
+                let discarded = body.local("value");
+                let evaluate = body.expression_statement(discarded);
+                let result = body.local("value");
+                body.block([evaluate], Some(result))
+            });
+        });
 
     let astral = "\u{10000}";
     let bmp = "\u{e000}";
@@ -392,6 +403,16 @@ fn main() {
             ],
         ),
         Expected::value(TypedValue::new(Type::string(), Value::string("a🦀"))),
+    );
+    module.portable_test(
+        "portable_evaluate_accepts_non_statement_expression",
+        Visibility::Package,
+        vec![],
+        Invocation::function(
+            evaluate_local,
+            [TypedValue::new(Type::i64(), Value::i64(7))],
+        ),
+        Expected::value(TypedValue::new(Type::i64(), Value::i64(7))),
     );
 
     let checked = module.finish().expect("semantic edge fixture checks");
