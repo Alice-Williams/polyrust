@@ -432,3 +432,37 @@ source parsing, and unrelated renderer conveniences do not block completion.
   tests. A fresh Cargo target passed
   `cargo test --workspace --all-features --locked`, including every doctest.
   Checkpoint push, hosted CI, and an exhaustive fresh review remain pending.
+- Round 12 checkpoint `5cb5a10552f3d1b4f96d974eeee91ec67042c486`
+  was committed, pushed to `origin/main`, and remotely verified. Hosted CI run
+  `33755866121` passed all eight jobs for that exact SHA, including both Ubuntu
+  determinism jobs and the cold/warm release gates.
+- The next Sol/xhigh review used an uncapped, nine-category audit instead of a
+  fixed finding count. It validated the concrete generated packages but found
+  ten accepted defect families: production source-policy scanning after a
+  test-only module; recursively nested mutable arrays; position-insensitive
+  known-call matching; primitive wildcard bounds; invalid primitive-to-wrapper
+  casts; record name/accessor/constructor rules; inherited `Object` collisions;
+  nested types reusing an enclosing name; noncanonical Java role/path roots;
+  and an oracle/documentation coverage overclaim.
+- Round 13 remediates all ten families. The source policy now removes only the
+  balanced `#[cfg(test)]` item and scans all remaining production Rust. Java
+  boundary ownership recurses through constructed types. Callable matching
+  distinguishes receiver, parameter, result, and type-argument positions while
+  preserving the exact generic-result unboxing Java permits. Wildcard, cast,
+  record, `Object`, nested-name, role, placement, and package-root rules fail
+  closed. Eight paired Java 21 compiler-negative fixtures make those grammar
+  decisions executable. The deterministic compiler oracle now samples arrays,
+  nested/bounded generics, records, generic interfaces, nested types, known
+  calls, casts, branches, imports, and canonical file roots without claiming
+  finite sampling is universal proof.
+- During the complete replay, the `has-flag` port exposed one overly strict
+  generic-result rule: `RuntimeOption<Long>` may be unboxed to `long`. The
+  matcher was narrowed to that exact type-variable conversion, with a permanent
+  positive `long` and negative `int` regression; ordinary known-method results
+  remain exact.
+- Round 13 evidence passes 53 of 53 focused Java/codegen/policy/snapshot/lint
+  tests, 294 of 294 uncached tracked-repository tests, and 232 of 232 uncached
+  independently composed release-gate tests. A fresh isolated Cargo target
+  passes `cargo test --workspace --all-features --locked`, including every
+  doctest. Checkpoint commit/push, hosted CI, and a fresh exhaustive review
+  remain pending.

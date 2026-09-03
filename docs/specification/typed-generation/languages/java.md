@@ -60,6 +60,10 @@ an internally allocated mutable array to a defensive-copy boundary. The
 verifier rejects every other source/target pairing; rendering this proof node
 emits its operand without a Java cast because ownership is a generator
 invariant, not a Java runtime type.
+Boundary verification is recursive through every generic, wildcard, array,
+option, result, and list payload. An `InternalMutable` array at any depth is
+therefore rejected in field, parameter, or result position; a shallow
+container copy is not proof that nested arrays cannot alias caller state.
 
 ## 4. Type mapping
 
@@ -85,6 +89,11 @@ rendering. Registered callable signatures retain the complete constructed
 ownership marker, and type variable; a coarse "generic" category is not a
 legal signature identity. Arrays and mutable collection references MUST NOT
 escape portable value boundaries.
+Wildcard bounds are reference types. Known member signatures distinguish
+receiver, parameter, result, and nested type-argument positions: invocation
+boxing is legal only where Java permits it, while the receiver and emitted
+primary-expression result type remain exact. Wildcard capture has an explicit
+upper-bound/Object result rule rather than weakening all result matching.
 
 Public callable parameters and generated record components are normalized by
 a `CoreTypeId`-directed lowering plan. Lists are rebuilt element-by-element and
@@ -115,6 +124,10 @@ option/result branch.
   field initializer which refers to itself or to a later field in the same
   type.
 - Records/final classes validate and copy mutable inputs in typed constructors.
+- Record components reject Java's reserved `Object` member names. An explicit
+  canonical constructor is never less accessible than its record, and an
+  explicit component accessor is public, concrete, non-static, non-generic,
+  and returns the exact component type.
 - Because the admitted Java AST has no static-initializer node, every `static
   final` field MUST have a typed initializer. A blank static final is rejected
   rather than relying on source Java which this AST cannot represent.
@@ -159,6 +172,9 @@ option/result branch.
   both methods explicitly.
 - Empty-needle string replacement inserts only at Unicode scalar boundaries;
   it must not delegate to UTF-16 code-unit boundary behavior.
+- Structural methods which collide with inherited `Object` signatures obey
+  exact public instance override rules; final/reserved inherited methods fail
+  closed. A nested type cannot reuse the name of any enclosing type.
 
 ## 6. Interfaces, composition, and target heritage
 
@@ -248,6 +264,11 @@ cycles, and circular/self field initialization are rejected. File paths are
 derived from validated package/type identities, never supplied as executable
 fragments. When a compilation unit contains one public top-level type, its
 basename MUST equal that type's identifier plus `.java`.
+`Main` public/implementation files and the exact runtime file live under
+`src/main/java/org/polyrust/generated/`. Native, conformance, and negative-test
+placements live under `src/test/java/org/polyrust/generated/`; each placement
+has exactly its matching source role, and no additional path segment may be
+supplied beneath the declared package directory.
 Runtime member fragments are confined to the runtime file, which contains
 exactly one typed class shell; both rules are rejected before rendering.
 
@@ -278,9 +299,16 @@ definite return, and absence of opaque source. Resolved whole-file verification
 rechecks every split or helper-injected declaration after linking and before a
 render view can be built. It also verifies annotation legality and static-final
 initialization rather than relying on `javac` to discover forged AST shapes.
-An independently seeded declaration-mutation corpus enforces the executable
-property that every verifier-accepted AST links, renders, and compiles under
-hermetic Java 21 with `-Xlint:all -Werror`; rejected mutations never render.
+A deterministic mutation corpus samples modifiers, annotations, nested and
+bounded generic types, arrays, records, generic interfaces, nested types,
+known calls, casts, branches, imports, and canonical file roots. Every
+verifier-accepted sampled AST must link, render, and compile under hermetic
+Java 21 with `-Xlint:all -Werror`. This is an executable sampling oracle, not a
+claim that finite fuzzing proves the whole AST; category-specific negative
+verifier tests and paired `javac` counterexamples remain mandatory.
+The opaque-source policy scans all production Rust items even when a test-only
+item appears earlier in the file; only the balanced `#[cfg(test)]` item itself
+is excluded.
 
 ## 12. Success evidence
 
@@ -291,8 +319,10 @@ hermetic Java 21 with `-Xlint:all -Werror`; rejected mutations never render.
 - Hermetic `javac --release 21` with all selected lint warnings treated as
   errors, plus native tests.
 - A deterministic, reproducible Java AST mutation/compiler-oracle corpus which
-  sends every verifier-accepted case through the real linker and renderer and
-  then compiles the complete accepted batch with the hermetic JDK.
+  covers the named construct categories, sends every accepted sampled case
+  through the real linker and renderer, and compiles the complete batch with
+  the hermetic JDK. The evidence matrix pairs unsupported/invalid categories
+  with exact verifier rejection and compiler-negative fixtures.
 - Separately compiled public-consumer and deliberate negative type fixtures.
 - Mutation/aliasing, `null`, Unicode, overflow, and F64 raw-bit boundaries.
 - Hermetic positive and negative reachability fixtures for constant loops,

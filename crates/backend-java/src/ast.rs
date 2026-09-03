@@ -444,16 +444,9 @@ impl JavaType {
             }
             Self::Array {
                 component,
-                ownership,
+                ownership: _,
             } => {
                 violations.extend(component.verify(JavaTypeUse::Value));
-                if matches!(
-                    usage,
-                    JavaTypeUse::Parameter | JavaTypeUse::Return | JavaTypeUse::Field
-                ) && *ownership != JavaArrayOwnership::DefensiveCopyBoundary
-                {
-                    violations.push(type_error("mutable Java array escapes a value boundary"));
-                }
             }
             Self::Generic { arguments, .. } => {
                 if arguments.is_empty() {
@@ -468,12 +461,45 @@ impl JavaType {
                     violations.push(type_error("wildcards require generic-argument position"));
                 }
                 if let Some((_, bound)) = bound {
+                    if matches!(bound.as_ref(), Self::Primitive(_)) {
+                        violations.push(type_error("Java wildcard bounds must be reference types"));
+                    }
                     violations.extend(bound.verify(JavaTypeUse::TypeBound));
                 }
             }
             Self::Primitive(_) | Self::Boxed(_) | Self::Reference(_) | Self::TypeVariable(_) => {}
         }
+        if matches!(
+            usage,
+            JavaTypeUse::Parameter | JavaTypeUse::Return | JavaTypeUse::Field
+        ) && contains_internal_mutable_array(self)
+        {
+            violations.push(type_error("mutable Java array escapes a value boundary"));
+        }
         violations
+    }
+}
+
+fn contains_internal_mutable_array(ty: &JavaType) -> bool {
+    match ty {
+        JavaType::Array {
+            component,
+            ownership,
+        } => {
+            *ownership == JavaArrayOwnership::InternalMutable
+                || contains_internal_mutable_array(component)
+        }
+        JavaType::Generic { arguments, .. } => {
+            arguments.iter().any(contains_internal_mutable_array)
+        }
+        JavaType::Wildcard {
+            bound: Some((_, bound)),
+        } => contains_internal_mutable_array(bound),
+        JavaType::Primitive(_)
+        | JavaType::Boxed(_)
+        | JavaType::Reference(_)
+        | JavaType::Wildcard { bound: None }
+        | JavaType::TypeVariable(_) => false,
     }
 }
 
@@ -1470,10 +1496,12 @@ fn java_cast_is_legal(
         (JavaType::Primitive(target), JavaType::Primitive(source)) => {
             java_numeric_primitive(*target) && java_numeric_primitive(*source)
         }
-        (JavaType::Primitive(target), JavaType::Boxed(source))
-        | (JavaType::Boxed(source), JavaType::Primitive(target)) => {
+        (JavaType::Primitive(target), JavaType::Boxed(source)) => {
             (*target == *source && *target != JavaPrimitive::Void)
                 || (java_numeric_primitive(*target) && java_numeric_primitive(*source))
+        }
+        (JavaType::Boxed(target), JavaType::Primitive(source)) => {
+            target == source && *target != JavaPrimitive::Void
         }
         (JavaType::Reference(JavaTypeName::Known(JavaKnownType::Object)), source) => {
             !matches!(source, JavaType::Primitive(JavaPrimitive::Void))
@@ -5140,8 +5168,23 @@ impl JavaTypeDeclaration {
         context: &TargetAstContext<'_, JavaDialect>,
         top_level: bool,
     ) -> Vec<AstViolation> {
+        self.verify_with_enclosing(context, top_level, &[])
+    }
+
+    fn verify_with_enclosing(
+        &self,
+        context: &TargetAstContext<'_, JavaDialect>,
+        top_level: bool,
+        enclosing_names: &[JavaIdentifier],
+    ) -> Vec<AstViolation> {
         let mut violations =
             verify_modifiers_for(&self.modifiers, JavaModifierSite::Type { top_level });
+        if enclosing_names.contains(&self.name) {
+            violations.push(AstViolation::new(
+                DiagnosticCode::DuplicateDeclaration,
+                "Java nested type cannot reuse any enclosing type name",
+            ));
+        }
         let owner = declaration_owner_type(self);
         let distinct_type_parameters = self.type_parameters.iter().collect::<BTreeSet<_>>();
         if distinct_type_parameters.len() != self.type_parameters.len() {
@@ -5233,6 +5276,12 @@ impl JavaTypeDeclaration {
         let mut component_origins = BTreeSet::new();
         for component in &self.record_components {
             violations.extend(component.ty.verify(JavaTypeUse::Field));
+            if java_record_component_name_is_reserved(component.name.as_str()) {
+                violations.push(AstViolation::new(
+                    DiagnosticCode::InvalidStructure,
+                    "Java record component name conflicts with a reserved Object member",
+                ));
+            }
             if !field_names.insert(component.name.clone()) {
                 violations.push(AstViolation::new(
                     DiagnosticCode::DuplicateDeclaration,
@@ -5288,6 +5337,8 @@ impl JavaTypeDeclaration {
                         ));
                     }
                     violations.extend(verify_method_registration(self, method, context));
+                    violations.extend(verify_record_accessor(self, method));
+                    violations.extend(verify_inherited_object_method(method));
                 }
                 JavaMember::Constructor(constructor) => {
                     let key = constructor
@@ -5317,7 +5368,13 @@ impl JavaTypeDeclaration {
                     }
                 }
             }
-            violations.extend(member.verify_with_owner(context, owner.as_ref(), Some(self)));
+            if let JavaMember::NestedType(nested) = member {
+                let mut nested_enclosing = enclosing_names.to_vec();
+                nested_enclosing.push(self.name.clone());
+                violations.extend(nested.verify_with_enclosing(context, false, &nested_enclosing));
+            } else {
+                violations.extend(member.verify_with_owner(context, owner.as_ref(), Some(self)));
+            }
         }
         if self.kind == JavaDeclarationKind::FinalClass
             && !declaration_blank_instance_finals(self).is_empty()
@@ -5333,6 +5390,103 @@ impl JavaTypeDeclaration {
         }
         violations.extend(verify_interface_conformance(self, context));
         violations
+    }
+}
+
+fn java_record_component_name_is_reserved(name: &str) -> bool {
+    matches!(
+        name,
+        "clone"
+            | "finalize"
+            | "getClass"
+            | "hashCode"
+            | "notify"
+            | "notifyAll"
+            | "toString"
+            | "wait"
+    )
+}
+
+fn verify_record_accessor(
+    declaration: &JavaTypeDeclaration,
+    method: &JavaMethod,
+) -> Vec<AstViolation> {
+    if declaration.kind != JavaDeclarationKind::Record || !method.parameters.is_empty() {
+        return vec![];
+    }
+    let Some(component) = declaration
+        .record_components
+        .iter()
+        .find(|component| component.name == method.name)
+    else {
+        return vec![];
+    };
+    let valid = method.modifiers.contains(&JavaModifier::Public)
+        && !method.modifiers.contains(&JavaModifier::Private)
+        && !method.modifiers.contains(&JavaModifier::Static)
+        && !method.modifiers.contains(&JavaModifier::Abstract)
+        && method.type_parameters.is_empty()
+        && method.return_type == component.ty
+        && method.body.is_some();
+    if valid {
+        vec![]
+    } else {
+        vec![AstViolation::new(
+            DiagnosticCode::InvalidStructure,
+            "explicit Java record accessor must be public, concrete, non-static, non-generic, and return its exact component type",
+        )]
+    }
+}
+
+fn verify_inherited_object_method(method: &JavaMethod) -> Vec<AstViolation> {
+    if method.declared != JavaMethodDeclaration::Structural {
+        return vec![];
+    }
+    let name = method.name.as_str();
+    let parameters = method
+        .parameters
+        .iter()
+        .map(|parameter| &parameter.ty)
+        .collect::<Vec<_>>();
+    let public_instance = method.modifiers.contains(&JavaModifier::Public)
+        && !method.modifiers.contains(&JavaModifier::Private)
+        && !method.modifiers.contains(&JavaModifier::Static);
+    let valid_override = match (name, parameters.as_slice()) {
+        ("equals", [parameter]) if **parameter == JavaType::known(JavaKnownType::Object) => {
+            public_instance && method.return_type == JavaType::primitive(JavaPrimitive::Boolean)
+        }
+        ("hashCode", []) => {
+            public_instance && method.return_type == JavaType::primitive(JavaPrimitive::Int)
+        }
+        ("toString", []) => {
+            public_instance && method.return_type == JavaType::known(JavaKnownType::String)
+        }
+        _ => true,
+    };
+    let final_object_member = matches!(
+        (name, parameters.as_slice()),
+        ("getClass", [])
+            | ("notify", [])
+            | ("notifyAll", [])
+            | ("wait", [])
+            | ("wait", [JavaType::Primitive(JavaPrimitive::Long)])
+            | (
+                "wait",
+                [
+                    JavaType::Primitive(JavaPrimitive::Long),
+                    JavaType::Primitive(JavaPrimitive::Int)
+                ]
+            )
+            | ("clone", [])
+            | ("finalize", [])
+    );
+    if valid_override && !final_object_member {
+        vec![]
+    } else {
+        vec![AstViolation::new(
+            DiagnosticCode::InvalidStructure,
+            "Java structural method illegally collides with an inherited Object method",
+        )]
     }
 }
 
@@ -5427,6 +5581,22 @@ fn verify_declaration_kind_grammar(declaration: &JavaTypeDeclaration) -> Vec<Ast
                         "explicit Java record constructor must have the canonical component signature",
                     ));
                 }
+                let constructor_visibility =
+                    if constructor.modifiers.contains(&JavaModifier::Public) {
+                        JavaVisibility::Public
+                    } else if constructor.modifiers.contains(&JavaModifier::Private) {
+                        JavaVisibility::Private
+                    } else {
+                        JavaVisibility::Package
+                    };
+                if java_visibility_rank(constructor_visibility)
+                    < java_visibility_rank(declaration.visibility)
+                {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::InvalidStructure,
+                        "canonical Java record constructor cannot be less accessible than its record",
+                    ));
+                }
             }
             JavaMember::Field(_)
             | JavaMember::CompileFailField(_)
@@ -5441,6 +5611,14 @@ fn verify_declaration_kind_grammar(declaration: &JavaTypeDeclaration) -> Vec<Ast
         ));
     }
     violations
+}
+
+fn java_visibility_rank(visibility: JavaVisibility) -> u8 {
+    match visibility {
+        JavaVisibility::Private => 0,
+        JavaVisibility::Package => 1,
+        JavaVisibility::Public => 2,
+    }
 }
 
 fn verify_sealed_permits(
@@ -6365,6 +6543,7 @@ pub struct JavaCompilationUnit {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dialect::JavaKnownMethod;
 
     fn verifier_source(label: &str) -> portable_diagnostics::SourceRef {
         portable_diagnostics::SourceRef::logical(["java-ast-verifier-test", label])
@@ -6425,10 +6604,14 @@ mod tests {
                 portable_codegen::FileGroupRole::NegativeTests
             }
         };
-        let path = if placement == JavaFilePlacement::Runtime {
-            "src/main/java/org/polyrust/generated/Runtime.java"
-        } else {
-            "Fixture.java"
+        let path = match placement {
+            JavaFilePlacement::Runtime => "src/main/java/org/polyrust/generated/Runtime.java",
+            JavaFilePlacement::Main => "src/main/java/org/polyrust/generated/Fixture.java",
+            JavaFilePlacement::NativeTest
+            | JavaFilePlacement::Conformance
+            | JavaFilePlacement::NegativeTest => {
+                "src/test/java/org/polyrust/generated/Fixture.java"
+            }
         };
         let file = builder.file(portable_codegen::TargetFile::new(
             portable_codegen::RelativeOutputPath::new(path).unwrap(),
@@ -6582,6 +6765,27 @@ mod tests {
             JavaType::Wildcard { bound: None }
                 .verify(JavaTypeUse::GenericArgument)
                 .is_empty()
+        );
+        assert!(
+            !JavaType::Wildcard {
+                bound: Some((
+                    JavaWildcardBound::Extends,
+                    Box::new(JavaType::primitive(JavaPrimitive::Int)),
+                )),
+            }
+            .verify(JavaTypeUse::GenericArgument)
+            .is_empty()
+        );
+        assert!(
+            !JavaType::generic(
+                JavaKnownType::List,
+                vec![JavaType::Array {
+                    component: Box::new(JavaType::primitive(JavaPrimitive::Byte)),
+                    ownership: JavaArrayOwnership::InternalMutable,
+                }],
+            )
+            .verify(JavaTypeUse::Field)
+            .is_empty()
         );
         assert!(
             !JavaType::Generic {
@@ -8219,9 +8423,9 @@ mod tests {
     }
 
     #[test]
-    fn every_verified_declaration_mutation_compiles_under_hermetic_java_21() {
+    fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
         let Some(test_tmpdir) = std::env::var_os("TEST_TMPDIR") else {
-            eprintln!("Java compiler oracle runs under the authoritative Bazel test target");
+            eprintln!("Java mutation/compiler oracle runs under the authoritative Bazel target");
             return;
         };
         let mut state = 0x6a09_e667_f3bc_c909_u64;
@@ -8275,7 +8479,7 @@ mod tests {
                 2 => vec![JavaAnnotation::Override, JavaAnnotation::Override],
                 _ => vec![],
             };
-            let parameter_type = match next() % 6 {
+            let parameter_type = match next() % 10 {
                 0 => JavaType::primitive(JavaPrimitive::Int),
                 1 => JavaType::known(JavaKnownType::String),
                 2 => JavaType::known(JavaKnownType::Integer),
@@ -8287,9 +8491,36 @@ mod tests {
                     JavaKnownType::List,
                     vec![JavaType::known(JavaKnownType::Integer)],
                 ),
-                _ => JavaType::generic(
+                5 => JavaType::generic(
                     JavaKnownType::List,
                     vec![JavaType::Wildcard { bound: None }],
+                ),
+                6 => JavaType::generic(
+                    JavaKnownType::List,
+                    vec![JavaType::Wildcard {
+                        bound: Some((
+                            JavaWildcardBound::Extends,
+                            Box::new(JavaType::known(JavaKnownType::String)),
+                        )),
+                    }],
+                ),
+                7 => JavaType::Array {
+                    component: Box::new(JavaType::primitive(JavaPrimitive::Byte)),
+                    ownership: JavaArrayOwnership::DefensiveCopyBoundary,
+                },
+                8 => JavaType::generic(
+                    JavaKnownType::List,
+                    vec![JavaType::generic(
+                        JavaKnownType::List,
+                        vec![JavaType::known(JavaKnownType::String)],
+                    )],
+                ),
+                _ => JavaType::generic(
+                    JavaKnownType::List,
+                    vec![JavaType::Array {
+                        component: Box::new(JavaType::primitive(JavaPrimitive::Byte)),
+                        ownership: JavaArrayOwnership::InternalMutable,
+                    }],
                 ),
             };
             let abstract_method = method_modifiers.contains(&JavaModifier::Abstract);
@@ -8325,7 +8556,10 @@ mod tests {
             };
             let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
             let file = builder.file(portable_codegen::TargetFile::new(
-                portable_codegen::RelativeOutputPath::new(format!("{name}.java")).unwrap(),
+                portable_codegen::RelativeOutputPath::new(format!(
+                    "src/main/java/org/polyrust/generated/{name}.java"
+                ))
+                .unwrap(),
                 portable_codegen::SourceRole::PublicApi,
                 JavaPackage::Generated,
                 JavaFilePlacement::Main,
@@ -8369,6 +8603,197 @@ mod tests {
             "mutation corpus accepted too few cases"
         );
         assert!(rejected >= 16, "mutation corpus rejected too few cases");
+
+        let string = JavaType::known(JavaKnownType::String);
+        let int = JavaType::primitive(JavaPrimitive::Int);
+        let boolean = JavaType::primitive(JavaPrimitive::Boolean);
+        let type_variable = JavaIdentifier::from_portable("T");
+        let bounded_strings = JavaType::generic(
+            JavaKnownType::List,
+            vec![JavaType::Wildcard {
+                bound: Some((JavaWildcardBound::Extends, Box::new(string.clone()))),
+            }],
+        );
+        let structured_record = JavaTypeDeclaration {
+            declared: None,
+            kind: JavaDeclarationKind::Record,
+            visibility: JavaVisibility::Package,
+            modifiers: vec![],
+            name: JavaIdentifier::from_portable("OracleStructuredRecord"),
+            type_parameters: vec![],
+            record_components: vec![JavaRecordComponent {
+                origin: JavaRecordComponentOrigin::Runtime(JavaRuntimeMember::ErrorCode),
+                ty: string.clone(),
+                name: JavaIdentifier::from_portable("value"),
+            }],
+            heritage: JavaHeritage::None,
+            permits: vec![],
+            members: vec![],
+        };
+        let structured_interface = JavaTypeDeclaration {
+            declared: None,
+            kind: JavaDeclarationKind::Interface,
+            visibility: JavaVisibility::Package,
+            modifiers: vec![],
+            name: JavaIdentifier::from_portable("OracleStructuredInterface"),
+            type_parameters: vec![],
+            record_components: vec![],
+            heritage: JavaHeritage::None,
+            permits: vec![],
+            members: vec![
+                JavaMember::Method(JavaMethod {
+                    declared: JavaMethodDeclaration::Structural,
+                    annotations: vec![],
+                    modifiers: vec![JavaModifier::Public, JavaModifier::Abstract],
+                    type_parameters: vec![type_variable.clone()],
+                    return_type: JavaType::TypeVariable(type_variable.clone()),
+                    name: JavaIdentifier::from_portable("identity"),
+                    parameters: vec![parameter(JavaType::TypeVariable(type_variable), "value")],
+                    body: None,
+                }),
+                JavaMember::Method(JavaMethod {
+                    declared: JavaMethodDeclaration::Structural,
+                    annotations: vec![],
+                    modifiers: vec![JavaModifier::Public, JavaModifier::Abstract],
+                    type_parameters: vec![],
+                    return_type: JavaType::primitive(JavaPrimitive::Void),
+                    name: JavaIdentifier::from_portable("accept"),
+                    parameters: vec![parameter(bounded_strings, "values")],
+                    body: None,
+                }),
+            ],
+        };
+        let length_call = JavaExpr {
+            ty: int.clone(),
+            precedence: JavaPrecedence::Primary,
+            kind: JavaExprKind::Call {
+                callable: JavaCallableRef::Member {
+                    owner: string.clone(),
+                    name: JavaIdentifier::from_portable(
+                        JavaKnownMethod::StringLength.name().text(),
+                    ),
+                    signature: JavaKnownMethod::StringLength.signature(),
+                    origin: JavaMemberOrigin::Known(JavaKnownMethod::StringLength),
+                },
+                receiver: Some(Box::new(JavaExpr::literal(
+                    string.clone(),
+                    JavaLiteral::String("oracle".to_owned()),
+                ))),
+                arguments: vec![],
+            },
+        };
+        let structured_class = JavaTypeDeclaration {
+            declared: None,
+            kind: JavaDeclarationKind::FinalClass,
+            visibility: JavaVisibility::Package,
+            modifiers: vec![],
+            name: JavaIdentifier::from_portable("OracleStructured"),
+            type_parameters: vec![],
+            record_components: vec![],
+            heritage: JavaHeritage::None,
+            permits: vec![],
+            members: vec![
+                JavaMember::Field(JavaField {
+                    declared: None,
+                    modifiers: vec![JavaModifier::Private],
+                    ty: JavaType::Array {
+                        component: Box::new(JavaType::primitive(JavaPrimitive::Byte)),
+                        ownership: JavaArrayOwnership::DefensiveCopyBoundary,
+                    },
+                    name: JavaIdentifier::from_portable("bytes"),
+                    initializer: None,
+                }),
+                JavaMember::NestedType(JavaTypeDeclaration {
+                    declared: None,
+                    kind: JavaDeclarationKind::FinalClass,
+                    visibility: JavaVisibility::Private,
+                    modifiers: vec![JavaModifier::Static],
+                    name: JavaIdentifier::from_portable("Inner"),
+                    type_parameters: vec![],
+                    record_components: vec![],
+                    heritage: JavaHeritage::None,
+                    permits: vec![],
+                    members: vec![],
+                }),
+                structural_method(
+                    "length",
+                    int.clone(),
+                    vec![],
+                    JavaBlock::new(vec![JavaStmt::Return(Some(length_call))]),
+                ),
+                structural_method(
+                    "widen",
+                    JavaType::primitive(JavaPrimitive::Long),
+                    vec![],
+                    JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
+                        ty: JavaType::primitive(JavaPrimitive::Long),
+                        precedence: JavaPrecedence::Unary,
+                        kind: JavaExprKind::Cast {
+                            target: JavaType::primitive(JavaPrimitive::Long),
+                            value: Box::new(JavaExpr::literal(int.clone(), JavaLiteral::I32(1))),
+                        },
+                    }))]),
+                ),
+                structural_method(
+                    "branch",
+                    int.clone(),
+                    vec![parameter(boolean.clone(), "flag")],
+                    JavaBlock::new(vec![JavaStmt::If {
+                        condition: JavaExpr::local(boolean, JavaIdentifier::from_portable("flag")),
+                        then_block: JavaBlock::new(vec![JavaStmt::Return(Some(
+                            JavaExpr::literal(int.clone(), JavaLiteral::I32(1)),
+                        ))]),
+                        else_block: Some(JavaBlock::new(vec![JavaStmt::Return(Some(
+                            JavaExpr::literal(int, JavaLiteral::I32(2)),
+                        ))])),
+                    }]),
+                ),
+            ],
+        };
+        let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+        let file = builder.file(portable_codegen::TargetFile::new(
+            portable_codegen::RelativeOutputPath::new(
+                "src/main/java/org/polyrust/generated/OracleStructured.java",
+            )
+            .unwrap(),
+            portable_codegen::SourceRole::PublicApi,
+            JavaPackage::Generated,
+            JavaFilePlacement::Main,
+            vec![structured_record, structured_interface, structured_class]
+                .into_iter()
+                .map(|declaration| JavaFileItem::Type {
+                    declared: vec![],
+                    declaration,
+                })
+                .collect(),
+            JavaTemplateId::CompilationUnit,
+            verifier_source("structured-mutation-oracle-file"),
+        ));
+        builder.group(portable_codegen::TargetFileGroup::new(
+            portable_codegen::FileGroupRole::PublicApi,
+            vec![portable_codegen::TargetFileMember::Source(file)],
+            verifier_source("structured-mutation-oracle-group"),
+        ));
+        let package = builder.build();
+        portable_codegen::verify_target_ast(&package)
+            .expect("structured Java mutation package must verify");
+        let linked = portable_codegen::TargetLinker::new(JavaDialect)
+            .link_ast(&package)
+            .expect("structured Java mutation package must link");
+        let rendered =
+            portable_codegen::render_linked_package(&crate::render::JavaRenderer, &linked)
+                .expect("structured Java mutation package must render");
+        for file in rendered.files() {
+            let portable_codegen::OutputContents::Text(contents) = file.contents() else {
+                panic!("structured Java mutation rendered non-text output")
+            };
+            let path = output_root.join(file.path());
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent).expect("create structured Java source directory");
+            }
+            std::fs::write(&path, contents).expect("write structured Java mutation source");
+            sources.push(path);
+        }
 
         let runfiles = std::env::var_os("RUNFILES_DIR")
             .or_else(|| std::env::var_os("TEST_SRCDIR"))
@@ -8695,6 +9120,18 @@ mod tests {
                 binding: None,
             },
         };
+        let boxed_long = JavaType::primitive(JavaPrimitive::Long).boxed();
+        let invalid_boxed_cast = JavaExpr {
+            ty: boxed_long.clone(),
+            precedence: JavaPrecedence::Unary,
+            kind: JavaExprKind::Cast {
+                target: boxed_long.clone(),
+                value: Box::new(JavaExpr::local(
+                    int.clone(),
+                    JavaIdentifier::from_portable("boxedNumber"),
+                )),
+            },
+        };
         let invalid = fixture_declaration(vec![
             structural_method(
                 "cast",
@@ -8705,7 +9142,7 @@ mod tests {
             structural_method(
                 "primitiveTest",
                 boolean.clone(),
-                vec![parameter(int, "number")],
+                vec![parameter(int.clone(), "number")],
                 JavaBlock::new(vec![JavaStmt::Return(Some(invalid_primitive_test))]),
             ),
             structural_method(
@@ -8713,6 +9150,12 @@ mod tests {
                 boolean.clone(),
                 vec![parameter(object.clone(), "value")],
                 JavaBlock::new(vec![JavaStmt::Return(Some(invalid_generic_test))]),
+            ),
+            structural_method(
+                "boxedCast",
+                boxed_long,
+                vec![parameter(int.clone(), "boxedNumber")],
+                JavaBlock::new(vec![JavaStmt::Return(Some(invalid_boxed_cast))]),
             ),
         ]);
         let diagnostics = verify_fixture(
@@ -9106,6 +9549,146 @@ mod tests {
         assert!(diagnostics.iter().any(|value| {
             value.code == DiagnosticCode::InvalidStructure
                 && value.message.contains("canonical component signature")
+        }));
+    }
+
+    #[test]
+    fn record_object_and_nested_type_grammar_fail_closed() {
+        let int = JavaType::primitive(JavaPrimitive::Int);
+        let component = |name: &str| JavaRecordComponent {
+            origin: JavaRecordComponentOrigin::Core(fixture_core_field()),
+            ty: int.clone(),
+            name: JavaIdentifier::from_portable(name),
+        };
+
+        let reserved_component = JavaTypeDeclaration {
+            declared: None,
+            kind: JavaDeclarationKind::Record,
+            visibility: JavaVisibility::Package,
+            modifiers: vec![],
+            name: JavaIdentifier::from_portable("Fixture"),
+            type_parameters: vec![],
+            record_components: vec![component("hashCode")],
+            heritage: JavaHeritage::None,
+            permits: vec![],
+            members: vec![],
+        };
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], reserved_component)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidStructure
+                && diagnostic.message.contains("reserved Object member")
+        }));
+
+        let inaccessible_constructor = JavaTypeDeclaration {
+            declared: None,
+            kind: JavaDeclarationKind::Record,
+            visibility: JavaVisibility::Public,
+            modifiers: vec![],
+            name: JavaIdentifier::from_portable("Fixture"),
+            type_parameters: vec![],
+            record_components: vec![component("x")],
+            heritage: JavaHeritage::None,
+            permits: vec![],
+            members: vec![JavaMember::Constructor(JavaConstructor {
+                modifiers: vec![JavaModifier::Private],
+                name: JavaIdentifier::from_portable("Fixture"),
+                parameters: vec![parameter(int.clone(), "x")],
+                body: JavaBlock::new(vec![]),
+            })],
+        };
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], inaccessible_constructor)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidStructure
+                && diagnostic.message.contains("less accessible")
+        }));
+
+        let invalid_accessor = JavaTypeDeclaration {
+            declared: None,
+            kind: JavaDeclarationKind::Record,
+            visibility: JavaVisibility::Package,
+            modifiers: vec![],
+            name: JavaIdentifier::from_portable("Fixture"),
+            type_parameters: vec![],
+            record_components: vec![component("x")],
+            heritage: JavaHeritage::None,
+            permits: vec![],
+            members: vec![JavaMember::Method(JavaMethod {
+                declared: JavaMethodDeclaration::Structural,
+                annotations: vec![],
+                modifiers: vec![JavaModifier::Private],
+                type_parameters: vec![],
+                return_type: int.clone(),
+                name: JavaIdentifier::from_portable("x"),
+                parameters: vec![],
+                body: Some(JavaBlock::new(vec![JavaStmt::Return(Some(
+                    JavaExpr::literal(int.clone(), JavaLiteral::I32(1)),
+                ))])),
+            })],
+        };
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], invalid_accessor)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidStructure
+                && diagnostic.message.contains("record accessor")
+        }));
+
+        let inherited_collision = fixture_declaration(vec![JavaMember::Method(JavaMethod {
+            declared: JavaMethodDeclaration::Structural,
+            annotations: vec![],
+            modifiers: vec![JavaModifier::Private],
+            type_parameters: vec![],
+            return_type: JavaType::primitive(JavaPrimitive::Boolean),
+            name: JavaIdentifier::from_portable("equals"),
+            parameters: vec![parameter(JavaType::known(JavaKnownType::Object), "other")],
+            body: Some(JavaBlock::new(vec![JavaStmt::Return(Some(
+                JavaExpr::literal(
+                    JavaType::primitive(JavaPrimitive::Boolean),
+                    JavaLiteral::Boolean(true),
+                ),
+            ))])),
+        })]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], inherited_collision)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidStructure
+                && diagnostic.message.contains("inherited Object method")
+        }));
+
+        let nested_collision =
+            fixture_declaration(vec![JavaMember::NestedType(JavaTypeDeclaration {
+                declared: None,
+                kind: JavaDeclarationKind::FinalClass,
+                visibility: JavaVisibility::Private,
+                modifiers: vec![JavaModifier::Static],
+                name: JavaIdentifier::from_portable("Fixture"),
+                type_parameters: vec![],
+                record_components: vec![],
+                heritage: JavaHeritage::None,
+                permits: vec![],
+                members: vec![],
+            })]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], nested_collision)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::DuplicateDeclaration
+                && diagnostic.message.contains("enclosing type name")
         }));
     }
 

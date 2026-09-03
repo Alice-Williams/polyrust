@@ -553,11 +553,22 @@ impl JavaKnownConstructor {
             return false;
         }
         let mut bindings = BTreeMap::new();
-        type_pattern_matches(&pattern_owner, owner, &mut bindings)
-            && pattern_parameters
-                .iter()
-                .zip(parameters)
-                .all(|(pattern, actual)| type_pattern_matches(pattern, actual, &mut bindings))
+        type_pattern_matches(
+            &pattern_owner,
+            owner,
+            JavaSignaturePosition::Result,
+            &mut bindings,
+        ) && pattern_parameters
+            .iter()
+            .zip(parameters)
+            .all(|(pattern, actual)| {
+                type_pattern_matches(
+                    pattern,
+                    actual,
+                    JavaSignaturePosition::Parameter,
+                    &mut bindings,
+                )
+            })
     }
 }
 
@@ -846,7 +857,12 @@ fn signature_matches(pattern: &JavaMethodSignature, actual: &JavaMethodSignature
     let mut bindings = BTreeMap::<String, JavaType>::new();
     let receiver_matches = match (&pattern.receiver, &actual.receiver) {
         (None, None) => true,
-        (Some(pattern), Some(actual)) => type_pattern_matches(pattern, actual, &mut bindings),
+        (Some(pattern), Some(actual)) => type_pattern_matches(
+            pattern,
+            actual,
+            JavaSignaturePosition::Receiver,
+            &mut bindings,
+        ),
         _ => false,
     };
     receiver_matches
@@ -854,32 +870,85 @@ fn signature_matches(pattern: &JavaMethodSignature, actual: &JavaMethodSignature
             .parameters
             .iter()
             .zip(&actual.parameters)
-            .all(|(pattern, actual)| type_pattern_matches(pattern, actual, &mut bindings))
-        && type_pattern_matches(&pattern.result, &actual.result, &mut bindings)
+            .all(|(pattern, actual)| {
+                type_pattern_matches(
+                    pattern,
+                    actual,
+                    JavaSignaturePosition::Parameter,
+                    &mut bindings,
+                )
+            })
+        && type_pattern_matches(
+            &pattern.result,
+            &actual.result,
+            JavaSignaturePosition::Result,
+            &mut bindings,
+        )
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum JavaSignaturePosition {
+    Receiver,
+    Parameter,
+    Result,
+    TypeArgument,
 }
 
 fn type_pattern_matches(
     pattern: &JavaType,
     actual: &JavaType,
+    position: JavaSignaturePosition,
     bindings: &mut BTreeMap<String, JavaType>,
 ) -> bool {
     match pattern {
-        JavaType::Reference(JavaTypeName::Known(JavaKnownType::Object)) => !matches!(
-            actual,
-            JavaType::Primitive(JavaPrimitive::Void) | JavaType::Boxed(JavaPrimitive::Void)
-        ),
-        JavaType::Boxed(pattern) => matches!(
-            actual,
-            JavaType::Boxed(actual) | JavaType::Primitive(actual) if pattern == actual
-        ),
-        JavaType::Primitive(pattern) => matches!(
-            actual,
-            JavaType::Primitive(actual) | JavaType::Boxed(actual) if pattern == actual
-        ),
+        JavaType::Reference(JavaTypeName::Known(JavaKnownType::Object)) => match position {
+            JavaSignaturePosition::Receiver => matches!(
+                actual,
+                JavaType::Boxed(_)
+                    | JavaType::Reference(_)
+                    | JavaType::Array { .. }
+                    | JavaType::Generic { .. }
+                    | JavaType::TypeVariable(_)
+            ),
+            JavaSignaturePosition::Parameter => !matches!(
+                actual,
+                JavaType::Primitive(JavaPrimitive::Void)
+                    | JavaType::Boxed(JavaPrimitive::Void)
+                    | JavaType::Wildcard { .. }
+            ),
+            JavaSignaturePosition::Result | JavaSignaturePosition::TypeArgument => {
+                pattern == actual
+            }
+        },
+        JavaType::Boxed(pattern) => match position {
+            JavaSignaturePosition::Parameter => matches!(
+                actual,
+                JavaType::Boxed(actual) | JavaType::Primitive(actual) if pattern == actual
+            ),
+            _ => matches!(actual, JavaType::Boxed(actual) if pattern == actual),
+        },
+        JavaType::Primitive(pattern) => match position {
+            JavaSignaturePosition::Parameter => matches!(
+                actual,
+                JavaType::Primitive(actual) | JavaType::Boxed(actual) if pattern == actual
+            ),
+            _ => matches!(actual, JavaType::Primitive(actual) if pattern == actual),
+        },
         JavaType::TypeVariable(name) => match bindings.get(name.as_str()) {
-            Some(bound) => invocation_types_match(bound, actual),
+            Some(bound) => match position {
+                JavaSignaturePosition::Parameter => invocation_types_match(bound, actual),
+                JavaSignaturePosition::Result => type_variable_result_matches(bound, actual),
+                JavaSignaturePosition::Receiver | JavaSignaturePosition::TypeArgument => {
+                    bound == actual
+                }
+            },
             None => {
-                bindings.insert(name.as_str().to_owned(), actual.clone());
+                let bound = if position == JavaSignaturePosition::Parameter {
+                    actual.clone().boxed()
+                } else {
+                    actual.clone()
+                };
+                bindings.insert(name.as_str().to_owned(), bound);
                 true
             }
         },
@@ -890,25 +959,71 @@ fn type_pattern_matches(
             actual,
             JavaType::Array { component: actual_component, ownership: actual_ownership }
                 if ownership == actual_ownership
-                    && type_pattern_matches(component, actual_component, bindings)
+                    && type_pattern_matches(
+                        component,
+                        actual_component,
+                        JavaSignaturePosition::TypeArgument,
+                        bindings,
+                    )
         ),
         JavaType::Generic { raw, arguments } => matches!(
             actual,
             JavaType::Generic { raw: actual_raw, arguments: actual_arguments }
                 if (raw == actual_raw
-                    || matches!(
+                    || (matches!(
+                        position,
+                        JavaSignaturePosition::Receiver | JavaSignaturePosition::Parameter
+                    ) && matches!(
                         (raw, actual_raw),
                         (
                             JavaTypeName::Known(JavaKnownType::List),
                             JavaTypeName::Known(JavaKnownType::ArrayList)
                         )
-                    ))
+                    )))
                     && arguments.len() == actual_arguments.len()
                     && arguments.iter().zip(actual_arguments).all(|(pattern, actual)|
-                        type_pattern_matches(pattern, actual, bindings))
+                        type_pattern_matches(
+                            pattern,
+                            actual,
+                            JavaSignaturePosition::TypeArgument,
+                            bindings,
+                        ))
         ),
         _ => pattern == actual,
     }
+}
+
+fn type_variable_result_matches(bound: &JavaType, actual: &JavaType) -> bool {
+    bound == actual
+        || matches!(
+            (bound, actual),
+            (JavaType::Boxed(bound), JavaType::Primitive(actual)) if bound == actual
+        )
+        || matches!(
+            (bound, actual),
+            (
+                JavaType::Wildcard { bound: None },
+                JavaType::Reference(JavaTypeName::Known(JavaKnownType::Object))
+            )
+        )
+        || matches!(
+            (bound, actual),
+            (
+                JavaType::Wildcard {
+                    bound: Some((crate::ast::JavaWildcardBound::Extends, upper)),
+                },
+                actual,
+            ) if upper.as_ref() == actual
+        )
+        || matches!(
+            (bound, actual),
+            (
+                JavaType::Wildcard {
+                    bound: Some((crate::ast::JavaWildcardBound::Super, _)),
+                },
+                JavaType::Reference(JavaTypeName::Known(JavaKnownType::Object)),
+            )
+        )
 }
 
 fn invocation_types_match(left: &JavaType, right: &JavaType) -> bool {
@@ -1964,6 +2079,8 @@ fn verify_java_file_identity(
     declares_runtime_type: bool,
 ) -> Vec<AstViolation> {
     const RUNTIME_PATH: &str = "src/main/java/org/polyrust/generated/Runtime.java";
+    const MAIN_ROOT: &str = "src/main/java/org/polyrust/generated/";
+    const TEST_ROOT: &str = "src/test/java/org/polyrust/generated/";
     let canonical = role == portable_codegen::SourceRole::Runtime
         && module == &JavaPackage::Generated
         && path == RUNTIME_PATH
@@ -1978,6 +2095,33 @@ fn verify_java_file_identity(
             DiagnosticCode::InvalidStructure,
             "Java Runtime identity requires the exact runtime role, placement, generated package, and canonical path",
         ));
+    }
+    let expected_root = match (role, placement) {
+        (
+            portable_codegen::SourceRole::PublicApi | portable_codegen::SourceRole::Implementation,
+            JavaFilePlacement::Main,
+        )
+        | (portable_codegen::SourceRole::Runtime, JavaFilePlacement::Runtime) => Some(MAIN_ROOT),
+        (portable_codegen::SourceRole::NativeTest, JavaFilePlacement::NativeTest)
+        | (portable_codegen::SourceRole::Conformance, JavaFilePlacement::Conformance)
+        | (portable_codegen::SourceRole::NegativeTest, JavaFilePlacement::NegativeTest) => {
+            Some(TEST_ROOT)
+        }
+        _ => None,
+    };
+    match expected_root {
+        Some(root)
+            if path
+                .strip_prefix(root)
+                .is_some_and(|filename| !filename.is_empty() && !filename.contains('/')) => {}
+        Some(_) => violations.push(AstViolation::new(
+            DiagnosticCode::UnsafeOutputPath,
+            "Java source path must use the canonical package directory for its typed placement",
+        )),
+        None => violations.push(AstViolation::new(
+            DiagnosticCode::InvalidStructure,
+            "Java source role and file placement are incompatible",
+        )),
     }
     violations
 }
@@ -2382,7 +2526,13 @@ mod tests {
         placement: JavaFilePlacement,
         group_role: portable_codegen::FileGroupRole,
     ) -> Result<(), Vec<Diagnostic>> {
-        verify_file_at_path("Fixture.java", declaration, role, placement, group_role)
+        verify_file_at_path(
+            "src/main/java/org/polyrust/generated/Fixture.java",
+            declaration,
+            role,
+            placement,
+            group_role,
+        )
     }
 
     #[test]
@@ -2429,6 +2579,67 @@ mod tests {
             invalid.receiver = Some(JavaType::known(JavaKnownType::Object));
             assert!(!callable.accepts(&invalid), "{callable:?}");
         }
+    }
+
+    #[test]
+    fn known_method_signatures_distinguish_receiver_parameter_and_result_conversions() {
+        let wildcard_list = JavaType::generic(
+            JavaKnownType::List,
+            vec![JavaType::Wildcard { bound: None }],
+        );
+        assert!(JavaKnownMethod::ListGet.accepts(&JavaMethodSignature {
+            receiver: Some(wildcard_list),
+            parameters: vec![JavaType::primitive(JavaPrimitive::Int)],
+            result: JavaType::known(JavaKnownType::Object),
+            checked_exceptions: vec![],
+            nullable_result: false,
+            pure: true,
+        }));
+        assert!(
+            !JavaKnownMethod::ObjectEquals.accepts(&JavaMethodSignature {
+                receiver: Some(JavaType::primitive(JavaPrimitive::Int)),
+                parameters: vec![JavaType::primitive(JavaPrimitive::Int)],
+                result: JavaType::primitive(JavaPrimitive::Boolean),
+                checked_exceptions: vec![],
+                nullable_result: false,
+                pure: true,
+            })
+        );
+        assert!(
+            !JavaKnownMethod::StringLength.accepts(&JavaMethodSignature {
+                receiver: Some(JavaType::known(JavaKnownType::String)),
+                parameters: vec![],
+                result: JavaType::primitive(JavaPrimitive::Int).boxed(),
+                checked_exceptions: vec![],
+                nullable_result: false,
+                pure: true,
+            })
+        );
+    }
+
+    #[test]
+    fn generic_runtime_results_allow_only_matching_unboxing() {
+        let option_long = JavaType::generic(
+            JavaKnownType::RuntimeOption,
+            vec![JavaType::Boxed(JavaPrimitive::Long)],
+        );
+        let signature = |result| JavaMethodSignature {
+            receiver: None,
+            parameters: vec![option_long.clone()],
+            result,
+            checked_exceptions: vec![],
+            nullable_result: false,
+            pure: true,
+        };
+
+        assert!(
+            JavaRuntimeCallable::OptionValue
+                .accepts(&signature(JavaType::primitive(JavaPrimitive::Long),))
+        );
+        assert!(
+            !JavaRuntimeCallable::OptionValue
+                .accepts(&signature(JavaType::primitive(JavaPrimitive::Int),))
+        );
     }
 
     #[test]
@@ -2670,6 +2881,22 @@ mod tests {
                 && diagnostic
                     .message
                     .contains("must be declared in `Wrong.java`")
+        }));
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::UnsafeOutputPath
+                && diagnostic.message.contains("canonical package directory")
+        }));
+
+        let diagnostics = verify_java_file_identity(
+            portable_codegen::SourceRole::PublicApi,
+            "src/test/java/org/polyrust/generated/Fixture.java",
+            &JavaPackage::Generated,
+            &JavaFilePlacement::NativeTest,
+            false,
+        );
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidStructure
+                && diagnostic.message.contains("role and file placement")
         }));
 
         let mut forged_runtime = declaration(JavaHeritage::None, vec![]);

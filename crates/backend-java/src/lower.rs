@@ -79,11 +79,11 @@ impl<'a> Lowering<'a> {
         self.capabilities.validate_for(self.core)?;
         self.register_types();
         self.register_values_and_callables()?;
-        let negative = self.negative_file()?;
         let generated = self.generated_file()?;
         let runtime = self.runtime_file()?;
         let conformance = self.conformance_file()?;
         let native_test = self.native_test_file()?;
+        let negative = self.negative_file()?;
         let readme = self.builder.artifact(TargetArtifact::Documentation {
             path: path("README.md"),
             contents: "# Generated PolyRust Java package\n\nCompile with Java 21 or newer. The package has no third-party runtime dependencies.\n".to_owned(),
@@ -414,7 +414,7 @@ impl<'a> Lowering<'a> {
             ],
         };
         Ok(self.builder.file(TargetFile::new(
-            path("negative/InvalidTypes.java"),
+            path("src/test/java/org/polyrust/generated/InvalidTypes.java"),
             SourceRole::NegativeTest,
             JavaPackage::Generated,
             JavaFilePlacement::NegativeTest,

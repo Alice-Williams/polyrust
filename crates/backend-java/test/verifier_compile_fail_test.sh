@@ -23,6 +23,14 @@ readonly expected_diagnostics=(
   "variable x might not have been initialized"
   "attempting to assign weaker access privileges; was public"
   "does not override or implement a method from a supertype"
+  "required: reference"
+  "int cannot be converted to Long"
+  "illegal record component name hashCode"
+  "attempting to assign stronger access privileges; was public"
+  "accessor method must be public"
+  "attempting to assign weaker access privileges; was public"
+  "class JavaVerifierNestedName is already defined"
+  "int cannot be dereferenced"
 )
 if [[ "${#sources[@]}" -ne "${#expected_diagnostics[@]}" ]]; then
   echo "each invalid source must have one expected javac diagnostic" >&2

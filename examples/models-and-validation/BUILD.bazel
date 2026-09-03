@@ -74,7 +74,7 @@ genrule(
         "generated/go/go.mod",
         "generated/go/runtime.go",
         "generated/java/README.md",
-        "generated/java/negative/InvalidTypes.java",
+        "generated/java/src/test/java/org/polyrust/generated/InvalidTypes.java",
         "generated/java/src/main/java/org/polyrust/generated/Generated.java",
         "generated/java/src/main/java/org/polyrust/generated/Runtime.java",
         "generated/java/src/test/java/org/polyrust/generated/ConformanceTest.java",

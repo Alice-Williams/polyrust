@@ -28,10 +28,10 @@ def generated_java_tests():
         args = [
             "$(location :generated/java/src/main/java/org/polyrust/generated/Runtime.java)",
             "$(location :generated/java/src/main/java/org/polyrust/generated/Generated.java)",
-            "$(location :generated/java/negative/InvalidTypes.java)",
+            "$(location :generated/java/src/test/java/org/polyrust/generated/InvalidTypes.java)",
         ],
         data = [
-            ":generated/java/negative/InvalidTypes.java",
+            ":generated/java/src/test/java/org/polyrust/generated/InvalidTypes.java",
             ":generated/java/src/main/java/org/polyrust/generated/Generated.java",
             ":generated/java/src/main/java/org/polyrust/generated/Runtime.java",
             "@bazel_tools//tools/jdk:current_java_runtime",

@@ -171,6 +171,25 @@ test evidence rather than a current **Pass** claim while M34A-10R is open.
   gate passed 232 of 232 tests, and a clean Cargo workspace replay passed with
   all doctests. Java remains **Fail** pending round 12 push, hosted CI, and an
   exhaustive clean review.
+- Round 12 checkpoint `5cb5a10552f3d1b4f96d974eeee91ec67042c486`
+  was pushed and remotely verified; hosted CI run `33755866121` passed all
+  eight jobs for that exact SHA. An uncapped nine-category Sol/xhigh audit then
+  validated the generated packages but found ten accepted defect families in
+  source-policy scanning, recursive boundary ownership, callable-position
+  matching, wildcard/cast grammar, record and inherited-`Object` rules, nested
+  names, canonical Java paths, and oracle coverage claims.
+- Round 13 fixes all ten families and adds exact verifier regressions plus eight
+  paired hermetic Java 21 compiler-negative fixtures. Its compiler oracle is
+  broadened across structured declaration/expression/file categories and is
+  documented as deterministic sampling rather than universal proof. The first
+  repository replay also exposed and permanently covered the valid generic
+  boxed-result-to-matching-primitive unboxing used by `has-flag`.
+- Round 13 passes 53 of 53 focused Java/codegen/policy/snapshot/lint tests, 294
+  of 294 uncached tracked-repository tests, 232 of 232 uncached independently
+  composed release-gate tests, and a fresh isolated
+  `cargo test --workspace --all-features --locked` run including every doctest.
+  Java remains **Fail** pending an immutable pushed checkpoint, successful
+  hosted CI for that SHA, and a clean fresh exhaustive review.
 
 ## Pass rule
 

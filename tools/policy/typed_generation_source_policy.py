@@ -35,12 +35,127 @@ FORBIDDEN_DEPENDENCY_TEXT_SCAN = re.compile(
     r"(?:r[#]*\"|\")\s*(?:import\b|#\s*include\b|use\s+)"
 )
 
+CFG_TEST_ATTRIBUTE = "#[cfg(test)]"
+RAW_STRING_START = re.compile(r'(?:br|rb|r)(?P<hashes>#{0,255})"')
+CHAR_LITERAL = re.compile(r"(?:b)?'(?:\\.|[^'\\\n])+'")
+
+
+def _skip_rust_quoted(source: str, index: int) -> int | None:
+    raw = RAW_STRING_START.match(source, index)
+    if raw:
+        terminator = '"' + raw.group("hashes")
+        end = source.find(terminator, raw.end())
+        return len(source) if end < 0 else end + len(terminator)
+    quote = index + 1 if source.startswith(('b"', 'c"'), index) else index
+    if quote < len(source) and source[quote] == '"':
+        cursor = quote + 1
+        while cursor < len(source):
+            if source[cursor] == "\\":
+                cursor += 2
+            elif source[cursor] == '"':
+                return cursor + 1
+            else:
+                cursor += 1
+        return len(source)
+    character = CHAR_LITERAL.match(source, index)
+    return character.end() if character else None
+
+
+def _cfg_test_item_end(source: str, start: int) -> int:
+    """Return the end of one cfg(test)-annotated Rust item.
+
+    This is a deliberately small lexer, not a Rust parser. It only needs to
+    distinguish item braces/semicolons from delimiters inside comments and
+    string/character literals. That keeps production text after a test-only
+    method visible to the policy without making deliberate test fixtures fail.
+    """
+    cursor = start
+    block_comment_depth = 0
+    while cursor < len(source):
+        if block_comment_depth:
+            if source.startswith("/*", cursor):
+                block_comment_depth += 1
+                cursor += 2
+            elif source.startswith("*/", cursor):
+                block_comment_depth -= 1
+                cursor += 2
+            else:
+                cursor += 1
+            continue
+        if source.startswith("//", cursor):
+            newline = source.find("\n", cursor + 2)
+            cursor = len(source) if newline < 0 else newline + 1
+            continue
+        if source.startswith("/*", cursor):
+            block_comment_depth = 1
+            cursor += 2
+            continue
+        quoted_end = (
+            _skip_rust_quoted(source, cursor)
+            if source[cursor] in "'\"rbc"
+            else None
+        )
+        if quoted_end is not None:
+            cursor = quoted_end
+            continue
+        if source[cursor] == ";":
+            return cursor + 1
+        if source[cursor] == "{":
+            depth = 1
+            cursor += 1
+            while cursor < len(source) and depth:
+                if source.startswith("//", cursor):
+                    newline = source.find("\n", cursor + 2)
+                    cursor = len(source) if newline < 0 else newline + 1
+                    continue
+                if source.startswith("/*", cursor):
+                    comment_depth = 1
+                    cursor += 2
+                    while cursor < len(source) and comment_depth:
+                        if source.startswith("/*", cursor):
+                            comment_depth += 1
+                            cursor += 2
+                        elif source.startswith("*/", cursor):
+                            comment_depth -= 1
+                            cursor += 2
+                        else:
+                            cursor += 1
+                    continue
+                quoted_end = (
+                    _skip_rust_quoted(source, cursor)
+                    if source[cursor] in "'\"rbc"
+                    else None
+                )
+                if quoted_end is not None:
+                    cursor = quoted_end
+                    continue
+                if source[cursor] == "{":
+                    depth += 1
+                elif source[cursor] == "}":
+                    depth -= 1
+                cursor += 1
+            return cursor
+        cursor += 1
+    return len(source)
+
+
+def _without_cfg_test_items(source: str) -> str:
+    output = list(source)
+    cursor = 0
+    while True:
+        start = source.find(CFG_TEST_ATTRIBUTE, cursor)
+        if start < 0:
+            break
+        end = _cfg_test_item_end(source, start + len(CFG_TEST_ATTRIBUTE))
+        for index in range(start, end):
+            if output[index] != "\n":
+                output[index] = " "
+        cursor = end
+    return "".join(output)
+
 
 def offenders(path: str, source: str) -> list[str]:
-    # Repository Rust source keeps its cfg(test) module last. Test fixtures must
-    # be able to spell deliberate violations without granting production code
-    # an escape hatch.
-    source = source.split("#[cfg(test)]", maxsplit=1)[0]
+    source = _without_cfg_test_items(source)
     findings: list[str] = []
     for label, pattern in [
         ("opaque executable enum variant", FORBIDDEN_VARIANT),
@@ -82,6 +197,16 @@ struct AstViolation { message: String }
     test_only = '#[cfg(test)] mod tests { add_import(symbol); }'
     if offenders("test_only.rs", test_only):
         raise AssertionError("deliberate cfg(test) injection was rejected")
+    after_test_item = """
+#[cfg(test)]
+fn deliberate_fixture() {
+    let source = r###"{ add_import(symbol); }"###;
+}
+add_import(production_symbol);
+"""
+    findings = offenders("after_test_item.rs", after_test_item)
+    if len(findings) != 1 or "manual dependency attachment API" not in findings[0]:
+        raise AssertionError("production violation after cfg(test) item was hidden")
 
 
 def main() -> int:
