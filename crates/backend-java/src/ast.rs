@@ -6447,100 +6447,8 @@ pub enum JavaFilePlacement {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum JavaTemplateId {
+pub enum JavaSourceFileKind {
     CompilationUnit,
-    Package,
-    Import,
-    Annotation,
-    Heritage,
-    Class,
-    Record,
-    Interface,
-    SealedInterface,
-    Field,
-    Method,
-    AbstractMethod,
-    Constructor,
-    Parameter,
-    Block,
-    Local,
-    Assign,
-    ExpressionStatement,
-    Return,
-    If,
-    ForEach,
-    While,
-    Switch,
-    SwitchArm,
-    Throw,
-    Break,
-    Continue,
-    Literal,
-    Name,
-    Unary,
-    Binary,
-    Conditional,
-    Call,
-    New,
-    FieldAccess,
-    Cast,
-    InstanceOf,
-    NewArray,
-    ArrayIndex,
-    Lambda,
-    TryCatch,
-    Catch,
-    ThrowValue,
-    Comment,
-}
-
-impl JavaTemplateId {
-    pub const ALL: [Self; 44] = [
-        Self::CompilationUnit,
-        Self::Package,
-        Self::Import,
-        Self::Annotation,
-        Self::Heritage,
-        Self::Class,
-        Self::Record,
-        Self::Interface,
-        Self::SealedInterface,
-        Self::Field,
-        Self::Method,
-        Self::AbstractMethod,
-        Self::Constructor,
-        Self::Parameter,
-        Self::Block,
-        Self::Local,
-        Self::Assign,
-        Self::ExpressionStatement,
-        Self::Return,
-        Self::If,
-        Self::ForEach,
-        Self::While,
-        Self::Switch,
-        Self::SwitchArm,
-        Self::Throw,
-        Self::Break,
-        Self::Continue,
-        Self::Literal,
-        Self::Name,
-        Self::Unary,
-        Self::Binary,
-        Self::Conditional,
-        Self::Call,
-        Self::New,
-        Self::FieldAccess,
-        Self::Cast,
-        Self::InstanceOf,
-        Self::NewArray,
-        Self::ArrayIndex,
-        Self::Lambda,
-        Self::TryCatch,
-        Self::Catch,
-        Self::ThrowValue,
-        Self::Comment,
-    ];
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -6629,7 +6537,7 @@ mod tests {
             JavaPackage::Generated,
             placement,
             items,
-            JavaTemplateId::CompilationUnit,
+            JavaSourceFileKind::CompilationUnit,
             verifier_source("file"),
         ));
         builder.group(portable_codegen::TargetFileGroup::new(
@@ -8611,7 +8519,7 @@ mod tests {
                     declared: vec![],
                     declaration,
                 }],
-                JavaTemplateId::CompilationUnit,
+                JavaSourceFileKind::CompilationUnit,
                 verifier_source("mutation-oracle-file"),
             ));
             builder.group(portable_codegen::TargetFileGroup::new(
@@ -8620,16 +8528,24 @@ mod tests {
                 verifier_source("mutation-oracle-group"),
             ));
             let package = builder.build();
-            if portable_codegen::verify_target_ast(&package).is_err() {
-                rejected += 1;
-                continue;
-            }
+            let verified = match portable_codegen::verify_unresolved_package(&JavaDialect, package)
+            {
+                Ok(verified) => verified,
+                Err(_) => {
+                    rejected += 1;
+                    continue;
+                }
+            };
             let linked = portable_codegen::TargetLinker::new(JavaDialect)
-                .link_ast(&package)
+                .link_ast(&verified)
                 .expect("every verified mutation must link");
-            let rendered =
-                portable_codegen::render_linked_package(&crate::render::JavaRenderer, &linked)
-                    .expect("every linked mutation must render");
+            let certified = portable_codegen::certify_resolved_package(&JavaDialect, linked)
+                .expect("every linked mutation must become render-ready");
+            let rendered = portable_codegen::render_certified_package(
+                &crate::render::JavaRenderer,
+                &certified,
+            )
+            .expect("every render-ready mutation must render");
             for file in rendered.files() {
                 let portable_codegen::OutputContents::Text(contents) = file.contents() else {
                     panic!("Java mutation rendered non-text output")
@@ -8810,7 +8726,7 @@ mod tests {
                     declaration,
                 })
                 .collect(),
-            JavaTemplateId::CompilationUnit,
+            JavaSourceFileKind::CompilationUnit,
             verifier_source("structured-mutation-oracle-file"),
         ));
         builder.group(portable_codegen::TargetFileGroup::new(
@@ -8819,14 +8735,16 @@ mod tests {
             verifier_source("structured-mutation-oracle-group"),
         ));
         let package = builder.build();
-        portable_codegen::verify_target_ast(&package)
+        let verified = portable_codegen::verify_unresolved_package(&JavaDialect, package)
             .expect("structured Java mutation package must verify");
         let linked = portable_codegen::TargetLinker::new(JavaDialect)
-            .link_ast(&package)
+            .link_ast(&verified)
             .expect("structured Java mutation package must link");
+        let certified = portable_codegen::certify_resolved_package(&JavaDialect, linked)
+            .expect("structured Java mutation package must become render-ready");
         let rendered =
-            portable_codegen::render_linked_package(&crate::render::JavaRenderer, &linked)
-                .expect("structured Java mutation package must render");
+            portable_codegen::render_certified_package(&crate::render::JavaRenderer, &certified)
+                .expect("structured render-ready Java mutation package must render");
         for file in rendered.files() {
             let portable_codegen::OutputContents::Text(contents) = file.contents() else {
                 panic!("structured Java mutation rendered non-text output")

@@ -10,10 +10,9 @@ use portable_check::v0::CheckedProgram;
 use portable_diagnostics::Diagnostic;
 
 use crate::{
-    BackendDescriptor, BackendOptions, CertifiedTemplateId, DeclaredDependency, InjectedHelper,
-    IrVersionRange, LinkedTargetPackage, LinkerDialect, ManifestGeneration, OptionsSchema,
-    OutputContents, OutputFile, OutputFileRole, OutputManifest, ResolvedTemplateRenderer,
-    SourceRole, TargetId, render_linked_package, validate_options,
+    BackendDescriptor, BackendOptions, DeclaredDependency, InjectedHelper, IrVersionRange,
+    ManifestGeneration, OptionsSchema, OutputContents, OutputFile, OutputFileRole, OutputManifest,
+    SourceRole, TargetId, validate_options,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -24,8 +23,7 @@ pub enum TypedPipelineStage {
     TargetLowering,
     UnresolvedVerification,
     Resolution,
-    ResolvedVerification,
-    RenderViewConstruction,
+    RenderReadinessCertification,
     Rendering,
     ManifestAssembly,
 }
@@ -151,7 +149,7 @@ pub trait TargetLowerer<C, D: TargetDialect>: Send + Sync + 'static {
     ) -> Result<D::Unresolved, Vec<Diagnostic>>;
 }
 
-/// A target package which passed its unresolved-AST verifier.
+/// A target package produced by lowering but not yet verified.
 ///
 /// Consumers cannot forge this phase:
 ///
@@ -191,27 +189,39 @@ impl<D: TargetDialect> UnresolvedPackage<D> {
             dialect: PhantomData,
         }
     }
+
+    fn into_ast(self) -> D::Unresolved {
+        self.ast
+    }
 }
 
-pub trait TargetResolver<D: TargetDialect>: Send + Sync + 'static {
-    fn resolve_target(
-        &self,
-        package: &UnresolvedPackage<D>,
-    ) -> Result<D::Resolved, Vec<Diagnostic>>;
-}
-
+/// A target package which passed its unresolved-AST verifier.
+///
+/// The constructor and stored AST are private. Safe clients can neither forge
+/// this proof state nor mutate the value which was checked.
+///
+/// ~~~compile_fail
+/// use portable_codegen::{TargetDialect, VerifiedPackage};
+///
+/// fn cannot_mutate<D: TargetDialect>(
+///     package: &mut VerifiedPackage<D>,
+///     replacement: D::Unresolved,
+/// ) {
+///     *package.ast() = replacement;
+/// }
+/// ~~~
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ResolvedPackage<D: TargetDialect> {
-    ast: D::Resolved,
+pub struct VerifiedPackage<D: TargetDialect> {
+    ast: D::Unresolved,
     dialect: PhantomData<fn() -> D>,
 }
 
-impl<D: TargetDialect> ResolvedPackage<D> {
-    pub fn ast(&self) -> &D::Resolved {
+impl<D: TargetDialect> VerifiedPackage<D> {
+    pub fn ast(&self) -> &D::Unresolved {
         &self.ast
     }
 
-    fn new(ast: D::Resolved) -> Self {
+    fn new(ast: D::Unresolved) -> Self {
         Self {
             ast,
             dialect: PhantomData,
@@ -219,28 +229,47 @@ impl<D: TargetDialect> ResolvedPackage<D> {
     }
 }
 
-/// Render-view construction cannot accept the unresolved package type:
+pub fn verify_target_package<D: TargetDialect>(
+    dialect: &D,
+    package: UnresolvedPackage<D>,
+) -> Result<VerifiedPackage<D>, Vec<Diagnostic>> {
+    dialect.verify_unresolved(package.ast())?;
+    Ok(VerifiedPackage::new(package.into_ast()))
+}
+
+/// Runs the target verifier and returns the only public path to its opaque
+/// proof state. The unchecked value is consumed and cannot be mutated after a
+/// successful check.
+pub fn verify_unresolved_package<D: TargetDialect>(
+    dialect: &D,
+    ast: D::Unresolved,
+) -> Result<VerifiedPackage<D>, Vec<Diagnostic>> {
+    verify_target_package(dialect, UnresolvedPackage::new(ast))
+}
+
+/// Resolution requires the verifier-issued capability, not raw unresolved AST.
 ///
 /// ~~~compile_fail
-/// use portable_codegen::{TargetDialect, TargetRenderer, UnresolvedPackage};
+/// use portable_codegen::{TargetDialect, TargetResolver, UnresolvedPackage};
 ///
-/// fn bypass<D, R>(renderer: &R, package: &UnresolvedPackage<D>)
+/// fn cannot_link_unverified<D, R>(resolver: &R, package: &UnresolvedPackage<D>)
 /// where
 ///     D: TargetDialect,
-///     R: TargetRenderer<D>,
+///     R: TargetResolver<D>,
 /// {
-///     let _ = renderer.build_render_view(package);
+///     let _ = resolver.resolve_target(package);
 /// }
 /// ~~~
-///
-/// External plugins also cannot replace certified rendering with a custom
-/// renderer that returns arbitrary files:
+pub trait TargetResolver<D: TargetDialect>: Send + Sync + 'static {
+    fn resolve_target(&self, package: &VerifiedPackage<D>) -> Result<D::Resolved, Vec<Diagnostic>>;
+}
+
+/// A resolved package which has not yet passed its language-owned final check.
+/// Its private constructor prevents callers from relabeling arbitrary resolved
+/// data as linked pipeline output.
 ///
 /// ~~~compile_fail
-/// use portable_codegen::{
-///     RenderView, RenderedPackage, ResolvedPackage, TargetDialect,
-///     TargetRenderer,
-/// };
+/// use portable_codegen::{LinkedPackage, TargetDialect};
 ///
 /// struct Dialect;
 /// impl TargetDialect for Dialect {
@@ -253,111 +282,146 @@ impl<D: TargetDialect> ResolvedPackage<D> {
 ///         Ok(())
 ///     }
 /// }
-/// struct Bypass;
-/// impl TargetRenderer<Dialect> for Bypass {
-///     type View = ();
-///     fn build_render_view(
-///         &self,
-///         _: &ResolvedPackage<Dialect>,
-///     ) -> Result<(), Vec<portable_diagnostics::Diagnostic>> {
+/// let _ = LinkedPackage::<Dialect> {
+///     ast: (),
+///     dialect: std::marker::PhantomData,
+/// };
+/// ~~~
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LinkedPackage<D: TargetDialect> {
+    ast: D::Resolved,
+    dialect: PhantomData<fn() -> D>,
+}
+
+impl<D: TargetDialect> LinkedPackage<D> {
+    pub fn ast(&self) -> &D::Resolved {
+        &self.ast
+    }
+
+    fn new(ast: D::Resolved) -> Self {
+        Self {
+            ast,
+            dialect: PhantomData,
+        }
+    }
+
+    fn into_ast(self) -> D::Resolved {
+        self.ast
+    }
+}
+
+/// An opaque capability proving that the language-owned post-link checker
+/// accepted the exact package presented to rendering.
+///
+/// It deliberately implements neither `Deserialize` nor mutable AST access:
+///
+/// ~~~compile_fail
+/// use portable_codegen::{RenderReadyPackage, TargetDialect};
+///
+/// fn cannot_deserialize<D: TargetDialect>(json: &str) -> RenderReadyPackage<D> {
+///     serde_json::from_str(json).unwrap()
+/// }
+/// ~~~
+///
+/// ~~~compile_fail
+/// use portable_codegen::{RenderReadyPackage, TargetDialect};
+///
+/// fn cannot_mutate<D: TargetDialect>(
+///     package: &mut RenderReadyPackage<D>,
+///     replacement: D::Resolved,
+/// ) {
+///     *package.ast() = replacement;
+/// }
+/// ~~~
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RenderReadyPackage<D: TargetDialect> {
+    ast: D::Resolved,
+    dialect: PhantomData<fn() -> D>,
+}
+
+impl<D: TargetDialect> RenderReadyPackage<D> {
+    pub fn ast(&self) -> &D::Resolved {
+        &self.ast
+    }
+
+    fn new(ast: D::Resolved) -> Self {
+        Self {
+            ast,
+            dialect: PhantomData,
+        }
+    }
+}
+
+pub fn certify_linked_package<D: TargetDialect>(
+    dialect: &D,
+    package: LinkedPackage<D>,
+) -> Result<RenderReadyPackage<D>, Vec<Diagnostic>> {
+    dialect.verify_resolved(package.ast())?;
+    Ok(RenderReadyPackage::new(package.into_ast()))
+}
+
+/// Runs the language-owned post-link checker and returns the only public path
+/// from a raw resolved value to the opaque rendering capability.
+pub fn certify_resolved_package<D: TargetDialect>(
+    dialect: &D,
+    ast: D::Resolved,
+) -> Result<RenderReadyPackage<D>, Vec<Diagnostic>> {
+    certify_linked_package(dialect, LinkedPackage::new(ast))
+}
+
+/// Rendering cannot accept an unresolved package:
+///
+/// ~~~compile_fail
+/// use portable_codegen::{TargetDialect, TargetRenderer, UnresolvedPackage};
+///
+/// fn bypass<D, R>(renderer: &R, package: &UnresolvedPackage<D>)
+/// where
+///     D: TargetDialect,
+///     R: TargetRenderer<D>,
+/// {
+///     let _ = renderer.render(package);
+/// }
+/// ~~~
+///
+/// A verified-but-unlinked package also cannot be rendered:
+///
+/// ~~~compile_fail
+/// use portable_codegen::{TargetDialect, TargetRenderer, VerifiedPackage};
+///
+/// fn cannot_render_verified<D, R>(renderer: &R, package: &VerifiedPackage<D>)
+/// where
+///     D: TargetDialect,
+///     R: TargetRenderer<D>,
+/// {
+///     let _ = renderer.render(package);
+/// }
+/// ~~~
+///
+/// The render-ready capability cannot be forged by external callers:
+///
+/// ~~~compile_fail
+/// use portable_codegen::{RenderReadyPackage, TargetDialect};
+///
+/// struct Dialect;
+/// impl TargetDialect for Dialect {
+///     type Unresolved = ();
+///     type Resolved = ();
+///     fn verify_unresolved(&self, _: &()) -> Result<(), Vec<portable_diagnostics::Diagnostic>> {
 ///         Ok(())
 ///     }
-///     fn render_view(
-///         &self,
-///         _: &RenderView<Dialect, ()>,
-///     ) -> Result<RenderedPackage, Vec<portable_diagnostics::Diagnostic>> {
-///         unreachable!()
+///     fn verify_resolved(&self, _: &()) -> Result<(), Vec<portable_diagnostics::Diagnostic>> {
+///         Ok(())
 ///     }
 /// }
+/// let _ = RenderReadyPackage::<Dialect> {
+///     ast: (),
+///     dialect: std::marker::PhantomData,
+/// };
 /// ~~~
 pub trait TargetRenderer<D: TargetDialect>:
     private::SealedTargetRenderer + Send + Sync + 'static
 {
-    type View: Send + Sync + 'static;
-
-    fn build_render_view(
-        &self,
-        package: &ResolvedPackage<D>,
-    ) -> Result<Self::View, Vec<Diagnostic>>;
-    fn render_view(
-        &self,
-        view: &RenderView<D, Self::View>,
-    ) -> Result<RenderedPackage, Vec<Diagnostic>>;
-}
-
-pub struct CertifiedRendererAdapter<D, R>
-where
-    D: LinkerDialect,
-    D::TemplateId: CertifiedTemplateId,
-    R: ResolvedTemplateRenderer<D>,
-{
-    renderer: R,
-    dialect: PhantomData<fn() -> D>,
-}
-
-impl<D, R> CertifiedRendererAdapter<D, R>
-where
-    D: LinkerDialect,
-    D::TemplateId: CertifiedTemplateId,
-    R: ResolvedTemplateRenderer<D>,
-{
-    pub const fn new(renderer: R) -> Self {
-        Self {
-            renderer,
-            dialect: PhantomData,
-        }
-    }
-}
-
-impl<D, R> private::SealedTargetRenderer for CertifiedRendererAdapter<D, R>
-where
-    D: LinkerDialect,
-    D::TemplateId: CertifiedTemplateId,
-    R: ResolvedTemplateRenderer<D>,
-{
-}
-
-impl<D, R> TargetRenderer<D> for CertifiedRendererAdapter<D, R>
-where
-    D: LinkerDialect,
-    D::TemplateId: CertifiedTemplateId,
-    R: ResolvedTemplateRenderer<D>,
-{
-    type View = LinkedTargetPackage<D>;
-
-    fn build_render_view(
-        &self,
-        package: &ResolvedPackage<D>,
-    ) -> Result<Self::View, Vec<Diagnostic>> {
-        Ok(package.ast().clone())
-    }
-
-    fn render_view(
-        &self,
-        view: &RenderView<D, Self::View>,
-    ) -> Result<RenderedPackage, Vec<Diagnostic>> {
-        render_linked_package(&self.renderer, view.value())
-    }
-}
-
-/// A language-owned render view built from a verified resolved package.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RenderView<D: TargetDialect, V> {
-    value: V,
-    dialect: PhantomData<fn() -> D>,
-}
-
-impl<D: TargetDialect, V> RenderView<D, V> {
-    pub fn value(&self) -> &V {
-        &self.value
-    }
-
-    fn new(value: V) -> Self {
-        Self {
-            value,
-            dialect: PhantomData,
-        }
-    }
+    fn render(&self, package: &RenderReadyPackage<D>) -> Result<RenderedPackage, Vec<Diagnostic>>;
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -538,33 +602,28 @@ where
             .map_err(|diagnostics| {
                 TypedGenerationError::phase(TypedPipelineStage::TargetLowering, diagnostics)
             })?;
-        dialect
-            .verify_unresolved(&unresolved)
-            .map_err(|diagnostics| {
-                TypedGenerationError::phase(TypedPipelineStage::UnresolvedVerification, diagnostics)
-            })?;
         let unresolved = UnresolvedPackage::new(unresolved);
-
-        let resolved =
-            self.plugin
-                .resolver()
-                .resolve_target(&unresolved)
-                .map_err(|diagnostics| {
-                    TypedGenerationError::phase(TypedPipelineStage::Resolution, diagnostics)
-                })?;
-        dialect.verify_resolved(&resolved).map_err(|diagnostics| {
-            TypedGenerationError::phase(TypedPipelineStage::ResolvedVerification, diagnostics)
+        let verified = verify_target_package(&dialect, unresolved).map_err(|diagnostics| {
+            TypedGenerationError::phase(TypedPipelineStage::UnresolvedVerification, diagnostics)
         })?;
-        let resolved = ResolvedPackage::new(resolved);
+
+        let resolved = self
+            .plugin
+            .resolver()
+            .resolve_target(&verified)
+            .map_err(|diagnostics| {
+                TypedGenerationError::phase(TypedPipelineStage::Resolution, diagnostics)
+            })?;
+        let linked = LinkedPackage::new(resolved);
+        let render_ready = certify_linked_package(&dialect, linked).map_err(|diagnostics| {
+            TypedGenerationError::phase(
+                TypedPipelineStage::RenderReadinessCertification,
+                diagnostics,
+            )
+        })?;
 
         let renderer = self.plugin.renderer();
-        let render_view = renderer
-            .build_render_view(&resolved)
-            .map(RenderView::new)
-            .map_err(|diagnostics| {
-                TypedGenerationError::phase(TypedPipelineStage::RenderViewConstruction, diagnostics)
-            })?;
-        let rendered = renderer.render_view(&render_view).map_err(|diagnostics| {
+        let rendered = renderer.render(&render_ready).map_err(|diagnostics| {
             TypedGenerationError::phase(TypedPipelineStage::Rendering, diagnostics)
         })?;
         assemble_manifest(&descriptor, actual, options, rendered).map_err(|diagnostics| {
@@ -573,7 +632,7 @@ where
     }
 }
 
-mod private {
+pub(crate) mod private {
     pub trait Sealed {}
     pub trait SealedTargetRenderer {}
 }
@@ -834,7 +893,7 @@ pub(crate) mod tests {
     impl TargetResolver<TestDialect> for TestResolver {
         fn resolve_target(
             &self,
-            package: &UnresolvedPackage<TestDialect>,
+            package: &VerifiedPackage<TestDialect>,
         ) -> Result<String, Vec<Diagnostic>> {
             self.0.lock().unwrap().push("resolve");
             match package.ast().as_str() {
@@ -852,25 +911,12 @@ pub(crate) mod tests {
     }
 
     impl TargetRenderer<TestDialect> for TestRenderer {
-        type View = String;
-
-        fn build_render_view(
+        fn render(
             &self,
-            package: &ResolvedPackage<TestDialect>,
-        ) -> Result<Self::View, Vec<Diagnostic>> {
-            self.trace.lock().unwrap().push("view");
-            if package.ast() == "resolved:fail-render-view" {
-                return Err(vec![diagnostic("view")]);
-            }
-            Ok(package.ast().clone())
-        }
-
-        fn render_view(
-            &self,
-            view: &RenderView<TestDialect, Self::View>,
+            package: &RenderReadyPackage<TestDialect>,
         ) -> Result<RenderedPackage, Vec<Diagnostic>> {
             self.trace.lock().unwrap().push("render");
-            if view.value() == "resolved:fail-rendering" {
+            if package.ast() == "resolved:fail-rendering" {
                 return Err(vec![diagnostic("render")]);
             }
             let path = if self.invalid_path {
@@ -884,7 +930,7 @@ pub(crate) mod tests {
                     RenderedFile::source(
                         path,
                         SourceRole::Implementation,
-                        format!("{}\n", view.value()),
+                        format!("{}\n", package.ast()),
                     ),
                 ],
                 vec![],
@@ -1004,7 +1050,6 @@ pub(crate) mod tests {
                 "unresolved.verify",
                 "resolve",
                 "resolved.verify",
-                "view",
                 "render",
             ]
         );
@@ -1109,7 +1154,7 @@ pub(crate) mod tests {
             Case {
                 input: "bad-resolved",
                 program: "typed_pipeline",
-                stage: TypedPipelineStage::ResolvedVerification,
+                stage: TypedPipelineStage::RenderReadinessCertification,
                 trace: &[
                     "core.lower",
                     "core.verify",
@@ -1118,21 +1163,6 @@ pub(crate) mod tests {
                     "unresolved.verify",
                     "resolve",
                     "resolved.verify",
-                ],
-            },
-            Case {
-                input: "fail-render-view",
-                program: "typed_pipeline",
-                stage: TypedPipelineStage::RenderViewConstruction,
-                trace: &[
-                    "core.lower",
-                    "core.verify",
-                    "capabilities.preflight",
-                    "target.lower",
-                    "unresolved.verify",
-                    "resolve",
-                    "resolved.verify",
-                    "view",
                 ],
             },
             Case {
@@ -1147,7 +1177,6 @@ pub(crate) mod tests {
                     "unresolved.verify",
                     "resolve",
                     "resolved.verify",
-                    "view",
                     "render",
                 ],
             },

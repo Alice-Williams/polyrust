@@ -317,7 +317,7 @@ impl<'a> Lowering<'a> {
                 declared: self.declared.clone(),
                 declaration,
             }],
-            JavaTemplateId::CompilationUnit,
+            JavaSourceFileKind::CompilationUnit,
             source("generated-file"),
         )))
     }
@@ -371,7 +371,7 @@ impl<'a> Lowering<'a> {
             JavaPackage::Generated,
             JavaFilePlacement::Runtime,
             vec![crate::runtime::shell_item()],
-            JavaTemplateId::CompilationUnit,
+            JavaSourceFileKind::CompilationUnit,
             source("runtime-file"),
         )))
     }
@@ -387,7 +387,7 @@ impl<'a> Lowering<'a> {
                 declared: vec![],
                 declaration,
             }],
-            JavaTemplateId::CompilationUnit,
+            JavaSourceFileKind::CompilationUnit,
             source("conformance-file"),
         )))
     }
@@ -422,7 +422,7 @@ impl<'a> Lowering<'a> {
                 declared: vec![],
                 declaration,
             }],
-            JavaTemplateId::CompilationUnit,
+            JavaSourceFileKind::CompilationUnit,
             source("negative-file"),
         )))
     }
@@ -1204,7 +1204,7 @@ impl<'a> Lowering<'a> {
                 declared: vec![],
                 declaration,
             }],
-            JavaTemplateId::CompilationUnit,
+            JavaSourceFileKind::CompilationUnit,
             source("native-test-file"),
         )))
     }

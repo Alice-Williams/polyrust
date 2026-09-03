@@ -8,7 +8,7 @@ use crate::{
     TargetArtifact, TargetAstBuilder, TargetAstPackage, TargetCallableSignature, TargetDialect,
     TargetExprId, TargetExpressionNode, TargetFile, TargetFileId, TargetFileItemNode,
     TargetResolver, TargetStatementNode, TargetStmtId, TargetTypeMarker, TargetTypeRef,
-    TypedAstDialect, UnresolvedPackage, verify_target_ast,
+    TypedAstDialect, VerifiedPackage, verify_target_ast,
 };
 
 macro_rules! linker_id {
@@ -850,7 +850,7 @@ pub struct LinkedFile<D: LinkerDialect> {
     role: SourceRole,
     module: D::ResolvedModule,
     placement: D::FilePlacement,
-    template: D::TemplateId,
+    source_kind: D::SourceFileKind,
     items: Vec<D::ResolvedFileItem>,
     source: SourceRef,
     dependencies: Vec<TargetFileId>,
@@ -881,8 +881,8 @@ impl<D: LinkerDialect> LinkedFile<D> {
         &self.placement
     }
 
-    pub fn template(&self) -> &D::TemplateId {
-        &self.template
+    pub fn source_kind(&self) -> &D::SourceFileKind {
+        &self.source_kind
     }
 
     pub fn items(&self) -> &[D::ResolvedFileItem] {
@@ -1067,8 +1067,9 @@ impl<D: LinkerDialect> TargetLinker<D> {
 
     pub fn link_ast(
         &self,
-        unresolved: &TargetAstPackage<D>,
+        verified: &VerifiedPackage<D>,
     ) -> Result<LinkedTargetPackage<D>, Vec<Diagnostic>> {
+        let unresolved = verified.ast();
         verify_target_ast(unresolved)?;
         let catalogue = self.dialect.symbol_catalogue();
         catalogue.verify(&self.dialect)?;
@@ -1204,7 +1205,7 @@ impl<D: LinkerDialect> TargetLinker<D> {
                 role: source_file.role(),
                 module,
                 placement: source_file.placement().clone(),
-                template: source_file.template().clone(),
+                source_kind: source_file.source_kind().clone(),
                 items,
                 source: source_file.source().clone(),
                 dependencies: raw_file.dependencies,
@@ -1237,11 +1238,8 @@ impl<D: LinkerDialect> TargetLinker<D> {
 }
 
 impl<D: LinkerDialect> TargetResolver<D> for TargetLinker<D> {
-    fn resolve_target(
-        &self,
-        package: &UnresolvedPackage<D>,
-    ) -> Result<D::Resolved, Vec<Diagnostic>> {
-        self.link_ast(package.ast())
+    fn resolve_target(&self, package: &VerifiedPackage<D>) -> Result<D::Resolved, Vec<Diagnostic>> {
+        self.link_ast(package)
     }
 }
 
@@ -2289,7 +2287,7 @@ pub fn verify_linked_package<D: LinkerDialect>(
         if file.path != *source_file.path()
             || file.role != source_file.role()
             || file.placement != *source_file.placement()
-            || file.template != *source_file.template()
+            || file.source_kind != *source_file.source_kind()
             || file.source != *source_file.source()
         {
             diagnostics.push(Diagnostic::error(
@@ -2659,7 +2657,7 @@ mod tests {
         GeneratedCallable, GeneratedOrigin, GeneratedType, GeneratedValue, RelativeOutputPath,
         ResolvedTemplateRenderer, SourceRole, SynthesisReason, TargetExpressionNode, TargetFile,
         TargetFileGroup, TargetFileItemNode, TargetFileMember, TargetStatementNode,
-        render_linked_package,
+        VerifiedPackage, render_linked_package, verify_unresolved_package,
     };
     use serde::Serialize;
 
@@ -3050,7 +3048,7 @@ mod tests {
         type Visibility = Visibility;
         type DeclarationKind = DeclarationKind;
         type SymbolOrigin = AstOrigin;
-        type TemplateId = Template;
+        type SourceFileKind = Template;
         type ModuleDeclaration = Module;
         type FilePlacement = Placement;
         type Expression = Expression;
@@ -3896,6 +3894,11 @@ mod tests {
         builder.build()
     }
 
+    fn verified(package: TargetAstPackage<TestDialect>) -> VerifiedPackage<TestDialect> {
+        let dialect = package.dialect().clone();
+        verify_unresolved_package(&dialect, package).expect("linker test package verifies")
+    }
+
     fn file_graph_package(
         mode: CatalogueMode,
         left_role: SourceRole,
@@ -4088,7 +4091,7 @@ mod tests {
     fn linking_derives_exact_import_dependency_helper_and_alias_sets() {
         let dialect = TestDialect(CatalogueMode::Normal);
         let linked = TargetLinker::new(dialect.clone())
-            .link_ast(&package(CatalogueMode::Normal, full_symbols()))
+            .link_ast(&verified(package(CatalogueMode::Normal, full_symbols())))
             .unwrap();
         assert_eq!(verify_linked_package(&linked), Ok(()));
         assert_eq!(linked.files().len(), 2);
@@ -4192,7 +4195,7 @@ mod tests {
     #[test]
     fn minimal_references_do_not_select_optional_catalogue_entries() {
         let linked = TargetLinker::new(TestDialect(CatalogueMode::Normal))
-            .link_ast(&package(CatalogueMode::Normal, vec![]))
+            .link_ast(&verified(package(CatalogueMode::Normal, vec![])))
             .unwrap();
         let symbols = linked.files()[0]
             .imports()
@@ -4215,10 +4218,10 @@ mod tests {
     #[test]
     fn missing_unknown_cycle_and_dependency_conflict_are_targeted() {
         let missing_symbol = TargetLinker::new(TestDialect(CatalogueMode::Normal))
-            .link_ast(&package(
+            .link_ast(&verified(package(
                 CatalogueMode::Normal,
                 vec![TargetSymbolRef::KnownType(KnownType::Uncatalogued)],
-            ))
+            )))
             .unwrap_err();
         assert!(codes(missing_symbol).contains(&DiagnosticCode::UnresolvedReference));
 
@@ -4238,7 +4241,7 @@ mod tests {
             ),
         ] {
             let diagnostics = TargetLinker::new(TestDialect(mode))
-                .link_ast(&package(mode, full_symbols()))
+                .link_ast(&verified(package(mode, full_symbols())))
                 .unwrap_err();
             assert!(codes(diagnostics).contains(&expected), "mode {mode:?}");
         }
@@ -4269,13 +4272,13 @@ mod tests {
             ),
         ] {
             let diagnostics = TargetLinker::new(TestDialect(CatalogueMode::Normal))
-                .link_ast(&file_graph_package(
+                .link_ast(&verified(file_graph_package(
                     CatalogueMode::Normal,
                     left_role,
                     right_role,
                     visibility,
                     false,
-                ))
+                )))
                 .unwrap_err();
             assert!(
                 diagnostics.iter().any(|diagnostic| diagnostic
@@ -4289,13 +4292,13 @@ mod tests {
     #[test]
     fn file_graph_cycles_require_an_explicit_dialect_policy() {
         let forbidden = TargetLinker::new(TestDialect(CatalogueMode::Normal))
-            .link_ast(&file_graph_package(
+            .link_ast(&verified(file_graph_package(
                 CatalogueMode::Normal,
                 SourceRole::Implementation,
                 SourceRole::Implementation,
                 Visibility::Public,
                 true,
-            ))
+            )))
             .unwrap_err();
         assert!(
             forbidden
@@ -4304,13 +4307,13 @@ mod tests {
         );
 
         let permitted = TargetLinker::new(TestDialect(CatalogueMode::PermittedFileCycle))
-            .link_ast(&file_graph_package(
+            .link_ast(&verified(file_graph_package(
                 CatalogueMode::PermittedFileCycle,
                 SourceRole::Implementation,
                 SourceRole::Implementation,
                 Visibility::Public,
                 true,
-            ))
+            )))
             .unwrap();
         assert_eq!(
             permitted.files()[0].dependencies(),
@@ -4335,7 +4338,7 @@ mod tests {
             source: source("colliding-public"),
         });
         let diagnostics = TargetLinker::new(TestDialect(mode))
-            .link_ast(&package)
+            .link_ast(&verified(package))
             .unwrap_err();
         assert!(codes(diagnostics).contains(&DiagnosticCode::DuplicateDeclaration));
     }
@@ -4344,7 +4347,7 @@ mod tests {
     fn forged_resolved_sets_are_rejected() {
         let mode = CatalogueMode::Normal;
         let base = TargetLinker::new(TestDialect(mode))
-            .link_ast(&package(mode, full_symbols()))
+            .link_ast(&verified(package(mode, full_symbols())))
             .unwrap();
 
         let mut missing_import = base.clone();
@@ -4401,7 +4404,7 @@ mod tests {
     fn three_resolutions_have_identical_non_source_dumps() {
         let resolve = || {
             TargetLinker::new(TestDialect(CatalogueMode::Normal))
-                .link_ast(&package(CatalogueMode::Normal, full_symbols()))
+                .link_ast(&verified(package(CatalogueMode::Normal, full_symbols())))
                 .unwrap()
                 .canonical_dump()
         };
@@ -4416,7 +4419,7 @@ mod tests {
     fn resolved_user_and_runtime_items_share_certified_templates() {
         let render = || {
             let linked = TargetLinker::new(TestDialect(CatalogueMode::Normal))
-                .link_ast(&package(CatalogueMode::Normal, full_symbols()))
+                .link_ast(&verified(package(CatalogueMode::Normal, full_symbols())))
                 .unwrap();
             render_linked_package(&TestRenderer, &linked).unwrap()
         };

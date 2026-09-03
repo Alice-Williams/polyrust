@@ -11,5 +11,6 @@ publish = false
 portable_build = { package = "polyrust-build", version = "0.1.0", path = "../../crates/build" }
 portable_check = { package = "polyrust-check", version = "0.1.0", path = "../../crates/check" }
 portable_codegen = { package = "polyrust-codegen", version = "0.1.0", path = "../../crates/codegen" }
+portable_backend_java = { package = "polyrust-backend-java", version = "0.1.0", path = "../../crates/backend-java" }
+portable_diagnostics = { package = "polyrust-diagnostics", version = "0.1.0", path = "../../crates/diagnostics" }
 portable_ir = { package = "polyrust-ir", version = "0.1.0", path = "../../crates/ir" }
-

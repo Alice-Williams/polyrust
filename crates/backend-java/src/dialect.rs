@@ -1656,7 +1656,7 @@ impl TypedAstDialect for JavaDialect {
     type Visibility = JavaVisibility;
     type DeclarationKind = JavaDeclarationKind;
     type SymbolOrigin = JavaSyntheticOrigin;
-    type TemplateId = JavaTemplateId;
+    type SourceFileKind = JavaSourceFileKind;
     type ModuleDeclaration = JavaPackage;
     type FilePlacement = JavaFilePlacement;
     type Expression = JavaArenaExpression;
@@ -1764,7 +1764,7 @@ impl TypedAstDialect for JavaDialect {
                 ));
             }
         }
-        if file.template() != &JavaTemplateId::CompilationUnit {
+        if file.source_kind() != &JavaSourceFileKind::CompilationUnit {
             violations.push(AstViolation::new(
                 DiagnosticCode::InvalidStructure,
                 "Java source files must use the compilation-unit template",
@@ -2509,7 +2509,7 @@ mod tests {
                 declared: vec![],
                 declaration,
             }],
-            JavaTemplateId::CompilationUnit,
+            JavaSourceFileKind::CompilationUnit,
             source("file"),
         ));
         builder.group(portable_codegen::TargetFileGroup::new(
@@ -2785,7 +2785,7 @@ mod tests {
             JavaPackage::Generated,
             JavaFilePlacement::Runtime,
             vec![shell.clone(), fragment.clone()],
-            JavaTemplateId::CompilationUnit,
+            JavaSourceFileKind::CompilationUnit,
             source("combined-runtime"),
         ));
         builder.group(portable_codegen::TargetFileGroup::new(
@@ -2808,7 +2808,7 @@ mod tests {
             JavaPackage::Generated,
             JavaFilePlacement::Main,
             vec![fragment],
-            JavaTemplateId::CompilationUnit,
+            JavaSourceFileKind::CompilationUnit,
             source("misplaced-runtime-fragment"),
         ));
         builder.group(portable_codegen::TargetFileGroup::new(
@@ -2846,7 +2846,7 @@ mod tests {
                 duplicate(JavaRuntimeHelper::Core),
                 duplicate(JavaRuntimeHelper::Interfaces),
             ],
-            JavaTemplateId::CompilationUnit,
+            JavaSourceFileKind::CompilationUnit,
             source("duplicate-runtime-members"),
         ));
         builder.group(portable_codegen::TargetFileGroup::new(

@@ -269,7 +269,7 @@ const BODY: &str = "plain body";
 '''
     if rust_template_offenders("allowed.rs", allowed):
         raise AssertionError("renderer or unit-test spelling was rejected")
-    typed = 'template(JavaTemplateId::Import, "import {{path}};\\n", &["path"]);'
+    typed = 'template(ExampleTemplateId::Import, "import {{path}};\\n", &["path"]);'
     if rust_template_offenders("typed.rs", typed):
         raise AssertionError("typed import template was rejected")
     injected = 'const BODY: &str = "body\\nimport forbidden";'
@@ -278,7 +278,7 @@ const BODY: &str = "plain body";
     counterfeit = 'fn render_imports() -> &\'static str { "import forbidden" }'
     if not rust_template_offenders("counterfeit.rs", counterfeit):
         raise AssertionError("non-renderer function inherited renderer permission")
-    wrong_template = 'template(JavaTemplateId::Statement, "import forbidden;\\n", &[]);'
+    wrong_template = 'template(ExampleTemplateId::Statement, "import forbidden;\\n", &[]);'
     if not rust_template_offenders("wrong-template.rs", wrong_template):
         raise AssertionError("non-import template inherited import permission")
     if not target_template_offenders("crates/backend-c/src/injected.c", "#include <bad.h>\n"):

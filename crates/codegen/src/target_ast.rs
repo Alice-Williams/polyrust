@@ -50,7 +50,7 @@ pub trait TypedAstDialect:
     type Visibility: Clone + Debug + Eq + Ord + Send + Sync;
     type DeclarationKind: Clone + Debug + Eq + Ord + Send + Sync;
     type SymbolOrigin: Clone + Debug + Eq + Ord + Send + Sync;
-    type TemplateId: Clone + Debug + Eq + Ord + Send + Sync;
+    type SourceFileKind: Clone + Debug + Eq + Ord + Send + Sync;
     type ModuleDeclaration: Clone + Debug + Eq + Ord + Send + Sync;
     type FilePlacement: Clone + Debug + Eq + Ord + Send + Sync;
     type Expression: TargetExpressionNode<Self>;
@@ -320,7 +320,7 @@ pub struct TargetFile<D: TypedAstDialect> {
     module: D::ModuleDeclaration,
     placement: D::FilePlacement,
     items: Vec<D::FileItem>,
-    template: D::TemplateId,
+    source_kind: D::SourceFileKind,
     source: SourceRef,
 }
 
@@ -332,7 +332,7 @@ impl<D: TypedAstDialect> TargetFile<D> {
         module: D::ModuleDeclaration,
         placement: D::FilePlacement,
         items: Vec<D::FileItem>,
-        template: D::TemplateId,
+        source_kind: D::SourceFileKind,
         source: SourceRef,
     ) -> Self {
         Self {
@@ -341,7 +341,7 @@ impl<D: TypedAstDialect> TargetFile<D> {
             module,
             placement,
             items,
-            template,
+            source_kind,
             source,
         }
     }
@@ -366,8 +366,8 @@ impl<D: TypedAstDialect> TargetFile<D> {
         &self.items
     }
 
-    pub fn template(&self) -> &D::TemplateId {
-        &self.template
+    pub fn source_kind(&self) -> &D::SourceFileKind {
+        &self.source_kind
     }
 
     pub fn source(&self) -> &SourceRef {
@@ -1407,7 +1407,7 @@ mod tests {
         type Visibility = TestVisibility;
         type DeclarationKind = TestDeclarationKind;
         type SymbolOrigin = TestSymbolOrigin;
-        type TemplateId = TestTemplate;
+        type SourceFileKind = TestTemplate;
         type ModuleDeclaration = TestModule;
         type FilePlacement = TestPlacement;
         type Expression = TestExpression;

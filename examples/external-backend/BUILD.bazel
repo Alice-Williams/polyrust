@@ -21,9 +21,11 @@ rust_test(
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = [
+        "//crates/backend-java:portable_backend_java",
         "//crates/build:portable_build",
         "//crates/check:portable_check",
         "//crates/codegen:portable_codegen",
+        "//crates/diagnostics:portable_diagnostics",
         "//crates/ir:portable_ir",
     ],
 )

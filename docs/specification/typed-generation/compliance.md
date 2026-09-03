@@ -13,13 +13,13 @@ it is not evidence of typed executable syntax.
 
 | Surface | CoreIR input | Typed executable AST | Typed symbols and derived dependencies | Structural runtime | Render-ready certificate and total renderer | Result |
 | --- | --- | --- | --- | --- | --- | --- |
-| Shared codegen | `CoreProgram` is the only lowering input | Generic checked target AST | Catalogue/linker-derived bindings, imports, files, helpers, and packages | Typed helper DAG and structural items | Legacy resolved-only template adapter; ADR-0005 certificate API not implemented | **Partial** |
+| Shared codegen | `CoreProgram` is the only lowering input | Generic checked target AST | Catalogue/linker-derived bindings, imports, files, helpers, and packages | Typed helper DAG and structural items | Opaque verify/link/certify states, sealed certified adapter, and total structural-renderer extension point | **Pass** |
 | Rust | Missing | Missing: `RustCode`/raw documents | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | TypeScript | Missing | Missing: paired `EcmaCode` | Manually attached fragment metadata | Raw runtime source | Paired source path | **Fail** |
 | JavaScript | Missing | Independently paired source exists | Shares manual ECMA metadata | Checked-in/runtime paired text | Not solely compiler-derived | **Fail** |
 | Python | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | Go | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
-| Java | Exhaustive `CoreProgram` lowering under remediation | Closed AST with verifier gaps under remediation | Closed catalogues and derived imports; shape checks under remediation | Structural helpers; deep value invariants under remediation | Legacy strict templates; ADR-0005 migration planned first | **Fail** |
+| Java | Exhaustive verified `CoreProgram` lowering | Closed Java 21 AST and pre/post-link verification | Closed catalogues, typed references, and linker-derived imports | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer; local gates green | **Partial** pending checkpoint review |
 | C++20 | Missing | Missing: `CppCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 | C17 | Missing | Missing: `CCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 
@@ -47,9 +47,32 @@ it is not evidence of typed executable syntax.
   `crates/backend-c/src/runtime.c`.
 
 The locations for rows which still fail are migration inputs, not allowlisted
-final architecture. Shared codegen is the implementation foundation but is
-**Partial** under the ADR-0005 boundary; Java remains the first migration
-candidate.
+final architecture. Shared codegen now implements the ADR-0005 foundation.
+Java is the first migrated language and remains **Partial** only until its
+immutable checkpoint, hosted CI, and requested independent review are complete.
+
+## Shared M34A-08R evidence
+
+- The compiler adapter now consumes
+  `UnresolvedPackage -> VerifiedPackage -> LinkedPackage ->
+  RenderReadyPackage -> RenderedPackage` in order. All proof-wrapper fields and
+  constructors are private, none is deserializable, and only immutable AST
+  views are public.
+- Compile-fail doctests reject unverified linking; unresolved, verified, and
+  linked rendering; proof construction; checked-AST mutation; certificate
+  deserialization; and direct construction of a certified source-file view.
+- `TargetRenderer` is sealed. Third-party crates implement
+  `TotalSourceRenderer<D>` and obtain the sealed implementation only through
+  `CertifiedStructuralRendererAdapter`; the external-backend example executes
+  that complete sequence from a separate crate.
+- The legacy Handlebars engine remains only for explicitly unmigrated
+  backends. It is not reachable from Java or from the new certified adapter and
+  is scheduled for deletion by M34A-18.
+- Local Linux-container proof passed 36/36 expanded shared/Java/policy/lint
+  targets, 295/295 tracked repository targets, 233/233 independently composed
+  release-gate targets, the fresh Cargo workspace/all-features/locked suite
+  including 31 codegen compile-fail doctests, and the focused external-plugin
+  gate 5/5.
 
 ## Java M34A-10 evidence
 
@@ -208,6 +231,16 @@ test evidence rather than a current **Pass** claim while M34A-10R is open.
   release gate passes 233 of 233 tests, and a fresh isolated Cargo workspace
   replay passes with every doctest. Java remains **Fail** pending an immutable
   pushed checkpoint, successful hosted CI, and another clean exhaustive review.
+- Round 14 checkpoint `71b5ecd` was pushed and remotely verified. M34A-10V then
+  removes all Java executable Handlebars templates and serialized render views,
+  renames the file discriminator to `JavaSourceFileKind`, and emits every Java
+  construct directly through exhaustive structural Rust matches. Java reaches
+  that renderer only through the shared opaque post-link certificate.
+  Generated Java snapshots remain byte-identical. Local M34A-10V proof passes
+  the 36/36 expanded gate, 295/295 tracked repository replay, 233/233 release
+  gate, fresh Cargo workspace/all-features/locked suite, and external-plugin
+  adapter proof. The row remains **Partial** pending the immutable push, hosted
+  CI, and the user's requested review.
 
 ## Pass rule
 

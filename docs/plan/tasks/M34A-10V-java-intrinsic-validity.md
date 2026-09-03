@@ -1,6 +1,6 @@
 # M34A-10V — Certify Java syntax and use a total structural renderer
 
-- Status: planned
+- Status: in-progress
 - Depends on: M34A-08R and the pushed M34A-10R round-14 baseline
 - Blocks: resumption of M34A-10R blind review and M34A-11
 
@@ -61,5 +61,22 @@ commit, then resume the independent blind-review loop.
 
 ## Exit evidence
 
-To be filled with exact targets, corpus sizes, generated examples, commit SHA,
-remote SHA, hosted CI run, and reviewer disposition after implementation.
+- Java uses `CertifiedStructuralRendererAdapter<JavaDialect, JavaRenderer>`;
+  `JavaRenderer` accepts only `CertifiedSourceFile<JavaDialect>` and directly
+  renders the closed AST without templates or serialized views.
+- The deterministic mutation/compiler oracle samples 128 declarations plus a
+  structured declaration/expression corpus. Every accepted package is linked,
+  certified, rendered, and compiled by hermetic Java 21 with
+  `-Werror -Xlint:all`; verifier-negative families retain paired native
+  compiler counterexamples.
+- Generated interface, semantic-edge, and v0 snapshots remain byte-identical;
+  their native, public-consumer, negative-type, and conformance suites are part
+  of both complete gates.
+- Expanded invocation `ebd6223f-35e8-4030-b6ae-47829dd5ffbd` passed 36/36;
+  final tracked invocation `d2d829fb-f417-4cd7-aa7e-67d2e2ab9f2e` passed
+  295/295; final release invocation `143b2446-1470-4a29-8ca4-d9831ff207a1`
+  passed 233/233;
+  and external-plugin invocation `ded80c9b-2673-4269-bc6b-01c23cf90e9b`
+  passed 5/5. A fresh isolated Cargo workspace/all-features/locked run also
+  passed with all doctests.
+- Checkpoint/remote SHAs, hosted CI, and reviewer disposition remain pending.

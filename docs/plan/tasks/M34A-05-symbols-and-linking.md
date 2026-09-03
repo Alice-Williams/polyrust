@@ -20,7 +20,7 @@ typed AST references rather than manually attached strings.
   checked.
 - The shared resolver traversal collects references once, expands helper
   closure, detects missing/cyclic symbols, allocates collision-safe names, and
-  produces an opaque `ResolvedPackage<D>`.
+  produces an opaque resolved package.
 - Imports/includes/qualification, package dependencies, and forward
   declarations are language resolver outputs; lowerers cannot add them.
 - Positive/negative dependency and collision matrices use the test dialect.
@@ -40,6 +40,11 @@ Commit and push `M34A-05: derive dependencies from typed symbols` only after
 focused and shared-codegen tests pass in the dev container.
 
 ## Evidence
+
+> ADR-0005 terminology amendment: the package produced by this completed
+> linker milestone is now named `LinkedPackage<D>`. It must subsequently pass
+> the language checker to become `RenderReadyPackage<D>`; the underlying M34A-05
+> linker behavior and evidence are unchanged.
 
 - Category-specific IDs and closed reference/origin enums distinguish generated
   types/callables/interface methods/values, known types/callables/fields/

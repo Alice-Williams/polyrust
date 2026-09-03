@@ -35,6 +35,12 @@ EMBEDDED_TEMPLATE = re.compile(
     r"(?P<literal>\"(?:\\.|[^\"\\])*\")",
     re.DOTALL,
 )
+JAVA_EXECUTABLE_TEMPLATE = re.compile(
+    r"\b(?:handlebars|CertifiedTemplateEngine|CertifiedTemplateId|EmbeddedTemplate|"
+    r"JavaTemplateId|render_template|serde::Serialize)\b|\{\{[A-Za-z_#/!]"
+)
+WILDCARD_MATCH_ARM = re.compile(r"(?m)^\s*_\s*=>")
+STRING_GRAMMAR_DISPATCH = re.compile(r"(?s)match\s+[^{};]*\.as_str\(\)\s*\{")
 
 
 def offenders(path: str, source: str) -> list[str]:
@@ -53,6 +59,23 @@ def offenders(path: str, source: str) -> list[str]:
             for finding in offenders(f"{path}.embedded.hbs", decoded):
                 _, _, message = finding.partition(":1: ")
                 findings.append(f"{path}:{line}: {message or finding}")
+        if path.replace("\\", "/").endswith("backend-java/src/render.rs"):
+            for label, pattern in [
+                ("executable Java template or serialized render view", JAVA_EXECUTABLE_TEMPLATE),
+                ("wildcard Java grammar render arm", WILDCARD_MATCH_ARM),
+                ("string-dispatched Java grammar kind", STRING_GRAMMAR_DISPATCH),
+            ]:
+                for match in pattern.finditer(production):
+                    line = production.count("\n", 0, match.start()) + 1
+                    findings.append(f"{path}:{line}: {label}")
+            for required in [
+                "impl TotalSourceRenderer<JavaDialect> for JavaRenderer",
+                "CertifiedSourceFile<'_, JavaDialect>",
+            ]:
+                if required not in production:
+                    findings.append(
+                        f"{path}:1: Java structural renderer is missing {required!r}"
+                    )
         return findings
     findings: list[str] = []
     for label, pattern in [
@@ -103,6 +126,30 @@ def self_test() -> None:
         'template(Id::Unit, "import java.util.List;\\n", &[]);',
     ):
         raise AssertionError("embedded template dependency was not rejected")
+    java_allowed = """
+impl TotalSourceRenderer<JavaDialect> for JavaRenderer {
+    fn render_file(&self, file: CertifiedSourceFile<'_, JavaDialect>) -> String {
+        match file.file().role() {
+            SourceRole::PublicApi => "public".to_owned(),
+            SourceRole::Runtime => "runtime".to_owned(),
+        }
+    }
+}
+"""
+    java_path = "crates/backend-java/src/render.rs"
+    if offenders(java_path, java_allowed):
+        raise AssertionError("closed structural Java renderer was rejected")
+    for injected in [
+        java_allowed + 'const SOURCE: &str = "{{class}}";',
+        java_allowed.replace(
+            'SourceRole::Runtime => "runtime".to_owned(),',
+            '_ => "runtime".to_owned(),',
+        ),
+        java_allowed + "fn kind(value: Kind) { match value.as_str() {} }",
+        java_allowed + "fn render_template() {}",
+    ]:
+        if not offenders(java_path, injected):
+            raise AssertionError("unsafe Java renderer shape was not rejected")
 
 
 def main() -> int:
@@ -116,7 +163,7 @@ def main() -> int:
     if findings:
         print("\n".join(findings), file=sys.stderr)
         return 1
-    print("certified template policy passed")
+    print("template and structural-renderer policy passed")
     return 0
 
 

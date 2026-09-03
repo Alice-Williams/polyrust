@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Debug,
+    marker::PhantomData,
 };
 
 use handlebars::Handlebars;
@@ -8,12 +9,223 @@ use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef, sort_diagnosti
 use serde::Serialize;
 
 use crate::{
-    LinkedFile, LinkedTargetPackage, LinkerDialect, RenderedFile, RenderedPackage, TargetArtifact,
-    verify_linked_package,
+    LinkedFile, LinkedTargetPackage, LinkerDialect, RenderReadyPackage, RenderedFile,
+    RenderedPackage, TargetArtifact, TargetRenderer, verify_linked_package,
 };
 
 const MAX_RENDERED_FILE_BYTES: usize = 8 * 1024 * 1024;
 const MAX_RENDERED_PACKAGE_BYTES: usize = 64 * 1024 * 1024;
+
+/// A language-owned, exhaustive structural source formatter.
+///
+/// This trait returns source bytes for one already certified linked file. It
+/// has no syntax-validation result: all fallible grammar/context checking
+/// happens before a `RenderReadyPackage` exists.
+pub trait TotalSourceRenderer<D: LinkerDialect>: Send + Sync + 'static {
+    fn target_name(&self) -> &'static str;
+
+    fn render_file(&self, file: CertifiedSourceFile<'_, D>) -> String;
+}
+
+/// An unforgeable per-file view into the exact render-ready package.
+///
+/// Its private constructor prevents callers from invoking a structural
+/// renderer directly with a merely linked file.
+///
+/// ```compile_fail
+/// use portable_codegen::{CertifiedSourceFile, LinkerDialect};
+///
+/// fn cannot_forge<'a, D: LinkerDialect>(
+///     package: &'a portable_codegen::LinkedTargetPackage<D>,
+///     file: &'a portable_codegen::LinkedFile<D>,
+/// ) -> CertifiedSourceFile<'a, D> {
+///     CertifiedSourceFile { package, file }
+/// }
+/// ```
+#[derive(Clone, Copy)]
+pub struct CertifiedSourceFile<'a, D: LinkerDialect> {
+    package: &'a LinkedTargetPackage<D>,
+    file: &'a LinkedFile<D>,
+}
+
+impl<'a, D: LinkerDialect> CertifiedSourceFile<'a, D> {
+    pub const fn package(self) -> &'a LinkedTargetPackage<D> {
+        self.package
+    }
+
+    pub const fn file(self) -> &'a LinkedFile<D> {
+        self.file
+    }
+
+    fn new(package: &'a LinkedTargetPackage<D>, file: &'a LinkedFile<D>) -> Self {
+        Self { package, file }
+    }
+}
+
+pub struct CertifiedStructuralRendererAdapter<D, R>
+where
+    D: LinkerDialect,
+    R: TotalSourceRenderer<D>,
+{
+    renderer: R,
+    dialect: PhantomData<fn() -> D>,
+}
+
+impl<D, R> CertifiedStructuralRendererAdapter<D, R>
+where
+    D: LinkerDialect,
+    R: TotalSourceRenderer<D>,
+{
+    pub const fn new(renderer: R) -> Self {
+        Self {
+            renderer,
+            dialect: PhantomData,
+        }
+    }
+}
+
+impl<D, R> crate::typed_pipeline::private::SealedTargetRenderer
+    for CertifiedStructuralRendererAdapter<D, R>
+where
+    D: LinkerDialect,
+    R: TotalSourceRenderer<D>,
+{
+}
+
+impl<D, R> TargetRenderer<D> for CertifiedStructuralRendererAdapter<D, R>
+where
+    D: LinkerDialect<Resolved = LinkedTargetPackage<D>>,
+    R: TotalSourceRenderer<D>,
+{
+    fn render(&self, package: &RenderReadyPackage<D>) -> Result<RenderedPackage, Vec<Diagnostic>> {
+        render_certified_package(&self.renderer, package)
+    }
+}
+
+/// Renders source only from an opaque post-link language certificate.
+///
+/// ```compile_fail
+/// use portable_codegen::{
+///     LinkedTargetPackage, LinkerDialect, TotalSourceRenderer,
+///     render_certified_package,
+/// };
+///
+/// fn cannot_render_merely_linked<D, R>(
+///     renderer: &R,
+///     package: &LinkedTargetPackage<D>,
+/// ) where
+///     D: LinkerDialect,
+///     R: TotalSourceRenderer<D>,
+/// {
+///     let _ = render_certified_package(renderer, package);
+/// }
+/// ```
+pub fn render_certified_package<D, R>(
+    renderer: &R,
+    certified: &RenderReadyPackage<D>,
+) -> Result<RenderedPackage, Vec<Diagnostic>>
+where
+    D: LinkerDialect<Resolved = LinkedTargetPackage<D>>,
+    R: TotalSourceRenderer<D>,
+{
+    let package = certified.ast();
+    let target = renderer.target_name();
+    let mut diagnostics = Vec::new();
+    let mut files = Vec::new();
+    let mut package_bytes = 0usize;
+    for file in package.files() {
+        let output = renderer.render_file(CertifiedSourceFile::new(package, file));
+        match canonical_source(output) {
+            Ok(output) if output.len() <= MAX_RENDERED_FILE_BYTES => {
+                package_bytes = package_bytes.saturating_add(output.len());
+                files.push(RenderedFile::source(
+                    file.path().as_str(),
+                    file.role(),
+                    output,
+                ));
+            }
+            Ok(_) => diagnostics.push(structural_render_error(
+                CertifiedRenderError::FileTooLarge,
+                target,
+                file,
+                "rendered source file exceeds the certified size limit",
+            )),
+            Err(kind) => diagnostics.push(structural_render_error(
+                kind,
+                target,
+                file,
+                "structural renderer produced non-canonical UTF-8/LF source",
+            )),
+        }
+    }
+    for artifact in package.artifacts() {
+        match artifact {
+            TargetArtifact::Documentation { path, contents, .. } => {
+                match canonical_source(contents.clone()) {
+                    Ok(contents) if contents.len() <= MAX_RENDERED_FILE_BYTES => {
+                        package_bytes = package_bytes.saturating_add(contents.len());
+                        files.push(RenderedFile::documentation(path.as_str(), contents));
+                    }
+                    Ok(_) => diagnostics.push(artifact_error(
+                        CertifiedRenderError::FileTooLarge,
+                        target,
+                        artifact,
+                        "documentation artifact exceeds the certified size limit",
+                    )),
+                    Err(kind) => diagnostics.push(artifact_error(
+                        kind,
+                        target,
+                        artifact,
+                        "documentation artifact is not canonical UTF-8/LF text",
+                    )),
+                }
+            }
+            TargetArtifact::Asset { path, contents, .. } => {
+                if contents.len() > MAX_RENDERED_FILE_BYTES {
+                    diagnostics.push(artifact_error(
+                        CertifiedRenderError::FileTooLarge,
+                        target,
+                        artifact,
+                        "binary artifact exceeds the certified size limit",
+                    ));
+                } else {
+                    package_bytes = package_bytes.saturating_add(contents.len());
+                    files.push(RenderedFile::asset(path.as_str(), contents.clone()));
+                }
+            }
+            TargetArtifact::Metadata { .. } => diagnostics.push(artifact_error(
+                CertifiedRenderError::UnsupportedArtifact,
+                target,
+                artifact,
+                "typed metadata requires a non-executable metadata renderer",
+            )),
+            TargetArtifact::DerivedJavaScript { .. } => diagnostics.push(artifact_error(
+                CertifiedRenderError::UnsupportedArtifact,
+                target,
+                artifact,
+                "derived JavaScript requires the pinned TypeScript compiler phase",
+            )),
+        }
+    }
+    if package_bytes > MAX_RENDERED_PACKAGE_BYTES {
+        diagnostics.push(registry_error(
+            CertifiedRenderError::PackageTooLarge,
+            "rendered package exceeds the certified total size limit",
+            SourceRef::logical(["structural-renderer", target, "package"]),
+        ));
+    }
+    sort_diagnostics(&mut diagnostics);
+    if diagnostics.is_empty() {
+        files.sort_by(|left, right| left.path().cmp(right.path()));
+        Ok(RenderedPackage::new(
+            files,
+            package.manifest_dependencies(),
+            package.manifest_helpers(),
+        ))
+    } else {
+        Err(diagnostics)
+    }
+}
 
 pub trait CertifiedTemplateId: Clone + Debug + Eq + Ord + Send + Sync + 'static {
     fn all() -> &'static [Self];
@@ -175,7 +387,7 @@ impl<I: CertifiedTemplateId> CertifiedTemplateEngine<I> {
         }
     }
 
-    pub fn render<V: Serialize, D: LinkerDialect<TemplateId = I>>(
+    pub fn render<V: Serialize, D: LinkerDialect<SourceFileKind = I>>(
         &mut self,
         id: &I,
         view: &V,
@@ -236,17 +448,17 @@ impl<I: CertifiedTemplateId> CertifiedTemplateEngine<I> {
 pub trait ResolvedTemplateRenderer<D>: Send + Sync + 'static
 where
     D: LinkerDialect,
-    D::TemplateId: CertifiedTemplateId,
+    D::SourceFileKind: CertifiedTemplateId,
 {
     type FileView: Serialize;
 
     fn target_name(&self) -> &'static str;
-    fn templates(&self) -> Vec<EmbeddedTemplate<D::TemplateId>>;
+    fn templates(&self) -> Vec<EmbeddedTemplate<D::SourceFileKind>>;
     fn build_file_view(
         &self,
         package: &LinkedTargetPackage<D>,
         file: &LinkedFile<D>,
-        templates: &mut CertifiedTemplateEngine<D::TemplateId>,
+        templates: &mut CertifiedTemplateEngine<D::SourceFileKind>,
     ) -> Result<Self::FileView, Vec<Diagnostic>>;
 }
 
@@ -263,7 +475,7 @@ where
 ///     package: &TargetAstPackage<D>,
 /// ) where
 ///     D: LinkerDialect,
-///     D::TemplateId: CertifiedTemplateId,
+///     D::SourceFileKind: CertifiedTemplateId,
 ///     R: ResolvedTemplateRenderer<D>,
 /// {
 ///     let _ = render_linked_package(renderer, package);
@@ -275,7 +487,7 @@ pub fn render_linked_package<D, R>(
 ) -> Result<RenderedPackage, Vec<Diagnostic>>
 where
     D: LinkerDialect,
-    D::TemplateId: CertifiedTemplateId,
+    D::SourceFileKind: CertifiedTemplateId,
     R: ResolvedTemplateRenderer<D>,
 {
     verify_linked_package(package)?;
@@ -290,7 +502,7 @@ where
             diagnostics.push(render_error(
                 CertifiedRenderError::InvalidEncoding,
                 target,
-                file.template(),
+                file.source_kind(),
                 file,
                 "resolved files are not in deterministic path order",
                 file.source().clone(),
@@ -304,14 +516,14 @@ where
                 continue;
             }
         };
-        match templates.render(file.template(), &view, target, file) {
+        match templates.render(file.source_kind(), &view, target, file) {
             Ok(output) => match canonical_source(output) {
                 Ok(output) => {
                     if output.len() > MAX_RENDERED_FILE_BYTES {
                         diagnostics.push(render_error(
                             CertifiedRenderError::FileTooLarge,
                             target,
-                            file.template(),
+                            file.source_kind(),
                             file,
                             "rendered source file exceeds the certified size limit",
                             file.source().clone(),
@@ -328,7 +540,7 @@ where
                 Err(kind) => diagnostics.push(render_error(
                     kind,
                     target,
-                    file.template(),
+                    file.source_kind(),
                     file,
                     "rendered source is not canonical UTF-8/LF text",
                     file.source().clone(),
@@ -502,7 +714,7 @@ fn registry_error(kind: CertifiedRenderError, message: &str, source: SourceRef) 
 fn render_error<D: LinkerDialect>(
     kind: CertifiedRenderError,
     target: &str,
-    template: &D::TemplateId,
+    template: &D::SourceFileKind,
     file: &LinkedFile<D>,
     message: &str,
     source: SourceRef,
@@ -515,6 +727,23 @@ fn render_error<D: LinkerDialect>(
             file.path().as_str()
         ),
         source,
+    )
+}
+
+fn structural_render_error<D: LinkerDialect>(
+    kind: CertifiedRenderError,
+    target: &str,
+    file: &LinkedFile<D>,
+    message: &str,
+) -> Diagnostic {
+    Diagnostic::error(
+        DiagnosticCode::InvalidStructure,
+        format!(
+            "structural renderer {kind:?}; target={target:?}; role={:?}; path={:?}: {message}",
+            file.role(),
+            file.path().as_str()
+        ),
+        file.source().clone(),
     )
 }
 

@@ -1,6 +1,7 @@
 # Typed target-AST architecture proposal
 
-- Status: historical design proposal; resolved by ADR-0004
+- Status: historical design proposal; resolved by ADR-0004 and amended by
+  ADR-0005
 - Normative replacement: `docs/specification/typed-generation/README.md`
 - Implementation status: no production implementation started
 - Current port status: M34-03 is frozen until this proposal is accepted and
@@ -10,8 +11,10 @@
   may model inheritance as an explicit target-only construct
 
 This file preserves the design discussion. Its open-decision wording is not
-normative; ADR-0004 and the layer/language specifications contain the accepted
-decisions.
+normative; ADR-0004, ADR-0005, and the layer/language specifications contain
+the accepted decisions. In particular, ADR-0005 replaces the proposal's
+original Handlebars renderer and three-state pipeline with intrinsic language
+validity certification and total structural rendering.
 
 ## 1. Problem statement
 
@@ -336,9 +339,10 @@ This traversal is not a source-text repair scan. It is the only name-resolution
 pass over typed target AST nodes. No mapping manually calls
 `require_java("java.math.BigInteger")` or maintains a parallel import list.
 
-The resolver produces a different type, `ResolvedPackage<D>`. Its constructors
-are private to the resolver. Rendering an unresolved package must be impossible
-at compile time.
+The resolver produces a different type, `LinkedPackage<D>`. Its constructors
+are private to the resolver. A mandatory language checker then produces
+`RenderReadyPackage<D>`. Rendering any unresolved, merely verified, or merely
+linked package must be impossible at compile time.
 
 ### 4.8 Structural runtime helpers
 
@@ -377,11 +381,11 @@ Examples of structured file data include:
 Import/include lists in a resolved file are produced only by the resolver.
 File grouping MUST NOT be used as a dependency side channel.
 
-### 4.10 Strict Handlebars renderer
+### 4.10 Intrinsic-validity checker and total structural renderer
 
-A renderer accepts only `ResolvedPackage<D>` or `ResolvedFile<D>`. It MUST NOT
-receive checked PolyIR, CoreIR, semantic capabilities, an unresolved symbol, or
-a helper registry.
+A renderer accepts only the opaque `RenderReadyPackage<D>` capability produced
+by the language's post-link checker. It MUST NOT receive checked PolyIR,
+CoreIR, semantic capabilities, an unresolved symbol, or a helper registry.
 
 The renderer owns:
 
@@ -402,39 +406,23 @@ The renderer MUST NOT:
 - branch on a portable operation; or
 - inspect rendered text to infer structure.
 
-The renderer converts a resolved AST into private, typed render-view structs
-and applies embedded Handlebars templates. Template selection uses a
-language-specific `TemplateId` enum and an exhaustive Rust match with no
-wildcard arm.
+The mandatory post-link checker validates the exact linked file graph after
+imports, helper closure, file placement, and final names are known. Only it can
+construct the private render-ready capability. Proof wrappers are immutable,
+are not deserializable, and expose no public constructor.
 
-Handlebars is a presentation engine, not the target IR. Templates MAY contain
-generic grammar skeletons for files, declarations, statements, expressions,
-types, patterns, and imports. They MUST NOT contain feature-specific method or
-runtime implementations. Runtime helpers pass through the same generic AST
-templates as user declarations.
+The renderer emits grammar directly with exhaustive Rust matches over the
+language AST's closed enums. It has no grammar-validation error path: all such
+failure occurs before certification. Executable Handlebars templates,
+serialized render views, token streams, and raw source escape nodes are not
+part of the certified path. Handlebars may be used only for non-executable
+metadata such as manifests.
 
-The Handlebars registry MUST:
-
-- enable strict mode;
-- embed and pin every certified template;
-- disable script helpers;
-- reject missing or duplicate template registrations;
-- use no semantic custom helper;
-- receive no CoreIR node, capability set, unresolved symbol, or helper ID;
-- receive only values constructed by private resolved-view constructors; and
-- preserve deterministic ordering supplied by the resolved AST.
-
-Presentation-only `if` and `each` blocks are allowed. Operator precedence,
-parentheses, identifier escaping, literal escaping, symbol resolution, helper
-selection, and import selection happen before a template is invoked.
-
-External template customization is deferred. If added later, it is
-non-certified unless the customized template set passes the complete
-equivalence and native verification gates.
-
-`Document` may remain an internal implementation utility beneath Handlebars.
-`RawText` MUST be removed from public lowering/package APIs. Production uses
-outside renderer modules must fail source policy.
+Operator precedence, parentheses, identifier and literal escaping, symbol
+resolution, helper selection, and import selection are therefore typed or
+checked before source emission. `Document` may remain an internal formatting
+utility, but `RawText` and arbitrary source strings MUST be absent from public
+lowering/package APIs. Production violations fail source policy.
 
 ### 4.11 Manifest assembly
 
@@ -474,14 +462,14 @@ pub trait TargetLowerer<D: TargetDialect> {
 pub trait TargetResolver<D: TargetDialect> {
     fn resolve(
         &self,
-        package: UnresolvedPackage<D>,
-    ) -> Result<ResolvedPackage<D>, DiagnosticSet>;
+        package: VerifiedPackage<D>,
+    ) -> Result<LinkedPackage<D>, DiagnosticSet>;
 }
 
 pub trait TargetRenderer<D: TargetDialect> {
     fn render(
         &self,
-        package: &ResolvedPackage<D>,
+        package: &RenderReadyPackage<D>,
     ) -> Result<Vec<RenderedFile>, DiagnosticSet>;
 }
 ```
@@ -491,15 +479,16 @@ The generic adapter performs:
 ```rust
 verify_core(program)?;
 let unresolved = plugin.lowerer().lower(program, options)?;
-verify_unresolved(&unresolved)?;
-let resolved = plugin.resolver().resolve(unresolved)?;
-verify_resolved(&resolved)?;
-let files = plugin.renderer().render(&resolved)?;
+let verified = verify_unresolved(unresolved)?;
+let linked = plugin.resolver().resolve(verified)?;
+let render_ready = certify_linked(linked)?;
+let files = plugin.renderer().render(&render_ready)?;
 OutputManifest::from_rendered(files)
 ```
 
-`ResolvedPackage` does not expose constructors to plugins or consumers. A
-renderer cannot be called with an unresolved package.
+None of the proof-carrying package states exposes constructors, mutable AST
+access, or deserialization to plugins or consumers. A renderer cannot be
+called without the final language-validity certificate.
 
 Built-in portable features form a closed enum hierarchy. Every built-in plugin
 MUST acknowledge every feature through an exhaustive match. A plugin may
@@ -651,9 +640,8 @@ machine-code compiler IR:
   separation while using a substantially stricter typed target AST and
   resolver:
   https://openapi-generator.tech/docs/templating/
-- `handlebars-rust` strict mode turns missing template fields into render
-  errors and is mandatory for the proposed renderer:
-  https://docs.rs/handlebars/latest/handlebars/struct.Handlebars.html#method.set_strict_mode
+- ADR-0005 records why strict templates were rejected as an insufficient
+  syntax guarantee and replaced by a proof-carrying structural renderer.
 
 ## 10. Enforceable invariants
 

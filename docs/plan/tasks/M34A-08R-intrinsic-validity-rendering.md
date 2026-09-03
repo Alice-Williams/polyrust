@@ -1,6 +1,6 @@
 # M34A-08R — Add intrinsic validity certificates and total rendering
 
-- Status: planned
+- Status: in-progress
 - Depends on: M34A-09
 - Supersedes: the executable-source portion of M34A-08
 - Blocks: M34A-10V and every remaining language migration
@@ -51,5 +51,21 @@ Linux development container.
 
 ## Exit evidence
 
-To be filled with exact targets, counts, commit SHA, remote SHA, and hosted CI
-run after implementation.
+- Focused proof/policy gate invocation
+  `b1285f2a-3a17-46bd-a612-af857eda27c2`: 6/6 targets passed.
+- Expanded shared/Java/policy/lint invocation
+  `ebd6223f-35e8-4030-b6ae-47829dd5ffbd`: 36/36 targets passed,
+  including Rustfmt, Clippy, and Buildifier.
+- Complete tracked-repository invocation
+  `d2d829fb-f417-4cd7-aa7e-67d2e2ab9f2e`: 295/295 targets passed after
+  the external-plugin proof and evidence documentation were added.
+- Independent release-gate invocation
+  `143b2446-1470-4a29-8ca4-d9831ff207a1`: 233/233 targets passed after
+  that final tracked replay.
+- External typed-plugin invocation
+  `ded80c9b-2673-4269-bc6b-01c23cf90e9b`: 5/5 external adapter,
+  typed-source policy, Rustfmt, Clippy, and Buildifier targets passed.
+- A fresh isolated `cargo test --workspace --all-features --locked` passed,
+  including all 31 codegen compile-fail doctests.
+- Checkpoint SHA, matching remote SHA, and hosted-CI run will be appended after
+  the immutable implementation checkpoint is pushed.

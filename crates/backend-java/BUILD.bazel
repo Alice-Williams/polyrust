@@ -16,7 +16,6 @@ rust_library(
         "//crates/core-ir:portable_core_ir",
         "//crates/diagnostics:portable_diagnostics",
         "//crates/ir:portable_ir",
-        "@crates//:serde",
     ],
 )
 

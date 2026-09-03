@@ -210,7 +210,6 @@ dependencies = [
  "polyrust-core-ir",
  "polyrust-diagnostics",
  "polyrust-ir",
- "serde",
 ]
 
 [[package]]

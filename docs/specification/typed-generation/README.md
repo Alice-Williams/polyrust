@@ -1,7 +1,8 @@
 # Typed generation specification
 
 - Status: normative design baseline for M34A
-- Implementation status: not yet compliant
+- Implementation status: shared proof boundary implemented; Java migration
+  locally complete and awaiting checkpoint review; remaining languages pending
 - Accepted by: ADR-0004 as amended by ADR-0005
 - Supersedes: the target-generation portions of ADR-0003 and
   `language-ir-architecture.md`

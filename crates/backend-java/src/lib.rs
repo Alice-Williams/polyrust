@@ -1,5 +1,5 @@
 //! Java 21 generation through verified CoreIR, a typed Java AST, the shared
-//! symbol linker, and certified strict Handlebars rendering.
+//! symbol linker, opaque syntax certification, and total structural rendering.
 
 #![forbid(unsafe_code)]
 
@@ -15,8 +15,9 @@ use std::collections::BTreeMap;
 use portable_check::v0::{Capability, CheckedProgram};
 use portable_codegen::{
     Backend, BackendDescriptor, BackendError, BackendOptions, BackendVersion, CanonicalCoreAdapter,
-    CapabilitySupport, CertifiedRendererAdapter, IrVersionRange, OptionsSchema, OutputManifest,
-    TargetId, TargetLinker, TypedCompiler, TypedCompilerAdapter, TypedLanguagePlugin,
+    CapabilitySupport, CertifiedStructuralRendererAdapter, IrVersionRange, OptionsSchema,
+    OutputManifest, TargetId, TargetLinker, TypedCompiler, TypedCompilerAdapter,
+    TypedLanguagePlugin,
 };
 use portable_core_ir::CoreProgram;
 use portable_ir::v0::IrVersion;
@@ -123,7 +124,7 @@ impl TypedLanguagePlugin<CoreProgram> for JavaPlugin {
     type CapabilityRegistry = JavaCapabilityRegistry;
     type Lowerer = JavaLowerer;
     type Resolver = TargetLinker<JavaDialect>;
-    type Renderer = CertifiedRendererAdapter<JavaDialect, JavaRenderer>;
+    type Renderer = CertifiedStructuralRendererAdapter<JavaDialect, JavaRenderer>;
 
     fn descriptor(&self) -> BackendDescriptor {
         JavaBackend::descriptor_value()
@@ -144,7 +145,7 @@ impl TypedLanguagePlugin<CoreProgram> for JavaPlugin {
         TargetLinker::new(JavaDialect)
     }
     fn renderer(&self) -> Self::Renderer {
-        CertifiedRendererAdapter::new(JavaRenderer)
+        CertifiedStructuralRendererAdapter::new(JavaRenderer)
     }
 }
 
