@@ -1,6 +1,6 @@
 # M34A-10S — Generate Java from the static portable AST
 
-- Status: in-progress — implementation and local proof complete; hosted CI pending
+- Status: complete — implementation proven; ready for user review
 - Depends on: M34A-08S and M34A-10V
 - Blocks: Java static-path review and M34A-11 static migration
 
@@ -78,4 +78,12 @@ review.
   the evaluator and all eight targets agree, and repeated manifests are
   byte-identical. Workspace Cargo tests and doctests passed with all features,
   strict Clippy passed, and `cargo audit` reported no known vulnerabilities.
-- Implementation commit, remote SHA, and hosted CI evidence are pending.
+- Implementation checkpoint `d192750bcc0a7286792c05b22051f5f41f72e9e3`
+  is pushed to `origin/main`; local and remote SHAs were identical at handoff.
+  Hosted CI run `33809779806` passed every job for that exact commit, including
+  both pinned Rust versions, fast checks, the Windows host/container contract,
+  Ubuntu 22.04 and 24.04 determinism, cross-host manifest comparison, and cold
+  and warm complete release gates.
+- Final documentation/Buildifier invocation
+  `250588be-1168-44a3-86b3-748b7b1225dc` passed both tests without cached
+  results before the implementation checkpoint.
