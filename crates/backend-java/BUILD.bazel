@@ -1,5 +1,5 @@
 load("@rules_java//java:defs.bzl", "java_library", "java_test")
-load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_doc_test", "rust_library", "rust_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 exports_files(["Cargo.toml"])
@@ -11,12 +11,18 @@ rust_library(
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = [
+        "//crates/build:portable_build",
         "//crates/check:portable_check",
         "//crates/codegen:portable_codegen",
         "//crates/core-ir:portable_core_ir",
         "//crates/diagnostics:portable_diagnostics",
         "//crates/ir:portable_ir",
     ],
+)
+
+rust_doc_test(
+    name = "java_static_compile_fail_test",
+    crate = ":portable_backend_java",
 )
 
 rust_test(
@@ -65,6 +71,59 @@ rust_binary(
         "//crates/check:portable_check",
         "//crates/codegen:portable_codegen",
     ],
+)
+
+rust_binary(
+    name = "generate_static_v1_fixture",
+    srcs = ["examples/generate_static_v1.rs"],
+    crate_name = "generate_java_static_v1_fixture",
+    edition = "2024",
+    deps = [
+        ":portable_backend_java",
+        "//crates/build:portable_build",
+        "//crates/codegen:portable_codegen",
+    ],
+)
+
+genrule(
+    name = "generate_static_v1_package",
+    outs = [
+        "static-v1-generated/README.md",
+        "static-v1-generated/src/test/java/org/polyrust/generated/InvalidTypes.java",
+        "static-v1-generated/src/main/java/org/polyrust/generated/Generated.java",
+        "static-v1-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        "static-v1-generated/src/test/java/org/polyrust/generated/ConformanceTest.java",
+        "static-v1-generated/src/test/java/org/polyrust/generated/GeneratedTest.java",
+    ],
+    cmd = "$(location :generate_static_v1_fixture) $(@D)/static-v1-generated",
+    tools = [":generate_static_v1_fixture"],
+    visibility = ["//visibility:public"],
+)
+
+java_library(
+    name = "static_v1_generated_api",
+    srcs = [
+        ":static-v1-generated/src/main/java/org/polyrust/generated/Generated.java",
+        ":static-v1-generated/src/main/java/org/polyrust/generated/Runtime.java",
+    ],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+java_test(
+    name = "generated_static_v1_public_api_test",
+    srcs = ["test/JavaStaticV1ConsumerTest.java"],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
+    main_class = "org.polyrust.consumer.JavaStaticV1ConsumerTest",
+    use_testrunner = False,
+    visibility = ["//visibility:public"],
+    deps = [":static_v1_generated_api"],
 )
 
 genrule(

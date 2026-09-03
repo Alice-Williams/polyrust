@@ -23,6 +23,21 @@ The static path has no user-caused Java syntax or capability diagnostic after
 construction. The current `CheckedProgram` entry point remains the explicitly
 dynamic compatibility path until existing examples are migrated.
 
+The concrete entry point is total at its public static boundary:
+
+```rust
+fn generate_static<F>(&self, program: &StaticProgram<F>) -> OutputManifest
+where
+    F: StaticFeatureProfile,
+    JavaDialect: Supports<F>;
+```
+
+It delegates to the same verified CoreIR-to-Java compiler as the dynamic path.
+Any rejection is converted to an invariant panic identifying a PolyRust defect;
+it is not returned as a user validation branch. `JavaDialect` implements
+`Supports<StaticV1>` explicitly and no other profile implicitly inherits that
+claim.
+
 ## 2. Capability strategies
 
 The exhaustive Java registry distinguishes native primitive/reference
@@ -398,3 +413,11 @@ explicit compile-time implementation, the checked-in static example exercises
 typed record construction and nested arithmetic, all invalid static examples
 fail Rust compilation, and the accepted output compiles and executes under the
 hermetic Java 21 toolchain.
+
+The checked-in authoring example is
+`crates/backend-java/examples/generate_static_v1.rs`. Bazel materializes its
+six-file package under the `generate_static_v1_package` target. The independent
+consumer checks that `computed()` evaluates `(7 + 2) * (7 - 2)` as `45` and
+that `make_point(3, 4)` returns a `Point` with the exact two fields. Generated
+operator operands and multiplication are explicitly parenthesized, with final
+temporaries preserving portable left-to-right evaluation order.

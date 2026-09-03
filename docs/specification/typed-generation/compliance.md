@@ -14,7 +14,7 @@ it is not evidence of typed executable syntax.
 | Surface | CoreIR input | Typed executable AST | Typed symbols and derived dependencies | Structural runtime | Render-ready certificate and total renderer | Result |
 | --- | --- | --- | --- | --- | --- | --- |
 | Shared codegen | `CoreProgram` is the only lowering input | Generic checked target AST | Catalogue/linker-derived bindings, imports, files, helpers, and packages | Typed helper DAG and structural items | Opaque verify/link/certify states, sealed certified adapter, and total structural-renderer extension point | **Pass** |
-| Static generic AST | Initial `StaticV1` profile specified; implementation pending | `Expr<T>` and typed declaration/symbol handles required | Compile-time feature profile and `Supports<F>` required | Not applicable at this layer | Must lower totally for an admitted target profile | **Partial** |
+| Static generic AST | Sealed `StaticProgram<StaticV1>` with defensive checker/CoreIR replay | Private `StaticExpr<T>` tree and invariant body/record handles | Constant-checked names plus compile-time `Supports<F>` target evidence | Not applicable at this layer | Admitted target adapters are total; rejection is an implementation defect | **Pass** |
 | Rust | Missing | Missing: `RustCode`/raw documents | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | TypeScript | Missing | Missing: paired `EcmaCode` | Manually attached fragment metadata | Raw runtime source | Paired source path | **Fail** |
 | JavaScript | Missing | Independently paired source exists | Shares manual ECMA metadata | Checked-in/runtime paired text | Not solely compiler-derived | **Fail** |
@@ -48,10 +48,22 @@ it is not evidence of typed executable syntax.
   `crates/backend-c/src/runtime.c`.
 
 The locations for rows which still fail are migration inputs, not allowlisted
-final architecture. Shared codegen now implements the ADR-0005 target
-foundation; the ADR-0006 static generic layer is in progress.
-Java is the first migrated language and remains **Partial** only until the
-static `StaticV1` path and the user's requested review are complete.
+final architecture. Shared codegen implements the ADR-0005 target foundation,
+and the ADR-0006 `StaticV1` generic layer is complete. Java is the first
+language with an implemented static adapter and remains **Partial** only until
+the user's requested review accepts that path.
+
+## Shared M34A-08S evidence
+
+- `StaticProgram<F>` and every expression, local, function, record, field, and
+  type witness have private representations. Generative invariant lifetimes
+  prevent cross-body locals and cross-record fields from unifying.
+- Ten compile-fail cases cover type/operator, return, call, constructor, field,
+  protected-name, and proof-forgery failures. Every `StaticV1` constructor
+  compile-passes and replays through the checker, CoreIR lowerer, and verifier.
+- Implementation checkpoint `389f0cb` and evidence checkpoint `81248be` are
+  pushed. The tracked Bazel universe passed 297/297 tests, the release suite
+  passed 233/233, and deterministic conformance agreed across eight targets.
 
 ## Shared M34A-08R evidence
 
