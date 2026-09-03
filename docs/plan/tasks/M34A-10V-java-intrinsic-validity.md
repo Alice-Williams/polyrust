@@ -79,4 +79,8 @@ commit, then resume the independent blind-review loop.
   and external-plugin invocation `ded80c9b-2673-4269-bc6b-01c23cf90e9b`
   passed 5/5. A fresh isolated Cargo workspace/all-features/locked run also
   passed with all doctests.
-- Checkpoint/remote SHAs, hosted CI, and reviewer disposition remain pending.
+- Implementation checkpoint `48fecbfaecf67b089085f2ea28203d562ca5fe68`
+  was pushed and verified byte-for-byte on `origin/main`. Hosted CI run
+  `33790836392` passed all eight jobs for that exact SHA, including the
+  cache-cold and cache-warm complete release gates. The task remains
+  `in-progress` only for the user's requested review and disposition.

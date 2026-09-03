@@ -19,7 +19,7 @@ it is not evidence of typed executable syntax.
 | JavaScript | Missing | Independently paired source exists | Shares manual ECMA metadata | Checked-in/runtime paired text | Not solely compiler-derived | **Fail** |
 | Python | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | Go | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
-| Java | Exhaustive verified `CoreProgram` lowering | Closed Java 21 AST and pre/post-link verification | Closed catalogues, typed references, and linker-derived imports | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer; local gates green | **Partial** pending checkpoint review |
+| Java | Exhaustive verified `CoreProgram` lowering | Closed Java 21 AST and pre/post-link verification | Closed catalogues, typed references, and linker-derived imports | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer; local and hosted gates green | **Partial** pending user review |
 | C++20 | Missing | Missing: `CppCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 | C17 | Missing | Missing: `CCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 
@@ -48,8 +48,8 @@ it is not evidence of typed executable syntax.
 
 The locations for rows which still fail are migration inputs, not allowlisted
 final architecture. Shared codegen now implements the ADR-0005 foundation.
-Java is the first migrated language and remains **Partial** only until its
-immutable checkpoint, hosted CI, and requested independent review are complete.
+Java is the first migrated language and remains **Partial** only until the
+user's requested review is complete.
 
 ## Shared M34A-08R evidence
 
@@ -239,8 +239,11 @@ test evidence rather than a current **Pass** claim while M34A-10R is open.
   Generated Java snapshots remain byte-identical. Local M34A-10V proof passes
   the 36/36 expanded gate, 295/295 tracked repository replay, 233/233 release
   gate, fresh Cargo workspace/all-features/locked suite, and external-plugin
-  adapter proof. The row remains **Partial** pending the immutable push, hosted
-  CI, and the user's requested review.
+  adapter proof. Implementation checkpoint
+  `48fecbfaecf67b089085f2ea28203d562ca5fe68` was pushed and remotely
+  verified; hosted CI run `33790836392` passed all eight jobs for that exact
+  SHA, including cache-cold and cache-warm complete release gates. The row
+  remains **Partial** pending the user's requested review.
 
 ## Pass rule
 

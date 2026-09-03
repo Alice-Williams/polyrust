@@ -1,6 +1,6 @@
 # M34A-08R — Add intrinsic validity certificates and total rendering
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-09
 - Supersedes: the executable-source portion of M34A-08
 - Blocks: M34A-10V and every remaining language migration
@@ -67,5 +67,7 @@ Linux development container.
   typed-source policy, Rustfmt, Clippy, and Buildifier targets passed.
 - A fresh isolated `cargo test --workspace --all-features --locked` passed,
   including all 31 codegen compile-fail doctests.
-- Checkpoint SHA, matching remote SHA, and hosted-CI run will be appended after
-  the immutable implementation checkpoint is pushed.
+- Implementation checkpoint `48fecbfaecf67b089085f2ea28203d562ca5fe68`
+  was pushed and verified byte-for-byte on `origin/main`. Hosted CI run
+  `33790836392` passed all eight jobs for that exact SHA, including the
+  cache-cold and cache-warm complete release gates.
