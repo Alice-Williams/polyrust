@@ -4,6 +4,7 @@
 - Milestone: M34A
 - Date: 2026-09-03
 - Amends: ADR-0004 rendering and phase-boundary decisions
+- Amended by: ADR-0006 for static portable-program construction and support
 
 ## Context
 

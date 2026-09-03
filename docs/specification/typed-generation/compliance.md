@@ -5,7 +5,7 @@
 - Last updated: 2026-09-03
 - Supersedes for new work: `docs/language-ir-compliance.md`
 
-This ledger measures the stronger ADR-0004/ADR-0005 contract. The M30 ledger remains
+This ledger measures the stronger ADR-0004/ADR-0005/ADR-0006 contract. The M30 ledger remains
 historical evidence that the existing fragment paths carry dependency metadata;
 it is not evidence of typed executable syntax.
 
@@ -14,6 +14,7 @@ it is not evidence of typed executable syntax.
 | Surface | CoreIR input | Typed executable AST | Typed symbols and derived dependencies | Structural runtime | Render-ready certificate and total renderer | Result |
 | --- | --- | --- | --- | --- | --- | --- |
 | Shared codegen | `CoreProgram` is the only lowering input | Generic checked target AST | Catalogue/linker-derived bindings, imports, files, helpers, and packages | Typed helper DAG and structural items | Opaque verify/link/certify states, sealed certified adapter, and total structural-renderer extension point | **Pass** |
+| Static generic AST | Initial `StaticV1` profile specified; implementation pending | `Expr<T>` and typed declaration/symbol handles required | Compile-time feature profile and `Supports<F>` required | Not applicable at this layer | Must lower totally for an admitted target profile | **Partial** |
 | Rust | Missing | Missing: `RustCode`/raw documents | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | TypeScript | Missing | Missing: paired `EcmaCode` | Manually attached fragment metadata | Raw runtime source | Paired source path | **Fail** |
 | JavaScript | Missing | Independently paired source exists | Shares manual ECMA metadata | Checked-in/runtime paired text | Not solely compiler-derived | **Fail** |
@@ -47,9 +48,10 @@ it is not evidence of typed executable syntax.
   `crates/backend-c/src/runtime.c`.
 
 The locations for rows which still fail are migration inputs, not allowlisted
-final architecture. Shared codegen now implements the ADR-0005 foundation.
+final architecture. Shared codegen now implements the ADR-0005 target
+foundation; the ADR-0006 static generic layer is in progress.
 Java is the first migrated language and remains **Partial** only until the
-user's requested review is complete.
+static `StaticV1` path and the user's requested review are complete.
 
 ## Shared M34A-08R evidence
 

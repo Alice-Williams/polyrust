@@ -6,9 +6,15 @@
 
 ## Purpose
 
-CoreIR is the sole target-neutral semantic input to language plugins. It
+CoreIR is the canonical erased semantic form shared by language plugins. It
 prevents eight plugins from independently desugaring the same portable
 construct and makes behavior suitable for direct evaluator comparison.
+
+The static generic AST precedes CoreIR and carries relationships such as
+`Expr<T>`, typed symbol ownership, callable signatures, and feature profile in
+Rust types. Erasure into CoreIR MUST preserve those relationships. During
+migration a defensive verifier may recheck them; its rejection is an internal
+defect for a `StaticProgram<F>`, not an expected static-authoring outcome.
 
 CoreIR remains structured source-generation IR. It is not machine code, SSA,
 LLVM IR, or target syntax.

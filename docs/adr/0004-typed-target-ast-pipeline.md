@@ -4,7 +4,8 @@
 - Milestone: M34A
 - Date: 2026-09-02
 - Supersedes: ADR-0003 for all target-generation architecture
-- Amended by: ADR-0005 for proof-carrying phase types and executable rendering
+- Amended by: ADR-0005 for proof-carrying phase types and executable rendering;
+  ADR-0006 for static valid-by-construction portable programs
 
 ## Context
 

@@ -1,7 +1,7 @@
 # Typed target-AST architecture proposal
 
 - Status: historical design proposal; resolved by ADR-0004 and amended by
-  ADR-0005
+  ADR-0005 and ADR-0006
 - Normative replacement: `docs/specification/typed-generation/README.md`
 - Implementation status: no production implementation started
 - Current port status: M34-03 is frozen until this proposal is accepted and
@@ -11,7 +11,7 @@
   may model inheritance as an explicit target-only construct
 
 This file preserves the design discussion. Its open-decision wording is not
-normative; ADR-0004, ADR-0005, and the layer/language specifications contain
+normative; ADR-0004, ADR-0005, ADR-0006, and the layer/language specifications contain
 the accepted decisions. In particular, ADR-0005 replaces the proposal's
 original Handlebars renderer and three-state pipeline with intrinsic language
 validity certification and total structural rendering.

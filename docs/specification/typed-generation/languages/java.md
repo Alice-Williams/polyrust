@@ -12,6 +12,17 @@ optional structural runtime declarations, native/conformance tests, and
 negative compilation fixtures. A separately compiled consumer MUST be able to
 use every portable public API. No undeclared runtime dependency is permitted.
 
+Java is the first static portable-program target. `JavaDialect` MUST explicitly
+implement `Supports<StaticV1>`, and its static entry point MUST accept only
+`StaticProgram<F>` under the bound `JavaDialect: Supports<F>`. The admitted
+profile's typed records, fields, constructors, functions, calls, primitive
+expressions, and nested arithmetic lower through the same certified Java AST,
+linker, post-link checker, and total renderer described below.
+
+The static path has no user-caused Java syntax or capability diagnostic after
+construction. The current `CheckedProgram` entry point remains the explicitly
+dynamic compatibility path until existing examples are migrated.
+
 ## 2. Capability strategies
 
 The exhaustive Java registry distinguishes native primitive/reference
@@ -381,3 +392,9 @@ The Java plugin passes only after raw `JavaCode`, `RUNTIME`, hard-coded import
 loops/strings, and manual dependency registration are deleted and every
 executable compilation unit flows through verified Java AST, automatic symbol
 resolution, render-ready certification, and total structural rendering.
+
+The Java static path additionally passes only when `Supports<StaticV1>` is an
+explicit compile-time implementation, the checked-in static example exercises
+typed record construction and nested arithmetic, all invalid static examples
+fail Rust compilation, and the accepted output compiles and executes under the
+hermetic Java 21 toolchain.
