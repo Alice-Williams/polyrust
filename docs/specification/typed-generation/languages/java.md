@@ -112,6 +112,9 @@ option/result branch.
   field initializer which refers to itself or to a later field in the same
   type.
 - Records/final classes validate and copy mutable inputs in typed constructors.
+- Because the admitted Java AST has no static-initializer node, every `static
+  final` field MUST have a typed initializer. A blank static final is rejected
+  rather than relying on source Java which this AST cannot represent.
 - Every blank instance-final field is assigned exactly once on every normally
   completing constructor path. An initialized final cannot be assigned again,
   and conditional, repeated, loop-dependent, or early-return omissions fail
@@ -218,6 +221,11 @@ complete declaration verifier before rendering. Member-by-member verification
 does not satisfy this rule. Cross-fragment names/erasures, constructor and
 blank-final state, field ordering, lexical scope, checked exceptions, and
 declaration-kind grammar are therefore checked in their final class context.
+The shell is one canonical typed value: generated package, runtime source role,
+the exact `Runtime.java` path, public final `Runtime` class, and its private
+empty constructor. Runtime-member items cannot originate in a lowerer's source
+file; they are admitted only from the linker-selected registered helper
+closure, whose exact resolved item sequence is rederived during verification.
 
 ## 9. File and package policy
 
@@ -230,6 +238,12 @@ fragments. When a compilation unit contains one public top-level type, its
 basename MUST equal that type's identifier plus `.java`.
 Runtime member fragments are confined to the runtime file, which contains
 exactly one typed class shell; both rules are rejected before rendering.
+
+Method annotations are closed enum values with declaration-context checks.
+Annotations are unique. `@Override` is admitted only for an instance method
+with a verified generated-interface or runtime semantic-interface target.
+`@SafeVarargs` is rejected while the Java AST has no typed varargs parameter
+form.
 
 ## 10. Rendering
 
@@ -250,7 +264,8 @@ conformance, sealed exhaustiveness, immutable collection/array boundaries,
 heritage depth and ownership, import namespaces/collisions, precedence,
 definite return, and absence of opaque source. Resolved whole-file verification
 rechecks every split or helper-injected declaration after linking and before a
-render view can be built.
+render view can be built. It also verifies annotation legality and static-final
+initialization rather than relying on `javac` to discover forged AST shapes.
 
 ## 12. Success evidence
 

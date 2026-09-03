@@ -363,27 +363,12 @@ impl<'a> Lowering<'a> {
     }
 
     fn runtime_file(&mut self) -> Result<portable_codegen::TargetFileId, Vec<Diagnostic>> {
-        let declaration = JavaTypeDeclaration {
-            declared: None,
-            kind: JavaDeclarationKind::FinalClass,
-            visibility: JavaVisibility::Public,
-            modifiers: vec![],
-            name: identifier("Runtime"),
-            type_parameters: vec![],
-            record_components: vec![],
-            heritage: JavaHeritage::None,
-            permits: vec![],
-            members: vec![JavaMember::Constructor(private_constructor("Runtime"))],
-        };
         Ok(self.builder.file(TargetFile::new(
             path("src/main/java/org/polyrust/generated/Runtime.java"),
             SourceRole::Runtime,
             JavaPackage::Generated,
             JavaFilePlacement::Runtime,
-            vec![JavaFileItem::Type {
-                declared: vec![],
-                declaration,
-            }],
+            vec![crate::runtime::shell_item()],
             JavaTemplateId::CompilationUnit,
             source("runtime-file"),
         )))

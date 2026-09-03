@@ -142,6 +142,20 @@ test evidence rather than a current **Pass** claim while M34A-10R is open.
   release gate passed 232 of 232 tests, and a clean Cargo workspace replay
   passed with all doctests. Java remains **Fail** pending round 10 push, hosted
   CI, and another clean fresh review.
+- Round 10 checkpoint `1dbbdbd` was pushed and remotely verified; hosted CI run
+  `33746746728` passed every job for that exact SHA. Fresh blind
+  review round 11 validated the composition repair but found three more core
+  fail-open paths: runtime shell/provenance identity was not exact, method
+  annotations lacked verifier rules, and blank static finals were accepted
+  without a representable initializer path. All are accepted. Round 11 now
+  uses one canonical typed runtime shell, confines fragments to linker-selected
+  helpers, validates annotation uniqueness/context exhaustively, rejects blank
+  static finals, and carries forged-AST plus Java 21 compiler regressions. Its
+  focused gate passed 37 of 37 tests, the complete tracked-repository replay
+  passed 294 of 294 tests, the independent release gate passed 232 of 232
+  tests, and a clean Cargo workspace replay passed with all doctests. Java
+  remains **Fail** pending round 11 push, hosted CI, and another clean fresh
+  review.
 
 ## Pass rule
 

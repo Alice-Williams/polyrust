@@ -199,9 +199,13 @@ sh_test(
         "$(location test/JavaVerifierConstantLoops.java)",
         "$(location test/JavaVerifierWrongFilename.java)",
         "$(location test/JavaVerifierRuntimeComposition.java)",
+        "$(location test/JavaVerifierAnnotations.java)",
+        "$(location test/JavaVerifierBlankStaticFinal.java)",
     ],
     data = [
+        "test/JavaVerifierAnnotations.java",
         "test/JavaVerifierBlankFinalRead.java",
+        "test/JavaVerifierBlankStaticFinal.java",
         "test/JavaVerifierConstantLoops.java",
         "test/JavaVerifierFieldInitializer.java",
         "test/JavaVerifierPatternCollision.java",

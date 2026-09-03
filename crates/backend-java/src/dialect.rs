@@ -1584,6 +1584,22 @@ impl TypedAstDialect for JavaDialect {
         context: &TargetAstContext<'_, Self>,
     ) -> Vec<AstViolation> {
         let mut violations = Vec::new();
+        violations.extend(verify_java_file_identity(
+            file.role(),
+            file.path().as_str(),
+            file.module(),
+            file.placement(),
+        ));
+        if file
+            .items()
+            .iter()
+            .any(|item| matches!(item, JavaFileItem::RuntimeMembers { .. }))
+        {
+            violations.push(AstViolation::new(
+                DiagnosticCode::InvalidStructure,
+                "Java runtime member fragments must be injected by the typed helper linker",
+            ));
+        }
         let has_compile_fail_member = file.items().iter().any(|item| {
             matches!(item, JavaFileItem::Type { declaration, .. }
                 if declaration.contains_compile_fail_member())
@@ -1923,12 +1939,47 @@ impl LinkerDialect for JavaDialect {
         file: &LinkedFile<Self>,
         context: &TargetAstContext<'_, Self>,
     ) -> Vec<AstViolation> {
-        verify_composed_java_file(
+        let mut violations = verify_java_file_identity(
+            file.role(),
+            file.path().as_str(),
+            file.module(),
+            file.placement(),
+        );
+        violations.extend(verify_composed_java_file(
             file.placement(),
             file.items().iter().map(|item| &item.item).collect(),
             context,
-        )
+        ));
+        violations
     }
+}
+
+fn verify_java_file_identity(
+    role: portable_codegen::SourceRole,
+    path: &str,
+    module: &JavaPackage,
+    placement: &JavaFilePlacement,
+) -> Vec<AstViolation> {
+    const RUNTIME_PATH: &str = "src/main/java/org/polyrust/generated/Runtime.java";
+    let is_runtime = *placement == JavaFilePlacement::Runtime;
+    let mut violations = Vec::new();
+    if is_runtime
+        && (role != portable_codegen::SourceRole::Runtime
+            || module != &JavaPackage::Generated
+            || path != RUNTIME_PATH)
+    {
+        violations.push(AstViolation::new(
+            DiagnosticCode::InvalidStructure,
+            "Java runtime placement requires the generated Runtime.java source role and path",
+        ));
+    }
+    if !is_runtime && role == portable_codegen::SourceRole::Runtime {
+        violations.push(AstViolation::new(
+            DiagnosticCode::InvalidStructure,
+            "Java runtime source role requires runtime placement",
+        ));
+    }
+    violations
 }
 
 fn verify_composed_java_file(
@@ -1954,8 +2005,8 @@ fn verify_composed_java_file(
 
     let shells = items
         .iter()
-        .filter_map(|item| match item {
-            JavaFileItem::Type { declaration, .. } => Some(declaration.clone()),
+        .filter_map(|item| match *item {
+            JavaFileItem::Type { .. } => Some(*item),
             JavaFileItem::RuntimeMembers { .. } => None,
         })
         .collect::<Vec<_>>();
@@ -1966,7 +2017,18 @@ fn verify_composed_java_file(
         )];
     }
 
-    let mut combined = shells[0].clone();
+    let expected_shell = crate::runtime::shell_item();
+    if shells[0] != &expected_shell {
+        return vec![AstViolation::new(
+            DiagnosticCode::InvalidStructure,
+            "Java runtime file does not contain the exact registered Runtime class shell",
+        )];
+    }
+
+    let JavaFileItem::Type { declaration, .. } = shells[0] else {
+        unreachable!("runtime shell collection contains only type items")
+    };
+    let mut combined = declaration.clone();
     for item in items {
         if let JavaFileItem::RuntimeMembers { members, .. } = item {
             combined.members.extend(members.iter().cloned());
@@ -2497,7 +2559,10 @@ mod tests {
         };
         let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
         let file = builder.file(TargetFile::new(
-            portable_codegen::RelativeOutputPath::new("Runtime.java").unwrap(),
+            portable_codegen::RelativeOutputPath::new(
+                "src/main/java/org/polyrust/generated/Runtime.java",
+            )
+            .unwrap(),
             portable_codegen::SourceRole::Runtime,
             JavaPackage::Generated,
             JavaFilePlacement::Runtime,
@@ -2551,7 +2616,10 @@ mod tests {
         };
         let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
         let file = builder.file(TargetFile::new(
-            portable_codegen::RelativeOutputPath::new("Runtime.java").unwrap(),
+            portable_codegen::RelativeOutputPath::new(
+                "src/main/java/org/polyrust/generated/Runtime.java",
+            )
+            .unwrap(),
             portable_codegen::SourceRole::Runtime,
             JavaPackage::Generated,
             JavaFilePlacement::Runtime,

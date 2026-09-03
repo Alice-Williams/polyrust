@@ -386,3 +386,26 @@ source parsing, and unrelated renderer conveniences do not block completion.
   composed release gate passed 232 of 232 tests. A fresh Cargo target passed
   `cargo test --workspace --all-features --locked`, including every doctest.
   Checkpoint push, hosted CI, and another fresh blind review remain pending.
+- Round 10 checkpoint `1dbbdbd0c871a12030e8d39a8389fe098af8b4c5`
+  was committed, pushed to `origin/main`, and remotely verified. Hosted CI run
+  `33746746728` passed every job for that exact SHA.
+- Fresh Sol/xhigh blind review round 11 validated the combined-runtime
+  blank-final and duplicate-declaration repair, but demonstrated three core
+  fail-open gaps; all are accepted. Runtime placement did not require the exact
+  canonical shell identity or linker-only fragment provenance. Method
+  annotations were rendered without uniqueness or declaration-context checks.
+  Blank `static final` fields were admitted despite the absence of a typed
+  static-initializer form.
+- Round 11 centralizes the canonical typed runtime shell and verifies its exact
+  role, path, package, declaration shape, and linker-only fragment origin.
+  Annotation legality is exhaustive (`@Override` needs a verified instance
+  target; duplicate annotations and unrepresentable `@SafeVarargs` fail), and
+  blank static finals are rejected. Permanent proof includes forged AST cases
+  plus hermetic Java 21 compiler fixtures for invalid `@Override` and blank
+  static-final output. The initial focused verifier/compiler/generated-package
+  and lint gate passed 7 of 7 tests; the complete uncached
+  Java/codegen/policy/snapshot/lint gate passed 37 of 37 tests; the complete
+  tracked-repository replay passed 294 of 294 tests; and the independently
+  composed release gate passed 232 of 232 tests. A fresh Cargo target passed
+  `cargo test --workspace --all-features --locked`, including every doctest.
+  Checkpoint push, hosted CI, and another fresh blind review remain pending.

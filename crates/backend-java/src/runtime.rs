@@ -1,5 +1,28 @@
 use crate::{ast::*, dialect::*};
 
+pub(crate) fn shell_item() -> JavaFileItem {
+    JavaFileItem::Type {
+        declared: vec![],
+        declaration: JavaTypeDeclaration {
+            declared: None,
+            kind: JavaDeclarationKind::FinalClass,
+            visibility: JavaVisibility::Public,
+            modifiers: vec![],
+            name: identifier("Runtime"),
+            type_parameters: vec![],
+            record_components: vec![],
+            heritage: JavaHeritage::None,
+            permits: vec![],
+            members: vec![JavaMember::Constructor(JavaConstructor {
+                modifiers: vec![JavaModifier::Private],
+                name: identifier("Runtime"),
+                parameters: vec![],
+                body: JavaBlock::new(vec![]),
+            })],
+        },
+    }
+}
+
 pub fn helper_items(helper: JavaRuntimeHelper) -> Vec<JavaFileItem> {
     let members = match helper {
         JavaRuntimeHelper::Core => core_members(),

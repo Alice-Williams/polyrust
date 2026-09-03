@@ -4845,6 +4845,15 @@ impl JavaMember {
                 let mut violations =
                     verify_modifiers_for(&field.modifiers, JavaModifierSite::Field);
                 violations.extend(field.ty.verify(JavaTypeUse::Field));
+                if field.initializer.is_none()
+                    && field.modifiers.contains(&JavaModifier::Static)
+                    && field.modifiers.contains(&JavaModifier::Final)
+                {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::InvalidControlFlow,
+                        "blank static final Java fields require a static initializer, which the typed AST does not admit",
+                    ));
+                }
                 if let Some(value) = &field.initializer {
                     violations.extend(value.verify(context));
                     violations.extend(verify_field_initializer_context(
@@ -4876,6 +4885,7 @@ impl JavaMember {
             Self::Method(method) => {
                 let mut violations =
                     verify_modifiers_for(&method.modifiers, JavaModifierSite::Method);
+                violations.extend(verify_method_annotations(method, declaration));
                 violations.extend(method.return_type.verify(JavaTypeUse::Return));
                 let distinct_type_parameters =
                     method.type_parameters.iter().collect::<BTreeSet<_>>();
@@ -4966,6 +4976,70 @@ impl JavaMember {
             Self::NestedType(value) => value.verify(context, false),
         }
     }
+}
+
+fn verify_method_annotations(
+    method: &JavaMethod,
+    declaration: Option<&JavaTypeDeclaration>,
+) -> Vec<AstViolation> {
+    let mut violations = Vec::new();
+    let distinct = method.annotations.iter().copied().collect::<BTreeSet<_>>();
+    if distinct.len() != method.annotations.len() {
+        violations.push(AstViolation::new(
+            DiagnosticCode::DuplicateDeclaration,
+            "Java method annotation is declared more than once",
+        ));
+    }
+    for annotation in distinct {
+        match annotation {
+            JavaAnnotation::Override if !method_has_override_target(method, declaration) => {
+                violations.push(AstViolation::new(
+                    DiagnosticCode::InvalidStructure,
+                    "Java @Override method has no verified instance override target",
+                ));
+            }
+            JavaAnnotation::SafeVarargs => violations.push(AstViolation::new(
+                DiagnosticCode::InvalidStructure,
+                "Java @SafeVarargs requires a varargs parameter form which the typed AST does not admit",
+            )),
+            JavaAnnotation::Override => {}
+        }
+    }
+    violations
+}
+
+fn method_has_override_target(
+    method: &JavaMethod,
+    declaration: Option<&JavaTypeDeclaration>,
+) -> bool {
+    if method.modifiers.contains(&JavaModifier::Static) {
+        return false;
+    }
+    if matches!(
+        method.declared,
+        JavaMethodDeclaration::Implementation { .. }
+    ) {
+        return true;
+    }
+    let Some(declaration) = declaration else {
+        return false;
+    };
+    let implements_semantic_value = matches!(
+        &declaration.heritage,
+        JavaHeritage::Interfaces(values)
+            if values.contains(&JavaType::known(JavaKnownType::RuntimeSemanticValue))
+    );
+    implements_semantic_value
+        && matches!(
+            method.name.as_str(),
+            name if name == JavaRuntimeMember::SemanticEquals.name()
+                || name == JavaRuntimeMember::DeepEquals.name()
+        )
+        && method.return_type == JavaType::primitive(JavaPrimitive::Boolean)
+        && matches!(
+            method.parameters.as_slice(),
+            [JavaParameter { ty, .. }] if *ty == JavaType::known(JavaKnownType::Object)
+        )
 }
 
 impl JavaTypeDeclaration {
@@ -6258,29 +6332,6 @@ mod tests {
         }
     }
 
-    fn runtime_shell_item() -> JavaFileItem {
-        JavaFileItem::Type {
-            declared: vec![],
-            declaration: JavaTypeDeclaration {
-                declared: None,
-                kind: JavaDeclarationKind::FinalClass,
-                visibility: JavaVisibility::Package,
-                modifiers: vec![],
-                name: JavaIdentifier::from_portable("Runtime"),
-                type_parameters: vec![],
-                record_components: vec![],
-                heritage: JavaHeritage::None,
-                permits: vec![],
-                members: vec![JavaMember::Constructor(JavaConstructor {
-                    modifiers: vec![JavaModifier::Private],
-                    name: JavaIdentifier::from_portable("Runtime"),
-                    parameters: vec![],
-                    body: JavaBlock::new(vec![]),
-                })],
-            },
-        }
-    }
-
     fn verify_fixture(
         builder: portable_codegen::TargetAstBuilder<JavaDialect>,
         declarations: Vec<(Vec<GeneratedSymbolId>, JavaTypeDeclaration)>,
@@ -6321,8 +6372,13 @@ mod tests {
                 portable_codegen::FileGroupRole::NegativeTests
             }
         };
+        let path = if placement == JavaFilePlacement::Runtime {
+            "src/main/java/org/polyrust/generated/Runtime.java"
+        } else {
+            "Fixture.java"
+        };
         let file = builder.file(portable_codegen::TargetFile::new(
-            portable_codegen::RelativeOutputPath::new("Fixture.java").unwrap(),
+            portable_codegen::RelativeOutputPath::new(path).unwrap(),
             role,
             JavaPackage::Generated,
             placement,
@@ -6563,20 +6619,30 @@ mod tests {
     }
 
     #[test]
-    fn registered_runtime_inactive_tagged_storage_remains_valid() {
-        let mut items = vec![runtime_shell_item()];
+    fn registered_runtime_storage_is_valid_but_source_injection_is_rejected() {
+        let mut items = vec![crate::runtime::shell_item()];
         items.extend(
             [JavaRuntimeHelper::Core, JavaRuntimeHelper::TaggedValues]
                 .into_iter()
                 .flat_map(crate::runtime::helper_items),
         );
-        let verification = verify_file_items(
+        let diagnostics = verify_file_items(
             portable_codegen::TargetAstBuilder::new(JavaDialect),
             portable_codegen::SourceRole::Runtime,
             JavaFilePlacement::Runtime,
             items,
-        );
-        assert!(verification.is_ok(), "{verification:?}");
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidStructure
+                && diagnostic.message.contains("typed helper linker")
+        }));
+        assert!(!diagnostics.iter().any(|diagnostic| {
+            diagnostic.message.contains("raw UTF-16-unit literal")
+                || diagnostic
+                    .message
+                    .contains("outside exact registered tagged runtime storage")
+        }));
     }
 
     #[test]
@@ -7854,6 +7920,67 @@ mod tests {
             )
             .is_ok()
         );
+    }
+
+    #[test]
+    fn annotations_and_blank_static_finals_fail_closed() {
+        let int = JavaType::primitive(JavaPrimitive::Int);
+        let declaration = fixture_declaration(vec![
+            JavaMember::Field(JavaField {
+                declared: None,
+                modifiers: vec![
+                    JavaModifier::Private,
+                    JavaModifier::Static,
+                    JavaModifier::Final,
+                ],
+                ty: int.clone(),
+                name: JavaIdentifier::from_portable("x"),
+                initializer: None,
+            }),
+            JavaMember::Method(JavaMethod {
+                declared: JavaMethodDeclaration::Structural,
+                annotations: vec![JavaAnnotation::Override, JavaAnnotation::Override],
+                modifiers: vec![JavaModifier::Static],
+                type_parameters: vec![],
+                return_type: int.clone(),
+                name: JavaIdentifier::from_portable("forgedOverride"),
+                parameters: vec![],
+                body: Some(JavaBlock::new(vec![JavaStmt::Return(Some(
+                    JavaExpr::literal(int, JavaLiteral::I32(1)),
+                ))])),
+            }),
+            JavaMember::Method(JavaMethod {
+                declared: JavaMethodDeclaration::Structural,
+                annotations: vec![JavaAnnotation::SafeVarargs],
+                modifiers: vec![JavaModifier::Static],
+                type_parameters: vec![],
+                return_type: JavaType::primitive(JavaPrimitive::Void),
+                name: JavaIdentifier::from_portable("forgedSafeVarargs"),
+                parameters: vec![],
+                body: Some(JavaBlock::new(vec![])),
+            }),
+        ]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], declaration)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidControlFlow
+                && diagnostic.message.contains("blank static final")
+        }));
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::DuplicateDeclaration
+                && diagnostic.message.contains("annotation")
+        }));
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidStructure
+                && diagnostic.message.contains("no verified instance override")
+        }));
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidStructure
+                && diagnostic.message.contains("varargs parameter form")
+        }));
     }
 
     #[test]
