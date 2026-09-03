@@ -71,4 +71,4 @@ complete.
   invocation `841fecff-5fa9-4ca2-aaf9-ffed4b3eba61` passed all 233 tests,
   including Rustfmt, Clippy, Buildifier, documentation, policy, and dependency
   boundaries.
-- Commit and remote SHA: pending checkpoint.
+- Implementation commit and verified remote SHA: `389f0cb`.
