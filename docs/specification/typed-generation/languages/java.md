@@ -50,7 +50,9 @@ unique, non-dominated patterns and render the complete Java `case` grammar.
 Lexical bindings from locals, parameters, foreach, catch, switch patterns, and
 `instanceof` flow scopes must be unique throughout every overlapping Java
 scope. Catch clauses are ordered and no later type may be a subtype of an
-earlier catch.
+earlier catch. `instanceof` binder uniqueness is checked wherever the typed
+expression may occur, not only when a surrounding control-flow node consumes
+the binding.
 
 Array ownership is part of `JavaType`. The only metadata-only change admitted
 by the executable AST is the enum-valued `FreshCopyToBoundary` transition from
@@ -109,7 +111,11 @@ option/result branch.
 - Every blank instance-final field is assigned exactly once on every normally
   completing constructor path. An initialized final cannot be assigned again,
   and conditional, repeated, loop-dependent, or early-return omissions fail
-  target AST verification before rendering.
+  target AST verification before rendering. Reads of blank finals are checked
+  against the same path state before a write is recorded.
+- A local without an initializer is unreadable until assignment is proven on
+  every normally completing path. Branch state joins use intersection and
+  exclude alternatives which cannot complete normally.
 - Tagged matches lower to exhaustive verified switches or explicit tag
   switches according to the selected Java 21 strategy.
 - Explicit temporaries preserve CoreIR receiver and argument order.

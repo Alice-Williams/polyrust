@@ -276,3 +276,28 @@ source parsing, and unrelated renderer conveniences do not block completion.
   passed 230 of 230 tests, and a fresh Cargo target passed
   `cargo test --workspace --all-features --locked`. Checkpoint commit, push,
   hosted CI, and the next fresh blind review remain pending.
+- Round 5 checkpoint `b528489de5f632c4c3808385f68ee581ec37aa32`
+  was pushed and remotely verified. Fresh Sol/xhigh blind review round 6
+  validated the round 5 repairs and found two additional core verifier
+  blockers; both are accepted.
+- Local definite-assignment state must reject reads before initialization and
+  intersect normally completing branch states. Constructor path analysis must
+  reject a blank-final read before its field is assigned, including the RHS of
+  `this.field = this.field`, before recording the assignment target.
+- `instanceof` binder collision checks must cover every expression position,
+  including returns, local initializers, and call arguments, rather than only
+  bindings collected from selected `if` and `while` conditions.
+- Round 6 adds forged-AST regressions for both blockers and hermetic Java 21
+  compile-fail counterexamples proving `javac` rejects the exact invalid forms.
+  The focused verifier/compiler/buildifier replay passed 3 of 3 tests; complete
+  gates, checkpoint commit, push, hosted CI, and the next fresh blind review
+  remain pending.
+- Hosted CI run `33725193441` for the round 5 checkpoint passed every job.
+- Round 6's uncached focused Java/codegen/policy/snapshot and lint gate passed
+  35 of 35 tests. The complete tracked repository replay passed 293 of 293
+  tests, excluding only the untouched user-owned untracked
+  `examples/real-world/stdlib-abs/` package. The release gate was strengthened
+  to include the hermetic Java verifier compile-fail proof and passed 231 of
+  231 tests. A fresh Cargo target passed
+  `cargo test --workspace --all-features --locked`. Checkpoint commit, push,
+  hosted CI, and the next fresh blind review remain pending.

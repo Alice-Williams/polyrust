@@ -92,6 +92,11 @@ test evidence rather than a current **Pass** claim while M34A-10R is open.
   redeclare enclosing names, catch clauses lack subtype-dominance checks, and
   constructors lack blank-final definite-assignment proof. All are accepted;
   Java remains **Fail** pending round 5 remediation and a clean fresh review.
+- Fresh blind review round 6 of pushed checkpoint `b528489d` validated round
+  5, but found two further fail-open verifier paths: reads of unassigned locals
+  and blank finals, and `instanceof` binder collisions outside selected
+  control-flow conditions. Both are accepted core blockers; Java remains
+  **Fail** pending round 6 remediation and another clean fresh review.
 
 ## Pass rule
 

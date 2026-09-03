@@ -210,6 +210,7 @@ test_suite(
         ":rustfmt_test",
         "//crates/backend-c:abi_shapes_ownership_test",
         "//crates/backend-c:abi_shapes_sanitizer_test",
+        "//crates/backend-java:java_verifier_compile_fail_test",
         "//crates/benchmark:generation_benchmark_test",
         "//crates/conformance:all_targets_test",
         "//crates/eval:core_ir_parity_test",
