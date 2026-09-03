@@ -85,3 +85,7 @@ changing meaning. Platform I/O, reflection, concurrency, unsafe memory, macros,
 inheritance, exceptions, and arbitrary third-party libraries are outside the
 first portable language. Later versions can add them through explicitly
 versioned capabilities and target adapters.
+
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE).

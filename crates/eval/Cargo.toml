@@ -4,6 +4,7 @@ description = "Reference evaluator and portable test runner for checked programs
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+license.workspace = true
 repository.workspace = true
 publish.workspace = true
 

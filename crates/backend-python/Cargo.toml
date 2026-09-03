@@ -4,6 +4,7 @@ description = "Python source backend for checked portable programs"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+license.workspace = true
 repository.workspace = true
 publish.workspace = true
 autoexamples = false
