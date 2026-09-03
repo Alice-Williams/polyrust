@@ -16,8 +16,8 @@ opaque-runtime/manual-import design.
 ## Definition of done
 
 - Java owns the complete `JavaType`, expression, statement, declaration,
-  member, modifier, heritage, compilation-unit, package, and template enums in
-  its language specification.
+  member, modifier, heritage, compilation-unit, package, and grammar/format
+  enums in its language specification.
 - Every CoreIR feature has an exhaustive typed Java strategy and every known
   JDK type/method/field/constructor has one authoritative signature catalogue.
 - Primitive/boxed generic contexts, evaluation order, sealed/tagged values,
@@ -29,8 +29,8 @@ opaque-runtime/manual-import design.
   rejects generated chains/reuse; no portable fixture requires it.
 - The resolver derives every package/import/qualification/helper/file from
   typed references, including all former `Runtime.java` dependencies.
-- Runtime declarations are Java AST and render through strict Java Handlebars
-  templates.
+- Runtime declarations are Java AST and render through the ADR-0005
+  render-ready certificate and total Java structural renderer.
 - `JavaCode`, raw executable documents, `RUNTIME`, `require_java`, hard-coded
   import strings, and the legacy Java pipeline are deleted.
 - The Java compliance row moves to **Pass** with exact source/test evidence.
@@ -38,8 +38,8 @@ opaque-runtime/manual-import design.
 ## Tests
 
 - `bazel test //crates/backend-java:all --nocache_test_results --test_output=errors`
-- Java AST/verifier/catalogue/import/helper/template positive and negative
-  matrices.
+- Java AST/verifier/catalogue/import/helper/certificate/total-renderer positive
+  and negative matrices.
 - Hermetic Java 21 lint-as-error compile, native/conformance tests, separate
   public consumer, invalid type fixtures, interface corpus, and three-generation
   determinism.
@@ -52,11 +52,13 @@ shared typed-generation gates pass in the dev container.
 
 ## Exit evidence
 
-- `crates/backend-java/src/ast.rs` owns the closed Java syntax, type-use,
-  modifier, heritage, literal, operator, file, and template model. The dialect
+- Historical pre-ADR-0005 evidence: `crates/backend-java/src/ast.rs` owns the
+  closed Java syntax, type-use, modifier, heritage, literal, operator, file,
+  and former template model. The dialect
   catalogue and verifier are in `dialect.rs`; exhaustive CoreIR lowering is in
   `lower.rs`; structural helper declarations are in `runtime.rs`; and
-  `render.rs` is a resolved-only strict Handlebars renderer.
+  `render.rs` was a resolved-only strict Handlebars renderer; M34A-10V replaces
+  that executable path before this task can complete.
 - The legacy checked-in `Runtime.java`, raw Java document path, `JavaCode`,
   `RUNTIME`, `require_java`, and `serde_json` interpreter dependency are
   deleted. The typed-generation source policy now scans every production Java

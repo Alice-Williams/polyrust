@@ -32,8 +32,8 @@ The dialect owns:
 - `CppExpr` and `CppPrecedence`;
 - `CppStmt`, `CppBlock`, `CppCase`, and initialization forms;
 - `CppDeclaration`, `CppDefinition`, `CppMember`, and `CppHeritage`;
-- `CppFile`, `CppPackage`, `CppTemplateId`, and typed header/source placement;
-  and
+- `CppFile`, `CppPackage`, typed header/source placement, and grammar
+  categories; and
 - closed enums for operators, casts, storage, visibility, special members,
   call forms, includes, attributes, and literals.
 
@@ -127,13 +127,21 @@ not leak private helpers.
 
 ## 10. Rendering
 
-`CppTemplateId` covers files, includes, namespaces, templates, declarations,
-definitions, types/declarators, initializers, blocks, switches, statements,
-expressions, literals, comments, and tests. Strict embedded Handlebars sees
-resolved C++ render views only and performs no feature, include, ownership, or
-overload decisions.
+The C++ post-link checker certifies complete C++20 translation units as an
+opaque `RenderReadyPackage<CppDialect>`. It validates declaration/declarator
+shape, scopes, overload/call forms, templates used by the supported subset,
+access, initialization, lifetime-bearing placement, and the optional one-edge
+adapter heritage restriction after includes and helpers are resolved.
 
-A pinned formatter is a no-diff check/post-process and never a semantic repair.
+The total C++ renderer structurally covers files, includes, namespaces,
+templates, declarations, definitions, types/declarators, initializers, blocks,
+switches, statements, expressions, literals, comments, and tests. It owns every
+C++ token and exhaustively matches the closed C++ AST. There is no executable
+Handlebars template, token/source escape hatch, or renderer-side feature,
+include, ownership, or overload decision.
+
+A pinned formatter/compiler is an independent no-diff/acceptance oracle and
+never a syntax or semantic repair.
 
 ## 11. Validation
 
@@ -163,4 +171,4 @@ precedence, and absence of opaque source.
 The C++ plugin passes only after raw source/runtime constants, abstract-base
 portable contracts, and manual include registration are deleted and all
 executable translation units flow through verified C++ AST, automatic linking,
-and strict templates.
+and the render-ready certificate plus total structural renderer.

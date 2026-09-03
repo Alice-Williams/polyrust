@@ -12,7 +12,7 @@ and derived JavaScript packages.
 
 - TypeScript owns all type, expression, statement, binding/pattern,
   declaration, class/interface member, import/export, file/package, and
-  template enums in its specification.
+  grammar/format enums in its specification.
 - Runtime-erasure classification is explicit on every relevant node.
 - Every CoreIR feature has an exhaustive TypeScript strategy; ECMAScript
   globals and Node module callables have exact typed catalogue entries.
@@ -24,8 +24,11 @@ and derived JavaScript packages.
   pass without `extends`, mixins, declaration merging, or prototype mutation.
 - Imports/exports, type-only edges, module paths, helpers, declaration shims,
   and file roles are resolver-derived.
-- Runtime declarations are TypeScript AST; strict templates render resolved
-  TypeScript views.
+- The TypeScript post-link checker alone constructs the opaque render-ready
+  package; runtime declarations are TypeScript AST and a total structural
+  renderer accepts only that certificate.
+- Executable templates, raw/token/source escapes, and string/wildcard grammar
+  dispatch are absent; every checker-accepted corpus case passes strict `tsc`.
 - Paired/raw `EcmaCode`, checked-in executable runtime strings, manual import/
   helper metadata, and independent JavaScript branches are deleted.
 - The TypeScript compliance row moves to **Pass** with exact evidence.
@@ -33,7 +36,7 @@ and derived JavaScript packages.
 ## Tests
 
 - `bazel test //crates/backend-typescript:typescript_all --nocache_test_results --test_output=errors`
-- TypeScript AST/verifier/catalogue/import/helper/module/template/erasure
+- TypeScript AST/verifier/catalogue/import/helper/module/certificate/renderer/erasure
   positive and negative matrices.
 - Pinned Prettier no-diff, strict `tsc --noEmit`, native Node tests, negative
   type fixtures, interface corpus, and three-generation determinism.

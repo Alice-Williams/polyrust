@@ -16,9 +16,10 @@ which component owns every decision, and how failures remain atomic.
 struct UncheckedDocument { /* serializable PolyIR */ }
 struct CheckedProgram { /* private checker construction */ }
 struct CoreProgram { /* private CoreIR lowerer construction */ }
-struct UnresolvedPackage<D: TargetDialect> { /* target AST and symbols */ }
-struct ResolvedPackage<D: TargetDialect> { /* linked target AST */ }
-struct RenderView<D: TargetDialect> { /* private renderer construction */ }
+struct UnresolvedPackage<D: TargetDialect> { /* unproved target AST */ }
+struct VerifiedPackage<D: TargetDialect> { /* locally valid target AST */ }
+struct LinkedPackage<D: TargetDialect> { /* linked target AST */ }
+struct RenderReadyPackage<D: TargetDialect> { /* whole-package certificate */ }
 struct RenderedPackage { /* rendered source and metadata */ }
 struct OutputManifest { /* validated artifact tree */ }
 ```
@@ -70,20 +71,31 @@ returning.
 
 A target lowerer accepts only `CoreProgram` plus validated, typed target
 options. It produces `UnresolvedPackage<D>`. It owns every target representation
-choice but cannot render or assemble a manifest.
+choice but cannot verify, render, or assemble a manifest. The target-AST
+verifier consumes that value and alone constructs `VerifiedPackage<D>`.
 
 ## Resolution contract
 
-A target resolver accepts only `UnresolvedPackage<D>` and produces
-`ResolvedPackage<D>`. It owns target names, imports/includes, package
+A target resolver accepts only `VerifiedPackage<D>` and produces
+`LinkedPackage<D>`. It owns target names, imports/includes, package
 dependencies, helper closure, declaration placement, and collisions. It cannot
 change portable behavior.
 
+## Render-readiness contract
+
+A mandatory language-owned post-link checker consumes `LinkedPackage<D>` and
+alone constructs `RenderReadyPackage<D>`. It validates the final compilation
+units after helper composition, imports/includes, qualification, and file
+placement. The wrapper is opaque outside shared certification code, cannot be
+deserialized or safely mutated, and exposes only immutable observations.
+
 ## Rendering contract
 
-A target renderer accepts only `ResolvedPackage<D>`. It constructs a private
-typed `RenderView<D>` and applies that plugin's strict embedded Handlebars
-templates. It cannot inspect CoreIR or choose target semantics.
+A target renderer accepts only `RenderReadyPackage<D>`. It is a total
+structural formatter whose exhaustive matches own target keywords,
+punctuation, delimiters, precedence, escaping, and whitespace. It cannot fail
+for a grammar decision, inspect CoreIR, choose semantics, discover
+dependencies, parse source, or invoke an executable template.
 
 ## Manifest contract
 
@@ -135,7 +147,9 @@ target-ast <- language plugin
      |            |
      +-> linker <-+
            |
-       renderer -> handlebars adapter
+  post-link checker -> opaque render-ready package
+           |
+       total renderer
            |
        manifest -> cli/materializer
 ```
@@ -146,10 +160,13 @@ edges.
 
 ## Required proof
 
-- Compile-fail tests reject each wrong phase input.
+- Compile-fail tests reject each wrong phase input, especially unresolved,
+  verified, and merely linked packages passed to rendering.
 - Private-constructor tests prove later states cannot be forged.
 - A fault-injection plugin cannot bypass linking or rendering.
 - Failure injection at every phase emits no manifest and writes no file.
 - Identical input/options produce identical phase dumps and manifest bytes.
 - Dependency-boundary tests reject every forbidden crate edge.
 - An external language plugin completes the same adapter pipeline.
+- A native compiler/parser corpus proves every checker-accepted generated case
+  is accepted without formatter repair.

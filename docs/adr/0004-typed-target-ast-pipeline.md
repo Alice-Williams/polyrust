@@ -4,6 +4,7 @@
 - Milestone: M34A
 - Date: 2026-09-02
 - Supersedes: ADR-0003 for all target-generation architecture
+- Amended by: ADR-0005 for proof-carrying phase types and executable rendering
 
 ## Context
 
@@ -33,13 +34,13 @@ In particular:
   text is never a semantic discriminator;
 - imports/includes, qualification, helper closure, files, and package edges are
   derived from typed references by the resolver;
-- unresolved and resolved packages are different Rust types and only resolved
-  packages can become render views;
+- unresolved, verified, linked, and render-ready packages are different Rust
+  types and only an opaque render-ready package can reach source rendering;
 - executable `Raw`, `Verbatim`, `Snippet`, source-string, and equivalent
   escape nodes are forbidden in production generation;
-- each plugin renders its own language with strict, embedded, enum-keyed
-  Handlebars templates over private resolved views; templates express grammar
-  presentation, not portable features or runtime helper implementations;
+- as amended by ADR-0005, each plugin renders executable source with a total
+  structural Rust formatter over a private render-ready package; executable
+  Handlebars templates are forbidden and templates may serve metadata only;
 - JavaScript executable source is the deliberate exception to an independent
   renderer: it is compiler-derived from the typed TypeScript package;
 - portable PolyIR/CoreIR support flat interfaces, explicit conformance,
@@ -63,7 +64,8 @@ rendering, or manifest assembly.
   because tokens do not prove grammar category, callable signatures, ownership,
   or dependencies. A future convenience frontend may parse into the same AST.
 - Use feature-sized Handlebars templates: rejected because it moves opaque
-  semantic generation from Rust strings into template strings.
+  semantic generation from Rust strings into template strings. ADR-0005
+  extends this conclusion to every executable grammar template.
 - Expose portable inheritance: rejected because flat interfaces plus explicit
   composition cover the intended portable behavior with clearer ownership and
   smaller test surfaces.
@@ -74,7 +76,8 @@ All current backends remain valid M30 dependency-fragment implementations but
 are initially non-compliant with ADR-0004. They must migrate one at a time and
 delete their old executable-string paths. The work is deliberately substantial:
 each language needs grammar types, a symbol catalogue, structural runtimes,
-resolution, strict templates, and focused verification.
+resolution, a render-ready certificate, a total formatter, and focused
+verification.
 
 The existing semantic, native, differential, determinism, lint, sanitizer, and
 historical-port tests remain mandatory regression evidence. M34-03 stays frozen
@@ -86,7 +89,8 @@ unchecked frontend boundary.
 
 The M34A tasks require compile-fail boundaries, exhaustive feature-registration
 tests, AST and resolver fault injection, exact dependency/helper matrices,
-strict-template tests, source-policy scans, three-generation determinism,
+certificate compile-fail tests, structural-renderer policy scans,
+three-generation determinism,
 language-native format/lint/compile/test gates, external consumers, C/C++
 sanitizers, and replay of every completed real-world port.
 

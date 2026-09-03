@@ -31,7 +31,7 @@ The dialect owns:
 - `GoExpr` and `GoPrecedence`;
 - `GoStmt`, `GoBlock`, and `GoCase`;
 - `GoDeclaration` and `GoReceiver`;
-- `GoFile`, `GoPackage`, and `GoTemplateId`; and
+- `GoFile`, `GoPackage`, and closed grammar/format categories; and
 - closed enums for operators, literals, visibility, declaration kinds, call
   forms, and import forms.
 
@@ -121,13 +121,21 @@ before rendering.
 
 ## 10. Rendering
 
-`GoTemplateId` covers package clauses, imports, declarations, types, blocks,
-statements, expressions, literals, comments, and tests. Strict embedded
-Handlebars templates receive resolved Go render views only. Templates contain
-grammar skeletons, not runtime helpers or portable feature implementations.
+The Go post-link checker certifies complete Go source files as an opaque
+`RenderReadyPackage<GoDialect>`. It validates package/file agreement, import
+use, declaration and short-declaration scopes, addressability, interface method
+sets, composite literals, statement context, labels, and return/termination
+rules for the supported pinned Go version.
 
-`gofmt` is a pinned no-diff check/post-process and MUST NOT repair semantic or
-structural omissions.
+The total Go renderer structurally covers package clauses, imports,
+declarations, types, blocks, statements, expressions, literals, comments, and
+tests. It owns every Go token and exhaustively matches the closed Go AST. There
+is no executable Handlebars template, token/source escape hatch, or
+renderer-side runtime, feature, import, or ownership decision.
+
+`gofmt`, `go vet`, and the Go compiler are independent pinned or hermetic
+oracles. Unformatted output MUST already parse; tools MUST NOT create the
+render-ready certificate or repair structural omissions.
 
 ## 11. Validation
 
@@ -153,4 +161,5 @@ source.
 
 The Go plugin passes only after raw Go/runtime constants and manual import
 registration are deleted, public mutable slice aliases are eliminated, and all
-executable package files flow through verified Go AST and strict templates.
+executable package files flow through verified Go AST, the render-ready
+certificate, and the total structural renderer.

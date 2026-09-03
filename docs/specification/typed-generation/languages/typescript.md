@@ -42,7 +42,7 @@ The dialect owns distinct:
 - `TsClassMember` and `TsInterfaceMember`;
 - `TsImportExport`;
 - `TsFile`; and
-- `TsTemplateId`.
+- closed TypeScript grammar and formatting categories.
 
 Type-only syntax is represented structurally, not by paired source strings.
 Every node declares whether it survives JavaScript compilation when that
@@ -128,15 +128,22 @@ diagnostics. JavaScript output locations are reserved for compiler derivation.
 
 ## 10. Rendering
 
-`TsTemplateId` covers module files, imports/exports, interfaces, classes,
-types, functions, methods, properties, blocks, statements, expressions,
-patterns, literals, tests, and declaration shims.
+The TypeScript post-link checker certifies complete modules as an opaque
+`RenderReadyPackage<TypeScriptDialect>`. It validates module/import/export
+placement, value/type namespaces, declaration and binding scopes, interface and
+class member shape, generic uses, narrowing/pattern forms, assignment targets,
+statement context, and return coverage for the pinned TypeScript grammar.
 
-The renderer owns TypeScript precedence, identifier/literal escaping, type-only
-spelling, semicolon policy, and strict embedded Handlebars templates.
+The total TypeScript renderer structurally covers module files,
+imports/exports, interfaces, classes, types, functions, methods, properties,
+blocks, statements, expressions, patterns, literals, tests, and declaration
+shims. It owns precedence, identifier/literal escaping, type-only spelling,
+semicolon policy, and every fixed token through exhaustive AST matches. There
+is no executable Handlebars template or token/source escape hatch.
 
-Prettier is a pinned deterministic post-process/check. Templates remain valid
-without semantic repair by Prettier.
+The pinned TypeScript compiler and Prettier are independent acceptance/no-diff
+oracles. Unformatted output MUST already parse and type-check; Prettier cannot
+create the certificate or repair syntax.
 
 ## 11. Validation
 

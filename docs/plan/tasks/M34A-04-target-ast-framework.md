@@ -2,6 +2,8 @@
 
 - Status: complete
 - Depends on: M34A-03
+- Historical note: ADR-0005 replaces executable template IDs with closed
+  grammar/format enums and adds the render-ready proof state in M34A-08R.
 
 ## Goal
 

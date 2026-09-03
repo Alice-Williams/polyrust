@@ -11,8 +11,8 @@ resolver-derived imports.
 ## Definition of done
 
 - Python owns all type, expression, precedence, statement, pattern,
-  declaration, decorator, visibility, file/package, and template enums in its
-  specification.
+  declaration, decorator, visibility, file/package, and grammar/format enums
+  in its specification.
 - Every CoreIR feature has an exhaustive Python strategy; builtins and exact
   admitted `dataclasses`, `typing`, `math`, `struct`, and `types` callables
   are catalogued.
@@ -24,7 +24,11 @@ resolver-derived imports.
   pass with no mixins, inherited implementation, monkey patching, or promotion.
 - Module/from/relative/type-only imports, aliases, exports, helpers, files, and
   package initializers are resolver-derived.
-- Runtime declarations are Python AST; strict templates render resolved views.
+- The Python post-link checker alone constructs the opaque render-ready
+  package; runtime declarations are Python AST and a total structural renderer
+  accepts only that certificate.
+- Executable templates, raw/token/source escapes, and string/wildcard grammar
+  dispatch are absent; every checker-accepted corpus case parses and compiles.
 - Raw Python/body/runtime constants, manual imports/helpers, and the legacy
   Python pipeline are deleted.
 - The Python compliance row moves to **Pass** with exact evidence.
@@ -32,7 +36,8 @@ resolver-derived imports.
 ## Tests
 
 - `bazel test //crates/backend-python:all --nocache_test_results --test_output=errors`
-- Python AST/verifier/catalogue/import/helper/module/template matrices.
+- Python AST/verifier/catalogue/import/helper/module/certificate and
+  total-renderer matrices.
 - Python compileall, Ruff format/check, strict mypy with negative fixtures,
   pytest native/conformance tests, interface corpus, immutable aliasing/
   surrogate boundaries, and three-generation determinism.

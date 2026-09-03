@@ -11,7 +11,8 @@ structural helpers, while preserving strict Rust lint and safety guarantees.
 ## Definition of done
 
 - Rust owns all type/path, expression, statement, pattern, item, attribute,
-  visibility, generic, file/package, and template enums in its specification.
+  visibility, generic, file/package, and grammar/format enums in its
+  specification.
 - Every CoreIR feature has an exhaustive Rust strategy; all known `std`
   types/methods/macros are typed by namespace and exact signature.
 - Ownership/cloning, evaluation order, match exhaustiveness, paths,
@@ -21,7 +22,11 @@ structural helpers, while preserving strict Rust lint and safety guarantees.
   dispatch, and explicit delegation pass with no supertraits or promotion.
 - Resolver-derived `use` items, modules, helper closure, visibility, and files
   are exact under collision fixtures.
-- Runtime items are Rust AST and strict Rust Handlebars renders resolved views.
+- The Rust post-link checker alone constructs the opaque render-ready package;
+  runtime items are Rust AST and a total structural renderer accepts only that
+  certificate.
+- Executable templates, raw/token/source escapes, and string/wildcard grammar
+  dispatch are absent; every checker-accepted corpus case compiles with rustc.
 - `RustCode`, executable `LanguageFragment`/document construction, raw runtime
   source, manual use/helper metadata, and the legacy Rust pipeline are deleted.
 - Generated crates contain `#![forbid(unsafe_code)]` and no unsafe escape.
@@ -30,8 +35,8 @@ structural helpers, while preserving strict Rust lint and safety guarantees.
 ## Tests
 
 - `bazel test //crates/backend-rust:all --nocache_test_results --test_output=errors`
-- Rust AST/verifier/catalogue/use/helper/module/template and compile-fail
-  matrices.
+- Rust AST/verifier/catalogue/use/helper/module/certificate/total-renderer and
+  compile-fail matrices.
 - Generated Rustfmt check, Clippy all-targets with warnings denied, debug and
   release tests, external consumer, unsafe source scan, interface corpus, and
   three-generation determinism.

@@ -31,7 +31,8 @@ The dialect owns:
 - `CExpr` and `CPrecedence`;
 - `CStmt`, `CBlock`, `CCase`, and initialization forms;
 - `CDeclaration`, `CDefinition`, `CStorage`, and `CLinkage`;
-- `CFile`, `CPackage`, `CTemplateId`, and typed header/source placement; and
+- `CFile`, `CPackage`, typed header/source placement, and grammar categories;
+  and
 - closed enums for operators, casts, call forms, includes, literals, tags, and
   preprocessor forms admitted solely for guards/platform assertions.
 
@@ -127,13 +128,21 @@ deterministic symbol/file ordering. Public headers are self-contained.
 
 ## 10. Rendering
 
-`CTemplateId` covers files, guards, includes, linkage blocks, declarations,
-definitions, types/declarators, initializers, blocks, switches, statements,
-expressions, literals, comments, and tests. Strict embedded Handlebars receives
-resolved C render views only. It performs no ownership, include, monomorphizing,
-cleanup, or feature decisions.
+The C post-link checker certifies complete translation units as an opaque
+`RenderReadyPackage<CDialect>`. It validates C17 declaration/declarator shape,
+tag and ordinary identifier namespaces, linkage, complete types, labels and
+jumps, constant-expression positions, initialization, and ownership/cleanup
+placement after include and helper resolution.
 
-A pinned formatter is a no-diff check/post-process and not a semantic repair.
+The total C renderer structurally covers files, guards, includes, linkage,
+declarations, definitions, types/declarators, initializers, blocks, switches,
+statements, expressions, literals, comments, and tests. It owns every C token
+and exhaustively matches the closed C AST. There is no executable Handlebars
+template, token/source escape hatch, or renderer-side ownership, include,
+monomorphizing, cleanup, or feature decision.
+
+A pinned formatter/compiler is an independent no-diff/acceptance oracle and not
+a syntax or semantic repair.
 
 ## 11. Validation
 
@@ -164,4 +173,4 @@ types, includes, precedence, exhaustive returns, and absence of opaque source.
 The C plugin passes only after raw source/runtime constants, macro-based
 semantic shortcuts, and manual include registration are deleted and all
 executable translation units flow through verified C AST, automatic linking,
-and strict templates.
+and the render-ready certificate plus total structural renderer.

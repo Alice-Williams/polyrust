@@ -12,7 +12,7 @@ JavaScript is a derived output of the TypeScript plugin. It does not own:
 - an executable JavaScript AST;
 - a portable feature registry independent of TypeScript;
 - an executable runtime-helper catalogue; or
-- executable Handlebars templates.
+- an executable renderer or executable template.
 
 This prevents TypeScript and JavaScript behavior from drifting.
 
@@ -70,8 +70,9 @@ artifact with a hash/parity test. It is never independently edited.
 
 ## 7. Rendering and packaging
 
-Executable source uses no JavaScript Handlebars renderer. Typed metadata models
-may use strict Handlebars templates for `package.json` or documentation.
+Executable source uses no JavaScript renderer or template. It is produced only
+by the pinned compiler from a certified TypeScript package. Typed metadata
+models may use strict templates for `package.json` or documentation.
 
 The metadata renderer cannot alter, concatenate, or wrap executable JavaScript.
 

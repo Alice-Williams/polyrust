@@ -31,8 +31,9 @@ All section references are relative to `languages/`.
 - Every plugin owns an exhaustive capability strategy and known-symbol/helper
   catalogue.
 - Every plugin derives dependencies and file placement from typed references.
-- Every independent plugin owns strict Handlebars presentation; JavaScript
-  executable bytes are derived solely by the pinned TypeScript compiler.
+- Every independent plugin owns an opaque render-ready certificate and total
+  structural renderer; JavaScript executable bytes are derived solely by the
+  pinned TypeScript compiler.
 - All outputs prove flat interfaces, explicit composition, first-class
   polymorphic values, determinism, and native behavior.
 - Java and C++ alone may use the certified typed one-edge target adapter

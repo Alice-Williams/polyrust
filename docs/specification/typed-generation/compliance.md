@@ -5,21 +5,21 @@
 - Last updated: 2026-09-03
 - Supersedes for new work: `docs/language-ir-compliance.md`
 
-This ledger measures the stronger ADR-0004 contract. The M30 ledger remains
+This ledger measures the stronger ADR-0004/ADR-0005 contract. The M30 ledger remains
 historical evidence that the existing fragment paths carry dependency metadata;
 it is not evidence of typed executable syntax.
 
 ## Current audit
 
-| Surface | CoreIR input | Typed executable AST | Typed symbols and derived dependencies | Structural runtime | Resolved-only strict renderer | Result |
+| Surface | CoreIR input | Typed executable AST | Typed symbols and derived dependencies | Structural runtime | Render-ready certificate and total renderer | Result |
 | --- | --- | --- | --- | --- | --- | --- |
-| Shared codegen | `CoreProgram` is the only lowering input | Generic checked target AST | Catalogue/linker-derived bindings, imports, files, helpers, and packages | Typed helper DAG and structural items | Certified strict Handlebars over linked packages | **Pass** |
+| Shared codegen | `CoreProgram` is the only lowering input | Generic checked target AST | Catalogue/linker-derived bindings, imports, files, helpers, and packages | Typed helper DAG and structural items | Legacy resolved-only template adapter; ADR-0005 certificate API not implemented | **Partial** |
 | Rust | Missing | Missing: `RustCode`/raw documents | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | TypeScript | Missing | Missing: paired `EcmaCode` | Manually attached fragment metadata | Raw runtime source | Paired source path | **Fail** |
 | JavaScript | Missing | Independently paired source exists | Shares manual ECMA metadata | Checked-in/runtime paired text | Not solely compiler-derived | **Fail** |
 | Python | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | Go | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
-| Java | Exhaustive `CoreProgram` lowering under remediation | Closed AST with verifier gaps under remediation | Closed catalogues and derived imports; shape checks under remediation | Structural helpers; deep value invariants under remediation | Java-owned strict resolved views | **Fail** |
+| Java | Exhaustive `CoreProgram` lowering under remediation | Closed AST with verifier gaps under remediation | Closed catalogues and derived imports; shape checks under remediation | Structural helpers; deep value invariants under remediation | Legacy strict templates; ADR-0005 migration planned first | **Fail** |
 | C++20 | Missing | Missing: `CppCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 | C17 | Missing | Missing: `CCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 
@@ -47,8 +47,9 @@ it is not evidence of typed executable syntax.
   `crates/backend-c/src/runtime.c`.
 
 The locations for rows which still fail are migration inputs, not allowlisted
-final architecture. Shared codegen is the accepted implementation framework;
-Java remains the first migration candidate until its blind-review loop closes.
+final architecture. Shared codegen is the implementation foundation but is
+**Partial** under the ADR-0005 boundary; Java remains the first migration
+candidate.
 
 ## Java M34A-10 evidence
 

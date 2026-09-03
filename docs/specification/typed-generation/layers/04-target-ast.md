@@ -2,7 +2,7 @@
 
 - Status: normative
 - Input: verified `CoreProgram` plus a successful target preflight
-- Output: verified `UnresolvedPackage<D>`
+- Output: opaque `VerifiedPackage<D>`
 
 ## Purpose
 
@@ -156,7 +156,7 @@ It MUST NOT:
 - scan a second semantic representation to repair dependencies; or
 - approximate an unsupported feature.
 
-## Unresolved AST verifier
+## Unresolved AST verifier and certificate
 
 Before resolution, the verifier checks:
 
@@ -172,6 +172,12 @@ Before resolution, the verifier checks:
 - no forbidden opaque node exists; and
 - all nodes retain provenance.
 
+On success the verifier consumes `UnresolvedPackage<D>` and constructs
+`VerifiedPackage<D>`. The verified wrapper's fields and constructor are private,
+it has no deserialization implementation, and it exposes no mutable AST access.
+Returning `Result<(), _>` while allowing the original package to continue is
+not sufficient for the certified pipeline.
+
 ## Canonical dump
 
 Every dialect MUST provide a deterministic, non-source AST debug dump. The dump
@@ -185,5 +191,7 @@ It is evidence for lowering determinism and architecture review.
 - Forged-AST verifier failures for every invariant.
 - Exact CoreIR-to-AST golden coverage for every used feature.
 - No raw executable string accepted by any public or crate-visible builder.
+- External compile-fail proof that `VerifiedPackage<D>` cannot be forged or
+  mutated and `UnresolvedPackage<D>` cannot enter linking or rendering.
 - Source policy rejects opaque node variants and render calls from lowering.
 - Three repeated lowerings have identical AST dumps.

@@ -8,16 +8,17 @@
 ## Outcome
 
 Replace dependency-complete executable text fragments with the accepted
-ADR-0004 pipeline:
+ADR-0004 pipeline as amended by ADR-0005:
 
-`CheckedProgram -> CoreProgram -> UnresolvedPackage<D> -> ResolvedPackage<D>
--> RenderView<D> -> RenderedPackage -> OutputManifest`.
+`CheckedProgram -> CoreProgram -> UnresolvedPackage<D> -> VerifiedPackage<D>
+-> LinkedPackage<D> -> RenderReadyPackage<D> -> RenderedPackage ->
+OutputManifest`.
 
 Rust, TypeScript, compiler-derived JavaScript, Python, Go, Java, C++20, and C17
 each satisfy their complete language specification. Known target operations are
 strictly typed in Rust; dependencies and helpers are derived from typed
-references; runtimes are structural AST; and strict Handlebars is only the
-resolved presentation layer.
+references; runtimes are structural AST; and executable source is emitted only
+by a total structural renderer from an opaque language-certified package.
 
 Portable interfaces, explicit conformance, first-class polymorphic values, and
 composition work in every target. Portable inheritance remains absent. Java
@@ -37,19 +38,21 @@ Shared layers:
 8. [M34A-07 — structural runtime/files/packages](../tasks/M34A-07-runtime-files-packages.md)
 9. [M34A-08 — strict Handlebars rendering](../tasks/M34A-08-handlebars-rendering.md)
 10. [M34A-09 — manifest verification and evidence harness](../tasks/M34A-09-manifest-verification.md)
+11. [M34A-08R — intrinsic validity certificates and total rendering](../tasks/M34A-08R-intrinsic-validity-rendering.md)
 
 Language migrations:
 
-11. [M34A-10 — Java](../tasks/M34A-10-java.md) — in progress
+12. [M34A-10 — Java](../tasks/M34A-10-java.md) — in progress
     - [M34A-10R — blind-review remediation](../tasks/M34A-10R-java-review-remediation.md)
-12. [M34A-11 — C17](../tasks/M34A-11-c.md)
-13. [M34A-12 — Rust](../tasks/M34A-12-rust.md)
-14. [M34A-13 — TypeScript](../tasks/M34A-13-typescript.md)
-15. [M34A-14 — compiler-derived JavaScript](../tasks/M34A-14-javascript.md)
-16. [M34A-15 — Python](../tasks/M34A-15-python.md)
-17. [M34A-16 — Go](../tasks/M34A-16-go.md)
-18. [M34A-17 — C++20](../tasks/M34A-17-cpp.md)
-19. [M34A-18 — legacy deletion, historical replay, and release](../tasks/M34A-18-replay-release.md)
+    - [M34A-10V — intrinsic Java syntax validity](../tasks/M34A-10V-java-intrinsic-validity.md)
+13. [M34A-11 — C17](../tasks/M34A-11-c.md)
+14. [M34A-12 — Rust](../tasks/M34A-12-rust.md)
+15. [M34A-13 — TypeScript](../tasks/M34A-13-typescript.md)
+16. [M34A-14 — compiler-derived JavaScript](../tasks/M34A-14-javascript.md)
+17. [M34A-15 — Python](../tasks/M34A-15-python.md)
+18. [M34A-16 — Go](../tasks/M34A-16-go.md)
+19. [M34A-17 — C++20](../tasks/M34A-17-cpp.md)
+20. [M34A-18 — legacy deletion, historical replay, and release](../tasks/M34A-18-replay-release.md)
 
 Tasks are dependency ordered. A task is committed and pushed only after its
 listed tests pass in the Linux development container. Language tasks update
@@ -59,6 +62,8 @@ the ADR-0004 compliance ledger in the same checkpoint.
 
 - Every shared layer specification has its named compile-fail, fault-injection,
   unit, property, and deterministic evidence.
+- Every renderer accepts only an opaque render-ready certificate, is total over
+  its closed AST, and contains no executable template or source escape hatch.
 - The shared and all eight language rows in the typed-generation compliance
   ledger are **Pass**.
 - There is no production executable raw-source node, runtime source constant,

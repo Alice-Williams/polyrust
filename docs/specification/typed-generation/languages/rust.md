@@ -40,7 +40,7 @@ The dialect owns distinct enums/types for:
 - `RustAttribute` and `RustVisibility`;
 - `RustGenericArgument`;
 - `RustFile`; and
-- `RustTemplateId`.
+- closed Rust grammar and formatting categories.
 
 Expressions retain a `RustPrecedence` enum. Operators, attributes, visibility,
 reference kinds, mutability, and item kinds are enums rather than strings.
@@ -124,7 +124,7 @@ typed references. The minimum runtime contains only permanently required
 callable-result/error definitions; optional helpers are selected per use.
 
 No helper is stored in a Rust source string, `Document`, token stream, or
-feature-specific Handlebars template.
+feature-specific source template.
 
 ## 9. File and package policy
 
@@ -136,17 +136,24 @@ symbols are rejected before rendering.
 
 ## 10. Rendering
 
-`RustTemplateId` covers files, attributes, use declarations, structs, enums,
-traits, impls, functions, methods, generics, blocks, statements, patterns,
-expressions, literals, and documentation.
+The Rust post-link checker certifies complete modules as an opaque
+`RenderReadyPackage<RustDialect>`. It validates item/module placement,
+namespaces, visibility, attributes, generic and trait/impl shape, pattern and
+binding scopes, ownership-sensitive expression forms admitted by the dialect,
+control-flow context, and return/termination rules for the pinned edition.
 
-The Rust renderer owns Rust precedence, keyword/raw-identifier policy, literal
-escaping, doc-comment spelling, and strict embedded Handlebars templates.
-Special path keywords which cannot be raw identifiers receive the documented
-deterministic escape.
+The total Rust renderer structurally covers files, attributes, use
+declarations, structs, enums, traits, impls, functions, methods, generics,
+blocks, statements, patterns, expressions, literals, and documentation. It owns
+Rust precedence, keyword/raw-identifier policy, literal escaping, doc-comment
+spelling, and all fixed tokens through exhaustive AST matches. Special path
+keywords which cannot be raw identifiers receive the documented deterministic
+escape. There is no executable Handlebars template or token/source escape
+hatch.
 
-Rustfmt is a pinned verification/post-process step. Templates do not depend on
-Rustfmt to make invalid syntax valid.
+Rustfmt, Clippy, and rustc are independent pinned or hermetic oracles. The
+unformatted source MUST already parse and compile; Rustfmt cannot create the
+certificate or make invalid syntax valid.
 
 ## 11. Validation
 

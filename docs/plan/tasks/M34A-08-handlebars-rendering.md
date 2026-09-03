@@ -2,6 +2,8 @@
 
 - Status: complete
 - Depends on: M34A-07
+- Historical note: ADR-0005 supersedes this task for executable source;
+  M34A-08R replaces its certified renderer contract.
 
 ## Goal
 

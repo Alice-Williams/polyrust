@@ -31,7 +31,7 @@ Every generation can produce test-only canonical phase evidence:
 - support-decision report;
 - resolved symbol/import/helper/file report;
 - resolved target AST dump;
-- template usage report;
+- syntax-certificate and structural-renderer coverage report;
 - rendered file hashes; and
 - final manifest dump.
 
@@ -45,7 +45,7 @@ or unordered-map output.
 - Phase types cannot be crossed.
 - Grammar categories cannot be mixed.
 - Phantom-typed known operations reject wrong types.
-- Incomplete feature/template enum matches fail compilation.
+- Incomplete feature/grammar enum matches fail compilation.
 - Later-phase constructors are inaccessible.
 
 ### Verifier and fault injection
@@ -103,7 +103,8 @@ A backend moves to `Pass` only when:
 2. no legacy executable fragment/string path remains;
 3. imports/includes come only from typed symbol resolution;
 4. runtime helpers are structural AST;
-5. its Handlebars templates meet the rendering contract;
+5. its opaque render-ready certificate and total structural renderer meet the
+   rendering contract, with no executable template path;
 6. interface/composition and any target-only adapter inheritance pass;
 7. all historical ports pass native and differential evidence unchanged; and
 8. the hosted workflow is green on the pushed commit.

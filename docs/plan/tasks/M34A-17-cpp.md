@@ -12,7 +12,7 @@ header/source resolution, and composition-based type erasure.
 
 - C++ owns all type/declarator/qualifier, expression, statement,
   declaration/definition/member, special-member, heritage, file/package, and
-  template enums in its specification.
+  grammar/format enums in its specification.
 - Every CoreIR feature has an exhaustive C++ strategy; exact admitted `std`
   types/functions/methods/operators have typed ownership/lifetime/signature
   catalogue entries.
@@ -26,8 +26,12 @@ header/source resolution, and composition-based type erasure.
   rejects generated/multiple/virtual/reuse chains.
 - Includes, forward declarations, namespaces, declarations/definitions,
   helpers, and files are resolver-derived.
-- Runtime declarations/definitions are C++ AST and strict templates render
-  resolved views.
+- The C++20 post-link checker alone constructs the opaque render-ready package;
+  runtime declarations/definitions are C++ AST and a total structural renderer
+  accepts only that certificate.
+- Executable source templates, raw/token/source escapes, and string/wildcard
+  grammar dispatch are absent; every checker-accepted corpus case compiles as
+  C++20.
 - `CppCode`, raw runtime source/section parsing, manual includes/helpers,
   abstract-base portable contracts, and the legacy pipeline are deleted.
 - The C++20 compliance row moves to **Pass** with exact evidence.
@@ -35,7 +39,8 @@ header/source resolution, and composition-based type erasure.
 ## Tests
 
 - `bazel test //crates/backend-cpp:all --nocache_test_results --test_output=errors`
-- C++ AST/verifier/catalogue/include/helper/placement/overload/template matrices.
+- C++ AST/verifier/catalogue/include/helper/placement/overload/certificate and
+  total-renderer matrices.
 - Hermetic C++20 strict compile/native tests, separate public-header consumer,
   negative fixtures, interface ownership/heritage corpus, and three-generation
   determinism.

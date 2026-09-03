@@ -71,6 +71,8 @@ Partially accepted reviewability finding:
   rejection includes a normative and technical rationale.
 - A fresh Sol/xhigh blind reviewer reports no remaining core correctness or
   specification error.
+- M34A-10V replaces Java's executable template path before the next blind
+  review; that review includes the ADR-0005 certificate and renderer theorem.
 
 ## Tests
 

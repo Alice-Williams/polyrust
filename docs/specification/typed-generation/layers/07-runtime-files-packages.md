@@ -52,7 +52,7 @@ external dependencies must be absent.
 
 Checked-in executable runtime templates are prohibited. Runtime declarations
 are built from the same target AST used for generated declarations and rendered
-through the same generic grammar templates.
+through the same total structural grammar renderer.
 
 A future typed quasiquotation facility may construct target AST, but it must
 parse and resolve every reference and cannot produce an opaque node.

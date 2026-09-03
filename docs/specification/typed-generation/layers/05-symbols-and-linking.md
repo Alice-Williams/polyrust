@@ -1,8 +1,8 @@
 # Layer 5: symbols, catalogues, and linking
 
 - Status: normative
-- Input: verified `UnresolvedPackage<D>`
-- Output: verified `ResolvedPackage<D>`
+- Input: opaque `VerifiedPackage<D>`
+- Output: `LinkedPackage<D>` awaiting whole-package certification
 
 ## Purpose
 

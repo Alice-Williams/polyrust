@@ -2,7 +2,7 @@
 
 - Status: normative design baseline for M34A
 - Implementation status: not yet compliant
-- Accepted by: ADR-0004
+- Accepted by: ADR-0004 as amended by ADR-0005
 - Supersedes: the target-generation portions of ADR-0003 and
   `language-ir-architecture.md`
 
@@ -25,7 +25,7 @@ Shared layers:
 5. [Symbols, catalogues, and linking](layers/05-symbols-and-linking.md)
 6. [Interfaces, polymorphism, and composition](layers/06-interfaces-and-composition.md)
 7. [Runtime helpers, files, and packages](layers/07-runtime-files-packages.md)
-8. [Resolved render views and Handlebars](layers/08-rendering.md)
+8. [Intrinsic validity certificates and total rendering](layers/08-rendering.md)
 9. [Manifest assembly and verification](layers/09-manifest-verification.md)
 
 Language specifications:
@@ -52,8 +52,9 @@ Frontend
   -> CheckedProgram
   -> CoreProgram
   -> UnresolvedPackage<D>
-  -> ResolvedPackage<D>
-  -> RenderView<D>
+  -> VerifiedPackage<D>
+  -> LinkedPackage<D>
+  -> RenderReadyPackage<D>
   -> RenderedPackage
   -> OutputManifest
 ```
@@ -76,19 +77,22 @@ information by parsing or scanning an earlier phase's rendered text.
 | Imports, includes, qualification, collisions | language resolver |
 | Runtime dependency closure | shared linker plus language helper catalogue |
 | File layout and groups | language package policy |
-| Syntax spelling | language renderer and templates |
+| Syntax proof | target verifier and language post-link checker |
+| Syntax spelling | total language structural renderer |
 | Output safety and declared artifacts | shared manifest assembler |
 | Functional truth | evaluator, native tests, and pinned upstream oracle |
 
 ## Normative representation rule
 
-Executable target code MUST be structured target AST until it enters the
-renderer. There is no production `Raw`, `Verbatim`, `Snippet`, `Template`,
-`Code(String)`, or equivalent AST node.
+Executable target code MUST be structured target AST until a total renderer
+consumes an opaque `RenderReadyPackage<D>`. There is no production `Raw`,
+`Verbatim`, `Snippet`, `Template`, `Code(String)`, token-stream, or equivalent
+AST node, and there is no executable source template.
 
 Strings before rendering may represent validated identifiers, literal values,
 comments, documentation, paths, metadata, and diagnostic text. They MUST NOT
-represent executable target syntax.
+represent executable target syntax. Fixed keywords and punctuation live only
+inside exhaustive structural renderer functions.
 
 ## Extensibility rule
 

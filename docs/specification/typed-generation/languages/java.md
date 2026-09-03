@@ -33,7 +33,8 @@ The dialect owns:
 - `JavaExpr` and `JavaPrecedence`;
 - `JavaStmt`, `JavaBlock`, `JavaSwitchArm`, and patterns admitted by policy;
 - `JavaDeclaration`, `JavaModifier`, `JavaMember`, and `JavaHeritage`;
-- `JavaCompilationUnit`, `JavaPackage`, and `JavaTemplateId`; and
+- `JavaCompilationUnit`, `JavaPackage`, and closed grammar/format categories;
+  and
 - closed enums for operators, invocation kinds, visibility, declaration kinds,
   imports, annotations, and literals.
 
@@ -296,14 +297,30 @@ form.
 
 ## 10. Rendering
 
-`JavaTemplateId` covers compilation units, packages, imports, annotations,
-heritage, declarations, members, types, blocks, switches, statements,
-expressions, literals, comments, and tests. Strict embedded Handlebars receives
-resolved Java render views only. Templates MUST NOT contain imports, runtime
-implementations, feature selection, or semantic branching.
+The Java post-link checker is the sole constructor of opaque
+`RenderReadyPackage<JavaDialect>`. It validates complete Java 21 compilation
+units after runtime-fragment composition and import/name resolution. Its closed
+rules include lexical names and protected keywords; package/import/type order;
+public-type filename identity; modifiers, annotations, members, heritage and
+interface conformance; field and local definite assignment; reachability and
+statement context; checked exceptions; generic, cast, array, wildcard, callable
+and constructor legality; and precedence-bearing expression shape.
 
-The selected formatter, if used, is pinned and acts as a no-diff
-verification/post-process rather than a semantic repair.
+The total Java renderer directly and structurally covers compilation units,
+packages, imports, annotations, heritage, declarations, members, types, blocks,
+switches, statements, expressions, literals, comments, and tests. Exhaustive
+Rust matches own every Java keyword, punctuation mark, delimiter, separator,
+precedence parenthesis, indentation rule, and escape. It accepts only the
+render-ready certificate and has no syntax-validation error path.
+
+Java executable source uses no Handlebars template, serialized render view,
+token/source escape hatch, third-party AST generator, or string-dispatched
+grammar kind. The renderer MUST NOT select imports, runtime implementations,
+features, symbols, or semantics.
+
+Hermetic `javac --release 21 -Xlint:all -Werror` is the independent acceptance
+oracle. A formatter, if added, is pinned and acts only as a no-diff check after
+the unformatted output already compiles.
 
 ## 11. Validation
 
@@ -363,4 +380,4 @@ generated inventory. An empty placeholder `main` is not conformance evidence.
 The Java plugin passes only after raw `JavaCode`, `RUNTIME`, hard-coded import
 loops/strings, and manual dependency registration are deleted and every
 executable compilation unit flows through verified Java AST, automatic symbol
-resolution, and strict templates.
+resolution, render-ready certification, and total structural rendering.

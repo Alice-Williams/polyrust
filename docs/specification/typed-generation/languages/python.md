@@ -35,7 +35,7 @@ The dialect owns:
 - `PythonDeclaration`;
 - `PythonDecorator` and `PythonVisibility`;
 - `PythonFile`; and
-- `PythonTemplateId`.
+- closed Python grammar and formatting categories.
 
 Decorators, operators, import forms, parameter kinds, and declaration kinds
 are enums. No executable source string enters the AST.
@@ -121,13 +121,21 @@ re-export only symbols selected structurally by the package policy.
 
 ## 10. Rendering
 
-`PythonTemplateId` covers files, imports, decorators, classes, Protocols,
-functions, methods, annotations, blocks, statements, expressions, patterns,
-literals, and tests.
+The Python post-link checker certifies complete modules as an opaque
+`RenderReadyPackage<PythonDialect>`. It validates indentation-bearing suite
+shape, scope directives and bindings, decorator/Protocol placement, parameter
+ordering, assignment targets, loop/exception context, match patterns, returns,
+imports, and annotation forms for the pinned Python grammar.
 
-The renderer owns Python precedence, indentation, identifiers, literal
-escaping, annotation spelling, and strict Handlebars templates. Ruff formatting
-is a pinned post-process/no-diff verification, not a semantic repair.
+The total Python renderer structurally covers files, imports, decorators,
+classes, Protocols, functions, methods, annotations, blocks, statements,
+expressions, patterns, literals, and tests. It owns Python precedence,
+indentation, identifiers, literal escaping, and annotation spelling through
+exhaustive AST matches. There is no executable Handlebars template or
+token/source escape hatch.
+
+The pinned Python parser/compiler and Ruff are independent acceptance/no-diff
+oracles, not syntax repair or certificate constructors.
 
 ## 11. Validation
 
@@ -161,4 +169,4 @@ The verifier checks:
 
 The Python plugin passes only after `PythonCode`/raw source/runtime constants
 are deleted and all executable package files flow through typed Python AST and
-strict templates.
+the render-ready certificate and total structural renderer.
