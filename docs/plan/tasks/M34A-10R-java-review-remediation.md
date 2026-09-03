@@ -466,3 +466,36 @@ source parsing, and unrelated renderer conveniences do not block completion.
   passes `cargo test --workspace --all-features --locked`, including every
   doctest. Checkpoint commit/push, hosted CI, and a fresh exhaustive review
   remain pending.
+- Round 13 checkpoint `c1a17ee10faf0eceddc7f63f8430f33b22e711d9`
+  was committed, pushed to `origin/main`, and remotely verified. Hosted CI run
+  `33764587519` passed all eight jobs for that exact SHA, including cold/warm
+  release gates, both Ubuntu determinism jobs, and the Windows host/container
+  contract.
+- A different Sol/xhigh reviewer performed a fresh uncapped nine-category
+  audit of the immutable round 13 checkpoint. It confirmed the ten round 13
+  repairs but found five accepted core defect families: ordinary casts could
+  forge array ownership; unchecked parameterized casts could escape the
+  warning-free contract; marker-shaped strings/comments could confuse the
+  source-policy test-item scanner; registered `clone` methods could bypass
+  inherited-`Object` checks; and structural methods could be filtered out of a
+  generated interface's conformance proof.
+- Round 14 makes array ownership invariant under ordinary casts, restricts
+  explicit casts to non-redundant warning-free conversions with reifiable
+  targets, lexes `#[cfg(test)]` only outside Rust literals/comments, applies
+  inherited-`Object` checks to every method provenance, and requires every
+  generated-interface method to carry a registered interface identity. During
+  remediation, the Java compiler oracle exposed the related redundant-cast
+  warning; that case is now also rejected by the AST verifier and retained as
+  a compiler-negative fixture.
+- Permanent evidence includes forged AST regressions for all five review
+  findings, four new hermetic Java 21 compiler-negative sources, an executable
+  array-aliasing witness, and source-policy decoys in normal/raw strings, line
+  comments, and nested block comments. The initial focused verifier,
+  compiler-oracle, policy, Rustfmt, Clippy, and Buildifier gate passes 7 of 7
+  targets. The complete focused Java/codegen/policy/documentation/lint gate
+  passes 54 of 54 tests, the uncached tracked-repository replay passes 295 of
+  295 tests, and the independently composed release gate passes 233 of 233
+  tests. A fresh isolated Cargo target passes
+  `cargo test --workspace --all-features --locked`, including every doctest.
+  Checkpoint push, hosted CI, and another fresh exhaustive review remain
+  pending.

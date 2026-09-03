@@ -31,6 +31,10 @@ readonly expected_diagnostics=(
   "attempting to assign weaker access privileges; was public"
   "class JavaVerifierNestedName is already defined"
   "int cannot be dereferenced"
+  "unchecked cast"
+  "redundant cast to int"
+  "return type int is not compatible with Object"
+  "does not override abstract method hidden()"
 )
 if [[ "${#sources[@]}" -ne "${#expected_diagnostics[@]}" ]]; then
   echo "each invalid source must have one expected javac diagnostic" >&2

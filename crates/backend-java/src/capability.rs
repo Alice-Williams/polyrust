@@ -414,9 +414,7 @@ fn java_illegal_shape_diagnostics(program: &CoreProgram) -> Vec<Diagnostic> {
                 .iter()
                 .map(|parameter| erased_type(program, parameter.ty))
                 .collect::<Vec<_>>();
-            if JavaObjectMethod::from_erased_signature(name.as_str(), &parameters)
-                .is_some_and(JavaObjectMethod::conflicts_with_generated_interface_method)
-            {
+            if JavaObjectMethod::from_erased_signature(name.as_str(), &parameters).is_some() {
                 diagnostics.push(java_capability_diagnostic(
                     format!(
                         "Java interface method {}({}) conflicts with its inherited java.lang.Object method",
@@ -535,10 +533,6 @@ impl JavaObjectMethod {
             ("finalize", []) => Some(Self::Finalize),
             _ => None,
         }
-    }
-
-    fn conflicts_with_generated_interface_method(self) -> bool {
-        !matches!(self, Self::Clone)
     }
 }
 
@@ -1000,7 +994,6 @@ mod tests {
         assert!(
             JavaObjectMethod::from_erased_signature("equals", &["Object".to_owned()]).is_none()
         );
-        assert!(!JavaObjectMethod::Clone.conflicts_with_generated_interface_method());
     }
 
     #[test]
@@ -1034,6 +1027,41 @@ mod tests {
             diagnostics[0]
                 .message
                 .contains("inherited java.lang.Object method")
+        );
+        assert_eq!(diagnostics[0].target.as_deref(), Some("org.polyrust.java"));
+    }
+
+    #[test]
+    fn clone_interface_method_stops_at_preflight() {
+        let mut module = ModuleBuilder::new("java_object_clone");
+        let (interface, method) =
+            module.interface("Bad", Visibility::Public, vec![], |interface| {
+                interface.method("clone", vec![], vec![], Some(Type::i32()))
+            });
+        let (record, ()) = module.record("Value", Visibility::Public, vec![], |_| {});
+        module.implementation(
+            "ValueBad",
+            Visibility::Package,
+            vec![],
+            interface,
+            record,
+            |implementation| {
+                implementation.method("clone", method, vec![], |method| {
+                    method.returns(Type::i32());
+                    method.body(|body| {
+                        let value = body.literal(Value::i32(1));
+                        body.block([], Some(value))
+                    });
+                });
+            },
+        );
+        let checked = module.finish().unwrap();
+        let diagnostics = preflight_diagnostics(&checked);
+        assert_eq!(diagnostics.len(), 1);
+        assert!(
+            diagnostics[0]
+                .message
+                .contains("interface method clone() conflicts")
         );
         assert_eq!(diagnostics[0].target.as_deref(), Some("org.polyrust.java"));
     }

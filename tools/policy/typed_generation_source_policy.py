@@ -139,12 +139,47 @@ def _cfg_test_item_end(source: str, start: int) -> int:
     return len(source)
 
 
+def _next_cfg_test_attribute(source: str, start: int) -> int | None:
+    """Find an actual cfg(test) attribute outside Rust comments and literals."""
+    cursor = start
+    while cursor < len(source):
+        if source.startswith("//", cursor):
+            newline = source.find("\n", cursor + 2)
+            cursor = len(source) if newline < 0 else newline + 1
+            continue
+        if source.startswith("/*", cursor):
+            depth = 1
+            cursor += 2
+            while cursor < len(source) and depth:
+                if source.startswith("/*", cursor):
+                    depth += 1
+                    cursor += 2
+                elif source.startswith("*/", cursor):
+                    depth -= 1
+                    cursor += 2
+                else:
+                    cursor += 1
+            continue
+        quoted_end = (
+            _skip_rust_quoted(source, cursor)
+            if source[cursor] in "'\"rbc"
+            else None
+        )
+        if quoted_end is not None:
+            cursor = quoted_end
+            continue
+        if source.startswith(CFG_TEST_ATTRIBUTE, cursor):
+            return cursor
+        cursor += 1
+    return None
+
+
 def _without_cfg_test_items(source: str) -> str:
     output = list(source)
     cursor = 0
     while True:
-        start = source.find(CFG_TEST_ATTRIBUTE, cursor)
-        if start < 0:
+        start = _next_cfg_test_attribute(source, cursor)
+        if start is None:
             break
         end = _cfg_test_item_end(source, start + len(CFG_TEST_ATTRIBUTE))
         for index in range(start, end):
@@ -207,6 +242,17 @@ add_import(production_symbol);
     findings = offenders("after_test_item.rs", after_test_item)
     if len(findings) != 1 or "manual dependency attachment API" not in findings[0]:
         raise AssertionError("production violation after cfg(test) item was hidden")
+    for name, decoy in [
+        ("string", 'const MARKER: &str = "#[cfg(test)]";'),
+        ("raw_string", 'const MARKER: &str = r#"#[cfg(test)]"#;'),
+        ("line_comment", "// #[cfg(test)]"),
+        ("block_comment", "/* outer /* #[cfg(test)] */ marker */"),
+    ]:
+        findings = offenders(
+            f"cfg_decoy_{name}.rs", f"{decoy}\nadd_import(production_symbol);"
+        )
+        if len(findings) != 1 or "manual dependency attachment API" not in findings[0]:
+            raise AssertionError(f"cfg(test) text in {name} hid production code")
 
 
 def main() -> int:

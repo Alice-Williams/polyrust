@@ -212,12 +212,17 @@ sh_test(
         "$(location test/JavaVerifierObjectCollision.java)",
         "$(location test/JavaVerifierNestedName.java)",
         "$(location test/JavaVerifierPrimitiveReceiver.java)",
+        "$(location test/JavaVerifierUncheckedCast.java)",
+        "$(location test/JavaVerifierRedundantCast.java)",
+        "$(location test/JavaVerifierCloneReturn.java)",
+        "$(location test/JavaVerifierStructuralInterface.java)",
     ],
     data = [
         "test/JavaVerifierAnnotations.java",
         "test/JavaVerifierBlankFinalRead.java",
         "test/JavaVerifierBlankStaticFinal.java",
         "test/JavaVerifierBoxedCast.java",
+        "test/JavaVerifierCloneReturn.java",
         "test/JavaVerifierConstantLoops.java",
         "test/JavaVerifierFieldInitializer.java",
         "test/JavaVerifierGenericOverride.java",
@@ -229,8 +234,11 @@ sh_test(
         "test/JavaVerifierRecordAccess.java",
         "test/JavaVerifierRecordAccessor.java",
         "test/JavaVerifierRecordReserved.java",
+        "test/JavaVerifierRedundantCast.java",
         "test/JavaVerifierRuntimeComposition.java",
+        "test/JavaVerifierStructuralInterface.java",
         "test/JavaVerifierUnassignedLocal.java",
+        "test/JavaVerifierUncheckedCast.java",
         "test/JavaVerifierUnreachable.java",
         "test/JavaVerifierWeakOverride.java",
         "test/JavaVerifierWrongFilename.java",
@@ -247,6 +255,18 @@ java_test(
         "-Xlint:all",
     ],
     main_class = "org.polyrust.valid.JavaVerifierInfiniteMethod",
+    use_testrunner = False,
+    visibility = ["//visibility:public"],
+)
+
+java_test(
+    name = "java_verifier_array_cast_aliasing_test",
+    srcs = ["test/JavaVerifierArrayCastAliasing.java"],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
+    main_class = "org.polyrust.valid.JavaVerifierArrayCastAliasing",
     use_testrunner = False,
     visibility = ["//visibility:public"],
 )

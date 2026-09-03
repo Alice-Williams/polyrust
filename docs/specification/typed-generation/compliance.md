@@ -190,6 +190,23 @@ test evidence rather than a current **Pass** claim while M34A-10R is open.
   `cargo test --workspace --all-features --locked` run including every doctest.
   Java remains **Fail** pending an immutable pushed checkpoint, successful
   hosted CI for that SHA, and a clean fresh exhaustive review.
+- Round 13 checkpoint `c1a17ee10faf0eceddc7f63f8430f33b22e711d9`
+  was pushed and remotely verified; hosted CI run `33764587519` passed all
+  eight jobs for that exact SHA. A different uncapped nine-category Sol/xhigh
+  review confirmed the prior fixes but found five accepted blockers in array
+  ownership-changing casts, unchecked parameterized casts, source-policy
+  marker recognition, registered inherited-`Object` collisions, and generated
+  interface method completeness.
+- Round 14 remediates those five blockers and the related redundant-cast lint
+  case discovered by the compiler oracle. Permanent proof adds forged-AST
+  regressions, four exact hermetic Java 21 compiler-negative fixtures, a
+  positive array-aliasing witness, and Rust literal/comment policy decoys. Its
+  initial verifier/compiler/policy and Rustfmt/Clippy/Buildifier gate passes 7
+  of 7 targets. Its complete focused gate passes 54 of 54 tests, the uncached
+  tracked-repository replay passes 295 of 295 tests, the independently composed
+  release gate passes 233 of 233 tests, and a fresh isolated Cargo workspace
+  replay passes with every doctest. Java remains **Fail** pending an immutable
+  pushed checkpoint, successful hosted CI, and another clean exhaustive review.
 
 ## Pass rule
 

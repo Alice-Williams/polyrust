@@ -1248,7 +1248,11 @@ impl JavaExpr {
                 if target != &self.ty {
                     violations.push(type_error("cast target type mismatch"));
                 }
-                if !java_cast_is_legal(target, &value.ty, context) {
+                if target == &value.ty {
+                    violations.push(type_error(
+                        "Java cast is redundant and would fail javac -Xlint:cast -Werror",
+                    ));
+                } else if !java_cast_is_legal(target, &value.ty, context) {
                     violations.push(type_error(
                         "Java cast is not legal between the declared source and target types",
                     ));
@@ -1506,20 +1510,25 @@ fn java_cast_is_legal(
         (JavaType::Reference(JavaTypeName::Known(JavaKnownType::Object)), source) => {
             !matches!(source, JavaType::Primitive(JavaPrimitive::Void))
         }
-        (target, JavaType::Reference(JavaTypeName::Known(JavaKnownType::Object))) => !matches!(
-            target,
-            JavaType::Primitive(JavaPrimitive::Void)
-                | JavaType::Wildcard { .. }
-                | JavaType::TypeVariable(_)
-        ),
+        (target, JavaType::Reference(JavaTypeName::Known(JavaKnownType::Object))) => match target {
+            JavaType::Primitive(value) => *value != JavaPrimitive::Void,
+            JavaType::Boxed(_) | JavaType::Reference(_) => true,
+            JavaType::Generic { .. } => java_type_is_reifiable(target),
+            JavaType::Array { .. } | JavaType::Wildcard { .. } | JavaType::TypeVariable(_) => false,
+        },
         (
             JavaType::Array {
-                component: target, ..
+                component: target,
+                ownership: target_ownership,
             },
             JavaType::Array {
-                component: source, ..
+                component: source,
+                ownership: source_ownership,
             },
-        ) => target == source || java_reference_cast_is_legal(target, source, context),
+        ) => {
+            target_ownership == source_ownership
+                && (target == source || java_reference_cast_is_legal(target, source, context))
+        }
         (target, source) => java_reference_cast_is_legal(target, source, context),
     }
 }
@@ -1532,8 +1541,11 @@ fn java_reference_cast_is_legal(
     if !java_type_is_reference(target) || !java_type_is_reference(source) {
         return false;
     }
+    if target != source && !java_type_is_reifiable(target) {
+        return false;
+    }
     if matches!(source, JavaType::TypeVariable(_)) && !matches!(target, JavaType::TypeVariable(_)) {
-        return true;
+        return !matches!(target, JavaType::Array { .. });
     }
     if erased_java_type(target) == erased_java_type(source) {
         return target == source;
@@ -5439,9 +5451,6 @@ fn verify_record_accessor(
 }
 
 fn verify_inherited_object_method(method: &JavaMethod) -> Vec<AstViolation> {
-    if method.declared != JavaMethodDeclaration::Structural {
-        return vec![];
-    }
     let name = method.name.as_str();
     let parameters = method
         .parameters
@@ -5521,13 +5530,15 @@ fn verify_declaration_kind_grammar(declaration: &JavaTypeDeclaration) -> Vec<Ast
                 if !matches!(
                     method.declared,
                     JavaMethodDeclaration::Structural | JavaMethodDeclaration::Interface(_)
-                ) || method.body.is_some()
+                ) || (declaration.declared.is_some()
+                    && !matches!(method.declared, JavaMethodDeclaration::Interface(_)))
+                    || method.body.is_some()
                     || !method.modifiers.contains(&JavaModifier::Abstract)
                     || method.modifiers.contains(&JavaModifier::Static)
                 {
                     violations.push(AstViolation::new(
                         DiagnosticCode::InvalidStructure,
-                        "portable Java interface members must be abstract instance method declarations",
+                        "generated Java interface members must use registered interface method declarations; all Java interface members must be abstract instance declarations",
                     ));
                 }
             }
@@ -5826,19 +5837,18 @@ fn find_declared_interface_methods(
             JavaDeclarationKind::Interface | JavaDeclarationKind::SealedInterface
         )
     {
-        return Some(
-            declaration
-                .members
-                .iter()
-                .filter_map(|member| match member {
-                    JavaMember::Method(JavaMethod {
-                        declared: JavaMethodDeclaration::Interface(method),
-                        ..
-                    }) => Some(*method),
-                    _ => None,
-                })
-                .collect(),
-        );
+        let mut methods = Vec::new();
+        for member in &declaration.members {
+            match member {
+                JavaMember::Method(JavaMethod {
+                    declared: JavaMethodDeclaration::Interface(method),
+                    ..
+                }) => methods.push(*method),
+                JavaMember::Method(_) => return None,
+                _ => {}
+            }
+        }
+        return Some(methods);
     }
     declaration.members.iter().find_map(|member| match member {
         JavaMember::NestedType(nested) => find_declared_interface_methods(nested, interface),
@@ -7074,7 +7084,7 @@ mod tests {
             ownership: JavaArrayOwnership::DefensiveCopyBoundary,
         };
         let fresh = JavaExpr {
-            ty: internal,
+            ty: internal.clone(),
             precedence: JavaPrecedence::Primary,
             kind: JavaExprKind::NewArray {
                 component: byte,
@@ -7127,13 +7137,47 @@ mod tests {
                     fixture_declaration(vec![structural_method(
                         "invalidCopy",
                         boundary.clone(),
-                        vec![parameter(boundary, "value")],
+                        vec![parameter(boundary.clone(), "value")],
                         JavaBlock::new(vec![JavaStmt::Return(Some(invalid))]),
                     )]),
                 )],
             )
             .is_err()
         );
+
+        let forged_cast = JavaExpr {
+            ty: internal.clone(),
+            precedence: JavaPrecedence::Unary,
+            kind: JavaExprKind::Cast {
+                target: internal.clone(),
+                value: Box::new(JavaExpr::local(
+                    boundary.clone(),
+                    JavaIdentifier::from_portable("value"),
+                )),
+            },
+        };
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(
+                vec![],
+                fixture_declaration(vec![structural_method(
+                    "forgedOwnershipCast",
+                    JavaType::primitive(JavaPrimitive::Void),
+                    vec![parameter(boundary, "value")],
+                    JavaBlock::new(vec![JavaStmt::Local {
+                        finality: JavaLocalFinality::Final,
+                        ty: internal,
+                        name: JavaIdentifier::from_portable("internal"),
+                        value: Some(forged_cast),
+                    }]),
+                )]),
+            )],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::TypeMismatch
+                && value.message.contains("cast is not legal")
+        }));
     }
 
     #[test]
@@ -9010,6 +9054,114 @@ mod tests {
     }
 
     #[test]
+    fn generated_interfaces_reject_unregistered_structural_methods() {
+        let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+        let interface = builder.generated_type(portable_codegen::GeneratedType {
+            name: "StructuralEscape".to_owned(),
+            kind: JavaDeclarationKind::Interface,
+            visibility: JavaVisibility::Package,
+            origin: portable_codegen::GeneratedOrigin::Synthesized(
+                portable_codegen::SynthesisReason::InterfaceAdapter,
+            ),
+            source: verifier_source("structural-interface"),
+        });
+        let declaration = JavaTypeDeclaration {
+            declared: Some(interface),
+            kind: JavaDeclarationKind::Interface,
+            visibility: JavaVisibility::Package,
+            modifiers: vec![],
+            name: JavaIdentifier::from_portable("StructuralEscape"),
+            type_parameters: vec![],
+            record_components: vec![],
+            heritage: JavaHeritage::None,
+            permits: vec![],
+            members: vec![JavaMember::Method(JavaMethod {
+                declared: JavaMethodDeclaration::Structural,
+                annotations: vec![],
+                modifiers: vec![JavaModifier::Public, JavaModifier::Abstract],
+                type_parameters: vec![],
+                return_type: JavaType::primitive(JavaPrimitive::Int),
+                name: JavaIdentifier::from_portable("hidden"),
+                parameters: vec![],
+                body: None,
+            })],
+        };
+        let diagnostics = verify_fixture(
+            builder,
+            vec![(vec![GeneratedSymbolId::Type(interface)], declaration)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidStructure
+                && value.message.contains("registered interface method")
+        }));
+    }
+
+    #[test]
+    fn registered_clone_methods_cannot_bypass_object_collision_checks() {
+        let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+        let interface = builder.generated_type(portable_codegen::GeneratedType {
+            name: "CloneEscape".to_owned(),
+            kind: JavaDeclarationKind::Interface,
+            visibility: JavaVisibility::Package,
+            origin: portable_codegen::GeneratedOrigin::Synthesized(
+                portable_codegen::SynthesisReason::InterfaceAdapter,
+            ),
+            source: verifier_source("clone-interface"),
+        });
+        let method = builder.interface_method(portable_codegen::GeneratedInterfaceMethod {
+            owner: interface,
+            name: "clone".to_owned(),
+            signature: portable_codegen::TargetCallableSignature {
+                invocation: JavaInvocationKind::Instance,
+                receiver: Some(TargetTypeRef::Generated(interface)),
+                parameters: vec![],
+                return_type: TargetTypeRef::Primitive(JavaPrimitive::Int),
+            },
+            origin: portable_codegen::GeneratedOrigin::Synthesized(
+                portable_codegen::SynthesisReason::InterfaceAdapter,
+            ),
+            source: verifier_source("clone-method"),
+        });
+        let declaration = JavaTypeDeclaration {
+            declared: Some(interface),
+            kind: JavaDeclarationKind::Interface,
+            visibility: JavaVisibility::Package,
+            modifiers: vec![],
+            name: JavaIdentifier::from_portable("CloneEscape"),
+            type_parameters: vec![],
+            record_components: vec![],
+            heritage: JavaHeritage::None,
+            permits: vec![],
+            members: vec![JavaMember::Method(JavaMethod {
+                declared: JavaMethodDeclaration::Interface(method),
+                annotations: vec![],
+                modifiers: vec![JavaModifier::Public, JavaModifier::Abstract],
+                type_parameters: vec![],
+                return_type: JavaType::primitive(JavaPrimitive::Int),
+                name: JavaIdentifier::from_portable("clone"),
+                parameters: vec![],
+                body: None,
+            })],
+        };
+        let diagnostics = verify_fixture(
+            builder,
+            vec![(
+                vec![
+                    GeneratedSymbolId::Type(interface),
+                    GeneratedSymbolId::InterfaceMethod(method),
+                ],
+                declaration,
+            )],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidStructure
+                && value.message.contains("inherited Object method")
+        }));
+    }
+
+    #[test]
     fn contextual_types_require_exact_known_arity_and_declared_variables() {
         let invalid_arity = fixture_declaration(vec![JavaMember::Field(JavaField {
             declared: None,
@@ -9116,7 +9268,7 @@ mod tests {
                     object.clone(),
                     JavaIdentifier::from_portable("value"),
                 )),
-                target: non_reifiable,
+                target: non_reifiable.clone(),
                 binding: None,
             },
         };
@@ -9176,6 +9328,64 @@ mod tests {
                 && value
                     .message
                     .contains("instanceof target must be reifiable")
+        }));
+
+        let unchecked_cast = JavaExpr {
+            ty: non_reifiable.clone(),
+            precedence: JavaPrecedence::Unary,
+            kind: JavaExprKind::Cast {
+                target: non_reifiable.clone(),
+                value: Box::new(JavaExpr::local(
+                    object.clone(),
+                    JavaIdentifier::from_portable("value"),
+                )),
+            },
+        };
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(
+                vec![],
+                fixture_declaration(vec![structural_method(
+                    "uncheckedCast",
+                    non_reifiable,
+                    vec![parameter(object.clone(), "value")],
+                    JavaBlock::new(vec![JavaStmt::Return(Some(unchecked_cast))]),
+                )]),
+            )],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::TypeMismatch
+                && value.message.contains("cast is not legal")
+        }));
+
+        let redundant_cast = JavaExpr {
+            ty: int.clone(),
+            precedence: JavaPrecedence::Unary,
+            kind: JavaExprKind::Cast {
+                target: int.clone(),
+                value: Box::new(JavaExpr::local(
+                    int.clone(),
+                    JavaIdentifier::from_portable("value"),
+                )),
+            },
+        };
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(
+                vec![],
+                fixture_declaration(vec![structural_method(
+                    "redundantCast",
+                    int.clone(),
+                    vec![parameter(int, "value")],
+                    JavaBlock::new(vec![JavaStmt::Return(Some(redundant_cast))]),
+                )]),
+            )],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::TypeMismatch
+                && value.message.contains("cast is redundant")
         }));
 
         let list_any = JavaType::generic(

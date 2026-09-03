@@ -64,6 +64,10 @@ Boundary verification is recursive through every generic, wildcard, array,
 option, result, and list payload. An `InternalMutable` array at any depth is
 therefore rejected in field, parameter, or result position; a shallow
 container copy is not proof that nested arrays cannot alias caller state.
+An ordinary Java cast preserves `JavaArrayOwnership` exactly at every array
+layer. It cannot convert a boundary array to `InternalMutable`, recover an
+owned array from `Object` or a type variable, or substitute for
+`FreshCopyToBoundary`.
 
 ## 4. Type mapping
 
@@ -89,6 +93,9 @@ rendering. Registered callable signatures retain the complete constructed
 ownership marker, and type variable; a coarse "generic" category is not a
 legal signature identity. Arrays and mutable collection references MUST NOT
 escape portable value boundaries.
+An explicit cast must be non-redundant and warning-free under
+`javac -Xlint:all -Werror`. A parameterized cast whose target is not reifiable
+is rejected rather than emitted as an unchecked conversion.
 Wildcard bounds are reference types. Known member signatures distinguish
 receiver, parameter, result, and nested type-argument positions: invocation
 boxing is legal only where Java permits it, while the receiver and emitted
@@ -174,7 +181,11 @@ option/result branch.
   it must not delegate to UTF-16 code-unit boundary behavior.
 - Structural methods which collide with inherited `Object` signatures obey
   exact public instance override rules; final/reserved inherited methods fail
-  closed. A nested type cannot reuse the name of any enclosing type.
+  closed. These checks apply to every method provenance, including registered
+  interface, implementation, and callable methods. Portable `clone` is
+  conservatively rejected because the generic AST cannot express a certified
+  Java `Object.clone` implementation. A nested type cannot reuse the name of
+  any enclosing type.
 
 ## 6. Interfaces, composition, and target heritage
 
@@ -193,6 +204,11 @@ whose name, complete generic parameter types, and result type match the exact
 registered interface declaration. The implementation-origin enum alone is not
 proof of an override. Interface conformance and `@Override` validation use the
 same exact predicate.
+
+A generated interface's method set consists only of registered
+`JavaMethodDeclaration::Interface` identities. Structural members are admitted
+only in non-generated typed shells; conformance verification must reject, not
+filter out, any unregistered method in a generated interface.
 
 Composition uses final named fields and explicit delegation. Default methods,
 interface-extension chains, abstract reusable base classes, and inherited state
@@ -308,7 +324,9 @@ claim that finite fuzzing proves the whole AST; category-specific negative
 verifier tests and paired `javac` counterexamples remain mandatory.
 The opaque-source policy scans all production Rust items even when a test-only
 item appears earlier in the file; only the balanced `#[cfg(test)]` item itself
-is excluded.
+is excluded. The attribute marker is recognized lexically outside Rust string,
+raw-string, character, line-comment, and nested block-comment contents, so a
+marker-shaped decoy cannot hide later production source.
 
 ## 12. Success evidence
 
@@ -328,6 +346,9 @@ is excluded.
 - Hermetic positive and negative reachability fixtures for constant loops,
   dependency-ordered generated constants, and once-only left-to-right
   evaluation of allocations, receivers, operands, and arguments.
+- Paired verifier/compiler counterexamples for unchecked and redundant casts,
+  array-ownership forgery, inherited-`Object` collisions, and unregistered
+  generated-interface methods, plus an executable array-aliasing witness.
 - Three-generation determinism and every historical/canonical conformance
   vector.
 
