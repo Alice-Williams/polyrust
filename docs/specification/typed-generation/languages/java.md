@@ -80,8 +80,11 @@ invariant, not a Java runtime type.
 | Interface | flat Java interface implemented by immutable values |
 
 Generic boxing decisions are represented in `JavaType`, not inferred while
-rendering. Arrays and mutable collection references MUST NOT escape portable
-value boundaries.
+rendering. Registered callable signatures retain the complete constructed
+`JavaType`, including every generic argument, wildcard bound, array component,
+ownership marker, and type variable; a coarse "generic" category is not a
+legal signature identity. Arrays and mutable collection references MUST NOT
+escape portable value boundaries.
 
 Public callable parameters and generated record components are normalized by
 a `CoreTypeId`-directed lowering plan. Lists are rebuilt element-by-element and
@@ -169,6 +172,12 @@ use native Java interface dispatch, while generated APIs avoid `null`, reject
 external implementations at Java compilation time, and do not expose object
 identity as portable behavior.
 
+Every implementing method is a public, concrete, non-static instance method
+whose name, complete generic parameter types, and result type match the exact
+registered interface declaration. The implementation-origin enum alone is not
+proof of an override. Interface conformance and `@Override` validation use the
+same exact predicate.
+
 Composition uses final named fields and explicit delegation. Default methods,
 interface-extension chains, abstract reusable base classes, and inherited state
 are forbidden for portable implementation.
@@ -226,6 +235,9 @@ the exact `Runtime.java` path, public final `Runtime` class, and its private
 empty constructor. Runtime-member items cannot originate in a lowerer's source
 file; they are admitted only from the linker-selected registered helper
 closure, whose exact resolved item sequence is rederived during verification.
+This identity is bidirectional: use of the canonical path, runtime role,
+runtime placement, or a generated-package top-level type named `Runtime`
+requires every other canonical identity component and the exact shell.
 
 ## 9. File and package policy
 
@@ -266,6 +278,9 @@ definite return, and absence of opaque source. Resolved whole-file verification
 rechecks every split or helper-injected declaration after linking and before a
 render view can be built. It also verifies annotation legality and static-final
 initialization rather than relying on `javac` to discover forged AST shapes.
+An independently seeded declaration-mutation corpus enforces the executable
+property that every verifier-accepted AST links, renders, and compiles under
+hermetic Java 21 with `-Xlint:all -Werror`; rejected mutations never render.
 
 ## 12. Success evidence
 
@@ -275,6 +290,9 @@ initialization rather than relying on `javac` to discover forged AST shapes.
   dispatch, delegation, and rejected heritage-chain fixtures.
 - Hermetic `javac --release 21` with all selected lint warnings treated as
   errors, plus native tests.
+- A deterministic, reproducible Java AST mutation/compiler-oracle corpus which
+  sends every verifier-accepted case through the real linker and renderer and
+  then compiles the complete accepted batch with the hermetic JDK.
 - Separately compiled public-consumer and deliberate negative type fixtures.
 - Mutation/aliasing, `null`, Unicode, overflow, and F64 raw-bit boundaries.
 - Hermetic positive and negative reachability fixtures for constant loops,

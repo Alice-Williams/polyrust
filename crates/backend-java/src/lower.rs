@@ -187,7 +187,7 @@ impl<'a> Lowering<'a> {
                     let java_type = self.ty(value.ty)?;
                     let symbol = self.builder.value(GeneratedValue {
                         name: value.header.name.clone(),
-                        ty: JavaDialect.coarse_type(&java_type),
+                        ty: JavaDialect.registered_type(&java_type),
                         origin: GeneratedOrigin::CoreDeclaration(*declaration),
                         source: value.header.source.clone(),
                     });
@@ -200,7 +200,8 @@ impl<'a> Lowering<'a> {
                         .parameters
                         .iter()
                         .map(|parameter| {
-                            self.ty(parameter.ty).map(|ty| JavaDialect.coarse_type(&ty))
+                            self.ty(parameter.ty)
+                                .map(|ty| JavaDialect.registered_type(&ty))
                         })
                         .collect::<Result<Vec<_>, _>>()?;
                     let result = self.poly_result_type(value.return_type)?;
@@ -210,7 +211,7 @@ impl<'a> Lowering<'a> {
                             invocation: JavaInvocationKind::Static,
                             receiver: None,
                             parameters,
-                            return_type: JavaDialect.coarse_type(&result),
+                            return_type: JavaDialect.registered_type(&result),
                         },
                         visibility: java_visibility(value.header.visibility),
                         origin: GeneratedOrigin::CoreDeclaration(*declaration),
@@ -231,7 +232,8 @@ impl<'a> Lowering<'a> {
                             .parameters
                             .iter()
                             .map(|parameter| {
-                                self.ty(parameter.ty).map(|ty| JavaDialect.coarse_type(&ty))
+                                self.ty(parameter.ty)
+                                    .map(|ty| JavaDialect.registered_type(&ty))
                             })
                             .collect::<Result<Vec<_>, _>>()?;
                         let receiver = JavaType::Reference(JavaTypeName::Generated(owner));
@@ -241,9 +243,9 @@ impl<'a> Lowering<'a> {
                             name: method.header.name.clone(),
                             signature: TargetCallableSignature {
                                 invocation: JavaInvocationKind::Instance,
-                                receiver: Some(JavaDialect.coarse_type(&receiver)),
+                                receiver: Some(JavaDialect.registered_type(&receiver)),
                                 parameters,
-                                return_type: JavaDialect.coarse_type(&result),
+                                return_type: JavaDialect.registered_type(&result),
                             },
                             origin: GeneratedOrigin::CoreDeclaration(*declaration),
                             source: method.header.source.clone(),

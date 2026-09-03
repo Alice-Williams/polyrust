@@ -22,13 +22,8 @@ pub enum JavaRuntimeType {
     Structural,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum JavaConstructedType {
-    Array,
-    Generic,
-    Wildcard,
-    TypeVariable,
-}
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct JavaConstructedType(pub JavaType);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum JavaInvocationKind {
@@ -1589,6 +1584,7 @@ impl TypedAstDialect for JavaDialect {
             file.path().as_str(),
             file.module(),
             file.placement(),
+            file.items().iter().any(declares_reserved_runtime_type),
         ));
         if file
             .items()
@@ -1669,7 +1665,7 @@ impl TypedAstDialect for JavaDialect {
 }
 
 impl JavaDialect {
-    pub fn coarse_type(&self, ty: &JavaType) -> TargetTypeRef<Self> {
+    pub fn registered_type(&self, ty: &JavaType) -> TargetTypeRef<Self> {
         match ty {
             JavaType::Primitive(value) => TargetTypeRef::Primitive(*value),
             JavaType::Boxed(value) => TargetTypeRef::Known(match value {
@@ -1683,11 +1679,11 @@ impl JavaDialect {
             }),
             JavaType::Reference(JavaTypeName::Known(value)) => TargetTypeRef::Known(*value),
             JavaType::Reference(JavaTypeName::Generated(value)) => TargetTypeRef::Generated(*value),
-            JavaType::Array { .. } => TargetTypeRef::Constructed(JavaConstructedType::Array),
-            JavaType::Generic { .. } => TargetTypeRef::Constructed(JavaConstructedType::Generic),
-            JavaType::Wildcard { .. } => TargetTypeRef::Constructed(JavaConstructedType::Wildcard),
-            JavaType::TypeVariable(_) => {
-                TargetTypeRef::Constructed(JavaConstructedType::TypeVariable)
+            JavaType::Array { .. }
+            | JavaType::Generic { .. }
+            | JavaType::Wildcard { .. }
+            | JavaType::TypeVariable(_) => {
+                TargetTypeRef::Constructed(JavaConstructedType(ty.clone()))
             }
         }
     }
@@ -1702,13 +1698,16 @@ impl JavaDialect {
             } else {
                 JavaInvocationKind::Static
             },
-            receiver: value.receiver.as_ref().map(|value| self.coarse_type(value)),
+            receiver: value
+                .receiver
+                .as_ref()
+                .map(|value| self.registered_type(value)),
             parameters: value
                 .parameters
                 .iter()
-                .map(|value| self.coarse_type(value))
+                .map(|value| self.registered_type(value))
                 .collect(),
-            return_type: self.coarse_type(&value.result),
+            return_type: self.registered_type(&value.result),
         }
     }
 }
@@ -1944,6 +1943,9 @@ impl LinkerDialect for JavaDialect {
             file.path().as_str(),
             file.module(),
             file.placement(),
+            file.items()
+                .iter()
+                .any(|item| declares_reserved_runtime_type(&item.item)),
         );
         violations.extend(verify_composed_java_file(
             file.placement(),
@@ -1959,27 +1961,32 @@ fn verify_java_file_identity(
     path: &str,
     module: &JavaPackage,
     placement: &JavaFilePlacement,
+    declares_runtime_type: bool,
 ) -> Vec<AstViolation> {
     const RUNTIME_PATH: &str = "src/main/java/org/polyrust/generated/Runtime.java";
-    let is_runtime = *placement == JavaFilePlacement::Runtime;
+    let canonical = role == portable_codegen::SourceRole::Runtime
+        && module == &JavaPackage::Generated
+        && path == RUNTIME_PATH
+        && *placement == JavaFilePlacement::Runtime;
+    let uses_reserved_identity = role == portable_codegen::SourceRole::Runtime
+        || path == RUNTIME_PATH
+        || *placement == JavaFilePlacement::Runtime
+        || (module == &JavaPackage::Generated && declares_runtime_type);
     let mut violations = Vec::new();
-    if is_runtime
-        && (role != portable_codegen::SourceRole::Runtime
-            || module != &JavaPackage::Generated
-            || path != RUNTIME_PATH)
-    {
+    if uses_reserved_identity && !canonical {
         violations.push(AstViolation::new(
             DiagnosticCode::InvalidStructure,
-            "Java runtime placement requires the generated Runtime.java source role and path",
-        ));
-    }
-    if !is_runtime && role == portable_codegen::SourceRole::Runtime {
-        violations.push(AstViolation::new(
-            DiagnosticCode::InvalidStructure,
-            "Java runtime source role requires runtime placement",
+            "Java Runtime identity requires the exact runtime role, placement, generated package, and canonical path",
         ));
     }
     violations
+}
+
+fn declares_reserved_runtime_type(item: &JavaFileItem) -> bool {
+    matches!(
+        item,
+        JavaFileItem::Type { declaration, .. } if declaration.name.as_str() == "Runtime"
+    )
 }
 
 fn verify_composed_java_file(
@@ -2206,7 +2213,7 @@ fn known_field_spec(value: JavaKnownField) -> KnownFieldSpec<JavaDialect> {
         } else {
             SymbolOrigin::StandardLibrary(JavaStandardLibrary::Jdk21)
         },
-        ty: TypePattern::Exact(JavaDialect.coarse_type(&value.ty())),
+        ty: TypePattern::Exact(JavaDialect.registered_type(&value.ty())),
         policy: DependencyPolicy::Member {
             owner: JavaQualifiedName::Type(value.owner()),
             member: value.member(),
@@ -2223,9 +2230,9 @@ fn known_constructor_spec(value: JavaKnownConstructor) -> KnownConstructorSpec<J
         receiver: None,
         parameters: parameters
             .iter()
-            .map(|value| JavaDialect.coarse_type(value))
+            .map(|value| JavaDialect.registered_type(value))
             .collect(),
-        return_type: JavaDialect.coarse_type(&owner),
+        return_type: JavaDialect.registered_type(&owner),
     };
     let owner_type = value.owner();
     KnownConstructorSpec {
@@ -2664,5 +2671,31 @@ mod tests {
                     .message
                     .contains("must be declared in `Wrong.java`")
         }));
+
+        let mut forged_runtime = declaration(JavaHeritage::None, vec![]);
+        forged_runtime.visibility = JavaVisibility::Public;
+        forged_runtime.name = JavaIdentifier::from_portable("Runtime");
+        let diagnostics = verify_file_at_path(
+            "src/main/java/org/polyrust/generated/Runtime.java",
+            forged_runtime,
+            portable_codegen::SourceRole::PublicApi,
+            JavaFilePlacement::Main,
+            portable_codegen::FileGroupRole::PublicApi,
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidStructure
+                && diagnostic.message.contains("exact runtime role")
+        }));
+        assert!(
+            verify_java_file_identity(
+                portable_codegen::SourceRole::Runtime,
+                "src/main/java/org/polyrust/generated/Runtime.java",
+                &JavaPackage::Generated,
+                &JavaFilePlacement::Runtime,
+                true,
+            )
+            .is_empty()
+        );
     }
 }

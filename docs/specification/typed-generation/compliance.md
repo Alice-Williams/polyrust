@@ -156,6 +156,21 @@ test evidence rather than a current **Pass** claim while M34A-10R is open.
   tests, and a clean Cargo workspace replay passed with all doctests. Java
   remains **Fail** pending round 11 push, hosted CI, and another clean fresh
   review.
+- Round 11 checkpoint `385565e` was pushed and remotely verified; hosted CI run
+  `33750373016` passed every job for that exact SHA. Fresh blind
+  review round 12 found three accepted fail-open paths: one-way reserved-runtime
+  identity, weak-access interface implementations, and coarse generic callable
+  signatures. Round 12 makes runtime identity bidirectional, makes constructed
+  Java signature identity exact, and uses one public concrete implementation
+  predicate for registration, conformance, and `@Override`. Forged AST and
+  hermetic JDK counterexamples are permanent. A deterministic 128-case AST
+  mutation/compiler-oracle corpus now requires every verifier-accepted
+  declaration to link, strictly render, and compile with all Java 21 lint
+  warnings as errors. Its focused gate passed 37 of 37 tests, the complete
+  tracked-repository replay passed 294 of 294 tests, the independent release
+  gate passed 232 of 232 tests, and a clean Cargo workspace replay passed with
+  all doctests. Java remains **Fail** pending round 12 push, hosted CI, and an
+  exhaustive clean review.
 
 ## Pass rule
 

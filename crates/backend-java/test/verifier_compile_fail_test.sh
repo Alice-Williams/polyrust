@@ -21,6 +21,8 @@ readonly expected_diagnostics=(
   "variable x might not have been initialized"
   "static methods cannot be annotated with @Override"
   "variable x might not have been initialized"
+  "attempting to assign weaker access privileges; was public"
+  "does not override or implement a method from a supertype"
 )
 if [[ "${#sources[@]}" -ne "${#expected_diagnostics[@]}" ]]; then
   echo "each invalid source must have one expected javac diagnostic" >&2

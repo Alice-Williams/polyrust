@@ -409,3 +409,26 @@ source parsing, and unrelated renderer conveniences do not block completion.
   composed release gate passed 232 of 232 tests. A fresh Cargo target passed
   `cargo test --workspace --all-features --locked`, including every doctest.
   Checkpoint push, hosted CI, and another fresh blind review remain pending.
+- Round 11 checkpoint `385565eb484f431cfd927b8254ed2efd323743bd`
+  was committed, pushed to `origin/main`, and remotely verified. Hosted CI run
+  `33750373016` passed every job for that exact SHA.
+- Fresh Sol/xhigh blind review round 12 validated the blank-static-final and
+  linker-fragment repairs but found three further admitted fail-open cases; all
+  are accepted. Runtime identity was only one-way, interface implementations
+  could use illegally weak access, and registered generic signatures collapsed
+  incompatible types such as `List<String>` and `List<Integer>`.
+- Round 12 makes every reserved runtime identity component bidirectional,
+  retains the complete constructed `JavaType` in callable registrations, and
+  centralizes public concrete exact-signature interface implementation proof
+  for registration, conformance, and `@Override`. Permanent forged-AST and
+  hermetic Java 21 compiler counterexamples cover all three findings. It also
+  adds a reproducible 128-case declaration mutation corpus: each accepted AST
+  must pass the real linker, strict renderer, and hermetic
+  `javac --release 21 -Xlint:all -Werror` batch. The initial focused AST,
+  compiler-fixture, mutation-oracle, rustfmt, Clippy, and Buildifier gate passed
+  5 of 5 tests. The complete uncached Java/codegen/policy/snapshot/lint gate
+  passed 37 of 37 tests, the complete tracked-repository replay passed 294 of
+  294 tests, and the independently composed release gate passed 232 of 232
+  tests. A fresh Cargo target passed
+  `cargo test --workspace --all-features --locked`, including every doctest.
+  Checkpoint push, hosted CI, and an exhaustive fresh review remain pending.

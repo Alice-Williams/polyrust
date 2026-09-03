@@ -2,8 +2,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use portable_codegen::{
     AstViolation, GeneratedCallableId, GeneratedInterfaceMethodId, GeneratedSymbolId,
-    GeneratedTypeId, GeneratedValueId, TargetAstContext, TargetCallableRef, TargetExpressionNode,
-    TargetFileItemNode, TargetStatementNode, TargetSymbolRef, TargetTypeRef,
+    GeneratedTypeId, GeneratedValueId, TargetAstContext, TargetCallableRef,
+    TargetCallableSignature, TargetExpressionNode, TargetFileItemNode, TargetStatementNode,
+    TargetSymbolRef, TargetTypeRef,
 };
 use portable_core_ir::CoreFieldId;
 use portable_diagnostics::DiagnosticCode;
@@ -1864,7 +1865,7 @@ fn generated_value_matches(
         })
     });
     Some(
-        registered.ty == JavaDialect.coarse_type(ty)
+        registered.ty == JavaDialect.registered_type(ty)
             && declared_type.is_some_and(|declared| declared == *ty),
     )
 }
@@ -2041,7 +2042,7 @@ impl TargetExpressionNode<JavaDialect> for JavaExpr {
         context: &TargetAstContext<'_, JavaDialect>,
     ) -> Vec<AstViolation> {
         let mut violations = self.verify(context);
-        if &context.dialect().coarse_type(&self.ty) != stored_type {
+        if &context.dialect().registered_type(&self.ty) != stored_type {
             violations.push(type_error(
                 "Java type disagrees with shared target-AST type",
             ));
@@ -4885,7 +4886,7 @@ impl JavaMember {
             Self::Method(method) => {
                 let mut violations =
                     verify_modifiers_for(&method.modifiers, JavaModifierSite::Method);
-                violations.extend(verify_method_annotations(method, declaration));
+                violations.extend(verify_method_annotations(method, declaration, context));
                 violations.extend(method.return_type.verify(JavaTypeUse::Return));
                 let distinct_type_parameters =
                     method.type_parameters.iter().collect::<BTreeSet<_>>();
@@ -4981,6 +4982,7 @@ impl JavaMember {
 fn verify_method_annotations(
     method: &JavaMethod,
     declaration: Option<&JavaTypeDeclaration>,
+    context: &TargetAstContext<'_, JavaDialect>,
 ) -> Vec<AstViolation> {
     let mut violations = Vec::new();
     let distinct = method.annotations.iter().copied().collect::<BTreeSet<_>>();
@@ -4992,7 +4994,9 @@ fn verify_method_annotations(
     }
     for annotation in distinct {
         match annotation {
-            JavaAnnotation::Override if !method_has_override_target(method, declaration) => {
+            JavaAnnotation::Override
+                if !method_has_override_target(method, declaration, context) =>
+            {
                 violations.push(AstViolation::new(
                     DiagnosticCode::InvalidStructure,
                     "Java @Override method has no verified instance override target",
@@ -5011,35 +5015,95 @@ fn verify_method_annotations(
 fn method_has_override_target(
     method: &JavaMethod,
     declaration: Option<&JavaTypeDeclaration>,
+    context: &TargetAstContext<'_, JavaDialect>,
 ) -> bool {
-    if method.modifiers.contains(&JavaModifier::Static) {
-        return false;
-    }
     if matches!(
         method.declared,
         JavaMethodDeclaration::Implementation { .. }
     ) {
-        return true;
+        return declaration.is_some_and(|declaration| {
+            registered_interface_implementation_matches(declaration, method, context)
+        });
     }
     let Some(declaration) = declaration else {
         return false;
     };
-    let implements_semantic_value = matches!(
-        &declaration.heritage,
-        JavaHeritage::Interfaces(values)
-            if values.contains(&JavaType::known(JavaKnownType::RuntimeSemanticValue))
-    );
-    implements_semantic_value
-        && matches!(
-            method.name.as_str(),
-            name if name == JavaRuntimeMember::SemanticEquals.name()
-                || name == JavaRuntimeMember::DeepEquals.name()
+    runtime_semantic_implementation_matches(declaration, method, JavaRuntimeMember::SemanticEquals)
+        || runtime_semantic_implementation_matches(
+            declaration,
+            method,
+            JavaRuntimeMember::DeepEquals,
         )
+}
+
+fn public_concrete_instance_method(method: &JavaMethod) -> bool {
+    method.modifiers.contains(&JavaModifier::Public)
+        && !method.modifiers.contains(&JavaModifier::Private)
+        && !method.modifiers.contains(&JavaModifier::Static)
+        && !method.modifiers.contains(&JavaModifier::Abstract)
+        && method.body.is_some()
+}
+
+fn runtime_semantic_implementation_matches(
+    declaration: &JavaTypeDeclaration,
+    method: &JavaMethod,
+    member: JavaRuntimeMember,
+) -> bool {
+    method.declared == JavaMethodDeclaration::Structural
+        && public_concrete_instance_method(method)
+        && matches!(
+            &declaration.heritage,
+            JavaHeritage::Interfaces(values)
+                if values.contains(&JavaType::known(JavaKnownType::RuntimeSemanticValue))
+        )
+        && method.name.as_str() == member.name()
         && method.return_type == JavaType::primitive(JavaPrimitive::Boolean)
         && matches!(
             method.parameters.as_slice(),
             [JavaParameter { ty, .. }] if *ty == JavaType::known(JavaKnownType::Object)
         )
+}
+
+fn registered_interface_implementation_matches(
+    declaration: &JavaTypeDeclaration,
+    method: &JavaMethod,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> bool {
+    let JavaMethodDeclaration::Implementation { interface, .. } = method.declared else {
+        return false;
+    };
+    let Some(registered) = context.interface_method(interface) else {
+        return false;
+    };
+    interface_implementation_matches(
+        declaration,
+        method,
+        &registered.signature,
+        registered.name.as_str(),
+        registered.owner,
+    )
+}
+
+fn interface_implementation_matches(
+    declaration: &JavaTypeDeclaration,
+    method: &JavaMethod,
+    registered: &TargetCallableSignature<JavaDialect>,
+    expected_name: &str,
+    owner: GeneratedTypeId,
+) -> bool {
+    let actual_parameters = method
+        .parameters
+        .iter()
+        .map(|parameter| JavaDialect.registered_type(&parameter.ty))
+        .collect::<Vec<_>>();
+    public_concrete_instance_method(method)
+        && method.name == JavaIdentifier::from_portable(expected_name)
+        && registered.invocation == JavaInvocationKind::Instance
+        && registered.receiver == Some(TargetTypeRef::Generated(owner))
+        && registered.parameters == actual_parameters
+        && registered.return_type == JavaDialect.registered_type(&method.return_type)
+        && matches!(&declaration.heritage, JavaHeritage::Interfaces(values)
+            if values.contains(&JavaType::Reference(JavaTypeName::Generated(owner))))
 }
 
 impl JavaTypeDeclaration {
@@ -5497,17 +5561,21 @@ fn verify_interface_conformance(
                     let implementations = declaration
                         .members
                         .iter()
-                        .filter(|member| {
-                            matches!(
-                                member,
-                                JavaMember::Method(JavaMethod {
-                                    declared: JavaMethodDeclaration::Implementation {
-                                        interface,
-                                        ..
-                                    },
-                                    ..
-                                }) if *interface == required_method
-                            )
+                        .filter(|member| match member {
+                            JavaMember::Method(method)
+                                if matches!(
+                                    method.declared,
+                                    JavaMethodDeclaration::Implementation { interface, .. }
+                                        if interface == required_method
+                                ) =>
+                            {
+                                registered_interface_implementation_matches(
+                                    declaration,
+                                    method,
+                                    context,
+                                )
+                            }
+                            _ => false,
                         })
                         .count();
                     if implementations != 1 {
@@ -5522,20 +5590,12 @@ fn verify_interface_conformance(
             }
             JavaType::Reference(JavaTypeName::Known(JavaKnownType::RuntimeSemanticValue)) => {
                 let semantic_method = declaration.members.iter().any(|member| {
-                    matches!(
-                        member,
-                        JavaMember::Method(JavaMethod {
-                            declared: JavaMethodDeclaration::Structural,
-                            name,
-                            parameters,
-                            return_type,
-                            body: Some(_),
-                            ..
-                        }) if name.as_str() == JavaRuntimeMember::SemanticEquals.name()
-                            && parameters.len() == 1
-                            && parameters[0].ty == JavaType::known(JavaKnownType::Object)
-                            && *return_type == JavaType::primitive(JavaPrimitive::Boolean)
-                    )
+                    matches!(member, JavaMember::Method(method)
+                    if runtime_semantic_implementation_matches(
+                        declaration,
+                        method,
+                        JavaRuntimeMember::SemanticEquals,
+                    ))
                 });
                 if !semantic_method {
                     violations.push(AstViolation::new(
@@ -5544,20 +5604,12 @@ fn verify_interface_conformance(
                     ));
                 }
                 let deep_method = declaration.members.iter().any(|member| {
-                    matches!(
-                        member,
-                        JavaMember::Method(JavaMethod {
-                            declared: JavaMethodDeclaration::Structural,
-                            name,
-                            parameters,
-                            return_type,
-                            body: Some(_),
-                            ..
-                        }) if name.as_str() == JavaRuntimeMember::DeepEquals.name()
-                            && parameters.len() == 1
-                            && parameters[0].ty == JavaType::known(JavaKnownType::Object)
-                            && *return_type == JavaType::primitive(JavaPrimitive::Boolean)
-                    )
+                    matches!(member, JavaMember::Method(method)
+                    if runtime_semantic_implementation_matches(
+                        declaration,
+                        method,
+                        JavaRuntimeMember::DeepEquals,
+                    ))
                 });
                 if !deep_method {
                     violations.push(AstViolation::new(
@@ -5646,9 +5698,9 @@ fn verify_method_registration(
     let actual_parameters = method
         .parameters
         .iter()
-        .map(|parameter| JavaDialect.coarse_type(&parameter.ty))
+        .map(|parameter| JavaDialect.registered_type(&parameter.ty))
         .collect::<Vec<_>>();
-    let actual_return = JavaDialect.coarse_type(&method.return_type);
+    let actual_return = JavaDialect.registered_type(&method.return_type);
     let name_matches =
         expected_name.map(JavaIdentifier::from_portable).as_ref() == Some(&method.name);
     let static_method = method.modifiers.contains(&JavaModifier::Static);
@@ -5666,14 +5718,15 @@ fn verify_method_registration(
                 && !static_method
                 && receiver_owner == declaration.declared
         }
-        JavaMethodDeclaration::Implementation { .. } => {
-            registered.invocation == JavaInvocationKind::Instance
-                && !static_method
-                && receiver_owner.is_some_and(|owner| {
-                    matches!(&declaration.heritage, JavaHeritage::Interfaces(values)
-                        if values.contains(&JavaType::Reference(JavaTypeName::Generated(owner))))
-                })
-        }
+        JavaMethodDeclaration::Implementation { .. } => receiver_owner.is_some_and(|owner| {
+            interface_implementation_matches(
+                declaration,
+                method,
+                registered,
+                expected_name.expect("registered interface method has a name"),
+                owner,
+            )
+        }),
     };
     if name_matches && signature_matches && declaration_matches {
         vec![]
@@ -6464,6 +6517,22 @@ mod tests {
             .and_then(|record| record.fields.first())
             .copied()
             .expect("fixture contains a record field")
+    }
+
+    fn fixture_core_implementation_method() -> portable_core_ir::CoreImplementationMethodId {
+        let checked = portable_check::v0::check_program(
+            portable_ir::v0::from_json(include_bytes!(
+                "../../build/testdata/registration.poly.json"
+            ))
+            .expect("fixture parses"),
+        )
+        .expect("fixture checks");
+        let core = portable_core_ir::lower_checked(&checked).expect("fixture lowers to CoreIR");
+        core.implementations()
+            .first()
+            .and_then(|implementation| implementation.methods.first())
+            .copied()
+            .expect("fixture contains an implementation method")
     }
 
     #[test]
@@ -7981,6 +8050,352 @@ mod tests {
             diagnostic.code == DiagnosticCode::InvalidStructure
                 && diagnostic.message.contains("varargs parameter form")
         }));
+
+        let weak_method = |member: JavaRuntimeMember| {
+            JavaMember::Method(JavaMethod {
+                declared: JavaMethodDeclaration::Structural,
+                annotations: vec![JavaAnnotation::Override],
+                modifiers: vec![JavaModifier::Private],
+                type_parameters: vec![],
+                return_type: JavaType::primitive(JavaPrimitive::Boolean),
+                name: JavaIdentifier::from_portable(member.name()),
+                parameters: vec![parameter(JavaType::known(JavaKnownType::Object), "other")],
+                body: Some(JavaBlock::new(vec![JavaStmt::Return(Some(
+                    JavaExpr::literal(
+                        JavaType::primitive(JavaPrimitive::Boolean),
+                        JavaLiteral::Boolean(true),
+                    ),
+                ))])),
+            })
+        };
+        let mut weak_runtime_implementation = fixture_declaration(vec![
+            weak_method(JavaRuntimeMember::SemanticEquals),
+            weak_method(JavaRuntimeMember::DeepEquals),
+        ]);
+        weak_runtime_implementation.heritage =
+            JavaHeritage::Interfaces(vec![JavaType::known(JavaKnownType::RuntimeSemanticValue)]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], weak_runtime_implementation)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidStructure
+                && diagnostic.message.contains("no verified instance override")
+        }));
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InterfaceNonconformance
+                && diagnostic.message.contains("semanticEquals")
+        }));
+    }
+
+    #[test]
+    fn generated_interface_implementations_require_exact_generic_signatures() {
+        let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+        let interface = builder.generated_type(portable_codegen::GeneratedType {
+            name: "ReviewInterface".to_owned(),
+            kind: JavaDeclarationKind::Interface,
+            visibility: JavaVisibility::Package,
+            origin: portable_codegen::GeneratedOrigin::Synthesized(
+                portable_codegen::SynthesisReason::InterfaceAdapter,
+            ),
+            source: verifier_source("generic-interface"),
+        });
+        let implementation = builder.generated_type(portable_codegen::GeneratedType {
+            name: "ForgedImplementation".to_owned(),
+            kind: JavaDeclarationKind::FinalClass,
+            visibility: JavaVisibility::Package,
+            origin: portable_codegen::GeneratedOrigin::Synthesized(
+                portable_codegen::SynthesisReason::InterfaceAdapter,
+            ),
+            source: verifier_source("generic-implementation"),
+        });
+        let strings = JavaType::generic(
+            JavaKnownType::List,
+            vec![JavaType::known(JavaKnownType::String)],
+        );
+        let integers = JavaType::generic(
+            JavaKnownType::List,
+            vec![JavaType::known(JavaKnownType::Integer)],
+        );
+        let boolean = JavaType::primitive(JavaPrimitive::Boolean);
+        let method = builder.interface_method(portable_codegen::GeneratedInterfaceMethod {
+            owner: interface,
+            name: "render".to_owned(),
+            signature: portable_codegen::TargetCallableSignature {
+                invocation: JavaInvocationKind::Instance,
+                receiver: Some(TargetTypeRef::Generated(interface)),
+                parameters: vec![JavaDialect.registered_type(&strings)],
+                return_type: JavaDialect.registered_type(&boolean),
+            },
+            origin: portable_codegen::GeneratedOrigin::Synthesized(
+                portable_codegen::SynthesisReason::InterfaceAdapter,
+            ),
+            source: verifier_source("generic-method"),
+        });
+        let interface_declaration = JavaTypeDeclaration {
+            declared: Some(interface),
+            kind: JavaDeclarationKind::Interface,
+            visibility: JavaVisibility::Package,
+            modifiers: vec![],
+            name: JavaIdentifier::from_portable("ReviewInterface"),
+            type_parameters: vec![],
+            record_components: vec![],
+            heritage: JavaHeritage::None,
+            permits: vec![],
+            members: vec![JavaMember::Method(JavaMethod {
+                declared: JavaMethodDeclaration::Interface(method),
+                annotations: vec![],
+                modifiers: vec![JavaModifier::Public, JavaModifier::Abstract],
+                type_parameters: vec![],
+                return_type: boolean.clone(),
+                name: JavaIdentifier::from_portable("render"),
+                parameters: vec![parameter(strings, "values")],
+                body: None,
+            })],
+        };
+        let implementation_declaration = JavaTypeDeclaration {
+            declared: Some(implementation),
+            kind: JavaDeclarationKind::FinalClass,
+            visibility: JavaVisibility::Package,
+            modifiers: vec![],
+            name: JavaIdentifier::from_portable("ForgedImplementation"),
+            type_parameters: vec![],
+            record_components: vec![],
+            heritage: JavaHeritage::Interfaces(vec![JavaType::Reference(JavaTypeName::Generated(
+                interface,
+            ))]),
+            permits: vec![],
+            members: vec![JavaMember::Method(JavaMethod {
+                declared: JavaMethodDeclaration::Implementation {
+                    method: fixture_core_implementation_method(),
+                    interface: method,
+                },
+                annotations: vec![JavaAnnotation::Override],
+                modifiers: vec![JavaModifier::Public],
+                type_parameters: vec![],
+                return_type: boolean,
+                name: JavaIdentifier::from_portable("render"),
+                parameters: vec![parameter(integers, "values")],
+                body: Some(JavaBlock::new(vec![JavaStmt::Return(Some(
+                    JavaExpr::literal(
+                        JavaType::primitive(JavaPrimitive::Boolean),
+                        JavaLiteral::Boolean(true),
+                    ),
+                ))])),
+            })],
+        };
+        let diagnostics = verify_fixture(
+            builder,
+            vec![
+                (
+                    vec![
+                        GeneratedSymbolId::Type(interface),
+                        GeneratedSymbolId::InterfaceMethod(method),
+                    ],
+                    interface_declaration,
+                ),
+                (
+                    vec![GeneratedSymbolId::Type(implementation)],
+                    implementation_declaration,
+                ),
+            ],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidInvocation
+                && diagnostic
+                    .message
+                    .contains("authoritative registered callable")
+        }));
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidStructure
+                && diagnostic.message.contains("no verified instance override")
+        }));
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InterfaceNonconformance
+                && diagnostic.message.contains("exactly once")
+        }));
+    }
+
+    #[test]
+    fn every_verified_declaration_mutation_compiles_under_hermetic_java_21() {
+        let Some(test_tmpdir) = std::env::var_os("TEST_TMPDIR") else {
+            eprintln!("Java compiler oracle runs under the authoritative Bazel test target");
+            return;
+        };
+        let mut state = 0x6a09_e667_f3bc_c909_u64;
+        let mut next = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        let output_root = std::path::PathBuf::from(test_tmpdir).join("java-ast-mutation-oracle");
+        let classes = output_root.join("classes");
+        std::fs::create_dir_all(&classes).expect("create javac output directory");
+        let mut sources = Vec::new();
+        let mut rejected = 0usize;
+
+        for index in 0..128 {
+            let name = format!("OracleCase{index}");
+            let field_modifiers = match next() % 8 {
+                0 => vec![],
+                1 => vec![JavaModifier::Private],
+                2 => vec![JavaModifier::Public],
+                3 => vec![JavaModifier::Static],
+                4 => vec![JavaModifier::Final],
+                5 => vec![JavaModifier::Private, JavaModifier::Final],
+                6 => vec![JavaModifier::Private, JavaModifier::Static],
+                _ => vec![
+                    JavaModifier::Private,
+                    JavaModifier::Static,
+                    JavaModifier::Final,
+                ],
+            };
+            let field_initializer = (next() % 3 != 0).then(|| {
+                JavaExpr::literal(
+                    JavaType::primitive(JavaPrimitive::Int),
+                    JavaLiteral::I32(index),
+                )
+            });
+            let method_modifiers = match next() % 8 {
+                0 => vec![],
+                1 => vec![JavaModifier::Public],
+                2 => vec![JavaModifier::Private],
+                3 => vec![JavaModifier::Static],
+                4 => vec![JavaModifier::Public, JavaModifier::Static],
+                5 => vec![JavaModifier::Public, JavaModifier::Final],
+                6 => vec![JavaModifier::Public, JavaModifier::Abstract],
+                _ => vec![JavaModifier::Private, JavaModifier::Abstract],
+            };
+            let annotations = match next() % 8 {
+                0 => vec![JavaAnnotation::Override],
+                1 => vec![JavaAnnotation::SafeVarargs],
+                2 => vec![JavaAnnotation::Override, JavaAnnotation::Override],
+                _ => vec![],
+            };
+            let parameter_type = match next() % 6 {
+                0 => JavaType::primitive(JavaPrimitive::Int),
+                1 => JavaType::known(JavaKnownType::String),
+                2 => JavaType::known(JavaKnownType::Integer),
+                3 => JavaType::generic(
+                    JavaKnownType::List,
+                    vec![JavaType::known(JavaKnownType::String)],
+                ),
+                4 => JavaType::generic(
+                    JavaKnownType::List,
+                    vec![JavaType::known(JavaKnownType::Integer)],
+                ),
+                _ => JavaType::generic(
+                    JavaKnownType::List,
+                    vec![JavaType::Wildcard { bound: None }],
+                ),
+            };
+            let abstract_method = method_modifiers.contains(&JavaModifier::Abstract);
+            let declaration = JavaTypeDeclaration {
+                declared: None,
+                kind: JavaDeclarationKind::FinalClass,
+                visibility: JavaVisibility::Package,
+                modifiers: vec![],
+                name: JavaIdentifier::from_portable(&name),
+                type_parameters: vec![],
+                record_components: vec![],
+                heritage: JavaHeritage::None,
+                permits: vec![],
+                members: vec![
+                    JavaMember::Field(JavaField {
+                        declared: None,
+                        modifiers: field_modifiers,
+                        ty: JavaType::primitive(JavaPrimitive::Int),
+                        name: JavaIdentifier::from_portable("value"),
+                        initializer: field_initializer,
+                    }),
+                    JavaMember::Method(JavaMethod {
+                        declared: JavaMethodDeclaration::Structural,
+                        annotations,
+                        modifiers: method_modifiers,
+                        type_parameters: vec![],
+                        return_type: JavaType::primitive(JavaPrimitive::Void),
+                        name: JavaIdentifier::from_portable("accept"),
+                        parameters: vec![parameter(parameter_type, "input")],
+                        body: (!abstract_method).then(|| JavaBlock::new(vec![])),
+                    }),
+                ],
+            };
+            let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+            let file = builder.file(portable_codegen::TargetFile::new(
+                portable_codegen::RelativeOutputPath::new(format!("{name}.java")).unwrap(),
+                portable_codegen::SourceRole::PublicApi,
+                JavaPackage::Generated,
+                JavaFilePlacement::Main,
+                vec![JavaFileItem::Type {
+                    declared: vec![],
+                    declaration,
+                }],
+                JavaTemplateId::CompilationUnit,
+                verifier_source("mutation-oracle-file"),
+            ));
+            builder.group(portable_codegen::TargetFileGroup::new(
+                portable_codegen::FileGroupRole::PublicApi,
+                vec![portable_codegen::TargetFileMember::Source(file)],
+                verifier_source("mutation-oracle-group"),
+            ));
+            let package = builder.build();
+            if portable_codegen::verify_target_ast(&package).is_err() {
+                rejected += 1;
+                continue;
+            }
+            let linked = portable_codegen::TargetLinker::new(JavaDialect)
+                .link_ast(&package)
+                .expect("every verified mutation must link");
+            let rendered =
+                portable_codegen::render_linked_package(&crate::render::JavaRenderer, &linked)
+                    .expect("every linked mutation must render");
+            for file in rendered.files() {
+                let portable_codegen::OutputContents::Text(contents) = file.contents() else {
+                    panic!("Java mutation rendered non-text output")
+                };
+                let path = output_root.join(file.path());
+                if let Some(parent) = path.parent() {
+                    std::fs::create_dir_all(parent).expect("create Java source directory");
+                }
+                std::fs::write(&path, contents).expect("write verifier-accepted Java source");
+                sources.push(path);
+            }
+        }
+        assert!(
+            sources.len() >= 16,
+            "mutation corpus accepted too few cases"
+        );
+        assert!(rejected >= 16, "mutation corpus rejected too few cases");
+
+        let runfiles = std::env::var_os("RUNFILES_DIR")
+            .or_else(|| std::env::var_os("TEST_SRCDIR"))
+            .map(std::path::PathBuf::from)
+            .expect("Bazel supplies a runfiles root");
+        let javac = std::fs::read_dir(&runfiles)
+            .expect("read runfiles root")
+            .filter_map(Result::ok)
+            .find_map(|entry| {
+                let name = entry.file_name();
+                name.to_string_lossy()
+                    .contains("remotejdk21")
+                    .then(|| entry.path().join("bin/javac"))
+                    .filter(|candidate| candidate.is_file())
+            })
+            .expect("hermetic Java 21 javac is present in runfiles");
+        let output = std::process::Command::new(javac)
+            .args(["--release", "21", "-Werror", "-Xlint:all", "-d"])
+            .arg(&classes)
+            .args(&sources)
+            .output()
+            .expect("run hermetic javac over verifier-accepted mutations");
+        assert!(
+            output.status.success(),
+            "verified Java AST mutation failed javac:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 
     #[test]
