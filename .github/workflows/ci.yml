@@ -161,3 +161,10 @@ jobs:
             -v "$RUNNER_TEMP/polyrust-cache/cargo-tools:/cargo-tools" \
             -e PATH=/cargo-tools/bin:/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin \
             -w /workspace "$IMAGE" bash tools/release/release_gate.sh
+      - name: Restore cache ownership
+        if: always()
+        run: |
+          if [[ -d "$RUNNER_TEMP/polyrust-cache" ]]; then
+            sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/polyrust-cache"
+            sudo chmod -R u+rwX "$RUNNER_TEMP/polyrust-cache"
+          fi
