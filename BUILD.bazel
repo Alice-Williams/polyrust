@@ -12,6 +12,7 @@ filegroup(
     name = "documentation",
     srcs = [
         "CONTRIBUTING.md",
+        "LICENSE",
         "README.md",
     ] + glob(["docs/**/*.md"]),
     visibility = ["//visibility:public"],
