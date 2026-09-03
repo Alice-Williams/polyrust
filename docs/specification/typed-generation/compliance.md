@@ -131,6 +131,17 @@ test evidence rather than a current **Pass** claim while M34A-10R is open.
   Cargo workspace/all-features/locked target including doctests. Java remains
   **Fail** until the immutable pushed checkpoint receives successful hosted CI
   and a clean fresh blind review.
+- Round 9 checkpoint `597031d` was pushed and remotely verified; hosted CI run
+  `33742877916` passed every job for that exact SHA. Fresh blind review round 10
+  validated the round 9 fixes but found one core fail-open path: runtime helper
+  fragments were not reverified as their final combined `Runtime` class. The
+  accepted round 10 remediation adds a shared post-link whole-file verifier,
+  Java declaration recomposition, fragment/shell placement checks, and forged
+  AST plus Java 21 compiler proof. Its focused gate passed 37 of 37 tests, the
+  complete tracked-repository replay passed 294 of 294 tests, the independent
+  release gate passed 232 of 232 tests, and a clean Cargo workspace replay
+  passed with all doctests. Java remains **Fail** pending round 10 push, hosted
+  CI, and another clean fresh review.
 
 ## Pass rule
 

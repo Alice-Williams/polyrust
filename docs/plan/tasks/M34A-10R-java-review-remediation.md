@@ -365,3 +365,24 @@ source parsing, and unrelated renderer conveniences do not block completion.
   composed release gate passed 232 of 232 tests. A fresh Cargo target passed
   `cargo test --workspace --all-features --locked`, including every doctest.
   Checkpoint push, hosted CI, and another fresh blind review remain pending.
+- Round 9 checkpoint `597031d953112ac8f2ce29d921a433b6a819ee59`
+  was committed, pushed to `origin/main`, and remotely verified. Hosted CI run
+  `33742877916` passed every job for that exact SHA.
+- Fresh Sol/xhigh blind review round 10 validated all three round 9 repairs but
+  demonstrated one further core fail-open path: separately verified runtime
+  helper members were concatenated into the `Runtime` class without combined
+  declaration verification. A forged blank-final field could therefore pass
+  linking and produce Java rejected by `javac`; cross-fragment duplicate
+  declarations shared the same blind spot. The finding is accepted.
+- Round 10 adds the shared post-link whole-file verifier hook. Java recomposes
+  its sole runtime class shell and every selected helper fragment, then reruns
+  full declaration semantics before rendering; fragments outside the runtime
+  file and missing/multiple shells are rejected. Permanent proof includes a
+  forged combined-runtime blank-final regression and the exact hermetic Java 21
+  compiler counterexample. The initial focused verifier/compiler/generated
+  package/lint replay passed 7 of 7 tests; the complete uncached
+  Java/codegen/policy/snapshot/lint gate passed 37 of 37 tests; the complete
+  tracked-repository replay passed 294 of 294 tests; and the independently
+  composed release gate passed 232 of 232 tests. A fresh Cargo target passed
+  `cargo test --workspace --all-features --locked`, including every doctest.
+  Checkpoint push, hosted CI, and another fresh blind review remain pending.

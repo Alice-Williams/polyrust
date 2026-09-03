@@ -3,12 +3,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use portable_codegen::{
     AstViolation, CallablePattern, DependencyPolicy, FailureBehavior, FileItemRoots,
     GeneratedOrigin, GeneratedSymbolId, KnownCallableSpec, KnownConstructorSpec, KnownFieldSpec,
-    KnownMethodSpec, KnownTypeSpec, LinkedTargetPackage, LinkerDialect, PackageEcosystem,
-    ResolvedReference, ResolvedReferenceMap, RuntimeCallableSpec, RuntimeHelperSpec,
-    SymbolCatalogue, SymbolOrigin, SynthesisReason, TargetAstContext, TargetAstPackage,
-    TargetCallableSignature, TargetDialect, TargetEffect, TargetExprId, TargetExpressionNode,
-    TargetFile, TargetStatementNode, TargetSymbolRef, TargetTypeRef, TypeParameterSpec,
-    TypePattern, TypedAstDialect, verify_linked_package, verify_target_ast,
+    KnownMethodSpec, KnownTypeSpec, LinkedFile, LinkedTargetPackage, LinkerDialect,
+    PackageEcosystem, ResolvedReference, ResolvedReferenceMap, RuntimeCallableSpec,
+    RuntimeHelperSpec, SymbolCatalogue, SymbolOrigin, SynthesisReason, TargetAstContext,
+    TargetAstPackage, TargetCallableSignature, TargetDialect, TargetEffect, TargetExprId,
+    TargetExpressionNode, TargetFile, TargetStatementNode, TargetSymbolRef, TargetTypeRef,
+    TypeParameterSpec, TypePattern, TypedAstDialect, verify_linked_package, verify_target_ast,
 };
 use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef};
 
@@ -1581,7 +1581,7 @@ impl TypedAstDialect for JavaDialect {
     fn verify_source_file(
         &self,
         file: &TargetFile<Self>,
-        _context: &TargetAstContext<'_, Self>,
+        context: &TargetAstContext<'_, Self>,
     ) -> Vec<AstViolation> {
         let mut violations = Vec::new();
         let has_compile_fail_member = file.items().iter().any(|item| {
@@ -1643,6 +1643,11 @@ impl TypedAstDialect for JavaDialect {
                 "Java source files must use the compilation-unit template",
             ));
         }
+        violations.extend(verify_composed_java_file(
+            file.placement(),
+            file.items().iter().collect(),
+            context,
+        ));
         violations
     }
 }
@@ -1912,6 +1917,69 @@ impl LinkerDialect for JavaDialect {
             )]
         }
     }
+
+    fn verify_resolved_file(
+        &self,
+        file: &LinkedFile<Self>,
+        context: &TargetAstContext<'_, Self>,
+    ) -> Vec<AstViolation> {
+        verify_composed_java_file(
+            file.placement(),
+            file.items().iter().map(|item| &item.item).collect(),
+            context,
+        )
+    }
+}
+
+fn verify_composed_java_file(
+    placement: &JavaFilePlacement,
+    items: Vec<&JavaFileItem>,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> Vec<AstViolation> {
+    let runtime_fragments = items
+        .iter()
+        .filter(|item| matches!(item, JavaFileItem::RuntimeMembers { .. }))
+        .count();
+    if *placement != JavaFilePlacement::Runtime {
+        return (runtime_fragments > 0)
+            .then(|| {
+                AstViolation::new(
+                    DiagnosticCode::InvalidStructure,
+                    "Java runtime member fragments are confined to the runtime file",
+                )
+            })
+            .into_iter()
+            .collect();
+    }
+
+    let shells = items
+        .iter()
+        .filter_map(|item| match item {
+            JavaFileItem::Type { declaration, .. } => Some(declaration.clone()),
+            JavaFileItem::RuntimeMembers { .. } => None,
+        })
+        .collect::<Vec<_>>();
+    if shells.len() != 1 {
+        return vec![AstViolation::new(
+            DiagnosticCode::InvalidStructure,
+            "Java runtime file must contain exactly one typed class shell",
+        )];
+    }
+
+    let mut combined = shells[0].clone();
+    for item in items {
+        if let JavaFileItem::RuntimeMembers { members, .. } = item {
+            combined.members.extend(members.iter().cloned());
+        }
+    }
+    let mut violations = combined.verify(context, true);
+    if combined.contains_compile_fail_member() {
+        violations.push(AstViolation::new(
+            DiagnosticCode::InvalidStructure,
+            "Java compile-fail members are confined to negative-test files",
+        ));
+    }
+    violations
 }
 
 fn java_symbol_catalogue() -> SymbolCatalogue<JavaDialect> {
@@ -2393,6 +2461,120 @@ mod tests {
                 .iter()
                 .any(|diagnostic| { diagnostic.code == DiagnosticCode::InterfaceNonconformance })
         );
+    }
+
+    #[test]
+    fn linked_runtime_members_are_verified_in_the_combined_class() {
+        let shell = JavaFileItem::Type {
+            declared: vec![],
+            declaration: JavaTypeDeclaration {
+                declared: None,
+                kind: JavaDeclarationKind::FinalClass,
+                visibility: JavaVisibility::Public,
+                modifiers: vec![],
+                name: JavaIdentifier::from_portable("Runtime"),
+                type_parameters: vec![],
+                record_components: vec![],
+                heritage: JavaHeritage::None,
+                permits: vec![],
+                members: vec![JavaMember::Constructor(JavaConstructor {
+                    modifiers: vec![JavaModifier::Private],
+                    name: JavaIdentifier::from_portable("Runtime"),
+                    parameters: vec![],
+                    body: JavaBlock::new(vec![]),
+                })],
+            },
+        };
+        let fragment = JavaFileItem::RuntimeMembers {
+            helper: JavaRuntimeHelper::Interfaces,
+            members: vec![JavaMember::Field(JavaField {
+                declared: None,
+                modifiers: vec![JavaModifier::Private, JavaModifier::Final],
+                ty: JavaType::primitive(JavaPrimitive::Int),
+                name: JavaIdentifier::from_portable("x"),
+                initializer: None,
+            })],
+        };
+        let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+        let file = builder.file(TargetFile::new(
+            portable_codegen::RelativeOutputPath::new("Runtime.java").unwrap(),
+            portable_codegen::SourceRole::Runtime,
+            JavaPackage::Generated,
+            JavaFilePlacement::Runtime,
+            vec![shell.clone(), fragment.clone()],
+            JavaTemplateId::CompilationUnit,
+            source("combined-runtime"),
+        ));
+        builder.group(portable_codegen::TargetFileGroup::new(
+            portable_codegen::FileGroupRole::Runtime,
+            vec![portable_codegen::TargetFileMember::Source(file)],
+            source("combined-runtime-group"),
+        ));
+        let diagnostics = portable_codegen::verify_target_ast(&builder.build()).unwrap_err();
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidControlFlow
+                && diagnostic
+                    .message
+                    .contains("without assigning blank final field `x`")
+        }));
+
+        let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+        let file = builder.file(TargetFile::new(
+            portable_codegen::RelativeOutputPath::new("Fixture.java").unwrap(),
+            portable_codegen::SourceRole::PublicApi,
+            JavaPackage::Generated,
+            JavaFilePlacement::Main,
+            vec![fragment],
+            JavaTemplateId::CompilationUnit,
+            source("misplaced-runtime-fragment"),
+        ));
+        builder.group(portable_codegen::TargetFileGroup::new(
+            portable_codegen::FileGroupRole::PublicApi,
+            vec![portable_codegen::TargetFileMember::Source(file)],
+            source("misplaced-runtime-fragment-group"),
+        ));
+        let diagnostics = portable_codegen::verify_target_ast(&builder.build()).unwrap_err();
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::InvalidStructure
+                && diagnostic.message.contains("confined to the runtime file")
+        }));
+
+        let duplicate = |helper| JavaFileItem::RuntimeMembers {
+            helper,
+            members: vec![JavaMember::Field(JavaField {
+                declared: None,
+                modifiers: vec![JavaModifier::Private, JavaModifier::Static],
+                ty: JavaType::primitive(JavaPrimitive::Int),
+                name: JavaIdentifier::from_portable("duplicate"),
+                initializer: None,
+            })],
+        };
+        let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+        let file = builder.file(TargetFile::new(
+            portable_codegen::RelativeOutputPath::new("Runtime.java").unwrap(),
+            portable_codegen::SourceRole::Runtime,
+            JavaPackage::Generated,
+            JavaFilePlacement::Runtime,
+            vec![
+                shell,
+                duplicate(JavaRuntimeHelper::Core),
+                duplicate(JavaRuntimeHelper::Interfaces),
+            ],
+            JavaTemplateId::CompilationUnit,
+            source("duplicate-runtime-members"),
+        ));
+        builder.group(portable_codegen::TargetFileGroup::new(
+            portable_codegen::FileGroupRole::Runtime,
+            vec![portable_codegen::TargetFileMember::Source(file)],
+            source("duplicate-runtime-members-group"),
+        ));
+        let diagnostics = portable_codegen::verify_target_ast(&builder.build()).unwrap_err();
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == DiagnosticCode::DuplicateDeclaration
+                && diagnostic
+                    .message
+                    .contains("field conflicts with another field")
+        }));
     }
 
     #[test]

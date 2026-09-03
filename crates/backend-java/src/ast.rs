@@ -6258,6 +6258,29 @@ mod tests {
         }
     }
 
+    fn runtime_shell_item() -> JavaFileItem {
+        JavaFileItem::Type {
+            declared: vec![],
+            declaration: JavaTypeDeclaration {
+                declared: None,
+                kind: JavaDeclarationKind::FinalClass,
+                visibility: JavaVisibility::Package,
+                modifiers: vec![],
+                name: JavaIdentifier::from_portable("Runtime"),
+                type_parameters: vec![],
+                record_components: vec![],
+                heritage: JavaHeritage::None,
+                permits: vec![],
+                members: vec![JavaMember::Constructor(JavaConstructor {
+                    modifiers: vec![JavaModifier::Private],
+                    name: JavaIdentifier::from_portable("Runtime"),
+                    parameters: vec![],
+                    body: JavaBlock::new(vec![]),
+                })],
+            },
+        }
+    }
+
     fn verify_fixture(
         builder: portable_codegen::TargetAstBuilder<JavaDialect>,
         declarations: Vec<(Vec<GeneratedSymbolId>, JavaTypeDeclaration)>,
@@ -6541,10 +6564,12 @@ mod tests {
 
     #[test]
     fn registered_runtime_inactive_tagged_storage_remains_valid() {
-        let items = [JavaRuntimeHelper::Core, JavaRuntimeHelper::TaggedValues]
-            .into_iter()
-            .flat_map(crate::runtime::helper_items)
-            .collect();
+        let mut items = vec![runtime_shell_item()];
+        items.extend(
+            [JavaRuntimeHelper::Core, JavaRuntimeHelper::TaggedValues]
+                .into_iter()
+                .flat_map(crate::runtime::helper_items),
+        );
         let verification = verify_file_items(
             portable_codegen::TargetAstBuilder::new(JavaDialect),
             portable_codegen::SourceRole::Runtime,

@@ -339,6 +339,16 @@ pub trait LinkerDialect:
     ) -> Result<Self::ResolvedFileItem, AstViolation>;
     fn verify_resolved_file_item(&self, item: &Self::ResolvedFileItem) -> Vec<AstViolation>;
 
+    /// Verifies semantic constraints which are visible only after the linker
+    /// has assembled a complete file, including injected runtime helpers.
+    fn verify_resolved_file(
+        &self,
+        _file: &LinkedFile<Self>,
+        _context: &crate::TargetAstContext<'_, Self>,
+    ) -> Vec<AstViolation> {
+        vec![]
+    }
+
     fn permits_file_cycle(&self, _files: &[TargetFileId]) -> bool {
         false
     }
@@ -2341,6 +2351,15 @@ pub fn verify_linked_package<D: LinkerDialect>(
                 file.source.clone(),
             ));
         }
+        diagnostics.extend(
+            package
+                .dialect
+                .verify_resolved_file(file, &package.unresolved.context())
+                .into_iter()
+                .map(|violation| {
+                    Diagnostic::error(violation.code, violation.message, file.source.clone())
+                }),
+        );
     }
     if files.len() != package.unresolved.files().len() {
         diagnostics.push(link_error(

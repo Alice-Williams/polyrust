@@ -52,6 +52,10 @@ or unordered-map output.
 
 - Every CoreIR, unresolved AST, resolved AST, helper, file graph, renderer, and
   manifest invariant has a deliberate invalid fixture.
+- Each dialect receives a mandatory post-link whole-file verification hook.
+  It validates constraints which become visible only after runtime helpers,
+  split declarations, or other structural items have been assembled into their
+  final file; validating the items separately is not sufficient.
 - No invalid fixture reaches a later phase.
 - No failure writes output.
 

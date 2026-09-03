@@ -211,6 +211,14 @@ signatures may be public, but implementation helper callables are package
 private. External code enters through generated, type-directed public APIs,
 never directly through an unnormalized runtime helper.
 
+Runtime helpers may contribute typed member fragments to the single typed
+`Runtime` class shell. After helper linking, the Java plugin MUST recompose the
+shell and every selected fragment into one `JavaTypeDeclaration` and rerun the
+complete declaration verifier before rendering. Member-by-member verification
+does not satisfy this rule. Cross-fragment names/erasures, constructor and
+blank-final state, field ordering, lexical scope, checked exceptions, and
+declaration-kind grammar are therefore checked in their final class context.
+
 ## 9. File and package policy
 
 Public top-level type placement, one-public-type file rules, package-info,
@@ -220,6 +228,8 @@ cycles, and circular/self field initialization are rejected. File paths are
 derived from validated package/type identities, never supplied as executable
 fragments. When a compilation unit contains one public top-level type, its
 basename MUST equal that type's identifier plus `.java`.
+Runtime member fragments are confined to the runtime file, which contains
+exactly one typed class shell; both rules are rejected before rendering.
 
 ## 10. Rendering
 
@@ -238,7 +248,9 @@ The verifier checks primitive/boxed contexts, nullability, known/generated call
 signatures and checked exceptions, modifier combinations, interface
 conformance, sealed exhaustiveness, immutable collection/array boundaries,
 heritage depth and ownership, import namespaces/collisions, precedence,
-definite return, and absence of opaque source.
+definite return, and absence of opaque source. Resolved whole-file verification
+rechecks every split or helper-injected declaration after linking and before a
+render view can be built.
 
 ## 12. Success evidence
 
