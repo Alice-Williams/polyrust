@@ -4,6 +4,7 @@
 #![forbid(unsafe_code)]
 
 pub mod ast;
+mod capability;
 pub mod dialect;
 mod lower;
 mod render;
@@ -21,6 +22,7 @@ use portable_core_ir::CoreProgram;
 use portable_ir::v0::IrVersion;
 
 use crate::{
+    capability::JavaCapabilityRegistry,
     dialect::{JavaDialect, JavaHelperCapability, JavaRuntimeHelper},
     lower::JavaLowerer,
     render::JavaRenderer,
@@ -118,6 +120,7 @@ struct JavaPlugin;
 
 impl TypedLanguagePlugin<CoreProgram> for JavaPlugin {
     type Dialect = JavaDialect;
+    type CapabilityRegistry = JavaCapabilityRegistry;
     type Lowerer = JavaLowerer;
     type Resolver = TargetLinker<JavaDialect>;
     type Renderer = CertifiedRendererAdapter<JavaDialect, JavaRenderer>;
@@ -130,6 +133,9 @@ impl TypedLanguagePlugin<CoreProgram> for JavaPlugin {
     }
     fn dialect(&self) -> Self::Dialect {
         JavaDialect
+    }
+    fn capability_registry(&self) -> Self::CapabilityRegistry {
+        JavaCapabilityRegistry
     }
     fn lowerer(&self) -> Self::Lowerer {
         JavaLowerer
@@ -145,7 +151,8 @@ impl TypedLanguagePlugin<CoreProgram> for JavaPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use portable_codegen::OutputContents;
+    use portable_build::{ModuleBuilder, Type, Value, Visibility};
+    use portable_codegen::{OutputContents, TypedGenerationError, TypedPipelineStage};
     use std::collections::BTreeSet;
 
     fn fixture() -> CheckedProgram {
@@ -198,7 +205,6 @@ mod tests {
         );
         assert!(generated.contains("record Label"));
         assert!(generated.contains("interface Renderable"));
-        assert!(generated.contains("Runtime.capture"));
         for forbidden in [
             "serde_json",
             "jsonArray",
@@ -207,6 +213,10 @@ mod tests {
             "readConstant",
             "POLYRUST-BEGIN",
             "POLYRUST-END",
+            "Runtime.capture",
+            "Runtime.unwrap",
+            "class Halt",
+            "extends RuntimeException",
         ] {
             assert!(!generated.contains(forbidden), "found {forbidden}");
             assert!(!runtime.contains(forbidden), "found {forbidden}");
@@ -226,7 +236,7 @@ mod tests {
         assert!(!generated.contains("import java.nio.ByteBuffer;"));
         assert_eq!(generated.matches("import java.util.List;").count(), 0);
         assert_eq!(generated.matches("import java.util.Objects;").count(), 1);
-        assert!(generated.contains("Objects.requireNonNull(text)"));
+        assert!(generated.contains("Runtime.requireScalarString(text)"));
     }
 
     #[test]
@@ -293,5 +303,70 @@ mod tests {
         assert!(generated.contains("Objects.requireNonNull(renderer)"));
         assert!(!generated.contains("interface Labelled extends"));
         assert!(!generated.contains("interface Measured extends"));
+    }
+
+    #[test]
+    fn overlapping_erased_interface_methods_stop_at_capability_preflight() {
+        let mut module = ModuleBuilder::new("java_overlap");
+        let (first, first_method) =
+            module.interface("First", Visibility::Public, vec![], |interface| {
+                interface.method("render", vec![], vec![], Some(Type::string()))
+            });
+        let (second, second_method) =
+            module.interface("Second", Visibility::Public, vec![], |interface| {
+                interface.method("render", vec![], vec![], Some(Type::string()))
+            });
+        let (record, ()) = module.record("Value", Visibility::Public, vec![], |_| {});
+        module.implementation(
+            "ValueFirst",
+            Visibility::Package,
+            vec![],
+            first,
+            record,
+            |implementation| {
+                implementation.method("render", first_method, vec![], |method| {
+                    method.returns(Type::string());
+                    method.body(|body| {
+                        let value = body.literal(Value::string("first"));
+                        body.block([], Some(value))
+                    });
+                });
+            },
+        );
+        module.implementation(
+            "ValueSecond",
+            Visibility::Package,
+            vec![],
+            second,
+            record,
+            |implementation| {
+                implementation.method("render", second_method, vec![], |method| {
+                    method.returns(Type::string());
+                    method.body(|body| {
+                        let value = body.literal(Value::string("second"));
+                        body.block([], Some(value))
+                    });
+                });
+            },
+        );
+        let checked = module.finish().expect("portable overlap is valid");
+        let error = JavaBackend::compiler()
+            .compile_checked(&checked, &BackendOptions::default())
+            .unwrap_err();
+        match error {
+            TypedGenerationError::Phase {
+                stage: TypedPipelineStage::CapabilityPreflight,
+                diagnostics,
+            } => {
+                assert_eq!(diagnostics.len(), 1);
+                assert_eq!(diagnostics[0].target.as_deref(), Some("org.polyrust.java"));
+                assert!(
+                    diagnostics[0]
+                        .message
+                        .contains("Java-erased method render() collides")
+                );
+            }
+            other => panic!("unexpected generation error: {other:?}"),
+        }
     }
 }

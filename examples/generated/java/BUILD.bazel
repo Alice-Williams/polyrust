@@ -1,0 +1,56 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files(glob([
+    "v0/**/*",
+    "interfaces/**/*",
+]))
+
+sh_test(
+    name = "snapshot_regeneration_test",
+    srcs = ["compare_snapshots.sh"],
+    args = [
+        "$(location v0/README.md)",
+        "$(location //crates/backend-java:test-generated/README.md)",
+        "$(location v0/negative/InvalidTypes.java)",
+        "$(location //crates/backend-java:test-generated/negative/InvalidTypes.java)",
+        "$(location v0/src/main/java/org/polyrust/generated/Generated.java)",
+        "$(location //crates/backend-java:test-generated/src/main/java/org/polyrust/generated/Generated.java)",
+        "$(location v0/src/main/java/org/polyrust/generated/Runtime.java)",
+        "$(location //crates/backend-java:test-generated/src/main/java/org/polyrust/generated/Runtime.java)",
+        "$(location v0/src/test/java/org/polyrust/generated/ConformanceTest.java)",
+        "$(location //crates/backend-java:test-generated/src/test/java/org/polyrust/generated/ConformanceTest.java)",
+        "$(location v0/src/test/java/org/polyrust/generated/GeneratedTest.java)",
+        "$(location //crates/backend-java:test-generated/src/test/java/org/polyrust/generated/GeneratedTest.java)",
+        "$(location interfaces/README.md)",
+        "$(location //crates/backend-java:interface-generated/README.md)",
+        "$(location interfaces/negative/InvalidTypes.java)",
+        "$(location //crates/backend-java:interface-generated/negative/InvalidTypes.java)",
+        "$(location interfaces/src/main/java/org/polyrust/generated/Generated.java)",
+        "$(location //crates/backend-java:interface-generated/src/main/java/org/polyrust/generated/Generated.java)",
+        "$(location interfaces/src/main/java/org/polyrust/generated/Runtime.java)",
+        "$(location //crates/backend-java:interface-generated/src/main/java/org/polyrust/generated/Runtime.java)",
+        "$(location interfaces/src/test/java/org/polyrust/generated/ConformanceTest.java)",
+        "$(location //crates/backend-java:interface-generated/src/test/java/org/polyrust/generated/ConformanceTest.java)",
+        "$(location interfaces/src/test/java/org/polyrust/generated/GeneratedTest.java)",
+        "$(location //crates/backend-java:interface-generated/src/test/java/org/polyrust/generated/GeneratedTest.java)",
+    ],
+    data = glob([
+        "v0/**/*",
+        "interfaces/**/*",
+    ]) + [
+        "//crates/backend-java:interface-generated/README.md",
+        "//crates/backend-java:interface-generated/negative/InvalidTypes.java",
+        "//crates/backend-java:interface-generated/src/main/java/org/polyrust/generated/Generated.java",
+        "//crates/backend-java:interface-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        "//crates/backend-java:interface-generated/src/test/java/org/polyrust/generated/ConformanceTest.java",
+        "//crates/backend-java:interface-generated/src/test/java/org/polyrust/generated/GeneratedTest.java",
+        "//crates/backend-java:test-generated/README.md",
+        "//crates/backend-java:test-generated/negative/InvalidTypes.java",
+        "//crates/backend-java:test-generated/src/main/java/org/polyrust/generated/Generated.java",
+        "//crates/backend-java:test-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        "//crates/backend-java:test-generated/src/test/java/org/polyrust/generated/ConformanceTest.java",
+        "//crates/backend-java:test-generated/src/test/java/org/polyrust/generated/GeneratedTest.java",
+    ],
+)

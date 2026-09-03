@@ -16,6 +16,7 @@ sh_test(
     srcs = ["template_policy_test.sh"],
     data = [
         "template_policy.py",
+        "//crates/backend-java:language_ir_policy_sources",
         "//crates/codegen:typed_renderer_policy_sources",
     ],
     visibility = ["//visibility:public"],

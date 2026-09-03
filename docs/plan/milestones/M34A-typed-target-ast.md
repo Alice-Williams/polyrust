@@ -40,7 +40,8 @@ Shared layers:
 
 Language migrations:
 
-11. [M34A-10 — Java](../tasks/M34A-10-java.md) — complete
+11. [M34A-10 — Java](../tasks/M34A-10-java.md) — in progress
+    - [M34A-10R — blind-review remediation](../tasks/M34A-10R-java-review-remediation.md)
 12. [M34A-11 — C17](../tasks/M34A-11-c.md)
 13. [M34A-12 — Rust](../tasks/M34A-12-rust.md)
 14. [M34A-13 — TypeScript](../tasks/M34A-13-typescript.md)

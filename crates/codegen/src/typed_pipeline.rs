@@ -20,6 +20,7 @@ use crate::{
 pub enum TypedPipelineStage {
     CoreLowering,
     CoreVerification,
+    CapabilityPreflight,
     TargetLowering,
     UnresolvedVerification,
     Resolution,
@@ -102,6 +103,35 @@ impl<C> VerifiedCore<C> {
     }
 }
 
+/// A language-owned capability selection produced after Core verification.
+///
+/// The constructor is private so target lowering cannot be invoked with a
+/// caller-asserted support decision.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VerifiedCapabilities<S> {
+    selection: S,
+}
+
+impl<S> VerifiedCapabilities<S> {
+    pub const fn selection(&self) -> &S {
+        &self.selection
+    }
+
+    fn new(selection: S) -> Self {
+        Self { selection }
+    }
+}
+
+/// Language-owned, shape-aware capability preflight.
+///
+/// Implementations inspect the verified canonical core and return the exact
+/// typed strategy selection that their lowerer consumes.
+pub trait TargetCapabilityRegistry<C>: Send + Sync + 'static {
+    type Selection: Send + Sync + 'static;
+
+    fn preflight(&self, core: &VerifiedCore<C>) -> Result<Self::Selection, Vec<Diagnostic>>;
+}
+
 pub trait TargetDialect: Send + Sync + 'static {
     type Unresolved: Send + Sync + 'static;
     type Resolved: Send + Sync + 'static;
@@ -111,9 +141,12 @@ pub trait TargetDialect: Send + Sync + 'static {
 }
 
 pub trait TargetLowerer<C, D: TargetDialect>: Send + Sync + 'static {
+    type Capabilities: Send + Sync + 'static;
+
     fn lower_target(
         &self,
         core: &VerifiedCore<C>,
+        capabilities: &VerifiedCapabilities<Self::Capabilities>,
         options: &BackendOptions,
     ) -> Result<D::Unresolved, Vec<Diagnostic>>;
 }
@@ -418,13 +451,19 @@ impl RenderedPackage {
 
 pub trait TypedLanguagePlugin<C>: Send + Sync + 'static {
     type Dialect: TargetDialect;
-    type Lowerer: TargetLowerer<C, Self::Dialect>;
+    type CapabilityRegistry: TargetCapabilityRegistry<C>;
+    type Lowerer: TargetLowerer<
+            C,
+            Self::Dialect,
+            Capabilities = <Self::CapabilityRegistry as TargetCapabilityRegistry<C>>::Selection,
+        >;
     type Resolver: TargetResolver<Self::Dialect>;
     type Renderer: TargetRenderer<Self::Dialect>;
 
     fn descriptor(&self) -> BackendDescriptor;
     fn options_schema(&self) -> OptionsSchema;
     fn dialect(&self) -> Self::Dialect;
+    fn capability_registry(&self) -> Self::CapabilityRegistry;
     fn lowerer(&self) -> Self::Lowerer;
     fn resolver(&self) -> Self::Resolver;
     fn renderer(&self) -> Self::Renderer;
@@ -482,14 +521,23 @@ where
             })?;
         let core = VerifiedCore::new(core);
 
+        let capabilities = self
+            .plugin
+            .capability_registry()
+            .preflight(&core)
+            .map(VerifiedCapabilities::new)
+            .map_err(|diagnostics| {
+                TypedGenerationError::phase(TypedPipelineStage::CapabilityPreflight, diagnostics)
+            })?;
+
         let dialect = self.plugin.dialect();
-        let unresolved =
-            self.plugin
-                .lowerer()
-                .lower_target(&core, options)
-                .map_err(|diagnostics| {
-                    TypedGenerationError::phase(TypedPipelineStage::TargetLowering, diagnostics)
-                })?;
+        let unresolved = self
+            .plugin
+            .lowerer()
+            .lower_target(&core, &capabilities, options)
+            .map_err(|diagnostics| {
+                TypedGenerationError::phase(TypedPipelineStage::TargetLowering, diagnostics)
+            })?;
         dialect
             .verify_unresolved(&unresolved)
             .map_err(|diagnostics| {
@@ -739,19 +787,40 @@ pub(crate) mod tests {
     }
 
     #[derive(Clone)]
+    struct TestCapabilityRegistry(Trace);
+
+    impl TargetCapabilityRegistry<TestCore> for TestCapabilityRegistry {
+        type Selection = &'static str;
+
+        fn preflight(
+            &self,
+            core: &VerifiedCore<TestCore>,
+        ) -> Result<Self::Selection, Vec<Diagnostic>> {
+            self.0.lock().unwrap().push("capabilities.preflight");
+            (core.value().0 != "fail_capability_preflight")
+                .then_some("selected")
+                .ok_or_else(|| vec![diagnostic("capabilities.preflight")])
+        }
+    }
+
+    #[derive(Clone)]
     struct TestLowerer {
         trace: Trace,
         value: String,
     }
 
     impl TargetLowerer<TestCore, TestDialect> for TestLowerer {
+        type Capabilities = &'static str;
+
         fn lower_target(
             &self,
             core: &VerifiedCore<TestCore>,
+            capabilities: &VerifiedCapabilities<Self::Capabilities>,
             _options: &BackendOptions,
         ) -> Result<String, Vec<Diagnostic>> {
             self.trace.lock().unwrap().push("target.lower");
             assert_eq!(core.value().0, "typed_pipeline");
+            assert_eq!(*capabilities.selection(), "selected");
             if self.value == "fail-target-lowering" {
                 return Err(vec![diagnostic("target.lower")]);
             }
@@ -835,6 +904,7 @@ pub(crate) mod tests {
 
     impl TypedLanguagePlugin<TestCore> for TestPlugin {
         type Dialect = TestDialect;
+        type CapabilityRegistry = TestCapabilityRegistry;
         type Lowerer = TestLowerer;
         type Resolver = TestResolver;
         type Renderer = TestRenderer;
@@ -861,6 +931,10 @@ pub(crate) mod tests {
 
         fn dialect(&self) -> Self::Dialect {
             TestDialect(self.trace.clone())
+        }
+
+        fn capability_registry(&self) -> Self::CapabilityRegistry {
+            TestCapabilityRegistry(self.trace.clone())
         }
 
         fn lowerer(&self) -> Self::Lowerer {
@@ -925,6 +999,7 @@ pub(crate) mod tests {
             [
                 "core.lower",
                 "core.verify",
+                "capabilities.preflight",
                 "target.lower",
                 "unresolved.verify",
                 "resolve",
@@ -960,6 +1035,7 @@ pub(crate) mod tests {
             [
                 "core.lower",
                 "core.verify",
+                "capabilities.preflight",
                 "target.lower",
                 "unresolved.verify"
             ]
@@ -989,10 +1065,21 @@ pub(crate) mod tests {
                 trace: &["core.lower", "core.verify"],
             },
             Case {
+                input: "program",
+                program: "fail_capability_preflight",
+                stage: TypedPipelineStage::CapabilityPreflight,
+                trace: &["core.lower", "core.verify", "capabilities.preflight"],
+            },
+            Case {
                 input: "fail-target-lowering",
                 program: "typed_pipeline",
                 stage: TypedPipelineStage::TargetLowering,
-                trace: &["core.lower", "core.verify", "target.lower"],
+                trace: &[
+                    "core.lower",
+                    "core.verify",
+                    "capabilities.preflight",
+                    "target.lower",
+                ],
             },
             Case {
                 input: "bad-unresolved",
@@ -1001,6 +1088,7 @@ pub(crate) mod tests {
                 trace: &[
                     "core.lower",
                     "core.verify",
+                    "capabilities.preflight",
                     "target.lower",
                     "unresolved.verify",
                 ],
@@ -1012,6 +1100,7 @@ pub(crate) mod tests {
                 trace: &[
                     "core.lower",
                     "core.verify",
+                    "capabilities.preflight",
                     "target.lower",
                     "unresolved.verify",
                     "resolve",
@@ -1024,6 +1113,7 @@ pub(crate) mod tests {
                 trace: &[
                     "core.lower",
                     "core.verify",
+                    "capabilities.preflight",
                     "target.lower",
                     "unresolved.verify",
                     "resolve",
@@ -1037,6 +1127,7 @@ pub(crate) mod tests {
                 trace: &[
                     "core.lower",
                     "core.verify",
+                    "capabilities.preflight",
                     "target.lower",
                     "unresolved.verify",
                     "resolve",
@@ -1051,6 +1142,7 @@ pub(crate) mod tests {
                 trace: &[
                     "core.lower",
                     "core.verify",
+                    "capabilities.preflight",
                     "target.lower",
                     "unresolved.verify",
                     "resolve",

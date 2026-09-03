@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly runtime_source="$1"
-readonly invalid_source="$2"
+readonly sources=("$@")
 readonly runfiles="${RUNFILES_DIR:-$0.runfiles}"
 readonly javac="$(find -L "${runfiles}" -path '*remotejdk21_linux/bin/javac' -print -quit)"
 readonly classes="${TEST_TMPDIR}/negative-classes"
@@ -14,8 +13,8 @@ if [[ -z "${javac}" ]]; then
 fi
 
 mkdir -p "${classes}"
-if "${javac}" --release 21 -Werror -Xlint:all -d "${classes}" \
-  "${runtime_source}" "${invalid_source}" >"${diagnostics}" 2>&1; then
+if LC_ALL=C LANG=C "${javac}" --release 21 -Werror -Xlint:all -d "${classes}" \
+  "${sources[@]}" >"${diagnostics}" 2>&1; then
   echo "negative Java type fixture unexpectedly compiled" >&2
   exit 1
 fi

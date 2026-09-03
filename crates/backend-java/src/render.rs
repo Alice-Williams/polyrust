@@ -24,6 +24,18 @@ pub struct JavaFileView {
     declarations: String,
 }
 
+#[derive(Serialize)]
+#[serde(transparent)]
+struct RenderedIdentifier<'a>(&'a str);
+
+#[derive(Serialize)]
+#[serde(transparent)]
+struct RenderedType<'a>(&'a str);
+
+#[derive(Serialize)]
+#[serde(transparent)]
+struct RenderedExpression<'a>(&'a str);
+
 impl ResolvedTemplateRenderer<JavaDialect> for JavaRenderer {
     type FileView = JavaFileView;
 
@@ -464,7 +476,7 @@ fn render_type_with_extra(
                 indent: &indent,
                 visibility,
                 modifiers: &declaration_modifiers,
-                name: &declaration_name,
+                name: RenderedIdentifier(&declaration_name),
                 type_parameters: &type_parameters,
                 heritage: &heritage,
                 members: &members,
@@ -478,7 +490,7 @@ fn render_type_with_extra(
                 indent: &indent,
                 visibility,
                 modifiers: &declaration_modifiers,
-                name: &declaration_name,
+                name: RenderedIdentifier(&declaration_name),
                 type_parameters: &type_parameters,
                 components: &components,
                 heritage: &heritage,
@@ -493,7 +505,7 @@ fn render_type_with_extra(
                 indent: &indent,
                 visibility,
                 modifiers: &declaration_modifiers,
-                name: &declaration_name,
+                name: RenderedIdentifier(&declaration_name),
                 type_parameters: &type_parameters,
                 members: &members,
             },
@@ -506,7 +518,7 @@ fn render_type_with_extra(
                 indent: &indent,
                 visibility,
                 modifiers: &declaration_modifiers,
-                name: &declaration_name,
+                name: RenderedIdentifier(&declaration_name),
                 type_parameters: &type_parameters,
                 permits: &permits,
                 members: &members,
@@ -568,8 +580,8 @@ fn render_field(
         &FieldView {
             indent: &indent,
             modifiers: &modifiers,
-            ty: &ty,
-            name: &field_name,
+            ty: RenderedType(&ty),
+            name: RenderedIdentifier(&field_name),
             initializer: &initializer,
         },
         file,
@@ -614,8 +626,8 @@ fn render_method(
                     indent: &indent,
                     modifiers: &modifiers,
                     type_parameters: &type_parameters,
-                    return_type: &return_type,
-                    name: &method_name,
+                    return_type: RenderedType(&return_type),
+                    name: RenderedIdentifier(&method_name),
                     parameters: &parameters,
                     body: &body,
                 },
@@ -630,8 +642,8 @@ fn render_method(
                 indent: &indent,
                 modifiers: &modifiers,
                 type_parameters: &type_parameters,
-                return_type: &return_type,
-                name: &method_name,
+                return_type: RenderedType(&return_type),
+                name: RenderedIdentifier(&method_name),
                 parameters: &parameters,
             },
             file,
@@ -656,7 +668,7 @@ fn render_constructor(
         &ConstructorView {
             indent: &indent,
             modifiers: &modifiers,
-            name: value.name.as_str(),
+            name: RenderedIdentifier(value.name.as_str()),
             parameters: &parameters,
             body: &body,
         },
@@ -682,7 +694,7 @@ fn render_annotations(
             JavaTemplateId::Annotation,
             &AnnotationView {
                 indent: &indent,
-                name,
+                name: RenderedIdentifier(name),
             },
             file,
         )?);
@@ -705,8 +717,8 @@ fn render_parameters(
                 JavaTemplateId::Parameter,
                 &ParameterView {
                     finality: if value.final_parameter { "final " } else { "" },
-                    ty: &ty,
-                    name: value.name.as_str(),
+                    ty: RenderedType(&ty),
+                    name: RenderedIdentifier(value.name.as_str()),
                 },
                 file,
             )
@@ -720,7 +732,7 @@ struct ClassView<'a> {
     indent: &'a str,
     visibility: &'a str,
     modifiers: &'a str,
-    name: &'a str,
+    name: RenderedIdentifier<'a>,
     type_parameters: &'a str,
     heritage: &'a str,
     members: &'a str,
@@ -730,7 +742,7 @@ struct RecordView<'a> {
     indent: &'a str,
     visibility: &'a str,
     modifiers: &'a str,
-    name: &'a str,
+    name: RenderedIdentifier<'a>,
     type_parameters: &'a str,
     components: &'a str,
     heritage: &'a str,
@@ -741,7 +753,7 @@ struct InterfaceView<'a> {
     indent: &'a str,
     visibility: &'a str,
     modifiers: &'a str,
-    name: &'a str,
+    name: RenderedIdentifier<'a>,
     type_parameters: &'a str,
     members: &'a str,
 }
@@ -750,7 +762,7 @@ struct SealedInterfaceView<'a> {
     indent: &'a str,
     visibility: &'a str,
     modifiers: &'a str,
-    name: &'a str,
+    name: RenderedIdentifier<'a>,
     type_parameters: &'a str,
     permits: &'a str,
     members: &'a str,
@@ -759,8 +771,8 @@ struct SealedInterfaceView<'a> {
 struct FieldView<'a> {
     indent: &'a str,
     modifiers: &'a str,
-    ty: &'a str,
-    name: &'a str,
+    ty: RenderedType<'a>,
+    name: RenderedIdentifier<'a>,
     initializer: &'a str,
 }
 #[derive(Serialize)]
@@ -769,8 +781,8 @@ struct MethodView<'a> {
     indent: &'a str,
     modifiers: &'a str,
     type_parameters: &'a str,
-    return_type: &'a str,
-    name: &'a str,
+    return_type: RenderedType<'a>,
+    name: RenderedIdentifier<'a>,
     parameters: &'a str,
     body: &'a str,
 }
@@ -780,28 +792,28 @@ struct AbstractMethodView<'a> {
     indent: &'a str,
     modifiers: &'a str,
     type_parameters: &'a str,
-    return_type: &'a str,
-    name: &'a str,
+    return_type: RenderedType<'a>,
+    name: RenderedIdentifier<'a>,
     parameters: &'a str,
 }
 #[derive(Serialize)]
 struct ConstructorView<'a> {
     indent: &'a str,
     modifiers: &'a str,
-    name: &'a str,
+    name: RenderedIdentifier<'a>,
     parameters: &'a str,
     body: &'a str,
 }
 #[derive(Serialize)]
 struct AnnotationView<'a> {
     indent: &'a str,
-    name: &'a str,
+    name: RenderedIdentifier<'a>,
 }
 #[derive(Serialize)]
 struct ParameterView<'a> {
     finality: &'a str,
-    ty: &'a str,
-    name: &'a str,
+    ty: RenderedType<'a>,
+    name: RenderedIdentifier<'a>,
 }
 
 fn render_block(
@@ -855,8 +867,8 @@ fn render_stmt(
                     } else {
                         ""
                     },
-                    ty: &ty,
-                    name: name.as_str(),
+                    ty: RenderedType(&ty),
+                    name: RenderedIdentifier(name.as_str()),
                     initializer: &initializer,
                 },
                 file,
@@ -870,8 +882,8 @@ fn render_stmt(
                 JavaTemplateId::Assign,
                 &AssignView {
                     indent: &indentation,
-                    target: &target,
-                    value: &value,
+                    target: RenderedExpression(&target),
+                    value: RenderedExpression(&value),
                 },
                 file,
             )
@@ -883,7 +895,7 @@ fn render_stmt(
                 JavaTemplateId::ExpressionStatement,
                 &ExpressionStatementView {
                     indent: &indentation,
-                    value: &value,
+                    value: RenderedExpression(&value),
                 },
                 file,
             )
@@ -923,7 +935,7 @@ fn render_stmt(
                 JavaTemplateId::If,
                 &IfView {
                     indent: &indentation,
-                    condition: &condition,
+                    condition: RenderedExpression(&condition),
                     then_body: &then_body,
                     alternate_body: &else_body,
                 },
@@ -944,9 +956,9 @@ fn render_stmt(
                 JavaTemplateId::ForEach,
                 &ForEachView {
                     indent: &indentation,
-                    ty: &ty,
-                    binding: binding.as_str(),
-                    iterable: &iterable,
+                    ty: RenderedType(&ty),
+                    binding: RenderedIdentifier(binding.as_str()),
+                    iterable: RenderedExpression(&iterable),
                     body: &body,
                 },
                 file,
@@ -960,7 +972,7 @@ fn render_stmt(
                 JavaTemplateId::While,
                 &WhileView {
                     indent: &indentation,
-                    condition: &condition,
+                    condition: RenderedExpression(&condition),
                     body: &body,
                 },
                 file,
@@ -994,7 +1006,7 @@ fn render_stmt(
                 JavaTemplateId::Switch,
                 &SwitchView {
                     indent: &indentation,
-                    value: &value,
+                    value: RenderedExpression(&value),
                     arms: &rendered_arms,
                 },
                 file,
@@ -1010,8 +1022,8 @@ fn render_stmt(
                     templates,
                     JavaTemplateId::Catch,
                     &CatchView {
-                        exception_type: &exception_type,
-                        binding: catch.binding.as_str(),
+                        exception_type: RenderedType(&exception_type),
+                        binding: RenderedIdentifier(catch.binding.as_str()),
                         body: &catch_body,
                         indent: &indentation,
                     },
@@ -1036,7 +1048,7 @@ fn render_stmt(
                 JavaTemplateId::Throw,
                 &ThrowView {
                     indent: &indentation,
-                    message: &message,
+                    message: RenderedExpression(&message),
                 },
                 file,
             )
@@ -1048,7 +1060,7 @@ fn render_stmt(
                 JavaTemplateId::ThrowValue,
                 &ExpressionStatementView {
                     indent: &indentation,
-                    value: &value,
+                    value: RenderedExpression(&value),
                 },
                 file,
             )
@@ -1080,20 +1092,20 @@ struct BlockView<'a> {
 struct LocalView<'a> {
     indent: &'a str,
     finality: &'a str,
-    ty: &'a str,
-    name: &'a str,
+    ty: RenderedType<'a>,
+    name: RenderedIdentifier<'a>,
     initializer: &'a str,
 }
 #[derive(Serialize)]
 struct AssignView<'a> {
     indent: &'a str,
-    target: &'a str,
-    value: &'a str,
+    target: RenderedExpression<'a>,
+    value: RenderedExpression<'a>,
 }
 #[derive(Serialize)]
 struct ExpressionStatementView<'a> {
     indent: &'a str,
-    value: &'a str,
+    value: RenderedExpression<'a>,
 }
 #[derive(Serialize)]
 struct ReturnView<'a> {
@@ -1103,28 +1115,28 @@ struct ReturnView<'a> {
 #[derive(Serialize)]
 struct IfView<'a> {
     indent: &'a str,
-    condition: &'a str,
+    condition: RenderedExpression<'a>,
     then_body: &'a str,
     alternate_body: &'a str,
 }
 #[derive(Serialize)]
 struct ForEachView<'a> {
     indent: &'a str,
-    ty: &'a str,
-    binding: &'a str,
-    iterable: &'a str,
+    ty: RenderedType<'a>,
+    binding: RenderedIdentifier<'a>,
+    iterable: RenderedExpression<'a>,
     body: &'a str,
 }
 #[derive(Serialize)]
 struct WhileView<'a> {
     indent: &'a str,
-    condition: &'a str,
+    condition: RenderedExpression<'a>,
     body: &'a str,
 }
 #[derive(Serialize)]
 struct SwitchView<'a> {
     indent: &'a str,
-    value: &'a str,
+    value: RenderedExpression<'a>,
     arms: &'a str,
 }
 #[derive(Serialize)]
@@ -1136,7 +1148,7 @@ struct SwitchArmView<'a> {
 #[derive(Serialize)]
 struct ThrowView<'a> {
     indent: &'a str,
-    message: &'a str,
+    message: RenderedExpression<'a>,
 }
 #[derive(Serialize)]
 struct IndentView<'a> {
@@ -1150,8 +1162,8 @@ struct TryCatchView<'a> {
 }
 #[derive(Serialize)]
 struct CatchView<'a> {
-    exception_type: &'a str,
-    binding: &'a str,
+    exception_type: RenderedType<'a>,
+    binding: RenderedIdentifier<'a>,
     body: &'a str,
     indent: &'a str,
 }
@@ -1167,7 +1179,7 @@ fn render_expr(
             templates,
             JavaTemplateId::Literal,
             &SingleValueView {
-                value: &render_literal(value),
+                value: RenderedExpression(&render_literal(value)),
             },
             file,
         ),
@@ -1189,7 +1201,9 @@ fn render_expr(
             render_template(
                 templates,
                 JavaTemplateId::Name,
-                &SingleValueView { value: &value },
+                &SingleValueView {
+                    value: RenderedExpression(&value),
+                },
                 file,
             )
         }
@@ -1200,7 +1214,7 @@ fn render_expr(
                 JavaTemplateId::Unary,
                 &UnaryView {
                     operator: unary_operator(*operator),
-                    operand: &operand,
+                    operand: RenderedExpression(&operand),
                 },
                 file,
             )
@@ -1216,9 +1230,9 @@ fn render_expr(
                 templates,
                 JavaTemplateId::Binary,
                 &BinaryView {
-                    left: &left,
+                    left: RenderedExpression(&left),
                     operator: binary_operator(*operator),
-                    right: &right,
+                    right: RenderedExpression(&right),
                 },
                 file,
             )
@@ -1235,9 +1249,9 @@ fn render_expr(
                 templates,
                 JavaTemplateId::Conditional,
                 &ConditionalView {
-                    condition: &condition,
-                    when_true: &when_true,
-                    when_false: &when_false,
+                    condition: RenderedExpression(&condition),
+                    when_true: RenderedExpression(&when_true),
+                    when_false: RenderedExpression(&when_false),
                 },
                 file,
             )
@@ -1305,7 +1319,7 @@ fn render_expr(
                 templates,
                 JavaTemplateId::Call,
                 &CallView {
-                    target: &target,
+                    target: RenderedExpression(&target),
                     arguments: &arguments,
                 },
                 file,
@@ -1337,7 +1351,7 @@ fn render_expr(
                 templates,
                 JavaTemplateId::New,
                 &CallView {
-                    target: &target,
+                    target: RenderedExpression(&target),
                     arguments: &arguments,
                 },
                 file,
@@ -1350,8 +1364,8 @@ fn render_expr(
                 templates,
                 JavaTemplateId::NewArray,
                 &NewArrayView {
-                    component: &component,
-                    length: &length,
+                    component: RenderedType(&component),
+                    length: RenderedExpression(&length),
                 },
                 file,
             )
@@ -1363,8 +1377,8 @@ fn render_expr(
                 templates,
                 JavaTemplateId::ArrayIndex,
                 &ArrayIndexView {
-                    array: &array,
-                    index: &index,
+                    array: RenderedExpression(&array),
+                    index: RenderedExpression(&index),
                 },
                 file,
             )
@@ -1380,8 +1394,8 @@ fn render_expr(
                 templates,
                 JavaTemplateId::FieldAccess,
                 &FieldAccessView {
-                    receiver: &receiver,
-                    field,
+                    receiver: RenderedExpression(&receiver),
+                    field: RenderedIdentifier(field),
                 },
                 file,
             )
@@ -1393,8 +1407,8 @@ fn render_expr(
                 templates,
                 JavaTemplateId::Cast,
                 &CastView {
-                    target: &target,
-                    value: &value,
+                    target: RenderedType(&target),
+                    value: RenderedExpression(&value),
                 },
                 file,
             )
@@ -1414,8 +1428,8 @@ fn render_expr(
                 templates,
                 JavaTemplateId::InstanceOf,
                 &InstanceOfView {
-                    value: &value,
-                    target: &target,
+                    value: RenderedExpression(&value),
+                    target: RenderedType(&target),
                     binding: &binding,
                 },
                 file,
@@ -1533,9 +1547,7 @@ fn render_literal(value: &JavaLiteral) -> String {
         JavaLiteral::Boolean(value) => value.to_string(),
         JavaLiteral::I32(value) => value.to_string(),
         JavaLiteral::I64(value) => format!("{value}L"),
-        JavaLiteral::CharScalar(value) => char::from_u32(*value)
-            .map(|value| java_string(&value.to_string()))
-            .unwrap_or_else(|| "\"\\ufffd\"".to_owned()),
+        JavaLiteral::CharScalar(value) => value.to_string(),
         JavaLiteral::String(value) => java_string(value),
         JavaLiteral::Utf16Units(values) => {
             let mut result = String::from("\"");
@@ -1578,10 +1590,6 @@ fn render_heritage(
             .collect::<Result<Vec<_>, Vec<Diagnostic>>>()
             .map(|values| format!(" implements {}", values.join(", "))),
         JavaHeritage::ExternalAdapter { .. } => Ok(" extends ApprovedFrameworkAdapter".to_owned()),
-        JavaHeritage::InternalRuntime(JavaInternalBase::RuntimeException) => Ok(format!(
-            " extends {}",
-            resolved_type_name(names, JavaKnownType::RuntimeException)?
-        )),
     }
 }
 
@@ -1687,55 +1695,55 @@ mod tests {
 
 #[derive(Serialize)]
 struct SingleValueView<'a> {
-    value: &'a str,
+    value: RenderedExpression<'a>,
 }
 #[derive(Serialize)]
 struct UnaryView<'a> {
     operator: &'a str,
-    operand: &'a str,
+    operand: RenderedExpression<'a>,
 }
 #[derive(Serialize)]
 struct BinaryView<'a> {
-    left: &'a str,
+    left: RenderedExpression<'a>,
     operator: &'a str,
-    right: &'a str,
+    right: RenderedExpression<'a>,
 }
 #[derive(Serialize)]
 struct ConditionalView<'a> {
-    condition: &'a str,
-    when_true: &'a str,
-    when_false: &'a str,
+    condition: RenderedExpression<'a>,
+    when_true: RenderedExpression<'a>,
+    when_false: RenderedExpression<'a>,
 }
 #[derive(Serialize)]
 struct CallView<'a> {
-    target: &'a str,
+    target: RenderedExpression<'a>,
     arguments: &'a str,
 }
 #[derive(Serialize)]
 struct FieldAccessView<'a> {
-    receiver: &'a str,
-    field: &'a str,
+    receiver: RenderedExpression<'a>,
+    field: RenderedIdentifier<'a>,
 }
 #[derive(Serialize)]
 struct CastView<'a> {
-    target: &'a str,
-    value: &'a str,
+    target: RenderedType<'a>,
+    value: RenderedExpression<'a>,
 }
 #[derive(Serialize)]
 struct InstanceOfView<'a> {
-    value: &'a str,
-    target: &'a str,
+    value: RenderedExpression<'a>,
+    target: RenderedType<'a>,
     binding: &'a str,
 }
 #[derive(Serialize)]
 struct NewArrayView<'a> {
-    component: &'a str,
-    length: &'a str,
+    component: RenderedType<'a>,
+    length: RenderedExpression<'a>,
 }
 #[derive(Serialize)]
 struct ArrayIndexView<'a> {
-    array: &'a str,
-    index: &'a str,
+    array: RenderedExpression<'a>,
+    index: RenderedExpression<'a>,
 }
 #[derive(Serialize)]
 struct LambdaView<'a> {

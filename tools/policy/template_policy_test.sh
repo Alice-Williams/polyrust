@@ -7,4 +7,5 @@ readonly root="${runfiles}/${TEST_WORKSPACE}"
 python3 \
   "${root}/tools/policy/template_policy.py" \
   verify \
-  "${root}/crates/codegen/src/rendering.rs"
+  "${root}/crates/codegen/src/rendering.rs" \
+  "${root}/crates/backend-java/src/render.rs"

@@ -2,7 +2,7 @@
 
 - Status: normative baseline for M34A
 - Baseline date: 2026-09-02
-- Last updated: 2026-09-02
+- Last updated: 2026-09-03
 - Supersedes for new work: `docs/language-ir-compliance.md`
 
 This ledger measures the stronger ADR-0004 contract. The M30 ledger remains
@@ -60,7 +60,7 @@ ADR-0004.
 - Hermetic Java 21 `-Werror -Xlint:all` positive, public-consumer,
   conformance, interface/composition, and deliberate negative-type tests pass.
 - All 39 tracked historical Java targets pass. The uncached tracked-scope
-  repository gate passes 282 of 282 tests with Rustfmt, Clippy, Buildifier,
+  repository gate passes 288 of 288 tests with Rustfmt, Clippy, Buildifier,
   typed-source policy, template policy, dependency policy, native compilers,
   sanitizers, and differential conformance included.
 

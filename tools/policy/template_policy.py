@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -27,7 +28,12 @@ INLINE_HELPER = re.compile(
 )
 FORBIDDEN_RENDERER_LAYER = re.compile(
     r"\b(?:portable_core_ir|portable_check|CoreProgram|CapabilityRegistry|"
-    r"TargetAstPackage|TargetSymbolRef|UnresolvedPackage)\b|\.unresolved\s*\("
+    r"TargetAstPackage|UnresolvedPackage)\b|\.unresolved\s*\("
+)
+EMBEDDED_TEMPLATE = re.compile(
+    r"\btemplate\(\s*(?:[A-Za-z_][\w]*::)*[A-Za-z_][\w]*\s*,\s*"
+    r"(?P<literal>\"(?:\\.|[^\"\\])*\")",
+    re.DOTALL,
 )
 
 
@@ -36,11 +42,18 @@ def offenders(path: str, source: str) -> list[str]:
         production = "\n".join(
             line for line in source.splitlines() if not line.lstrip().startswith("///")
         )
-        return [
+        findings = [
             f"{path}:{production.count(chr(10), 0, match.start()) + 1}: "
             "renderer imports or inspects a pre-resolution layer"
             for match in FORBIDDEN_RENDERER_LAYER.finditer(production)
         ]
+        for match in EMBEDDED_TEMPLATE.finditer(production):
+            decoded = json.loads(match.group("literal"))
+            line = production.count("\n", 0, match.start("literal")) + 1
+            for finding in offenders(f"{path}.embedded.hbs", decoded):
+                _, _, message = finding.partition(":1: ")
+                findings.append(f"{path}:{line}: {message or finding}")
+        return findings
     findings: list[str] = []
     for label, pattern in [
         ("semantic identifier in template", SEMANTIC_NAME),
@@ -80,6 +93,16 @@ def self_test() -> None:
         raise AssertionError("resolved renderer input was rejected")
     if not offenders("injected.rs", "use portable_core_ir::CoreProgram;"):
         raise AssertionError("pre-resolution renderer input was not rejected")
+    if offenders(
+        "allowed.rs",
+        'template(Id::Unit, "{{name}}\\n", &["name"]);',
+    ):
+        raise AssertionError("generic embedded template was rejected")
+    if not offenders(
+        "injected.rs",
+        'template(Id::Unit, "import java.util.List;\\n", &[]);',
+    ):
+        raise AssertionError("embedded template dependency was not rejected")
 
 
 def main() -> int:

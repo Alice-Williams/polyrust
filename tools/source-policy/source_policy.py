@@ -31,6 +31,7 @@ FIXTURE_ALLOWLIST = {
     "crates/backend-c/test/runtime_template_preamble.h",
     "crates/backend-cpp/test/cpp_consumer_test.cc",
     "crates/backend-java/test/JavaConsumerTest.java",
+    "crates/backend-java/test/JavaInterfaceConsumerTest.java",
 }
 
 

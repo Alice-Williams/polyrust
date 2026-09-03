@@ -462,6 +462,8 @@ impl JavaKnownCallable {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum JavaKnownConstructor {
     AssertionErrorString,
+    IllegalArgumentExceptionString,
+    IllegalStateExceptionString,
     ArrayList,
     ArrayListFromList,
     RuntimeError,
@@ -469,20 +471,22 @@ pub enum JavaKnownConstructor {
     RuntimeOption,
     RuntimeValueResult,
     RuntimeBytes,
-    RuntimeHalt,
+    RuntimeScalar,
     RuntimeUnit,
 }
 
 impl JavaKnownConstructor {
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 12] = [
         Self::AssertionErrorString,
+        Self::IllegalArgumentExceptionString,
+        Self::IllegalStateExceptionString,
         Self::ArrayList,
         Self::RuntimeError,
         Self::RuntimeResult,
         Self::RuntimeOption,
         Self::RuntimeValueResult,
         Self::RuntimeBytes,
-        Self::RuntimeHalt,
+        Self::RuntimeScalar,
         Self::RuntimeUnit,
         Self::ArrayListFromList,
     ];
@@ -490,13 +494,15 @@ impl JavaKnownConstructor {
     pub fn owner(self) -> JavaKnownType {
         match self {
             Self::AssertionErrorString => JavaKnownType::AssertionError,
+            Self::IllegalArgumentExceptionString => JavaKnownType::IllegalArgumentException,
+            Self::IllegalStateExceptionString => JavaKnownType::IllegalStateException,
             Self::ArrayList | Self::ArrayListFromList => JavaKnownType::ArrayList,
             Self::RuntimeError => JavaKnownType::RuntimeError,
             Self::RuntimeResult => JavaKnownType::RuntimeResult,
             Self::RuntimeOption => JavaKnownType::RuntimeOption,
             Self::RuntimeValueResult => JavaKnownType::RuntimeValueResult,
             Self::RuntimeBytes => JavaKnownType::RuntimeBytes,
-            Self::RuntimeHalt => JavaKnownType::RuntimeHalt,
+            Self::RuntimeScalar => JavaKnownType::RuntimeScalar,
             Self::RuntimeUnit => JavaKnownType::RuntimeUnit,
         }
     }
@@ -519,7 +525,9 @@ impl JavaKnownConstructor {
         let string = JavaType::known(JavaKnownType::String);
         let boolean = JavaType::primitive(JavaPrimitive::Boolean);
         let parameters = match self {
-            Self::AssertionErrorString => vec![string],
+            Self::AssertionErrorString
+            | Self::IllegalArgumentExceptionString
+            | Self::IllegalStateExceptionString => vec![string],
             Self::ArrayList => vec![],
             Self::ArrayListFromList => {
                 vec![JavaType::generic(JavaKnownType::List, vec![t.clone()])]
@@ -538,7 +546,7 @@ impl JavaKnownConstructor {
                 JavaKnownType::List,
                 vec![JavaType::Boxed(JavaPrimitive::Int)],
             )],
-            Self::RuntimeHalt => vec![JavaType::known(JavaKnownType::RuntimeError)],
+            Self::RuntimeScalar => vec![JavaType::primitive(JavaPrimitive::Int)],
             Self::RuntimeUnit => vec![],
         };
         (owner, parameters)
@@ -1016,9 +1024,8 @@ pub enum JavaRuntimeCallable {
     Fail,
     DeepEqual,
     SemanticEqual,
-    Capture,
-    Unwrap,
-    Evaluate,
+    RequireScalarString,
+    CompareScalarStrings,
     OptionNone,
     OptionSome,
     OptionIsSome,
@@ -1073,14 +1080,13 @@ pub enum JavaRuntimeCallable {
 }
 
 impl JavaRuntimeCallable {
-    pub const ALL: [Self; 58] = [
+    pub const ALL: [Self; 57] = [
         Self::Ok,
         Self::Fail,
         Self::DeepEqual,
         Self::SemanticEqual,
-        Self::Capture,
-        Self::Unwrap,
-        Self::Evaluate,
+        Self::RequireScalarString,
+        Self::CompareScalarStrings,
         Self::OptionNone,
         Self::OptionSome,
         Self::OptionIsSome,
@@ -1140,9 +1146,8 @@ impl JavaRuntimeCallable {
             | Self::Fail
             | Self::DeepEqual
             | Self::SemanticEqual
-            | Self::Capture
-            | Self::Unwrap
-            | Self::Evaluate => JavaRuntimeHelper::Core,
+            | Self::RequireScalarString
+            | Self::CompareScalarStrings => JavaRuntimeHelper::Core,
             Self::OptionNone
             | Self::OptionSome
             | Self::OptionIsSome
@@ -1203,9 +1208,8 @@ impl JavaRuntimeCallable {
             Self::Fail => "fail",
             Self::DeepEqual => "deepEqual",
             Self::SemanticEqual => "semanticEqual",
-            Self::Capture => "capture",
-            Self::Unwrap => "unwrap",
-            Self::Evaluate => "evaluate",
+            Self::RequireScalarString => "requireScalarString",
+            Self::CompareScalarStrings => "compareScalarStrings",
             Self::OptionNone => "optionNone",
             Self::OptionSome => "optionSome",
             Self::OptionIsSome => "optionIsSome",
@@ -1266,9 +1270,8 @@ impl JavaRuntimeCallable {
             Self::Fail => "org.polyrust.generated.Runtime.fail",
             Self::DeepEqual => "org.polyrust.generated.Runtime.deepEqual",
             Self::SemanticEqual => "org.polyrust.generated.Runtime.semanticEqual",
-            Self::Capture => "org.polyrust.generated.Runtime.capture",
-            Self::Unwrap => "org.polyrust.generated.Runtime.unwrap",
-            Self::Evaluate => "org.polyrust.generated.Runtime.evaluate",
+            Self::RequireScalarString => "org.polyrust.generated.Runtime.requireScalarString",
+            Self::CompareScalarStrings => "org.polyrust.generated.Runtime.compareScalarStrings",
             Self::OptionNone => "org.polyrust.generated.Runtime.optionNone",
             Self::OptionSome => "org.polyrust.generated.Runtime.optionSome",
             Self::OptionIsSome => "org.polyrust.generated.Runtime.optionIsSome",
@@ -1356,7 +1359,6 @@ impl JavaRuntimeCallable {
             JavaKnownType::RuntimeValueResult,
             vec![t.clone(), e.clone()],
         );
-        let action_t = JavaType::generic(JavaKnownType::RuntimeAction, vec![t.clone()]);
         let list_t = JavaType::generic(JavaKnownType::List, vec![t.clone()]);
         let integer_list = JavaType::generic(
             JavaKnownType::List,
@@ -1368,9 +1370,8 @@ impl JavaRuntimeCallable {
             Self::DeepEqual | Self::SemanticEqual => {
                 signature(None, vec![object.clone(), object], boolean)
             }
-            Self::Capture => signature(None, vec![action_t], result_t),
-            Self::Unwrap => signature(None, vec![result_t], t),
-            Self::Evaluate => signature(None, vec![action_t], t),
+            Self::RequireScalarString => signature(None, vec![string.clone()], string),
+            Self::CompareScalarStrings => signature(None, vec![string.clone(), string], int),
             Self::OptionNone => signature(None, vec![], option_t),
             Self::OptionSome => signature(None, vec![t], option_t),
             Self::OptionIsSome => signature(None, vec![option_t], boolean),
@@ -1631,7 +1632,10 @@ impl JavaDialect {
         }
     }
 
-    fn coarse_signature(&self, value: &JavaMethodSignature) -> TargetCallableSignature<Self> {
+    pub(crate) fn coarse_signature(
+        &self,
+        value: &JavaMethodSignature,
+    ) -> TargetCallableSignature<Self> {
         TargetCallableSignature {
             invocation: if value.receiver.is_some() {
                 JavaInvocationKind::Instance
@@ -1957,8 +1961,7 @@ fn known_type_spec(value: JavaKnownType) -> KnownTypeSpec<JavaDialect> {
             JavaKnownType::ArrayList
             | JavaKnownType::List
             | JavaKnownType::RuntimeResult
-            | JavaKnownType::RuntimeOption
-            | JavaKnownType::RuntimeAction => 1,
+            | JavaKnownType::RuntimeOption => 1,
             JavaKnownType::Map | JavaKnownType::RuntimeValueResult => 2,
             _ => 0,
         },

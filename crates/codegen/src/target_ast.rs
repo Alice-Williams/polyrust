@@ -681,6 +681,10 @@ impl<'a, D: TypedAstDialect> TargetAstContext<'a, D> {
         self.package.statements.get(id.index()).is_some()
     }
 
+    pub fn files(&self) -> impl ExactSizeIterator<Item = &'a TargetFile<D>> + 'a {
+        self.package.files.iter()
+    }
+
     pub fn callable_signature(
         &self,
         callable: &TargetCallableRef<D>,

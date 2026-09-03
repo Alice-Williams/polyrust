@@ -919,14 +919,14 @@ impl BuiltInLanguage {
 
     pub const fn target(self) -> &'static str {
         match self {
-            Self::Rust => "dev.polyrust.rust",
-            Self::TypeScript => "dev.polyrust.typescript",
-            Self::JavaScript => "dev.polyrust.javascript",
-            Self::Python => "dev.polyrust.python",
-            Self::Go => "dev.polyrust.go",
-            Self::Java => "dev.polyrust.java",
-            Self::Cpp => "dev.polyrust.cpp",
-            Self::C => "dev.polyrust.c",
+            Self::Rust => "org.polyrust.rust",
+            Self::TypeScript => "org.polyrust.typescript",
+            Self::JavaScript => "org.polyrust.javascript",
+            Self::Python => "org.polyrust.python",
+            Self::Go => "org.polyrust.go",
+            Self::Java => "org.polyrust.java",
+            Self::Cpp => "org.polyrust.cpp",
+            Self::C => "org.polyrust.c",
         }
     }
 }

@@ -27,10 +27,12 @@ def generated_java_tests():
         srcs = ["//tools/java:negative_compile_test.sh"],
         args = [
             "$(location :generated/java/src/main/java/org/polyrust/generated/Runtime.java)",
+            "$(location :generated/java/src/main/java/org/polyrust/generated/Generated.java)",
             "$(location :generated/java/negative/InvalidTypes.java)",
         ],
         data = [
             ":generated/java/negative/InvalidTypes.java",
+            ":generated/java/src/main/java/org/polyrust/generated/Generated.java",
             ":generated/java/src/main/java/org/polyrust/generated/Runtime.java",
             "@bazel_tools//tools/jdk:current_java_runtime",
         ],

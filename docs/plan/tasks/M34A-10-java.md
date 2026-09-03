@@ -1,7 +1,12 @@
 # M34A-10 — Migrate Java 21 to typed generation
 
-- Status: complete
+- Status: in-progress
 - Depends on: M34A-09
+
+The original implementation checkpoint was pushed as
+`f4d9e1d539064ed70eb3c012537b99535ed344a0`. Independent review found gaps in
+its claimed exit evidence. M34A-10 remains open until
+[M34A-10R](M34A-10R-java-review-remediation.md) completes.
 
 ## Goal
 
@@ -71,7 +76,7 @@ shared typed-generation gates pass in the dev container.
   deliberate invalid-type compilation tests pass for both the base and
   interface packages.
 - All 39 tracked historical Java generation/conformance/negative-type targets
-  pass. The final uncached tracked-scope repository graph passes 282 of 282
+  pass. The final uncached tracked-scope repository graph passes 288 of 288
   tests in the Linux development container; the user-owned untracked
   `examples/real-world/stdlib-abs` package is the only exclusion and was not
   modified.
