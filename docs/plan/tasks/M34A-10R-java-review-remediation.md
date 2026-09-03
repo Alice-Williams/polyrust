@@ -156,3 +156,50 @@ source parsing, and unrelated renderer conveniences do not block completion.
 - The independently composed `//:release_gate` replay passed 230 of 230 targets
   uncached from the same final tree. Checkpoint commit/push and a fresh blind
   review remain pending.
+- Round 2 remediation checkpoint `a25a15f2a62669bc6b38c7464bb7ee441a86fc49`
+  was pushed to `origin/main`. A clean Cargo target replay passed the complete
+  workspace test command, proving the prior autoexample collision fixed.
+- Fresh blind review round 3 at `a25a15f` found four additional core blockers;
+  all are accepted: checked signed remainder must reject `MIN % -1`, generic
+  runtime tagged values must not retain collection aliases, the public Java
+  AST verifier must reject forgeable invalid Java shapes, and generated
+  `ConformanceTest` programs must execute the exact portable vector inventory
+  rather than an empty `main`.
+- Hosted run `33710610508` passed every prerequisite job but exposed an
+  independent clean-checkout defect: the new sealed-interface negative-test
+  script was committed as mode `100644`. Its executable mode is corrected in
+  round 3. The failure was diagnosed from the authenticated job log and is not
+  treated as Java semantic evidence.
+- Round 3 remediation detects `MIN % -1` before Java evaluates the signed
+  remainder expression and proves the exact `checked_overflow` code/message for
+  both i32 and i64 through generated native and conformance tests.
+- Raw generic tagged constructors and factories are inaccessible to external
+  Java consumers. Generated, structurally named factories recursively
+  normalize the exact concrete `CoreTypeId` payload before package-private
+  construction. A separately compiled public consumer mutates inner and outer
+  source lists and exercises both branches, partial accessors, NaN, and signed
+  zero; a deliberate compile-fail fixture proves all eight raw construction
+  paths remain inaccessible.
+- Tagged equality compares the discriminant before observing only the active
+  payload. The strengthened public consumer exposed and then prevented eager
+  calls to inactive partial accessors for `PolyOption`, `PolyResult`, and
+  `PolyValueResult`.
+- The Java AST verifier now fails closed for known/generic arity, declaration
+  type-variable scope, cast and reifiable `instanceof` legality, owner-typed
+  `this`, authoritative structural/generated fields, final-field assignment,
+  declaration member grammar, canonical record constructors, and exact sealed
+  permits sets. The focused backend suite contains 42 passing Rust tests.
+- Native and conformance classes now share the same typed assertion builder,
+  execute every portable vector, compare exact values or error code/message,
+  and assert the exact completed inventory. Curated v0 and interface packages
+  were regenerated and pass byte-for-byte snapshot comparison.
+- The focused Java/codegen/policy plus Rustfmt, Clippy, and Buildifier gate
+  passed 33 of 33 targets uncached. The complete tracked repository replay
+  passed 292 of 292 targets uncached; only the user-owned untracked
+  `examples/real-world/stdlib-abs/` package was excluded and remained
+  untouched. The independent `//:release_gate` replay passed 230 of 230 tests
+  uncached from the same code tree.
+- A fresh Cargo target directory passed
+  `cargo test --workspace --all-features --locked`, independently reproducing
+  the hosted CI compilation path. Checkpoint commit, push, hosted CI, and the
+  next fresh blind review remain pending.

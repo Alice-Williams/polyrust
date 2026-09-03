@@ -140,6 +140,79 @@ fn main() {
             });
         },
     );
+    module.function(
+        "echo_nested_result",
+        Visibility::Public,
+        vec![],
+        |function| {
+            function.parameter(Parameter::new(
+                "value",
+                Type::result(
+                    Type::list(Type::list(Type::string())),
+                    Type::list(Type::list(Type::string())),
+                ),
+            ));
+            function.returns(Type::result(
+                Type::list(Type::list(Type::string())),
+                Type::list(Type::list(Type::string())),
+            ));
+            function.body(|body| {
+                let value = body.local("value");
+                body.block([], Some(value))
+            });
+        },
+    );
+    module.function("echo_f64_option", Visibility::Public, vec![], |function| {
+        function.parameter(Parameter::new("value", Type::option(Type::f64())));
+        function.returns(Type::option(Type::f64()));
+        function.body(|body| {
+            let value = body.local("value");
+            body.block([], Some(value))
+        });
+    });
+    module.function(
+        "echo_nested_f64_result",
+        Visibility::Public,
+        vec![],
+        |function| {
+            function.parameter(Parameter::new(
+                "value",
+                Type::result(Type::list(Type::option(Type::f64())), Type::string()),
+            ));
+            function.returns(Type::result(
+                Type::list(Type::option(Type::f64())),
+                Type::string(),
+            ));
+            function.body(|body| {
+                let value = body.local("value");
+                body.block([], Some(value))
+            });
+        },
+    );
+    let checked_rem_i32 =
+        module.function("checked_rem_i32", Visibility::Public, vec![], |function| {
+            function.parameter(Parameter::new("left", Type::i32()));
+            function.parameter(Parameter::new("right", Type::i32()));
+            function.returns(Type::i32());
+            function.body(|body| {
+                let left = body.local("left");
+                let right = body.local("right");
+                let value = body.intrinsic(Operation::IntRemChecked, [left, right]);
+                body.block([], Some(value))
+            });
+        });
+    let checked_rem_i64 =
+        module.function("checked_rem_i64", Visibility::Public, vec![], |function| {
+            function.parameter(Parameter::new("left", Type::i64()));
+            function.parameter(Parameter::new("right", Type::i64()));
+            function.returns(Type::i64());
+            function.body(|body| {
+                let left = body.local("left");
+                let right = body.local("right");
+                let value = body.intrinsic(Operation::IntRemChecked, [left, right]);
+                body.block([], Some(value))
+            });
+        });
 
     let astral = "\u{10000}";
     let bmp = "\u{e000}";
@@ -199,6 +272,38 @@ fn main() {
         vec![],
         Invocation::function(read_compound_bytes, []),
         Expected::value(TypedValue::new(Type::bytes(), Value::bytes([1, 2, 3, 4]))),
+    );
+    module.portable_test(
+        "i32_min_remainder_negative_one_overflows",
+        Visibility::Package,
+        vec![],
+        Invocation::function(
+            checked_rem_i32,
+            [
+                TypedValue::new(Type::i32(), Value::i32(i32::MIN)),
+                TypedValue::new(Type::i32(), Value::i32(-1)),
+            ],
+        ),
+        Expected::error(TypedValue::new(
+            Type::string(),
+            Value::string("checked_overflow"),
+        )),
+    );
+    module.portable_test(
+        "i64_min_remainder_negative_one_overflows",
+        Visibility::Package,
+        vec![],
+        Invocation::function(
+            checked_rem_i64,
+            [
+                TypedValue::new(Type::i64(), Value::i64(i64::MIN)),
+                TypedValue::new(Type::i64(), Value::i64(-1)),
+            ],
+        ),
+        Expected::error(TypedValue::new(
+            Type::string(),
+            Value::string("checked_overflow"),
+        )),
     );
 
     let checked = module.finish().expect("semantic edge fixture checks");

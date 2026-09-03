@@ -1006,7 +1006,14 @@ impl JavaExpr {
     }
 
     pub fn verify(&self, context: &TargetAstContext<'_, JavaDialect>) -> Vec<AstViolation> {
-        let mut violations = self.ty.verify(JavaTypeUse::Value);
+        let expression_type_use = if matches!(self.kind, JavaExprKind::Call { .. })
+            && matches!(self.ty, JavaType::Wildcard { .. })
+        {
+            JavaTypeUse::GenericArgument
+        } else {
+            JavaTypeUse::Value
+        };
+        let mut violations = self.ty.verify(expression_type_use);
         match &self.kind {
             JavaExprKind::Literal(JavaLiteral::CharScalar(value))
                 if char::from_u32(*value).is_none() =>
@@ -1155,18 +1162,57 @@ impl JavaExpr {
                 if field.ty() != self.ty {
                     violations.push(type_error("field result type mismatch"));
                 }
-                if let JavaFieldRef::Generated {
-                    owner,
-                    field,
-                    name,
-                    ty,
-                } = field
-                    && !generated_field_matches(*owner, *field, name, ty, context)
-                {
-                    violations.push(AstViolation::new(
-                        DiagnosticCode::UnresolvedReference,
-                        "generated Java field reference does not match its declared owner/name/type",
-                    ));
+                match field {
+                    JavaFieldRef::Known(value) => {
+                        if receiver.ty != JavaType::known(value.owner()) {
+                            violations.push(AstViolation::new(
+                                DiagnosticCode::UnresolvedReference,
+                                "known Java field receiver does not match its catalogue owner",
+                            ));
+                        }
+                    }
+                    JavaFieldRef::Structural { name, ty } => {
+                        let metadata = structural_field_metadata(&receiver.ty, name, context);
+                        let deferred_runtime_owner = metadata.is_none()
+                            && matches!(
+                                receiver.ty,
+                                JavaType::Reference(JavaTypeName::Known(known))
+                                    | JavaType::Generic {
+                                        raw: JavaTypeName::Known(known),
+                                        ..
+                                    } if known.runtime_helper().is_some()
+                            );
+                        if metadata
+                            .as_ref()
+                            .is_some_and(|metadata| metadata.ty != *ty)
+                            || (metadata.is_none() && !deferred_runtime_owner)
+                        {
+                            violations.push(AstViolation::new(
+                                DiagnosticCode::UnresolvedReference,
+                                format!(
+                                    "structural Java field reference {:?}.{} does not name a field with type {ty:?}",
+                                    receiver.ty,
+                                    name.as_str()
+                                ),
+                            ));
+                        }
+                    }
+                    JavaFieldRef::Generated {
+                        owner,
+                        field,
+                        name,
+                        ty,
+                    } => {
+                        if receiver.ty
+                            != JavaType::Reference(JavaTypeName::Generated(*owner))
+                            || !generated_field_matches(*owner, *field, name, ty, context)
+                        {
+                            violations.push(AstViolation::new(
+                                DiagnosticCode::UnresolvedReference,
+                                "generated Java field reference does not match its declared receiver/owner/name/type",
+                            ));
+                        }
+                    }
                 }
             }
             JavaExprKind::Cast { target, value } => {
@@ -1174,6 +1220,11 @@ impl JavaExpr {
                 violations.extend(value.verify(context));
                 if target != &self.ty {
                     violations.push(type_error("cast target type mismatch"));
+                }
+                if !java_cast_is_legal(target, &value.ty, context) {
+                    violations.push(type_error(
+                        "Java cast is not legal between the declared source and target types",
+                    ));
                 }
             }
             JavaExprKind::ArrayOwnershipTransition { transition, value } => {
@@ -1202,6 +1253,15 @@ impl JavaExpr {
                 violations.extend(target.verify(JavaTypeUse::Value));
                 if self.ty != JavaType::Primitive(JavaPrimitive::Boolean) {
                     violations.push(type_error("instanceof result must be boolean"));
+                }
+                if !java_type_is_reifiable(target) {
+                    violations.push(type_error("Java instanceof target must be reifiable"));
+                }
+                if !java_instanceof_is_legal(&value.ty, target, context) {
+                    violations.push(type_error(&format!(
+                        "Java instanceof is not legal from {:?} to {target:?}",
+                        value.ty
+                    )));
                 }
             }
             JavaExprKind::Lambda { parameters, body } => {
@@ -1397,6 +1457,126 @@ fn declaration_contains_conformance(
         })
 }
 
+fn java_cast_is_legal(
+    target: &JavaType,
+    source: &JavaType,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> bool {
+    if target == source {
+        return !matches!(target, JavaType::Primitive(JavaPrimitive::Void));
+    }
+    match (target, source) {
+        (JavaType::Primitive(target), JavaType::Primitive(source)) => {
+            java_numeric_primitive(*target) && java_numeric_primitive(*source)
+        }
+        (JavaType::Primitive(target), JavaType::Boxed(source))
+        | (JavaType::Boxed(source), JavaType::Primitive(target)) => {
+            (*target == *source && *target != JavaPrimitive::Void)
+                || (java_numeric_primitive(*target) && java_numeric_primitive(*source))
+        }
+        (JavaType::Reference(JavaTypeName::Known(JavaKnownType::Object)), source) => {
+            !matches!(source, JavaType::Primitive(JavaPrimitive::Void))
+        }
+        (target, JavaType::Reference(JavaTypeName::Known(JavaKnownType::Object))) => !matches!(
+            target,
+            JavaType::Primitive(JavaPrimitive::Void)
+                | JavaType::Wildcard { .. }
+                | JavaType::TypeVariable(_)
+        ),
+        (
+            JavaType::Array {
+                component: target, ..
+            },
+            JavaType::Array {
+                component: source, ..
+            },
+        ) => target == source || java_reference_cast_is_legal(target, source, context),
+        (target, source) => java_reference_cast_is_legal(target, source, context),
+    }
+}
+
+fn java_reference_cast_is_legal(
+    target: &JavaType,
+    source: &JavaType,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> bool {
+    if !java_type_is_reference(target) || !java_type_is_reference(source) {
+        return false;
+    }
+    if matches!(source, JavaType::TypeVariable(_)) && !matches!(target, JavaType::TypeVariable(_)) {
+        return true;
+    }
+    if erased_java_type(target) == erased_java_type(source) {
+        return target == source;
+    }
+    invocation_types_match_in_context(target, source, context)
+        || invocation_types_match_in_context(source, target, context)
+        || generated_and_known_interface_related(target, source, context)
+        || generated_and_known_interface_related(source, target, context)
+}
+
+fn generated_and_known_interface_related(
+    expected_interface: &JavaType,
+    actual: &JavaType,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> bool {
+    let JavaType::Reference(JavaTypeName::Known(JavaKnownType::RuntimeSemanticValue)) =
+        expected_interface
+    else {
+        return false;
+    };
+    find_type_declaration(actual, context).is_some_and(|declaration| {
+        matches!(
+            declaration.heritage,
+            JavaHeritage::Interfaces(ref interfaces)
+                if interfaces.contains(expected_interface)
+        )
+    })
+}
+
+fn java_instanceof_is_legal(
+    source: &JavaType,
+    target: &JavaType,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> bool {
+    java_type_is_reference(source)
+        && java_type_is_reference(target)
+        && java_cast_is_legal(target, source, context)
+}
+
+fn java_type_is_reference(ty: &JavaType) -> bool {
+    matches!(
+        ty,
+        JavaType::Boxed(_)
+            | JavaType::Reference(_)
+            | JavaType::Array { .. }
+            | JavaType::Generic { .. }
+            | JavaType::TypeVariable(_)
+    )
+}
+
+fn java_type_is_reifiable(ty: &JavaType) -> bool {
+    match ty {
+        JavaType::Boxed(_) | JavaType::Reference(_) => true,
+        JavaType::Array { component, .. } => java_type_is_reifiable(component),
+        JavaType::Generic { arguments, .. } => arguments
+            .iter()
+            .all(|argument| matches!(argument, JavaType::Wildcard { bound: None })),
+        JavaType::Primitive(_) | JavaType::Wildcard { .. } | JavaType::TypeVariable(_) => false,
+    }
+}
+
+fn java_numeric_primitive(value: JavaPrimitive) -> bool {
+    matches!(
+        value,
+        JavaPrimitive::Byte
+            | JavaPrimitive::Char
+            | JavaPrimitive::Int
+            | JavaPrimitive::Long
+            | JavaPrimitive::Double
+    )
+}
+
 impl JavaCallableRef {
     fn signature(
         &self,
@@ -1500,6 +1680,154 @@ impl JavaFieldRef {
             Self::Structural { ty, .. } => ty.clone(),
             Self::Generated { ty, .. } => ty.clone(),
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct JavaFieldMetadata {
+    ty: JavaType,
+    final_field: bool,
+}
+
+fn structural_field_metadata(
+    owner: &JavaType,
+    name: &JavaIdentifier,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> Option<JavaFieldMetadata> {
+    if matches!(owner, JavaType::Array { .. }) && name.as_str() == "length" {
+        return Some(JavaFieldMetadata {
+            ty: JavaType::primitive(JavaPrimitive::Int),
+            final_field: true,
+        });
+    }
+    let declaration = find_type_declaration(owner, context)?;
+    let substitutions = declaration_type_substitutions(&declaration, owner)?;
+    if let Some(component) = declaration
+        .record_components
+        .iter()
+        .find(|component| component.name == *name)
+    {
+        return Some(JavaFieldMetadata {
+            ty: substitute_type_variables(&component.ty, &substitutions),
+            final_field: true,
+        });
+    }
+    declaration.members.iter().find_map(|member| match member {
+        JavaMember::Field(field)
+            if field.name == *name && !field.modifiers.contains(&JavaModifier::Static) =>
+        {
+            Some(JavaFieldMetadata {
+                ty: substitute_type_variables(&field.ty, &substitutions),
+                final_field: field.modifiers.contains(&JavaModifier::Final),
+            })
+        }
+        _ => None,
+    })
+}
+
+fn declaration_type_substitutions(
+    declaration: &JavaTypeDeclaration,
+    owner: &JavaType,
+) -> Option<BTreeMap<JavaIdentifier, JavaType>> {
+    match owner {
+        JavaType::Generic { arguments, .. }
+            if arguments.len() == declaration.type_parameters.len() =>
+        {
+            Some(
+                declaration
+                    .type_parameters
+                    .iter()
+                    .cloned()
+                    .zip(arguments.iter().cloned())
+                    .collect(),
+            )
+        }
+        JavaType::Reference(_) if declaration.type_parameters.is_empty() => Some(BTreeMap::new()),
+        _ => None,
+    }
+}
+
+fn substitute_type_variables(
+    ty: &JavaType,
+    substitutions: &BTreeMap<JavaIdentifier, JavaType>,
+) -> JavaType {
+    match ty {
+        JavaType::TypeVariable(name) => substitutions
+            .get(name)
+            .cloned()
+            .unwrap_or_else(|| ty.clone()),
+        JavaType::Array {
+            component,
+            ownership,
+        } => JavaType::Array {
+            component: Box::new(substitute_type_variables(component, substitutions)),
+            ownership: *ownership,
+        },
+        JavaType::Generic { raw, arguments } => JavaType::Generic {
+            raw: raw.clone(),
+            arguments: arguments
+                .iter()
+                .map(|argument| substitute_type_variables(argument, substitutions))
+                .collect(),
+        },
+        JavaType::Wildcard {
+            bound: Some((kind, bound)),
+        } => JavaType::Wildcard {
+            bound: Some((
+                *kind,
+                Box::new(substitute_type_variables(bound, substitutions)),
+            )),
+        },
+        JavaType::Primitive(_)
+        | JavaType::Boxed(_)
+        | JavaType::Reference(_)
+        | JavaType::Wildcard { bound: None } => ty.clone(),
+    }
+}
+
+fn find_type_declaration(
+    owner: &JavaType,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> Option<JavaTypeDeclaration> {
+    context.files().find_map(|file| {
+        file.items().iter().find_map(|item| match item {
+            JavaFileItem::Type { declaration, .. } => find_type_declaration_in(declaration, owner),
+            JavaFileItem::RuntimeMembers { members, .. } => {
+                members.iter().find_map(|member| match member {
+                    JavaMember::NestedType(nested) => find_type_declaration_in(nested, owner),
+                    _ => None,
+                })
+            }
+        })
+    })
+}
+
+fn find_type_declaration_in(
+    declaration: &JavaTypeDeclaration,
+    owner: &JavaType,
+) -> Option<JavaTypeDeclaration> {
+    if declaration_represents_type(declaration, owner) {
+        return Some(declaration.clone());
+    }
+    declaration.members.iter().find_map(|member| match member {
+        JavaMember::NestedType(nested) => find_type_declaration_in(nested, owner),
+        _ => None,
+    })
+}
+
+fn declaration_represents_type(declaration: &JavaTypeDeclaration, owner: &JavaType) -> bool {
+    match owner {
+        JavaType::Reference(JavaTypeName::Generated(id))
+        | JavaType::Generic {
+            raw: JavaTypeName::Generated(id),
+            ..
+        } => declaration.declared == Some(*id),
+        JavaType::Reference(JavaTypeName::Known(known))
+        | JavaType::Generic {
+            raw: JavaTypeName::Known(known),
+            ..
+        } if known.runtime_helper().is_some() => known.simple_name() == declaration.name.as_str(),
+        _ => false,
     }
 }
 
@@ -1755,13 +2083,38 @@ struct JavaLexicalBinding {
 struct JavaLexicalScope {
     bindings: BTreeMap<JavaIdentifier, JavaLexicalBinding>,
     allows_this: bool,
+    owner: Option<JavaType>,
+    constructor: bool,
+    owner_fields: BTreeMap<JavaIdentifier, JavaFieldMetadata>,
 }
 
 impl JavaLexicalScope {
+    #[cfg(test)]
     fn for_method(method: &JavaMethod) -> (Self, Vec<AstViolation>) {
+        Self::for_method_in_owner(method, None)
+    }
+
+    #[cfg(test)]
+    fn for_method_in_owner(
+        method: &JavaMethod,
+        owner: Option<JavaType>,
+    ) -> (Self, Vec<AstViolation>) {
+        Self::for_method_in_declaration(method, owner, None)
+    }
+
+    fn for_method_in_declaration(
+        method: &JavaMethod,
+        owner: Option<JavaType>,
+        declaration: Option<&JavaTypeDeclaration>,
+    ) -> (Self, Vec<AstViolation>) {
         let mut scope = Self {
             bindings: BTreeMap::new(),
             allows_this: !method.modifiers.contains(&JavaModifier::Static),
+            owner,
+            constructor: false,
+            owner_fields: declaration
+                .map(declared_instance_fields)
+                .unwrap_or_default(),
         };
         let mut violations = Vec::new();
         for parameter in &method.parameters {
@@ -1785,7 +2138,11 @@ impl JavaLexicalScope {
         (scope, violations)
     }
 
-    fn for_constructor(constructor: &JavaConstructor) -> (Self, Vec<AstViolation>) {
+    fn for_constructor_in_declaration(
+        constructor: &JavaConstructor,
+        owner: Option<JavaType>,
+        declaration: Option<&JavaTypeDeclaration>,
+    ) -> (Self, Vec<AstViolation>) {
         let method = JavaMethod {
             declared: JavaMethodDeclaration::Structural,
             annotations: vec![],
@@ -1796,10 +2153,43 @@ impl JavaLexicalScope {
             parameters: constructor.parameters.clone(),
             body: None,
         };
-        let (mut scope, violations) = Self::for_method(&method);
+        let (mut scope, violations) = Self::for_method_in_declaration(&method, owner, declaration);
         scope.allows_this = true;
+        scope.constructor = true;
         (scope, violations)
     }
+}
+
+fn declared_instance_fields(
+    declaration: &JavaTypeDeclaration,
+) -> BTreeMap<JavaIdentifier, JavaFieldMetadata> {
+    let mut fields = declaration
+        .record_components
+        .iter()
+        .map(|component| {
+            (
+                component.name.clone(),
+                JavaFieldMetadata {
+                    ty: component.ty.clone(),
+                    final_field: true,
+                },
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    for member in &declaration.members {
+        if let JavaMember::Field(field) = member
+            && !field.modifiers.contains(&JavaModifier::Static)
+        {
+            fields.insert(
+                field.name.clone(),
+                JavaFieldMetadata {
+                    ty: field.ty.clone(),
+                    final_field: field.modifiers.contains(&JavaModifier::Final),
+                },
+            );
+        }
+    }
+    fields
 }
 
 fn verify_expr_scope(value: &JavaExpr, scope: &JavaLexicalScope) -> Vec<AstViolation> {
@@ -1818,11 +2208,18 @@ fn verify_expr_scope(value: &JavaExpr, scope: &JavaLexicalScope) -> Vec<AstViola
                 ),
             )),
         },
-        JavaExprKind::Value(JavaValueRef::This) if !scope.allows_this => {
-            violations.push(AstViolation::new(
-                DiagnosticCode::UnresolvedReference,
-                "this is unavailable in a static Java scope",
-            ));
+        JavaExprKind::Value(JavaValueRef::This) => {
+            if !scope.allows_this {
+                violations.push(AstViolation::new(
+                    DiagnosticCode::UnresolvedReference,
+                    "this is unavailable in a static Java scope",
+                ));
+            } else if scope.owner.as_ref() != Some(&value.ty) {
+                violations.push(AstViolation::new(
+                    DiagnosticCode::UnresolvedReference,
+                    "this type does not match its declaring Java owner",
+                ));
+            }
         }
         JavaExprKind::Value(_) | JavaExprKind::Literal(_) => {}
         JavaExprKind::Unary { operand, .. } => {
@@ -1865,8 +2262,26 @@ fn verify_expr_scope(value: &JavaExpr, scope: &JavaLexicalScope) -> Vec<AstViola
             violations.extend(verify_expr_scope(array, scope));
             violations.extend(verify_expr_scope(index, scope));
         }
-        JavaExprKind::Field { receiver, .. } => {
+        JavaExprKind::Field { receiver, field } => {
             violations.extend(verify_expr_scope(receiver, scope));
+            if let JavaFieldRef::Structural { name, ty } = field {
+                let valid =
+                    if matches!(receiver.ty, JavaType::Array { .. }) && name.as_str() == "length" {
+                        *ty == JavaType::primitive(JavaPrimitive::Int)
+                    } else {
+                        scope.owner.as_ref() == Some(&receiver.ty)
+                            && scope
+                                .owner_fields
+                                .get(name)
+                                .is_some_and(|metadata| metadata.ty == *ty)
+                    };
+                if !valid {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::UnresolvedReference,
+                        "structural Java field is absent from its lexical owner declaration",
+                    ));
+                }
+            }
         }
         JavaExprKind::Cast { value, .. }
         | JavaExprKind::ArrayOwnershipTransition { value, .. }
@@ -1880,7 +2295,11 @@ fn verify_expr_scope(value: &JavaExpr, scope: &JavaLexicalScope) -> Vec<AstViola
     violations
 }
 
-fn verify_assignment_target(target: &JavaExpr, scope: &JavaLexicalScope) -> Vec<AstViolation> {
+fn verify_assignment_target(
+    target: &JavaExpr,
+    scope: &JavaLexicalScope,
+    context: Option<&TargetAstContext<'_, JavaDialect>>,
+) -> Vec<AstViolation> {
     match &target.kind {
         JavaExprKind::Value(JavaValueRef::Local(name)) => match scope.bindings.get(name) {
             Some(binding) if binding.mutable && binding.ty == target.ty => vec![],
@@ -1896,7 +2315,62 @@ fn verify_assignment_target(target: &JavaExpr, scope: &JavaLexicalScope) -> Vec<
                 "assignment target is outside its lexical scope",
             )],
         },
-        JavaExprKind::Field { .. } => vec![],
+        JavaExprKind::Field { receiver, field } => {
+            let metadata = match (field, context) {
+                (JavaFieldRef::Known(_), _) => Some(JavaFieldMetadata {
+                    ty: field.ty(),
+                    final_field: true,
+                }),
+                (JavaFieldRef::Structural { name, .. }, Some(context)) => {
+                    structural_field_metadata(&receiver.ty, name, context).or_else(|| {
+                        (scope.owner.as_ref() == Some(&receiver.ty))
+                            .then(|| scope.owner_fields.get(name).cloned())
+                            .flatten()
+                    })
+                }
+                (
+                    JavaFieldRef::Generated {
+                        owner,
+                        field,
+                        name,
+                        ty,
+                    },
+                    Some(context),
+                ) if receiver.ty == JavaType::Reference(JavaTypeName::Generated(*owner))
+                    && generated_field_matches(*owner, *field, name, ty, context) =>
+                {
+                    Some(JavaFieldMetadata {
+                        ty: ty.clone(),
+                        final_field: true,
+                    })
+                }
+                _ => None,
+            };
+            match metadata {
+                Some(metadata) if metadata.ty != target.ty => vec![type_error(
+                    "assignment field type disagrees with its declaration",
+                )],
+                Some(metadata) if !metadata.final_field => vec![],
+                Some(_)
+                    if scope.constructor
+                        && matches!(receiver.kind, JavaExprKind::Value(JavaValueRef::This))
+                        && scope.owner.as_ref() == Some(&receiver.ty) =>
+                {
+                    vec![]
+                }
+                Some(_) => vec![AstViolation::new(
+                    DiagnosticCode::InvalidControlFlow,
+                    "final Java fields may be assigned only through this in their declaring constructor",
+                )],
+                None => vec![AstViolation::new(
+                    DiagnosticCode::UnresolvedReference,
+                    format!(
+                        "assignment target does not resolve to a declared Java field on {:?}",
+                        receiver.ty
+                    ),
+                )],
+            }
+        }
         JavaExprKind::ArrayIndex { array, .. }
             if matches!(
                 array.ty,
@@ -2074,11 +2548,22 @@ fn is_checked_exception(value: JavaKnownType) -> bool {
     matches!(value, JavaKnownType::CharacterCodingException)
 }
 
+#[cfg(test)]
 fn verify_block_scope(
     block: &JavaBlock,
     scope: &mut JavaLexicalScope,
     expected_return: &JavaType,
     in_loop: bool,
+) -> Vec<AstViolation> {
+    verify_block_scope_in_context(block, scope, expected_return, in_loop, None)
+}
+
+fn verify_block_scope_in_context(
+    block: &JavaBlock,
+    scope: &mut JavaLexicalScope,
+    expected_return: &JavaType,
+    in_loop: bool,
+    context: Option<&TargetAstContext<'_, JavaDialect>>,
 ) -> Vec<AstViolation> {
     let mut violations = Vec::new();
     for statement in &block.statements {
@@ -2112,7 +2597,7 @@ fn verify_block_scope(
             JavaStmt::Assign { target, value } => {
                 violations.extend(verify_expr_scope(target, scope));
                 violations.extend(verify_expr_scope(value, scope));
-                violations.extend(verify_assignment_target(target, scope));
+                violations.extend(verify_assignment_target(target, scope, context));
             }
             JavaStmt::Expression(value)
             | JavaStmt::Throw(value)
@@ -2143,19 +2628,21 @@ fn verify_block_scope(
                 violations.extend(verify_expr_scope(condition, scope));
                 let mut then_scope = scope.clone();
                 collect_positive_pattern_bindings(condition, &mut then_scope);
-                violations.extend(verify_block_scope(
+                violations.extend(verify_block_scope_in_context(
                     then_block,
                     &mut then_scope,
                     expected_return,
                     in_loop,
+                    context,
                 ));
                 if let Some(else_block) = else_block {
                     let mut else_scope = scope.clone();
-                    violations.extend(verify_block_scope(
+                    violations.extend(verify_block_scope_in_context(
                         else_block,
                         &mut else_scope,
                         expected_return,
                         in_loop,
+                        context,
                     ));
                 }
                 if else_block.is_none()
@@ -2194,21 +2681,23 @@ fn verify_block_scope(
                         mutable: false,
                     },
                 );
-                violations.extend(verify_block_scope(
+                violations.extend(verify_block_scope_in_context(
                     body,
                     &mut body_scope,
                     expected_return,
                     true,
+                    context,
                 ));
             }
             JavaStmt::While { condition, body } => {
                 violations.extend(verify_expr_scope(condition, scope));
                 let mut body_scope = scope.clone();
-                violations.extend(verify_block_scope(
+                violations.extend(verify_block_scope_in_context(
                     body,
                     &mut body_scope,
                     expected_return,
                     true,
+                    context,
                 ));
             }
             JavaStmt::Switch { value, arms } => {
@@ -2224,21 +2713,23 @@ fn verify_block_scope(
                             },
                         );
                     }
-                    violations.extend(verify_block_scope(
+                    violations.extend(verify_block_scope_in_context(
                         &arm.body,
                         &mut arm_scope,
                         expected_return,
                         in_loop,
+                        context,
                     ));
                 }
             }
             JavaStmt::TryCatch { try_block, catches } => {
                 let mut try_scope = scope.clone();
-                violations.extend(verify_block_scope(
+                violations.extend(verify_block_scope_in_context(
                     try_block,
                     &mut try_scope,
                     expected_return,
                     in_loop,
+                    context,
                 ));
                 for catch in catches {
                     let mut catch_scope = scope.clone();
@@ -2249,11 +2740,12 @@ fn verify_block_scope(
                             mutable: false,
                         },
                     );
-                    violations.extend(verify_block_scope(
+                    violations.extend(verify_block_scope_in_context(
                         &catch.body,
                         &mut catch_scope,
                         expected_return,
                         in_loop,
+                        context,
                     ));
                 }
             }
@@ -2716,7 +3208,7 @@ pub struct JavaRecordComponent {
     pub name: JavaIdentifier,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum JavaRecordComponentOrigin {
     Core(CoreFieldId),
     Runtime(JavaRuntimeMember),
@@ -2734,6 +3226,32 @@ pub struct JavaTypeDeclaration {
     pub heritage: JavaHeritage,
     pub permits: Vec<JavaType>,
     pub members: Vec<JavaMember>,
+}
+
+fn declaration_owner_type(declaration: &JavaTypeDeclaration) -> Option<JavaType> {
+    let raw = if let Some(id) = declaration.declared {
+        JavaTypeName::Generated(id)
+    } else {
+        JavaKnownType::ALL
+            .into_iter()
+            .find(|known| {
+                known.runtime_helper().is_some() && known.simple_name() == declaration.name.as_str()
+            })
+            .map(JavaTypeName::Known)?
+    };
+    if declaration.type_parameters.is_empty() {
+        Some(JavaType::Reference(raw))
+    } else {
+        Some(JavaType::Generic {
+            raw,
+            arguments: declaration
+                .type_parameters
+                .iter()
+                .cloned()
+                .map(JavaType::TypeVariable)
+                .collect(),
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -2777,6 +3295,402 @@ fn erased_java_type(ty: &JavaType) -> JavaErasedType {
             JavaErasedType::Reference(JavaTypeName::Known(JavaKnownType::Object))
         }
     }
+}
+
+fn known_generic_arity(known: JavaKnownType) -> usize {
+    match known {
+        JavaKnownType::ArrayList
+        | JavaKnownType::List
+        | JavaKnownType::RuntimeResult
+        | JavaKnownType::RuntimeOption => 1,
+        JavaKnownType::LinkedHashMap | JavaKnownType::Map | JavaKnownType::RuntimeValueResult => 2,
+        _ => 0,
+    }
+}
+
+fn verify_contextual_type(
+    ty: &JavaType,
+    variables: &BTreeSet<JavaIdentifier>,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> Vec<AstViolation> {
+    let mut violations = Vec::new();
+    match ty {
+        JavaType::Reference(JavaTypeName::Known(known)) => {
+            if known_generic_arity(*known) != 0 {
+                violations.push(type_error(
+                    "generic Java known type cannot be used as a raw reference",
+                ));
+            }
+        }
+        JavaType::Reference(JavaTypeName::Generated(id)) => {
+            match find_type_declaration(ty, context) {
+                Some(declaration) if declaration.type_parameters.is_empty() => {}
+                Some(_) => violations.push(type_error(
+                    "generic generated Java type cannot be used as a raw reference",
+                )),
+                None => violations.push(AstViolation::new(
+                    DiagnosticCode::UnresolvedReference,
+                    format!("generated Java type {id:?} has no AST declaration"),
+                )),
+            }
+        }
+        JavaType::Generic { raw, arguments } => {
+            let expected = match raw {
+                JavaTypeName::Known(known) => Some(known_generic_arity(*known)),
+                JavaTypeName::Generated(_) => find_type_declaration(ty, context)
+                    .map(|declaration| declaration.type_parameters.len()),
+            };
+            match expected {
+                Some(arity) if arity == arguments.len() && arity != 0 => {}
+                Some(arity) => violations.push(type_error(&format!(
+                    "Java generic type requires exactly {arity} type arguments"
+                ))),
+                None => violations.push(AstViolation::new(
+                    DiagnosticCode::UnresolvedReference,
+                    "generic generated Java type has no AST declaration",
+                )),
+            }
+            for argument in arguments {
+                violations.extend(verify_contextual_type(argument, variables, context));
+            }
+        }
+        JavaType::Array { component, .. } => {
+            violations.extend(verify_contextual_type(component, variables, context));
+        }
+        JavaType::Wildcard {
+            bound: Some((_, bound)),
+        } => {
+            violations.extend(verify_contextual_type(bound, variables, context));
+        }
+        JavaType::TypeVariable(name) if !variables.contains(name) => {
+            violations.push(AstViolation::new(
+                DiagnosticCode::UnresolvedReference,
+                format!(
+                    "Java type variable {:?} is not declared in this type/member scope",
+                    name.as_str()
+                ),
+            ));
+        }
+        JavaType::Primitive(_)
+        | JavaType::Boxed(_)
+        | JavaType::Wildcard { bound: None }
+        | JavaType::TypeVariable(_) => {}
+    }
+    violations
+}
+
+fn verify_expression_type_context(
+    expression: &JavaExpr,
+    variables: &BTreeSet<JavaIdentifier>,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> Vec<AstViolation> {
+    let mut violations = verify_contextual_type(&expression.ty, variables, context);
+    match &expression.kind {
+        JavaExprKind::Literal(_) | JavaExprKind::Value(_) => {}
+        JavaExprKind::Unary { operand, .. } => {
+            violations.extend(verify_expression_type_context(operand, variables, context));
+        }
+        JavaExprKind::Binary { left, right, .. } => {
+            violations.extend(verify_expression_type_context(left, variables, context));
+            violations.extend(verify_expression_type_context(right, variables, context));
+        }
+        JavaExprKind::Conditional {
+            condition,
+            when_true,
+            when_false,
+        } => {
+            violations.extend(verify_expression_type_context(
+                condition, variables, context,
+            ));
+            violations.extend(verify_expression_type_context(
+                when_true, variables, context,
+            ));
+            violations.extend(verify_expression_type_context(
+                when_false, variables, context,
+            ));
+        }
+        JavaExprKind::Call {
+            callable,
+            receiver,
+            arguments,
+        } => {
+            let signature = match callable {
+                JavaCallableRef::Known { signature, .. }
+                | JavaCallableRef::Runtime { signature, .. }
+                | JavaCallableRef::Generated { signature, .. }
+                | JavaCallableRef::Interface { signature, .. }
+                | JavaCallableRef::Member { signature, .. } => signature,
+            };
+            if let JavaCallableRef::Member { owner, .. } = callable {
+                violations.extend(verify_contextual_type(owner, variables, context));
+            }
+            if let Some(receiver_type) = &signature.receiver {
+                violations.extend(verify_contextual_type(receiver_type, variables, context));
+            }
+            for parameter in &signature.parameters {
+                violations.extend(verify_contextual_type(parameter, variables, context));
+            }
+            violations.extend(verify_contextual_type(
+                &signature.result,
+                variables,
+                context,
+            ));
+            if let Some(receiver) = receiver {
+                violations.extend(verify_expression_type_context(receiver, variables, context));
+            }
+            for argument in arguments {
+                violations.extend(verify_expression_type_context(argument, variables, context));
+            }
+        }
+        JavaExprKind::New {
+            constructor,
+            arguments,
+        } => {
+            match constructor {
+                JavaConstructorRef::Known {
+                    owner, parameters, ..
+                } => {
+                    violations.extend(verify_contextual_type(owner, variables, context));
+                    for parameter in parameters {
+                        violations.extend(verify_contextual_type(parameter, variables, context));
+                    }
+                }
+                JavaConstructorRef::Generated { owner, parameters } => {
+                    violations.extend(verify_contextual_type(
+                        &JavaType::Reference(JavaTypeName::Generated(*owner)),
+                        variables,
+                        context,
+                    ));
+                    for parameter in parameters {
+                        violations.extend(verify_contextual_type(parameter, variables, context));
+                    }
+                }
+            }
+            for argument in arguments {
+                violations.extend(verify_expression_type_context(argument, variables, context));
+            }
+        }
+        JavaExprKind::NewArray { component, length } => {
+            violations.extend(verify_contextual_type(component, variables, context));
+            violations.extend(verify_expression_type_context(length, variables, context));
+        }
+        JavaExprKind::ArrayIndex { array, index } => {
+            violations.extend(verify_expression_type_context(array, variables, context));
+            violations.extend(verify_expression_type_context(index, variables, context));
+        }
+        JavaExprKind::Field { receiver, field } => {
+            violations.extend(verify_expression_type_context(receiver, variables, context));
+            violations.extend(verify_contextual_type(&field.ty(), variables, context));
+        }
+        JavaExprKind::Cast { target, value }
+        | JavaExprKind::InstanceOf {
+            target,
+            value,
+            binding: _,
+        } => {
+            violations.extend(verify_contextual_type(target, variables, context));
+            violations.extend(verify_expression_type_context(value, variables, context));
+        }
+        JavaExprKind::ArrayOwnershipTransition { value, .. } => {
+            violations.extend(verify_expression_type_context(value, variables, context));
+        }
+        JavaExprKind::Lambda { parameters, body } => {
+            for parameter in parameters {
+                violations.extend(verify_contextual_type(&parameter.ty, variables, context));
+            }
+            violations.extend(verify_block_type_context(body, variables, context));
+        }
+    }
+    violations
+}
+
+fn verify_block_type_context(
+    block: &JavaBlock,
+    variables: &BTreeSet<JavaIdentifier>,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> Vec<AstViolation> {
+    let mut violations = Vec::new();
+    for statement in &block.statements {
+        match statement {
+            JavaStmt::Local { ty, value, .. } => {
+                violations.extend(verify_contextual_type(ty, variables, context));
+                if let Some(value) = value {
+                    violations.extend(verify_expression_type_context(value, variables, context));
+                }
+            }
+            JavaStmt::Assign { target, value } => {
+                violations.extend(verify_expression_type_context(target, variables, context));
+                violations.extend(verify_expression_type_context(value, variables, context));
+            }
+            JavaStmt::Expression(value)
+            | JavaStmt::Throw(value)
+            | JavaStmt::ThrowAssertion(value) => {
+                violations.extend(verify_expression_type_context(value, variables, context));
+            }
+            JavaStmt::Return(value) => {
+                if let Some(value) = value {
+                    violations.extend(verify_expression_type_context(value, variables, context));
+                }
+            }
+            JavaStmt::If {
+                condition,
+                then_block,
+                else_block,
+            } => {
+                violations.extend(verify_expression_type_context(
+                    condition, variables, context,
+                ));
+                violations.extend(verify_block_type_context(then_block, variables, context));
+                if let Some(else_block) = else_block {
+                    violations.extend(verify_block_type_context(else_block, variables, context));
+                }
+            }
+            JavaStmt::ForEach {
+                binding_type,
+                iterable,
+                body,
+                ..
+            } => {
+                violations.extend(verify_contextual_type(binding_type, variables, context));
+                violations.extend(verify_expression_type_context(iterable, variables, context));
+                violations.extend(verify_block_type_context(body, variables, context));
+            }
+            JavaStmt::While { condition, body } => {
+                violations.extend(verify_expression_type_context(
+                    condition, variables, context,
+                ));
+                violations.extend(verify_block_type_context(body, variables, context));
+            }
+            JavaStmt::Switch { value, arms } => {
+                violations.extend(verify_expression_type_context(value, variables, context));
+                for arm in arms {
+                    if let JavaPattern::Type { ty, .. } = &arm.pattern {
+                        violations.extend(verify_contextual_type(ty, variables, context));
+                    }
+                    violations.extend(verify_block_type_context(&arm.body, variables, context));
+                }
+            }
+            JavaStmt::TryCatch { try_block, catches } => {
+                violations.extend(verify_block_type_context(try_block, variables, context));
+                for catch in catches {
+                    violations.extend(verify_contextual_type(
+                        &catch.exception_type,
+                        variables,
+                        context,
+                    ));
+                    violations.extend(verify_block_type_context(&catch.body, variables, context));
+                }
+            }
+            JavaStmt::Break | JavaStmt::Continue => {}
+        }
+    }
+    violations
+}
+
+fn verify_member_type_context(
+    member: &JavaMember,
+    declaration_variables: &BTreeSet<JavaIdentifier>,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> Vec<AstViolation> {
+    let mut violations = Vec::new();
+    match member {
+        JavaMember::Field(field) => {
+            let variables = if field.modifiers.contains(&JavaModifier::Static) {
+                BTreeSet::new()
+            } else {
+                declaration_variables.clone()
+            };
+            violations.extend(verify_contextual_type(&field.ty, &variables, context));
+            if let Some(initializer) = &field.initializer {
+                violations.extend(verify_expression_type_context(
+                    initializer,
+                    &variables,
+                    context,
+                ));
+            }
+        }
+        JavaMember::CompileFailField(field) => {
+            let variables = if field.modifiers.contains(&JavaModifier::Static) {
+                BTreeSet::new()
+            } else {
+                declaration_variables.clone()
+            };
+            violations.extend(verify_contextual_type(
+                &field.expected_type,
+                &variables,
+                context,
+            ));
+            violations.extend(verify_expression_type_context(
+                &field.initializer,
+                &variables,
+                context,
+            ));
+        }
+        JavaMember::Method(method) => {
+            let mut variables = method
+                .type_parameters
+                .iter()
+                .cloned()
+                .collect::<BTreeSet<_>>();
+            if !method.modifiers.contains(&JavaModifier::Static) {
+                variables.extend(declaration_variables.iter().cloned());
+            }
+            violations.extend(verify_contextual_type(
+                &method.return_type,
+                &variables,
+                context,
+            ));
+            for parameter in &method.parameters {
+                violations.extend(verify_contextual_type(&parameter.ty, &variables, context));
+            }
+            if let Some(body) = &method.body {
+                violations.extend(verify_block_type_context(body, &variables, context));
+            }
+        }
+        JavaMember::Constructor(constructor) => {
+            for parameter in &constructor.parameters {
+                violations.extend(verify_contextual_type(
+                    &parameter.ty,
+                    declaration_variables,
+                    context,
+                ));
+            }
+            violations.extend(verify_block_type_context(
+                &constructor.body,
+                declaration_variables,
+                context,
+            ));
+        }
+        JavaMember::NestedType(_) => {}
+    }
+    violations
+}
+
+fn verify_declaration_type_context(
+    declaration: &JavaTypeDeclaration,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> Vec<AstViolation> {
+    let variables = declaration
+        .type_parameters
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let mut violations = Vec::new();
+    for component in &declaration.record_components {
+        violations.extend(verify_contextual_type(&component.ty, &variables, context));
+    }
+    if let JavaHeritage::Interfaces(interfaces) = &declaration.heritage {
+        for interface in interfaces {
+            violations.extend(verify_contextual_type(interface, &variables, context));
+        }
+    }
+    for permitted in &declaration.permits {
+        violations.extend(verify_contextual_type(permitted, &variables, context));
+    }
+    for member in &declaration.members {
+        violations.extend(verify_member_type_context(member, &variables, context));
+    }
+    violations
 }
 
 impl JavaMember {
@@ -2831,6 +3745,15 @@ impl JavaMember {
     }
 
     pub fn verify(&self, context: &TargetAstContext<'_, JavaDialect>) -> Vec<AstViolation> {
+        self.verify_with_owner(context, None, None)
+    }
+
+    fn verify_with_owner(
+        &self,
+        context: &TargetAstContext<'_, JavaDialect>,
+        owner: Option<&JavaType>,
+        declaration: Option<&JavaTypeDeclaration>,
+    ) -> Vec<AstViolation> {
         match self {
             Self::Field(field) => {
                 let mut violations =
@@ -2880,13 +3803,18 @@ impl JavaMember {
                 }
                 if let Some(body) = &method.body {
                     violations.extend(body.verify(context));
-                    let (mut scope, scope_violations) = JavaLexicalScope::for_method(method);
+                    let (mut scope, scope_violations) = JavaLexicalScope::for_method_in_declaration(
+                        method,
+                        owner.cloned(),
+                        declaration,
+                    );
                     violations.extend(scope_violations);
-                    violations.extend(verify_block_scope(
+                    violations.extend(verify_block_scope_in_context(
                         body,
                         &mut scope,
                         &method.return_type,
                         false,
+                        Some(context),
                     ));
                     if method.return_type != JavaType::primitive(JavaPrimitive::Void)
                         && !block_guarantees_exit(body)
@@ -2913,13 +3841,19 @@ impl JavaMember {
                     violations.extend(parameter.ty.verify(JavaTypeUse::Parameter));
                 }
                 violations.extend(constructor.body.verify(context));
-                let (mut scope, scope_violations) = JavaLexicalScope::for_constructor(constructor);
+                let (mut scope, scope_violations) =
+                    JavaLexicalScope::for_constructor_in_declaration(
+                        constructor,
+                        owner.cloned(),
+                        declaration,
+                    );
                 violations.extend(scope_violations);
-                violations.extend(verify_block_scope(
+                violations.extend(verify_block_scope_in_context(
                     &constructor.body,
                     &mut scope,
                     &JavaType::primitive(JavaPrimitive::Void),
                     false,
+                    Some(context),
                 ));
                 let unhandled = block_checked_exceptions(&constructor.body, context);
                 if !unhandled.is_empty() {
@@ -2971,6 +3905,7 @@ impl JavaTypeDeclaration {
     ) -> Vec<AstViolation> {
         let mut violations =
             verify_modifiers_for(&self.modifiers, JavaModifierSite::Type { top_level });
+        let owner = declaration_owner_type(self);
         let distinct_type_parameters = self.type_parameters.iter().collect::<BTreeSet<_>>();
         if distinct_type_parameters.len() != self.type_parameters.len() {
             violations.push(AstViolation::new(
@@ -2978,6 +3913,7 @@ impl JavaTypeDeclaration {
                 "Java type parameter is declared more than once",
             ));
         }
+        violations.extend(verify_declaration_type_context(self, context));
         if !top_level && self.visibility == JavaVisibility::Package {
             violations.push(AstViolation::new(
                 DiagnosticCode::InvalidStructure,
@@ -3012,6 +3948,8 @@ impl JavaTypeDeclaration {
                 "portable Java interfaces are flat and cannot extend an interface",
             ));
         }
+        violations.extend(verify_declaration_kind_grammar(self));
+        violations.extend(verify_sealed_permits(self, context));
         match &self.heritage {
             JavaHeritage::Interfaces(values) => {
                 if values.is_empty() {
@@ -3054,12 +3992,19 @@ impl JavaTypeDeclaration {
             JavaHeritage::None => {}
         }
         let mut field_names = BTreeSet::new();
+        let mut component_origins = BTreeSet::new();
         for component in &self.record_components {
             violations.extend(component.ty.verify(JavaTypeUse::Field));
             if !field_names.insert(component.name.clone()) {
                 violations.push(AstViolation::new(
                     DiagnosticCode::DuplicateDeclaration,
                     "Java record component is declared more than once",
+                ));
+            }
+            if !component_origins.insert(component.origin) {
+                violations.push(AstViolation::new(
+                    DiagnosticCode::DuplicateDeclaration,
+                    "Java record component origin is declared more than once",
                 ));
             }
         }
@@ -3134,10 +4079,213 @@ impl JavaTypeDeclaration {
                     }
                 }
             }
-            violations.extend(member.verify(context));
+            violations.extend(member.verify_with_owner(context, owner.as_ref(), Some(self)));
         }
         violations.extend(verify_interface_conformance(self, context));
         violations
+    }
+}
+
+fn verify_declaration_kind_grammar(declaration: &JavaTypeDeclaration) -> Vec<AstViolation> {
+    let mut violations = Vec::new();
+    let interface = matches!(
+        declaration.kind,
+        JavaDeclarationKind::Interface | JavaDeclarationKind::SealedInterface
+    );
+    let mut record_constructor_count = 0usize;
+    for member in &declaration.members {
+        match member {
+            JavaMember::Field(_) | JavaMember::CompileFailField(_) if interface => {
+                violations.push(AstViolation::new(
+                    DiagnosticCode::InvalidStructure,
+                    "portable Java interfaces cannot declare fields",
+                ));
+            }
+            JavaMember::Constructor(_) if interface => {
+                violations.push(AstViolation::new(
+                    DiagnosticCode::InvalidStructure,
+                    "Java interfaces cannot declare constructors",
+                ));
+            }
+            JavaMember::NestedType(_) if interface => {
+                violations.push(AstViolation::new(
+                    DiagnosticCode::InvalidStructure,
+                    "portable Java interfaces are flat and cannot declare nested types",
+                ));
+            }
+            JavaMember::Method(method) if interface => {
+                if !matches!(
+                    method.declared,
+                    JavaMethodDeclaration::Structural | JavaMethodDeclaration::Interface(_)
+                ) || method.body.is_some()
+                    || !method.modifiers.contains(&JavaModifier::Abstract)
+                    || method.modifiers.contains(&JavaModifier::Static)
+                {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::InvalidStructure,
+                        "portable Java interface members must be abstract instance method declarations",
+                    ));
+                }
+            }
+            JavaMember::Method(method) => {
+                if matches!(method.declared, JavaMethodDeclaration::Interface(_)) {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::InvalidStructure,
+                        "Java interface method declarations must belong to an interface",
+                    ));
+                }
+                if method.modifiers.contains(&JavaModifier::Abstract) {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::InvalidStructure,
+                        "records and final Java classes cannot declare abstract methods",
+                    ));
+                }
+            }
+            JavaMember::Field(field) if declaration.kind == JavaDeclarationKind::Record => {
+                if !field.modifiers.contains(&JavaModifier::Static) {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::InvalidStructure,
+                        "Java records cannot declare additional instance fields",
+                    ));
+                }
+            }
+            JavaMember::CompileFailField(field)
+                if declaration.kind == JavaDeclarationKind::Record =>
+            {
+                if !field.modifiers.contains(&JavaModifier::Static) {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::InvalidStructure,
+                        "Java records cannot declare additional instance fields",
+                    ));
+                }
+            }
+            JavaMember::Constructor(constructor)
+                if declaration.kind == JavaDeclarationKind::Record =>
+            {
+                record_constructor_count += 1;
+                let canonical = constructor.parameters.len() == declaration.record_components.len()
+                    && constructor
+                        .parameters
+                        .iter()
+                        .zip(&declaration.record_components)
+                        .all(|(parameter, component)| {
+                            parameter.name == component.name && parameter.ty == component.ty
+                        });
+                if !canonical {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::InvalidStructure,
+                        "explicit Java record constructor must have the canonical component signature",
+                    ));
+                }
+            }
+            JavaMember::Field(_)
+            | JavaMember::CompileFailField(_)
+            | JavaMember::Constructor(_)
+            | JavaMember::NestedType(_) => {}
+        }
+    }
+    if declaration.kind == JavaDeclarationKind::Record && record_constructor_count > 1 {
+        violations.push(AstViolation::new(
+            DiagnosticCode::InvalidStructure,
+            "portable Java record may declare at most one canonical constructor",
+        ));
+    }
+    violations
+}
+
+fn verify_sealed_permits(
+    declaration: &JavaTypeDeclaration,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> Vec<AstViolation> {
+    if declaration.kind != JavaDeclarationKind::SealedInterface {
+        return vec![];
+    }
+    let Some(interface) = declaration.declared else {
+        return vec![AstViolation::new(
+            DiagnosticCode::InvalidStructure,
+            "sealed Java interface must have a generated declaration identity",
+        )];
+    };
+    let actual = generated_implementors(interface, context);
+    let mut permitted = BTreeSet::new();
+    let mut violations = Vec::new();
+    for value in &declaration.permits {
+        let JavaType::Reference(JavaTypeName::Generated(id)) = value else {
+            violations.push(AstViolation::new(
+                DiagnosticCode::InvalidStructure,
+                "sealed Java permits entries must be non-generic generated declaration types",
+            ));
+            continue;
+        };
+        if !permitted.insert(*id) {
+            violations.push(AstViolation::new(
+                DiagnosticCode::DuplicateDeclaration,
+                "sealed Java permits entry is repeated",
+            ));
+        }
+        let valid_declaration = find_type_declaration(value, context).is_some_and(|candidate| {
+            matches!(
+                candidate.kind,
+                JavaDeclarationKind::FinalClass | JavaDeclarationKind::Record
+            ) && matches!(
+                candidate.heritage,
+                JavaHeritage::Interfaces(ref interfaces)
+                    if interfaces.contains(&JavaType::Reference(JavaTypeName::Generated(interface)))
+            )
+        });
+        if !valid_declaration {
+            violations.push(AstViolation::new(
+                DiagnosticCode::InterfaceNonconformance,
+                "sealed Java permits entry does not name an actual final implementing declaration",
+            ));
+        }
+    }
+    if actual.is_empty() || permitted != actual {
+        violations.push(AstViolation::new(
+            DiagnosticCode::InterfaceNonconformance,
+            "sealed Java permits set must exactly name every implementing declaration once",
+        ));
+    }
+    violations
+}
+
+fn generated_implementors(
+    interface: GeneratedTypeId,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> BTreeSet<GeneratedTypeId> {
+    let mut output = BTreeSet::new();
+    for file in context.files() {
+        for item in file.items() {
+            if let JavaFileItem::Type { declaration, .. } = item {
+                collect_generated_implementors(declaration, interface, &mut output);
+            }
+        }
+    }
+    output
+}
+
+fn collect_generated_implementors(
+    declaration: &JavaTypeDeclaration,
+    interface: GeneratedTypeId,
+    output: &mut BTreeSet<GeneratedTypeId>,
+) {
+    if let Some(id) = declaration.declared
+        && matches!(
+            declaration.kind,
+            JavaDeclarationKind::FinalClass | JavaDeclarationKind::Record
+        )
+        && matches!(
+            declaration.heritage,
+            JavaHeritage::Interfaces(ref interfaces)
+                if interfaces.contains(&JavaType::Reference(JavaTypeName::Generated(interface)))
+        )
+    {
+        output.insert(id);
+    }
+    for member in &declaration.members {
+        if let JavaMember::NestedType(nested) = member {
+            collect_generated_implementors(nested, interface, output);
+        }
     }
 }
 
@@ -3482,10 +4630,17 @@ impl TargetFileItemNode<JavaDialect> for JavaFileItem {
                 }
                 violations
             }
-            Self::RuntimeMembers { members, .. } => members
-                .iter()
-                .flat_map(|value| value.verify(context))
-                .collect(),
+            Self::RuntimeMembers { members, .. } => {
+                let variables = BTreeSet::new();
+                members
+                    .iter()
+                    .flat_map(|value| {
+                        let mut violations = value.verify(context);
+                        violations.extend(verify_member_type_context(value, &variables, context));
+                        violations
+                    })
+                    .collect()
+            }
         }
     }
 }
@@ -3710,6 +4865,22 @@ mod tests {
             name: JavaIdentifier::from_portable(name),
             final_parameter: true,
         }
+    }
+
+    fn fixture_core_field() -> CoreFieldId {
+        let checked = portable_check::v0::check_program(
+            portable_ir::v0::from_json(include_bytes!(
+                "../../build/testdata/registration.poly.json"
+            ))
+            .expect("fixture parses"),
+        )
+        .expect("fixture checks");
+        let core = portable_core_ir::lower_checked(&checked).expect("fixture lowers to CoreIR");
+        core.records()
+            .first()
+            .and_then(|record| record.fields.first())
+            .copied()
+            .expect("fixture contains a record field")
     }
 
     #[test]
@@ -4363,5 +5534,637 @@ mod tests {
             value.code == DiagnosticCode::InterfaceNonconformance
                 && value.message.contains("exactly once")
         }));
+    }
+
+    #[test]
+    fn contextual_types_require_exact_known_arity_and_declared_variables() {
+        let invalid_arity = fixture_declaration(vec![JavaMember::Field(JavaField {
+            declared: None,
+            modifiers: vec![JavaModifier::Static],
+            ty: JavaType::generic(
+                JavaKnownType::List,
+                vec![
+                    JavaType::known(JavaKnownType::String),
+                    JavaType::known(JavaKnownType::Object),
+                ],
+            ),
+            name: JavaIdentifier::from_portable("values"),
+            initializer: None,
+        })]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], invalid_arity)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::TypeMismatch
+                && value.message.contains("exactly 1 type arguments")
+        }));
+
+        let variable = JavaIdentifier::from_portable("T");
+        let undeclared = fixture_declaration(vec![structural_method(
+            "identity",
+            JavaType::TypeVariable(variable.clone()),
+            vec![parameter(JavaType::TypeVariable(variable.clone()), "value")],
+            JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr::local(
+                JavaType::TypeVariable(variable.clone()),
+                JavaIdentifier::from_portable("value"),
+            )))]),
+        )]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], undeclared)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::UnresolvedReference
+                && value.message.contains("type variable")
+        }));
+
+        let declared = fixture_declaration(vec![JavaMember::Method(JavaMethod {
+            declared: JavaMethodDeclaration::Structural,
+            annotations: vec![],
+            modifiers: vec![JavaModifier::Public, JavaModifier::Static],
+            type_parameters: vec![variable.clone()],
+            return_type: JavaType::TypeVariable(variable.clone()),
+            name: JavaIdentifier::from_portable("identity"),
+            parameters: vec![parameter(JavaType::TypeVariable(variable.clone()), "value")],
+            body: Some(JavaBlock::new(vec![JavaStmt::Return(Some(
+                JavaExpr::local(
+                    JavaType::TypeVariable(variable),
+                    JavaIdentifier::from_portable("value"),
+                ),
+            ))])),
+        })]);
+        assert!(
+            verify_fixture(
+                portable_codegen::TargetAstBuilder::new(JavaDialect),
+                vec![(vec![], declared)],
+            )
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn casts_and_instanceof_require_java_legality_and_reifiable_targets() {
+        let string = JavaType::known(JavaKnownType::String);
+        let object = JavaType::known(JavaKnownType::Object);
+        let int = JavaType::primitive(JavaPrimitive::Int);
+        let boolean = JavaType::primitive(JavaPrimitive::Boolean);
+        let invalid_cast = JavaExpr {
+            ty: int.clone(),
+            precedence: JavaPrecedence::Unary,
+            kind: JavaExprKind::Cast {
+                target: int.clone(),
+                value: Box::new(JavaExpr::local(
+                    string.clone(),
+                    JavaIdentifier::from_portable("value"),
+                )),
+            },
+        };
+        let invalid_primitive_test = JavaExpr {
+            ty: boolean.clone(),
+            precedence: JavaPrecedence::Relational,
+            kind: JavaExprKind::InstanceOf {
+                value: Box::new(JavaExpr::local(
+                    int.clone(),
+                    JavaIdentifier::from_portable("number"),
+                )),
+                target: string.clone(),
+                binding: None,
+            },
+        };
+        let non_reifiable = JavaType::generic(JavaKnownType::List, vec![string.clone()]);
+        let invalid_generic_test = JavaExpr {
+            ty: boolean.clone(),
+            precedence: JavaPrecedence::Relational,
+            kind: JavaExprKind::InstanceOf {
+                value: Box::new(JavaExpr::local(
+                    object.clone(),
+                    JavaIdentifier::from_portable("value"),
+                )),
+                target: non_reifiable,
+                binding: None,
+            },
+        };
+        let invalid = fixture_declaration(vec![
+            structural_method(
+                "cast",
+                int.clone(),
+                vec![parameter(string, "value")],
+                JavaBlock::new(vec![JavaStmt::Return(Some(invalid_cast))]),
+            ),
+            structural_method(
+                "primitiveTest",
+                boolean.clone(),
+                vec![parameter(int, "number")],
+                JavaBlock::new(vec![JavaStmt::Return(Some(invalid_primitive_test))]),
+            ),
+            structural_method(
+                "genericTest",
+                boolean.clone(),
+                vec![parameter(object.clone(), "value")],
+                JavaBlock::new(vec![JavaStmt::Return(Some(invalid_generic_test))]),
+            ),
+        ]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], invalid)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::TypeMismatch
+                && value.message.contains("cast is not legal")
+        }));
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::TypeMismatch
+                && value.message.contains("instanceof is not legal")
+        }));
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::TypeMismatch
+                && value
+                    .message
+                    .contains("instanceof target must be reifiable")
+        }));
+
+        let list_any = JavaType::generic(
+            JavaKnownType::List,
+            vec![JavaType::Wildcard { bound: None }],
+        );
+        let valid = fixture_declaration(vec![structural_method(
+            "listTest",
+            boolean,
+            vec![parameter(object.clone(), "value")],
+            JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
+                ty: JavaType::primitive(JavaPrimitive::Boolean),
+                precedence: JavaPrecedence::Relational,
+                kind: JavaExprKind::InstanceOf {
+                    value: Box::new(JavaExpr::local(
+                        object,
+                        JavaIdentifier::from_portable("value"),
+                    )),
+                    target: list_any,
+                    binding: Some(JavaIdentifier::from_portable("values")),
+                },
+            }))]),
+        )]);
+        assert!(
+            verify_fixture(
+                portable_codegen::TargetAstBuilder::new(JavaDialect),
+                vec![(vec![], valid)],
+            )
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn this_references_must_match_the_lexical_owner() {
+        let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+        let owner = builder.generated_type(portable_codegen::GeneratedType {
+            name: "Owner".to_owned(),
+            kind: JavaDeclarationKind::FinalClass,
+            visibility: JavaVisibility::Package,
+            origin: portable_codegen::GeneratedOrigin::Synthesized(
+                portable_codegen::SynthesisReason::TestHarness,
+            ),
+            source: verifier_source("owner"),
+        });
+        let mut declaration = fixture_declaration(vec![JavaMember::Method(JavaMethod {
+            declared: JavaMethodDeclaration::Structural,
+            annotations: vec![],
+            modifiers: vec![JavaModifier::Public],
+            type_parameters: vec![],
+            return_type: JavaType::known(JavaKnownType::String),
+            name: JavaIdentifier::from_portable("selfValue"),
+            parameters: vec![],
+            body: Some(JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
+                ty: JavaType::known(JavaKnownType::String),
+                precedence: JavaPrecedence::Primary,
+                kind: JavaExprKind::Value(JavaValueRef::This),
+            }))])),
+        })]);
+        declaration.declared = Some(owner);
+        declaration.name = JavaIdentifier::from_portable("Owner");
+        let diagnostics = verify_fixture(
+            builder,
+            vec![(vec![GeneratedSymbolId::Type(owner)], declaration)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::UnresolvedReference
+                && value.message.contains("declaring Java owner")
+        }));
+
+        let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+        let owner = builder.generated_type(portable_codegen::GeneratedType {
+            name: "Owner".to_owned(),
+            kind: JavaDeclarationKind::FinalClass,
+            visibility: JavaVisibility::Package,
+            origin: portable_codegen::GeneratedOrigin::Synthesized(
+                portable_codegen::SynthesisReason::TestHarness,
+            ),
+            source: verifier_source("owner-positive"),
+        });
+        let owner_type = JavaType::Reference(JavaTypeName::Generated(owner));
+        let mut declaration = fixture_declaration(vec![JavaMember::Method(JavaMethod {
+            declared: JavaMethodDeclaration::Structural,
+            annotations: vec![],
+            modifiers: vec![JavaModifier::Public],
+            type_parameters: vec![],
+            return_type: owner_type.clone(),
+            name: JavaIdentifier::from_portable("selfValue"),
+            parameters: vec![],
+            body: Some(JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
+                ty: owner_type,
+                precedence: JavaPrecedence::Primary,
+                kind: JavaExprKind::Value(JavaValueRef::This),
+            }))])),
+        })]);
+        declaration.declared = Some(owner);
+        declaration.name = JavaIdentifier::from_portable("Owner");
+        assert!(
+            verify_fixture(
+                builder,
+                vec![(vec![GeneratedSymbolId::Type(owner)], declaration,)],
+            )
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn structural_fields_require_declared_type_and_final_assignment_context() {
+        let int = JavaType::primitive(JavaPrimitive::Int);
+        let owner = JavaType::known(JavaKnownType::RuntimeError);
+        let string = JavaType::known(JavaKnownType::String);
+        let this = || JavaExpr {
+            ty: owner.clone(),
+            precedence: JavaPrecedence::Primary,
+            kind: JavaExprKind::Value(JavaValueRef::This),
+        };
+        let field = |name: &str, ty: JavaType| JavaExpr {
+            ty: ty.clone(),
+            precedence: JavaPrecedence::Primary,
+            kind: JavaExprKind::Field {
+                receiver: Box::new(this()),
+                field: JavaFieldRef::Structural {
+                    name: JavaIdentifier::from_portable(name),
+                    ty,
+                },
+            },
+        };
+        let valid = JavaTypeDeclaration {
+            declared: None,
+            kind: JavaDeclarationKind::Record,
+            visibility: JavaVisibility::Package,
+            modifiers: vec![],
+            name: JavaIdentifier::from_portable("PolyError"),
+            type_parameters: vec![],
+            record_components: vec![JavaRecordComponent {
+                origin: JavaRecordComponentOrigin::Runtime(JavaRuntimeMember::ErrorCode),
+                ty: string.clone(),
+                name: JavaIdentifier::from_portable("code"),
+            }],
+            heritage: JavaHeritage::None,
+            permits: vec![],
+            members: vec![JavaMember::Constructor(JavaConstructor {
+                modifiers: vec![],
+                name: JavaIdentifier::from_portable("PolyError"),
+                parameters: vec![parameter(string.clone(), "code")],
+                body: JavaBlock::new(vec![JavaStmt::Assign {
+                    target: field("code", string.clone()),
+                    value: JavaExpr::local(string.clone(), JavaIdentifier::from_portable("code")),
+                }]),
+            })],
+        };
+        assert!(
+            verify_fixture(
+                portable_codegen::TargetAstBuilder::new(JavaDialect),
+                vec![(vec![], valid)],
+            )
+            .is_ok()
+        );
+
+        let mut invalid = fixture_declaration(vec![
+            JavaMember::Field(JavaField {
+                declared: None,
+                modifiers: vec![JavaModifier::Private, JavaModifier::Final],
+                ty: int.clone(),
+                name: JavaIdentifier::from_portable("count"),
+                initializer: None,
+            }),
+            JavaMember::Method(JavaMethod {
+                declared: JavaMethodDeclaration::Structural,
+                annotations: vec![],
+                modifiers: vec![JavaModifier::Public],
+                type_parameters: vec![],
+                return_type: JavaType::primitive(JavaPrimitive::Void),
+                name: JavaIdentifier::from_portable("mutate"),
+                parameters: vec![],
+                body: Some(JavaBlock::new(vec![JavaStmt::Assign {
+                    target: JavaExpr {
+                        ty: int.clone(),
+                        precedence: JavaPrecedence::Primary,
+                        kind: JavaExprKind::Field {
+                            receiver: Box::new(JavaExpr {
+                                ty: JavaType::known(JavaKnownType::String),
+                                precedence: JavaPrecedence::Primary,
+                                kind: JavaExprKind::Value(JavaValueRef::This),
+                            }),
+                            field: JavaFieldRef::Structural {
+                                name: JavaIdentifier::from_portable("missing"),
+                                ty: int.clone(),
+                            },
+                        },
+                    },
+                    value: JavaExpr::literal(int, JavaLiteral::I32(1)),
+                }])),
+            }),
+        ]);
+        invalid.name = JavaIdentifier::from_portable("Fixture");
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], invalid)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::UnresolvedReference
+                && value.message.contains("structural Java field")
+        }));
+    }
+
+    #[test]
+    fn generated_record_fields_are_final_outside_their_canonical_constructor() {
+        let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+        let record = builder.generated_type(portable_codegen::GeneratedType {
+            name: "Value".to_owned(),
+            kind: JavaDeclarationKind::Record,
+            visibility: JavaVisibility::Package,
+            origin: portable_codegen::GeneratedOrigin::Synthesized(
+                portable_codegen::SynthesisReason::TestHarness,
+            ),
+            source: verifier_source("field-record"),
+        });
+        let field_id = fixture_core_field();
+        let int = JavaType::primitive(JavaPrimitive::Int);
+        let owner = JavaType::Reference(JavaTypeName::Generated(record));
+        let generated_field = || JavaExpr {
+            ty: int.clone(),
+            precedence: JavaPrecedence::Primary,
+            kind: JavaExprKind::Field {
+                receiver: Box::new(JavaExpr {
+                    ty: owner.clone(),
+                    precedence: JavaPrecedence::Primary,
+                    kind: JavaExprKind::Value(JavaValueRef::This),
+                }),
+                field: JavaFieldRef::Generated {
+                    owner: record,
+                    field: field_id,
+                    name: JavaIdentifier::from_portable("value"),
+                    ty: int.clone(),
+                },
+            },
+        };
+        let declaration = JavaTypeDeclaration {
+            declared: Some(record),
+            kind: JavaDeclarationKind::Record,
+            visibility: JavaVisibility::Package,
+            modifiers: vec![],
+            name: JavaIdentifier::from_portable("Value"),
+            type_parameters: vec![],
+            record_components: vec![JavaRecordComponent {
+                origin: JavaRecordComponentOrigin::Core(field_id),
+                ty: int.clone(),
+                name: JavaIdentifier::from_portable("value"),
+            }],
+            heritage: JavaHeritage::None,
+            permits: vec![],
+            members: vec![
+                JavaMember::Constructor(JavaConstructor {
+                    modifiers: vec![],
+                    name: JavaIdentifier::from_portable("Value"),
+                    parameters: vec![parameter(int.clone(), "value")],
+                    body: JavaBlock::new(vec![JavaStmt::Assign {
+                        target: generated_field(),
+                        value: JavaExpr::local(int.clone(), JavaIdentifier::from_portable("value")),
+                    }]),
+                }),
+                JavaMember::Method(JavaMethod {
+                    declared: JavaMethodDeclaration::Structural,
+                    annotations: vec![],
+                    modifiers: vec![JavaModifier::Public],
+                    type_parameters: vec![],
+                    return_type: JavaType::primitive(JavaPrimitive::Void),
+                    name: JavaIdentifier::from_portable("mutate"),
+                    parameters: vec![],
+                    body: Some(JavaBlock::new(vec![JavaStmt::Assign {
+                        target: generated_field(),
+                        value: JavaExpr::literal(int, JavaLiteral::I32(2)),
+                    }])),
+                }),
+                JavaMember::Method(JavaMethod {
+                    declared: JavaMethodDeclaration::Structural,
+                    annotations: vec![],
+                    modifiers: vec![JavaModifier::Public],
+                    type_parameters: vec![],
+                    return_type: JavaType::primitive(JavaPrimitive::Int),
+                    name: JavaIdentifier::from_portable("missing"),
+                    parameters: vec![],
+                    body: Some(JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
+                        ty: JavaType::primitive(JavaPrimitive::Int),
+                        precedence: JavaPrecedence::Primary,
+                        kind: JavaExprKind::Field {
+                            receiver: Box::new(JavaExpr {
+                                ty: owner,
+                                precedence: JavaPrecedence::Primary,
+                                kind: JavaExprKind::Value(JavaValueRef::This),
+                            }),
+                            field: JavaFieldRef::Generated {
+                                owner: record,
+                                field: field_id,
+                                name: JavaIdentifier::from_portable("missing"),
+                                ty: JavaType::primitive(JavaPrimitive::Int),
+                            },
+                        },
+                    }))])),
+                }),
+            ],
+        };
+        let diagnostics = verify_fixture(
+            builder,
+            vec![(vec![GeneratedSymbolId::Type(record)], declaration)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidControlFlow
+                && value.message.contains("declaring constructor")
+        }));
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::UnresolvedReference
+                && value.message.contains("generated Java field reference")
+        }));
+    }
+
+    #[test]
+    fn declaration_kinds_enforce_interface_members_and_canonical_records() {
+        let int = JavaType::primitive(JavaPrimitive::Int);
+        let interface = JavaTypeDeclaration {
+            declared: None,
+            kind: JavaDeclarationKind::Interface,
+            visibility: JavaVisibility::Package,
+            modifiers: vec![],
+            name: JavaIdentifier::from_portable("InvalidInterface"),
+            type_parameters: vec![],
+            record_components: vec![],
+            heritage: JavaHeritage::None,
+            permits: vec![],
+            members: vec![JavaMember::Field(JavaField {
+                declared: None,
+                modifiers: vec![JavaModifier::Static, JavaModifier::Final],
+                ty: int.clone(),
+                name: JavaIdentifier::from_portable("value"),
+                initializer: Some(JavaExpr::literal(int.clone(), JavaLiteral::I32(1))),
+            })],
+        };
+        let record = JavaTypeDeclaration {
+            declared: None,
+            kind: JavaDeclarationKind::Record,
+            visibility: JavaVisibility::Package,
+            modifiers: vec![],
+            name: JavaIdentifier::from_portable("InvalidRecord"),
+            type_parameters: vec![],
+            record_components: vec![JavaRecordComponent {
+                origin: JavaRecordComponentOrigin::Core(fixture_core_field()),
+                ty: int,
+                name: JavaIdentifier::from_portable("value"),
+            }],
+            heritage: JavaHeritage::None,
+            permits: vec![],
+            members: vec![JavaMember::Constructor(JavaConstructor {
+                modifiers: vec![],
+                name: JavaIdentifier::from_portable("InvalidRecord"),
+                parameters: vec![parameter(JavaType::known(JavaKnownType::String), "wrong")],
+                body: JavaBlock::new(vec![]),
+            })],
+        };
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], interface), (vec![], record)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidStructure
+                && value.message.contains("interfaces cannot declare fields")
+        }));
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidStructure
+                && value.message.contains("canonical component signature")
+        }));
+    }
+
+    #[test]
+    fn sealed_permits_are_unique_and_exactly_match_implementors() {
+        let setup = |valid: bool| {
+            let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+            let interface = builder.generated_type(portable_codegen::GeneratedType {
+                name: "Shape".to_owned(),
+                kind: JavaDeclarationKind::SealedInterface,
+                visibility: JavaVisibility::Package,
+                origin: portable_codegen::GeneratedOrigin::Synthesized(
+                    portable_codegen::SynthesisReason::TestHarness,
+                ),
+                source: verifier_source("sealed-interface"),
+            });
+            let implementation = builder.generated_type(portable_codegen::GeneratedType {
+                name: "Circle".to_owned(),
+                kind: JavaDeclarationKind::Record,
+                visibility: JavaVisibility::Package,
+                origin: portable_codegen::GeneratedOrigin::Synthesized(
+                    portable_codegen::SynthesisReason::TestHarness,
+                ),
+                source: verifier_source("sealed-implementation"),
+            });
+            let unrelated = builder.generated_type(portable_codegen::GeneratedType {
+                name: "Square".to_owned(),
+                kind: JavaDeclarationKind::Record,
+                visibility: JavaVisibility::Package,
+                origin: portable_codegen::GeneratedOrigin::Synthesized(
+                    portable_codegen::SynthesisReason::TestHarness,
+                ),
+                source: verifier_source("sealed-unrelated"),
+            });
+            let interface_type = JavaType::Reference(JavaTypeName::Generated(interface));
+            let implementation_type = JavaType::Reference(JavaTypeName::Generated(implementation));
+            let unrelated_type = JavaType::Reference(JavaTypeName::Generated(unrelated));
+            let interface_declaration = JavaTypeDeclaration {
+                declared: Some(interface),
+                kind: JavaDeclarationKind::SealedInterface,
+                visibility: JavaVisibility::Package,
+                modifiers: vec![],
+                name: JavaIdentifier::from_portable("Shape"),
+                type_parameters: vec![],
+                record_components: vec![],
+                heritage: JavaHeritage::None,
+                permits: if valid {
+                    vec![implementation_type]
+                } else {
+                    vec![unrelated_type.clone(), unrelated_type]
+                },
+                members: vec![],
+            };
+            let implementation_declaration = JavaTypeDeclaration {
+                declared: Some(implementation),
+                kind: JavaDeclarationKind::Record,
+                visibility: JavaVisibility::Package,
+                modifiers: vec![],
+                name: JavaIdentifier::from_portable("Circle"),
+                type_parameters: vec![],
+                record_components: vec![],
+                heritage: JavaHeritage::Interfaces(vec![interface_type]),
+                permits: vec![],
+                members: vec![],
+            };
+            let unrelated_declaration = JavaTypeDeclaration {
+                declared: Some(unrelated),
+                kind: JavaDeclarationKind::Record,
+                visibility: JavaVisibility::Package,
+                modifiers: vec![],
+                name: JavaIdentifier::from_portable("Square"),
+                type_parameters: vec![],
+                record_components: vec![],
+                heritage: JavaHeritage::None,
+                permits: vec![],
+                members: vec![],
+            };
+            (
+                builder,
+                vec![
+                    (
+                        vec![GeneratedSymbolId::Type(interface)],
+                        interface_declaration,
+                    ),
+                    (
+                        vec![GeneratedSymbolId::Type(implementation)],
+                        implementation_declaration,
+                    ),
+                    (
+                        vec![GeneratedSymbolId::Type(unrelated)],
+                        unrelated_declaration,
+                    ),
+                ],
+            )
+        };
+        let (builder, declarations) = setup(false);
+        let diagnostics = verify_fixture(builder, declarations).unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::DuplicateDeclaration
+                && value.message.contains("permits entry is repeated")
+        }));
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InterfaceNonconformance
+                && value.message.contains("exactly name every implementing")
+        }));
+
+        let (builder, declarations) = setup(true);
+        assert!(verify_fixture(builder, declarations).is_ok());
     }
 }

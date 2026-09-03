@@ -224,6 +224,35 @@ mod tests {
     }
 
     #[test]
+    fn conformance_program_executes_the_exact_portable_test_inventory() {
+        let checked = fixture();
+        assert_eq!(
+            checked
+                .module()
+                .declarations
+                .iter()
+                .filter(|declaration| matches!(declaration, portable_ir::v0::Declaration::Test(_)))
+                .count(),
+            1
+        );
+        let manifest = JavaBackend
+            .generate(&checked, &BackendOptions::default())
+            .unwrap();
+        let conformance = generated_text(
+            &manifest,
+            "src/test/java/org/polyrust/generated/ConformanceTest.java",
+        );
+        assert!(conformance.contains("call_render_returns_text"));
+        assert!(conformance.contains("int completed = 0;"));
+        assert!(conformance.contains("completed = (completed + 1);"));
+        assert!(conformance.contains("completed == 1"));
+        assert!(conformance.contains("Runtime.deepEqual"));
+        assert!(
+            !conformance.contains("public static void main(final String[] arguments) {\n    }")
+        );
+    }
+
+    #[test]
     fn imports_are_derived_from_typed_references() {
         let manifest = JavaBackend
             .generate(&fixture(), &BackendOptions::default())

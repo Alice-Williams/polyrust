@@ -201,4 +201,16 @@ public final class Generated {
      }
     return org.polyrust.generated.Runtime.ok(__polyrust_callResult_16.value());
   }
+  public static org.polyrust.generated.Runtime.PolyOption<Labelled> __polyrust_noneOfOption19_Interface8_Labelled() {
+    return org.polyrust.generated.Runtime.optionNone();
+  }
+  public static org.polyrust.generated.Runtime.PolyOption<Labelled> __polyrust_someOfOption19_Interface8_Labelled(final Labelled value) {
+    return org.polyrust.generated.Runtime.optionSome(Objects.requireNonNull(value));
+  }
+  public static org.polyrust.generated.Runtime.PolyValueResult<Labelled, String> __polyrust_okOfResult19_Interface8_Labelled6_String(final Labelled value) {
+    return org.polyrust.generated.Runtime.valueResultOk(Objects.requireNonNull(value));
+  }
+  public static org.polyrust.generated.Runtime.PolyValueResult<Labelled, String> __polyrust_errorOfResult19_Interface8_Labelled6_String(final String value) {
+    return org.polyrust.generated.Runtime.valueResultErr(org.polyrust.generated.Runtime.requireScalarString(value));
+  }
 }

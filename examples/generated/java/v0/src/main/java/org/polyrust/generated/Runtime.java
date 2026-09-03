@@ -41,14 +41,20 @@ public final class Runtime {
       this.message = org.polyrust.generated.Runtime.requireScalarString(message);
     }
   }
-  public static record PolyResult<T>(boolean ok, T value, org.polyrust.generated.Runtime.PolyError error) implements org.polyrust.generated.Runtime.SemanticValue {
-    public PolyResult(final boolean ok, final T value, final org.polyrust.generated.Runtime.PolyError error) {
+  public static final class PolyResult<T> implements org.polyrust.generated.Runtime.SemanticValue {
+    private final boolean ok;
+    private final T value;
+    private final org.polyrust.generated.Runtime.PolyError error;
+    private PolyResult(final boolean ok, final T value, final org.polyrust.generated.Runtime.PolyError error) {
       if (((ok && ((value == null) || (error != null))) || ((!ok) && ((value != null) || (error == null))))) {
         throw new IllegalArgumentException("PolyResult tag and payloads disagree");
        }
       this.ok = ok;
-      this.value = (ok ? org.polyrust.generated.Runtime.validatePublicValue(value) : value);
+      this.value = (ok ? Objects.requireNonNull(value) : value);
       this.error = error;
+    }
+    public boolean ok() {
+      return this.ok;
     }
     public T value() {
       if ((!this.ok)) {
@@ -67,20 +73,32 @@ public final class Runtime {
       if ((!(other instanceof org.polyrust.generated.Runtime.PolyResult<?> otherValue))) {
         return false;
        }
-      return (((true && org.polyrust.generated.Runtime.semanticEqual(((Object) this.ok), ((Object) otherValue.ok))) && org.polyrust.generated.Runtime.semanticEqual(((Object) this.value), ((Object) otherValue.value))) && org.polyrust.generated.Runtime.semanticEqual(((Object) this.error), ((Object) otherValue.error)));
+      if ((this.ok() != otherValue.ok())) {
+        return false;
+       }
+      if (this.ok()) {
+        return org.polyrust.generated.Runtime.semanticEqual(((Object) this.value()), ((Object) otherValue.value()));
+       }
+      return org.polyrust.generated.Runtime.semanticEqual(((Object) this.error()), ((Object) otherValue.error()));
     }
     @Override
     public boolean deepEquals(final Object other) {
       if ((!(other instanceof org.polyrust.generated.Runtime.PolyResult<?> otherValue))) {
         return false;
        }
-      return (((true && org.polyrust.generated.Runtime.deepEqual(((Object) this.ok), ((Object) otherValue.ok))) && org.polyrust.generated.Runtime.deepEqual(((Object) this.value), ((Object) otherValue.value))) && org.polyrust.generated.Runtime.deepEqual(((Object) this.error), ((Object) otherValue.error)));
+      if ((this.ok() != otherValue.ok())) {
+        return false;
+       }
+      if (this.ok()) {
+        return org.polyrust.generated.Runtime.deepEqual(((Object) this.value()), ((Object) otherValue.value()));
+       }
+      return org.polyrust.generated.Runtime.deepEqual(((Object) this.error()), ((Object) otherValue.error()));
     }
   }
-  public static <T> org.polyrust.generated.Runtime.PolyResult<T> ok(final T value) {
+  static <T> org.polyrust.generated.Runtime.PolyResult<T> ok(final T value) {
     return new org.polyrust.generated.Runtime.PolyResult<T>(true, value, null);
   }
-  public static <T> org.polyrust.generated.Runtime.PolyResult<T> fail(final String code, final String message) {
+  static <T> org.polyrust.generated.Runtime.PolyResult<T> fail(final String code, final String message) {
     return new org.polyrust.generated.Runtime.PolyResult<T>(false, null, new org.polyrust.generated.Runtime.PolyError(code, message));
   }
   public static boolean semanticEqual(final Object left, final Object right) {
@@ -126,20 +144,6 @@ public final class Runtime {
       return semanticValue.deepEquals(right);
      }
     return Objects.deepEquals(left, right);
-  }
-  public static <T> T validatePublicValue(final T value) {
-    Objects.requireNonNull(value);
-    if ((value instanceof String scalarString)) {
-      org.polyrust.generated.Runtime.requireScalarString(scalarString);
-     }
-    if ((value instanceof List<?> values)) {
-      int index = 0;
-      while ((index < values.size())) {
-        org.polyrust.generated.Runtime.validatePublicValue(values.get(index));
-        index = (index + 1);
-      }
-     }
-    return value;
   }
   public static String requireScalarString(final String value) {
     Objects.requireNonNull(value);

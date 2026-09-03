@@ -288,6 +288,7 @@ impl<'a> Lowering<'a> {
                 | CoreDeclaration::Test(_) => {}
             }
         }
+        members.extend(self.public_tagged_value_factories()?);
         members.insert(0, JavaMember::Constructor(private_constructor("Generated")));
         let declaration = JavaTypeDeclaration {
             declared: self.entry,
@@ -343,37 +344,7 @@ impl<'a> Lowering<'a> {
     }
 
     fn conformance_file(&mut self) -> Result<portable_codegen::TargetFileId, Vec<Diagnostic>> {
-        let declaration = JavaTypeDeclaration {
-            declared: None,
-            kind: JavaDeclarationKind::FinalClass,
-            visibility: JavaVisibility::Public,
-            modifiers: vec![],
-            name: identifier("ConformanceTest"),
-            type_parameters: vec![],
-            record_components: vec![],
-            heritage: JavaHeritage::None,
-            permits: vec![],
-            members: vec![
-                JavaMember::Constructor(private_constructor("ConformanceTest")),
-                JavaMember::Method(JavaMethod {
-                    declared: JavaMethodDeclaration::Structural,
-                    annotations: vec![],
-                    modifiers: vec![JavaModifier::Public, JavaModifier::Static],
-                    type_parameters: vec![],
-                    return_type: JavaType::primitive(JavaPrimitive::Void),
-                    name: identifier("main"),
-                    parameters: vec![JavaParameter {
-                        ty: JavaType::Array {
-                            component: Box::new(JavaType::known(JavaKnownType::String)),
-                            ownership: JavaArrayOwnership::DefensiveCopyBoundary,
-                        },
-                        name: identifier("arguments"),
-                        final_parameter: true,
-                    }],
-                    body: Some(JavaBlock::new(vec![])),
-                }),
-            ],
-        };
+        let declaration = self.test_declaration("ConformanceTest")?;
         Ok(self.builder.file(TargetFile::new(
             path("src/test/java/org/polyrust/generated/ConformanceTest.java"),
             SourceRole::Conformance,
@@ -795,6 +766,153 @@ impl<'a> Lowering<'a> {
         })
     }
 
+    fn public_tagged_value_factories(&self) -> Result<Vec<JavaMember>, Vec<Diagnostic>> {
+        let mut members = Vec::new();
+        for (id, kind) in self.core.types().iter() {
+            match kind {
+                CoreType::Option(inner) => {
+                    let suffix = self.factory_type_suffix(id)?;
+                    let option_type = self.ty(id)?;
+                    members.push(public_factory_method(
+                        &format!("__polyrust_noneOf{suffix}"),
+                        option_type.clone(),
+                        vec![],
+                        ExprPlan::pure(runtime_call(
+                            JavaRuntimeCallable::OptionNone,
+                            vec![],
+                            option_type.clone(),
+                        )),
+                    ));
+                    let payload_type = self.ty(*inner)?;
+                    let input = JavaExpr::local(payload_type.clone(), identifier("value"));
+                    let normalized = self.normalize_boundary_value(*inner, input)?;
+                    members.push(public_factory_method(
+                        &format!("__polyrust_someOf{suffix}"),
+                        option_type.clone(),
+                        vec![JavaParameter {
+                            ty: payload_type,
+                            name: identifier("value"),
+                            final_parameter: true,
+                        }],
+                        ExprPlan {
+                            statements: normalized.statements,
+                            value: runtime_call(
+                                JavaRuntimeCallable::OptionSome,
+                                vec![normalized.value],
+                                option_type,
+                            ),
+                        },
+                    ));
+                }
+                CoreType::Result { ok, error } => {
+                    let suffix = self.factory_type_suffix(id)?;
+                    let result_type = self.ty(id)?;
+                    for (label, payload, callable) in [
+                        ("ok", *ok, JavaRuntimeCallable::ValueResultOk),
+                        ("error", *error, JavaRuntimeCallable::ValueResultErr),
+                    ] {
+                        let payload_type = self.ty(payload)?;
+                        let input = JavaExpr::local(payload_type.clone(), identifier("value"));
+                        let normalized = self.normalize_boundary_value(payload, input)?;
+                        members.push(public_factory_method(
+                            &format!("__polyrust_{label}Of{suffix}"),
+                            result_type.clone(),
+                            vec![JavaParameter {
+                                ty: payload_type,
+                                name: identifier("value"),
+                                final_parameter: true,
+                            }],
+                            ExprPlan {
+                                statements: normalized.statements,
+                                value: runtime_call(
+                                    callable,
+                                    vec![normalized.value],
+                                    result_type.clone(),
+                                ),
+                            },
+                        ));
+                    }
+                }
+                CoreType::Unit
+                | CoreType::Bool
+                | CoreType::I32
+                | CoreType::I64
+                | CoreType::F64
+                | CoreType::Char
+                | CoreType::String
+                | CoreType::Bytes
+                | CoreType::List(_)
+                | CoreType::Record(_)
+                | CoreType::Enum(_)
+                | CoreType::Interface(_) => {}
+            }
+        }
+        Ok(members)
+    }
+
+    fn factory_type_suffix(&self, id: CoreTypeId) -> Result<String, Vec<Diagnostic>> {
+        let Some(kind) = self.core.types().get(id) else {
+            return Err(vec![diagnostic(
+                "missing CoreIR type for Java value factory",
+            )]);
+        };
+        let suffix = match kind {
+            CoreType::Unit => "Unit".to_owned(),
+            CoreType::Bool => "Bool".to_owned(),
+            CoreType::I32 => "I32".to_owned(),
+            CoreType::I64 => "I64".to_owned(),
+            CoreType::F64 => "F64".to_owned(),
+            CoreType::Char => "Char".to_owned(),
+            CoreType::String => "String".to_owned(),
+            CoreType::Bytes => "Bytes".to_owned(),
+            CoreType::List(element) => {
+                length_prefixed_type("List", &self.factory_type_suffix(*element)?)
+            }
+            CoreType::Option(inner) => {
+                length_prefixed_type("Option", &self.factory_type_suffix(*inner)?)
+            }
+            CoreType::Result { ok, error } => {
+                let ok = self.factory_type_suffix(*ok)?;
+                let error = self.factory_type_suffix(*error)?;
+                format!("Result{}_{}{}_{}", ok.len(), ok, error.len(), error)
+            }
+            CoreType::Record(record) => {
+                let name = identifier(
+                    &self
+                        .core
+                        .record(*record)
+                        .expect("verified record")
+                        .header
+                        .name,
+                );
+                length_prefixed_type("Record", name.as_str())
+            }
+            CoreType::Enum(enumeration) => {
+                let name = identifier(
+                    &self
+                        .core
+                        .enumeration(*enumeration)
+                        .expect("verified enum")
+                        .header
+                        .name,
+                );
+                length_prefixed_type("Enum", name.as_str())
+            }
+            CoreType::Interface(interface) => {
+                let name = identifier(
+                    &self
+                        .core
+                        .interface(*interface)
+                        .expect("verified interface")
+                        .header
+                        .name,
+                );
+                length_prefixed_type("Interface", name.as_str())
+            }
+        };
+        Ok(suffix)
+    }
+
     fn implementation_method(
         &self,
         id: CoreImplementationMethodId,
@@ -1043,7 +1161,7 @@ impl<'a> Lowering<'a> {
     }
 
     fn native_test_file(&mut self) -> Result<portable_codegen::TargetFileId, Vec<Diagnostic>> {
-        let declaration = self.native_test_declaration()?;
+        let declaration = self.test_declaration("GeneratedTest")?;
         Ok(self.builder.file(TargetFile::new(
             path("src/test/java/org/polyrust/generated/GeneratedTest.java"),
             SourceRole::NativeTest,
@@ -1698,8 +1816,19 @@ impl<'a> Lowering<'a> {
         }
     }
 
-    fn native_test_declaration(&self) -> Result<JavaTypeDeclaration, Vec<Diagnostic>> {
-        let mut statements = Vec::new();
+    fn test_declaration(&self, class_name: &str) -> Result<JavaTypeDeclaration, Vec<Diagnostic>> {
+        let expected_test_count = i32::try_from(self.core.tests().len())
+            .map_err(|_| vec![diagnostic("Java conformance test count exceeds i32")])?;
+        let int = JavaType::primitive(JavaPrimitive::Int);
+        let boolean = JavaType::primitive(JavaPrimitive::Boolean);
+        let completed_name = identifier("completed");
+        let completed = JavaExpr::local(int.clone(), completed_name.clone());
+        let mut statements = vec![JavaStmt::Local {
+            finality: JavaLocalFinality::Mutable,
+            ty: int.clone(),
+            name: completed_name,
+            value: Some(i32_literal(0)),
+        }];
         for (index, test) in self.core.tests().iter().enumerate() {
             let (actual, result_type) = match &test.invocation {
                 CoreTestInvocation::Function {
@@ -1792,7 +1921,10 @@ impl<'a> Lowering<'a> {
                             JavaType::primitive(JavaPrimitive::Boolean),
                         ),
                         then_block: JavaBlock::new(vec![JavaStmt::ThrowAssertion(string_literal(
-                            &format!("portable test {index} unexpectedly failed"),
+                            &format!(
+                                "portable test {index} ({}) unexpectedly failed",
+                                test.header.name
+                            ),
                         ))]),
                         else_block: None,
                     });
@@ -1816,7 +1948,10 @@ impl<'a> Lowering<'a> {
                             JavaType::primitive(JavaPrimitive::Boolean),
                         ),
                         then_block: JavaBlock::new(vec![JavaStmt::ThrowAssertion(string_literal(
-                            &format!("portable test {index} value mismatch"),
+                            &format!(
+                                "portable test {index} ({}) value mismatch",
+                                test.header.name
+                            ),
                         ))]),
                         else_block: None,
                     });
@@ -1825,7 +1960,10 @@ impl<'a> Lowering<'a> {
                     statements.push(JavaStmt::If {
                         condition: ok,
                         then_block: JavaBlock::new(vec![JavaStmt::ThrowAssertion(string_literal(
-                            &format!("portable test {index} unexpectedly succeeded"),
+                            &format!(
+                                "portable test {index} ({}) unexpectedly succeeded",
+                                test.header.name
+                            ),
                         ))]),
                         else_block: None,
                     });
@@ -1838,7 +1976,7 @@ impl<'a> Lowering<'a> {
                         JavaMemberOrigin::Runtime(JavaRuntimeMember::ResultError),
                     );
                     let actual_code = member_call(
-                        error,
+                        error.clone(),
                         "code",
                         vec![],
                         JavaType::known(JavaKnownType::String),
@@ -1847,26 +1985,67 @@ impl<'a> Lowering<'a> {
                     statements.push(assert_true(
                         runtime_call(
                             JavaRuntimeCallable::SemanticEqual,
-                            vec![actual_code, expected_code],
+                            vec![actual_code, expected_code.clone()],
                             JavaType::primitive(JavaPrimitive::Boolean),
                         ),
-                        &format!("portable test {index} error code mismatch"),
+                        &format!(
+                            "portable test {index} ({}) error code mismatch",
+                            test.header.name
+                        ),
+                    ));
+                    let actual_message = member_call(
+                        error,
+                        "message",
+                        vec![],
+                        JavaType::known(JavaKnownType::String),
+                        JavaMemberOrigin::Runtime(JavaRuntimeMember::ErrorMessage),
+                    );
+                    statements.push(assert_true(
+                        runtime_call(
+                            JavaRuntimeCallable::SemanticEqual,
+                            vec![actual_message, expected_code],
+                            JavaType::primitive(JavaPrimitive::Boolean),
+                        ),
+                        &format!(
+                            "portable test {index} ({}) error message mismatch",
+                            test.header.name
+                        ),
                     ));
                 }
             }
+            statements.push(JavaStmt::Assign {
+                target: completed.clone(),
+                value: binary(
+                    JavaBinaryOperator::Add,
+                    completed.clone(),
+                    i32_literal(1),
+                    int.clone(),
+                ),
+            });
         }
+        statements.push(assert_true(
+            binary(
+                JavaBinaryOperator::Equal,
+                completed,
+                i32_literal(expected_test_count),
+                boolean,
+            ),
+            &format!(
+                "portable conformance inventory mismatch: expected {expected_test_count} tests"
+            ),
+        ));
         Ok(JavaTypeDeclaration {
             declared: None,
             kind: JavaDeclarationKind::FinalClass,
             visibility: JavaVisibility::Public,
             modifiers: vec![],
-            name: identifier("GeneratedTest"),
+            name: identifier(class_name),
             type_parameters: vec![],
             record_components: vec![],
             heritage: JavaHeritage::None,
             permits: vec![],
             members: vec![
-                JavaMember::Constructor(private_constructor("GeneratedTest")),
+                JavaMember::Constructor(private_constructor(class_name)),
                 JavaMember::Method(JavaMethod {
                     declared: JavaMethodDeclaration::Structural,
                     annotations: vec![],
@@ -3094,6 +3273,29 @@ fn private_constructor(name: &str) -> JavaConstructor {
         parameters: vec![],
         body: JavaBlock::new(vec![]),
     }
+}
+
+fn public_factory_method(
+    name: &str,
+    return_type: JavaType,
+    parameters: Vec<JavaParameter>,
+    mut result: ExprPlan,
+) -> JavaMember {
+    result.statements.push(JavaStmt::Return(Some(result.value)));
+    JavaMember::Method(JavaMethod {
+        declared: JavaMethodDeclaration::Structural,
+        annotations: vec![],
+        modifiers: vec![JavaModifier::Public, JavaModifier::Static],
+        type_parameters: vec![],
+        return_type,
+        name: JavaIdentifier::new(name).expect("internal Java factory identifier is valid"),
+        parameters,
+        body: Some(JavaBlock::new(result.statements)),
+    })
+}
+
+fn length_prefixed_type(category: &str, payload: &str) -> String {
+    format!("{category}{}_{}", payload.len(), payload)
 }
 
 fn assert_true(condition: JavaExpr, message: &str) -> JavaStmt {

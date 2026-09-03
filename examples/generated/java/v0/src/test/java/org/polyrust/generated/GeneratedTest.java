@@ -5,12 +5,17 @@ public final class GeneratedTest {
   private GeneratedTest() {
   }
   public static void main(final String[] arguments) {
+    int completed = 0;
     final org.polyrust.generated.Runtime.PolyResult<String> actual0 = Generated.call_render(new Generated.Label("hello"));
     if ((!actual0.ok())) {
-      throw new AssertionError("portable test 0 unexpectedly failed");
+      throw new AssertionError("portable test 0 (call_render_returns_text) unexpectedly failed");
      }
     if ((!org.polyrust.generated.Runtime.deepEqual(actual0.value(), "hello"))) {
-      throw new AssertionError("portable test 0 value mismatch");
+      throw new AssertionError("portable test 0 (call_render_returns_text) value mismatch");
+     }
+    completed = (completed + 1);
+    if ((!(completed == 1))) {
+      throw new AssertionError("portable conformance inventory mismatch: expected 1 tests");
      }
   }
 }

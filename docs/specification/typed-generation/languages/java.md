@@ -78,6 +78,17 @@ renderer-side type test. Generated return values may reuse already-normalized
 values, but every path by which an external value enters generated code MUST
 execute the type-directed plan.
 
+Generic runtime tagged-value constructors and untyped factories are not public
+Java API: type erasure cannot soundly deep-copy an arbitrary `T`. The generated
+entry class instead exposes one reserved, structurally named factory for each
+concrete option/result type in the checked Core type arena. Those factories
+normalize the exact payload `CoreTypeId` before invoking package-private
+runtime construction. Names encode the full type shape without runtime numeric
+IDs, so nested generic erasure cannot create overload collisions.
+Tagged-value equality first compares the discriminant and then observes only
+the active payload. Equality MUST NOT call a partial accessor for an inactive
+option/result branch.
+
 ## 5. Declarations and control
 
 - Constants are `static final` values; only Java constant expressions receive
@@ -183,6 +194,12 @@ definite return, and absence of opaque source.
 - Mutation/aliasing, `null`, Unicode, overflow, and F64 raw-bit boundaries.
 - Three-generation determinism and every historical/canonical conformance
   vector.
+
+Both generated native and conformance entry points execute the same typed AST
+assertions for every portable test declaration. Each assertion identifies its
+source test name, compares values with raw-bit-aware deep equality, compares
+error payloads, and increments a completion counter checked against the exact
+generated inventory. An empty placeholder `main` is not conformance evidence.
 
 ## 13. Migration exit
 

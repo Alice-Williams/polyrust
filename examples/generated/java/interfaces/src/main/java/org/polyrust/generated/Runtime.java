@@ -49,14 +49,20 @@ public final class Runtime {
       this.message = org.polyrust.generated.Runtime.requireScalarString(message);
     }
   }
-  public static record PolyResult<T>(boolean ok, T value, org.polyrust.generated.Runtime.PolyError error) implements org.polyrust.generated.Runtime.SemanticValue {
-    public PolyResult(final boolean ok, final T value, final org.polyrust.generated.Runtime.PolyError error) {
+  public static final class PolyResult<T> implements org.polyrust.generated.Runtime.SemanticValue {
+    private final boolean ok;
+    private final T value;
+    private final org.polyrust.generated.Runtime.PolyError error;
+    private PolyResult(final boolean ok, final T value, final org.polyrust.generated.Runtime.PolyError error) {
       if (((ok && ((value == null) || (error != null))) || ((!ok) && ((value != null) || (error == null))))) {
         throw new IllegalArgumentException("PolyResult tag and payloads disagree");
        }
       this.ok = ok;
-      this.value = (ok ? org.polyrust.generated.Runtime.validatePublicValue(value) : value);
+      this.value = (ok ? Objects.requireNonNull(value) : value);
       this.error = error;
+    }
+    public boolean ok() {
+      return this.ok;
     }
     public T value() {
       if ((!this.ok)) {
@@ -75,20 +81,32 @@ public final class Runtime {
       if ((!(other instanceof org.polyrust.generated.Runtime.PolyResult<?> otherValue))) {
         return false;
        }
-      return (((true && org.polyrust.generated.Runtime.semanticEqual(((Object) this.ok), ((Object) otherValue.ok))) && org.polyrust.generated.Runtime.semanticEqual(((Object) this.value), ((Object) otherValue.value))) && org.polyrust.generated.Runtime.semanticEqual(((Object) this.error), ((Object) otherValue.error)));
+      if ((this.ok() != otherValue.ok())) {
+        return false;
+       }
+      if (this.ok()) {
+        return org.polyrust.generated.Runtime.semanticEqual(((Object) this.value()), ((Object) otherValue.value()));
+       }
+      return org.polyrust.generated.Runtime.semanticEqual(((Object) this.error()), ((Object) otherValue.error()));
     }
     @Override
     public boolean deepEquals(final Object other) {
       if ((!(other instanceof org.polyrust.generated.Runtime.PolyResult<?> otherValue))) {
         return false;
        }
-      return (((true && org.polyrust.generated.Runtime.deepEqual(((Object) this.ok), ((Object) otherValue.ok))) && org.polyrust.generated.Runtime.deepEqual(((Object) this.value), ((Object) otherValue.value))) && org.polyrust.generated.Runtime.deepEqual(((Object) this.error), ((Object) otherValue.error)));
+      if ((this.ok() != otherValue.ok())) {
+        return false;
+       }
+      if (this.ok()) {
+        return org.polyrust.generated.Runtime.deepEqual(((Object) this.value()), ((Object) otherValue.value()));
+       }
+      return org.polyrust.generated.Runtime.deepEqual(((Object) this.error()), ((Object) otherValue.error()));
     }
   }
-  public static <T> org.polyrust.generated.Runtime.PolyResult<T> ok(final T value) {
+  static <T> org.polyrust.generated.Runtime.PolyResult<T> ok(final T value) {
     return new org.polyrust.generated.Runtime.PolyResult<T>(true, value, null);
   }
-  public static <T> org.polyrust.generated.Runtime.PolyResult<T> fail(final String code, final String message) {
+  static <T> org.polyrust.generated.Runtime.PolyResult<T> fail(final String code, final String message) {
     return new org.polyrust.generated.Runtime.PolyResult<T>(false, null, new org.polyrust.generated.Runtime.PolyError(code, message));
   }
   public static boolean semanticEqual(final Object left, final Object right) {
@@ -135,20 +153,6 @@ public final class Runtime {
      }
     return Objects.deepEquals(left, right);
   }
-  public static <T> T validatePublicValue(final T value) {
-    Objects.requireNonNull(value);
-    if ((value instanceof String scalarString)) {
-      org.polyrust.generated.Runtime.requireScalarString(scalarString);
-     }
-    if ((value instanceof List<?> values)) {
-      int index = 0;
-      while ((index < values.size())) {
-        org.polyrust.generated.Runtime.validatePublicValue(values.get(index));
-        index = (index + 1);
-      }
-     }
-    return value;
-  }
   public static String requireScalarString(final String value) {
     Objects.requireNonNull(value);
     final int length = value.length();
@@ -191,13 +195,18 @@ public final class Runtime {
      }
     return 1;
   }
-  public static record PolyOption<T>(boolean some, T value) implements org.polyrust.generated.Runtime.SemanticValue {
-    public PolyOption(final boolean some, final T value) {
+  public static final class PolyOption<T> implements org.polyrust.generated.Runtime.SemanticValue {
+    private final boolean some;
+    private final T value;
+    private PolyOption(final boolean some, final T value) {
       if (((some && (value == null)) || ((!some) && (!(value == null))))) {
         throw new IllegalArgumentException("PolyOption tag and payload disagree");
        }
       this.some = some;
-      this.value = (some ? org.polyrust.generated.Runtime.validatePublicValue(value) : value);
+      this.value = (some ? Objects.requireNonNull(value) : value);
+    }
+    public boolean some() {
+      return this.some;
     }
     public T value() {
       if ((!this.some)) {
@@ -210,24 +219,42 @@ public final class Runtime {
       if ((!(other instanceof org.polyrust.generated.Runtime.PolyOption<?> otherValue))) {
         return false;
        }
-      return ((true && org.polyrust.generated.Runtime.semanticEqual(((Object) this.some), ((Object) otherValue.some))) && org.polyrust.generated.Runtime.semanticEqual(((Object) this.value), ((Object) otherValue.value)));
+      if ((this.some() != otherValue.some())) {
+        return false;
+       }
+      if (this.some()) {
+        return org.polyrust.generated.Runtime.semanticEqual(((Object) this.value()), ((Object) otherValue.value()));
+       }
+      return true;
     }
     @Override
     public boolean deepEquals(final Object other) {
       if ((!(other instanceof org.polyrust.generated.Runtime.PolyOption<?> otherValue))) {
         return false;
        }
-      return ((true && org.polyrust.generated.Runtime.deepEqual(((Object) this.some), ((Object) otherValue.some))) && org.polyrust.generated.Runtime.deepEqual(((Object) this.value), ((Object) otherValue.value)));
+      if ((this.some() != otherValue.some())) {
+        return false;
+       }
+      if (this.some()) {
+        return org.polyrust.generated.Runtime.deepEqual(((Object) this.value()), ((Object) otherValue.value()));
+       }
+      return true;
     }
   }
-  public static record PolyValueResult<T, E>(boolean ok, T value, E error) implements org.polyrust.generated.Runtime.SemanticValue {
-    public PolyValueResult(final boolean ok, final T value, final E error) {
+  public static final class PolyValueResult<T, E> implements org.polyrust.generated.Runtime.SemanticValue {
+    private final boolean ok;
+    private final T value;
+    private final E error;
+    private PolyValueResult(final boolean ok, final T value, final E error) {
       if (((ok && ((value == null) || (!(error == null)))) || ((!ok) && ((!(value == null)) || (error == null))))) {
         throw new IllegalArgumentException("PolyValueResult tag and payloads disagree");
        }
       this.ok = ok;
-      this.value = (ok ? org.polyrust.generated.Runtime.validatePublicValue(value) : value);
-      this.error = (ok ? error : org.polyrust.generated.Runtime.validatePublicValue(error));
+      this.value = (ok ? Objects.requireNonNull(value) : value);
+      this.error = (ok ? error : Objects.requireNonNull(error));
+    }
+    public boolean ok() {
+      return this.ok;
     }
     public T value() {
       if ((!this.ok)) {
@@ -246,20 +273,32 @@ public final class Runtime {
       if ((!(other instanceof org.polyrust.generated.Runtime.PolyValueResult<?, ?> otherValue))) {
         return false;
        }
-      return (((true && org.polyrust.generated.Runtime.semanticEqual(((Object) this.ok), ((Object) otherValue.ok))) && org.polyrust.generated.Runtime.semanticEqual(((Object) this.value), ((Object) otherValue.value))) && org.polyrust.generated.Runtime.semanticEqual(((Object) this.error), ((Object) otherValue.error)));
+      if ((this.ok() != otherValue.ok())) {
+        return false;
+       }
+      if (this.ok()) {
+        return org.polyrust.generated.Runtime.semanticEqual(((Object) this.value()), ((Object) otherValue.value()));
+       }
+      return org.polyrust.generated.Runtime.semanticEqual(((Object) this.error()), ((Object) otherValue.error()));
     }
     @Override
     public boolean deepEquals(final Object other) {
       if ((!(other instanceof org.polyrust.generated.Runtime.PolyValueResult<?, ?> otherValue))) {
         return false;
        }
-      return (((true && org.polyrust.generated.Runtime.deepEqual(((Object) this.ok), ((Object) otherValue.ok))) && org.polyrust.generated.Runtime.deepEqual(((Object) this.value), ((Object) otherValue.value))) && org.polyrust.generated.Runtime.deepEqual(((Object) this.error), ((Object) otherValue.error)));
+      if ((this.ok() != otherValue.ok())) {
+        return false;
+       }
+      if (this.ok()) {
+        return org.polyrust.generated.Runtime.deepEqual(((Object) this.value()), ((Object) otherValue.value()));
+       }
+      return org.polyrust.generated.Runtime.deepEqual(((Object) this.error()), ((Object) otherValue.error()));
     }
   }
-  public static <T> org.polyrust.generated.Runtime.PolyOption<T> optionNone() {
+  static <T> org.polyrust.generated.Runtime.PolyOption<T> optionNone() {
     return new org.polyrust.generated.Runtime.PolyOption<T>(false, null);
   }
-  public static <T> org.polyrust.generated.Runtime.PolyOption<T> optionSome(final T value) {
+  static <T> org.polyrust.generated.Runtime.PolyOption<T> optionSome(final T value) {
     return new org.polyrust.generated.Runtime.PolyOption<T>(true, value);
   }
   public static <T> boolean optionIsSome(final org.polyrust.generated.Runtime.PolyOption<T> value) {
@@ -268,10 +307,10 @@ public final class Runtime {
   public static <T> T optionValue(final org.polyrust.generated.Runtime.PolyOption<T> value) {
     return value.value();
   }
-  public static <T, E> org.polyrust.generated.Runtime.PolyValueResult<T, E> valueResultOk(final T value) {
+  static <T, E> org.polyrust.generated.Runtime.PolyValueResult<T, E> valueResultOk(final T value) {
     return new org.polyrust.generated.Runtime.PolyValueResult<T, E>(true, value, null);
   }
-  public static <T, E> org.polyrust.generated.Runtime.PolyValueResult<T, E> valueResultErr(final E error) {
+  static <T, E> org.polyrust.generated.Runtime.PolyValueResult<T, E> valueResultErr(final E error) {
     return new org.polyrust.generated.Runtime.PolyValueResult<T, E>(false, null, error);
   }
   public static <T, E> boolean valueResultIsOk(final org.polyrust.generated.Runtime.PolyValueResult<T, E> value) {

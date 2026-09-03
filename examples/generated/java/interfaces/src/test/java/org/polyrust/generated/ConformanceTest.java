@@ -5,5 +5,81 @@ public final class ConformanceTest {
   private ConformanceTest() {
   }
   public static void main(final String[] arguments) {
+    int completed = 0;
+    final org.polyrust.generated.Runtime.PolyResult<String> actual0 = Generated.composition_dispatch(new Generated.Label("value"));
+    if ((!actual0.ok())) {
+      throw new AssertionError("portable test 0 (composition) unexpectedly failed");
+     }
+    if ((!org.polyrust.generated.Runtime.deepEqual(actual0.value(), "composition:value"))) {
+      throw new AssertionError("portable test 0 (composition) value mismatch");
+     }
+    completed = (completed + 1);
+    final org.polyrust.generated.Runtime.PolyResult<String> actual1 = Generated.dynamic_dispatch(new Generated.Label("value"), "dynamic:");
+    if ((!actual1.ok())) {
+      throw new AssertionError("portable test 1 (dynamic) unexpectedly failed");
+     }
+    if ((!org.polyrust.generated.Runtime.deepEqual(actual1.value(), "dynamic:value"))) {
+      throw new AssertionError("portable test 1 (dynamic) value mismatch");
+     }
+    completed = (completed + 1);
+    final org.polyrust.generated.Runtime.PolyResult<String> actual2 = Generated.enum_dispatch(new Generated.Label("value"));
+    if ((!actual2.ok())) {
+      throw new AssertionError("portable test 2 (enum) unexpectedly failed");
+     }
+    if ((!org.polyrust.generated.Runtime.deepEqual(actual2.value(), "enum:value"))) {
+      throw new AssertionError("portable test 2 (enum) value mismatch");
+     }
+    completed = (completed + 1);
+    final org.polyrust.generated.Runtime.PolyResult<String> actual3 = Generated.list_dispatch(new Generated.Label("value"));
+    if ((!actual3.ok())) {
+      throw new AssertionError("portable test 3 (list) unexpectedly failed");
+     }
+    if ((!org.polyrust.generated.Runtime.deepEqual(actual3.value(), "list:value"))) {
+      throw new AssertionError("portable test 3 (list) value mismatch");
+     }
+    completed = (completed + 1);
+    final org.polyrust.generated.Runtime.PolyResult<String> actual4 = Generated.local_dispatch(new Generated.Label("value"));
+    if ((!actual4.ok())) {
+      throw new AssertionError("portable test 4 (local) unexpectedly failed");
+     }
+    if ((!org.polyrust.generated.Runtime.deepEqual(actual4.value(), "local:value"))) {
+      throw new AssertionError("portable test 4 (local) value mismatch");
+     }
+    completed = (completed + 1);
+    final org.polyrust.generated.Runtime.PolyResult<Long> actual5 = Generated.measured_dispatch(new Generated.Label("value"));
+    if ((!actual5.ok())) {
+      throw new AssertionError("portable test 5 (multiple_conformance) unexpectedly failed");
+     }
+    if ((!org.polyrust.generated.Runtime.deepEqual(actual5.value(), 5L))) {
+      throw new AssertionError("portable test 5 (multiple_conformance) value mismatch");
+     }
+    completed = (completed + 1);
+    final org.polyrust.generated.Runtime.PolyResult<String> actual6 = Generated.option_dispatch(new Generated.Label("value"));
+    if ((!actual6.ok())) {
+      throw new AssertionError("portable test 6 (option) unexpectedly failed");
+     }
+    if ((!org.polyrust.generated.Runtime.deepEqual(actual6.value(), "option:value"))) {
+      throw new AssertionError("portable test 6 (option) value mismatch");
+     }
+    completed = (completed + 1);
+    final org.polyrust.generated.Runtime.PolyResult<String> actual7 = Generated.result_dispatch(new Generated.Label("value"));
+    if ((!actual7.ok())) {
+      throw new AssertionError("portable test 7 (result) unexpectedly failed");
+     }
+    if ((!org.polyrust.generated.Runtime.deepEqual(actual7.value(), "result:value"))) {
+      throw new AssertionError("portable test 7 (result) value mismatch");
+     }
+    completed = (completed + 1);
+    final org.polyrust.generated.Runtime.PolyResult<String> actual8 = Generated.static_dispatch(new Generated.Label("value"), "static:");
+    if ((!actual8.ok())) {
+      throw new AssertionError("portable test 8 (static) unexpectedly failed");
+     }
+    if ((!org.polyrust.generated.Runtime.deepEqual(actual8.value(), "static:value"))) {
+      throw new AssertionError("portable test 8 (static) value mismatch");
+     }
+    completed = (completed + 1);
+    if ((!(completed == 9))) {
+      throw new AssertionError("portable conformance inventory mismatch: expected 9 tests");
+     }
   }
 }

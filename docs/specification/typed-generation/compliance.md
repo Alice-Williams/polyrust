@@ -76,6 +76,11 @@ test evidence rather than a current **Pass** claim while M34A-10R is open.
   independent release-gate replay passes 230 of 230 targets uncached. The row
   remains **Fail** until a pushed immutable checkpoint receives a clean fresh
   blind review and closes M34A-10R.
+- Fresh blind review round 3 of pushed checkpoint `a25a15f` confirmed four
+  remaining blockers: checked-remainder overflow parity, direct generic tagged
+  value aliasing, fail-open Java AST verifier shapes, and an empty generated
+  conformance entry point. These accepted findings keep Java at **Fail** until
+  their regression evidence and another fresh review are complete.
 
 ## Pass rule
 

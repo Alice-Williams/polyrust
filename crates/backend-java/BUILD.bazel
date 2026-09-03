@@ -129,6 +129,22 @@ java_test(
 )
 
 java_test(
+    name = "generated_semantic_edge_conformance_test",
+    srcs = [
+        ":semantic-edge-generated/src/main/java/org/polyrust/generated/Generated.java",
+        ":semantic-edge-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        ":semantic-edge-generated/src/test/java/org/polyrust/generated/ConformanceTest.java",
+    ],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
+    main_class = "org.polyrust.generated.ConformanceTest",
+    use_testrunner = False,
+    visibility = ["//visibility:public"],
+)
+
+java_test(
     name = "generated_semantic_edge_public_value_test",
     srcs = [
         "test/JavaRuntimeValueConsumerTest.java",
@@ -141,6 +157,23 @@ java_test(
     ],
     main_class = "org.polyrust.consumer.JavaRuntimeValueConsumerTest",
     use_testrunner = False,
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "generated_semantic_edge_tagged_construction_negative_test",
+    srcs = ["test/tagged_construction_negative_test.sh"],
+    args = [
+        "$(location :semantic-edge-generated/src/main/java/org/polyrust/generated/Runtime.java)",
+        "$(location :semantic-edge-generated/src/main/java/org/polyrust/generated/Generated.java)",
+        "$(location test/JavaRuntimeTaggedConstruction.java)",
+    ],
+    data = [
+        "test/JavaRuntimeTaggedConstruction.java",
+        ":semantic-edge-generated/src/main/java/org/polyrust/generated/Generated.java",
+        ":semantic-edge-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        "@bazel_tools//tools/jdk:current_java_runtime",
+    ],
     visibility = ["//visibility:public"],
 )
 
