@@ -322,3 +322,27 @@ source parsing, and unrelated renderer conveniences do not block completion.
   tests, and a fresh Cargo target passed
   `cargo test --workspace --all-features --locked`. Checkpoint commit, push,
   hosted CI, and the next fresh blind review remain pending.
+- Round 7 checkpoint `4a72777afd82eea847c827e32703898efe5d2611`
+  was committed, pushed to `origin/main`, and verified against the remote ref.
+  Hosted CI run `33732935834` completed successfully for that exact SHA.
+- Fresh Sol/xhigh blind review round 8 validated every round 7 repair and found
+  three additional core defects; all are accepted. Java constant fields must
+  be emitted in dependency-first order and the target AST must reject forged
+  same-declaration self/forward references. Java loop reachability must model
+  the admitted constant-boolean grammar and reachable breaks targeting the
+  current loop. Expression plans must materialize nontrivial receivers,
+  operands, and arguments once, at their exact left-to-right evaluation point.
+- Round 8 implements those contracts. Permanent proof includes forged target
+  AST field-order and loop tests, hermetic Java 21 compile-fail and positive
+  infinite-loop fixtures, a generated semantic-edge package whose
+  alphabetically earlier constant depends on a later-named constant and
+  evaluates to `7`, and a portable-builder regression which proves an
+  allocation precedes a later call and a reused option operand is evaluated
+  exactly once. The uncached Java/codegen/policy/snapshot and lint gate passed
+  36 of 36 tests after generator-driven snapshot regeneration. The complete
+  tracked repository replay passed 294 of 294 tests, excluding only the
+  untouched user-owned untracked `examples/real-world/stdlib-abs/` package;
+  the independently composed release gate passed 232 of 232 tests. A fresh
+  Cargo target passed `cargo test --workspace --all-features --locked`,
+  including every doctest. Checkpoint commit/push, hosted CI, and a fresh blind
+  review remain pending.

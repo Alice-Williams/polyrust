@@ -106,7 +106,11 @@ option/result branch.
 ## 5. Declarations and control
 
 - Constants are `static final` values; only Java constant expressions receive
-  compile-time-constant treatment.
+  compile-time-constant treatment. Generated constant fields are emitted in a
+  deterministic dependency-first topological order, not portable declaration
+  name order. The target AST verifier independently rejects any generated
+  field initializer which refers to itself or to a later field in the same
+  type.
 - Records/final classes validate and copy mutable inputs in typed constructors.
 - Every blank instance-final field is assigned exactly once on every normally
   completing constructor path. An initialized final cannot be assigned again,
@@ -119,12 +123,21 @@ option/result branch.
 - Every statement must be reachable from a normally completing predecessor.
   Return, throw, break, continue, exhaustive branch, exhaustive switch, and
   try/catch completion are determined structurally before rendering.
+- Loop reachability follows the admitted Java constant-boolean grammar. A
+  constant-false loop may have only an empty body, and a constant-true loop
+  cannot complete normally unless a reachable `break` targets that exact loop.
+  Breaks owned by nested loops or switches do not count. Constant forms outside
+  the admitted grammar fail closed rather than being treated as dynamic.
 - Field initializers have an explicit static or instance lexical scope. They
   cannot refer to locals, use `this` from static context, read a constructor-
   assigned blank final, or allow an unhandled checked exception.
 - Tagged matches lower to exhaustive verified switches or explicit tag
   switches according to the selected Java 21 strategy.
-- Explicit temporaries preserve CoreIR receiver and argument order.
+- Explicit final temporaries preserve CoreIR receiver, operand, and argument
+  order. Every nontrivial receiver/operand/argument is materialized exactly at
+  its source evaluation point before a later child can execute; a composed
+  Java expression cannot duplicate a source expression or let later fallible
+  work overtake an earlier allocation or call.
 - Normal portable `Result` flow uses tagged values, not exceptions.
 - Checked arithmetic, shift, float-bit, UTF-8/scalar, bytes, and collection
   behavior use known typed callables/helpers.
@@ -196,10 +209,11 @@ never directly through an unnormalized runtime helper.
 ## 9. File and package policy
 
 Public top-level type placement, one-public-type file rules, package-info,
-generated/runtime/test roots, and deterministic member order are represented by
-typed file roles. Split declarations and circular initialization are rejected.
-File paths are derived from validated package/type identities, never supplied
-as executable fragments.
+generated/runtime/test roots, and deterministic dependency-safe member order
+are represented by typed file roles. Split declarations, constant dependency
+cycles, and circular/self field initialization are rejected. File paths are
+derived from validated package/type identities, never supplied as executable
+fragments.
 
 ## 10. Rendering
 
@@ -230,6 +244,9 @@ definite return, and absence of opaque source.
   errors, plus native tests.
 - Separately compiled public-consumer and deliberate negative type fixtures.
 - Mutation/aliasing, `null`, Unicode, overflow, and F64 raw-bit boundaries.
+- Hermetic positive and negative reachability fixtures for constant loops,
+  dependency-ordered generated constants, and once-only left-to-right
+  evaluation of allocations, receivers, operands, and arguments.
 - Three-generation determinism and every historical/canonical conformance
   vector.
 

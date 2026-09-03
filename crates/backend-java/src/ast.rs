@@ -2874,6 +2874,23 @@ fn verify_block_scope_in_context(
             }
             JavaStmt::While { condition, body } => {
                 violations.extend(verify_expr_scope(condition, scope));
+                match java_loop_condition(condition) {
+                    JavaLoopCondition::Never if !body.statements.is_empty() => {
+                        violations.push(AstViolation::new(
+                            DiagnosticCode::InvalidControlFlow,
+                            "nonempty Java while(false) body is unreachable",
+                        ));
+                    }
+                    JavaLoopCondition::UnsupportedConstantForm => {
+                        violations.push(AstViolation::new(
+                            DiagnosticCode::InvalidControlFlow,
+                            "Java loop condition uses a compile-time form outside the admitted reachability grammar",
+                        ));
+                    }
+                    JavaLoopCondition::Always
+                    | JavaLoopCondition::Never
+                    | JavaLoopCondition::Dynamic => {}
+                }
                 let mut body_scope = scope.clone();
                 collect_positive_pattern_bindings(condition, &mut body_scope);
                 violations.extend(verify_block_scope_in_context(
@@ -3034,6 +3051,12 @@ fn statement_can_complete_normally(statement: &JavaStmt) -> bool {
                     .iter()
                     .any(|catch| block_can_complete_normally(&catch.body))
         }
+        JavaStmt::While { condition, body } => match java_loop_condition(condition) {
+            JavaLoopCondition::Always => block_has_reachable_break_for_current_loop(body),
+            JavaLoopCondition::Never
+            | JavaLoopCondition::Dynamic
+            | JavaLoopCondition::UnsupportedConstantForm => true,
+        },
         JavaStmt::Local { .. }
         | JavaStmt::Assign { .. }
         | JavaStmt::Expression(_)
@@ -3041,8 +3064,161 @@ fn statement_can_complete_normally(statement: &JavaStmt) -> bool {
             else_block: None, ..
         }
         | JavaStmt::ForEach { .. }
-        | JavaStmt::While { .. }
         | JavaStmt::Switch { .. } => true,
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum JavaLoopCondition {
+    Always,
+    Never,
+    Dynamic,
+    UnsupportedConstantForm,
+}
+
+fn java_loop_condition(value: &JavaExpr) -> JavaLoopCondition {
+    if let Some(value) = java_compile_time_boolean(value) {
+        if value {
+            JavaLoopCondition::Always
+        } else {
+            JavaLoopCondition::Never
+        }
+    } else if expression_has_runtime_dependency(value) {
+        JavaLoopCondition::Dynamic
+    } else {
+        JavaLoopCondition::UnsupportedConstantForm
+    }
+}
+
+fn java_compile_time_boolean(value: &JavaExpr) -> Option<bool> {
+    match &value.kind {
+        JavaExprKind::Literal(JavaLiteral::Boolean(value)) => Some(*value),
+        JavaExprKind::Unary {
+            operator: JavaUnaryOperator::Not,
+            operand,
+        } => java_compile_time_boolean(operand).map(|value| !value),
+        JavaExprKind::Binary {
+            operator: JavaBinaryOperator::LogicalAnd,
+            left,
+            right,
+        } => Some(java_compile_time_boolean(left)? && java_compile_time_boolean(right)?),
+        JavaExprKind::Binary {
+            operator: JavaBinaryOperator::LogicalOr,
+            left,
+            right,
+        } => Some(java_compile_time_boolean(left)? || java_compile_time_boolean(right)?),
+        JavaExprKind::Binary {
+            operator: JavaBinaryOperator::Equal,
+            left,
+            right,
+        } => Some(java_compile_time_boolean(left)? == java_compile_time_boolean(right)?),
+        JavaExprKind::Binary {
+            operator: JavaBinaryOperator::NotEqual,
+            left,
+            right,
+        } => Some(java_compile_time_boolean(left)? != java_compile_time_boolean(right)?),
+        JavaExprKind::Conditional {
+            condition,
+            when_true,
+            when_false,
+        } => {
+            let condition = java_compile_time_boolean(condition)?;
+            let when_true = java_compile_time_boolean(when_true)?;
+            let when_false = java_compile_time_boolean(when_false)?;
+            Some(if condition { when_true } else { when_false })
+        }
+        JavaExprKind::Cast {
+            target: JavaType::Primitive(JavaPrimitive::Boolean),
+            value,
+        } => java_compile_time_boolean(value),
+        JavaExprKind::Literal(_)
+        | JavaExprKind::Value(_)
+        | JavaExprKind::Unary { .. }
+        | JavaExprKind::Binary { .. }
+        | JavaExprKind::Call { .. }
+        | JavaExprKind::New { .. }
+        | JavaExprKind::NewArray { .. }
+        | JavaExprKind::ArrayIndex { .. }
+        | JavaExprKind::Field { .. }
+        | JavaExprKind::Cast { .. }
+        | JavaExprKind::ArrayOwnershipTransition { .. }
+        | JavaExprKind::InstanceOf { .. }
+        | JavaExprKind::Lambda { .. } => None,
+    }
+}
+
+fn expression_has_runtime_dependency(value: &JavaExpr) -> bool {
+    match &value.kind {
+        JavaExprKind::Literal(_) => false,
+        JavaExprKind::Value(JavaValueRef::Local(_) | JavaValueRef::This) => true,
+        JavaExprKind::Value(JavaValueRef::Generated(_) | JavaValueRef::KnownField(_)) => false,
+        JavaExprKind::Unary { operand, .. } => expression_has_runtime_dependency(operand),
+        JavaExprKind::Binary { left, right, .. } => {
+            expression_has_runtime_dependency(left) || expression_has_runtime_dependency(right)
+        }
+        JavaExprKind::Conditional {
+            condition,
+            when_true,
+            when_false,
+        } => {
+            expression_has_runtime_dependency(condition)
+                || expression_has_runtime_dependency(when_true)
+                || expression_has_runtime_dependency(when_false)
+        }
+        JavaExprKind::Cast { value, .. } | JavaExprKind::ArrayOwnershipTransition { value, .. } => {
+            expression_has_runtime_dependency(value)
+        }
+        JavaExprKind::Call { .. }
+        | JavaExprKind::New { .. }
+        | JavaExprKind::NewArray { .. }
+        | JavaExprKind::ArrayIndex { .. }
+        | JavaExprKind::Field { .. }
+        | JavaExprKind::InstanceOf { .. }
+        | JavaExprKind::Lambda { .. } => true,
+    }
+}
+
+fn block_has_reachable_break_for_current_loop(block: &JavaBlock) -> bool {
+    for statement in &block.statements {
+        if statement_has_reachable_break_for_current_loop(statement) {
+            return true;
+        }
+        if !statement_can_complete_normally(statement) {
+            return false;
+        }
+    }
+    false
+}
+
+fn statement_has_reachable_break_for_current_loop(statement: &JavaStmt) -> bool {
+    match statement {
+        JavaStmt::Break => true,
+        JavaStmt::If {
+            then_block,
+            else_block,
+            ..
+        } => {
+            block_has_reachable_break_for_current_loop(then_block)
+                || else_block
+                    .as_ref()
+                    .is_some_and(block_has_reachable_break_for_current_loop)
+        }
+        JavaStmt::TryCatch { try_block, catches } => {
+            block_has_reachable_break_for_current_loop(try_block)
+                || catches
+                    .iter()
+                    .any(|catch| block_has_reachable_break_for_current_loop(&catch.body))
+        }
+        JavaStmt::Local { .. }
+        | JavaStmt::Assign { .. }
+        | JavaStmt::Expression(_)
+        | JavaStmt::Return(_)
+        | JavaStmt::ForEach { .. }
+        | JavaStmt::While { .. }
+        | JavaStmt::Switch { .. }
+        | JavaStmt::Throw(_)
+        | JavaStmt::ThrowAssertion(_)
+        | JavaStmt::Continue => false,
     }
 }
 
@@ -4559,6 +4735,52 @@ fn verify_field_initializer_context(
     violations
 }
 
+fn verify_field_initializer_declaration_order(
+    declaration: &JavaTypeDeclaration,
+) -> Vec<AstViolation> {
+    let local_values = declaration
+        .members
+        .iter()
+        .filter_map(|member| match member {
+            JavaMember::Field(JavaField {
+                declared: Some(value),
+                ..
+            }) => Some(*value),
+            JavaMember::Field(JavaField { declared: None, .. })
+            | JavaMember::CompileFailField(_)
+            | JavaMember::Method(_)
+            | JavaMember::Constructor(_)
+            | JavaMember::NestedType(_) => None,
+        })
+        .collect::<BTreeSet<_>>();
+    let mut available = BTreeSet::new();
+    let mut violations = Vec::new();
+    for member in &declaration.members {
+        let JavaMember::Field(field) = member else {
+            continue;
+        };
+        if let Some(initializer) = &field.initializer {
+            let mut symbols = BTreeSet::new();
+            initializer.symbols(&mut symbols);
+            for value in symbols.into_iter().filter_map(|symbol| match symbol {
+                TargetSymbolRef::Generated(GeneratedSymbolId::Value(value)) => Some(value),
+                _ => None,
+            }) {
+                if local_values.contains(&value) && !available.contains(&value) {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::InvalidControlFlow,
+                        "Java generated field initializer references itself or a later field in the same declaration",
+                    ));
+                }
+            }
+        }
+        if let Some(value) = field.declared {
+            available.insert(value);
+        }
+    }
+    violations
+}
+
 impl JavaMember {
     pub fn symbols(&self, symbols: &mut BTreeSet<TargetSymbolRef<JavaDialect>>) {
         match self {
@@ -4829,6 +5051,7 @@ impl JavaTypeDeclaration {
         }
         violations.extend(verify_declaration_kind_grammar(self));
         violations.extend(verify_sealed_permits(self, context));
+        violations.extend(verify_field_initializer_declaration_order(self));
         match &self.heritage {
             JavaHeritage::Interfaces(values) => {
                 if values.is_empty() {
@@ -6737,6 +6960,105 @@ mod tests {
     }
 
     #[test]
+    fn constant_loop_reachability_and_current_loop_breaks_are_structural() {
+        let boolean = JavaType::primitive(JavaPrimitive::Boolean);
+        let int = JavaType::primitive(JavaPrimitive::Int);
+        let void = JavaType::primitive(JavaPrimitive::Void);
+
+        let false_body = fixture_declaration(vec![structural_method(
+            "falseBody",
+            void,
+            vec![],
+            JavaBlock::new(vec![JavaStmt::While {
+                condition: JavaExpr::literal(boolean.clone(), JavaLiteral::Boolean(false)),
+                body: JavaBlock::new(vec![JavaStmt::Local {
+                    finality: JavaLocalFinality::Final,
+                    ty: int.clone(),
+                    name: JavaIdentifier::from_portable("unreachable"),
+                    value: Some(JavaExpr::literal(int.clone(), JavaLiteral::I32(1))),
+                }]),
+            }]),
+        )]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], false_body)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidControlFlow
+                && value.message.contains("while(false) body is unreachable")
+        }));
+
+        let after_infinite = fixture_declaration(vec![structural_method(
+            "afterInfinite",
+            int.clone(),
+            vec![],
+            JavaBlock::new(vec![
+                JavaStmt::While {
+                    condition: JavaExpr::literal(boolean.clone(), JavaLiteral::Boolean(true)),
+                    body: JavaBlock::new(vec![]),
+                },
+                JavaStmt::Return(Some(JavaExpr::literal(int.clone(), JavaLiteral::I32(1)))),
+            ]),
+        )]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], after_infinite)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidControlFlow
+                && value.message.contains("unreachable Java statement")
+        }));
+
+        let condition = JavaExpr::local(boolean.clone(), JavaIdentifier::from_portable("stop"));
+        let valid = fixture_declaration(vec![
+            structural_method(
+                "infinite",
+                int.clone(),
+                vec![],
+                JavaBlock::new(vec![JavaStmt::While {
+                    condition: JavaExpr::literal(boolean.clone(), JavaLiteral::Boolean(true)),
+                    body: JavaBlock::new(vec![]),
+                }]),
+            ),
+            structural_method(
+                "breaksCurrentLoop",
+                int.clone(),
+                vec![parameter(boolean.clone(), "stop")],
+                JavaBlock::new(vec![
+                    JavaStmt::While {
+                        condition: JavaExpr::literal(boolean.clone(), JavaLiteral::Boolean(true)),
+                        body: JavaBlock::new(vec![JavaStmt::If {
+                            condition,
+                            then_block: JavaBlock::new(vec![JavaStmt::Break]),
+                            else_block: None,
+                        }]),
+                    },
+                    JavaStmt::Return(Some(JavaExpr::literal(int.clone(), JavaLiteral::I32(1)))),
+                ]),
+            ),
+            structural_method(
+                "nestedBreakDoesNotExitOuterLoop",
+                int,
+                vec![],
+                JavaBlock::new(vec![JavaStmt::While {
+                    condition: JavaExpr::literal(boolean.clone(), JavaLiteral::Boolean(true)),
+                    body: JavaBlock::new(vec![JavaStmt::While {
+                        condition: JavaExpr::literal(boolean, JavaLiteral::Boolean(true)),
+                        body: JavaBlock::new(vec![JavaStmt::Break]),
+                    }]),
+                }]),
+            ),
+        ]);
+        let verification = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], valid)],
+        );
+        assert!(verification.is_ok(), "{verification:?}");
+    }
+
+    #[test]
     fn runtime_member_catalogue_rejects_false_owner_and_result_claims() {
         assert_eq!(JavaRuntimeMember::ALL.len(), 14);
         let valid = JavaMethodSignature {
@@ -6827,6 +7149,82 @@ mod tests {
             initializer: Some(valid_known),
         })]);
         assert!(verify_fixture(builder, vec![(vec![], declaration)]).is_ok());
+    }
+
+    #[test]
+    fn generated_field_initializers_reject_self_and_forward_references() {
+        fn generated_value(
+            builder: &mut portable_codegen::TargetAstBuilder<JavaDialect>,
+            name: &str,
+        ) -> GeneratedValueId {
+            builder.value(portable_codegen::GeneratedValue {
+                name: name.to_owned(),
+                ty: TargetTypeRef::Primitive(JavaPrimitive::Int),
+                origin: portable_codegen::GeneratedOrigin::Synthesized(
+                    portable_codegen::SynthesisReason::TestHarness,
+                ),
+                source: verifier_source(name),
+            })
+        }
+
+        fn field(id: GeneratedValueId, name: &str, initializer: JavaExpr) -> JavaMember {
+            JavaMember::Field(JavaField {
+                declared: Some(id),
+                modifiers: vec![JavaModifier::Static, JavaModifier::Final],
+                ty: JavaType::primitive(JavaPrimitive::Int),
+                name: JavaIdentifier::from_portable(name),
+                initializer: Some(initializer),
+            })
+        }
+
+        fn reference(id: GeneratedValueId) -> JavaExpr {
+            JavaExpr {
+                ty: JavaType::primitive(JavaPrimitive::Int),
+                precedence: JavaPrecedence::Primary,
+                kind: JavaExprKind::Value(JavaValueRef::Generated(GeneratedSymbolId::Value(id))),
+            }
+        }
+
+        let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+        let dependent = generated_value(&mut builder, "dependent");
+        let dependency = generated_value(&mut builder, "dependency");
+        let declaration = fixture_declaration(vec![
+            field(dependent, "dependent", reference(dependency)),
+            field(
+                dependency,
+                "dependency",
+                JavaExpr::literal(JavaType::primitive(JavaPrimitive::Int), JavaLiteral::I32(7)),
+            ),
+        ]);
+        let diagnostics = verify_fixture(
+            builder,
+            vec![(
+                vec![
+                    GeneratedSymbolId::Value(dependent),
+                    GeneratedSymbolId::Value(dependency),
+                ],
+                declaration,
+            )],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidControlFlow
+                && value.message.contains("itself or a later field")
+        }));
+
+        let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+        let recursive = generated_value(&mut builder, "recursive");
+        let declaration =
+            fixture_declaration(vec![field(recursive, "recursive", reference(recursive))]);
+        let diagnostics = verify_fixture(
+            builder,
+            vec![(vec![GeneratedSymbolId::Value(recursive)], declaration)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidControlFlow
+                && value.message.contains("itself or a later field")
+        }));
     }
 
     fn decoder_decode_call() -> (JavaExpr, Vec<JavaParameter>) {

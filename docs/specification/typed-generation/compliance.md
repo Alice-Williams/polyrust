@@ -102,6 +102,22 @@ test evidence rather than a current **Pass** claim while M34A-10R is open.
   lexical/blank-final/checked-exception preflight, and statements after an
   unconditional exit remain accepted. Both are accepted core blockers; Java
   remains **Fail** pending round 7 remediation and another clean fresh review.
+- Round 7 checkpoint `4a72777afd82eea847c827e32703898efe5d2611`
+  was pushed and remotely verified. Hosted CI run `33732935834` passed every
+  job for that exact commit.
+- Fresh blind review round 8 validated round 7, but found three further core
+  blockers: name-sorted Java constant fields can create illegal forward
+  references, loop completion ignored Java constant-condition and current-loop
+  break rules, and composed expressions could duplicate an operand or let a
+  later fallible child overtake an earlier allocation/receiver. All three are
+  accepted. Java remains **Fail** pending round 8 regression evidence, complete
+  gates, a pushed checkpoint, hosted CI, and another clean fresh review.
+- Round 8 regression evidence passes: 36 of 36 uncached focused
+  Java/codegen/policy/snapshot/lint tests, 294 of 294 uncached tracked-repository
+  tests, 232 of 232 independently composed release-gate tests, and a fresh
+  Cargo workspace/all-features/locked target including doctests. Java remains
+  **Fail** until the immutable pushed checkpoint receives successful hosted CI
+  and a clean fresh blind review.
 
 ## Pass rule
 

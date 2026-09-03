@@ -1,4 +1,7 @@
-use std::{cell::Cell, collections::BTreeMap};
+use std::{
+    cell::Cell,
+    collections::{BTreeMap, BTreeSet},
+};
 
 use portable_codegen::{
     BackendOptions, FileGroupRole, GeneratedCallable, GeneratedCallableId,
@@ -262,11 +265,11 @@ impl<'a> Lowering<'a> {
 
     fn generated_file(&mut self) -> Result<portable_codegen::TargetFileId, Vec<Diagnostic>> {
         let mut members = Vec::new();
+        for id in self.ordered_constant_ids()? {
+            members.push(JavaMember::Field(self.constant_field(id)?));
+        }
         for declaration in &self.core.module().declarations {
             match *declaration {
-                CoreDeclaration::Constant(id) => {
-                    members.push(JavaMember::Field(self.constant_field(id)?))
-                }
                 CoreDeclaration::Record(id) => {
                     members.push(JavaMember::NestedType(self.record_declaration(id)?));
                 }
@@ -283,7 +286,8 @@ impl<'a> Lowering<'a> {
                 CoreDeclaration::Function(id) => {
                     members.push(JavaMember::Method(self.function_method(id)?))
                 }
-                CoreDeclaration::Alias(_)
+                CoreDeclaration::Constant(_)
+                | CoreDeclaration::Alias(_)
                 | CoreDeclaration::Implementation(_)
                 | CoreDeclaration::Test(_) => {}
             }
@@ -314,6 +318,48 @@ impl<'a> Lowering<'a> {
             JavaTemplateId::CompilationUnit,
             source("generated-file"),
         )))
+    }
+
+    fn ordered_constant_ids(&self) -> Result<Vec<CoreConstantId>, Vec<Diagnostic>> {
+        let mut ordered = Vec::new();
+        let mut visiting = BTreeSet::new();
+        let mut emitted = BTreeSet::new();
+        for declaration in &self.core.module().declarations {
+            if let CoreDeclaration::Constant(id) = declaration {
+                self.visit_constant(*id, &mut visiting, &mut emitted, &mut ordered)?;
+            }
+        }
+        Ok(ordered)
+    }
+
+    fn visit_constant(
+        &self,
+        id: CoreConstantId,
+        visiting: &mut BTreeSet<CoreConstantId>,
+        emitted: &mut BTreeSet<CoreConstantId>,
+        ordered: &mut Vec<CoreConstantId>,
+    ) -> Result<(), Vec<Diagnostic>> {
+        if emitted.contains(&id) {
+            return Ok(());
+        }
+        if !visiting.insert(id) {
+            return Err(vec![diagnostic(
+                "verified CoreIR contains a cyclic Java constant dependency",
+            )]);
+        }
+        let constant = self
+            .core
+            .constant(id)
+            .ok_or_else(|| vec![diagnostic("missing CoreIR constant dependency")])?;
+        let mut dependencies = BTreeSet::new();
+        collect_constant_dependencies(&constant.value, &mut dependencies);
+        for dependency in dependencies {
+            self.visit_constant(dependency, visiting, emitted, ordered)?;
+        }
+        visiting.remove(&id);
+        emitted.insert(id);
+        ordered.push(id);
+        Ok(())
     }
 
     fn runtime_file(&mut self) -> Result<portable_codegen::TargetFileId, Vec<Diagnostic>> {
@@ -1395,7 +1441,8 @@ impl<'a> Lowering<'a> {
                     .core
                     .implementation_method(*method)
                     .expect("verified method");
-                let mut receiver = self.expr_plan(*receiver, callable_return)?;
+                let mut receiver =
+                    self.stabilize_plan(self.expr_plan(*receiver, callable_return)?, "receiver");
                 let (argument_statements, arguments) =
                     self.expr_list(arguments, callable_return)?;
                 receiver.statements.extend(argument_statements);
@@ -1419,7 +1466,8 @@ impl<'a> Lowering<'a> {
                     .core
                     .interface_method(*method)
                     .expect("verified interface method");
-                let mut receiver = self.expr_plan(*receiver, callable_return)?;
+                let mut receiver =
+                    self.stabilize_plan(self.expr_plan(*receiver, callable_return)?, "receiver");
                 let (argument_statements, arguments) =
                     self.expr_list(arguments, callable_return)?;
                 receiver.statements.extend(argument_statements);
@@ -2261,7 +2309,10 @@ impl<'a> Lowering<'a> {
         let mut statements = Vec::new();
         let mapped = match value {
             CoreIntrinsicExpr::Unary { operation, operand } => {
-                let operand = self.expr_plan(*operand, callable_return)?;
+                let operand = self.stabilize_plan(
+                    self.expr_plan(*operand, callable_return)?,
+                    "intrinsicOperand",
+                );
                 statements.extend(operand.statements);
                 CoreIntrinsicExpr::Unary {
                     operation: *operation,
@@ -2273,9 +2324,11 @@ impl<'a> Lowering<'a> {
                 left,
                 right,
             } => {
-                let left = self.expr_plan(*left, callable_return)?;
+                let left = self
+                    .stabilize_plan(self.expr_plan(*left, callable_return)?, "intrinsicOperand");
                 statements.extend(left.statements);
-                let right = self.expr_plan(*right, callable_return)?;
+                let right = self
+                    .stabilize_plan(self.expr_plan(*right, callable_return)?, "intrinsicOperand");
                 statements.extend(right.statements);
                 CoreIntrinsicExpr::Binary {
                     operation: *operation,
@@ -2289,11 +2342,16 @@ impl<'a> Lowering<'a> {
                 second,
                 third,
             } => {
-                let first = self.expr_plan(*first, callable_return)?;
+                let first = self
+                    .stabilize_plan(self.expr_plan(*first, callable_return)?, "intrinsicOperand");
                 statements.extend(first.statements);
-                let second = self.expr_plan(*second, callable_return)?;
+                let second = self.stabilize_plan(
+                    self.expr_plan(*second, callable_return)?,
+                    "intrinsicOperand",
+                );
                 statements.extend(second.statements);
-                let third = self.expr_plan(*third, callable_return)?;
+                let third = self
+                    .stabilize_plan(self.expr_plan(*third, callable_return)?, "intrinsicOperand");
                 statements.extend(third.statements);
                 CoreIntrinsicExpr::Ternary {
                     operation: *operation,
@@ -3014,11 +3072,30 @@ impl<'a> Lowering<'a> {
         let mut statements = Vec::new();
         let mut expressions = Vec::with_capacity(values.len());
         for value in values {
-            let plan = self.expr_plan(*value, callable_return)?;
+            let plan = self.stabilize_plan(self.expr_plan(*value, callable_return)?, "argument");
             statements.extend(plan.statements);
             expressions.push(plan.value);
         }
         Ok((statements, expressions))
+    }
+
+    fn stabilize_plan(&self, mut plan: ExprPlan, prefix: &str) -> ExprPlan {
+        if matches!(
+            &plan.value.kind,
+            JavaExprKind::Literal(_) | JavaExprKind::Value(_)
+        ) {
+            return plan;
+        }
+        let ty = plan.value.ty.clone();
+        let (name, value) = self.temporary(prefix, ty.clone());
+        plan.statements.push(JavaStmt::Local {
+            finality: JavaLocalFinality::Final,
+            ty,
+            name,
+            value: Some(plan.value),
+        });
+        plan.value = value;
+        plan
     }
 
     fn temporary(&self, prefix: &str, ty: JavaType) -> (JavaIdentifier, JavaExpr) {
@@ -3122,9 +3199,10 @@ impl<'a> Lowering<'a> {
         callable_return: CoreTypeId,
     ) -> Result<ExprPlan, Vec<Diagnostic>> {
         let boolean = JavaType::primitive(JavaPrimitive::Boolean);
-        let left = self.expr_plan(left, callable_return)?;
+        let left = self.stabilize_plan(self.expr_plan(left, callable_return)?, "intrinsicOperand");
         let (name, result) = self.temporary("booleanResult", boolean.clone());
-        let right = self.expr_plan(right, callable_return)?;
+        let right =
+            self.stabilize_plan(self.expr_plan(right, callable_return)?, "intrinsicOperand");
         let right_block = JavaBlock::new(
             right
                 .statements
@@ -3251,6 +3329,57 @@ enum JavaIntrinsicExpr {
         call: JavaExpr,
         value_type: JavaType,
     },
+}
+
+fn collect_constant_dependencies(
+    value: &CoreConstantExpr,
+    dependencies: &mut BTreeSet<CoreConstantId>,
+) {
+    match &value.kind {
+        CoreConstantExprKind::Constant(id) => {
+            dependencies.insert(*id);
+        }
+        CoreConstantExprKind::Record { fields, .. } | CoreConstantExprKind::Enum { fields, .. } => {
+            for field in fields {
+                collect_constant_dependencies(&field.value, dependencies);
+            }
+        }
+        CoreConstantExprKind::Some(value)
+        | CoreConstantExprKind::Ok { value, .. }
+        | CoreConstantExprKind::Err { value, .. } => {
+            collect_constant_dependencies(value, dependencies);
+        }
+        CoreConstantExprKind::List { elements, .. } => {
+            for element in elements {
+                collect_constant_dependencies(element, dependencies);
+            }
+        }
+        CoreConstantExprKind::Intrinsic(value) => match value.as_ref() {
+            CoreIntrinsicExpr::Unary { operand, .. } => {
+                collect_constant_dependencies(operand, dependencies);
+            }
+            CoreIntrinsicExpr::Binary { left, right, .. } => {
+                collect_constant_dependencies(left, dependencies);
+                collect_constant_dependencies(right, dependencies);
+            }
+            CoreIntrinsicExpr::Ternary {
+                first,
+                second,
+                third,
+                ..
+            } => {
+                collect_constant_dependencies(first, dependencies);
+                collect_constant_dependencies(second, dependencies);
+                collect_constant_dependencies(third, dependencies);
+            }
+            CoreIntrinsicExpr::Variadic { arguments, .. } => {
+                for argument in arguments {
+                    collect_constant_dependencies(argument, dependencies);
+                }
+            }
+        },
+        CoreConstantExprKind::Literal(_) | CoreConstantExprKind::None { .. } => {}
+    }
 }
 
 fn identifier(value: &str) -> JavaIdentifier {

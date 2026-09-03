@@ -36,6 +36,20 @@ fn main() {
             body.constant_intrinsic(Operation::BytesConcat, [first, second])
         },
     );
+    let z_dependency = module.constant(
+        "Z_DEPENDENCY",
+        Visibility::Public,
+        vec![],
+        Type::i64(),
+        |body| body.constant_literal(Value::i64(7)),
+    );
+    let a_dependent = module.constant(
+        "A_DEPENDENT",
+        Visibility::Public,
+        vec![],
+        Type::i64(),
+        |body| body.constant_reference(z_dependency),
+    );
     let read_nested_string = module.function(
         "read_nested_string",
         Visibility::Public,
@@ -56,6 +70,18 @@ fn main() {
             function.returns(Type::bytes());
             function.body(|body| {
                 let value = body.constant(compound_bytes_constant);
+                body.block([], Some(value))
+            });
+        },
+    );
+    let read_dependent_constant = module.function(
+        "read_dependent_constant",
+        Visibility::Public,
+        vec![],
+        |function| {
+            function.returns(Type::i64());
+            function.body(|body| {
+                let value = body.constant(a_dependent);
                 body.block([], Some(value))
             });
         },
@@ -285,6 +311,13 @@ fn main() {
         vec![],
         Invocation::function(read_compound_bytes, []),
         Expected::value(TypedValue::new(Type::bytes(), Value::bytes([1, 2, 3, 4]))),
+    );
+    module.portable_test(
+        "constant_dependencies_are_emitted_before_dependents",
+        Visibility::Package,
+        vec![],
+        Invocation::function(read_dependent_constant, []),
+        Expected::value(TypedValue::new(Type::i64(), Value::i64(7))),
     );
     module.portable_test(
         "i32_min_remainder_negative_one_overflows",

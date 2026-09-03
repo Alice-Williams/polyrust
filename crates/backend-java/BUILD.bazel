@@ -196,15 +196,29 @@ sh_test(
         "$(location test/JavaVerifierPatternCollision.java)",
         "$(location test/JavaVerifierUnreachable.java)",
         "$(location test/JavaVerifierFieldInitializer.java)",
+        "$(location test/JavaVerifierConstantLoops.java)",
     ],
     data = [
         "test/JavaVerifierBlankFinalRead.java",
+        "test/JavaVerifierConstantLoops.java",
         "test/JavaVerifierFieldInitializer.java",
         "test/JavaVerifierPatternCollision.java",
         "test/JavaVerifierUnassignedLocal.java",
         "test/JavaVerifierUnreachable.java",
         "@bazel_tools//tools/jdk:current_java_runtime",
     ],
+    visibility = ["//visibility:public"],
+)
+
+java_test(
+    name = "java_verifier_infinite_method_test",
+    srcs = ["test/JavaVerifierInfiniteMethod.java"],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
+    main_class = "org.polyrust.valid.JavaVerifierInfiniteMethod",
+    use_testrunner = False,
     visibility = ["//visibility:public"],
 )
 

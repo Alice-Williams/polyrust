@@ -151,7 +151,7 @@ impl TypedLanguagePlugin<CoreProgram> for JavaPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use portable_build::{ModuleBuilder, Type, Value, Visibility};
+    use portable_build::{ModuleBuilder, Operation, Parameter, Type, Value, Visibility};
     use portable_codegen::{OutputContents, TypedGenerationError, TypedPipelineStage};
     use std::collections::BTreeSet;
 
@@ -385,5 +385,93 @@ mod tests {
             }
             other => panic!("unexpected generation error: {other:?}"),
         }
+    }
+
+    #[test]
+    fn generated_expressions_are_evaluated_once_in_source_order() {
+        let mut module = ModuleBuilder::new("java_evaluation_order");
+        let (boxed, field) = module.record("Boxed", Visibility::Public, vec![], |record| {
+            record.field("value", Type::i32(), vec![])
+        });
+        let later = module.function("later", Visibility::Package, vec![], |function| {
+            function.returns(Type::i32());
+            function.body(|body| {
+                let value = body.literal(Value::i32(2));
+                body.block([], Some(value))
+            });
+        });
+        let combine = module.function("combine", Visibility::Package, vec![], |function| {
+            function.parameter(Parameter::new("left", Type::named(boxed)));
+            function.parameter(Parameter::new("right", Type::i32()));
+            function.returns(Type::i32());
+            function.body(|body| {
+                let right = body.local("right");
+                body.block([], Some(right))
+            });
+        });
+        module.function("entry", Visibility::Public, vec![], |function| {
+            function.returns(Type::i32());
+            function.body(|body| {
+                let one = body.literal(Value::i32(1));
+                let allocated = body.record(boxed, [(field, one)]);
+                let later_value = body.call(later, []);
+                let result = body.call(combine, [allocated, later_value]);
+                body.block([], Some(result))
+            });
+        });
+        module.function("unwrap_once", Visibility::Public, vec![], |function| {
+            function.returns(Type::string());
+            function.body(|body| {
+                let a = body.literal(Value::string("a"));
+                let b = body.literal(Value::string("b"));
+                let concatenated = body.intrinsic(Operation::StringConcat, [a, b]);
+                let present = body.some(concatenated);
+                let fallback = body.literal(Value::string("fallback"));
+                let result = body.intrinsic(Operation::OptionUnwrapOr, [present, fallback]);
+                body.block([], Some(result))
+            });
+        });
+
+        let checked = module.finish().expect("evaluation-order fixture checks");
+        let manifest = JavaBackend
+            .generate(&checked, &BackendOptions::default())
+            .expect("evaluation-order fixture generates");
+        let generated = generated_text(
+            &manifest,
+            "src/main/java/org/polyrust/generated/Generated.java",
+        );
+
+        let entry = generated
+            .split(" entry()")
+            .nth(1)
+            .expect("entry method is generated")
+            .split("\n    }")
+            .next()
+            .expect("entry method body");
+        let allocation = entry.find("new Boxed(").expect("record allocation");
+        let later_call = entry.find("later()").expect("later operand call");
+        let combine_call = entry.find("combine(").expect("outer call");
+        assert!(
+            allocation < later_call,
+            "allocation must precede later operand"
+        );
+        assert!(
+            later_call < combine_call,
+            "operands must precede outer call"
+        );
+        assert_eq!(entry.matches("new Boxed(").count(), 1);
+
+        let unwrap = generated
+            .split(" unwrap_once()")
+            .nth(1)
+            .expect("unwrap_once method is generated")
+            .split("\n    }")
+            .next()
+            .expect("unwrap_once method body");
+        assert_eq!(
+            unwrap.matches("\"a\" + \"b\"").count(),
+            1,
+            "the nontrivial left operand must be evaluated exactly once"
+        );
     }
 }
