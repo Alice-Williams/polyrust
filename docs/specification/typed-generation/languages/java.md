@@ -40,6 +40,14 @@ The dialect owns:
 Primitive versus boxed use is explicit and checked. No executable Java source
 string enters the AST.
 
+Raw UTF-16-unit and internal-null literals are privileged implementation nodes,
+not general expression literals. Verification admits them only in an exact
+registered runtime storage context whose inactive representation requires that
+value; they cannot appear in generated public values, ordinary locals,
+arguments, fields, or returns. Expression statements are limited to Java's
+statement-expression grammar. Switch arms must have selector-compatible,
+unique, non-dominated patterns and render the complete Java `case` grammar.
+
 Array ownership is part of `JavaType`. The only metadata-only change admitted
 by the executable AST is the enum-valued `FreshCopyToBoundary` transition from
 an internally allocated mutable array to a defensive-copy boundary. The
@@ -105,6 +113,8 @@ option/result branch.
   `deepEquals` compares F64 raw bits so expected-value tests distinguish signed
   zero and retain NaN payloads. Generated and runtime value types implement
   both methods explicitly.
+- Empty-needle string replacement inserts only at Unicode scalar boundaries;
+  it must not delegate to UTF-16 code-unit boundary behavior.
 
 ## 6. Interfaces, composition, and target heritage
 
@@ -121,6 +131,11 @@ identity as portable behavior.
 Composition uses final named fields and explicit delegation. Default methods,
 interface-extension chains, abstract reusable base classes, and inherited state
 are forbidden for portable implementation.
+
+Shape preflight rejects generated static or interface method signatures that
+would illegally hide, override, or conflict with inherited `java.lang.Object`
+members after Java normalization and erasure. This applies even when the
+portable source name is otherwise legal.
 
 `JavaHeritage` may express the shared target-only one-edge adapter policy. Its
 only certified class-extension form is a generated final leaf extending one

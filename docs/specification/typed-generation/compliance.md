@@ -81,6 +81,11 @@ test evidence rather than a current **Pass** claim while M34A-10R is open.
   value aliasing, fail-open Java AST verifier shapes, and an empty generated
   conformance entry point. These accepted findings keep Java at **Fail** until
   their regression evidence and another fresh review are complete.
+- Fresh blind review round 4 of pushed checkpoint `4bc84d36` found four further
+  Java blockers in scalar-safe empty-needle replacement, inherited `Object`
+  method shape preflight, privileged literal placement, and Java statement/
+  switch grammar. All are accepted, so Java remains **Fail** pending round 4
+  remediation, replayed gates, and another fresh blind review.
 
 ## Pass rule
 

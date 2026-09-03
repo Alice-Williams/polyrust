@@ -203,3 +203,41 @@ source parsing, and unrelated renderer conveniences do not block completion.
   `cargo test --workspace --all-features --locked`, independently reproducing
   the hosted CI compilation path. Checkpoint commit, push, hosted CI, and the
   next fresh blind review remain pending.
+- Round 3 checkpoint `4bc84d36b40ef5d27a70f73f78839d07ef7f6c6e`
+  was pushed and remotely verified. Fresh Sol/xhigh blind review round 4 found
+  four core blockers; all are accepted: empty-needle replacement splits Java
+  surrogate pairs, shape preflight misses inherited `Object` method conflicts,
+  privileged null/raw-UTF-16 literals can escape their runtime contexts, and
+  the verifier accepts expression/switch statements that render invalid Java.
+- The review's separately compiled consumer suggestion is accepted as evidence
+  hardening. Same-invocation `javac` still enforces access between distinct
+  packages, so no access bypass was demonstrated; however, the normative Java
+  specification explicitly requires a separate compilation boundary and the
+  Bazel graph will be changed to provide it.
+- Hosted CI run `33716424339` passed fast checks, both Rust jobs, both Ubuntu
+  determinism jobs, the Windows contract, and cross-host comparison. Its cold
+  release gate exposed a second executable-mode defect:
+  `examples/generated/java/compare_snapshots.sh` was committed as `100644`.
+  Round 4 corrects it to `100755`; the semantic and policy portions preceding
+  that clean-checkout failure passed.
+- Round 4 routes empty-needle replacement through an enum-registered Java
+  runtime callable which advances with `codePointAt` and `charCount`; generated
+  native and conformance programs prove `"a🦀"` becomes `"-a-🦀-"` without
+  exposing UTF-16 code-unit behavior.
+- Java shape preflight now rejects normalized, erased static and interface
+  signatures that conflict with inherited `java.lang.Object` methods. Target
+  AST verification confines raw UTF-16 and internal-null literals to exact
+  registered tagged-runtime contexts, admits only Java statement expressions,
+  and validates switch selector compatibility, duplicate constants,
+  reifiability, and dominance before complete `case` rendering.
+- The three public-consumer tests now compile generated code into independent
+  `java_library` targets and compile consumers only against those artifacts,
+  proving the documented API boundary rather than relying on a shared compiler
+  invocation.
+- Round 4's uncached focused Java/codegen/policy/snapshot and lint gate passed
+  34 of 34 tests. The complete tracked repository replay passed 292 of 292
+  tests, excluding only the untouched user-owned untracked
+  `examples/real-world/stdlib-abs/` package. The independent release gate
+  passed 230 of 230 tests, and a fresh Cargo target passed
+  `cargo test --workspace --all-features --locked`. Checkpoint commit, push,
+  hosted CI, and the next fresh blind review remain pending.

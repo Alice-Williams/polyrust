@@ -8,7 +8,7 @@ use portable_codegen::{
 use portable_core_ir::CoreFieldId;
 use portable_diagnostics::DiagnosticCode;
 
-use crate::dialect::{JavaDialect, JavaInvocationKind};
+use crate::dialect::{JavaDialect, JavaInvocationKind, JavaKnownConstructor, JavaRuntimeHelper};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct JavaIdentifier(String);
@@ -2968,6 +2968,12 @@ impl JavaStmt {
             }
             Self::Expression(value) | Self::Throw(value) | Self::ThrowAssertion(value) => {
                 violations.extend(value.verify(context));
+                if matches!(self, Self::Expression(_)) && !is_java_statement_expression(value) {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::InvalidStructure,
+                        "Java expression statement must be a method invocation or class instance creation",
+                    ));
+                }
                 if matches!(self, Self::Throw(_)) && throwable_known_type(&value.ty).is_none() {
                     violations.push(type_error(
                         "Java throw expression must have a known throwable type",
@@ -3021,17 +3027,7 @@ impl JavaStmt {
             }
             Self::Switch { value, arms } => {
                 violations.extend(value.verify(context));
-                if arms
-                    .iter()
-                    .filter(|arm| matches!(arm.pattern, JavaPattern::Default))
-                    .count()
-                    != 1
-                {
-                    violations.push(AstViolation::new(
-                        DiagnosticCode::NonExhaustiveMatch,
-                        "statement switch must have exactly one typed default arm",
-                    ));
-                }
+                violations.extend(verify_switch_patterns(value, arms, context));
                 for arm in arms {
                     violations.extend(arm.body.verify(context));
                 }
@@ -3073,6 +3069,185 @@ impl JavaStmt {
             Self::Break | Self::Continue => {}
         }
         violations
+    }
+}
+
+fn is_java_statement_expression(value: &JavaExpr) -> bool {
+    matches!(
+        value.kind,
+        JavaExprKind::Call { .. } | JavaExprKind::New { .. }
+    )
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum JavaSwitchConstant {
+    Integral(i64),
+    String(String),
+}
+
+fn verify_switch_patterns(
+    selector: &JavaExpr,
+    arms: &[JavaSwitchArm],
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> Vec<AstViolation> {
+    let mut violations = Vec::new();
+    if !java_switch_selector_is_legal(&selector.ty) {
+        violations.push(type_error(
+            "Java switch selector must be an int-compatible primitive or reference type",
+        ));
+    }
+    if arms
+        .iter()
+        .filter(|arm| matches!(arm.pattern, JavaPattern::Default))
+        .count()
+        != 1
+    {
+        violations.push(AstViolation::new(
+            DiagnosticCode::NonExhaustiveMatch,
+            "statement switch must have exactly one typed default arm",
+        ));
+    }
+
+    let mut constants = Vec::new();
+    let mut prior_types = Vec::<JavaType>::new();
+    for arm in arms {
+        match &arm.pattern {
+            JavaPattern::Default => {}
+            JavaPattern::Literal(literal) => {
+                if !java_switch_literal_is_compatible(literal, &selector.ty) {
+                    violations.push(type_error(
+                        "Java switch literal is not compatible with its selector type",
+                    ));
+                    continue;
+                }
+                if prior_types
+                    .iter()
+                    .any(|prior| java_type_pattern_dominates(prior, &selector.ty, context))
+                {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::InvalidControlFlow,
+                        "Java switch literal is dominated by an earlier type pattern",
+                    ));
+                }
+                if let Some(constant) = java_switch_constant(literal)
+                    && !constants.contains(&constant)
+                {
+                    constants.push(constant);
+                } else {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::DuplicateDeclaration,
+                        "Java switch constant label is repeated",
+                    ));
+                }
+            }
+            JavaPattern::Type { ty, .. } => {
+                if !java_type_is_reifiable(ty)
+                    || !java_instanceof_is_legal(&selector.ty, ty, context)
+                {
+                    violations.push(type_error(
+                        "Java switch type pattern is not reifiable or selector-compatible",
+                    ));
+                }
+                if prior_types
+                    .iter()
+                    .any(|prior| java_type_pattern_dominates(prior, ty, context))
+                {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::InvalidControlFlow,
+                        "Java switch type pattern is dominated by an earlier pattern",
+                    ));
+                }
+                if java_type_pattern_dominates(ty, &selector.ty, context) {
+                    violations.push(AstViolation::new(
+                        DiagnosticCode::InvalidStructure,
+                        "Java switch cannot combine an unconditional type pattern with its required default arm",
+                    ));
+                }
+                prior_types.push(ty.clone());
+            }
+        }
+    }
+    violations
+}
+
+fn java_switch_selector_is_legal(ty: &JavaType) -> bool {
+    match ty {
+        JavaType::Primitive(value) => matches!(
+            value,
+            JavaPrimitive::Byte | JavaPrimitive::Char | JavaPrimitive::Int
+        ),
+        _ => java_type_is_reference(ty),
+    }
+}
+
+fn java_switch_literal_is_compatible(literal: &JavaLiteral, selector: &JavaType) -> bool {
+    match literal {
+        JavaLiteral::I32(value) => match selector {
+            JavaType::Primitive(JavaPrimitive::Byte) | JavaType::Boxed(JavaPrimitive::Byte) => {
+                i8::try_from(*value).is_ok()
+            }
+            JavaType::Primitive(JavaPrimitive::Char) | JavaType::Boxed(JavaPrimitive::Char) => {
+                u16::try_from(*value).is_ok()
+            }
+            JavaType::Primitive(JavaPrimitive::Int) | JavaType::Boxed(JavaPrimitive::Int) => true,
+            _ => false,
+        },
+        JavaLiteral::CharScalar(value) => match selector {
+            JavaType::Primitive(JavaPrimitive::Byte) | JavaType::Boxed(JavaPrimitive::Byte) => {
+                *value <= i8::MAX as u32
+            }
+            JavaType::Primitive(JavaPrimitive::Char) | JavaType::Boxed(JavaPrimitive::Char) => {
+                u16::try_from(*value).is_ok()
+            }
+            JavaType::Primitive(JavaPrimitive::Int) | JavaType::Boxed(JavaPrimitive::Int) => true,
+            _ => false,
+        },
+        JavaLiteral::String(_) => *selector == JavaType::known(JavaKnownType::String),
+        JavaLiteral::Boolean(_)
+        | JavaLiteral::I64(_)
+        | JavaLiteral::Utf16Units(_)
+        | JavaLiteral::InternalNull(_) => false,
+    }
+}
+
+fn java_switch_constant(literal: &JavaLiteral) -> Option<JavaSwitchConstant> {
+    match literal {
+        JavaLiteral::I32(value) => Some(JavaSwitchConstant::Integral(i64::from(*value))),
+        JavaLiteral::CharScalar(value) => Some(JavaSwitchConstant::Integral(i64::from(*value))),
+        JavaLiteral::String(value) => Some(JavaSwitchConstant::String(value.clone())),
+        JavaLiteral::Boolean(_)
+        | JavaLiteral::I64(_)
+        | JavaLiteral::Utf16Units(_)
+        | JavaLiteral::InternalNull(_) => None,
+    }
+}
+
+fn java_type_pattern_dominates(
+    earlier: &JavaType,
+    later: &JavaType,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> bool {
+    if erased_java_type(earlier) == erased_java_type(later) {
+        return true;
+    }
+    if *earlier == JavaType::known(JavaKnownType::Object) && java_type_is_reference(later) {
+        return true;
+    }
+    match (earlier, later) {
+        (
+            JavaType::Reference(JavaTypeName::Generated(expected)),
+            JavaType::Reference(JavaTypeName::Generated(actual)),
+        ) => generated_type_implements(*actual, *expected, context),
+        (
+            JavaType::Array {
+                component: expected,
+                ..
+            },
+            JavaType::Array {
+                component: actual, ..
+            },
+        ) => java_type_pattern_dominates(expected, actual, context),
+        _ => generated_and_known_interface_related(earlier, later, context),
     }
 }
 
@@ -4604,6 +4779,329 @@ impl JavaFileItem {
     }
 }
 
+#[derive(Clone, Copy)]
+struct JavaPrivilegedLiteralScope {
+    tagged_storage_helper: Option<JavaRuntimeHelper>,
+    tagged_constructor: Option<JavaKnownType>,
+}
+
+impl JavaPrivilegedLiteralScope {
+    const FORBIDDEN: Self = Self {
+        tagged_storage_helper: None,
+        tagged_constructor: None,
+    };
+}
+
+fn verify_privileged_literals_in_declaration(
+    declaration: &JavaTypeDeclaration,
+    helper: Option<JavaRuntimeHelper>,
+) -> Vec<AstViolation> {
+    let tagged_owner =
+        helper.and_then(|helper| registered_tagged_runtime_type(helper, declaration));
+    declaration
+        .members
+        .iter()
+        .flat_map(|member| verify_privileged_literals_in_member(member, helper, tagged_owner))
+        .collect()
+}
+
+fn registered_tagged_runtime_type(
+    helper: JavaRuntimeHelper,
+    declaration: &JavaTypeDeclaration,
+) -> Option<JavaKnownType> {
+    let candidate = match helper {
+        JavaRuntimeHelper::Core => JavaKnownType::RuntimeResult,
+        JavaRuntimeHelper::TaggedValues
+            if declaration.name.as_str() == JavaKnownType::RuntimeOption.simple_name() =>
+        {
+            JavaKnownType::RuntimeOption
+        }
+        JavaRuntimeHelper::TaggedValues => JavaKnownType::RuntimeValueResult,
+        _ => return None,
+    };
+    (declaration.name.as_str() == candidate.simple_name()
+        && declaration.kind == JavaDeclarationKind::FinalClass)
+        .then_some(candidate)
+}
+
+fn verify_privileged_literals_in_member(
+    member: &JavaMember,
+    helper: Option<JavaRuntimeHelper>,
+    tagged_owner: Option<JavaKnownType>,
+) -> Vec<AstViolation> {
+    let tagged_storage_helper = helper.filter(|helper| {
+        matches!(
+            helper,
+            JavaRuntimeHelper::Core | JavaRuntimeHelper::TaggedValues
+        )
+    });
+    match member {
+        JavaMember::Field(field) => field.initializer.as_ref().map_or_else(Vec::new, |value| {
+            verify_privileged_literals_in_expression(value, JavaPrivilegedLiteralScope::FORBIDDEN)
+        }),
+        JavaMember::CompileFailField(field) => verify_privileged_literals_in_expression(
+            &field.initializer,
+            JavaPrivilegedLiteralScope::FORBIDDEN,
+        ),
+        JavaMember::Method(method) => method.body.as_ref().map_or_else(Vec::new, |body| {
+            verify_privileged_literals_in_block(
+                body,
+                JavaPrivilegedLiteralScope {
+                    tagged_storage_helper,
+                    tagged_constructor: None,
+                },
+            )
+        }),
+        JavaMember::Constructor(constructor) => verify_privileged_literals_in_block(
+            &constructor.body,
+            JavaPrivilegedLiteralScope {
+                tagged_storage_helper,
+                tagged_constructor: tagged_owner,
+            },
+        ),
+        JavaMember::NestedType(declaration) => {
+            verify_privileged_literals_in_declaration(declaration, helper)
+        }
+    }
+}
+
+fn verify_privileged_literals_in_block(
+    block: &JavaBlock,
+    scope: JavaPrivilegedLiteralScope,
+) -> Vec<AstViolation> {
+    let mut violations = Vec::new();
+    for statement in &block.statements {
+        match statement {
+            JavaStmt::Local { value, .. } | JavaStmt::Return(value) => {
+                if let Some(value) = value {
+                    violations.extend(verify_privileged_literals_in_expression(value, scope));
+                }
+            }
+            JavaStmt::Assign { target, value } => {
+                violations.extend(verify_privileged_literals_in_expression(target, scope));
+                violations.extend(verify_privileged_literals_in_expression(value, scope));
+            }
+            JavaStmt::Expression(value)
+            | JavaStmt::Throw(value)
+            | JavaStmt::ThrowAssertion(value) => {
+                violations.extend(verify_privileged_literals_in_expression(value, scope));
+            }
+            JavaStmt::If {
+                condition,
+                then_block,
+                else_block,
+            } => {
+                violations.extend(verify_privileged_literals_in_expression(condition, scope));
+                violations.extend(verify_privileged_literals_in_block(then_block, scope));
+                if let Some(else_block) = else_block {
+                    violations.extend(verify_privileged_literals_in_block(else_block, scope));
+                }
+            }
+            JavaStmt::ForEach { iterable, body, .. } => {
+                violations.extend(verify_privileged_literals_in_expression(iterable, scope));
+                violations.extend(verify_privileged_literals_in_block(body, scope));
+            }
+            JavaStmt::While { condition, body } => {
+                violations.extend(verify_privileged_literals_in_expression(condition, scope));
+                violations.extend(verify_privileged_literals_in_block(body, scope));
+            }
+            JavaStmt::Switch { value, arms } => {
+                violations.extend(verify_privileged_literals_in_expression(value, scope));
+                for arm in arms {
+                    if matches!(
+                        arm.pattern,
+                        JavaPattern::Literal(
+                            JavaLiteral::Utf16Units(_) | JavaLiteral::InternalNull(_)
+                        )
+                    ) {
+                        violations.push(privileged_literal_error(
+                            "privileged Java literal cannot be used as a switch label",
+                        ));
+                    }
+                    violations.extend(verify_privileged_literals_in_block(&arm.body, scope));
+                }
+            }
+            JavaStmt::TryCatch { try_block, catches } => {
+                violations.extend(verify_privileged_literals_in_block(try_block, scope));
+                for catch in catches {
+                    violations.extend(verify_privileged_literals_in_block(&catch.body, scope));
+                }
+            }
+            JavaStmt::Break | JavaStmt::Continue => {}
+        }
+    }
+    violations
+}
+
+fn verify_privileged_literals_in_expression(
+    expression: &JavaExpr,
+    scope: JavaPrivilegedLiteralScope,
+) -> Vec<AstViolation> {
+    let mut violations = Vec::new();
+    match &expression.kind {
+        JavaExprKind::Literal(JavaLiteral::Utf16Units(_)) => {
+            violations.push(privileged_literal_error(
+                "raw UTF-16-unit literal is not admitted in verified executable Java AST",
+            ))
+        }
+        JavaExprKind::Literal(JavaLiteral::InternalNull(_)) => {
+            violations.push(privileged_literal_error(
+                "internal null literal is outside exact registered tagged runtime storage",
+            ))
+        }
+        JavaExprKind::Literal(_) | JavaExprKind::Value(_) => {}
+        JavaExprKind::Unary { operand, .. } => {
+            violations.extend(verify_privileged_literals_in_expression(operand, scope));
+        }
+        JavaExprKind::Binary {
+            operator,
+            left,
+            right,
+        } => {
+            let tagged_null_check = matches!(
+                operator,
+                JavaBinaryOperator::Equal | JavaBinaryOperator::NotEqual
+            ) && scope.tagged_constructor.is_some();
+            if !(tagged_null_check
+                && registered_tagged_null_check(left, right, scope.tagged_constructor.unwrap()))
+            {
+                violations.extend(verify_privileged_literals_in_expression(left, scope));
+            }
+            if !(tagged_null_check
+                && registered_tagged_null_check(right, left, scope.tagged_constructor.unwrap()))
+            {
+                violations.extend(verify_privileged_literals_in_expression(right, scope));
+            }
+        }
+        JavaExprKind::Conditional {
+            condition,
+            when_true,
+            when_false,
+        } => {
+            violations.extend(verify_privileged_literals_in_expression(condition, scope));
+            violations.extend(verify_privileged_literals_in_expression(when_true, scope));
+            violations.extend(verify_privileged_literals_in_expression(when_false, scope));
+        }
+        JavaExprKind::Call {
+            receiver,
+            arguments,
+            ..
+        } => {
+            if let Some(receiver) = receiver {
+                violations.extend(verify_privileged_literals_in_expression(receiver, scope));
+            }
+            for argument in arguments {
+                violations.extend(verify_privileged_literals_in_expression(argument, scope));
+            }
+        }
+        JavaExprKind::New {
+            constructor,
+            arguments,
+        } => {
+            for (index, argument) in arguments.iter().enumerate() {
+                if !scope.tagged_storage_helper.is_some_and(|helper| {
+                    registered_inactive_tagged_storage_argument(
+                        helper,
+                        constructor,
+                        arguments,
+                        index,
+                        argument,
+                    )
+                }) {
+                    violations.extend(verify_privileged_literals_in_expression(argument, scope));
+                }
+            }
+        }
+        JavaExprKind::NewArray { length, .. } => {
+            violations.extend(verify_privileged_literals_in_expression(length, scope));
+        }
+        JavaExprKind::ArrayIndex { array, index } => {
+            violations.extend(verify_privileged_literals_in_expression(array, scope));
+            violations.extend(verify_privileged_literals_in_expression(index, scope));
+        }
+        JavaExprKind::Field { receiver, .. } => {
+            violations.extend(verify_privileged_literals_in_expression(receiver, scope));
+        }
+        JavaExprKind::Cast { value, .. }
+        | JavaExprKind::ArrayOwnershipTransition { value, .. }
+        | JavaExprKind::InstanceOf { value, .. } => {
+            violations.extend(verify_privileged_literals_in_expression(value, scope));
+        }
+        JavaExprKind::Lambda { body, .. } => {
+            violations.extend(verify_privileged_literals_in_block(body, scope));
+        }
+    }
+    violations
+}
+
+fn registered_tagged_null_check(null: &JavaExpr, payload: &JavaExpr, owner: JavaKnownType) -> bool {
+    matches!(
+        &null.kind,
+        JavaExprKind::Literal(JavaLiteral::InternalNull(
+            JavaNullPurpose::AbsentTaggedPayload
+        ))
+    ) && null.ty == payload.ty
+        && matches!(
+            &payload.kind,
+            JavaExprKind::Value(JavaValueRef::Local(name))
+                if match owner {
+                    JavaKnownType::RuntimeOption => name.as_str() == "value",
+                    JavaKnownType::RuntimeResult | JavaKnownType::RuntimeValueResult => {
+                        matches!(name.as_str(), "value" | "error")
+                    }
+                    _ => false,
+                }
+        )
+}
+
+fn registered_inactive_tagged_storage_argument(
+    helper: JavaRuntimeHelper,
+    constructor: &JavaConstructorRef,
+    arguments: &[JavaExpr],
+    index: usize,
+    argument: &JavaExpr,
+) -> bool {
+    if !matches!(
+        argument.kind,
+        JavaExprKind::Literal(JavaLiteral::InternalNull(
+            JavaNullPurpose::AbsentTaggedPayload
+        ))
+    ) {
+        return false;
+    }
+    let Some(JavaExpr {
+        kind: JavaExprKind::Literal(JavaLiteral::Boolean(active)),
+        ..
+    }) = arguments.first()
+    else {
+        return false;
+    };
+    let JavaConstructorRef::Known { constructor, .. } = constructor else {
+        return false;
+    };
+    if !matches!(
+        (helper, constructor),
+        (JavaRuntimeHelper::Core, JavaKnownConstructor::RuntimeResult)
+            | (
+                JavaRuntimeHelper::TaggedValues,
+                JavaKnownConstructor::RuntimeOption | JavaKnownConstructor::RuntimeValueResult
+            )
+    ) {
+        return false;
+    }
+    match constructor {
+        JavaKnownConstructor::RuntimeOption => !active && index == 1 && arguments.len() == 2,
+        JavaKnownConstructor::RuntimeResult | JavaKnownConstructor::RuntimeValueResult => {
+            ((*active && index == 2) || (!active && index == 1)) && arguments.len() == 3
+        }
+        _ => false,
+    }
+}
+
+fn privileged_literal_error(message: &str) -> AstViolation {
+    AstViolation::new(DiagnosticCode::InvalidStructure, message)
+}
+
 impl TargetFileItemNode<JavaDialect> for JavaFileItem {
     fn verify(&self, context: &TargetAstContext<'_, JavaDialect>) -> Vec<AstViolation> {
         match self {
@@ -4612,6 +5110,7 @@ impl TargetFileItemNode<JavaDialect> for JavaFileItem {
                 declaration,
             } => {
                 let mut violations = declaration.verify(context, true);
+                violations.extend(verify_privileged_literals_in_declaration(declaration, None));
                 for symbol in declared {
                     let present = match symbol {
                         GeneratedSymbolId::Type(id) => context.generated_type(*id).is_some(),
@@ -4630,16 +5129,24 @@ impl TargetFileItemNode<JavaDialect> for JavaFileItem {
                 }
                 violations
             }
-            Self::RuntimeMembers { members, .. } => {
+            Self::RuntimeMembers { helper, members } => {
                 let variables = BTreeSet::new();
-                members
+                let mut violations = members
                     .iter()
                     .flat_map(|value| {
                         let mut violations = value.verify(context);
                         violations.extend(verify_member_type_context(value, &variables, context));
                         violations
                     })
-                    .collect()
+                    .collect::<Vec<_>>();
+                for member in members {
+                    violations.extend(verify_privileged_literals_in_member(
+                        member,
+                        Some(*helper),
+                        None,
+                    ));
+                }
+                violations
             }
         }
     }
@@ -4815,13 +5322,12 @@ mod tests {
     }
 
     fn verify_fixture(
-        mut builder: portable_codegen::TargetAstBuilder<JavaDialect>,
+        builder: portable_codegen::TargetAstBuilder<JavaDialect>,
         declarations: Vec<(Vec<GeneratedSymbolId>, JavaTypeDeclaration)>,
     ) -> Result<(), Vec<portable_diagnostics::Diagnostic>> {
-        let file = builder.file(portable_codegen::TargetFile::new(
-            portable_codegen::RelativeOutputPath::new("Fixture.java").unwrap(),
+        verify_file_items(
+            builder,
             portable_codegen::SourceRole::PublicApi,
-            JavaPackage::Generated,
             JavaFilePlacement::Main,
             declarations
                 .into_iter()
@@ -4830,11 +5336,42 @@ mod tests {
                     declaration,
                 })
                 .collect(),
+        )
+    }
+
+    fn verify_file_items(
+        mut builder: portable_codegen::TargetAstBuilder<JavaDialect>,
+        role: portable_codegen::SourceRole,
+        placement: JavaFilePlacement,
+        items: Vec<JavaFileItem>,
+    ) -> Result<(), Vec<portable_diagnostics::Diagnostic>> {
+        let group_role = match role {
+            portable_codegen::SourceRole::PublicApi => portable_codegen::FileGroupRole::PublicApi,
+            portable_codegen::SourceRole::Implementation => {
+                portable_codegen::FileGroupRole::Implementation
+            }
+            portable_codegen::SourceRole::Runtime => portable_codegen::FileGroupRole::Runtime,
+            portable_codegen::SourceRole::NativeTest => {
+                portable_codegen::FileGroupRole::NativeTests
+            }
+            portable_codegen::SourceRole::Conformance => {
+                portable_codegen::FileGroupRole::Conformance
+            }
+            portable_codegen::SourceRole::NegativeTest => {
+                portable_codegen::FileGroupRole::NegativeTests
+            }
+        };
+        let file = builder.file(portable_codegen::TargetFile::new(
+            portable_codegen::RelativeOutputPath::new("Fixture.java").unwrap(),
+            role,
+            JavaPackage::Generated,
+            placement,
+            items,
             JavaTemplateId::CompilationUnit,
             verifier_source("file"),
         ));
         builder.group(portable_codegen::TargetFileGroup::new(
-            portable_codegen::FileGroupRole::PublicApi,
+            group_role,
             vec![portable_codegen::TargetFileMember::Source(file)],
             verifier_source("group"),
         ));
@@ -4992,6 +5529,206 @@ mod tests {
             &long,
             &long
         ));
+    }
+
+    #[test]
+    fn privileged_literals_fail_closed_outside_registered_runtime_storage() {
+        let string = JavaType::known(JavaKnownType::String);
+        let declaration = fixture_declaration(vec![
+            JavaMember::Field(JavaField {
+                declared: None,
+                modifiers: vec![JavaModifier::Static, JavaModifier::Final],
+                ty: string.clone(),
+                name: JavaIdentifier::from_portable("rawSurrogate"),
+                initializer: Some(JavaExpr::literal(
+                    string.clone(),
+                    JavaLiteral::Utf16Units(vec![0xd800]),
+                )),
+            }),
+            structural_method(
+                "leakNull",
+                string.clone(),
+                vec![],
+                JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr::literal(
+                    string,
+                    JavaLiteral::InternalNull(JavaNullPurpose::AbsentTaggedPayload),
+                )))]),
+            ),
+        ]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], declaration)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidStructure
+                && value.message.contains("raw UTF-16-unit literal")
+        }));
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidStructure
+                && value
+                    .message
+                    .contains("outside exact registered tagged runtime storage")
+        }));
+    }
+
+    #[test]
+    fn registered_runtime_inactive_tagged_storage_remains_valid() {
+        let items = [JavaRuntimeHelper::Core, JavaRuntimeHelper::TaggedValues]
+            .into_iter()
+            .flat_map(crate::runtime::helper_items)
+            .collect();
+        let verification = verify_file_items(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            portable_codegen::SourceRole::Runtime,
+            JavaFilePlacement::Runtime,
+            items,
+        );
+        assert!(verification.is_ok(), "{verification:?}");
+    }
+
+    #[test]
+    fn statement_expressions_and_switch_patterns_fail_closed() {
+        let int = JavaType::primitive(JavaPrimitive::Int);
+        let object = JavaType::known(JavaKnownType::Object);
+        let string = JavaType::known(JavaKnownType::String);
+        let declaration = fixture_declaration(vec![
+            structural_method(
+                "badStatement",
+                JavaType::primitive(JavaPrimitive::Void),
+                vec![],
+                JavaBlock::new(vec![JavaStmt::Expression(JavaExpr::literal(
+                    int.clone(),
+                    JavaLiteral::I32(1),
+                ))]),
+            ),
+            structural_method(
+                "badConstants",
+                JavaType::primitive(JavaPrimitive::Void),
+                vec![parameter(int.clone(), "selector")],
+                JavaBlock::new(vec![JavaStmt::Switch {
+                    value: JavaExpr::local(int.clone(), JavaIdentifier::from_portable("selector")),
+                    arms: vec![
+                        JavaSwitchArm {
+                            pattern: JavaPattern::Literal(JavaLiteral::I32(1)),
+                            body: JavaBlock::new(vec![]),
+                        },
+                        JavaSwitchArm {
+                            pattern: JavaPattern::Literal(JavaLiteral::CharScalar(1)),
+                            body: JavaBlock::new(vec![]),
+                        },
+                        JavaSwitchArm {
+                            pattern: JavaPattern::Literal(JavaLiteral::String("one".to_owned())),
+                            body: JavaBlock::new(vec![]),
+                        },
+                        JavaSwitchArm {
+                            pattern: JavaPattern::Default,
+                            body: JavaBlock::new(vec![]),
+                        },
+                    ],
+                }]),
+            ),
+            structural_method(
+                "badDominance",
+                JavaType::primitive(JavaPrimitive::Void),
+                vec![parameter(object.clone(), "selector")],
+                JavaBlock::new(vec![JavaStmt::Switch {
+                    value: JavaExpr::local(object, JavaIdentifier::from_portable("selector")),
+                    arms: vec![
+                        JavaSwitchArm {
+                            pattern: JavaPattern::Type {
+                                ty: JavaType::known(JavaKnownType::Object),
+                                binding: JavaIdentifier::from_portable("anything"),
+                            },
+                            body: JavaBlock::new(vec![]),
+                        },
+                        JavaSwitchArm {
+                            pattern: JavaPattern::Type {
+                                ty: string,
+                                binding: JavaIdentifier::from_portable("text"),
+                            },
+                            body: JavaBlock::new(vec![]),
+                        },
+                        JavaSwitchArm {
+                            pattern: JavaPattern::Default,
+                            body: JavaBlock::new(vec![]),
+                        },
+                    ],
+                }]),
+            ),
+        ]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], declaration)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidStructure
+                && value.message.contains("expression statement")
+        }));
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::DuplicateDeclaration
+                && value.message.contains("constant label")
+        }));
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::TypeMismatch
+                && value.message.contains("literal is not compatible")
+        }));
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidControlFlow
+                && value.message.contains("dominated by an earlier pattern")
+        }));
+    }
+
+    #[test]
+    fn valid_statement_expressions_and_switch_patterns_verify() {
+        let int = JavaType::primitive(JavaPrimitive::Int);
+        let string = JavaType::known(JavaKnownType::String);
+        let assertion = JavaType::known(JavaKnownType::AssertionError);
+        let constructor = JavaKnownConstructor::AssertionErrorString;
+        let expression = JavaExpr {
+            ty: assertion.clone(),
+            precedence: JavaPrecedence::Primary,
+            kind: JavaExprKind::New {
+                constructor: JavaConstructorRef::Known {
+                    constructor,
+                    owner: assertion,
+                    parameters: vec![string.clone()],
+                },
+                arguments: vec![JavaExpr::literal(
+                    string,
+                    JavaLiteral::String("discarded".to_owned()),
+                )],
+            },
+        };
+        let declaration = fixture_declaration(vec![structural_method(
+            "validGrammar",
+            JavaType::primitive(JavaPrimitive::Void),
+            vec![parameter(int.clone(), "selector")],
+            JavaBlock::new(vec![
+                JavaStmt::Expression(expression),
+                JavaStmt::Switch {
+                    value: JavaExpr::local(int, JavaIdentifier::from_portable("selector")),
+                    arms: vec![
+                        JavaSwitchArm {
+                            pattern: JavaPattern::Literal(JavaLiteral::I32(1)),
+                            body: JavaBlock::new(vec![]),
+                        },
+                        JavaSwitchArm {
+                            pattern: JavaPattern::Default,
+                            body: JavaBlock::new(vec![]),
+                        },
+                    ],
+                },
+            ]),
+        )]);
+        assert!(
+            verify_fixture(
+                portable_codegen::TargetAstBuilder::new(JavaDialect),
+                vec![(vec![], declaration)],
+            )
+            .is_ok()
+        );
     }
 
     #[test]
@@ -5301,20 +6038,18 @@ mod tests {
                 catches: vec![JavaCatch {
                     exception_type: JavaType::known(JavaKnownType::CharacterCodingException),
                     binding: JavaIdentifier::from_portable("failure"),
-                    body: JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr::literal(
-                        result.clone(),
-                        JavaLiteral::InternalNull(JavaNullPurpose::InternalSentinel),
-                    )))]),
+                    body: JavaBlock::new(vec![JavaStmt::ThrowAssertion(JavaExpr::literal(
+                        JavaType::known(JavaKnownType::String),
+                        JavaLiteral::String("decode failed".to_owned()),
+                    ))]),
                 }],
             }]),
         )]);
-        assert!(
-            verify_fixture(
-                portable_codegen::TargetAstBuilder::new(JavaDialect),
-                vec![(vec![], caught)],
-            )
-            .is_ok()
+        let verification = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], caught)],
         );
+        assert!(verification.is_ok(), "{verification:?}");
     }
 
     #[test]

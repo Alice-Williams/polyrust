@@ -213,6 +213,19 @@ fn main() {
                 body.block([], Some(value))
             });
         });
+    let replace_all = module.function("replace_all", Visibility::Public, vec![], |function| {
+        function.parameter(Parameter::new("source", Type::string()));
+        function.parameter(Parameter::new("needle", Type::string()));
+        function.parameter(Parameter::new("replacement", Type::string()));
+        function.returns(Type::string());
+        function.body(|body| {
+            let source = body.local("source");
+            let needle = body.local("needle");
+            let replacement = body.local("replacement");
+            let value = body.intrinsic(Operation::StringReplaceAll, [source, needle, replacement]);
+            body.block([], Some(value))
+        });
+    });
 
     let astral = "\u{10000}";
     let bmp = "\u{e000}";
@@ -304,6 +317,48 @@ fn main() {
             Type::string(),
             Value::string("checked_overflow"),
         )),
+    );
+    module.portable_test(
+        "empty_needle_replacement_uses_unicode_scalar_boundaries",
+        Visibility::Package,
+        vec![],
+        Invocation::function(
+            replace_all,
+            [
+                TypedValue::new(Type::string(), Value::string("a🦀")),
+                TypedValue::new(Type::string(), Value::string("")),
+                TypedValue::new(Type::string(), Value::string("-")),
+            ],
+        ),
+        Expected::value(TypedValue::new(Type::string(), Value::string("-a-🦀-"))),
+    );
+    module.portable_test(
+        "empty_source_has_one_empty_needle_boundary",
+        Visibility::Package,
+        vec![],
+        Invocation::function(
+            replace_all,
+            [
+                TypedValue::new(Type::string(), Value::string("")),
+                TypedValue::new(Type::string(), Value::string("")),
+                TypedValue::new(Type::string(), Value::string("-")),
+            ],
+        ),
+        Expected::value(TypedValue::new(Type::string(), Value::string("-"))),
+    );
+    module.portable_test(
+        "empty_replacement_preserves_source",
+        Visibility::Package,
+        vec![],
+        Invocation::function(
+            replace_all,
+            [
+                TypedValue::new(Type::string(), Value::string("a🦀")),
+                TypedValue::new(Type::string(), Value::string("")),
+                TypedValue::new(Type::string(), Value::string("")),
+            ],
+        ),
+        Expected::value(TypedValue::new(Type::string(), Value::string("a🦀"))),
     );
 
     let checked = module.finish().expect("semantic edge fixture checks");

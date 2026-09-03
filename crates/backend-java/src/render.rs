@@ -982,13 +982,7 @@ fn render_stmt(
             let value = render_expr(value, names, templates, file)?;
             let mut rendered_arms = String::new();
             for arm in arms {
-                let pattern = match &arm.pattern {
-                    JavaPattern::Default => "default".to_owned(),
-                    JavaPattern::Literal(value) => render_literal(value),
-                    JavaPattern::Type { ty, binding } => {
-                        format!("case {} {}", render_java_type(ty, names)?, binding.as_str())
-                    }
-                };
+                let pattern = render_switch_pattern(&arm.pattern, names)?;
                 let body = render_block(&arm.body, names, depth + 2, templates, file)?;
                 rendered_arms.push_str(&render_template(
                     templates,
@@ -1081,6 +1075,21 @@ fn render_stmt(
             },
             file,
         ),
+    }
+}
+
+fn render_switch_pattern(
+    pattern: &JavaPattern,
+    names: &std::collections::BTreeMap<TargetSymbolRef<JavaDialect>, JavaResolvedName>,
+) -> Result<String, Vec<Diagnostic>> {
+    match pattern {
+        JavaPattern::Default => Ok("default".to_owned()),
+        JavaPattern::Literal(value) => Ok(format!("case {}", render_literal(value))),
+        JavaPattern::Type { ty, binding } => Ok(format!(
+            "case {} {}",
+            render_java_type(ty, names)?,
+            binding.as_str()
+        )),
     }
 }
 
@@ -1692,6 +1701,20 @@ mod tests {
         assert_eq!(ids.len(), JavaTemplateId::ALL.len());
         // Every generated package test also constructs the strict registry;
         // its private validator rejects missing, duplicate, or extra entries.
+    }
+
+    #[test]
+    fn switch_patterns_render_complete_case_labels() {
+        let names = std::collections::BTreeMap::new();
+        assert_eq!(
+            render_switch_pattern(&JavaPattern::Literal(JavaLiteral::I32(7)), &names)
+                .expect("literal pattern renders"),
+            "case 7"
+        );
+        assert_eq!(
+            render_switch_pattern(&JavaPattern::Default, &names).expect("default pattern renders"),
+            "default"
+        );
     }
 }
 

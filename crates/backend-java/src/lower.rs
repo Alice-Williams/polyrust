@@ -2584,12 +2584,10 @@ impl<'a> Lowering<'a> {
                     vec![first, second, third],
                     result,
                 ),
-                CoreTernaryIntrinsic::StringReplaceAll => member_call(
-                    first,
-                    "replace",
-                    vec![second, third],
+                CoreTernaryIntrinsic::StringReplaceAll => runtime_call(
+                    JavaRuntimeCallable::StringReplaceAll,
+                    vec![first, second, third],
                     result,
-                    JavaMemberOrigin::Known(JavaKnownMethod::StringReplace),
                 ),
                 CoreTernaryIntrinsic::BytesReplaceAll => runtime_call(
                     JavaRuntimeCallable::BytesReplaceAll,

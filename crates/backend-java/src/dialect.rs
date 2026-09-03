@@ -1059,6 +1059,7 @@ pub enum JavaRuntimeCallable {
     ScalarLength,
     StringIndexOfLiteral,
     StringSliceScalars,
+    StringReplaceAll,
     StringReplaceMany,
     StringTruncateUtf8Bytes,
     StringTrimStart,
@@ -1082,7 +1083,7 @@ pub enum JavaRuntimeCallable {
 }
 
 impl JavaRuntimeCallable {
-    pub const ALL: [Self; 59] = [
+    pub const ALL: [Self; 60] = [
         Self::Ok,
         Self::Fail,
         Self::DeepEqual,
@@ -1122,6 +1123,7 @@ impl JavaRuntimeCallable {
         Self::ScalarLength,
         Self::StringIndexOfLiteral,
         Self::StringSliceScalars,
+        Self::StringReplaceAll,
         Self::StringReplaceMany,
         Self::StringTruncateUtf8Bytes,
         Self::StringTrimStart,
@@ -1187,7 +1189,8 @@ impl JavaRuntimeCallable {
             | Self::StringSliceScalars
             | Self::StringToUtf8
             | Self::StringFromUtf8 => JavaRuntimeHelper::Unicode,
-            Self::StringReplaceMany
+            Self::StringReplaceAll
+            | Self::StringReplaceMany
             | Self::StringTruncateUtf8Bytes
             | Self::StringTrimStart
             | Self::StringTrimEnd => JavaRuntimeHelper::StringOperations,
@@ -1249,6 +1252,7 @@ impl JavaRuntimeCallable {
             Self::ScalarLength => "scalarLength",
             Self::StringIndexOfLiteral => "stringIndexOfLiteral",
             Self::StringSliceScalars => "stringSliceScalars",
+            Self::StringReplaceAll => "stringReplaceAll",
             Self::StringReplaceMany => "stringReplaceMany",
             Self::StringTruncateUtf8Bytes => "stringTruncateUtf8Bytes",
             Self::StringTrimStart => "stringTrimStart",
@@ -1313,6 +1317,7 @@ impl JavaRuntimeCallable {
             Self::ScalarLength => "org.polyrust.generated.Runtime.scalarLength",
             Self::StringIndexOfLiteral => "org.polyrust.generated.Runtime.stringIndexOfLiteral",
             Self::StringSliceScalars => "org.polyrust.generated.Runtime.stringSliceScalars",
+            Self::StringReplaceAll => "org.polyrust.generated.Runtime.stringReplaceAll",
             Self::StringReplaceMany => "org.polyrust.generated.Runtime.stringReplaceMany",
             Self::StringTruncateUtf8Bytes => {
                 "org.polyrust.generated.Runtime.stringTruncateUtf8Bytes"
@@ -1418,6 +1423,11 @@ impl JavaRuntimeCallable {
             Self::StringSliceScalars => {
                 signature(None, vec![string.clone(), long.clone(), long], string)
             }
+            Self::StringReplaceAll => signature(
+                None,
+                vec![string.clone(), string.clone(), string.clone()],
+                string,
+            ),
             Self::StringReplaceMany => signature(
                 None,
                 vec![

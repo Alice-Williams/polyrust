@@ -1,4 +1,4 @@
-load("@rules_java//java:defs.bzl", "java_test")
+load("@rules_java//java:defs.bzl", "java_library", "java_test")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
@@ -144,10 +144,9 @@ java_test(
     visibility = ["//visibility:public"],
 )
 
-java_test(
-    name = "generated_semantic_edge_public_value_test",
+java_library(
+    name = "semantic_edge_generated_api",
     srcs = [
-        "test/JavaRuntimeValueConsumerTest.java",
         ":semantic-edge-generated/src/main/java/org/polyrust/generated/Generated.java",
         ":semantic-edge-generated/src/main/java/org/polyrust/generated/Runtime.java",
     ],
@@ -155,9 +154,20 @@ java_test(
         "-Werror",
         "-Xlint:all",
     ],
+    visibility = ["//visibility:public"],
+)
+
+java_test(
+    name = "generated_semantic_edge_public_value_test",
+    srcs = ["test/JavaRuntimeValueConsumerTest.java"],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
     main_class = "org.polyrust.consumer.JavaRuntimeValueConsumerTest",
     use_testrunner = False,
     visibility = ["//visibility:public"],
+    deps = [":semantic_edge_generated_api"],
 )
 
 sh_test(
@@ -209,10 +219,9 @@ java_test(
     visibility = ["//visibility:public"],
 )
 
-java_test(
-    name = "generated_interface_public_api_test",
+java_library(
+    name = "interface_generated_api",
     srcs = [
-        "test/JavaInterfaceConsumerTest.java",
         ":interface-generated/src/main/java/org/polyrust/generated/Generated.java",
         ":interface-generated/src/main/java/org/polyrust/generated/Runtime.java",
     ],
@@ -220,9 +229,20 @@ java_test(
         "-Werror",
         "-Xlint:all",
     ],
+    visibility = ["//visibility:public"],
+)
+
+java_test(
+    name = "generated_interface_public_api_test",
+    srcs = ["test/JavaInterfaceConsumerTest.java"],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
     main_class = "org.polyrust.consumer.JavaInterfaceConsumerTest",
     use_testrunner = False,
     visibility = ["//visibility:public"],
+    deps = [":interface_generated_api"],
 )
 
 sh_test(
@@ -342,10 +362,9 @@ java_test(
     visibility = ["//visibility:public"],
 )
 
-java_test(
-    name = "generated_v0_public_api_test",
+java_library(
+    name = "v0_generated_api",
     srcs = [
-        "test/JavaConsumerTest.java",
         ":test-generated/src/main/java/org/polyrust/generated/Generated.java",
         ":test-generated/src/main/java/org/polyrust/generated/Runtime.java",
     ],
@@ -353,9 +372,20 @@ java_test(
         "-Werror",
         "-Xlint:all",
     ],
+    visibility = ["//visibility:public"],
+)
+
+java_test(
+    name = "generated_v0_public_api_test",
+    srcs = ["test/JavaConsumerTest.java"],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
     main_class = "org.polyrust.consumer.JavaConsumerTest",
     use_testrunner = False,
     visibility = ["//visibility:public"],
+    deps = [":v0_generated_api"],
 )
 
 filegroup(

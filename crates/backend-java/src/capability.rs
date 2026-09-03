@@ -365,6 +365,25 @@ fn java_illegal_shape_diagnostics(program: &CoreProgram) -> Vec<Diagnostic> {
         collect_restricted_record_components(program, &variant.fields, &mut diagnostics);
     }
 
+    for function in program.functions() {
+        let name = JavaIdentifier::from_portable(&function.header.name);
+        let parameters = function
+            .parameters
+            .iter()
+            .map(|parameter| erased_type(program, parameter.ty))
+            .collect::<Vec<_>>();
+        if JavaObjectMethod::from_erased_signature(name.as_str(), &parameters).is_some() {
+            diagnostics.push(java_capability_diagnostic(
+                format!(
+                    "Java static method {}({}) conflicts with an inherited java.lang.Object instance method",
+                    name.as_str(),
+                    parameters.join(", ")
+                ),
+                function.header.source.clone(),
+            ));
+        }
+    }
+
     for declaration in &program.module().declarations {
         let CoreDeclaration::Interface(interface_id) = *declaration else {
             continue;
@@ -395,10 +414,12 @@ fn java_illegal_shape_diagnostics(program: &CoreProgram) -> Vec<Diagnostic> {
                 .iter()
                 .map(|parameter| erased_type(program, parameter.ty))
                 .collect::<Vec<_>>();
-            if is_final_object_method(name.as_str(), &parameters) {
+            if JavaObjectMethod::from_erased_signature(name.as_str(), &parameters)
+                .is_some_and(JavaObjectMethod::conflicts_with_generated_interface_method)
+            {
                 diagnostics.push(java_capability_diagnostic(
                     format!(
-                        "Java interface method {}({}) collides with a final java.lang.Object method",
+                        "Java interface method {}({}) conflicts with its inherited java.lang.Object method",
                         name.as_str(),
                         parameters.join(", ")
                     ),
@@ -483,11 +504,41 @@ fn is_restricted_record_component(name: &str) -> bool {
     )
 }
 
-fn is_final_object_method(name: &str, parameters: &[String]) -> bool {
-    match name {
-        "getClass" | "notify" | "notifyAll" => parameters.is_empty(),
-        "wait" => parameters.is_empty() || parameters == ["long"] || parameters == ["long", "int"],
-        _ => false,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum JavaObjectMethod {
+    GetClass,
+    HashCode,
+    Clone,
+    ToString,
+    Notify,
+    NotifyAll,
+    Wait,
+    WaitMillis,
+    WaitMillisNanos,
+    Finalize,
+}
+
+impl JavaObjectMethod {
+    fn from_erased_signature(name: &str, parameters: &[String]) -> Option<Self> {
+        match (name, parameters) {
+            ("getClass", []) => Some(Self::GetClass),
+            ("hashCode", []) => Some(Self::HashCode),
+            ("clone", []) => Some(Self::Clone),
+            ("toString", []) => Some(Self::ToString),
+            ("notify", []) => Some(Self::Notify),
+            ("notifyAll", []) => Some(Self::NotifyAll),
+            ("wait", []) => Some(Self::Wait),
+            ("wait", [millis]) if millis == "long" => Some(Self::WaitMillis),
+            ("wait", [millis, nanos]) if millis == "long" && nanos == "int" => {
+                Some(Self::WaitMillisNanos)
+            }
+            ("finalize", []) => Some(Self::Finalize),
+            _ => None,
+        }
+    }
+
+    fn conflicts_with_generated_interface_method(self) -> bool {
+        !matches!(self, Self::Clone)
     }
 }
 
@@ -763,7 +814,7 @@ fn erased_type(program: &CoreProgram, ty: CoreTypeId) -> String {
 
 #[cfg(test)]
 mod tests {
-    use portable_build::{ModuleBuilder, Parameter, Type, Value, Visibility};
+    use portable_build::{ModuleBuilder, Operation, Parameter, Type, Value, Visibility};
     use portable_codegen::{
         Backend, BackendOptions, OutputContents, TypedCompiler, TypedGenerationError,
         TypedPipelineStage,
@@ -870,6 +921,89 @@ mod tests {
     }
 
     #[test]
+    fn inherited_object_static_method_stops_at_preflight() {
+        let mut module = ModuleBuilder::new("java_object_static");
+        module.function("hashCode", Visibility::Public, vec![], |function| {
+            function.returns(Type::i32());
+            function.body(|body| {
+                let value = body.literal(Value::i32(7));
+                body.block([], Some(value))
+            });
+        });
+        let checked = module.finish().unwrap();
+        let diagnostics = preflight_diagnostics(&checked);
+        assert_eq!(diagnostics.len(), 1);
+        assert!(
+            diagnostics[0]
+                .message
+                .contains("static method hashCode() conflicts")
+        );
+        assert_eq!(diagnostics[0].target.as_deref(), Some("org.polyrust.java"));
+    }
+
+    #[test]
+    fn nonfinal_object_interface_method_stops_at_preflight() {
+        let mut module = ModuleBuilder::new("java_object_interface");
+        let (interface, method) =
+            module.interface("Bad", Visibility::Public, vec![], |interface| {
+                interface.method("toString", vec![], vec![], Some(Type::string()))
+            });
+        let (record, ()) = module.record("Value", Visibility::Public, vec![], |_| {});
+        module.implementation(
+            "ValueBad",
+            Visibility::Package,
+            vec![],
+            interface,
+            record,
+            |implementation| {
+                implementation.method("toString", method, vec![], |method| {
+                    method.returns(Type::string());
+                    method.body(|body| {
+                        let value = body.literal(Value::string("value"));
+                        body.block([], Some(value))
+                    });
+                });
+            },
+        );
+        let checked = module.finish().unwrap();
+        let diagnostics = preflight_diagnostics(&checked);
+        assert_eq!(diagnostics.len(), 1);
+        assert!(
+            diagnostics[0]
+                .message
+                .contains("interface method toString() conflicts")
+        );
+        assert_eq!(diagnostics[0].target.as_deref(), Some("org.polyrust.java"));
+    }
+
+    #[test]
+    fn inherited_object_method_catalogue_matches_java_signatures() {
+        for (name, parameters) in [
+            ("getClass", vec![]),
+            ("hashCode", vec![]),
+            ("clone", vec![]),
+            ("toString", vec![]),
+            ("notify", vec![]),
+            ("notifyAll", vec![]),
+            ("wait", vec![]),
+            ("wait", vec!["long".to_owned()]),
+            ("wait", vec!["long".to_owned(), "int".to_owned()]),
+            ("finalize", vec![]),
+        ] {
+            assert!(
+                JavaObjectMethod::from_erased_signature(name, &parameters).is_some(),
+                "missing java.lang.Object signature {name}({})",
+                parameters.join(", ")
+            );
+        }
+        assert!(JavaObjectMethod::from_erased_signature("hashCode", &["int".to_owned()]).is_none());
+        assert!(
+            JavaObjectMethod::from_erased_signature("equals", &["Object".to_owned()]).is_none()
+        );
+        assert!(!JavaObjectMethod::Clone.conflicts_with_generated_interface_method());
+    }
+
+    #[test]
     fn final_object_interface_method_stops_at_preflight() {
         let mut module = ModuleBuilder::new("java_object_final");
         let (interface, method) =
@@ -899,7 +1033,7 @@ mod tests {
         assert!(
             diagnostics[0]
                 .message
-                .contains("final java.lang.Object method")
+                .contains("inherited java.lang.Object method")
         );
         assert_eq!(diagnostics[0].target.as_deref(), Some("org.polyrust.java"));
     }
@@ -1007,5 +1141,51 @@ mod tests {
             assert!(!runtime.contains(absent), "unexpected helper {absent}");
         }
         assert!(!conformance.contains("Runtime."));
+    }
+
+    #[test]
+    fn string_replace_all_uses_only_its_typed_string_runtime_helper() {
+        let mut module = ModuleBuilder::new("java_replace_all_helper");
+        module.function("replace_all", Visibility::Public, vec![], |function| {
+            function.parameter(Parameter::new("source", Type::string()));
+            function.parameter(Parameter::new("needle", Type::string()));
+            function.parameter(Parameter::new("replacement", Type::string()));
+            function.returns(Type::string());
+            function.body(|body| {
+                let source = body.local("source");
+                let needle = body.local("needle");
+                let replacement = body.local("replacement");
+                let value =
+                    body.intrinsic(Operation::StringReplaceAll, [source, needle, replacement]);
+                body.block([], Some(value))
+            });
+        });
+        let checked = module.finish().unwrap();
+        let manifest = crate::JavaBackend
+            .generate(&checked, &BackendOptions::default())
+            .unwrap();
+        let generated = match manifest
+            .file("src/main/java/org/polyrust/generated/Generated.java")
+            .expect("generated file")
+            .contents()
+        {
+            OutputContents::Text(value) => value,
+            OutputContents::Bytes(_) => panic!("Java source must be text"),
+        };
+        let runtime = match manifest
+            .file("src/main/java/org/polyrust/generated/Runtime.java")
+            .expect("runtime file")
+            .contents()
+        {
+            OutputContents::Text(value) => value,
+            OutputContents::Bytes(_) => panic!("Java runtime must be text"),
+        };
+
+        assert!(generated.contains("Runtime.stringReplaceAll(source, needle, replacement)"));
+        assert!(runtime.contains("static String stringReplaceAll"));
+        assert!(runtime.contains("Character.charCount(source.codePointAt(offset))"));
+        assert!(!runtime.contains(" stringSliceScalars("));
+        assert!(!runtime.contains(" bytesReplaceAll("));
+        assert!(!runtime.contains(" checkedAddI32("));
     }
 }
