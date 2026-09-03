@@ -1,10 +1,10 @@
 # Typed generation specification
 
 - Status: normative design baseline for M34A
-- Implementation status: shared target proof boundary implemented; static
-  generic AST specified and in progress; Java static migration next; remaining
-  languages pending
-- Accepted by: ADR-0004 as amended by ADR-0005 and ADR-0006
+- Implementation status: shared target proof boundary implemented; inferred
+  typed builder and Java capability migration in progress; remaining languages
+  pending
+- Accepted by: ADR-0004 as amended by ADR-0005, ADR-0006, and ADR-0007
 - Supersedes: the target-generation portions of ADR-0003 and
   `language-ir-architecture.md`
 
@@ -20,7 +20,7 @@ evidence named by both.
 
 Shared layers:
 
-0. [Static valid-by-construction portable AST](layers/00-static-portable-ast.md)
+0. [Inferred valid-by-construction portable AST](layers/00-static-portable-ast.md)
 1. [Pipeline and phase ownership](layers/01-pipeline.md)
 2. [Canonical CoreIR](layers/02-core-ir.md)
 3. [Capabilities and exhaustive registration](layers/03-capabilities.md)
@@ -52,9 +52,10 @@ Compliance:
 The primary static authoring path is:
 
 ```text
-Typed Rust constructors/macros
-  -> StaticProgram<F>
-  -> TargetProgram<D, F> where D: Supports<F>
+Typed Rust constructors
+  -> ProgramBuilder<inferred requirements>
+  -> TypedProgram<R>
+  -> TargetProgram<D, R> where D: SupportsAll<R>
   -> RenderReadyPackage<D>
   -> RenderedPackage
   -> OutputManifest
@@ -83,7 +84,7 @@ information by parsing or scanning an earlier phase's rendered text.
 
 | Concern | Owner |
 | --- | --- |
-| Static portable syntax, types, symbols, and feature profile | static generic AST |
+| Typed portable syntax, types, symbols, and inferred requirements | typed generic AST |
 | Unknown portable syntax and source provenance | dynamic frontend and unchecked PolyIR |
 | Portable legality and typing | checker |
 | Canonical portable behavior and evaluation order | CoreIR lowerer/verifier |

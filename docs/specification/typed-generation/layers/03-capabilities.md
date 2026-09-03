@@ -11,11 +11,14 @@ reject only programs which use it. It preserves compile-time exhaustiveness
 without making the compiler's build depend on every language implementing
 every feature immediately.
 
-For static programs, feature support is additionally a compile-time contract.
-`StaticProgram<F>` may be passed to target `D` only when `D: Supports<F>`.
+For typed programs, feature support is additionally a compile-time contract.
+`TypedProgram<R>` may be passed to target `D` only when
+`D: SupportsAll<R>`. The builder infers `R`; callers do not select a feature
+profile or assert which functionality they used. Each leaf in `R` requires a
+separate explicit `D: Supports<F>` implementation.
 Runtime capability preflight remains mandatory for unknown/dynamic programs
 and as a defensive migration assertion, but it is not the primary proof for
-the static path.
+the typed path.
 
 ## Feature model
 

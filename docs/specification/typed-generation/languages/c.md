@@ -5,6 +5,13 @@
 - Language/toolchain: C17 through the hermetic Zig SDK, with GCC 14.2.0
   sanitizer verification
 
+## Inferred typed-program admission
+
+`CDialect` MUST implement `Supports<F>` separately for each portable feature
+whose complete C17 mapping has passed this specification. Typed generation
+accepts `TypedProgram<R>` only under `CDialect: SupportsAll<R>`. Runtime
+emulation does not justify a wildcard or default support claim.
+
 ## 1. Scope and package
 
 The plugin emits self-contained public headers, implementation/runtime C files,

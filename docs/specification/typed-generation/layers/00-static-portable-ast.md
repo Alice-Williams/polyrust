@@ -1,147 +1,173 @@
-# Layer 0: static portable AST
+# Layer 0: inferred typed portable AST
 
 - Status: normative
-- Input boundary: Rust source authored with typed constructors or macros
-- Output boundary: `StaticProgram<F>`
+- Input boundary: Rust source authored with typed constructors
+- Output boundary: `TypedProgram<R>` with inferred requirements `R`
 
 ## Purpose
 
-This layer makes the initially supported portable language valid by
-construction. If a Rust generator containing a static portable program
-compiles, that program is well typed and can be generated for every selected
-language whose type implements `Supports<F>`.
+This layer makes the portable authoring surface valid by construction and
+records exactly which portable functionality each program uses. A compiled
+Rust generator may invoke target `D` only when Rust can prove
+`D: SupportsAll<R>` for that program's inferred requirements.
 
-This is the primary authoring boundary. The unchecked document/checker path is
-the separate boundary for data which is not known until runtime.
+There is no monolithic or versioned feature profile. In particular, the public
+architecture has no `StaticV1`. Unknown runtime input remains a separate,
+fallible refinement boundary.
 
 ## Required public model
 
 ```rust
-struct StaticProgram<F> { /* private typed portable AST */ }
-struct Expr<T> { /* private expression node */ }
-struct Type<T> { /* private type witness */ }
-struct Local<T> { /* private symbol identity */ }
-struct Field<R, T> { /* field of record R with value T */ }
-struct Record<R, Fields> { /* exact constructor shape */ }
-struct Function<Arguments, Result> { /* exact call signature */ }
+struct TypedProgram<R> { /* private checked program plus proof */ }
+struct ProgramBuilder<R> { /* private accumulating builder */ }
+struct Expr<T, R> { /* result type T; inferred requirements R */ }
+struct Type<T, R> { /* value type T; representation requirements R */ }
+struct Local<T, R> { /* callable-branded local */ }
+struct Field<Record, T> { /* declaration-branded field */ }
+struct Record<Record, Fields> { /* exact field list */ }
+struct Function<Arguments, Result> { /* exact signature */ }
 
-trait Supports<F> {}
+struct Nil;
+struct Cons<Head, Tail>;
+struct NoneRequired;
+struct Requires<Feature, Tail>;
+struct All<Left, Right>;
+
+trait Supports<Feature> {}
+trait SupportsAll<Requirements> {}
 ```
 
-Closed portable primitive and feature sets use marker types or enums. Dynamic
-declarations use opaque typed handles. Text is metadata or a checked spelling;
-it is never symbol identity.
+Concrete names may differ, but the represented relationships and privacy
+boundary are mandatory.
 
-## Construction rules
+## Inference rules
 
-- Public AST fields MUST be private.
-- A public constructor MUST preserve every invariant expressed by its return
-  type and MUST NOT accept an untyped expression or symbol ID.
-- `Expr<T>` operators MUST encode operand and result relationships in their
-  Rust signatures.
-- A function body constructor MUST accept only `Expr<R>` for its declared
-  return type `R`.
-- A call MUST accept the exact argument tuple recorded by its function handle.
-- A record constructor MUST accept every declared field exactly once with its
-  declared type. Positional typed constructor handles MAY enforce this for a
-  bounded initial arity.
-- A field projection MUST pair a field handle with `Expr<Record<R>>` for the
-  same `R`.
-- Local and parameter expressions MUST originate from typed handles issued by
-  their owning callable/scope builder.
-- Target-neutral literal names MUST pass compile-time lexical and protected
-  word checks. Final target spelling and collision resolution remain linker
-  responsibilities.
+- Every safe constructor returns a value whose requirement type contains the
+  feature it uses and the requirements of all children.
+- A consuming program builder returns a new builder type after adding a
+  declaration. Therefore a caller cannot mutate the program while discarding
+  the corresponding requirement proof.
+- Requirement trees may contain repeated features. `SupportsAll` recursively
+  checks every leaf, so deduplication is not required for soundness.
+- Users normally bind the completed program with `let`; they do not manually
+  name or maintain its inferred requirement type.
+- No constructor accepts caller-provided evidence that a feature was used or
+  supported.
 
-## Feature profiles
+The initial feature markers are:
 
-Each static program carries a closed feature profile `F`. A target language
-opts in explicitly:
+| Family | Markers |
+| --- | --- |
+| Declarations | `Functions`, `Records` |
+| References | `LocalReads`, `FunctionCalls`, `RecordConstruction`, `FieldAccess` |
+| Values | `BoolValues`, `I32Values`, `I64Values`, `F64Values`, `TextValues` |
+| Operations | `BooleanLogic`, `Equality`, `Ordering`, `CheckedIntegerArithmetic`, `WrappingIntegerArithmetic`, `FloatingPointArithmetic`, `StringConcatenation` |
+
+Interfaces, interface values, implementations, composition, control flow,
+collections, options/results, and future constructs extend this catalogue with
+new independent markers rather than a new profile version.
+
+## Arbitrary typed lists
+
+One recursive `Nil`/`Cons` representation is shared by:
+
+- function parameter specifications;
+- body-local handles derived from those parameters;
+- call argument expressions;
+- record field specifications and handles; and
+- constructor value expressions.
+
+A parameter list has an associated type list and a corresponding branded local
+list. A function handle stores that exact type list. A call compiles only when
+its argument list has the same type list. Records and constructors obey the
+same rule.
+
+The API MUST NOT expose `function0`, `function1`, `function2`, `callN`,
+`recordN`, `constructN`, or an untyped public vector alternative. Recursive
+lists make ordinary arity structural rather than an expanding API surface.
+
+Target or resource limits are explicit checked constraints. They are not
+encoded as arbitrary omissions from the authoring API.
+
+## Construction invariants
+
+- Public AST and proof fields are private.
+- Expression operators encode operand and result types in Rust signatures.
+- Function bodies return only expressions of the declared return type.
+- Field projection requires a field and record value carrying the same
+  invariant declaration brand.
+- Local reads require a handle carrying the current callable-body brand.
+- Record construction supplies every field exactly once and in declaration
+  order through its typed list.
+- Literal portable names pass constant lexical and protected-word checking.
+- Final spelling, collision resolution, imports, and dependencies remain
+  target-linker responsibilities.
+
+## Target support
+
+Every target opts into individual features:
 
 ```rust
-impl Supports<StaticV1> for JavaDialect {}
+impl Supports<Functions> for JavaDialect {}
+impl Supports<I32Values> for JavaDialect {}
+impl Supports<WrappingIntegerArithmetic> for JavaDialect {}
 ```
 
-Generation requires the bound:
+Shared recursion derives the complete proof:
 
 ```rust
-fn generate<L, F>(program: &StaticProgram<F>) -> Source<L>
+impl<D> SupportsAll<NoneRequired> for D {}
+
+impl<D, F, Tail> SupportsAll<Requires<F, Tail>> for D
 where
-    L: Supports<F>;
+    D: Supports<F> + SupportsAll<Tail>,
+{}
+
+impl<D, Left, Right> SupportsAll<All<Left, Right>> for D
+where
+    D: SupportsAll<Left> + SupportsAll<Right>,
+{}
 ```
 
-There is no blanket implementation. Adding a profile or target therefore
-forces an explicit compile-time support decision.
-
-`StaticV1` contains only the constructs enumerated by ADR-0006. A type or
-operation absent from that list has no public static constructor in this
-profile.
+There is no `SupportsAll<R>` fallback which treats unknown requirements as
+supported. A backend method accepts `TypedProgram<R>` only with the explicit
+bound `Dialect: SupportsAll<R>`.
 
 ## Static and dynamic convergence
 
-Static construction may lower through a private compatibility bridge while
-M34A migrates existing CoreIR. The bridge MUST NOT expose unchecked input and
-MUST treat rejection as an internal invariant defect. Its output is immutable.
+Typed construction may replay through a private checked/CoreIR bridge during
+migration. Safe callers cannot supply unchecked nodes to that bridge. Any
+rejection is an implementation defect rather than a user diagnostic.
 
-A future dynamic frontend performs fallible resolution and checking before it
-may produce the same internal representation:
+Unknown data follows:
 
-```rust
-fn try_from_unknown(input: UnknownProgram)
-    -> Result<DynamicallyCheckedProgram, Diagnostics>;
+```text
+UnknownProgram -> checker -> Result<CheckedProgram, Diagnostics>
 ```
 
-Downstream target code MUST NOT distinguish whether a valid program originated
-from static construction or successful dynamic refinement.
+Downstream target ASTs and renderers do not distinguish the origin after a
+valid program has crossed the appropriate proof boundary.
 
-## `StaticV1` implementation shape
+## Cross-language obligation
 
-The Rust API stores an owned, private `StaticNode` tree. `StaticExpr<T>` wraps
-one of those nodes and carries its result type only in an invariant phantom
-brand; callers cannot construct either representation directly. Once a
-function body is complete, a private bridge allocates Core node identities and
-replays the tree into the existing dynamic builder. The checker and CoreIR
-verifier remain defensive test oracles, not user-facing validation on this
-path.
+Rust, TypeScript, derived JavaScript, Python, Go, Java, C++20, and C17 all use
+the same inferred portable requirements. Each independently declares support
+for a feature only when its language specification provides total lowering,
+certified target syntax, deterministic rendering, and native compiler/runtime
+evidence for every admitted shape.
 
-Callable builders quantify over a fresh body lifetime. Consequently, a local
-from one function cannot be retained and used in another function. Record
-builders use a continuation quantified over a fresh invariant record lifetime.
-The record value, its fields, and its exact constructor share that lifetime, so
-Rust cannot unify a field from one record with a value of another record even
-when both records have identical shapes.
-
-The initial bounded record constructors are `record1` and `record2`; their
-signatures require exactly one or two values in declaration order. The initial
-function constructors are `function0`, `function1`, and `function2`, and their
-handles encode the exact argument tuple and return type used by `call0`,
-`call1`, and `call2`. Expanding arity adds typed constructors; it does not add
-an untyped vector escape hatch.
-
-`portable_name!` validates ASCII spelling and the union of protected words at
-constant evaluation. Preferred-name collisions are resolved deterministically
-before the compatibility bridge (`name`, `name_2`, `name_3`, ...); target
-spelling and target imports remain the language linker's responsibility.
-
-## Java `StaticV1` mapping
-
-Java declares `Supports<StaticV1>`. Its public static entry point accepts only
-`StaticProgram<StaticV1>` and reuses the certified Java target pipeline. The
-admitted profile maps to Java records, static methods, typed constructor calls,
-field accessors, literals, and the already certified Java intrinsic mappings.
-
-The entry point MUST NOT accept `CheckedProgram`, unchecked PolyIR, arbitrary
-CoreIR, Java AST, or source strings under the static API name.
+JavaScript inherits TypeScript's portable support proof and additionally
+requires the pinned TypeScript derivation proof. It does not create an
+independent semantic feature registry.
 
 ## Required proof
 
-- Compile-pass: a typed record plus a two-argument mathematical function using
-  nested grouping generates Java and executes successfully.
-- Compile-fail: mixed arithmetic types, non-Boolean Boolean operations, wrong
-  function return type, wrong call arguments, wrong record constructor fields,
-  cross-record field access, protected identifiers, and a language lacking
-  `Supports<StaticV1>`.
-- Java output compiles with hermetic Java 21, `-Xlint:all`, and `-Werror`.
-- Three identical generations produce byte-identical manifests.
-- The static entry point cannot be called with an ordinary `CheckedProgram`.
-- The full existing Java dynamic/certificate suite remains green.
+- Compile-pass a function and record containing at least three typed elements.
+- Compile-fail mixed operands, wrong returns, wrong argument types/counts,
+  wrong constructor types/counts, cross-record fields, cross-body locals,
+  protected names, proof forgery, and missing feature support.
+- Every exposed constructor replays through the checker and CoreIR verifier.
+- An admitted Java program generates deterministically, compiles under the
+  hermetic Java 21 toolchain with all warnings denied, and executes.
+- Source policy rejects closed profiles, arity-numbered typed APIs, unchecked
+  typed-program inputs, and target support fallback implementations.

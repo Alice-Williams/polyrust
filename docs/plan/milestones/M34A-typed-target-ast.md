@@ -11,7 +11,7 @@ Replace dependency-complete executable text fragments with the accepted
 ADR-0004 pipeline as amended by ADR-0005 and ADR-0006. Static Rust-authored
 programs use the valid-by-construction path:
 
-`StaticProgram<F> -> TargetProgram<D, F> where D: Supports<F>
+`TypedProgram<R> -> TargetProgram<D, R> where D: SupportsAll<R>
 -> RenderReadyPackage<D> -> RenderedPackage -> OutputManifest`.
 
 Unknown/dynamic input retains the fallible refinement path:
@@ -46,21 +46,23 @@ Shared layers:
 10. [M34A-09 — manifest verification and evidence harness](../tasks/M34A-09-manifest-verification.md)
 11. [M34A-08R — intrinsic validity certificates and total rendering](../tasks/M34A-08R-intrinsic-validity-rendering.md)
 12. [M34A-08S — static valid-by-construction portable AST](../tasks/M34A-08S-static-portable-ast.md)
+13. [M34A-08T — inferred feature builder](../tasks/M34A-08T-inferred-feature-builder.md)
 
 Language migrations:
 
-13. [M34A-10 — Java](../tasks/M34A-10-java.md) — in progress
+14. [M34A-10 — Java](../tasks/M34A-10-java.md) — in progress
     - [M34A-10R — blind-review remediation](../tasks/M34A-10R-java-review-remediation.md)
     - [M34A-10V — intrinsic Java syntax validity](../tasks/M34A-10V-java-intrinsic-validity.md)
     - [M34A-10S — static portable-program generation](../tasks/M34A-10S-java-static-program.md)
-14. [M34A-11 — C17](../tasks/M34A-11-c.md)
-15. [M34A-12 — Rust](../tasks/M34A-12-rust.md)
-16. [M34A-13 — TypeScript](../tasks/M34A-13-typescript.md)
-17. [M34A-14 — compiler-derived JavaScript](../tasks/M34A-14-javascript.md)
-18. [M34A-15 — Python](../tasks/M34A-15-python.md)
-19. [M34A-16 — Go](../tasks/M34A-16-go.md)
-20. [M34A-17 — C++20](../tasks/M34A-17-cpp.md)
-21. [M34A-18 — legacy deletion, historical replay, and release](../tasks/M34A-18-replay-release.md)
+    - [M34A-10T — inferred capability generation](../tasks/M34A-10T-java-inferred-capabilities.md)
+15. [M34A-11 — C17](../tasks/M34A-11-c.md)
+16. [M34A-12 — Rust](../tasks/M34A-12-rust.md)
+17. [M34A-13 — TypeScript](../tasks/M34A-13-typescript.md)
+18. [M34A-14 — compiler-derived JavaScript](../tasks/M34A-14-javascript.md)
+19. [M34A-15 — Python](../tasks/M34A-15-python.md)
+20. [M34A-16 — Go](../tasks/M34A-16-go.md)
+21. [M34A-17 — C++20](../tasks/M34A-17-cpp.md)
+22. [M34A-18 — legacy deletion, historical replay, and release](../tasks/M34A-18-replay-release.md)
 
 Tasks are dependency ordered. A task is committed and pushed only after its
 listed tests pass in the Linux development container. Language tasks update
@@ -70,7 +72,8 @@ the ADR-0004 compliance ledger in the same checkpoint.
 
 - Every shared layer specification has its named compile-fail, fault-injection,
   unit, property, and deterministic evidence.
-- Every statically authored example is a `StaticProgram<F>`; invalid operands,
+- Every typed Rust-authored example is a `TypedProgram<R>` with inferred
+  requirements; invalid operands,
   calls, returns, constructors, fields, identifiers, and unsupported target
   profiles fail during Rust compilation.
 - Every renderer accepts only an opaque render-ready certificate, is total over

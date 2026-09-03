@@ -13,7 +13,7 @@ which component owns every decision, and how failures remain atomic.
 ## Phase types
 
 ```rust
-struct StaticProgram<F> { /* valid-by-construction portable AST */ }
+struct TypedProgram<R> { /* valid-by-construction AST plus inferred requirements */ }
 struct UncheckedDocument { /* serializable PolyIR */ }
 struct CheckedProgram { /* private checker construction */ }
 struct CoreProgram { /* private CoreIR lowerer construction */ }
@@ -31,7 +31,7 @@ earlier representation to smuggle target state backward.
 ## Frontend contract
 
 The static typed Rust API is the reference frontend. It produces
-`StaticProgram<F>` directly and follows Layer 0. The verbose legacy builder and
+`TypedProgram<R>` directly and follows Layer 0. The verbose legacy builder and
 future parsers are dynamic frontends: they produce unchecked PolyIR and pass
 through the checker.
 
@@ -71,7 +71,7 @@ returning.
 
 ## Plugin lowering contract
 
-A static target entry point requires `D: Supports<F>`. For that admitted
+A typed target entry point requires `D: SupportsAll<R>`. For that admitted
 profile, user-caused portable typing, capability, and target-syntax failures
 MUST be unrepresentable; lowering is total. A temporary private bridge may
 replay the dynamic checker as a defensive assertion during migration.

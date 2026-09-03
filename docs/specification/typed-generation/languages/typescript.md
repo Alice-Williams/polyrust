@@ -4,6 +4,14 @@
 - Target ID: `org.polyrust.typescript`
 - Language/toolchain: strict ESM, TypeScript 7.0.2, Node.js 24.20.0
 
+## Inferred typed-program admission
+
+`TypeScriptDialect` MUST implement `Supports<F>` separately for each portable
+feature whose complete strict-TypeScript mapping has passed this specification.
+Typed generation accepts `TypedProgram<R>` only under
+`TypeScriptDialect: SupportsAll<R>`. There is no profile-wide, wildcard, or
+default support claim.
+
 ## 1. Scope and package
 
 The plugin emits:

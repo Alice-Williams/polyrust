@@ -4,6 +4,14 @@
 - Target ID: `org.polyrust.python`
 - Language/toolchain: Python 3.13.5, Ruff 0.16.5, mypy 2.3.1, pytest 9.1.1
 
+## Inferred typed-program admission
+
+`PythonDialect` MUST implement `Supports<F>` separately for each portable
+feature whose complete Python mapping has passed this specification. Typed
+generation accepts `TypedProgram<R>` only under
+`PythonDialect: SupportsAll<R>`. Python's dynamic runtime does not justify a
+wildcard or default support implementation.
+
 ## 1. Scope and package
 
 The plugin emits:

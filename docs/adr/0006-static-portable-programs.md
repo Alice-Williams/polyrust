@@ -1,6 +1,6 @@
 # ADR-0006: Static portable programs valid by construction
 
-- Status: accepted
+- Status: superseded by ADR-0007
 - Milestone: M34A
 - Date: 2026-09-03
 - Amends: ADR-0004 and ADR-0005 frontend and proof-boundary decisions

@@ -4,6 +4,14 @@
 - Target ID: `org.polyrust.javascript`
 - Derivation toolchain: TypeScript 7.0.2, Node.js 24.20.0
 
+## Inferred typed-program admission
+
+JavaScript inherits the exact `TypedProgram<R>` admission proof from
+`TypeScriptDialect: SupportsAll<R>` and additionally requires the pinned
+TypeScript-to-JavaScript derivation stage. It MUST NOT advertise an independent
+semantic `Supports<F>` registry, because doing so could drift from the sole
+TypeScript source program.
+
 ## 1. Architectural status
 
 JavaScript is a derived output of the TypeScript plugin. It does not own:

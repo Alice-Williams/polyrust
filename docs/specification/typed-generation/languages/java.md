@@ -12,31 +12,31 @@ optional structural runtime declarations, native/conformance tests, and
 negative compilation fixtures. A separately compiled consumer MUST be able to
 use every portable public API. No undeclared runtime dependency is permitted.
 
-Java is the first static portable-program target. `JavaDialect` MUST explicitly
-implement `Supports<StaticV1>`, and its static entry point MUST accept only
-`StaticProgram<F>` under the bound `JavaDialect: Supports<F>`. The admitted
-profile's typed records, fields, constructors, functions, calls, primitive
-expressions, and nested arithmetic lower through the same certified Java AST,
-linker, post-link checker, and total renderer described below.
+Java is the first inferred typed-program target. `JavaDialect` MUST implement
+`Supports<F>` separately for every admitted portable feature. Its typed entry
+point accepts only `TypedProgram<R>` under the bound
+`JavaDialect: SupportsAll<R>`. Typed records, fields, constructors, functions,
+calls, primitive expressions, and operations lower through the same certified
+Java AST, linker, post-link checker, and total renderer described below.
 
-The static path has no user-caused Java syntax or capability diagnostic after
+The typed path has no user-caused Java syntax or capability diagnostic after
 construction. The current `CheckedProgram` entry point remains the explicitly
 dynamic compatibility path until existing examples are migrated.
 
-The concrete entry point is total at its public static boundary:
+The concrete entry point is total at its public typed boundary:
 
 ```rust
-fn generate_static<F>(&self, program: &StaticProgram<F>) -> OutputManifest
+fn generate_typed<R>(&self, program: &TypedProgram<R>) -> OutputManifest
 where
-    F: StaticFeatureProfile,
-    JavaDialect: Supports<F>;
+    R: Requirements,
+    JavaDialect: SupportsAll<R>;
 ```
 
 It delegates to the same verified CoreIR-to-Java compiler as the dynamic path.
 Any rejection is converted to an invariant panic identifying a PolyRust defect;
 it is not returned as a user validation branch. `JavaDialect` implements
-`Supports<StaticV1>` explicitly and no other profile implicitly inherits that
-claim.
+individual `Supports<F>` implementations explicitly. No profile, wildcard, or
+default implementation can make an unlisted feature admissible.
 
 ## 2. Capability strategies
 
@@ -408,11 +408,11 @@ loops/strings, and manual dependency registration are deleted and every
 executable compilation unit flows through verified Java AST, automatic symbol
 resolution, render-ready certification, and total structural rendering.
 
-The Java static path additionally passes only when `Supports<StaticV1>` is an
-explicit compile-time implementation, the checked-in static example exercises
-typed record construction and nested arithmetic, all invalid static examples
-fail Rust compilation, and the accepted output compiles and executes under the
-hermetic Java 21 toolchain.
+The Java typed path additionally passes only when every used feature has an
+explicit compile-time implementation, the checked-in inferred example
+exercises an arbitrary-arity function and record plus nested arithmetic, all
+invalid typed examples fail Rust compilation, and the accepted output compiles
+and executes under the hermetic Java 21 toolchain.
 
 The checked-in authoring example is
 `crates/backend-java/examples/generate_static_v1.rs`. Bazel materializes its

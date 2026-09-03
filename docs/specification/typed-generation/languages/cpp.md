@@ -5,6 +5,14 @@
 - Language/toolchain: C++20 through the hermetic Zig SDK, with GCC 14.2.0
   sanitizer verification
 
+## Inferred typed-program admission
+
+`CppDialect` MUST implement `Supports<F>` separately for each portable feature
+whose complete C++20 mapping has passed this specification. Typed generation
+accepts `TypedProgram<R>` only under `CppDialect: SupportsAll<R>`. Native and
+emulated mappings both require explicit feature evidence; there is no wildcard
+or default support claim.
+
 ## 1. Scope and package
 
 The plugin emits self-contained public headers, implementation/runtime source

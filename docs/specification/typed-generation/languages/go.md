@@ -4,6 +4,13 @@
 - Target ID: `org.polyrust.go`
 - Language/toolchain: Go 1.25.14
 
+## Inferred typed-program admission
+
+`GoDialect` MUST implement `Supports<F>` separately for each portable feature
+whose complete Go mapping has passed this specification. Typed generation
+accepts `TypedProgram<R>` only under `GoDialect: SupportsAll<R>`. There is no
+profile-wide, wildcard, or default support claim.
+
 ## 1. Scope and package
 
 The plugin emits a self-contained Go module containing `go.mod`, generated

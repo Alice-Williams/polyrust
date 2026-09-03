@@ -14,7 +14,7 @@ it is not evidence of typed executable syntax.
 | Surface | CoreIR input | Typed executable AST | Typed symbols and derived dependencies | Structural runtime | Render-ready certificate and total renderer | Result |
 | --- | --- | --- | --- | --- | --- | --- |
 | Shared codegen | `CoreProgram` is the only lowering input | Generic checked target AST | Catalogue/linker-derived bindings, imports, files, helpers, and packages | Typed helper DAG and structural items | Opaque verify/link/certify states, sealed certified adapter, and total structural-renderer extension point | **Pass** |
-| Static generic AST | Sealed `StaticProgram<StaticV1>` with defensive checker/CoreIR replay | Private `StaticExpr<T>` tree and invariant body/record handles | Constant-checked names plus compile-time `Supports<F>` target evidence | Not applicable at this layer | Admitted target adapters are total; rejection is an implementation defect | **Pass** |
+| Inferred typed AST | `TypedProgram<R>` and consuming builder specified; profile implementation is being replaced | Private `Expr<T, R>` plus invariant body/record handles and recursive typed lists required | Constant-checked names plus inferred requirements and `SupportsAll<R>` | Not applicable at this layer | Admitted target adapters are total; rejection is an implementation defect | **Partial** |
 | Rust | Missing | Missing: `RustCode`/raw documents | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | TypeScript | Missing | Missing: paired `EcmaCode` | Manually attached fragment metadata | Raw runtime source | Paired source path | **Fail** |
 | JavaScript | Missing | Independently paired source exists | Shares manual ECMA metadata | Checked-in/runtime paired text | Not solely compiler-derived | **Fail** |
@@ -49,9 +49,9 @@ it is not evidence of typed executable syntax.
 
 The locations for rows which still fail are migration inputs, not allowlisted
 final architecture. Shared codegen implements the ADR-0005 target foundation,
-and the ADR-0006 `StaticV1` generic layer is complete. Java is the first
-language with an implemented static adapter and remains **Partial** only until
-the user's requested review accepts that path.
+and ADR-0007 supersedes the coarse ADR-0006 profile with inferred per-feature
+requirements. Java's previously implemented profile adapter remains migration
+evidence, but it does not make the new inferred path compliant.
 
 ## Shared M34A-08S evidence
 
