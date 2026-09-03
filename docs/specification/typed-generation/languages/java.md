@@ -415,9 +415,10 @@ invalid typed examples fail Rust compilation, and the accepted output compiles
 and executes under the hermetic Java 21 toolchain.
 
 The checked-in authoring example is
-`crates/backend-java/examples/generate_static_v1.rs`. Bazel materializes its
-six-file package under the `generate_static_v1_package` target. The independent
-consumer checks that `computed()` evaluates `(7 + 2) * (7 - 2)` as `45` and
-that `make_point(3, 4)` returns a `Point` with the exact two fields. Generated
-operator operands and multiplication are explicitly parenthesized, with final
-temporaries preserving portable left-to-right evaluation order.
+`crates/backend-java/examples/generate_typed.rs`. Bazel materializes its
+six-file package under the `generate_typed_package` target. The independent
+consumer checks that `computed()` evaluates `(7 + 2) * (7 - 2) + 5` as `50`
+and that `make_point(3, 4, 5)` returns a `Point3` with the exact three fields.
+Generated operator operands are parenthesized, with final temporaries
+preserving portable left-to-right evaluation order. The example therefore
+proves that neither callable nor record shape is capped at arity two.

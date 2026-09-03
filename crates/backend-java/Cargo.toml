@@ -35,5 +35,5 @@ name = "generate_java_v0"
 path = "examples/generate_v0.rs"
 
 [[example]]
-name = "generate_java_static_v1"
-path = "examples/generate_static_v1.rs"
+name = "generate_java_typed"
+path = "examples/generate_typed.rs"

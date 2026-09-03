@@ -1,6 +1,6 @@
 # M34A-10T — Generate Java from inferred capabilities
 
-- Status: planned
+- Status: in-progress
 - Depends on: M34A-08T and M34A-10S
 - Blocks: Java inferred-path review and M34A-11
 
@@ -36,10 +36,25 @@ generate an arbitrary-arity `TypedProgram<R>` only when
 
 ## Commit gate
 
-Commit and push `M34A-10T: generate Java from inferred capabilities` only
-after all named proof passes. Require hosted CI for the exact implementation
-checkpoint before handing Java back for review.
+The shared removal and Java's first consumer migration form one atomic
+buildable checkpoint: `M34A-08T/M34A-10T: infer typed Java capabilities`.
+Require hosted CI for that exact implementation checkpoint before marking this
+task complete and handing Java back for review.
 
 ## Exit evidence
 
-Pending implementation.
+- `JavaDialect` explicitly implements all 18 initial `Supports<F>` witnesses;
+  the typed entry point requires the recursively derived `SupportsAll<R>`.
+- The checked-in example uses an exact three-argument function call, a
+  three-field record construction, field-preserving public consumption, and
+  nested left-to-right arithmetic producing `50`.
+- Three generated manifests are byte-identical. Hermetic Java 21 compiles the
+  generated API and separate consumer with `-Xlint:all -Werror`.
+- Every Java Bazel target passed: 21/21
+  (`5e6dd0c8-4ebb-4742-8280-05c17bd9c324`). The complete tracked and release
+  evidence is recorded in M34A-08T and also includes all historical Java
+  verifier, mutation, interface, native, snapshot, and conformance targets.
+- The locked Cargo suite passed both Java compile-fail examples and all 75 Java
+  unit tests.
+- Pending: push the immutable implementation checkpoint and require hosted CI
+  success for its exact SHA before user review.

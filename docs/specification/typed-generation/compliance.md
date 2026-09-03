@@ -2,7 +2,7 @@
 
 - Status: normative baseline for M34A
 - Baseline date: 2026-09-02
-- Last updated: 2026-09-03
+- Last updated: 2026-09-04
 - Supersedes for new work: `docs/language-ir-compliance.md`
 
 This ledger measures the stronger ADR-0004/ADR-0005/ADR-0006 contract. The M30 ledger remains
@@ -14,13 +14,13 @@ it is not evidence of typed executable syntax.
 | Surface | CoreIR input | Typed executable AST | Typed symbols and derived dependencies | Structural runtime | Render-ready certificate and total renderer | Result |
 | --- | --- | --- | --- | --- | --- | --- |
 | Shared codegen | `CoreProgram` is the only lowering input | Generic checked target AST | Catalogue/linker-derived bindings, imports, files, helpers, and packages | Typed helper DAG and structural items | Opaque verify/link/certify states, sealed certified adapter, and total structural-renderer extension point | **Pass** |
-| Inferred typed AST | `TypedProgram<R>` and consuming builder specified; profile implementation is being replaced | Private `Expr<T, R>` plus invariant body/record handles and recursive typed lists required | Constant-checked names plus inferred requirements and `SupportsAll<R>` | Not applicable at this layer | Admitted target adapters are total; rejection is an implementation defect | **Partial** |
+| Inferred typed AST | `TypedProgram<R>` and its consuming builder replay privately through the checker and CoreIR verifier | Private `TypedExpr<T, R>` plus invariant body/record handles and recursive typed lists | Constant-checked names plus inferred requirements and recursive `SupportsAll<R>` | Not applicable at this layer | Admitted target adapters are total; rejection is an implementation defect | **Pass** |
 | Rust | Missing | Missing: `RustCode`/raw documents | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | TypeScript | Missing | Missing: paired `EcmaCode` | Manually attached fragment metadata | Raw runtime source | Paired source path | **Fail** |
 | JavaScript | Missing | Independently paired source exists | Shares manual ECMA metadata | Checked-in/runtime paired text | Not solely compiler-derived | **Fail** |
 | Python | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | Go | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
-| Java | Exhaustive verified `CoreProgram` lowering | Closed Java 21 AST and pre/post-link verification | Closed catalogues, typed references, and linker-derived imports | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer; local and hosted gates green | **Partial** pending user review |
+| Java | Exhaustive verified `CoreProgram` lowering, including the inferred typed-program bridge | Closed Java 21 AST and pre/post-link verification | Per-feature `Supports<F>` evidence, closed catalogues, typed references, and linker-derived imports | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer | **Partial** pending user review and hosted evidence |
 | C++20 | Missing | Missing: `CppCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 | C17 | Missing | Missing: `CCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 
@@ -50,8 +50,37 @@ it is not evidence of typed executable syntax.
 The locations for rows which still fail are migration inputs, not allowlisted
 final architecture. Shared codegen implements the ADR-0005 target foundation,
 and ADR-0007 supersedes the coarse ADR-0006 profile with inferred per-feature
-requirements. Java's previously implemented profile adapter remains migration
-evidence, but it does not make the new inferred path compliant.
+requirements. Java is the first target migrated to that inferred path.
+
+## Shared M34A-08T evidence
+
+- `TypedProgram<R>` and `ProgramBuilder<R>` have private invariant-bearing
+  fields. Every declaration consumes the builder and returns a builder whose
+  structural requirement tree includes its parameter, result, body, and
+  declaration features.
+- One sealed `Nil`/`Cons` list supports arbitrary parameter, argument, and
+  field counts. Generative lifetimes prevent cross-body locals and
+  cross-record fields from unifying.
+- Eleven compile-fail cases cover operands, returns, call types and arity,
+  constructor types and arity, field and local brands, protected names,
+  wrapper forgery, and missing dialect support. Positive proof invokes every
+  exposed constructor and replays it through the checker and CoreIR verifier.
+- Source policy permanently rejects the removed closed profile and
+  arity-numbered builder names in production typed-builder code.
+
+## Java M34A-10T evidence
+
+- `JavaDialect` advertises each of the 18 initial features with an explicit
+  `Supports<F>` implementation. `generate_typed` is available only under the
+  recursively derived `JavaDialect: SupportsAll<R>` bound.
+- The checked-in inferred example generates a three-parameter function, exact
+  three-argument call, three-field record, exact construction, and nested
+  arithmetic. Three manifests are byte-identical.
+- Bazel compiles the generated package with hermetic Java 21,
+  `-Xlint:all -Werror`; a separately compiled consumer proves result `50` and
+  exact `Point3(3, 4, 5)` field values.
+- Final full-gate and hosted-CI evidence is recorded in the task files before
+  this row can pass user review.
 
 ## Shared M34A-08S evidence
 

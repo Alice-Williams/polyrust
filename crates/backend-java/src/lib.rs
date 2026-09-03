@@ -12,7 +12,12 @@ mod runtime;
 
 use std::collections::BTreeMap;
 
-use portable_build::{StaticFeatureProfile, StaticProgram, StaticV1, Supports};
+use portable_build::{
+    BoolValues, BooleanLogic, CheckedIntegerArithmetic, Equality, F64Values, FieldAccess,
+    FloatingPointArithmetic, FunctionCalls, Functions, I32Values, I64Values, LocalReads, Ordering,
+    RecordConstruction, Records, Requirements, StringConcatenation, Supports, SupportsAll,
+    TextValues, TypedProgram, WrappingIntegerArithmetic,
+};
 use portable_check::v0::{Capability, CheckedProgram};
 use portable_codegen::{
     Backend, BackendDescriptor, BackendError, BackendOptions, BackendVersion, CanonicalCoreAdapter,
@@ -47,11 +52,11 @@ impl JavaBackend {
         TypedCompilerAdapter::new(CanonicalCoreAdapter, JavaPlugin)
     }
 
-    /// Generates Java from a statically valid portable program.
+    /// Generates Java from a valid-by-construction typed portable program.
     ///
-    /// The `Supports<F>` bound proves at the call site that Java has opted into
-    /// the complete feature profile. A failure below this boundary is therefore
-    /// a PolyRust implementation defect, not a user diagnostic.
+    /// The `SupportsAll<R>` bound proves at the call site that Java implements
+    /// every feature inferred from this particular program. A failure below
+    /// this boundary is a PolyRust implementation defect, not a user diagnostic.
     ///
     /// An ordinary dynamically checked program cannot call this API:
     ///
@@ -59,30 +64,53 @@ impl JavaBackend {
     /// use portable_backend_java::JavaBackend;
     /// use portable_check::v0::CheckedProgram;
     /// fn rejected(program: &CheckedProgram) {
-    ///     let _ = JavaBackend.generate_static(program);
+    ///     let _ = JavaBackend.generate_typed(program);
     /// }
     /// ```
     ///
-    /// A generic profile without explicit Java support also fails to compile:
+    /// A generic requirement tree without a Java support proof also fails:
     ///
     /// ```compile_fail
     /// use portable_backend_java::JavaBackend;
-    /// use portable_build::{StaticFeatureProfile, StaticProgram};
-    /// fn rejected<F: StaticFeatureProfile>(program: &StaticProgram<F>) {
-    ///     let _ = JavaBackend.generate_static(program);
+    /// use portable_build::{Requirements, TypedProgram};
+    /// fn rejected<R: Requirements>(program: &TypedProgram<R>) {
+    ///     let _ = JavaBackend.generate_typed(program);
     /// }
     /// ```
-    pub fn generate_static<F>(&self, program: &StaticProgram<F>) -> OutputManifest
+    pub fn generate_typed<R>(&self, program: &TypedProgram<R>) -> OutputManifest
     where
-        F: StaticFeatureProfile,
-        JavaDialect: Supports<F>,
+        R: Requirements,
+        JavaDialect: SupportsAll<R>,
     {
         self.generate(program.checked_program(), &BackendOptions::default())
-            .unwrap_or_else(|error| panic!("StaticProgram Java invariant failure: {error:#?}"))
+            .unwrap_or_else(|error| panic!("TypedProgram Java invariant failure: {error:#?}"))
     }
 }
 
-impl Supports<StaticV1> for JavaDialect {}
+macro_rules! java_supports {
+    ($($feature:ty),+ $(,)?) => {$(impl Supports<$feature> for JavaDialect {})+};
+}
+
+java_supports!(
+    Functions,
+    LocalReads,
+    FunctionCalls,
+    Records,
+    RecordConstruction,
+    FieldAccess,
+    BoolValues,
+    I32Values,
+    I64Values,
+    F64Values,
+    TextValues,
+    BooleanLogic,
+    Equality,
+    Ordering,
+    CheckedIntegerArithmetic,
+    WrappingIntegerArithmetic,
+    FloatingPointArithmetic,
+    StringConcatenation,
+);
 
 impl Backend for JavaBackend {
     fn descriptor(&self) -> BackendDescriptor {
@@ -190,8 +218,8 @@ impl TypedLanguagePlugin<CoreProgram> for JavaPlugin {
 mod tests {
     use super::*;
     use portable_build::{
-        I32, ModuleBuilder, Operation, Parameter, StaticProgram, StaticV1, Type, Value, Visibility,
-        portable_name, static_program,
+        I32, ModuleBuilder, Operation, Parameter, Type, Value, Visibility, field, parameter,
+        portable_name, typed_list, typed_program,
     };
     use portable_codegen::{OutputContents, TypedGenerationError, TypedPipelineStage};
     use std::collections::BTreeSet;
@@ -206,47 +234,75 @@ mod tests {
         .expect("fixture checks")
     }
 
-    fn static_v1_fixture() -> StaticProgram<StaticV1> {
-        static_program::<StaticV1>(portable_name!("java_static_v1"), |module| {
-            let compute = module.function2(
+    fn typed_fixture_manifests() -> [OutputManifest; 3] {
+        let program = typed_program(portable_name!("java_inferred"), |builder| {
+            let added = builder.function(
                 portable_name!("compute"),
-                (portable_name!("left"), I32::TYPE),
-                (portable_name!("right"), I32::TYPE),
+                typed_list![
+                    parameter(portable_name!("left"), I32::TYPE),
+                    parameter(portable_name!("right"), I32::TYPE),
+                    parameter(portable_name!("scale"), I32::TYPE),
+                ],
                 I32::TYPE,
-                |body, left, right| {
-                    let sum_left = body.read(left.clone());
-                    let sum_right = body.read(right.clone());
+                |body, values| {
+                    let sum_left = body.read(values.head.clone());
+                    let sum_right = body.read(values.tail.head.clone());
                     let sum = body.int_add_wrapping(sum_left, sum_right);
-                    let difference_left = body.read(left);
-                    let difference_right = body.read(right);
+                    let difference_left = body.read(values.head);
+                    let difference_right = body.read(values.tail.head);
                     let difference = body.int_sub_wrapping(difference_left, difference_right);
-                    body.int_mul_wrapping(sum, difference)
+                    let product = body.int_mul_wrapping(sum, difference);
+                    let scale = body.read(values.tail.tail.head);
+                    body.int_add_wrapping(product, scale)
                 },
             );
-            module.record2(
-                portable_name!("Point"),
-                (portable_name!("x"), I32::TYPE),
-                (portable_name!("y"), I32::TYPE),
-                |module, point| {
-                    module.function2(
-                        portable_name!("make_point"),
-                        (portable_name!("x"), I32::TYPE),
-                        (portable_name!("y"), I32::TYPE),
-                        point.ty(),
-                        |body, x, y| {
-                            let x = body.read(x);
-                            let y = body.read(y);
-                            body.construct2(point, x, y)
-                        },
-                    );
-                    module.function0(portable_name!("computed"), I32::TYPE, |body| {
-                        let left = body.i32(7);
-                        let right = body.i32(2);
-                        body.call2(compute, left, right)
-                    });
+            let compute = added.handle;
+            added.builder.record(
+                portable_name!("Point3"),
+                typed_list![
+                    field(portable_name!("x"), I32::TYPE),
+                    field(portable_name!("y"), I32::TYPE),
+                    field(portable_name!("z"), I32::TYPE),
+                ],
+                |builder, point| {
+                    let builder = builder
+                        .function(
+                            portable_name!("make_point"),
+                            typed_list![
+                                parameter(portable_name!("x"), I32::TYPE),
+                                parameter(portable_name!("y"), I32::TYPE),
+                                parameter(portable_name!("z"), I32::TYPE),
+                            ],
+                            point.ty(),
+                            |body, values| {
+                                let x = body.read(values.head);
+                                let y = body.read(values.tail.head);
+                                let z = body.read(values.tail.tail.head);
+                                body.construct(&point, typed_list![x, y, z])
+                            },
+                        )
+                        .builder;
+                    builder
+                        .function(
+                            portable_name!("computed"),
+                            typed_list![],
+                            I32::TYPE,
+                            |body, _| {
+                                let left = body.i32(7);
+                                let right = body.i32(2);
+                                let scale = body.i32(5);
+                                body.call(compute, typed_list![left, right, scale])
+                            },
+                        )
+                        .builder
                 },
-            );
-        })
+            )
+        });
+        [
+            JavaBackend.generate_typed(&program),
+            JavaBackend.generate_typed(&program),
+            JavaBackend.generate_typed(&program),
+        ]
     }
 
     fn generated_text<'a>(manifest: &'a OutputManifest, path: &str) -> &'a str {
@@ -257,11 +313,8 @@ mod tests {
     }
 
     #[test]
-    fn static_v1_generation_is_total_deterministic_and_structural() {
-        let program = static_v1_fixture();
-        let first = JavaBackend.generate_static(&program);
-        let second = JavaBackend.generate_static(&program);
-        let third = JavaBackend.generate_static(&program);
+    fn inferred_generation_is_total_deterministic_and_structural() {
+        let [first, second, third] = typed_fixture_manifests();
         assert_eq!(first.canonical_json(), second.canonical_json());
         assert_eq!(second.canonical_json(), third.canonical_json());
 
@@ -269,13 +322,15 @@ mod tests {
             &first,
             "src/main/java/org/polyrust/generated/Generated.java",
         );
-        assert!(generated.contains("public static record Point(int x, int y)"));
+        assert!(generated.contains("public static record Point3(int x, int y, int z)"));
+        assert!(generated.contains("compute(final int left, final int right, final int scale)"));
         assert!(generated.contains("final int __polyrust_intrinsicOperand_0 = (left + right);"));
         assert!(generated.contains("final int __polyrust_intrinsicOperand_1 = (left - right);"));
         assert!(generated.contains(
-            "Runtime.ok((__polyrust_intrinsicOperand_0 * __polyrust_intrinsicOperand_1))"
+            "final int __polyrust_intrinsicOperand_2 = (__polyrust_intrinsicOperand_0 * __polyrust_intrinsicOperand_1);"
         ));
-        assert!(generated.contains("Runtime.ok(new Point(x, y))"));
+        assert!(generated.contains("Runtime.ok((__polyrust_intrinsicOperand_2 + scale))"));
+        assert!(generated.contains("Runtime.ok(new Point3(x, y, z))"));
     }
 
     #[test]

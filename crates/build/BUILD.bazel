@@ -30,7 +30,13 @@ rust_test(
 )
 
 rust_doc_test(
-    name = "static_program_compile_fail_test",
+    name = "typed_program_compile_fail_test",
     crate = ":portable_build",
     deps = ["//crates/eval:portable_eval"],
+)
+
+filegroup(
+    name = "typed_builder_policy_sources",
+    srcs = ["src/typed_program.rs"],
+    visibility = ["//visibility:public"],
 )

@@ -80,7 +80,7 @@ mod body;
 mod handles;
 mod interface_fixture;
 mod module;
-mod static_program;
+mod typed_program;
 mod value;
 
 pub use body::*;
@@ -88,7 +88,7 @@ pub use handles::*;
 pub use interface_fixture::*;
 pub use module::*;
 pub use portable_ir::v0::{Intrinsic as Operation, Visibility};
-pub use static_program::*;
+pub use typed_program::*;
 pub use value::*;
 
 #[cfg(test)]

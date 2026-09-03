@@ -43,10 +43,29 @@ declarations and expressions.
 
 ## Commit gate
 
-Commit and push `M34A-08T: infer typed program capabilities` only after every
-named shared proof passes. Hosted CI for the exact implementation checkpoint
-must be green before M34A-10T is marked complete.
+The removal and Java's first consumer migration form one atomic buildable
+checkpoint: `M34A-08T/M34A-10T: infer typed Java capabilities`. Push it only
+after every named shared and Java proof passes. Hosted CI for that exact
+implementation checkpoint must be green before either task is marked complete.
 
 ## Exit evidence
 
-Pending implementation.
+- The consuming `TypedProgram<R>` builder infers structural requirements from
+  arbitrary `Nil`/`Cons` parameter, argument, and field lists. All proof state,
+  raw nodes, checker replay, and CoreIR replay remain private.
+- Eleven dedicated compile-fail cases cover wrong operands, returns, argument
+  types/counts, constructor types/counts, cross-record fields, cross-body
+  locals, protected names, wrapper forgery, and missing target support.
+- One positive suite invokes every exposed constructor and replays the result
+  through the checker and CoreIR verifier; separate tests prove three-element
+  lists and deterministic name allocation.
+- Local Linux-container gates passed: focused shared/Java/policy 6/6
+  (`2dd1b94a-5a9f-4ada-b103-d3b88c6807ca`), Rustfmt/strict
+  Clippy/Buildifier/policy 4/4
+  (`f71a3d2c-07e3-4ad0-9c21-f73701b4ee67`), tracked repository 299/299
+  (`6441764b-7f6d-4ca8-8a3e-8dd7fa2495d6`), and release gate 236/236
+  (`bde6d995-3432-4860-9750-93fb9f3cc825`).
+- `cargo test --workspace --all-features --locked` passed with all unit tests
+  and doctests, including the typed builder's compile-fail suite.
+- Pending: push the immutable implementation checkpoint and require hosted CI
+  success for its exact SHA.

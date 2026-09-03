@@ -6,6 +6,7 @@ sh_test(
     data = [
         "typed_generation_source_policy.py",
         "//crates/backend-java:language_ir_policy_sources",
+        "//crates/build:typed_builder_policy_sources",
         "//crates/codegen:typed_target_ast_policy_sources",
     ],
     visibility = ["//visibility:public"],

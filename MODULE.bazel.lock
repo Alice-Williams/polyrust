@@ -525,7 +525,7 @@
           "FILE:@@//crates/eval/Cargo.toml b1f0f6a447856e52e9014d6aa08ca627ee6b115bac77e6fc5c500b3300af15c7",
           "FILE:@@//crates/backend-go/Cargo.toml afd3cb091cc326497f089fd94a394fde094a7d88a35485734174a8db374620a3",
           "FILE:@@//crates/backend-cpp/Cargo.toml 05c0a2fdfafe405018a7062b69656d089b3be12a515652c5669e89ed62d433fb",
-          "FILE:@@//crates/backend-java/Cargo.toml 3b86b68ac5e1ccad05fd44f4826d5c44277aef2dc1b02dc4b33b9f9914f90790",
+          "FILE:@@//crates/backend-java/Cargo.toml aadeb83a16db35b7d3b1c668e623f7451eec35a5a80238f28dad9eb8e44a46e1",
           "FILE:@@//crates/backend-python/Cargo.toml 2a9a7647973283b9afe3e84190415ba3ceffc7a5260360298b3a2ddebe32c87e",
           "FILE:@@//crates/backend-rust/Cargo.toml 085edbf670505985f08b4336d5d2f6f59140e9247fa94862dc23dbf897293bdf",
           "FILE:@@//crates/backend-typescript/Cargo.toml 9f5b4a7f8ff9a8066b6c91d8ff57999204ae272428b78f259c1b9e467ca096ef",

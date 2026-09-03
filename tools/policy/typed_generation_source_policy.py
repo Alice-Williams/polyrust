@@ -34,6 +34,10 @@ FORBIDDEN_DEPENDENCY_TEXT_SCAN = re.compile(
     r"\.(?:contains|find|starts_with)\s*\(\s*"
     r"(?:r[#]*\"|\")\s*(?:import\b|#\s*include\b|use\s+)"
 )
+FORBIDDEN_CLOSED_TYPED_API = re.compile(
+    r"\b(?:StaticV1|StaticFeatureProfile|static_program|"
+    r"function[0-9]+|call[0-9]+|record[0-9]+|construct[0-9]+)\b"
+)
 
 CFG_TEST_ATTRIBUTE = "#[cfg(test)]"
 RAW_STRING_START = re.compile(r'(?:br|rb|r)(?P<hashes>#{0,255})"')
@@ -199,6 +203,7 @@ def offenders(path: str, source: str) -> list[str]:
         ("document field in executable AST", FORBIDDEN_DOCUMENT_FIELD),
         ("manual dependency attachment API", FORBIDDEN_MANUAL_DEPENDENCY_API),
         ("dependency discovery by text scan", FORBIDDEN_DEPENDENCY_TEXT_SCAN),
+        ("closed or arity-numbered typed-builder API", FORBIDDEN_CLOSED_TYPED_API),
     ]:
         for match in pattern.finditer(source):
             line = source.count("\n", 0, match.start()) + 1
@@ -222,6 +227,8 @@ struct AstViolation { message: String }
         "impl From<String> for JavaExpression {}",
         'require_java(&mut body, "java.math.BigInteger");',
         'body.contains("import java.util.List");',
+        "let program = static_program::<StaticV1>(build);",
+        "module.function2(name, left, right, body);",
     ]
     for injected in rejected:
         if not offenders("injected.rs", injected):
