@@ -1,6 +1,6 @@
 # M34A-08S — Add the static valid-by-construction portable AST
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-08R
 - Blocks: M34A-10S and static migration of every remaining language
 
@@ -50,5 +50,25 @@ complete.
 
 ## Exit evidence
 
-Pending implementation.
-
+- `crates/build/src/static_program.rs` contains the sealed static profile,
+  compile-time capability witness, constant-checked names, invariant record
+  and body brands, exact typed functions/calls/records/fields, and the complete
+  `StaticV1` operator surface.
+- Ten Rust compile-fail doctests reject mixed and non-Boolean operands, wrong
+  returns, wrong calls, wrong record construction, cross-record fields,
+  protected names, and proof-wrapper forgery.
+- The compile-pass inventory replays every `StaticV1` constructor through the
+  checker, CoreIR lowerer, and CoreIR verifier. Collision tests prove stable
+  `name`, `name_2`, `name_3` allocation.
+- Focused Bazel invocation `a9ef7e22-6b03-434b-a85e-61d8ef2aed24` passed both
+  `//crates/build` tests without cached results.
+- Strict workspace Clippy passed with `-D warnings`. Tracked-repository Bazel
+  invocation `07b90b57-3637-422c-8d5e-b0be7ba80bbf` passed all 297 tests;
+  untracked, incomplete `examples/real-world/stdlib-abs/` was explicitly
+  excluded and left unchanged.
+- Deterministic eight-target conformance invocation
+  `26af5753-94ca-4483-a24b-1d5882102499` passed. Explicit release-suite
+  invocation `841fecff-5fa9-4ca2-aaf9-ffed4b3eba61` passed all 233 tests,
+  including Rustfmt, Clippy, Buildifier, documentation, policy, and dependency
+  boundaries.
+- Commit and remote SHA: pending checkpoint.

@@ -16,6 +16,7 @@ portable_diagnostics.workspace = true
 portable_ir.workspace = true
 
 [dev-dependencies]
+portable_core_ir.workspace = true
 portable_eval.workspace = true
 serde_json.workspace = true
 

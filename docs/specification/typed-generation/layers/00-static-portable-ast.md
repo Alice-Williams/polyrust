@@ -94,6 +94,35 @@ fn try_from_unknown(input: UnknownProgram)
 Downstream target code MUST NOT distinguish whether a valid program originated
 from static construction or successful dynamic refinement.
 
+## `StaticV1` implementation shape
+
+The Rust API stores an owned, private `StaticNode` tree. `StaticExpr<T>` wraps
+one of those nodes and carries its result type only in an invariant phantom
+brand; callers cannot construct either representation directly. Once a
+function body is complete, a private bridge allocates Core node identities and
+replays the tree into the existing dynamic builder. The checker and CoreIR
+verifier remain defensive test oracles, not user-facing validation on this
+path.
+
+Callable builders quantify over a fresh body lifetime. Consequently, a local
+from one function cannot be retained and used in another function. Record
+builders use a continuation quantified over a fresh invariant record lifetime.
+The record value, its fields, and its exact constructor share that lifetime, so
+Rust cannot unify a field from one record with a value of another record even
+when both records have identical shapes.
+
+The initial bounded record constructors are `record1` and `record2`; their
+signatures require exactly one or two values in declaration order. The initial
+function constructors are `function0`, `function1`, and `function2`, and their
+handles encode the exact argument tuple and return type used by `call0`,
+`call1`, and `call2`. Expanding arity adds typed constructors; it does not add
+an untyped vector escape hatch.
+
+`portable_name!` validates ASCII spelling and the union of protected words at
+constant evaluation. Preferred-name collisions are resolved deterministically
+before the compatibility bridge (`name`, `name_2`, `name_3`, ...); target
+spelling and target imports remain the language linker's responsibility.
+
 ## Java `StaticV1` mapping
 
 Java declares `Supports<StaticV1>`. Its public static entry point accepts only
@@ -116,4 +145,3 @@ CoreIR, Java AST, or source strings under the static API name.
 - Three identical generations produce byte-identical manifests.
 - The static entry point cannot be called with an ordinary `CheckedProgram`.
 - The full existing Java dynamic/certificate suite remains green.
-

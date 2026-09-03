@@ -264,6 +264,7 @@ name = "polyrust-build"
 version = "0.1.0"
 dependencies = [
  "polyrust-check",
+ "polyrust-core-ir",
  "polyrust-diagnostics",
  "polyrust-eval",
  "polyrust-ir",

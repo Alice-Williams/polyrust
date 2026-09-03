@@ -1,4 +1,4 @@
-load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+load("@rules_rust//rust:defs.bzl", "rust_doc_test", "rust_library", "rust_test")
 
 exports_files([
     "Cargo.toml",
@@ -23,7 +23,14 @@ rust_test(
     name = "portable_build_test",
     crate = ":portable_build",
     deps = [
+        "//crates/core-ir:portable_core_ir",
         "//crates/eval:portable_eval",
         "@crates//:serde_json",
     ],
+)
+
+rust_doc_test(
+    name = "static_program_compile_fail_test",
+    crate = ":portable_build",
+    deps = ["//crates/eval:portable_eval"],
 )
