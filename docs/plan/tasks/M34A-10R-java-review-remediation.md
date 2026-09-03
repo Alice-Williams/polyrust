@@ -299,5 +299,26 @@ source parsing, and unrelated renderer conveniences do not block completion.
   `examples/real-world/stdlib-abs/` package. The release gate was strengthened
   to include the hermetic Java verifier compile-fail proof and passed 231 of
   231 tests. A fresh Cargo target passed
+  `cargo test --workspace --all-features --locked`.
+- Round 6 checkpoint `3916e3e8b2ce2cab784e3cedc8504dcf2d20ee2c`
+  was pushed and remotely verified. Fresh Sol/xhigh blind review round 7
+  validated the round 6 repairs and found two additional core verifier
+  blockers; both are accepted.
+- Hosted CI run `33729917103` passed every job for the exact round 6
+  checkpoint.
+- Field initializers must receive static/instance lexical scope verification,
+  blank-final read-before-constructor-assignment checks, and checked-exception
+  preflight. Block verification must reject every statement following control
+  flow that cannot complete normally rather than inspecting only the last
+  statement for method return completeness.
+- Round 7 adds forged-AST regressions for field-initializer scope, blank-final,
+  and checked-exception failures plus unreachable statements. Its hermetic
+  Java 21 corpus separately proves the blank-final initializer and unreachable
+  forms fail `javac`. The initial verifier/compiler/lint replay passed 5 of 5
+  tests, and the uncached complete Java/codegen/policy/snapshot and lint gate
+  passed 35 of 35 tests. The complete tracked repository replay passed 293 of
+  293 tests, excluding only the untouched user-owned untracked
+  `examples/real-world/stdlib-abs/` package. The release gate passed 231 of 231
+  tests, and a fresh Cargo target passed
   `cargo test --workspace --all-features --locked`. Checkpoint commit, push,
   hosted CI, and the next fresh blind review remain pending.

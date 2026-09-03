@@ -97,6 +97,11 @@ test evidence rather than a current **Pass** claim while M34A-10R is open.
   and blank finals, and `instanceof` binder collisions outside selected
   control-flow conditions. Both are accepted core blockers; Java remains
   **Fail** pending round 6 remediation and another clean fresh review.
+- Fresh blind review round 7 of pushed checkpoint `3916e3e8` validated round
+  6, but found two further fail-open verifier paths: field initializers bypass
+  lexical/blank-final/checked-exception preflight, and statements after an
+  unconditional exit remain accepted. Both are accepted core blockers; Java
+  remains **Fail** pending round 7 remediation and another clean fresh review.
 
 ## Pass rule
 

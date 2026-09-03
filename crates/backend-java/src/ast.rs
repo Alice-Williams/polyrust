@@ -2199,6 +2199,22 @@ impl JavaLexicalScope {
         scope.constructor = true;
         (scope, violations)
     }
+
+    fn for_field_initializer(
+        field: &JavaField,
+        owner: Option<JavaType>,
+        declaration: Option<&JavaTypeDeclaration>,
+    ) -> Self {
+        Self {
+            bindings: BTreeMap::new(),
+            allows_this: !field.modifiers.contains(&JavaModifier::Static),
+            owner,
+            constructor: false,
+            owner_fields: declaration
+                .map(declared_instance_fields)
+                .unwrap_or_default(),
+        }
+    }
 }
 
 fn declared_instance_fields(
@@ -2716,7 +2732,14 @@ fn verify_block_scope_in_context(
     context: Option<&TargetAstContext<'_, JavaDialect>>,
 ) -> Vec<AstViolation> {
     let mut violations = Vec::new();
+    let mut can_complete_normally = true;
     for statement in &block.statements {
+        if !can_complete_normally {
+            violations.push(AstViolation::new(
+                DiagnosticCode::InvalidControlFlow,
+                "unreachable Java statement follows control flow that cannot complete normally",
+            ));
+        }
         match statement {
             JavaStmt::Local {
                 finality,
@@ -2933,6 +2956,9 @@ fn verify_block_scope_in_context(
             )),
             JavaStmt::Break | JavaStmt::Continue => {}
         }
+        if can_complete_normally {
+            can_complete_normally = statement_can_complete_normally(statement);
+        }
     }
     violations
 }
@@ -2968,31 +2994,55 @@ fn collect_positive_pattern_bindings(value: &JavaExpr, scope: &mut JavaLexicalSc
 }
 
 fn block_guarantees_exit(block: &JavaBlock) -> bool {
-    block
-        .statements
-        .last()
-        .is_some_and(statement_guarantees_exit)
+    !block_can_complete_normally(block)
 }
 
-fn statement_guarantees_exit(statement: &JavaStmt) -> bool {
+fn block_can_complete_normally(block: &JavaBlock) -> bool {
+    let mut can_complete_normally = true;
+    for statement in &block.statements {
+        if !can_complete_normally {
+            return false;
+        }
+        can_complete_normally = statement_can_complete_normally(statement);
+    }
+    can_complete_normally
+}
+
+fn statement_can_complete_normally(statement: &JavaStmt) -> bool {
     match statement {
-        JavaStmt::Return(_) | JavaStmt::Throw(_) | JavaStmt::ThrowAssertion(_) => true,
+        JavaStmt::Return(_)
+        | JavaStmt::Throw(_)
+        | JavaStmt::ThrowAssertion(_)
+        | JavaStmt::Break
+        | JavaStmt::Continue => false,
         JavaStmt::If {
             then_block,
             else_block: Some(else_block),
             ..
-        } => block_guarantees_exit(then_block) && block_guarantees_exit(else_block),
-        JavaStmt::Switch { arms, .. } => {
-            !arms.is_empty() && arms.iter().all(|arm| block_guarantees_exit(&arm.body))
+        } => block_can_complete_normally(then_block) || block_can_complete_normally(else_block),
+        JavaStmt::Switch { arms, .. }
+            if arms
+                .iter()
+                .any(|arm| matches!(arm.pattern, JavaPattern::Default)) =>
+        {
+            arms.iter()
+                .any(|arm| block_can_complete_normally(&arm.body))
         }
         JavaStmt::TryCatch { try_block, catches } => {
-            block_guarantees_exit(try_block)
-                && !catches.is_empty()
-                && catches
+            block_can_complete_normally(try_block)
+                || catches
                     .iter()
-                    .all(|catch| block_guarantees_exit(&catch.body))
+                    .any(|catch| block_can_complete_normally(&catch.body))
         }
-        _ => false,
+        JavaStmt::Local { .. }
+        | JavaStmt::Assign { .. }
+        | JavaStmt::Expression(_)
+        | JavaStmt::If {
+            else_block: None, ..
+        }
+        | JavaStmt::ForEach { .. }
+        | JavaStmt::While { .. }
+        | JavaStmt::Switch { .. } => true,
     }
 }
 
@@ -4476,6 +4526,39 @@ fn verify_declaration_type_context(
     violations
 }
 
+fn verify_field_initializer_context(
+    field: &JavaField,
+    value: &JavaExpr,
+    owner: Option<&JavaType>,
+    declaration: Option<&JavaTypeDeclaration>,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> Vec<AstViolation> {
+    let scope = JavaLexicalScope::for_field_initializer(field, owner.cloned(), declaration);
+    let mut violations = verify_expr_scope(value, &scope);
+    if let Some(declaration) = declaration {
+        let blank_finals = declaration_blank_instance_finals(declaration);
+        let mut reads = BTreeSet::new();
+        collect_blank_final_reads(value, &blank_finals, &mut reads);
+        for field in reads {
+            violations.push(AstViolation::new(
+                DiagnosticCode::InvalidControlFlow,
+                format!(
+                    "Java field initializer reads blank final field `{}` before constructor assignment",
+                    field.as_str()
+                ),
+            ));
+        }
+    }
+    let unhandled = expr_checked_exceptions(value, context);
+    if !unhandled.is_empty() {
+        violations.push(AstViolation::new(
+            DiagnosticCode::InvalidInvocation,
+            format!("Java field initializer has unhandled checked exceptions: {unhandled:?}"),
+        ));
+    }
+    violations
+}
+
 impl JavaMember {
     pub fn symbols(&self, symbols: &mut BTreeSet<TargetSymbolRef<JavaDialect>>) {
         match self {
@@ -4544,6 +4627,13 @@ impl JavaMember {
                 violations.extend(field.ty.verify(JavaTypeUse::Field));
                 if let Some(value) = &field.initializer {
                     violations.extend(value.verify(context));
+                    violations.extend(verify_field_initializer_context(
+                        field,
+                        value,
+                        owner,
+                        declaration,
+                        context,
+                    ));
                     if value.ty != field.ty {
                         violations.push(type_error("field initializer type mismatch"));
                     }
@@ -6624,6 +6714,29 @@ mod tests {
     }
 
     #[test]
+    fn lexical_verifier_rejects_every_statement_after_noncompleting_control_flow() {
+        let int = JavaType::primitive(JavaPrimitive::Int);
+        let unreachable = fixture_declaration(vec![structural_method(
+            "unreachable",
+            int.clone(),
+            vec![],
+            JavaBlock::new(vec![
+                JavaStmt::Return(Some(JavaExpr::literal(int.clone(), JavaLiteral::I32(1)))),
+                JavaStmt::Return(Some(JavaExpr::literal(int, JavaLiteral::I32(2)))),
+            ]),
+        )]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], unreachable)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidControlFlow
+                && value.message.contains("unreachable Java statement")
+        }));
+    }
+
+    #[test]
     fn runtime_member_catalogue_rejects_false_owner_and_result_claims() {
         assert_eq!(JavaRuntimeMember::ALL.len(), 14);
         let valid = JavaMethodSignature {
@@ -6789,6 +6902,89 @@ mod tests {
             vec![(vec![], caught)],
         );
         assert!(verification.is_ok(), "{verification:?}");
+    }
+
+    #[test]
+    fn field_initializers_have_lexical_blank_final_and_exception_preflight() {
+        let int = JavaType::primitive(JavaPrimitive::Int);
+        let unresolved = fixture_declaration(vec![JavaMember::Field(JavaField {
+            declared: None,
+            modifiers: vec![JavaModifier::Static, JavaModifier::Final],
+            ty: int.clone(),
+            name: JavaIdentifier::from_portable("unresolved"),
+            initializer: Some(JavaExpr::local(
+                int.clone(),
+                JavaIdentifier::from_portable("missing"),
+            )),
+        })]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], unresolved)],
+        )
+        .unwrap_err();
+        assert!(
+            diagnostics
+                .iter()
+                .any(|value| value.code == DiagnosticCode::UnresolvedReference)
+        );
+
+        let (checked_call, _) = decoder_decode_call();
+        let checked = fixture_declaration(vec![JavaMember::Field(JavaField {
+            declared: None,
+            modifiers: vec![JavaModifier::Static, JavaModifier::Final],
+            ty: checked_call.ty.clone(),
+            name: JavaIdentifier::from_portable("checked"),
+            initializer: Some(checked_call),
+        })]);
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], checked)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidInvocation
+                && value.message.contains("field initializer")
+        }));
+
+        let owner = JavaType::known(JavaKnownType::RuntimeError);
+        let assignment = JavaStmt::Assign {
+            target: this_field(owner.clone(), int.clone(), "x"),
+            value: JavaExpr::literal(int.clone(), JavaLiteral::I32(1)),
+        };
+        let mut blank_read = fixture_declaration(vec![
+            JavaMember::Field(JavaField {
+                declared: None,
+                modifiers: vec![JavaModifier::Private, JavaModifier::Final],
+                ty: int.clone(),
+                name: JavaIdentifier::from_portable("x"),
+                initializer: None,
+            }),
+            JavaMember::Field(JavaField {
+                declared: None,
+                modifiers: vec![JavaModifier::Private, JavaModifier::Final],
+                ty: int.clone(),
+                name: JavaIdentifier::from_portable("y"),
+                initializer: Some(this_field(owner, int, "x")),
+            }),
+            JavaMember::Constructor(JavaConstructor {
+                modifiers: vec![],
+                name: JavaIdentifier::from_portable("PolyError"),
+                parameters: vec![],
+                body: JavaBlock::new(vec![assignment]),
+            }),
+        ]);
+        blank_read.name = JavaIdentifier::from_portable("PolyError");
+        let diagnostics = verify_fixture(
+            portable_codegen::TargetAstBuilder::new(JavaDialect),
+            vec![(vec![], blank_read)],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidControlFlow
+                && value
+                    .message
+                    .contains("field initializer reads blank final")
+        }));
     }
 
     #[test]

@@ -14,6 +14,8 @@ readonly expected_diagnostics=(
   "variable result might not have been initialized"
   "variable value might not have been initialized"
   "variable text is already defined"
+  "unreachable statement"
+  "variable x might not have been initialized"
 )
 if [[ "${#sources[@]}" -ne "${#expected_diagnostics[@]}" ]]; then
   echo "each invalid source must have one expected javac diagnostic" >&2

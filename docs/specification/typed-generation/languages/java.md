@@ -116,6 +116,12 @@ option/result branch.
 - A local without an initializer is unreadable until assignment is proven on
   every normally completing path. Branch state joins use intersection and
   exclude alternatives which cannot complete normally.
+- Every statement must be reachable from a normally completing predecessor.
+  Return, throw, break, continue, exhaustive branch, exhaustive switch, and
+  try/catch completion are determined structurally before rendering.
+- Field initializers have an explicit static or instance lexical scope. They
+  cannot refer to locals, use `this` from static context, read a constructor-
+  assigned blank final, or allow an unhandled checked exception.
 - Tagged matches lower to exhaustive verified switches or explicit tag
   switches according to the selected Java 21 strategy.
 - Explicit temporaries preserve CoreIR receiver and argument order.
