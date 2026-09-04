@@ -79,8 +79,11 @@ requirements. Java is the first target migrated to that inferred path.
 - Bazel compiles the generated package with hermetic Java 21,
   `-Xlint:all -Werror`; a separately compiled consumer proves result `50` and
   exact `Point3(3, 4, 5)` field values.
-- Final full-gate and hosted-CI evidence is recorded in the task files before
-  this row can pass user review.
+- Implementation checkpoint
+  `f7c1efef772d2f8d37061bdc11d3e47c9888e1c9` passed hosted CI run
+  `33819834141` in all eight jobs, including cache-cold and cache-warm release
+  gates. This row remains **Partial** only for the user's requested design
+  review.
 
 ## Shared M34A-08S evidence
 

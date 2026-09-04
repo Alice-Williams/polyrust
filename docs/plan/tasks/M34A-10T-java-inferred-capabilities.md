@@ -1,6 +1,6 @@
 # M34A-10T — Generate Java from inferred capabilities
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-08T and M34A-10S
 - Blocks: Java inferred-path review and M34A-11
 
@@ -56,5 +56,9 @@ task complete and handing Java back for review.
   verifier, mutation, interface, native, snapshot, and conformance targets.
 - The locked Cargo suite passed both Java compile-fail examples and all 75 Java
   unit tests.
-- Pending: push the immutable implementation checkpoint and require hosted CI
-  success for its exact SHA before user review.
+- Atomic implementation checkpoint
+  `f7c1efef772d2f8d37061bdc11d3e47c9888e1c9` was pushed and remotely
+  verified. Hosted CI run `33819834141` passed all eight jobs for that exact
+  SHA, including its cache-cold and cache-warm complete release gates. Java is
+  now ready for the user's requested design review; its compliance-ledger row
+  remains **Partial** until that review is accepted.

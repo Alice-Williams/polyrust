@@ -1,6 +1,6 @@
 # M34A-08T — Infer typed-program feature requirements
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-08S
 - Blocks: M34A-10T and every remaining typed-language migration
 
@@ -67,5 +67,8 @@ implementation checkpoint must be green before either task is marked complete.
   (`bde6d995-3432-4860-9750-93fb9f3cc825`).
 - `cargo test --workspace --all-features --locked` passed with all unit tests
   and doctests, including the typed builder's compile-fail suite.
-- Pending: push the immutable implementation checkpoint and require hosted CI
-  success for its exact SHA.
+- Atomic implementation checkpoint
+  `f7c1efef772d2f8d37061bdc11d3e47c9888e1c9` was pushed and remotely
+  verified. Hosted CI run `33819834141` passed all eight jobs for that exact
+  SHA, including both determinism environments, both Rust toolchains,
+  cross-host manifest comparison, and cache-cold plus cache-warm release gates.
