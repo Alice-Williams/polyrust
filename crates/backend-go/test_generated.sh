@@ -8,6 +8,7 @@ package="$(dirname "$source_file")"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 cp -RL "$package/." "$work/"
+chmod -R u+w "$work"
 export GOROOT="$(dirname "$(dirname "$go_bin")")"
 export PATH="$GOROOT/bin:/usr/bin:/bin"
 cd "$work"

@@ -85,6 +85,7 @@ require("password" not in restore.lower() and "token" not in restore.lower(), "c
 require("BAZELISK_HOME: /var/tmp/polyrust-cache/bazelisk" in workflow, "Bazelisk home is not persistent")
 require("--repository_cache=/var/tmp/polyrust-cache/bazel-repository" in bazelrc, "repository cache is not host-neutral")
 require("--disk_cache=/var/tmp/polyrust-cache/bazel-disk" in bazelrc, "disk cache is not host-neutral")
+require("test --test_env=PATH" in bazelrc, "native tools are not passed into Bazel test sandboxes")
 require("test --test_env=RUSTUP_HOME" in bazelrc, "Rust native tests do not receive the selected rustup home")
 require('readonly version="1.29.0"' in install_bazelisk, "Bazelisk version is not pinned")
 require('readonly expected_sha256="' in install_bazelisk, "Bazelisk checksum is not pinned")

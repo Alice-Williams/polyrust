@@ -9,5 +9,6 @@ build --tool_java_runtime_version=remotejdk_21
 # rules_rust defaults to GNU gold, which Debian Trixie no longer ships.
 build --@rules_rust//rust/settings:extra_rustc_flags=-Clink-arg=-fuse-ld=bfd
 test --test_output=errors
+test --test_env=PATH
 test --test_env=RUSTUP_HOME
 test --@rules_rust//rust/settings:clippy_flag=-Dwarnings
