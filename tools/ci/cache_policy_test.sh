@@ -30,8 +30,7 @@ def step(name: str, next_name: str | None) -> str:
 
 
 restore = step("Restore persistent non-semantic caches", "Report persistent cache restoration")
-cold = step("Cache-cold complete gate", "Cache-warm complete gate")
-warm = step("Cache-warm complete gate", "Prepare persistent cache archive")
+gate = step("Cached complete release gate", "Prepare persistent cache archive")
 prepare = step("Prepare persistent cache archive", "Save refreshed persistent non-semantic caches")
 save = step("Save refreshed persistent non-semantic caches", None)
 
@@ -51,23 +50,26 @@ require("${{ github.run_id }}-${{ github.run_attempt }}" in restore, "restore ke
 require("${{ github.run_id }}-${{ github.run_attempt }}" in save, "save key is not per attempt")
 require("restore-keys:" in restore, "compatible prefix restore is missing")
 require("if: ${{ success() }}" in save, "cache save is not success-gated")
-require(workflow.index("Cache-warm complete gate") < workflow.index("Prepare persistent cache archive") < workflow.index("Save refreshed persistent non-semantic caches"), "cache archive preparation/save ordering is invalid")
+require(workflow.index("Cached complete release gate") < workflow.index("Prepare persistent cache archive") < workflow.index("Save refreshed persistent non-semantic caches"), "cache archive preparation/save ordering is invalid")
 require('sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/polyrust-cache"' in prepare, "Docker-owned cache files are not transferred to the runner")
 require('find "$RUNNER_TEMP/polyrust-cache" ! -readable -print -quit' in prepare, "cache readability is not asserted before save")
 
 for cache_path in ("bazelisk", "bazel-repository", "bazel-disk"):
     persistent = f'$RUNNER_TEMP/polyrust-cache/{cache_path}:/root/.cache/{cache_path}'
-    isolated = f'$RUNNER_TEMP/polyrust-cold/{cache_path}:/root/.cache/{cache_path}'
-    require(persistent in warm, f"warm gate does not mount persistent {cache_path}")
-    require(isolated in cold, f"cold gate does not mount isolated {cache_path}")
-    require(persistent not in cold, f"cold gate mounts persistent {cache_path}")
-    require(isolated not in restore and isolated not in save, f"cold {cache_path} is persisted")
+    require(persistent in gate, f"release gate does not mount persistent {cache_path}")
 
-require('rm -rf "$RUNNER_TEMP/polyrust-cold"' in cold, "cold tree is not freshly removed")
-require('find "$RUNNER_TEMP/polyrust-cold/$path" -mindepth 1 -print -quit' in cold, "cold emptiness is not asserted")
+for cache_path, container_path in (
+    ("cargo-registry", "/usr/local/cargo/registry"),
+    ("cargo-git", "/usr/local/cargo/git"),
+    ("cargo-tools", "/cargo-tools"),
+):
+    persistent = f'$RUNNER_TEMP/polyrust-cache/{cache_path}:{container_path}'
+    require(persistent in gate, f"release gate does not mount persistent {cache_path}")
+
+require("polyrust-cold" not in workflow, "obsolete cold cache tree is present")
 release_command = 'bash tools/release/release_gate.sh'
-require(cold.count(release_command) == 1, "cold gate does not run the complete release script exactly once")
-require(warm.count(release_command) == 1, "warm gate does not run the complete release script exactly once")
+require(gate.count(release_command) == 1, "cached gate does not run the complete release script exactly once")
+require(workflow.count(release_command) == 1, "workflow runs the complete release script more than once")
 require("$PWD" not in restore and "$PWD" not in save, "checkout path is cached")
 require("password" not in restore.lower() and "token" not in restore.lower(), "credential-like path is cached")
 PY

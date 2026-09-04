@@ -1,17 +1,17 @@
 # M16A — Persist Bazel caches across GitHub Actions runs
 
-- Status: complete
+- Status: in-progress
 - Phase: 5
 - Depends on: M16
 
 ## Outcome
 
-Make GitHub Actions restore and refresh Bazel caches across workflow runs while
-retaining a genuinely isolated cache-cold release proof.
+Make GitHub Actions restore and refresh Bazel caches across workflow runs.
 
 ## Task sequence
 
 1. [M16A-01 — separate cold proof from persistent warm caches](../tasks/M16A-01-persistent-bazel-cache.md)
+2. [M16A-02 — remove the redundant cold release gate](../tasks/M16A-02-remove-cold-gate.md)
 
 ## Required exit evidence
 
@@ -19,8 +19,9 @@ retaining a genuinely isolated cache-cold release proof.
   tracked Bazel test.
 - Local workflow lint, policy, documentation, and release gates pass.
 - A first hosted run populates a new compatible cache lineage.
-- A later hosted run restores that lineage and both its cold and warm release
-  gates pass.
+- A later hosted run restores that lineage and its cached release gate passes.
+- The release workflow subsequently runs the complete release gate only once
+  against Bazel's restored content-addressed cache.
 - The completed checkpoint is committed and pushed.
 
 ## Scope boundary

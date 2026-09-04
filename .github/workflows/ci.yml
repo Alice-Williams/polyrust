@@ -103,7 +103,7 @@ jobs:
         run: diff -ru first second
 
   release-gate:
-    name: Cold and warm release gates
+    name: Cached release gate
     needs: [windows-contract, fast, rust-compatibility, compare-manifests]
     runs-on: ubuntu-24.04
     steps:
@@ -148,24 +148,7 @@ jobs:
               -e CARGO_INSTALL_ROOT=/cargo-tools \
               "$IMAGE" cargo install cargo-audit --locked --version "$CARGO_AUDIT_VERSION"
           fi
-      - name: Cache-cold complete gate
-        run: |
-          rm -rf "$RUNNER_TEMP/polyrust-cold"
-          for path in bazelisk bazel-repository bazel-disk; do
-            mkdir -p "$RUNNER_TEMP/polyrust-cold/$path"
-            test -z "$(find "$RUNNER_TEMP/polyrust-cold/$path" -mindepth 1 -print -quit)"
-          done
-          docker run --rm \
-            -v "$PWD:/workspace" \
-            -v "$RUNNER_TEMP/polyrust-cold/bazelisk:/root/.cache/bazelisk" \
-            -v "$RUNNER_TEMP/polyrust-cold/bazel-repository:/root/.cache/bazel-repository" \
-            -v "$RUNNER_TEMP/polyrust-cold/bazel-disk:/root/.cache/bazel-disk" \
-            -v "$RUNNER_TEMP/polyrust-cache/cargo-registry:/usr/local/cargo/registry" \
-            -v "$RUNNER_TEMP/polyrust-cache/cargo-git:/usr/local/cargo/git" \
-            -v "$RUNNER_TEMP/polyrust-cache/cargo-tools:/cargo-tools" \
-            -e PATH=/cargo-tools/bin:/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin \
-            -w /workspace "$IMAGE" bash tools/release/release_gate.sh
-      - name: Cache-warm complete gate
+      - name: Cached complete release gate
         run: |
           docker run --rm \
             -v "$PWD:/workspace" \
