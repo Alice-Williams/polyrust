@@ -72,6 +72,7 @@ contract as every other target.
 - [M16 — CI and release gate](milestones/M16-ci-release.md) — complete
 - [M16A — Persistent GitHub Actions Bazel cache](milestones/M16A-persistent-ci-cache.md) — complete
   - [M16A-02 — Remove redundant cold release gate](tasks/M16A-02-remove-cold-gate.md) — complete
+- [M16B — Native Linux CI](milestones/M16B-native-linux-ci.md) — in progress
 
 ### Phase 6 — Real-world compatibility
 

@@ -7,7 +7,6 @@ generated="$(find "$runfiles" -path '*/generated/c/src/generated.c' -print -quit
 test -n "$generated"
 test -f "$consumer"
 test "$(gcc-14 -dumpfullversion)" = "14.2.0"
-test "$(dpkg-query -W -f='${Version}' gcc-14)" = "14.2.0-19"
 package="$(dirname "$(dirname "$generated")")"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT

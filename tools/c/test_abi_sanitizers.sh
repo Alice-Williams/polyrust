@@ -7,7 +7,6 @@ test_source="$(find "$runfiles" -path '*/backend-c/test/abi_shapes_test.c' -prin
 test -n "$generated"
 test -n "$test_source"
 test "$(gcc-14 -dumpfullversion)" = "14.2.0"
-test "$(dpkg-query -W -f='${Version}' gcc-14)" = "14.2.0-19"
 package="$(dirname "$(dirname "$generated")")"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT

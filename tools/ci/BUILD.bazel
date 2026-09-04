@@ -1,8 +1,24 @@
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+sh_binary(
+    name = "install_bazelisk",
+    srcs = ["install_bazelisk.sh"],
+)
+
+sh_binary(
+    name = "install_release_tools",
+    srcs = ["install_release_tools.sh"],
+)
 
 sh_test(
     name = "cache_policy_test",
     srcs = ["cache_policy_test.sh"],
-    data = ["//:.github/workflows/ci.yml"],
+    data = [
+        ":install_bazelisk.sh",
+        ":install_release_tools.sh",
+        "//:.bazelrc",
+        "//:.github/workflows/ci.yml",
+    ],
     tags = ["policy"],
 )

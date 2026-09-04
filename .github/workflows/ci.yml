@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE: polyrust-ci
-  CARGO_AUDIT_VERSION: 0.22.2
+  BAZELISK_HOME: /var/tmp/polyrust-cache/bazelisk
+  POLYRUST_CI_BIN: /var/tmp/polyrust-cache/bin
 
 jobs:
   windows-contract:
@@ -36,15 +36,10 @@ jobs:
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
           df -h /
-      - name: Build pinned development image
-        run: docker build --tag "$IMAGE" --file .devcontainer/Dockerfile .
-      - name: Rust and Bazel linters plus workspace tests
-        run: |
-          docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" bash -lc '
-            cargo fmt --all -- --check &&
-            cargo clippy --workspace --all-targets --all-features -- -D warnings &&
-            cargo test --workspace --all-features &&
-            bazelisk --batch test //:buildifier_test //tools/dependency-boundaries:dependency_boundaries_test'
+      - name: Install pinned Bazelisk
+        run: bash tools/ci/install_bazelisk.sh
+      - name: Rust and Bazel linters
+        run: bazelisk --batch test //:rustfmt_test //:rust_clippy_test //:buildifier_test //tools/dependency-boundaries:dependency_boundaries_test
 
   rust-compatibility:
     name: Rust ${{ matrix.toolchain }}
@@ -55,13 +50,10 @@ jobs:
         toolchain: ["1.98.0", stable]
     steps:
       - uses: actions/checkout@v7
-      - name: Build pinned development image
-        run: docker build --tag "$IMAGE" --file .devcontainer/Dockerfile .
+      - name: Install selected Rust
+        run: rustup toolchain install "${{ matrix.toolchain }}" --profile minimal
       - name: Test workspace with selected Rust
-        run: |
-          docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" bash -lc '
-            rustup toolchain install "${{ matrix.toolchain }}" --profile minimal &&
-            cargo +"${{ matrix.toolchain }}" test --workspace --all-features'
+        run: cargo +"${{ matrix.toolchain }}" test --workspace --all-features
 
   deterministic-manifests:
     name: Determinism on ${{ matrix.os }}
@@ -72,14 +64,13 @@ jobs:
         os: [ubuntu-22.04, ubuntu-24.04]
     steps:
       - uses: actions/checkout@v7
-      - name: Build pinned development image
-        run: docker build --tag "$IMAGE" --file .devcontainer/Dockerfile .
+      - name: Install pinned Bazelisk
+        run: bash tools/ci/install_bazelisk.sh
       - name: Generate normalized manifests from a clean directory
         run: |
           rm -rf ci-manifest
           mkdir ci-manifest
-          docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" \
-            bazelisk --batch run //examples/models-and-validation:generate -- /workspace/ci-manifest
+          bazelisk --batch run //examples/models-and-validation:generate -- "$PWD/ci-manifest"
       - uses: actions/upload-artifact@v7
         with:
           name: manifests-${{ matrix.os }}
@@ -117,15 +108,17 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            ${{ runner.temp }}/polyrust-cache/bazelisk
-            ${{ runner.temp }}/polyrust-cache/bazel-repository
-            ${{ runner.temp }}/polyrust-cache/bazel-disk
-            ${{ runner.temp }}/polyrust-cache/cargo-registry
-            ${{ runner.temp }}/polyrust-cache/cargo-git
+            /var/tmp/polyrust-cache/bin
+            /var/tmp/polyrust-cache/bazelisk
+            /var/tmp/polyrust-cache/bazel-repository
+            /var/tmp/polyrust-cache/bazel-disk
+            ${{ runner.temp }}/polyrust-cache/cargo-home
             ${{ runner.temp }}/polyrust-cache/cargo-tools
-          key: polyrust-v3-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'MODULE.bazel', 'MODULE.bazel.lock', '.devcontainer/Dockerfile', '.bazelversion', '.bazelrc') }}-${{ github.run_id }}-${{ github.run_attempt }}
+            ${{ runner.temp }}/polyrust-cache/node-tools
+            ${{ runner.temp }}/polyrust-cache/python-tools
+          key: polyrust-v4-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'MODULE.bazel', 'MODULE.bazel.lock', '.bazelversion', '.bazelrc', 'tools/ci/install_bazelisk.sh', 'tools/ci/install_release_tools.sh') }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            polyrust-v3-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'MODULE.bazel', 'MODULE.bazel.lock', '.devcontainer/Dockerfile', '.bazelversion', '.bazelrc') }}-
+            polyrust-v4-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'MODULE.bazel', 'MODULE.bazel.lock', '.bazelversion', '.bazelrc', 'tools/ci/install_bazelisk.sh', 'tools/ci/install_release_tools.sh') }}-
       - name: Report persistent cache restoration
         env:
           MATCHED_CACHE_KEY: ${{ steps.restore-non-semantic-caches.outputs.cache-matched-key }}
@@ -135,45 +128,36 @@ jobs:
           else
             echo "No compatible cache lineage was available"
           fi
-      - name: Build pinned development image
-        run: docker build --tag "$IMAGE" --file .devcontainer/Dockerfile .
-      - name: Install pinned advisory checker
-        run: |
-          mkdir -p "$RUNNER_TEMP/polyrust-cache"/{bazelisk,bazel-repository,bazel-disk,cargo-registry,cargo-git,cargo-tools}
-          if [[ ! -x "$RUNNER_TEMP/polyrust-cache/cargo-tools/bin/cargo-audit" ]]; then
-            docker run --rm \
-              -v "$RUNNER_TEMP/polyrust-cache/cargo-registry:/usr/local/cargo/registry" \
-              -v "$RUNNER_TEMP/polyrust-cache/cargo-git:/usr/local/cargo/git" \
-              -v "$RUNNER_TEMP/polyrust-cache/cargo-tools:/cargo-tools" \
-              -e CARGO_INSTALL_ROOT=/cargo-tools \
-              "$IMAGE" cargo install cargo-audit --locked --version "$CARGO_AUDIT_VERSION"
-          fi
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.20.0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12.10"
+      - name: Install pinned Bazelisk
+        run: bash tools/ci/install_bazelisk.sh
+      - name: Install pinned native release tools
+        env:
+          POLYRUST_CI_CACHE_ROOT: ${{ runner.temp }}/polyrust-cache
+        run: bash tools/ci/install_release_tools.sh
       - name: Cached complete release gate
-        run: |
-          docker run --rm \
-            -v "$PWD:/workspace" \
-            -v "$RUNNER_TEMP/polyrust-cache/bazelisk:/root/.cache/bazelisk" \
-            -v "$RUNNER_TEMP/polyrust-cache/bazel-repository:/root/.cache/bazel-repository" \
-            -v "$RUNNER_TEMP/polyrust-cache/bazel-disk:/root/.cache/bazel-disk" \
-            -v "$RUNNER_TEMP/polyrust-cache/cargo-registry:/usr/local/cargo/registry" \
-            -v "$RUNNER_TEMP/polyrust-cache/cargo-git:/usr/local/cargo/git" \
-            -v "$RUNNER_TEMP/polyrust-cache/cargo-tools:/cargo-tools" \
-            -e PATH=/cargo-tools/bin:/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin \
-            -w /workspace "$IMAGE" bash tools/release/release_gate.sh
+        run: bash tools/release/release_gate.sh
       - name: Prepare persistent cache archive
         run: |
-          sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/polyrust-cache"
-          chmod -R u+rwX "$RUNNER_TEMP/polyrust-cache"
+          chmod -R u+rwX /var/tmp/polyrust-cache "$RUNNER_TEMP/polyrust-cache"
+          test -z "$(find /var/tmp/polyrust-cache ! -readable -print -quit)"
           test -z "$(find "$RUNNER_TEMP/polyrust-cache" ! -readable -print -quit)"
       - name: Save refreshed persistent non-semantic caches
         if: ${{ success() }}
         uses: actions/cache/save@v6
         with:
           path: |
-            ${{ runner.temp }}/polyrust-cache/bazelisk
-            ${{ runner.temp }}/polyrust-cache/bazel-repository
-            ${{ runner.temp }}/polyrust-cache/bazel-disk
-            ${{ runner.temp }}/polyrust-cache/cargo-registry
-            ${{ runner.temp }}/polyrust-cache/cargo-git
+            /var/tmp/polyrust-cache/bin
+            /var/tmp/polyrust-cache/bazelisk
+            /var/tmp/polyrust-cache/bazel-repository
+            /var/tmp/polyrust-cache/bazel-disk
+            ${{ runner.temp }}/polyrust-cache/cargo-home
             ${{ runner.temp }}/polyrust-cache/cargo-tools
-          key: polyrust-v3-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'MODULE.bazel', 'MODULE.bazel.lock', '.devcontainer/Dockerfile', '.bazelversion', '.bazelrc') }}-${{ github.run_id }}-${{ github.run_attempt }}
+            ${{ runner.temp }}/polyrust-cache/node-tools
+            ${{ runner.temp }}/polyrust-cache/python-tools
+          key: polyrust-v4-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'MODULE.bazel', 'MODULE.bazel.lock', '.bazelversion', '.bazelrc', 'tools/ci/install_bazelisk.sh', 'tools/ci/install_release_tools.sh') }}-${{ github.run_id }}-${{ github.run_attempt }}

@@ -8,7 +8,6 @@ if test -z "$generated"; then
 fi
 test -n "$generated"
 test "$(gcc-14 -dumpfullversion)" = "14.2.0"
-test "$(dpkg-query -W -f='${Version}' gcc-14)" = "14.2.0-19"
 package="$(dirname "$(dirname "$generated")")"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT

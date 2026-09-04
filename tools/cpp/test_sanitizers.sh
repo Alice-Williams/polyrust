@@ -7,8 +7,7 @@ if test -z "$generated"; then
   generated="$(find "$runfiles" -path '*/test-generated/src/generated.cc' -print -quit)"
 fi
 test -n "$generated"
-test "$(g++ -dumpfullversion)" = "14.2.0"
-test "$(dpkg-query -W -f='${Version}' g++-14)" = "14.2.0-19"
+test "$(g++-14 -dumpfullversion)" = "14.2.0"
 package="$(dirname "$(dirname "$generated")")"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -26,7 +25,7 @@ common=(
   "$work/src/generated.cc"
   "$work/tests/generated_test.cc"
 )
-g++ "${common[@]}" -fsanitize=address -o "$work/asan-test"
+g++-14 "${common[@]}" -fsanitize=address -o "$work/asan-test"
 ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 "$work/asan-test"
-g++ "${common[@]}" -fsanitize=undefined -fno-sanitize-recover=undefined -o "$work/ubsan-test"
+g++-14 "${common[@]}" -fsanitize=undefined -fno-sanitize-recover=undefined -o "$work/ubsan-test"
 UBSAN_OPTIONS=halt_on_error=1 "$work/ubsan-test"

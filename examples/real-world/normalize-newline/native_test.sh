@@ -10,10 +10,9 @@ readonly work="$(mktemp -d)"
 trap 'rm -rf "${work}"' EXIT
 cp -RL "${generated}/." "${work}/"
 
-export RUSTUP_HOME=/usr/local/rustup
 export CARGO_HOME="${work}/cargo-home"
 export CARGO_TARGET_DIR="${work}/cargo-target"
-export PATH=/usr/local/cargo/bin:/opt/polyrust-python-tools/bin:/usr/local/bin:/usr/bin:/bin
+export PATH="${PATH:-}:/usr/local/cargo/bin:/opt/polyrust-python-tools/bin:/usr/local/bin:/usr/bin:/bin"
 cargo fmt --manifest-path "${work}/rust/Cargo.toml" --all
 cargo fmt --manifest-path "${work}/rust/Cargo.toml" --all -- --check
 cargo clippy --manifest-path "${work}/rust/Cargo.toml" --all-targets -- -D warnings

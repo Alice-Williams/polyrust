@@ -2,6 +2,7 @@ load("@buildifier_prebuilt//:rules.bzl", "buildifier", "buildifier_test")
 load("@rules_rust//rust:defs.bzl", "rust_clippy_test", "rustfmt_test")
 
 exports_files([
+    ".bazelrc",
     ".github/workflows/ci.yml",
     "Cargo.lock",
     "MODULE.bazel",

@@ -5,11 +5,10 @@ readonly repo_root="${TEST_SRCDIR}/${TEST_WORKSPACE}"
 readonly generated="${repo_root}/crates/backend-rust/test-generated"
 readonly package="${TEST_TMPDIR}/generated-rust"
 readonly invalid="${TEST_TMPDIR}/invalid-rust"
-readonly cargo_bin="/usr/local/cargo/bin/cargo"
 
-export RUSTUP_HOME="/usr/local/rustup"
 export CARGO_HOME="${TEST_TMPDIR}/cargo-home"
-export PATH="/usr/local/cargo/bin:/usr/bin:/bin"
+export PATH="${PATH:-}:/usr/local/cargo/bin:/usr/bin:/bin"
+readonly cargo_bin="$(command -v cargo)"
 
 mkdir -p "${package}/src"
 cp "${generated}/Cargo.toml" "${package}/Cargo.toml"

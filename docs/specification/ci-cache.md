@@ -1,6 +1,6 @@
 # GitHub Actions cache specification
 
-- Status: accepted for M16A
+- Status: accepted for M16A and M16B
 - Last updated: 2026-09-04
 
 ## Purpose
@@ -30,8 +30,10 @@ Only paths outside the checkout may be persisted:
 - Bazelisk downloads;
 - Bazel repository downloads;
 - Bazel action/disk-cache outputs;
-- Cargo registry and Git checkout caches; and
-- the pinned Cargo tool installation root.
+- Cargo registry and Git checkout caches;
+- the pinned Cargo tool installation root;
+- pinned Node package tools; and
+- the pinned Python virtual environment.
 
 The cache MUST NOT contain source, generated manifests, credentials, Bazel
 output-base state, a compiler server, or independently archived test reports.
@@ -44,16 +46,16 @@ The cache prefix MUST include:
 
 - a schema/version owned by this repository;
 - the runner operating system; and
-- a hash of the Cargo lock, Bazel module and lock, development image,
-  Bazel version, and Bazel configuration.
+- a hash of the Cargo lock, Bazel module and lock, Bazel version,
+  configuration, and native bootstrap scripts.
 
 The primary save key MUST additionally include `github.run_id` and
 `github.run_attempt`. This makes every successful execution capable of saving
 an updated immutable cache. `restore-keys` MUST contain only the matching
 compatibility prefix, causing GitHub to select its newest compatible entry.
 
-Changing a toolchain, dependency lock, container image, Bazel version, Bazel
-cache configuration, or cache layout MUST select a new compatibility lineage.
+Changing a toolchain, dependency lock, native bootstrap, Bazel version, cache
+configuration, or cache layout MUST select a new compatibility lineage.
 
 ## Cached release gate
 
@@ -74,4 +76,4 @@ succeeds.
 - Actionlint accepts the workflow.
 - The full local release gate passes in the Linux development container.
 - One hosted run reports restoration of a compatible cache lineage and passes
-  the single cached release gate.
+  the single cached release gate directly on Linux without Docker.
