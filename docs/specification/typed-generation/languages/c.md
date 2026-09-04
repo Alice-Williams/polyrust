@@ -7,9 +7,9 @@
 
 ## Inferred typed-program admission
 
-`CPluginBuilder` MUST register one typed `CFeatureMapping<F>` for each portable
-feature whose complete C17 mapping has passed this specification. Only an
-implemented builder slot derives `CPlugin: Supports<F>`. Typed generation
+`CPluginBuilder` MUST register one typed `CCapabilityMapping<C>` for each portable
+capability whose complete C17 mapping has passed this specification. Only an
+implemented builder slot derives `CPlugin: Supports<C>`. Typed generation
 accepts `TypedProgram<R>` only under `CPlugin: SupportsAll<R>`. Runtime
 emulation does not justify an empty, wildcard, or default support claim.
 

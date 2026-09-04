@@ -6,9 +6,9 @@
 
 ## Inferred typed-program admission
 
-`RustPluginBuilder` MUST register one typed `RustFeatureMapping<F>` for each
-portable feature whose complete Rust mapping has passed this specification.
-Only an implemented builder slot derives `RustPlugin: Supports<F>`. Typed
+`RustPluginBuilder` MUST register one typed `RustCapabilityMapping<C>` for each
+portable capability whose complete Rust mapping has passed this specification.
+Only an implemented builder slot derives `RustPlugin: Supports<C>`. Typed
 generation accepts `TypedProgram<R>` only under
 `RustPlugin: SupportsAll<R>`. There is no empty, profile-wide, wildcard, or
 default support claim; before migration, absent mappings make the typed call

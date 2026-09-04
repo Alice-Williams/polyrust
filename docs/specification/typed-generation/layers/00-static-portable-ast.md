@@ -33,7 +33,7 @@ struct NoneRequired;
 struct Requires<Feature, Tail>;
 struct All<Left, Right>;
 
-trait Supports<Feature> {
+trait Supports<Capability> {
     type Mapping;
     fn mapping(&self) -> &Self::Mapping;
 }
@@ -57,7 +57,7 @@ boundary are mandatory.
 - No constructor accepts caller-provided evidence that a feature was used or
   supported.
 
-The feature markers are independently implementable semantic families:
+The capability markers are independently implementable semantic families:
 
 | Family | Markers |
 | --- | --- |
@@ -128,8 +128,8 @@ let java = JavaPluginBuilder::new()
 ```
 
 Each call changes one `Missing` slot to `Implemented<M>` and requires
-`M: FeatureMapping<JavaDialect, Feature = F>`. Only an implemented slot produces
-`Supports<F>`, whose `mapping()` method returns that exact handler. Duplicate
+`M: CapabilityMapping<JavaDialect, Capability = C>`. Only an implemented slot produces
+`Supports<C>`, whose `mapping()` method returns that exact handler. Duplicate
 registration is not representable, and a backend cannot manually write an
 empty support claim.
 
@@ -138,9 +138,9 @@ Shared recursion derives the complete proof:
 ```rust
 impl<D> SupportsAll<NoneRequired> for D {}
 
-impl<D, F, Tail> SupportsAll<Requires<F, Tail>> for D
+impl<D, C, Tail> SupportsAll<Requires<C, Tail>> for D
 where
-    D: Supports<F> + SupportsAll<Tail>,
+    D: Supports<C> + SupportsAll<Tail>,
 {}
 
 impl<D, Left, Right> SupportsAll<All<Left, Right>> for D

@@ -48,23 +48,25 @@ Shared layers:
 12. [M34A-08S — static valid-by-construction portable AST](../tasks/M34A-08S-static-portable-ast.md)
 13. [M34A-08T — inferred feature builder](../tasks/M34A-08T-inferred-feature-builder.md)
 14. [M34A-08U — executable feature registration and complete intrinsic surface](../tasks/M34A-08U-executable-feature-registration.md) — complete
+15. [M34A-08V — semantic capability catalogue and per-capability modules](../tasks/M34A-08V-capability-catalogue.md) — in progress
 
 Language migrations:
 
-15. [M34A-10 — Java](../tasks/M34A-10-java.md) — in progress
+16. [M34A-10 — Java](../tasks/M34A-10-java.md) — in progress
     - [M34A-10R — blind-review remediation](../tasks/M34A-10R-java-review-remediation.md)
     - [M34A-10V — intrinsic Java syntax validity](../tasks/M34A-10V-java-intrinsic-validity.md)
     - [M34A-10S — static portable-program generation](../tasks/M34A-10S-java-static-program.md)
     - [M34A-10T — inferred capability generation](../tasks/M34A-10T-java-inferred-capabilities.md)
     - [M34A-10U — executable Java plugin builder](../tasks/M34A-10U-java-plugin-builder.md) — complete; ready for user review
-16. [M34A-11 — C17](../tasks/M34A-11-c.md)
-17. [M34A-12 — Rust](../tasks/M34A-12-rust.md)
-18. [M34A-13 — TypeScript](../tasks/M34A-13-typescript.md)
-19. [M34A-14 — compiler-derived JavaScript](../tasks/M34A-14-javascript.md)
-20. [M34A-15 — Python](../tasks/M34A-15-python.md)
-21. [M34A-16 — Go](../tasks/M34A-16-go.md)
-22. [M34A-17 — C++20](../tasks/M34A-17-cpp.md)
-23. [M34A-18 — legacy deletion, historical replay, and release](../tasks/M34A-18-replay-release.md)
+    - [M34A-10W — authoritative Java capability bindings](../tasks/M34A-10W-java-capability-bindings.md)
+17. [M34A-11 — C17](../tasks/M34A-11-c.md)
+18. [M34A-12 — Rust](../tasks/M34A-12-rust.md)
+19. [M34A-13 — TypeScript](../tasks/M34A-13-typescript.md)
+20. [M34A-14 — compiler-derived JavaScript](../tasks/M34A-14-javascript.md)
+21. [M34A-15 — Python](../tasks/M34A-15-python.md)
+22. [M34A-16 — Go](../tasks/M34A-16-go.md)
+23. [M34A-17 — C++20](../tasks/M34A-17-cpp.md)
+24. [M34A-18 — legacy deletion, historical replay, and release](../tasks/M34A-18-replay-release.md)
 
 Tasks are dependency ordered. A task is committed and pushed only after its
 listed tests pass in the Linux development container. Language tasks update

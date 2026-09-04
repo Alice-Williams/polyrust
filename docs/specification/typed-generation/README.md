@@ -21,6 +21,7 @@ evidence named by both.
 Shared layers:
 
 0. [Inferred valid-by-construction portable AST](layers/00-static-portable-ast.md)
+   - [Portable capability catalogue](layers/00-capability-catalogue.md)
 1. [Pipeline and phase ownership](layers/01-pipeline.md)
 2. [Canonical CoreIR](layers/02-core-ir.md)
 3. [Capabilities and exhaustive registration](layers/03-capabilities.md)
@@ -115,9 +116,10 @@ inside exhaustive structural renderer functions.
 ## Extensibility rule
 
 A new output language implements a complete `LanguagePlugin` and its own
-language specification. A new portable feature extends closed CoreIR feature
-enums and forces every built-in plugin to acknowledge the feature as `Native`,
-`Emulated`, or `Unsupported`.
+language specification. A new portable capability extends the closed static
+catalogue and any corresponding CoreIR feature enums, forcing every built-in
+plugin to acknowledge the capability as `Native`, `Emulated`, or
+`Unsupported`.
 
 Unsupported support in one language does not prevent other target plugins from
 building or generating programs which do not request that language. The

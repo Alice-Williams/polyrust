@@ -7,9 +7,9 @@
 
 ## Inferred typed-program admission
 
-`CppPluginBuilder` MUST register one typed `CppFeatureMapping<F>` for each
-portable feature whose complete C++20 mapping has passed this specification.
-Only an implemented builder slot derives `CppPlugin: Supports<F>`. Typed
+`CppPluginBuilder` MUST register one typed `CppCapabilityMapping<C>` for each
+portable capability whose complete C++20 mapping has passed this specification.
+Only an implemented builder slot derives `CppPlugin: Supports<C>`. Typed
 generation accepts `TypedProgram<R>` only under
 `CppPlugin: SupportsAll<R>`. Native and emulated mappings both require an
 executable registration; there is no empty, wildcard, or default support claim.

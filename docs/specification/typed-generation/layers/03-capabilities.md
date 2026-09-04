@@ -6,7 +6,7 @@
 
 ## Purpose
 
-This layer lets a language support a portable feature natively, emulate it, or
+This layer lets a language support a portable capability natively, emulate it, or
 reject only programs which use it. It preserves compile-time exhaustiveness
 without making the compiler's build depend on every language implementing
 every feature immediately.
@@ -123,9 +123,9 @@ Registries MUST NOT use:
 ## Mapping registration
 
 A support decision and a lowering implementation are one registered fact.
-`LanguagePluginBuilder::support(mapping)` infers `F` from a typed
-`FeatureMapping<D, Feature = F>`, stores it, and changes the builder's `F` slot from
-`Missing` to `Implemented<Mapping>`. `Supports<F>` is derived only from that
+`LanguagePluginBuilder::support(mapping)` infers `C` from a typed
+`CapabilityMapping<D, Capability = C>`, stores it, and changes the builder's `C` slot from
+`Missing` to `Implemented<Mapping>`. `Supports<C>` is derived only from that
 slot and returns the same stored mapping. A duplicate call is unavailable.
 
 `Native(strategy)` or `Emulated(strategy)` MUST be derived from a present
@@ -172,7 +172,7 @@ Options MUST NOT add an unregistered feature or raw syntax.
 An unsupported diagnostic includes:
 
 - target ID and version;
-- portable feature enum and use shape;
+- portable capability/CoreIR feature-use enum and use shape;
 - closed reason enum;
 - human detail;
 - closest CoreIR provenance;

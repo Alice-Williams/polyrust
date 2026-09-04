@@ -9,7 +9,7 @@
 JavaScript inherits the exact `TypedProgram<R>` admission proof from
 `TypeScriptPlugin: SupportsAll<R>` and additionally requires the pinned
 TypeScript-to-JavaScript derivation stage. It MUST NOT advertise an independent
-semantic `Supports<F>` registry, because doing so could drift from the sole
+semantic `Supports<C>` registry, because doing so could drift from the sole
 TypeScript source program.
 
 ## 1. Architectural status
@@ -18,7 +18,7 @@ JavaScript is a derived output of the TypeScript plugin. It does not own:
 
 - a semantic CoreIR lowerer;
 - an executable JavaScript AST;
-- a portable feature registry independent of TypeScript;
+- a portable capability registry independent of TypeScript;
 - an executable runtime-helper catalogue; or
 - an executable renderer or executable template.
 

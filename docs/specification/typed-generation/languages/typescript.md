@@ -6,10 +6,10 @@
 
 ## Inferred typed-program admission
 
-`TypeScriptPluginBuilder` MUST register one typed `TsFeatureMapping<F>` for each
-portable feature whose complete strict-TypeScript mapping has passed this
+`TypeScriptPluginBuilder` MUST register one typed `TsCapabilityMapping<C>` for each
+portable capability whose complete strict-TypeScript mapping has passed this
 specification. Only an implemented builder slot derives
-`TypeScriptPlugin: Supports<F>`. Typed generation accepts `TypedProgram<R>`
+`TypeScriptPlugin: Supports<C>`. Typed generation accepts `TypedProgram<R>`
 only under `TypeScriptPlugin: SupportsAll<R>`. There is no empty, profile-wide,
 wildcard, or default support claim.
 

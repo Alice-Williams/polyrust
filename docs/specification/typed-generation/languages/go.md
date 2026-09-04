@@ -6,9 +6,9 @@
 
 ## Inferred typed-program admission
 
-`GoPluginBuilder` MUST register one typed `GoFeatureMapping<F>` for each
-portable feature whose complete Go mapping has passed this specification. Only
-an implemented builder slot derives `GoPlugin: Supports<F>`. Typed generation
+`GoPluginBuilder` MUST register one typed `GoCapabilityMapping<C>` for each
+portable capability whose complete Go mapping has passed this specification. Only
+an implemented builder slot derives `GoPlugin: Supports<C>`. Typed generation
 accepts `TypedProgram<R>` only under `GoPlugin: SupportsAll<R>`. There is no
 empty, profile-wide, wildcard, or default support claim.
 

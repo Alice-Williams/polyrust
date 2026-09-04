@@ -74,7 +74,7 @@ witness.
 ## Java M34A-10T evidence
 
 - `JavaDialect` advertises each of the 18 initial features with an explicit
-  `Supports<F>` implementation. `generate_typed` is available only under the
+  `Supports<C>` implementation. `generate_typed` is available only under the
   recursively derived `JavaDialect: SupportsAll<R>` bound.
 - The checked-in inferred example generates a three-parameter function, exact
   three-argument call, three-field record, exact construction, and nested
@@ -94,7 +94,7 @@ shared and Java rows can return to **Pass**.
 
 ## Shared M34A-08U and Java M34A-10U evidence
 
-- `Supports<F>` now exposes its stored executable mapping. A closed typestate
+- `Supports<C>` now exposes its stored executable mapping. A closed typestate
   slot catalogue derives support only from `Implemented<M>`; duplicate and
   missing registrations are compile-time failures.
 - The typed frontend covers `Char`, `Bytes`, `List<T>`, `Option<T>`,

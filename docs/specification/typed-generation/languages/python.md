@@ -6,9 +6,9 @@
 
 ## Inferred typed-program admission
 
-`PythonPluginBuilder` MUST register one typed `PythonFeatureMapping<F>` for each
-portable feature whose complete Python mapping has passed this specification.
-Only an implemented builder slot derives `PythonPlugin: Supports<F>`. Typed
+`PythonPluginBuilder` MUST register one typed `PythonCapabilityMapping<C>` for each
+portable capability whose complete Python mapping has passed this specification.
+Only an implemented builder slot derives `PythonPlugin: Supports<C>`. Typed
 generation accepts `TypedProgram<R>` only under
 `PythonPlugin: SupportsAll<R>`. Python's dynamic runtime does not justify an
 empty, wildcard, or default support implementation.

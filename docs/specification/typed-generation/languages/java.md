@@ -13,9 +13,9 @@ negative compilation fixtures. A separately compiled consumer MUST be able to
 use every portable public API. No undeclared runtime dependency is permitted.
 
 Java is the first inferred typed-program target. `JavaPluginBuilder` MUST
-register a typed executable `JavaFeatureMapping<Feature = F>` separately for every
-admitted portable feature. Only an `Implemented<Mapping>` builder slot derives
-`JavaPlugin: Supports<F>`, and `Supports<F>::mapping()` returns that exact
+register a typed executable `JavaCapabilityMapping<Capability = C>` separately
+for every admitted portable capability. Only an `Implemented<Mapping>` builder
+slot derives `JavaPlugin: Supports<C>`, and `Supports<C>::mapping()` returns that exact
 handler. Its typed entry point accepts only `TypedProgram<R>` under the bound
 `JavaPlugin: SupportsAll<R>`. Typed records, fields, constructors, functions,
 calls, values, and operations lower through those registered handlers into the
@@ -37,18 +37,26 @@ where
 It delegates to the same verified CoreIR-to-Java compiler as the dynamic path.
 Any rejection is converted to an invariant panic identifying a PolyRust defect;
 it is not returned as a user validation branch. Java has no manual or empty
-`Supports<F>` implementations. No profile, wildcard, or default
+`Supports<C>` implementations. No profile, wildcard, or default
 implementation can make an unregistered feature admissible.
 
-`JavaPluginBuilder::support(mapping)` infers `F`, consumes the builder, replaces
-the single `F` slot from `Missing` to `Implemented<Mapping>`, and requires
-`Mapping: JavaFeatureMapping<Feature = F>`. Every operation mapping accepts a closed,
+`JavaPluginBuilder::support(mapping)` infers `C`, consumes the builder, replaces
+the single `C` slot from `Missing` to `Implemented<Mapping>`, and requires
+`Mapping: JavaCapabilityMapping<Capability = C>`. Every operation mapping accepts a closed,
 feature-specific enum containing already-lowered `JavaExpr` operands and
 returns a `JavaExpr` or typed `JavaExprPlan`; declaration/type mappings return
 their corresponding Java AST category. An erased feature input/output enum,
 source text, tokens, imports, helper names, and unchecked AST are forbidden.
 The Java lowerer calls the stored mapping. Merely storing evidence while a
 separate match performs the real lowering does not satisfy this specification.
+
+Mappings for declarations, values, and control flow MUST accept portable typed
+AST or verified CoreIR inputs. Accepting an already-complete `JavaExpr`,
+`JavaMethod`, or `JavaTypeDeclaration` and returning it unchanged is not a
+support implementation.
+
+The Java capability files and complete catalogue are governed by
+[the portable capability catalogue](../layers/00-capability-catalogue.md).
 
 The dynamic `JavaCapabilityRegistry` derives feature presence and strategy
 from the same built plugin registration catalogue, then applies its existing
