@@ -1,6 +1,6 @@
 //! Java capability mappings and their exhaustive registration.
 
-use portable_build::{Enums, LanguageCapabilityPlugin, PortableTests, capability_slots};
+use portable_build::{Enums, LanguageCapabilityPlugin, capability_slots};
 
 mod bool_values;
 mod boolean_logic;
@@ -31,6 +31,7 @@ mod option_operations;
 mod option_values;
 mod ordering;
 mod pattern_matching;
+mod portable_tests;
 mod records;
 mod result_operations;
 mod result_propagation;
@@ -77,6 +78,7 @@ pub(crate) use option_values::JavaOptionInput;
 pub use option_values::JavaOptionValues;
 pub use ordering::JavaOrdering;
 pub use pattern_matching::JavaPatternMatching;
+pub use portable_tests::JavaPortableTests;
 pub use records::JavaRecords;
 pub use records::JavaRecordsNode;
 pub use result_operations::JavaResultOperations;
@@ -110,6 +112,10 @@ pub(crate) use modules::JavaModuleInput;
 pub(crate) use pattern_matching::{
     JavaLoweredPattern, JavaMatchArmInput, JavaMatchInput, JavaPatternFieldBindingInput,
     JavaPatternInput, JavaPatternMatchPlan, JavaPatternMatchingInput, JavaPatternMatchingNode,
+};
+pub(crate) use portable_tests::{
+    JavaPortableTestCaseInput, JavaPortableTestExpectation, JavaPortableTestHarnessInput,
+    JavaPortableTestsInput, JavaPortableTestsNode,
 };
 pub(crate) use records::{JavaRecordDeclarationInput, JavaRecordsInput};
 pub(crate) use result_propagation::{JavaResultPropagationInput, JavaResultPropagationPlan};
@@ -153,7 +159,7 @@ pub type JavaCapabilitySlots = capability_slots!(
     implemented JavaTypeAliases,
     unsupported Enums,
     implemented JavaInterfaces,
-    unsupported PortableTests,
+    implemented JavaPortableTests,
     implemented JavaLocalBindings,
     implemented JavaConditionals,
     implemented JavaLoops,
@@ -201,7 +207,7 @@ pub(crate) fn java_capabilities() -> JavaCapabilitySet {
         .support(JavaTypeAliases)
         .unsupported::<Enums>()
         .support(JavaInterfaces)
-        .unsupported::<PortableTests>()
+        .support(JavaPortableTests)
         .support(JavaLocalBindings)
         .support(JavaConditionals)
         .support(JavaLoops)

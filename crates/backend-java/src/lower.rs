@@ -40,9 +40,11 @@ use crate::{
         JavaListInput, JavaLocalBindingInput, JavaLoopsInput, JavaLoweredPattern,
         JavaMatchArmInput, JavaMatchInput, JavaModuleInput, JavaOptionInput,
         JavaPatternFieldBindingInput, JavaPatternInput, JavaPatternMatchPlan,
-        JavaPatternMatchingInput, JavaPatternMatchingNode, JavaRecordDeclarationInput,
-        JavaRecordsInput, JavaRecordsNode, JavaResultInput, JavaResultPropagationInput,
-        JavaResultPropagationPlan, JavaTypeAliasInput, classify_intrinsic,
+        JavaPatternMatchingInput, JavaPatternMatchingNode, JavaPortableTestCaseInput,
+        JavaPortableTestExpectation, JavaPortableTestHarnessInput, JavaPortableTestsInput,
+        JavaPortableTestsNode, JavaRecordDeclarationInput, JavaRecordsInput, JavaRecordsNode,
+        JavaResultInput, JavaResultPropagationInput, JavaResultPropagationPlan, JavaTypeAliasInput,
+        classify_intrinsic,
     },
     capability::JavaCapabilitySelection,
     dialect::*,
@@ -2030,18 +2032,9 @@ impl<'a> Lowering<'a> {
     fn test_declaration(&self, class_name: &str) -> Result<JavaTypeDeclaration, Vec<Diagnostic>> {
         let expected_test_count = i32::try_from(self.core.tests().len())
             .map_err(|_| vec![diagnostic("Java conformance test count exceeds i32")])?;
-        let int = JavaType::primitive(JavaPrimitive::Int);
-        let boolean = JavaType::primitive(JavaPrimitive::Boolean);
-        let completed_name = identifier("completed");
-        let completed = JavaExpr::local(int.clone(), completed_name.clone());
-        let mut statements = vec![JavaStmt::Local {
-            finality: JavaLocalFinality::Mutable,
-            ty: int.clone(),
-            name: completed_name,
-            value: Some(i32_literal(0)),
-        }];
+        let mut cases = Vec::with_capacity(self.core.tests().len());
         for (index, test) in self.core.tests().iter().enumerate() {
-            let (actual, result_type) = match &test.invocation {
+            let actual = match &test.invocation {
                 CoreTestInvocation::Function {
                     function,
                     arguments,
@@ -2064,21 +2057,18 @@ impl<'a> Lowering<'a> {
                         nullable_result: false,
                         pure: true,
                     };
-                    (
-                        JavaExpr {
-                            ty: result.clone(),
-                            precedence: JavaPrecedence::Primary,
-                            kind: JavaExprKind::Call {
-                                callable: JavaCallableRef::Generated {
-                                    symbol: self.functions[function],
-                                    signature,
-                                },
-                                receiver: None,
-                                arguments,
+                    JavaExpr {
+                        ty: result,
+                        precedence: JavaPrecedence::Primary,
+                        kind: JavaExprKind::Call {
+                            callable: JavaCallableRef::Generated {
+                                symbol: self.functions[function],
+                                signature,
                             },
+                            receiver: None,
+                            arguments,
                         },
-                        result,
-                    )
+                    }
                 }
                 CoreTestInvocation::Method {
                     method,
@@ -2096,186 +2086,58 @@ impl<'a> Lowering<'a> {
                         .map(|value| self.typed_value(value))
                         .collect::<Result<Vec<_>, _>>()?;
                     let result = self.poly_result_type(method_value.return_type)?;
-                    (
-                        member_call(
-                            receiver,
-                            &method_value.header.name,
-                            arguments,
-                            result.clone(),
-                            JavaMemberOrigin::GeneratedImplementation(*method),
-                        ),
+                    member_call(
+                        receiver,
+                        &method_value.header.name,
+                        arguments,
                         result,
+                        JavaMemberOrigin::GeneratedImplementation(*method),
                     )
                 }
             };
-            let name = identifier(&format!("actual{index}"));
-            statements.push(JavaStmt::Local {
-                finality: JavaLocalFinality::Final,
-                ty: result_type.clone(),
-                name: name.clone(),
-                value: Some(actual),
-            });
-            let actual_local = JavaExpr::local(result_type.clone(), name);
-            let ok = member_call(
-                actual_local.clone(),
-                "ok",
-                vec![],
-                JavaType::primitive(JavaPrimitive::Boolean),
-                JavaMemberOrigin::Runtime(JavaRuntimeMember::ResultOk),
-            );
-            match &test.expected {
-                portable_core_ir::CoreExpectedOutcome::Value(expected) => {
-                    statements.push(JavaStmt::If {
-                        condition: unary(
-                            JavaUnaryOperator::Not,
-                            ok,
-                            JavaType::primitive(JavaPrimitive::Boolean),
-                        ),
-                        then_block: JavaBlock::new(vec![JavaStmt::ThrowAssertion(string_literal(
-                            &format!(
-                                "portable test {index} ({}) unexpectedly failed",
-                                test.header.name
-                            ),
-                        ))]),
-                        else_block: None,
-                    });
-                    let expected_value = self.typed_value(expected)?;
-                    let actual_value = member_call(
-                        actual_local,
-                        "value",
-                        vec![],
-                        expected_value.ty.clone(),
-                        JavaMemberOrigin::Runtime(JavaRuntimeMember::ResultValue),
-                    );
-                    let equal = runtime_call(
-                        JavaRuntimeCallable::DeepEqual,
-                        vec![actual_value, expected_value],
-                        JavaType::primitive(JavaPrimitive::Boolean),
-                    );
-                    statements.push(JavaStmt::If {
-                        condition: unary(
-                            JavaUnaryOperator::Not,
-                            equal,
-                            JavaType::primitive(JavaPrimitive::Boolean),
-                        ),
-                        then_block: JavaBlock::new(vec![JavaStmt::ThrowAssertion(string_literal(
-                            &format!(
-                                "portable test {index} ({}) value mismatch",
-                                test.header.name
-                            ),
-                        ))]),
-                        else_block: None,
-                    });
+            let expected = match &test.expected {
+                portable_core_ir::CoreExpectedOutcome::Value(value) => {
+                    JavaPortableTestExpectation::Value(self.typed_value(value)?)
                 }
-                portable_core_ir::CoreExpectedOutcome::Error(expected) => {
-                    statements.push(JavaStmt::If {
-                        condition: ok,
-                        then_block: JavaBlock::new(vec![JavaStmt::ThrowAssertion(string_literal(
-                            &format!(
-                                "portable test {index} ({}) unexpectedly succeeded",
-                                test.header.name
-                            ),
-                        ))]),
-                        else_block: None,
-                    });
-                    let expected_code = self.typed_value(expected)?;
-                    let error = member_call(
-                        actual_local,
-                        "error",
-                        vec![],
-                        JavaType::known(JavaKnownType::RuntimeError),
-                        JavaMemberOrigin::Runtime(JavaRuntimeMember::ResultError),
-                    );
-                    let actual_code = member_call(
-                        error.clone(),
-                        "code",
-                        vec![],
-                        JavaType::known(JavaKnownType::String),
-                        JavaMemberOrigin::Runtime(JavaRuntimeMember::ErrorCode),
-                    );
-                    statements.push(assert_true(
-                        runtime_call(
-                            JavaRuntimeCallable::SemanticEqual,
-                            vec![actual_code, expected_code.clone()],
-                            JavaType::primitive(JavaPrimitive::Boolean),
-                        ),
-                        &format!(
-                            "portable test {index} ({}) error code mismatch",
-                            test.header.name
-                        ),
-                    ));
-                    let actual_message = member_call(
-                        error,
-                        "message",
-                        vec![],
-                        JavaType::known(JavaKnownType::String),
-                        JavaMemberOrigin::Runtime(JavaRuntimeMember::ErrorMessage),
-                    );
-                    statements.push(assert_true(
-                        runtime_call(
-                            JavaRuntimeCallable::SemanticEqual,
-                            vec![actual_message, expected_code],
-                            JavaType::primitive(JavaPrimitive::Boolean),
-                        ),
-                        &format!(
-                            "portable test {index} ({}) error message mismatch",
-                            test.header.name
-                        ),
-                    ));
+                portable_core_ir::CoreExpectedOutcome::Error(value) => {
+                    JavaPortableTestExpectation::Error(self.typed_value(value)?)
                 }
-            }
-            statements.push(JavaStmt::Assign {
-                target: completed.clone(),
-                value: binary(
-                    JavaBinaryOperator::Add,
-                    completed.clone(),
-                    i32_literal(1),
-                    int.clone(),
-                ),
-            });
+            };
+            let JavaPortableTestsNode::Case(statements) = self
+                .features
+                .mapping_for::<portable_build::PortableTests>()
+                .lower(
+                    &mut (),
+                    JavaPortableTestsInput::Case(Box::new(JavaPortableTestCaseInput {
+                        index,
+                        name: test.header.name.clone(),
+                        actual,
+                        expected,
+                    })),
+                )?
+            else {
+                return Err(vec![diagnostic(
+                    "Java PortableTests mapping returned a harness for a case",
+                )]);
+            };
+            cases.push(statements);
         }
-        statements.push(assert_true(
-            binary(
-                JavaBinaryOperator::Equal,
-                completed,
-                i32_literal(expected_test_count),
-                boolean,
-            ),
-            &format!(
-                "portable conformance inventory mismatch: expected {expected_test_count} tests"
-            ),
-        ));
-        Ok(JavaTypeDeclaration {
-            declared: None,
-            kind: JavaDeclarationKind::FinalClass,
-            visibility: JavaVisibility::Public,
-            modifiers: vec![],
-            name: identifier(class_name),
-            type_parameters: vec![],
-            record_components: vec![],
-            heritage: JavaHeritage::None,
-            permits: vec![],
-            members: vec![
-                JavaMember::Constructor(private_constructor(class_name)),
-                JavaMember::Method(JavaMethod {
-                    declared: JavaMethodDeclaration::Structural,
-                    annotations: vec![],
-                    modifiers: vec![JavaModifier::Public, JavaModifier::Static],
-                    type_parameters: vec![],
-                    return_type: JavaType::primitive(JavaPrimitive::Void),
-                    name: identifier("main"),
-                    parameters: vec![JavaParameter {
-                        ty: JavaType::Array {
-                            component: Box::new(JavaType::known(JavaKnownType::String)),
-                            ownership: JavaArrayOwnership::DefensiveCopyBoundary,
-                        },
-                        name: identifier("arguments"),
-                        final_parameter: true,
-                    }],
-                    body: Some(JavaBlock::new(statements)),
+        match self
+            .features
+            .mapping_for::<portable_build::PortableTests>()
+            .lower(
+                &mut (),
+                JavaPortableTestsInput::Harness(JavaPortableTestHarnessInput {
+                    class_name: class_name.to_owned(),
+                    cases,
+                    expected_test_count,
                 }),
-            ],
-        })
+            )? {
+            JavaPortableTestsNode::Harness(declaration) => Ok(declaration),
+            JavaPortableTestsNode::Case(_) => Err(vec![diagnostic(
+                "Java PortableTests mapping returned a case for a harness",
+            )]),
+        }
     }
 
     fn typed_value(&self, value: &CoreTypedValue) -> Result<JavaExpr, Vec<Diagnostic>> {
@@ -3586,18 +3448,6 @@ fn public_factory_method(
 
 fn length_prefixed_type(category: &str, payload: &str) -> String {
     format!("{category}{}_{}", payload.len(), payload)
-}
-
-fn assert_true(condition: JavaExpr, message: &str) -> JavaStmt {
-    JavaStmt::If {
-        condition: unary(
-            JavaUnaryOperator::Not,
-            condition,
-            JavaType::primitive(JavaPrimitive::Boolean),
-        ),
-        then_block: JavaBlock::new(vec![JavaStmt::ThrowAssertion(string_literal(message))]),
-        else_block: None,
-    }
 }
 
 pub(crate) fn java_unit_value() -> JavaExpr {
