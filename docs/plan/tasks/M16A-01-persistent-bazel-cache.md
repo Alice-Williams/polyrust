@@ -40,3 +40,21 @@ Commit and push this specification checkpoint before implementation. Commit
 and push the workflow/policy-test checkpoint only after all local gates pass.
 Mark complete only after the second hosted run supplies restoration evidence.
 
+## Exit evidence
+
+Implementation is complete locally pending the two hosted cache-lineage runs:
+
+- The workflow restores and saves versioned persistent caches with a unique
+  run-attempt key and a toolchain/dependency-compatible restore prefix.
+- Cache-cold mounts a freshly recreated, asserted-empty `polyrust-cold` Bazel
+  tree; cache-warm alone mounts the restored `polyrust-cache` Bazel tree.
+- `//tools/ci:cache_policy_test` is part of the explicit release suite and
+  checks rotation, path separation, ordering, empty-cold proof, and complete
+  release-script execution in both modes.
+- The focused cache-policy, Buildifier, and documentation tests pass.
+  Actionlint 1.7.12 accepts the workflow.
+- The uncached authoritative tracked release gate passes 237 of 237 tests.
+  The broader local `//...` invocation is presently blocked only by the
+  unrelated untracked `examples/real-world/stdlib-abs` worktree, which refers
+  to its not-yet-created `differential_test.sh`; that user-owned work remains
+  untouched and is absent from clean hosted checkouts.

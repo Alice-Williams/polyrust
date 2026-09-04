@@ -1,0 +1,8 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+sh_test(
+    name = "cache_policy_test",
+    srcs = ["cache_policy_test.sh"],
+    data = ["//:.github/workflows/ci.yml"],
+    tags = ["policy"],
+)

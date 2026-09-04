@@ -112,8 +112,9 @@ jobs:
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
           df -h /
-      - name: Restore non-semantic caches
-        uses: actions/cache@v6
+      - name: Restore persistent non-semantic caches
+        id: restore-non-semantic-caches
+        uses: actions/cache/restore@v6
         with:
           path: |
             ${{ runner.temp }}/polyrust-cache/bazelisk
@@ -122,7 +123,18 @@ jobs:
             ${{ runner.temp }}/polyrust-cache/cargo-registry
             ${{ runner.temp }}/polyrust-cache/cargo-git
             ${{ runner.temp }}/polyrust-cache/cargo-tools
-          key: polyrust-v2-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'MODULE.bazel.lock', '.devcontainer/Dockerfile') }}
+          key: polyrust-v3-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'MODULE.bazel', 'MODULE.bazel.lock', '.devcontainer/Dockerfile', '.bazelversion', '.bazelrc') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            polyrust-v3-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'MODULE.bazel', 'MODULE.bazel.lock', '.devcontainer/Dockerfile', '.bazelversion', '.bazelrc') }}-
+      - name: Report persistent cache restoration
+        env:
+          MATCHED_CACHE_KEY: ${{ steps.restore-non-semantic-caches.outputs.cache-matched-key }}
+        run: |
+          if [[ -n "$MATCHED_CACHE_KEY" ]]; then
+            echo "Restored cache lineage: $MATCHED_CACHE_KEY"
+          else
+            echo "No compatible cache lineage was available"
+          fi
       - name: Build pinned development image
         run: docker build --tag "$IMAGE" --file .devcontainer/Dockerfile .
       - name: Install pinned advisory checker
@@ -138,12 +150,16 @@ jobs:
           fi
       - name: Cache-cold complete gate
         run: |
-          rm -rf "$RUNNER_TEMP/polyrust-cache/bazelisk"/* "$RUNNER_TEMP/polyrust-cache/bazel-repository"/* "$RUNNER_TEMP/polyrust-cache/bazel-disk"/*
+          rm -rf "$RUNNER_TEMP/polyrust-cold"
+          for path in bazelisk bazel-repository bazel-disk; do
+            mkdir -p "$RUNNER_TEMP/polyrust-cold/$path"
+            test -z "$(find "$RUNNER_TEMP/polyrust-cold/$path" -mindepth 1 -print -quit)"
+          done
           docker run --rm \
             -v "$PWD:/workspace" \
-            -v "$RUNNER_TEMP/polyrust-cache/bazelisk:/root/.cache/bazelisk" \
-            -v "$RUNNER_TEMP/polyrust-cache/bazel-repository:/root/.cache/bazel-repository" \
-            -v "$RUNNER_TEMP/polyrust-cache/bazel-disk:/root/.cache/bazel-disk" \
+            -v "$RUNNER_TEMP/polyrust-cold/bazelisk:/root/.cache/bazelisk" \
+            -v "$RUNNER_TEMP/polyrust-cold/bazel-repository:/root/.cache/bazel-repository" \
+            -v "$RUNNER_TEMP/polyrust-cold/bazel-disk:/root/.cache/bazel-disk" \
             -v "$RUNNER_TEMP/polyrust-cache/cargo-registry:/usr/local/cargo/registry" \
             -v "$RUNNER_TEMP/polyrust-cache/cargo-git:/usr/local/cargo/git" \
             -v "$RUNNER_TEMP/polyrust-cache/cargo-tools:/cargo-tools" \
@@ -161,3 +177,15 @@ jobs:
             -v "$RUNNER_TEMP/polyrust-cache/cargo-tools:/cargo-tools" \
             -e PATH=/cargo-tools/bin:/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin \
             -w /workspace "$IMAGE" bash tools/release/release_gate.sh
+      - name: Save refreshed persistent non-semantic caches
+        if: ${{ success() }}
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ runner.temp }}/polyrust-cache/bazelisk
+            ${{ runner.temp }}/polyrust-cache/bazel-repository
+            ${{ runner.temp }}/polyrust-cache/bazel-disk
+            ${{ runner.temp }}/polyrust-cache/cargo-registry
+            ${{ runner.temp }}/polyrust-cache/cargo-git
+            ${{ runner.temp }}/polyrust-cache/cargo-tools
+          key: polyrust-v3-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'MODULE.bazel', 'MODULE.bazel.lock', '.devcontainer/Dockerfile', '.bazelversion', '.bazelrc') }}-${{ github.run_id }}-${{ github.run_attempt }}
