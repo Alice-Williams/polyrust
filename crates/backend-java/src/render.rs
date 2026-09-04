@@ -124,8 +124,13 @@ fn render_type_with_extra(
     };
     let heritage = render_heritage(&value.heritage, names)?;
     let mut members = String::new();
+    let mut enum_constants = Vec::new();
     for member in &value.members {
-        members.push_str(&render_member(member, names, depth + 1, file)?);
+        if let JavaMember::EnumConstant(constant) = member {
+            enum_constants.push(render_enum_constant(constant, names)?);
+        } else {
+            members.push_str(&render_member(member, names, depth + 1, file)?);
+        }
     }
     members.push_str(extra_members);
     let components = value
@@ -153,6 +158,17 @@ fn render_type_with_extra(
         JavaDeclarationKind::Record => Ok(format!(
             "{indent}{visibility}{declaration_modifiers}record {declaration_name}{type_parameters}({components}){heritage} {{\n{members}{indent}}}\n"
         )),
+        JavaDeclarationKind::Enum => {
+            let constants = enum_constants.join(",\n");
+            let constants = constants
+                .lines()
+                .map(|line| format!("{}{}", "    ".repeat(depth + 1), line))
+                .collect::<Vec<_>>()
+                .join("\n");
+            Ok(format!(
+                "{indent}{visibility}{declaration_modifiers}enum {declaration_name} {{\n{constants};\n{members}{indent}}}\n"
+            ))
+        }
         JavaDeclarationKind::Interface => Ok(format!(
             "{indent}{visibility}{declaration_modifiers}interface {declaration_name}{type_parameters} {{\n{members}{indent}}}\n"
         )),
@@ -180,10 +196,22 @@ fn render_member(
             };
             render_field(&field, names, depth, file)
         }
+        JavaMember::EnumConstant(value) => Ok(format!(
+            "{}{}\n",
+            indent(depth),
+            render_enum_constant(value, names)?
+        )),
         JavaMember::Method(value) => render_method(value, names, depth, file),
         JavaMember::Constructor(value) => render_constructor(value, names, depth, file),
         JavaMember::NestedType(value) => render_type(value, names, depth, file),
     }
+}
+
+fn render_enum_constant(
+    value: &crate::ast::JavaEnumConstant,
+    names: &std::collections::BTreeMap<TargetSymbolRef<JavaDialect>, JavaResolvedName>,
+) -> Result<String, Vec<Diagnostic>> {
+    resolved_generated_member_name(names, GeneratedSymbolId::Value(value.declared))
 }
 
 fn render_field(
@@ -447,6 +475,10 @@ fn render_switch_pattern(
     match pattern {
         JavaPattern::Default => Ok("default".to_owned()),
         JavaPattern::Literal(value) => Ok(format!("case {}", render_literal(value))),
+        JavaPattern::EnumVariant { variant, .. } => Ok(format!(
+            "case {}",
+            resolved_generated_member_name(names, GeneratedSymbolId::Value(*variant))?
+        )),
         JavaPattern::Type { ty, binding } => Ok(format!(
             "case {} {}",
             render_java_type(ty, names)?,
@@ -469,6 +501,17 @@ fn render_expr(
                 JavaValueRef::Generated(value) => {
                     resolved_name(names, &TargetSymbolRef::Generated(*value))?
                 }
+                JavaValueRef::EnumVariant {
+                    enumeration,
+                    variant,
+                } => format!(
+                    "{}.{}",
+                    resolved_name(
+                        names,
+                        &TargetSymbolRef::Generated(GeneratedSymbolId::Type(*enumeration)),
+                    )?,
+                    resolved_generated_member_name(names, GeneratedSymbolId::Value(*variant))?
+                ),
                 JavaValueRef::KnownField(value) => {
                     format!(
                         "{}.{}",
@@ -715,6 +758,28 @@ fn resolved_name(
                 DiagnosticCode::UnresolvedReference,
                 "renderer received a symbol without a linker-owned spelling",
                 portable_diagnostics::SourceRef::logical(["java-renderer", "symbol"]),
+            )]
+        })
+}
+
+fn resolved_generated_member_name(
+    names: &std::collections::BTreeMap<TargetSymbolRef<JavaDialect>, JavaResolvedName>,
+    symbol: GeneratedSymbolId,
+) -> Result<String, Vec<Diagnostic>> {
+    names
+        .get(&TargetSymbolRef::Generated(symbol))
+        .and_then(|value| match value {
+            JavaResolvedName::Local(value)
+            | JavaResolvedName::GeneratedMember { member: value, .. } => {
+                Some(value.as_str().to_owned())
+            }
+            JavaResolvedName::Qualified(_) | JavaResolvedName::Member { .. } => None,
+        })
+        .ok_or_else(|| {
+            vec![Diagnostic::error(
+                DiagnosticCode::UnresolvedReference,
+                "renderer received a generated member without a member spelling",
+                portable_diagnostics::SourceRef::logical(["java-renderer", "generated-member"]),
             )]
         })
 }

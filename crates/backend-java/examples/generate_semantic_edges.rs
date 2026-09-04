@@ -264,6 +264,43 @@ fn main() {
             });
         });
 
+    let (traffic_light, (red, amber, green)) =
+        module.enumeration("TrafficLight", Visibility::Public, vec![], |enumeration| {
+            let (red, ()) = enumeration.variant("RED", vec![], |_| {});
+            let (amber, ()) = enumeration.variant("AMBER", vec![], |_| {});
+            let (green, ()) = enumeration.variant("GREEN", vec![], |_| {});
+            (red, amber, green)
+        });
+    let traffic_light_priority = module.function(
+        "traffic_light_priority",
+        Visibility::Public,
+        vec![],
+        |function| {
+            function.parameter(Parameter::new("value", Type::named(traffic_light)));
+            function.returns(Type::i32());
+            function.body(|body| {
+                let red_pattern = body.enum_pattern(traffic_light, red, []);
+                let red_value = body.literal(Value::i32(3));
+                let red_body = body.block([], Some(red_value));
+                let red_arm = body.match_arm(red_pattern, red_body);
+
+                let amber_pattern = body.enum_pattern(traffic_light, amber, []);
+                let amber_value = body.literal(Value::i32(2));
+                let amber_body = body.block([], Some(amber_value));
+                let amber_arm = body.match_arm(amber_pattern, amber_body);
+
+                let green_pattern = body.enum_pattern(traffic_light, green, []);
+                let green_value = body.literal(Value::i32(1));
+                let green_body = body.block([], Some(green_value));
+                let green_arm = body.match_arm(green_pattern, green_body);
+
+                let matched = body.local("value");
+                let priority = body.match_value(matched, [red_arm, amber_arm, green_arm]);
+                body.block([], Some(priority))
+            });
+        },
+    );
+
     let astral = "\u{10000}";
     let bmp = "\u{e000}";
     module.portable_test(
@@ -291,6 +328,19 @@ fn main() {
             ],
         ),
         Expected::value(TypedValue::new(Type::bool(), Value::bool(false))),
+    );
+    module.portable_test(
+        "payload_free_enum_branch_is_exhaustive",
+        Visibility::Package,
+        vec![],
+        Invocation::function(
+            traffic_light_priority,
+            [TypedValue::new(
+                Type::named(traffic_light),
+                Value::enumeration(traffic_light, amber, []),
+            )],
+        ),
+        Expected::value(TypedValue::new(Type::i32(), Value::i32(2))),
     );
     module.portable_test(
         "nested_call_preserves_error",

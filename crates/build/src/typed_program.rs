@@ -301,6 +301,119 @@
 //!     }).builder
 //! });
 //! ```
+//!
+//! Payload-free enums require at least one variant:
+//!
+//! ```compile_fail
+//! use portable_build::{portable_name, typed_list, typed_program};
+//! let _ = typed_program(portable_name!("empty_enum"), |builder| {
+//!     builder.enumeration(
+//!         portable_name!("Empty"),
+//!         typed_list![],
+//!         |builder, _| builder,
+//!     )
+//! });
+//! ```
+//!
+//! Enum values cannot be constructed with payload fields because the typed
+//! constructor accepts only a declaration and one of its branded variants:
+//!
+//! ```compile_fail
+//! use portable_build::{portable_name, typed_list, typed_program, variant};
+//! let _ = typed_program(portable_name!("enum_payload"), |builder| {
+//!     builder.enumeration(
+//!         portable_name!("Choice"),
+//!         typed_list![variant(portable_name!("ONLY"))],
+//!         |builder, choice| {
+//!             builder.function(
+//!                 portable_name!("bad"), typed_list![], choice.ty(), |body, _| {
+//!                     let payload = body.i32(1);
+//!                     body.enum_variant(&choice, choice.variants().head, payload)
+//!                 },
+//!             ).builder
+//!         },
+//!     )
+//! });
+//! ```
+//!
+//! A variant from one enum cannot construct a value of another enum:
+//!
+//! ```compile_fail
+//! use portable_build::{portable_name, typed_list, typed_program, variant};
+//! let _ = typed_program(portable_name!("enum_brands"), |builder| {
+//!     builder.enumeration(
+//!         portable_name!("First"),
+//!         typed_list![variant(portable_name!("ONE"))],
+//!         |builder, first| builder.enumeration(
+//!             portable_name!("Second"),
+//!             typed_list![variant(portable_name!("TWO"))],
+//!             |builder, second| builder.function(
+//!                 portable_name!("bad"), typed_list![], second.ty(), |body, _| {
+//!                     body.enum_variant(&second, first.variants().head)
+//!                 },
+//!             ).builder,
+//!         ),
+//!     )
+//! });
+//! ```
+//!
+//! Exhaustive enum branches must contain one arm for every variant, in the
+//! declaration order. Omitting an arm changes the arm-list type:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, enum_arm, parameter, portable_name, typed_list, typed_program, variant};
+//! let _ = typed_program(portable_name!("enum_match_missing"), |builder| {
+//!     builder.enumeration(
+//!         portable_name!("Choice"),
+//!         typed_list![variant(portable_name!("FIRST")), variant(portable_name!("SECOND"))],
+//!         |builder, choice| builder.function(
+//!             portable_name!("rank"),
+//!             typed_list![parameter(portable_name!("value"), choice.ty())],
+//!             I32::TYPE,
+//!             |body, values| {
+//!                 let value = body.read(values.head);
+//!                 let first = body.i32(1);
+//!                 body.enum_match(
+//!                     &choice,
+//!                     value,
+//!                     typed_list![enum_arm(choice.variants().head, first)],
+//!                 )
+//!             },
+//!         ).builder,
+//!     )
+//! });
+//! ```
+//!
+//! Duplicating or reordering a variant also changes the positional handle
+//! types and is rejected before the portable IR can be built:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, enum_arm, parameter, portable_name, typed_list, typed_program, variant};
+//! let _ = typed_program(portable_name!("enum_match_duplicate"), |builder| {
+//!     builder.enumeration(
+//!         portable_name!("Choice"),
+//!         typed_list![variant(portable_name!("FIRST")), variant(portable_name!("SECOND"))],
+//!         |builder, choice| builder.function(
+//!             portable_name!("rank"),
+//!             typed_list![parameter(portable_name!("value"), choice.ty())],
+//!             I32::TYPE,
+//!             |body, values| {
+//!                 let value = body.read(values.head);
+//!                 let first = body.i32(1);
+//!                 let duplicate = body.i32(2);
+//!                 body.enum_match(
+//!                     &choice,
+//!                     value,
+//!                     typed_list![
+//!                         enum_arm(choice.variants().head, first),
+//!                         enum_arm(choice.variants().head, duplicate),
+//!                     ],
+//!                 )
+//!             },
+//!         ).builder,
+//!     )
+//! });
+//! ```
 
 use std::{cell::Cell, marker::PhantomData};
 
@@ -308,14 +421,17 @@ use portable_check::v0::CheckedProgram;
 
 use crate::capabilities::*;
 use crate::{
-    BodyBuilder, FunctionId, ModuleBuilder, Operation, Parameter, RecordFieldId, RecordId, Type,
-    Value, Visibility,
+    BodyBuilder, EnumId, EnumVariantId, FunctionId, ModuleBuilder, Operation, Parameter,
+    RecordFieldId, RecordId, Type, Value, Visibility,
 };
 
 mod sealed {
     pub trait Parameters {}
     pub trait Arguments {}
     pub trait Fields {}
+    pub trait Variants {}
+    pub trait NonEmptyVariants {}
+    pub trait EnumArms {}
     pub trait HomogeneousArguments {}
     pub trait ReplacementArguments {}
     pub trait Equatable {}
@@ -575,8 +691,10 @@ where
     }
 }
 
-/// Values admitted by equality operations.
-pub trait TypedEquatable: sealed::Equatable {}
+/// Values admitted by equality operations, with their owning capability.
+pub trait TypedEquatable: sealed::Equatable {
+    type EqualityCapability: Capability;
+}
 /// Values admitted by ordered comparisons.
 pub trait TypedOrdered: sealed::Ordered {}
 /// Values admitted by integer operations.
@@ -585,17 +703,25 @@ pub trait TypedInteger: sealed::Integer {}
 macro_rules! equatable {
     ($($type:ty),+ $(,)?) => {$(
         impl sealed::Equatable for $type {}
-        impl TypedEquatable for $type {}
+        impl TypedEquatable for $type {
+            type EqualityCapability = Equality;
+        }
     )+};
 }
 
 equatable!(Bool, I32, I64, F64, Text, Char, Bytes);
 impl<T: TypedEquatable> sealed::Equatable for List<T> {}
-impl<T: TypedEquatable> TypedEquatable for List<T> {}
+impl<T: TypedEquatable> TypedEquatable for List<T> {
+    type EqualityCapability = Equality;
+}
 impl<T: TypedEquatable> sealed::Equatable for Optional<T> {}
-impl<T: TypedEquatable> TypedEquatable for Optional<T> {}
+impl<T: TypedEquatable> TypedEquatable for Optional<T> {
+    type EqualityCapability = Equality;
+}
 impl<Ok: TypedEquatable, Error: TypedEquatable> sealed::Equatable for ResultValue<Ok, Error> {}
-impl<Ok: TypedEquatable, Error: TypedEquatable> TypedEquatable for ResultValue<Ok, Error> {}
+impl<Ok: TypedEquatable, Error: TypedEquatable> TypedEquatable for ResultValue<Ok, Error> {
+    type EqualityCapability = Equality;
+}
 impl sealed::Ordered for I32 {}
 impl TypedOrdered for I32 {}
 impl sealed::Ordered for I64 {}
@@ -615,7 +741,19 @@ impl TypedInteger for I64 {}
 pub struct RecordValue<'module, 'record>(PhantomData<(Cell<&'module ()>, Cell<&'record ()>)>);
 
 impl sealed::Equatable for RecordValue<'_, '_> {}
-impl TypedEquatable for RecordValue<'_, '_> {}
+impl TypedEquatable for RecordValue<'_, '_> {
+    type EqualityCapability = Equality;
+}
+
+/// A payload-free enum value branded with its module and exact declaration.
+pub struct EnumValue<'module, 'enumeration>(
+    PhantomData<(Cell<&'module ()>, Cell<&'enumeration ()>)>,
+);
+
+impl sealed::Equatable for EnumValue<'_, '_> {}
+impl TypedEquatable for EnumValue<'_, '_> {
+    type EqualityCapability = Enums;
+}
 
 /// A typed expression owned by one callable body with inferred requirements.
 type InvariantExpressionBrand<'module, 'body, T, R> = fn(&'module (), &'body (), T, R) -> (T, R);
@@ -631,6 +769,15 @@ enum TypedNode {
     Record {
         record: RecordId,
         fields: Vec<(RecordFieldId, TypedNode)>,
+    },
+    Enum {
+        enumeration: EnumId,
+        variant: EnumVariantId,
+    },
+    EnumMatch {
+        enumeration: EnumId,
+        value: Box<TypedNode>,
+        arms: Vec<(EnumVariantId, TypedNode)>,
     },
     Field {
         base: Box<TypedNode>,
@@ -977,6 +1124,179 @@ pub trait FieldList: sealed::Fields {
     ) -> Self::Handles<'module, 'record>;
 }
 
+/// A payload-free enum variant specification.
+pub struct TypedVariantSpec {
+    name: PortableName,
+}
+
+pub const fn variant(name: PortableName) -> TypedVariantSpec {
+    TypedVariantSpec { name }
+}
+
+type InvariantEnumBrand<'module, 'enumeration, Position = ()> = (
+    Cell<&'module ()>,
+    Cell<&'enumeration ()>,
+    fn(Position) -> Position,
+);
+
+/// A variant handle tied to one exact enum declaration and list position.
+pub struct TypedVariant<'module, 'enumeration, Position> {
+    raw: EnumVariantId,
+    marker: PhantomData<InvariantEnumBrand<'module, 'enumeration, Position>>,
+}
+
+impl<Position> Copy for TypedVariant<'_, '_, Position> {}
+impl<Position> Clone for TypedVariant<'_, '_, Position> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+/// A recursive list of payload-free enum variants.
+pub trait VariantList: sealed::Variants {
+    type Handles<'module, 'enumeration>;
+
+    #[doc(hidden)]
+    fn append_raw(self, output: &mut Vec<PortableName>);
+    #[doc(hidden)]
+    fn make_handles<'module, 'enumeration>(
+        variants: &mut std::vec::IntoIter<EnumVariantId>,
+    ) -> Self::Handles<'module, 'enumeration>;
+}
+
+impl sealed::Variants for Nil {}
+impl VariantList for Nil {
+    type Handles<'module, 'enumeration> = Nil;
+
+    fn append_raw(self, _output: &mut Vec<PortableName>) {}
+
+    fn make_handles<'module, 'enumeration>(
+        _variants: &mut std::vec::IntoIter<EnumVariantId>,
+    ) -> Self::Handles<'module, 'enumeration> {
+        Nil
+    }
+}
+
+impl<Tail> sealed::Variants for Cons<TypedVariantSpec, Tail> where Tail: VariantList {}
+impl<Tail> sealed::NonEmptyVariants for Cons<TypedVariantSpec, Tail> where Tail: VariantList {}
+
+impl<Tail> VariantList for Cons<TypedVariantSpec, Tail>
+where
+    Tail: VariantList,
+{
+    type Handles<'module, 'enumeration> =
+        Cons<TypedVariant<'module, 'enumeration, Tail>, Tail::Handles<'module, 'enumeration>>;
+
+    fn append_raw(self, output: &mut Vec<PortableName>) {
+        output.push(self.head.name);
+        self.tail.append_raw(output);
+    }
+
+    fn make_handles<'module, 'enumeration>(
+        variants: &mut std::vec::IntoIter<EnumVariantId>,
+    ) -> Self::Handles<'module, 'enumeration> {
+        Cons::new(
+            TypedVariant {
+                raw: variants.next().expect("typed enum variant"),
+                marker: PhantomData,
+            },
+            Tail::make_handles(variants),
+        )
+    }
+}
+
+/// One value-producing arm for one exact payload-free enum variant.
+pub struct TypedEnumArm<'module, 'body, 'enumeration, Position, Output, R: Requirements> {
+    variant: EnumVariantId,
+    value: TypedNode,
+    marker: PhantomData<(
+        InvariantEnumBrand<'module, 'enumeration, Position>,
+        InvariantExpressionBrand<'module, 'body, Output, R>,
+    )>,
+}
+
+/// Binds an enum variant to its typed result expression.
+pub fn enum_arm<'module, 'body, 'enumeration, Position, Output, R: Requirements>(
+    variant: TypedVariant<'module, 'enumeration, Position>,
+    value: TypedExpr<'module, 'body, Output, R>,
+) -> TypedEnumArm<'module, 'body, 'enumeration, Position, Output, R> {
+    TypedEnumArm {
+        variant: variant.raw,
+        value: value.node,
+        marker: PhantomData,
+    }
+}
+
+/// An exhaustive, ordered arm list whose type preserves every variant identity.
+pub trait EnumArmList<'module, 'body, 'enumeration, Output>: sealed::EnumArms {
+    type VariantHandles;
+    type Requirements: Requirements;
+
+    #[doc(hidden)]
+    fn into_nodes(self) -> EnumArmNodes;
+}
+
+/// Opaque enum-branch lowering payload used only by the checked-IR bridge.
+#[doc(hidden)]
+pub struct EnumArmNodes(Vec<(EnumVariantId, TypedNode)>);
+
+impl sealed::EnumArms for Nil {}
+impl<'module, 'body, 'enumeration, Output> EnumArmList<'module, 'body, 'enumeration, Output>
+    for Nil
+{
+    type VariantHandles = Nil;
+    type Requirements = NoneRequired;
+
+    fn into_nodes(self) -> EnumArmNodes {
+        EnumArmNodes(vec![])
+    }
+}
+
+impl<'module, 'body, 'enumeration, Position, Output, R, Tail> sealed::EnumArms
+    for Cons<TypedEnumArm<'module, 'body, 'enumeration, Position, Output, R>, Tail>
+where
+    R: Requirements,
+    Tail: EnumArmList<'module, 'body, 'enumeration, Output>,
+{
+}
+
+impl<'module, 'body, 'enumeration, Position, Output, R, Tail>
+    EnumArmList<'module, 'body, 'enumeration, Output>
+    for Cons<TypedEnumArm<'module, 'body, 'enumeration, Position, Output, R>, Tail>
+where
+    R: Requirements,
+    Tail: EnumArmList<'module, 'body, 'enumeration, Output>,
+{
+    type VariantHandles = Cons<TypedVariant<'module, 'enumeration, Position>, Tail::VariantHandles>;
+    type Requirements = All<R, Tail::Requirements>;
+
+    fn into_nodes(self) -> EnumArmNodes {
+        let mut nodes = vec![(self.head.variant, self.head.value)];
+        nodes.extend(self.tail.into_nodes().0);
+        EnumArmNodes(nodes)
+    }
+}
+
+/// A payload-free enum and its exact branded variant-handle list.
+pub struct TypedEnum<'module, 'enumeration, Handles> {
+    raw: EnumId,
+    variants: Handles,
+    marker: PhantomData<InvariantEnumBrand<'module, 'enumeration>>,
+}
+
+impl<'module, 'enumeration, Handles> TypedEnum<'module, 'enumeration, Handles> {
+    pub fn ty(&self) -> TypedType<EnumValue<'module, 'enumeration>, Requires<Enums>> {
+        TypedType {
+            ir: Type::named(self.raw),
+            marker: PhantomData,
+        }
+    }
+
+    pub const fn variants(&self) -> &Handles {
+        &self.variants
+    }
+}
+
 impl sealed::Fields for Nil {}
 impl FieldList for Nil {
     type Types = Nil;
@@ -1092,6 +1412,7 @@ pub struct ProgramBuilder<'module, R: Requirements> {
 type FunctionRequirement<Existing, Parameters, Result, Body> =
     All<Existing, All<Requires<Functions>, All<Parameters, All<Result, Body>>>>;
 type RecordRequirement<Existing, Fields> = All<Existing, All<Requires<Records>, Fields>>;
+type EnumRequirement<Existing> = All<Existing, Requires<Enums>>;
 type FunctionAdded<'module, Existing, Parameters, Output, OutputRequirements, BodyRequirements> =
     Added<
         ProgramBuilder<
@@ -1251,6 +1572,50 @@ impl<'module, Existing: Requirements> ProgramBuilder<'module, Existing> {
             },
         )
     }
+
+    pub fn enumeration<Variants, OutputRequirements>(
+        mut self,
+        name: PortableName,
+        variants: Variants,
+        then: impl for<'enumeration> FnOnce(
+            ProgramBuilder<'module, EnumRequirement<Existing>>,
+            TypedEnum<'module, 'enumeration, Variants::Handles<'module, 'enumeration>>,
+        ) -> ProgramBuilder<'module, OutputRequirements>,
+    ) -> ProgramBuilder<'module, OutputRequirements>
+    where
+        Variants: VariantList + sealed::NonEmptyVariants,
+        OutputRequirements: Requirements,
+    {
+        let name = self.names.allocate(name);
+        let mut raw_variants = Vec::new();
+        variants.append_raw(&mut raw_variants);
+        let mut variant_names = NameAllocator::default();
+        let raw_variants = raw_variants
+            .into_iter()
+            .map(|name| variant_names.allocate(name))
+            .collect::<Vec<_>>();
+        let (raw, variant_ids) =
+            self.dynamic
+                .enumeration(name, Visibility::Public, vec![], |enumeration| {
+                    raw_variants
+                        .into_iter()
+                        .map(|name| enumeration.variant(name, vec![], |_| {}).0)
+                        .collect::<Vec<_>>()
+                });
+        let handles = Variants::make_handles(&mut variant_ids.into_iter());
+        then(
+            ProgramBuilder {
+                dynamic: self.dynamic,
+                names: self.names,
+                marker: PhantomData,
+            },
+            TypedEnum {
+                raw,
+                variants: handles,
+                marker: PhantomData,
+            },
+        )
+    }
 }
 
 /// The only expression factory for one branded function body.
@@ -1265,6 +1630,7 @@ type ResultTypeRequirements<OkR, ErrorR> = All<Requires<ResultValues>, All<OkR, 
 type ListConstructionRequirements<TypeR, ValuesR> = All<Requires<ListValues>, All<TypeR, ValuesR>>;
 type OptionConstructionRequirements<R> = All<Requires<OptionValues>, R>;
 type ResultConstructionRequirements<OkR, ErrorR> = All<Requires<ResultValues>, All<OkR, ErrorR>>;
+type EnumBranchRequirements<ValueR, ArmsR> = All<Requires<Enums>, All<ValueR, ArmsR>>;
 
 impl<'module, 'body> TypedBody<'module, 'body> {
     fn expression<T, R: Requirements>(&self, node: TypedNode) -> TypedExpr<'module, 'body, T, R> {
@@ -1409,6 +1775,34 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         })
     }
 
+    pub fn enum_variant<'enumeration, Handles, Position>(
+        &mut self,
+        enumeration: &TypedEnum<'module, 'enumeration, Handles>,
+        variant: TypedVariant<'module, 'enumeration, Position>,
+    ) -> TypedExpr<'module, 'body, EnumValue<'module, 'enumeration>, Requires<Enums>> {
+        self.expression(TypedNode::Enum {
+            enumeration: enumeration.raw,
+            variant: variant.raw,
+        })
+    }
+
+    pub fn enum_match<'enumeration, Handles, Output, ValueR, Arms>(
+        &mut self,
+        enumeration: &TypedEnum<'module, 'enumeration, Handles>,
+        value: TypedExpr<'module, 'body, EnumValue<'module, 'enumeration>, ValueR>,
+        arms: Arms,
+    ) -> TypedExpr<'module, 'body, Output, EnumBranchRequirements<ValueR, Arms::Requirements>>
+    where
+        ValueR: Requirements,
+        Arms: EnumArmList<'module, 'body, 'enumeration, Output, VariantHandles = Handles>,
+    {
+        self.expression(TypedNode::EnumMatch {
+            enumeration: enumeration.raw,
+            value: Box::new(value.node),
+            arms: arms.into_nodes().0,
+        })
+    }
+
     pub fn field<'record, T, BaseRequirements>(
         &mut self,
         base: TypedExpr<'module, 'body, RecordValue<'module, 'record>, BaseRequirements>,
@@ -1520,7 +1914,7 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         &mut self,
         left: TypedExpr<'module, 'body, T, L>,
         right: TypedExpr<'module, 'body, T, R>,
-    ) -> TypedExpr<'module, 'body, Bool, WithTwo<Equality, L, R>> {
+    ) -> TypedExpr<'module, 'body, Bool, WithTwo<T::EqualityCapability, L, R>> {
         self.binary(Operation::Equal, left, right)
     }
 
@@ -1528,7 +1922,7 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         &mut self,
         left: TypedExpr<'module, 'body, T, L>,
         right: TypedExpr<'module, 'body, T, R>,
-    ) -> TypedExpr<'module, 'body, Bool, WithTwo<Equality, L, R>> {
+    ) -> TypedExpr<'module, 'body, Bool, WithTwo<T::EqualityCapability, L, R>> {
         self.binary(Operation::NotEqual, left, right)
     }
 
@@ -2075,6 +2469,27 @@ fn lower_expression(body: &mut BodyBuilder<'_>, node: TypedNode) -> crate::Expr 
                 .map(|(field, value)| (field, lower_expression(body, value)))
                 .collect::<Vec<_>>();
             body.record(record, fields)
+        }
+        TypedNode::Enum {
+            enumeration,
+            variant,
+        } => body.enumeration(enumeration, variant, []),
+        TypedNode::EnumMatch {
+            enumeration,
+            value,
+            arms,
+        } => {
+            let value = lower_expression(body, *value);
+            let arms = arms
+                .into_iter()
+                .map(|(variant, value)| {
+                    let pattern = body.enum_pattern(enumeration, variant, []);
+                    let value = lower_expression(body, value);
+                    let block = body.block([], Some(value));
+                    body.match_arm(pattern, block)
+                })
+                .collect::<Vec<_>>();
+            body.match_value(value, arms)
         }
         TypedNode::Field { base, field } => {
             let base = lower_expression(body, *base);

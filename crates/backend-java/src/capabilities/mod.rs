@@ -1,6 +1,6 @@
 //! Java capability mappings and their exhaustive registration.
 
-use portable_build::{Enums, LanguageCapabilityPlugin, capability_slots};
+use portable_build::{LanguageCapabilityPlugin, capability_slots};
 
 mod bool_values;
 mod boolean_logic;
@@ -12,6 +12,7 @@ mod checked_integer_shifts;
 mod conditionals;
 mod constants;
 mod dispatch;
+mod enums;
 mod equality;
 mod f64_values;
 mod floating_point_arithmetic;
@@ -56,6 +57,7 @@ pub use checked_integer_arithmetic::JavaCheckedIntegerArithmetic;
 pub use checked_integer_shifts::JavaCheckedIntegerShifts;
 pub use conditionals::JavaConditionals;
 pub use constants::JavaConstants;
+pub use enums::JavaEnums;
 pub use equality::JavaEquality;
 pub use f64_values::JavaF64Values;
 pub use floating_point_arithmetic::JavaFloatingPointArithmetic;
@@ -100,6 +102,7 @@ pub(crate) use conditionals::{
 };
 pub(crate) use constants::{JavaConstantsInput, JavaConstantsNode};
 pub(crate) use dispatch::{JavaIntrinsicFamily, classify_intrinsic};
+pub(crate) use enums::{JavaEnumBranchInput, JavaEnumVariantInput, JavaEnumsInput, JavaEnumsNode};
 pub(crate) use functions::{JavaFunctionDeclarationInput, JavaFunctionsInput};
 pub(crate) use interfaces::{
     JavaConcreteInterfaceCallInput, JavaInterfaceCallInput, JavaInterfaceDeclarationInput,
@@ -157,7 +160,7 @@ pub type JavaCapabilitySlots = capability_slots!(
     implemented JavaModules,
     implemented JavaConstants,
     implemented JavaTypeAliases,
-    unsupported Enums,
+    implemented JavaEnums,
     implemented JavaInterfaces,
     implemented JavaPortableTests,
     implemented JavaLocalBindings,
@@ -205,7 +208,7 @@ pub(crate) fn java_capabilities() -> JavaCapabilitySet {
         .support(JavaModules)
         .support(JavaConstants)
         .support(JavaTypeAliases)
-        .unsupported::<Enums>()
+        .support(JavaEnums)
         .support(JavaInterfaces)
         .support(JavaPortableTests)
         .support(JavaLocalBindings)

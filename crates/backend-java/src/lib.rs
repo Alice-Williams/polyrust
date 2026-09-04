@@ -221,8 +221,8 @@ impl TypedLanguagePlugin<CoreProgram> for JavaPlugin {
 mod tests {
     use super::*;
     use portable_build::{
-        I32, ModuleBuilder, Operation, Parameter, Type, Value, Visibility, field, parameter,
-        portable_name, typed_list, typed_program,
+        I32, ModuleBuilder, Operation, Parameter, Type, Value, Visibility, enum_arm, field,
+        parameter, portable_name, typed_list, typed_program, variant,
     };
     use portable_codegen::{OutputContents, TypedGenerationError, TypedPipelineStage};
     use std::collections::BTreeSet;
@@ -260,7 +260,7 @@ mod tests {
                 },
             );
             let compute = added.handle;
-            added.builder.record(
+            let builder = added.builder.record(
                 portable_name!("Point3"),
                 typed_list![
                     field(portable_name!("x"), I32::TYPE),
@@ -295,6 +295,61 @@ mod tests {
                                 let right = body.i32(2);
                                 let scale = body.i32(5);
                                 body.call(compute, typed_list![left, right, scale])
+                            },
+                        )
+                        .builder
+                },
+            );
+            builder.enumeration(
+                portable_name!("TrafficLight"),
+                typed_list![
+                    variant(portable_name!("RED")),
+                    variant(portable_name!("AMBER")),
+                    variant(portable_name!("GREEN")),
+                ],
+                |builder, traffic_light| {
+                    let builder = builder
+                        .function(
+                            portable_name!("stop_light"),
+                            typed_list![],
+                            traffic_light.ty(),
+                            |body, _| {
+                                body.enum_variant(&traffic_light, traffic_light.variants().head)
+                            },
+                        )
+                        .builder;
+                    let builder = builder
+                        .function(
+                            portable_name!("stop_light_is_red"),
+                            typed_list![parameter(portable_name!("value"), traffic_light.ty(),)],
+                            portable_build::Bool::TYPE,
+                            |body, values| {
+                                let left = body.read(values.head);
+                                let right = body
+                                    .enum_variant(&traffic_light, traffic_light.variants().head);
+                                body.equal(left, right)
+                            },
+                        )
+                        .builder;
+                    builder
+                        .function(
+                            portable_name!("traffic_light_priority"),
+                            typed_list![parameter(portable_name!("value"), traffic_light.ty())],
+                            I32::TYPE,
+                            |body, values| {
+                                let value = body.read(values.head);
+                                let red = body.i32(3);
+                                let amber = body.i32(2);
+                                let green = body.i32(1);
+                                body.enum_match(
+                                    &traffic_light,
+                                    value,
+                                    typed_list![
+                                        enum_arm(traffic_light.variants().head, red),
+                                        enum_arm(traffic_light.variants().tail.head, amber),
+                                        enum_arm(traffic_light.variants().tail.tail.head, green,),
+                                    ],
+                                )
                             },
                         )
                         .builder
@@ -334,6 +389,15 @@ mod tests {
         ));
         assert!(generated.contains("Runtime.ok((__polyrust_intrinsicOperand_2 + scale))"));
         assert!(generated.contains("Runtime.ok(new Point3(x, y, z))"));
+        assert!(generated.contains("public enum TrafficLight"));
+        assert!(generated.contains("RED,\n        AMBER,\n        GREEN;"));
+        assert!(generated.contains("Runtime.PolyResult<TrafficLight> stop_light()"));
+        assert!(generated.contains("Runtime.ok(TrafficLight.RED)"));
+        assert!(generated.contains("Runtime.ok((value == TrafficLight.RED))"));
+        assert!(generated.contains("Runtime.PolyResult<Integer> traffic_light_priority("));
+        assert!(generated.contains("case RED ->"));
+        assert!(generated.contains("case AMBER ->"));
+        assert!(generated.contains("case GREEN ->"));
     }
 
     #[test]

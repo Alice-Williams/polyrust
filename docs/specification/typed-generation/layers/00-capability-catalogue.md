@@ -63,11 +63,18 @@ expresses a component field and typed delegation to that component.
 | `LocalBindings` | immutable typed lexical bindings |
 | `Conditionals` | statement and value-producing if/else |
 | `Loops` | bounded for-each, while, break, and continue |
-| `PatternMatching` | exhaustive enum, option, result, boolean, and wildcard branching |
+| `PatternMatching` | exhaustive option, result, boolean, and wildcard branching |
 | `ResultPropagation` | explicit early propagation of portable results without exceptions |
 
 Mutable locals, mutable records, exceptions, and unbounded target-specific
 control flow are not part of the initial catalogue.
+
+Payload-free enum branching belongs exclusively to `Enums`, because a target
+cannot coherently claim the enum declaration/value contract without also
+mapping every variant exhaustively. `PatternMatching` owns the remaining
+portable sum-like and scalar patterns. Older untyped IR fixtures with
+payload-bearing enum variants are compatibility input, not part of the typed
+generic AST capability surface.
 
 ### Value capabilities
 

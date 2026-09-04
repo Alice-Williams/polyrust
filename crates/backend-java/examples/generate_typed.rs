@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
 use portable_backend_java::JavaBackend;
-use portable_build::{I32, Text, field, parameter, portable_name, typed_list, typed_program};
+use portable_build::{
+    I32, Text, enum_arm, field, parameter, portable_name, typed_list, typed_program, variant,
+};
 use portable_codegen::OutputContents;
 
 fn main() {
@@ -31,7 +33,7 @@ fn main() {
             },
         );
         let compute = added.handle;
-        added.builder.record(
+        let builder = added.builder.record(
             portable_name!("Point3"),
             typed_list![
                 field(portable_name!("x"), I32::TYPE),
@@ -127,6 +129,59 @@ fn main() {
                             let ok = body.ok(value, Text::TYPE);
                             let result_ok = body.result_is_ok(ok);
                             body.bool_and(result, result_ok)
+                        },
+                    )
+                    .builder
+            },
+        );
+        builder.enumeration(
+            portable_name!("TrafficLight"),
+            typed_list![
+                variant(portable_name!("RED")),
+                variant(portable_name!("AMBER")),
+                variant(portable_name!("GREEN")),
+            ],
+            |builder, traffic_light| {
+                let builder = builder
+                    .function(
+                        portable_name!("stop_light"),
+                        typed_list![],
+                        traffic_light.ty(),
+                        |body, _| body.enum_variant(&traffic_light, traffic_light.variants().head),
+                    )
+                    .builder;
+                let builder = builder
+                    .function(
+                        portable_name!("stop_light_is_red"),
+                        typed_list![parameter(portable_name!("value"), traffic_light.ty(),)],
+                        portable_build::Bool::TYPE,
+                        |body, values| {
+                            let left = body.read(values.head);
+                            let right =
+                                body.enum_variant(&traffic_light, traffic_light.variants().head);
+                            body.equal(left, right)
+                        },
+                    )
+                    .builder;
+                builder
+                    .function(
+                        portable_name!("traffic_light_priority"),
+                        typed_list![parameter(portable_name!("value"), traffic_light.ty())],
+                        I32::TYPE,
+                        |body, values| {
+                            let value = body.read(values.head);
+                            let red = body.i32(3);
+                            let amber = body.i32(2);
+                            let green = body.i32(1);
+                            body.enum_match(
+                                &traffic_light,
+                                value,
+                                typed_list![
+                                    enum_arm(traffic_light.variants().head, red),
+                                    enum_arm(traffic_light.variants().tail.head, amber),
+                                    enum_arm(traffic_light.variants().tail.tail.head, green),
+                                ],
+                            )
                         },
                     )
                     .builder

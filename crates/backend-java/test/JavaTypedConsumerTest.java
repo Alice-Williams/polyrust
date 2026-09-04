@@ -24,5 +24,27 @@ public final class JavaTypedConsumerTest {
     if (!extended.ok() || !extended.value()) {
       throw new AssertionError("typed extended feature families did not preserve semantics");
     }
+
+    org.polyrust.generated.Runtime.PolyResult<
+            org.polyrust.generated.Generated.TrafficLight>
+        light = org.polyrust.generated.Generated.stop_light();
+    if (!light.ok()
+        || light.value() != org.polyrust.generated.Generated.TrafficLight.RED) {
+      throw new AssertionError("typed payload-free enum did not preserve its variant");
+    }
+
+    org.polyrust.generated.Runtime.PolyResult<Boolean> enumEquality =
+        org.polyrust.generated.Generated.stop_light_is_red(
+            org.polyrust.generated.Generated.TrafficLight.RED);
+    if (!enumEquality.ok() || !enumEquality.value()) {
+      throw new AssertionError("typed payload-free enum equality did not preserve semantics");
+    }
+
+    org.polyrust.generated.Runtime.PolyResult<Integer> enumBranch =
+        org.polyrust.generated.Generated.traffic_light_priority(
+            org.polyrust.generated.Generated.TrafficLight.AMBER);
+    if (!enumBranch.ok() || enumBranch.value() != 2) {
+      throw new AssertionError("typed exhaustive enum branch did not preserve semantics");
+    }
   }
 }

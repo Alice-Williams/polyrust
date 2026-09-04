@@ -34,7 +34,8 @@ use crate::{
     capabilities::{
         JavaBytesInput, JavaCapabilitySet, JavaConcreteInterfaceCallInput,
         JavaConditionalValueInput, JavaConditionalsInput, JavaConditionalsNode, JavaConstantsInput,
-        JavaConstantsNode, JavaFunctionDeclarationInput, JavaFunctionsInput, JavaFunctionsNode,
+        JavaConstantsNode, JavaEnumBranchInput, JavaEnumVariantInput, JavaEnumsInput,
+        JavaEnumsNode, JavaFunctionDeclarationInput, JavaFunctionsInput, JavaFunctionsNode,
         JavaInterfaceCallInput, JavaInterfaceDeclarationInput, JavaInterfaceImplementationInput,
         JavaInterfaceMethodInput, JavaInterfacesInput, JavaInterfacesNode, JavaIntrinsicFamily,
         JavaListInput, JavaLocalBindingInput, JavaLoopsInput, JavaLoweredPattern,
@@ -82,6 +83,7 @@ struct Lowering<'a> {
     records: BTreeMap<CoreRecordId, GeneratedTypeId>,
     enums: BTreeMap<CoreEnumId, GeneratedTypeId>,
     variants: BTreeMap<CoreVariantId, GeneratedTypeId>,
+    enum_values: BTreeMap<CoreVariantId, GeneratedValueId>,
     interfaces: BTreeMap<CoreInterfaceId, GeneratedTypeId>,
     functions: BTreeMap<CoreFunctionId, GeneratedCallableId>,
     interface_methods: BTreeMap<CoreInterfaceMethodId, GeneratedInterfaceMethodId>,
@@ -105,6 +107,7 @@ impl<'a> Lowering<'a> {
             records: BTreeMap::new(),
             enums: BTreeMap::new(),
             variants: BTreeMap::new(),
+            enum_values: BTreeMap::new(),
             interfaces: BTreeMap::new(),
             functions: BTreeMap::new(),
             interface_methods: BTreeMap::new(),
@@ -176,16 +179,21 @@ impl<'a> Lowering<'a> {
                 }
                 CoreDeclaration::Enum(id) => {
                     let item = self.core.enumeration(id).expect("verified enum");
+                    let payload_free = self.enum_is_payload_free(id);
                     let generated = self.builder.generated_type(GeneratedType {
                         name: item.header.name.clone(),
-                        kind: JavaDeclarationKind::SealedInterface,
+                        kind: if payload_free {
+                            JavaDeclarationKind::Enum
+                        } else {
+                            JavaDeclarationKind::SealedInterface
+                        },
                         visibility: java_visibility(item.header.visibility),
                         origin: GeneratedOrigin::CoreDeclaration(*declaration),
                         source: item.header.source.clone(),
                     });
                     self.enums.insert(id, generated);
                     self.declared.push(GeneratedSymbolId::Type(generated));
-                    for variant in &item.variants {
+                    for variant in item.variants.iter().filter(|_| !payload_free) {
                         let value = self.core.variant(*variant).expect("verified variant");
                         let generated = self.builder.generated_type(GeneratedType {
                             name: format!("{}{}", item.header.name, value.header.name),
@@ -297,9 +305,25 @@ impl<'a> Lowering<'a> {
                 }
                 CoreDeclaration::Alias(_)
                 | CoreDeclaration::Record(_)
-                | CoreDeclaration::Enum(_)
                 | CoreDeclaration::Implementation(_)
                 | CoreDeclaration::Test(_) => {}
+                CoreDeclaration::Enum(id) => {
+                    if self.enum_is_payload_free(id) {
+                        let enumeration = self.core.enumeration(id).expect("verified enum");
+                        let ty = JavaType::Reference(JavaTypeName::Generated(self.enums[&id]));
+                        for variant_id in &enumeration.variants {
+                            let variant = self.core.variant(*variant_id).expect("verified variant");
+                            let symbol = self.builder.value(GeneratedValue {
+                                name: variant.header.name.clone(),
+                                ty: JavaDialect.registered_type(&ty),
+                                origin: GeneratedOrigin::CoreDeclaration(*declaration),
+                                source: variant.header.source.clone(),
+                            });
+                            self.enum_values.insert(*variant_id, symbol);
+                            self.declared.push(GeneratedSymbolId::Value(symbol));
+                        }
+                    }
+                }
             }
         }
         Ok(())
@@ -546,6 +570,37 @@ impl<'a> Lowering<'a> {
         id: CoreEnumId,
     ) -> Result<Vec<JavaTypeDeclaration>, Vec<Diagnostic>> {
         let enumeration = self.core.enumeration(id).expect("verified enum");
+        if self.enum_is_payload_free(id) {
+            return match self.features.mapping_for::<portable_build::Enums>().lower(
+                &mut (),
+                JavaEnumsInput::Declaration {
+                    declared: self.enums[&id],
+                    visibility: enumeration.header.visibility,
+                    name: enumeration.header.name.clone(),
+                    variants: enumeration
+                        .variants
+                        .iter()
+                        .map(|variant_id| {
+                            let variant = self
+                                .core
+                                .variant(*variant_id)
+                                .expect("verified enum variant");
+                            JavaEnumVariantInput {
+                                declared: self.enum_values[variant_id],
+                                name: variant.header.name.clone(),
+                            }
+                        })
+                        .collect(),
+                },
+            )? {
+                JavaEnumsNode::Declaration(declaration) => Ok(vec![*declaration]),
+                JavaEnumsNode::Expression(_) | JavaEnumsNode::Statement(_) => {
+                    Err(vec![diagnostic(
+                        "Java Enums mapping returned a value for a declaration",
+                    )])
+                }
+            };
+        }
         let visibility = java_visibility(enumeration.header.visibility);
         let enum_type = JavaType::Reference(JavaTypeName::Generated(self.enums[&id]));
         let mut output = vec![JavaTypeDeclaration {
@@ -617,6 +672,36 @@ impl<'a> Lowering<'a> {
             });
         }
         Ok(output)
+    }
+
+    fn enum_is_payload_free(&self, id: CoreEnumId) -> bool {
+        self.core.enumeration(id).is_some_and(|enumeration| {
+            !enumeration.variants.is_empty()
+                && enumeration.variants.iter().all(|variant| {
+                    self.core
+                        .variant(*variant)
+                        .is_some_and(|variant| variant.fields.is_empty())
+                })
+        })
+    }
+
+    fn enum_variant_expr(
+        &self,
+        enumeration: CoreEnumId,
+        variant: CoreVariantId,
+    ) -> Result<JavaExpr, Vec<Diagnostic>> {
+        match self.features.mapping_for::<portable_build::Enums>().lower(
+            &mut (),
+            JavaEnumsInput::Variant {
+                enumeration: self.enums[&enumeration],
+                variant: self.enum_values[&variant],
+            },
+        )? {
+            JavaEnumsNode::Expression(value) => Ok(*value),
+            JavaEnumsNode::Declaration(_) | JavaEnumsNode::Statement(_) => Err(vec![diagnostic(
+                "Java Enums mapping returned a declaration for a variant value",
+            )]),
+        }
     }
 
     fn generated_record_constructor(
@@ -1476,6 +1561,20 @@ impl<'a> Lowering<'a> {
                 self.construct_generated_plan(self.records[record], fields, ty, callable_return)
             }
             CoreExprKind::ConstructEnum {
+                enumeration,
+                variant,
+                fields,
+            } if self.enum_is_payload_free(*enumeration) => {
+                if !fields.is_empty() {
+                    return Err(vec![diagnostic(
+                        "payload-free Java enum construction cannot contain fields",
+                    )]);
+                }
+                Ok(ExprPlan::pure(
+                    self.enum_variant_expr(*enumeration, *variant)?,
+                ))
+            }
+            CoreExprKind::ConstructEnum {
                 variant, fields, ..
             } => self.construct_generated_plan(self.variants[variant], fields, ty, callable_return),
             CoreExprKind::ConstructSome(value) => {
@@ -1877,6 +1976,18 @@ impl<'a> Lowering<'a> {
                 self.construct_value(self.records[record], fields, ty)
             }
             CoreValue::Enum {
+                enumeration,
+                variant,
+                fields,
+            } if self.enum_is_payload_free(*enumeration) => {
+                if !fields.is_empty() {
+                    return Err(vec![diagnostic(
+                        "payload-free Java enum value cannot contain fields",
+                    )]);
+                }
+                self.enum_variant_expr(*enumeration, *variant)
+            }
+            CoreValue::Enum {
                 variant, fields, ..
             } => self.construct_value(self.variants[variant], fields, ty),
         }
@@ -1953,6 +2064,18 @@ impl<'a> Lowering<'a> {
                     })
                     .collect::<Result<Vec<_>, _>>()?;
                 self.construct_java_values(self.records[record], &expressions, ty)
+            }
+            CoreConstantExprKind::Enum {
+                enumeration,
+                variant,
+                fields,
+            } if self.enum_is_payload_free(*enumeration) => {
+                if !fields.is_empty() {
+                    return Err(vec![diagnostic(
+                        "payload-free Java enum constant cannot contain fields",
+                    )]);
+                }
+                self.enum_variant_expr(*enumeration, *variant)
             }
             CoreConstantExprKind::Enum {
                 variant, fields, ..
@@ -2151,6 +2274,25 @@ impl<'a> Lowering<'a> {
         result: CoreTypeId,
         callable_return: CoreTypeId,
     ) -> Result<ExprPlan, Vec<Diagnostic>> {
+        let matched_expression = self
+            .core
+            .expressions()
+            .get(value)
+            .expect("verified match expression");
+        if let Some(CoreType::Enum(enumeration)) = self.core.types().get(matched_expression.ty)
+            && self.enum_is_payload_free(*enumeration)
+            && arms
+                .iter()
+                .all(|arm| matches!(arm.pattern, CorePattern::EnumVariant { .. }))
+        {
+            return self.payload_free_enum_match_plan(
+                value,
+                arms,
+                result,
+                callable_return,
+                *enumeration,
+            );
+        }
         let matched = self.expr_plan(value, callable_return)?;
         let matched_type = matched.value.ty.clone();
         let result_type = self.ty(result)?;
@@ -2194,6 +2336,85 @@ impl<'a> Lowering<'a> {
                 "Java PatternMatching mapping returned a pattern for a match",
             )]),
         }
+    }
+
+    fn payload_free_enum_match_plan(
+        &self,
+        value: CoreExprId,
+        arms: &[CoreMatchArm],
+        result: CoreTypeId,
+        callable_return: CoreTypeId,
+        enumeration: CoreEnumId,
+    ) -> Result<ExprPlan, Vec<Diagnostic>> {
+        let matched = self.expr_plan(value, callable_return)?;
+        let result_type = self.ty(result)?;
+        let (matched_name, matched_local) = self.temporary("matchValue", matched.value.ty.clone());
+        let (result_name, result_local) = self.temporary("matchResult", result_type.clone());
+        let mut statements = matched.statements;
+        statements.push(JavaStmt::Local {
+            finality: JavaLocalFinality::Final,
+            ty: matched.value.ty.clone(),
+            name: matched_name,
+            value: Some(matched.value),
+        });
+        statements.push(JavaStmt::Local {
+            finality: JavaLocalFinality::Mutable,
+            ty: result_type,
+            name: result_name,
+            value: None,
+        });
+        let lowered_arms = arms
+            .iter()
+            .map(|arm| {
+                let CorePattern::EnumVariant {
+                    variant, bindings, ..
+                } = &arm.pattern
+                else {
+                    unreachable!("payload-free enum match precondition")
+                };
+                if !bindings.is_empty() {
+                    return Err(vec![diagnostic(
+                        "payload-free Java enum patterns cannot bind fields",
+                    )]);
+                }
+                Ok(JavaEnumBranchInput {
+                    variant: self.enum_values[variant],
+                    body: self.block(
+                        arm.body,
+                        BlockMode::AssignResult {
+                            target: Box::new(result_local.clone()),
+                        },
+                        callable_return,
+                    )?,
+                })
+            })
+            .collect::<Result<Vec<_>, Vec<Diagnostic>>>()?;
+        let enumeration_value = self.core.enumeration(enumeration).expect("verified enum");
+        let branch = self.features.mapping_for::<portable_build::Enums>().lower(
+            &mut (),
+            JavaEnumsInput::Branch {
+                selector: Box::new(matched_local),
+                enumeration: self.enums[&enumeration],
+                declared_variants: enumeration_value
+                    .variants
+                    .iter()
+                    .map(|variant| self.enum_values[variant])
+                    .collect(),
+                arms: lowered_arms,
+            },
+        )?;
+        match branch {
+            JavaEnumsNode::Statement(branch) => statements.push(*branch),
+            JavaEnumsNode::Declaration(_) | JavaEnumsNode::Expression(_) => {
+                return Err(vec![diagnostic(
+                    "Java Enums mapping returned a value for exhaustive branching",
+                )]);
+            }
+        }
+        Ok(ExprPlan {
+            statements,
+            value: result_local,
+        })
     }
 
     fn pattern(
@@ -2608,6 +2829,39 @@ impl<'a> Lowering<'a> {
         value: CoreIntrinsicExpr<JavaExpr>,
         result: JavaType,
     ) -> Result<JavaIntrinsicExpr, Vec<Diagnostic>> {
+        if let CoreIntrinsicExpr::Binary {
+            operation,
+            left,
+            right,
+        } = &value
+            && matches!(
+                operation,
+                CoreBinaryIntrinsic::Equal | CoreBinaryIntrinsic::NotEqual
+            )
+            && let Some(enumeration) = self.payload_free_java_enum_type(&left.ty)
+        {
+            let JavaEnumsNode::Expression(equal) =
+                self.features.mapping_for::<portable_build::Enums>().lower(
+                    &mut (),
+                    JavaEnumsInput::Equality {
+                        enumeration,
+                        left: Box::new(left.clone()),
+                        right: Box::new(right.clone()),
+                    },
+                )?
+            else {
+                return Err(vec![diagnostic(
+                    "Java Enums mapping returned a non-expression for equality",
+                )]);
+            };
+            return Ok(JavaIntrinsicExpr::Direct(
+                if *operation == CoreBinaryIntrinsic::Equal {
+                    *equal
+                } else {
+                    unary(JavaUnaryOperator::Not, *equal, result)
+                },
+            ));
+        }
         let mut context = ();
         match classify_intrinsic(value, result) {
             JavaIntrinsicFamily::BooleanLogic(input) => self
@@ -2683,6 +2937,16 @@ impl<'a> Lowering<'a> {
                 .mapping_for::<Utf8Conversions>()
                 .lower(&mut context, input),
         }
+    }
+
+    fn payload_free_java_enum_type(&self, ty: &JavaType) -> Option<GeneratedTypeId> {
+        let JavaType::Reference(JavaTypeName::Generated(generated)) = ty else {
+            return None;
+        };
+        self.enums.iter().find_map(|(enumeration, candidate)| {
+            (candidate == generated && self.enum_is_payload_free(*enumeration))
+                .then_some(*generated)
+        })
     }
 
     fn intrinsic_java_raw(

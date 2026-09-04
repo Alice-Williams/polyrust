@@ -2,11 +2,13 @@ use std::collections::BTreeMap;
 
 use portable_build::{
     BoolValues, BooleanLogic, BytesOperations, BytesValues, CharValues, CheckedIntegerArithmetic,
-    CheckedIntegerShifts, Equality, F64Values, FloatingPointArithmetic, FloatingPointInspection,
-    Functions, I32Values, I64Values, IntegerBitwise, IntegerConversions, ListOperations,
-    ListValues, OptionOperations, OptionValues, Ordering, Records, ResultOperations, ResultValues,
-    StringConcatenation, StringInspection, StringTransformation, Supports, TextValues,
-    Utf8Conversions, WrappingIntegerArithmetic,
+    CheckedIntegerShifts, Conditionals, Constants, Enums, Equality, F64Values,
+    FloatingPointArithmetic, FloatingPointInspection, Functions, I32Values, I64Values,
+    IntegerBitwise, IntegerConversions, Interfaces, ListOperations, ListValues, LocalBindings,
+    Loops, Modules, OptionOperations, OptionValues, Ordering, PatternMatching, PortableTests,
+    Records, ResultOperations, ResultValues, StringConcatenation, StringInspection,
+    StringTransformation, Supports, TextValues, TypeAliases, UnitValues, Utf8Conversions,
+    WrappingIntegerArithmetic,
 };
 use portable_codegen::{
     CapabilityRegistry, ControlFeature, CoreFeature, DeclarationFeature, FeatureShape, FeatureUse,
@@ -146,11 +148,24 @@ impl JavaCapabilityRegistry {
     }
 
     fn confirm_registered_mapping(&self, feature: CoreFeature) {
+        self.registered::<Modules>();
         match feature {
+            CoreFeature::Declaration(DeclarationFeature::Constant) => {
+                self.registered::<Constants>()
+            }
+            CoreFeature::Declaration(DeclarationFeature::Alias) => self.registered::<TypeAliases>(),
+            CoreFeature::Declaration(DeclarationFeature::Record) => self.registered::<Records>(),
+            CoreFeature::Declaration(DeclarationFeature::Enum) => self.registered::<Enums>(),
+            CoreFeature::Declaration(
+                DeclarationFeature::Interface | DeclarationFeature::Implementation,
+            ) => self.registered::<Interfaces>(),
             CoreFeature::Declaration(DeclarationFeature::Function) => {
                 self.registered::<Functions>()
             }
-            CoreFeature::Declaration(DeclarationFeature::Record) => self.registered::<Records>(),
+            CoreFeature::Declaration(DeclarationFeature::Test) => {
+                self.registered::<PortableTests>()
+            }
+            CoreFeature::Type(TypeFeature::Unit) => self.registered::<UnitValues>(),
             CoreFeature::Type(TypeFeature::Bool) => self.registered::<BoolValues>(),
             CoreFeature::Type(TypeFeature::I32) => self.registered::<I32Values>(),
             CoreFeature::Type(TypeFeature::I64) => self.registered::<I64Values>(),
@@ -161,13 +176,52 @@ impl JavaCapabilityRegistry {
             CoreFeature::Type(TypeFeature::List) => self.registered::<ListValues>(),
             CoreFeature::Type(TypeFeature::Option) => self.registered::<OptionValues>(),
             CoreFeature::Type(TypeFeature::Result) => self.registered::<ResultValues>(),
+            CoreFeature::Type(TypeFeature::Record) => self.registered::<Records>(),
+            CoreFeature::Type(TypeFeature::Enum) => self.registered::<Enums>(),
+            CoreFeature::Type(TypeFeature::Interface) => self.registered::<Interfaces>(),
+            CoreFeature::Control(ControlFeature::Let) => self.registered::<LocalBindings>(),
+            CoreFeature::Control(ControlFeature::ForEach) => self.registered::<Loops>(),
+            CoreFeature::Control(ControlFeature::Return) => self.registered::<Functions>(),
+            CoreFeature::Control(ControlFeature::If) => self.registered::<Conditionals>(),
+            CoreFeature::Control(ControlFeature::EnumPattern) => self.registered::<Enums>(),
+            CoreFeature::Control(
+                ControlFeature::WildcardPattern
+                | ControlFeature::BoolPattern
+                | ControlFeature::NonePattern
+                | ControlFeature::SomePattern
+                | ControlFeature::OkPattern
+                | ControlFeature::ErrPattern,
+            ) => self.registered::<PatternMatching>(),
+            CoreFeature::Control(
+                ControlFeature::Block | ControlFeature::Evaluate | ControlFeature::Match,
+            ) => {}
+            CoreFeature::Interface(
+                InterfaceFeature::Declaration
+                | InterfaceFeature::Conformance
+                | InterfaceFeature::MultipleConformance
+                | InterfaceFeature::StaticDispatch
+                | InterfaceFeature::DynamicDispatch
+                | InterfaceFeature::InterfaceValue,
+            ) => self.registered::<Interfaces>(),
+            CoreFeature::Ownership(
+                OwnershipFeature::OnceLeftToRight | OwnershipFeature::OwnedImmutableValue,
+            ) => {}
+            CoreFeature::Operation(OperationFeature::Literal) => {}
             CoreFeature::Operation(OperationFeature::Local | OperationFeature::Call) => {
                 self.registered::<Functions>()
             }
+            CoreFeature::Operation(OperationFeature::Constant) => self.registered::<Constants>(),
+            CoreFeature::Operation(OperationFeature::SelfValue) => self.registered::<Interfaces>(),
             CoreFeature::Operation(OperationFeature::ConstructRecord) => {
                 self.registered::<Records>()
             }
+            CoreFeature::Operation(OperationFeature::ConstructEnum) => self.registered::<Enums>(),
             CoreFeature::Operation(OperationFeature::Field) => self.registered::<Records>(),
+            CoreFeature::Operation(
+                OperationFeature::CoerceInterface
+                | OperationFeature::StaticMethodCall
+                | OperationFeature::InterfaceCall,
+            ) => self.registered::<Interfaces>(),
             CoreFeature::Operation(OperationFeature::ConstructList) => {
                 self.registered::<ListValues>()
             }
@@ -274,7 +328,8 @@ impl JavaCapabilityRegistry {
             CoreFeature::Operation(OperationFeature::Variadic(
                 CoreVariadicIntrinsic::StringReplaceMany,
             )) => self.registered::<StringTransformation>(),
-            _ => {}
+            CoreFeature::Operation(OperationFeature::If) => self.registered::<Conditionals>(),
+            CoreFeature::Operation(OperationFeature::Match | OperationFeature::Block) => {}
         }
     }
 }

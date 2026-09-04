@@ -591,6 +591,10 @@ pub enum JavaValueRef {
     Local(JavaIdentifier),
     This,
     Generated(GeneratedSymbolId),
+    EnumVariant {
+        enumeration: GeneratedTypeId,
+        variant: GeneratedValueId,
+    },
     KnownField(crate::dialect::JavaKnownField),
 }
 
@@ -910,6 +914,17 @@ impl JavaExpr {
                 JavaValueRef::Generated(value) => {
                     symbols.insert(TargetSymbolRef::Generated(*value));
                 }
+                JavaValueRef::EnumVariant {
+                    enumeration,
+                    variant,
+                } => {
+                    symbols.insert(TargetSymbolRef::Generated(GeneratedSymbolId::Type(
+                        *enumeration,
+                    )));
+                    symbols.insert(TargetSymbolRef::Generated(GeneratedSymbolId::Value(
+                        *variant,
+                    )));
+                }
                 JavaValueRef::KnownField(value) => {
                     symbols.insert(TargetSymbolRef::KnownField(*value));
                     symbols.insert(TargetSymbolRef::KnownType(value.owner()));
@@ -1069,6 +1084,26 @@ impl JavaExpr {
                     DiagnosticCode::UnresolvedReference,
                     "Java value expression references a generated symbol from the wrong category",
                 )),
+                JavaValueRef::EnumVariant {
+                    enumeration,
+                    variant,
+                } => {
+                    match generated_enum_variant_matches(
+                        *enumeration,
+                        *variant,
+                        &self.ty,
+                        context,
+                    ) {
+                        Some(true) => {}
+                        Some(false) => violations.push(type_error(
+                            "generated Java enum variant reference disagrees with its declaration",
+                        )),
+                        None => violations.push(AstViolation::new(
+                            DiagnosticCode::UnresolvedReference,
+                            "generated Java enum variant reference is not registered",
+                        )),
+                    }
+                }
                 JavaValueRef::KnownField(field) if self.ty != field.ty() => {
                     violations.push(type_error(
                         "known Java field reference type disagrees with its catalogue entry",
@@ -1916,9 +1951,45 @@ fn find_generated_value_type(
 ) -> Option<JavaType> {
     declaration.members.iter().find_map(|member| match member {
         JavaMember::Field(field) if field.declared == Some(value) => Some(field.ty.clone()),
+        JavaMember::EnumConstant(constant) if constant.declared == value => declaration
+            .declared
+            .map(|owner| JavaType::Reference(JavaTypeName::Generated(owner))),
         JavaMember::NestedType(nested) => find_generated_value_type(nested, value),
         _ => None,
     })
+}
+
+fn generated_enum_variant_matches(
+    enumeration: GeneratedTypeId,
+    variant: GeneratedValueId,
+    ty: &JavaType,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> Option<bool> {
+    let expected = JavaType::Reference(JavaTypeName::Generated(enumeration));
+    let registered = generated_value_matches(variant, ty, context)?;
+    let declared = context.files().any(|file| {
+        file.items().iter().any(|item| {
+            matches!(item, JavaFileItem::Type { declaration, .. }
+                if declaration_has_enum_variant(declaration, enumeration, variant))
+        })
+    });
+    Some(registered && *ty == expected && declared)
+}
+
+fn declaration_has_enum_variant(
+    declaration: &JavaTypeDeclaration,
+    enumeration: GeneratedTypeId,
+    variant: GeneratedValueId,
+) -> bool {
+    (declaration.declared == Some(enumeration)
+        && declaration.kind == JavaDeclarationKind::Enum
+        && declaration.members.iter().any(
+            |member| matches!(member, JavaMember::EnumConstant(value) if value.declared == variant),
+        ))
+        || declaration.members.iter().any(|member| {
+            matches!(member, JavaMember::NestedType(nested)
+                if declaration_has_enum_variant(nested, enumeration, variant))
+        })
 }
 
 fn declaration_has_constructor(
@@ -3190,7 +3261,11 @@ fn expression_has_runtime_dependency(value: &JavaExpr) -> bool {
     match &value.kind {
         JavaExprKind::Literal(_) => false,
         JavaExprKind::Value(JavaValueRef::Local(_) | JavaValueRef::This) => true,
-        JavaExprKind::Value(JavaValueRef::Generated(_) | JavaValueRef::KnownField(_)) => false,
+        JavaExprKind::Value(
+            JavaValueRef::Generated(_)
+            | JavaValueRef::EnumVariant { .. }
+            | JavaValueRef::KnownField(_),
+        ) => false,
         JavaExprKind::Unary { operand, .. } => expression_has_runtime_dependency(operand),
         JavaExprKind::Binary { left, right, .. } => {
             expression_has_runtime_dependency(left) || expression_has_runtime_dependency(right)
@@ -3681,6 +3756,10 @@ fn verify_constructor_final_assignments(
 pub enum JavaPattern {
     Default,
     Literal(JavaLiteral),
+    EnumVariant {
+        enumeration: GeneratedTypeId,
+        variant: GeneratedValueId,
+    },
     Type {
         ty: JavaType,
         binding: JavaIdentifier,
@@ -3792,8 +3871,20 @@ impl JavaStmt {
             Self::Switch { value, arms } => {
                 value.symbols(symbols);
                 for arm in arms {
-                    if let JavaPattern::Type { ty, .. } = &arm.pattern {
-                        ty.symbols(symbols);
+                    match &arm.pattern {
+                        JavaPattern::Type { ty, .. } => ty.symbols(symbols),
+                        JavaPattern::EnumVariant {
+                            enumeration,
+                            variant,
+                        } => {
+                            symbols.insert(TargetSymbolRef::Generated(GeneratedSymbolId::Type(
+                                *enumeration,
+                            )));
+                            symbols.insert(TargetSymbolRef::Generated(GeneratedSymbolId::Value(
+                                *variant,
+                            )));
+                        }
+                        JavaPattern::Default | JavaPattern::Literal(_) => {}
                     }
                     arm.body.symbols(symbols);
                 }
@@ -3969,12 +4060,79 @@ fn verify_switch_patterns(
             "Java switch selector must be an int-compatible primitive or reference type",
         ));
     }
-    if arms
+    let default_count = arms
         .iter()
         .filter(|arm| matches!(arm.pattern, JavaPattern::Default))
-        .count()
-        != 1
-    {
+        .count();
+    let enum_patterns = arms
+        .iter()
+        .filter_map(|arm| match arm.pattern {
+            JavaPattern::EnumVariant {
+                enumeration,
+                variant,
+            } => Some((enumeration, variant)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    if !enum_patterns.is_empty() {
+        let enumeration = enum_patterns[0].0;
+        let expected_type = JavaType::Reference(JavaTypeName::Generated(enumeration));
+        if selector.ty != expected_type {
+            violations.push(type_error(
+                "Java enum switch selector does not have the declared enum type",
+            ));
+        }
+        if default_count != 1 {
+            violations.push(AstViolation::new(
+                DiagnosticCode::NonExhaustiveMatch,
+                "portable Java enum switch must have one unreachable default arm",
+            ));
+        }
+        if arms.iter().any(|arm| {
+            !matches!(
+                arm.pattern,
+                JavaPattern::Default | JavaPattern::EnumVariant { .. }
+            )
+        }) {
+            violations.push(AstViolation::new(
+                DiagnosticCode::InvalidStructure,
+                "portable Java enum switch cannot mix enum and non-enum labels",
+            ));
+        }
+        let expected = find_type_declaration(&expected_type, context)
+            .filter(|declaration| declaration.kind == JavaDeclarationKind::Enum)
+            .map(|declaration| {
+                declaration
+                    .members
+                    .into_iter()
+                    .filter_map(|member| match member {
+                        JavaMember::EnumConstant(value) => Some(value.declared),
+                        _ => None,
+                    })
+                    .collect::<BTreeSet<_>>()
+            });
+        let mut actual = BTreeSet::new();
+        for (owner, variant) in enum_patterns {
+            if owner != enumeration
+                || !generated_enum_variant_matches(owner, variant, &selector.ty, context)
+                    .unwrap_or(false)
+                || !actual.insert(variant)
+            {
+                violations.push(AstViolation::new(
+                    DiagnosticCode::DuplicateDeclaration,
+                    "Java enum switch contains a repeated or foreign enum variant",
+                ));
+            }
+        }
+        if expected.as_ref() != Some(&actual) {
+            violations.push(AstViolation::new(
+                DiagnosticCode::NonExhaustiveMatch,
+                "portable Java enum switch must cover every declared variant exactly once",
+            ));
+        }
+        return violations;
+    }
+    if default_count != 1 {
         violations.push(AstViolation::new(
             DiagnosticCode::NonExhaustiveMatch,
             "statement switch must have exactly one typed default arm",
@@ -3986,6 +4144,7 @@ fn verify_switch_patterns(
     for arm in arms {
         match &arm.pattern {
             JavaPattern::Default => {}
+            JavaPattern::EnumVariant { .. } => unreachable!("enum switch returned above"),
             JavaPattern::Literal(literal) => {
                 if !java_switch_literal_is_compatible(literal, &selector.ty) {
                     violations.push(type_error(
@@ -4185,6 +4344,12 @@ pub struct JavaField {
     pub initializer: Option<JavaExpr>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct JavaEnumConstant {
+    pub declared: GeneratedValueId,
+    pub name: JavaIdentifier,
+}
+
 /// A deliberately ill-typed field used only to prove the native compiler
 /// rejects mappings which the portable surface forbids.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -4230,6 +4395,7 @@ pub struct JavaConstructor {
 pub enum JavaMember {
     Field(JavaField),
     CompileFailField(JavaCompileFailField),
+    EnumConstant(JavaEnumConstant),
     Method(JavaMethod),
     Constructor(JavaConstructor),
     NestedType(JavaTypeDeclaration),
@@ -4239,6 +4405,7 @@ pub enum JavaMember {
 pub enum JavaDeclarationKind {
     FinalClass,
     Record,
+    Enum,
     Interface,
     SealedInterface,
 }
@@ -4612,8 +4779,13 @@ fn verify_block_type_context(
             JavaStmt::Switch { value, arms } => {
                 violations.extend(verify_expression_type_context(value, variables, context));
                 for arm in arms {
-                    if let JavaPattern::Type { ty, .. } = &arm.pattern {
-                        violations.extend(verify_contextual_type(ty, variables, context));
+                    match &arm.pattern {
+                        JavaPattern::Type { ty, .. } => {
+                            violations.extend(verify_contextual_type(ty, variables, context));
+                        }
+                        JavaPattern::Default
+                        | JavaPattern::Literal(_)
+                        | JavaPattern::EnumVariant { .. } => {}
                     }
                     violations.extend(verify_block_type_context(&arm.body, variables, context));
                 }
@@ -4674,6 +4846,7 @@ fn verify_member_type_context(
                 context,
             ));
         }
+        JavaMember::EnumConstant(_) => {}
         JavaMember::Method(method) => {
             let mut variables = method
                 .type_parameters
@@ -4787,6 +4960,7 @@ fn verify_field_initializer_declaration_order(
             }) => Some(*value),
             JavaMember::Field(JavaField { declared: None, .. })
             | JavaMember::CompileFailField(_)
+            | JavaMember::EnumConstant(_)
             | JavaMember::Method(_)
             | JavaMember::Constructor(_)
             | JavaMember::NestedType(_) => None,
@@ -4835,6 +5009,11 @@ impl JavaMember {
             Self::CompileFailField(field) => {
                 field.expected_type.symbols(symbols);
                 field.initializer.symbols(symbols);
+            }
+            Self::EnumConstant(value) => {
+                symbols.insert(TargetSymbolRef::Generated(GeneratedSymbolId::Value(
+                    value.declared,
+                )));
             }
             Self::Method(method) => {
                 match method.declared {
@@ -4922,6 +5101,31 @@ impl JavaMember {
                     ));
                 }
                 violations
+            }
+            Self::EnumConstant(value) => {
+                let Some(declaration) = declaration else {
+                    return vec![AstViolation::new(
+                        DiagnosticCode::InvalidStructure,
+                        "Java enum constant must belong to an enum declaration",
+                    )];
+                };
+                let Some(owner) = declaration.declared else {
+                    return vec![AstViolation::new(
+                        DiagnosticCode::UnresolvedReference,
+                        "Java enum declaration must have a generated type identity",
+                    )];
+                };
+                let ty = JavaType::Reference(JavaTypeName::Generated(owner));
+                if declaration.kind == JavaDeclarationKind::Enum
+                    && generated_value_matches(value.declared, &ty, context) == Some(true)
+                {
+                    vec![]
+                } else {
+                    vec![AstViolation::new(
+                        DiagnosticCode::InvalidStructure,
+                        "Java enum constant must be registered with its declaring enum type",
+                    )]
+                }
             }
             Self::Method(method) => {
                 let mut violations =
@@ -5151,7 +5355,10 @@ impl JavaTypeDeclaration {
         self.members.iter().any(|member| match member {
             JavaMember::CompileFailField(_) => true,
             JavaMember::NestedType(value) => value.contains_compile_fail_member(),
-            JavaMember::Field(_) | JavaMember::Method(_) | JavaMember::Constructor(_) => false,
+            JavaMember::Field(_)
+            | JavaMember::EnumConstant(_)
+            | JavaMember::Method(_)
+            | JavaMember::Constructor(_) => false,
         })
     }
 
@@ -5333,6 +5540,14 @@ impl JavaTypeDeclaration {
                         ));
                     }
                 }
+                JavaMember::EnumConstant(value) => {
+                    if !field_names.insert(value.name.clone()) {
+                        violations.push(AstViolation::new(
+                            DiagnosticCode::DuplicateDeclaration,
+                            "Java enum constant is declared more than once",
+                        ));
+                    }
+                }
                 JavaMember::Method(method) => {
                     let key = (
                         method.name.clone(),
@@ -5506,8 +5721,30 @@ fn verify_declaration_kind_grammar(declaration: &JavaTypeDeclaration) -> Vec<Ast
         JavaDeclarationKind::Interface | JavaDeclarationKind::SealedInterface
     );
     let mut record_constructor_count = 0usize;
+    let mut enum_constant_count = 0usize;
     for member in &declaration.members {
         match member {
+            JavaMember::EnumConstant(_) if declaration.kind == JavaDeclarationKind::Enum => {
+                enum_constant_count += 1;
+            }
+            JavaMember::EnumConstant(_) => {
+                violations.push(AstViolation::new(
+                    DiagnosticCode::InvalidStructure,
+                    "Java enum constants can only belong to enum declarations",
+                ));
+            }
+            JavaMember::Field(_)
+            | JavaMember::CompileFailField(_)
+            | JavaMember::Method(_)
+            | JavaMember::Constructor(_)
+            | JavaMember::NestedType(_)
+                if declaration.kind == JavaDeclarationKind::Enum =>
+            {
+                violations.push(AstViolation::new(
+                    DiagnosticCode::InvalidStructure,
+                    "portable Java enums contain only payload-free constants",
+                ));
+            }
             JavaMember::Field(_) | JavaMember::CompileFailField(_) if interface => {
                 violations.push(AstViolation::new(
                     DiagnosticCode::InvalidStructure,
@@ -5614,6 +5851,12 @@ fn verify_declaration_kind_grammar(declaration: &JavaTypeDeclaration) -> Vec<Ast
             | JavaMember::Constructor(_)
             | JavaMember::NestedType(_) => {}
         }
+    }
+    if declaration.kind == JavaDeclarationKind::Enum && enum_constant_count == 0 {
+        violations.push(AstViolation::new(
+            DiagnosticCode::InvalidStructure,
+            "portable Java enum must declare at least one constant",
+        ));
     }
     if declaration.kind == JavaDeclarationKind::Record && record_constructor_count > 1 {
         violations.push(AstViolation::new(
@@ -6095,6 +6338,7 @@ fn verify_privileged_literals_in_member(
             &field.initializer,
             JavaPrivilegedLiteralScope::FORBIDDEN,
         ),
+        JavaMember::EnumConstant(_) => vec![],
         JavaMember::Method(method) => method.body.as_ref().map_or_else(Vec::new, |body| {
             verify_privileged_literals_in_block(
                 body,
@@ -8574,6 +8818,55 @@ mod tests {
                 bound: Some((JavaWildcardBound::Extends, Box::new(string.clone()))),
             }],
         );
+        let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+        let oracle_enum = builder.generated_type(portable_codegen::GeneratedType {
+            name: "OracleChoice".to_owned(),
+            kind: JavaDeclarationKind::Enum,
+            visibility: JavaVisibility::Public,
+            origin: portable_codegen::GeneratedOrigin::Synthesized(
+                portable_codegen::SynthesisReason::TestHarness,
+            ),
+            source: verifier_source("oracle-enum"),
+        });
+        let oracle_enum_type = JavaType::Reference(JavaTypeName::Generated(oracle_enum));
+        let oracle_enum_target = TargetTypeRef::Generated(oracle_enum);
+        let oracle_first = builder.value(portable_codegen::GeneratedValue {
+            name: "FIRST".to_owned(),
+            ty: oracle_enum_target.clone(),
+            origin: portable_codegen::GeneratedOrigin::Synthesized(
+                portable_codegen::SynthesisReason::TestHarness,
+            ),
+            source: verifier_source("oracle-first"),
+        });
+        let oracle_second = builder.value(portable_codegen::GeneratedValue {
+            name: "SECOND".to_owned(),
+            ty: oracle_enum_target,
+            origin: portable_codegen::GeneratedOrigin::Synthesized(
+                portable_codegen::SynthesisReason::TestHarness,
+            ),
+            source: verifier_source("oracle-second"),
+        });
+        let structured_enum = JavaTypeDeclaration {
+            declared: Some(oracle_enum),
+            kind: JavaDeclarationKind::Enum,
+            visibility: JavaVisibility::Public,
+            modifiers: vec![],
+            name: JavaIdentifier::from_portable("OracleChoice"),
+            type_parameters: vec![],
+            record_components: vec![],
+            heritage: JavaHeritage::None,
+            permits: vec![],
+            members: vec![
+                JavaMember::EnumConstant(JavaEnumConstant {
+                    declared: oracle_first,
+                    name: JavaIdentifier::from_portable("FIRST"),
+                }),
+                JavaMember::EnumConstant(JavaEnumConstant {
+                    declared: oracle_second,
+                    name: JavaIdentifier::from_portable("SECOND"),
+                }),
+            ],
+        };
         let structured_record = JavaTypeDeclaration {
             declared: None,
             kind: JavaDeclarationKind::Record,
@@ -8653,6 +8946,7 @@ mod tests {
             heritage: JavaHeritage::None,
             permits: vec![],
             members: vec![
+                JavaMember::NestedType(structured_enum),
                 JavaMember::Field(JavaField {
                     declared: None,
                     modifiers: vec![JavaModifier::Private],
@@ -8704,13 +8998,52 @@ mod tests {
                             JavaExpr::literal(int.clone(), JavaLiteral::I32(1)),
                         ))]),
                         else_block: Some(JavaBlock::new(vec![JavaStmt::Return(Some(
-                            JavaExpr::literal(int, JavaLiteral::I32(2)),
+                            JavaExpr::literal(int.clone(), JavaLiteral::I32(2)),
                         ))])),
+                    }]),
+                ),
+                structural_method(
+                    "enumRank",
+                    int.clone(),
+                    vec![parameter(oracle_enum_type.clone(), "value")],
+                    JavaBlock::new(vec![JavaStmt::Switch {
+                        value: JavaExpr::local(
+                            oracle_enum_type,
+                            JavaIdentifier::from_portable("value"),
+                        ),
+                        arms: vec![
+                            JavaSwitchArm {
+                                pattern: JavaPattern::EnumVariant {
+                                    enumeration: oracle_enum,
+                                    variant: oracle_first,
+                                },
+                                body: JavaBlock::new(vec![JavaStmt::Return(Some(
+                                    JavaExpr::literal(int.clone(), JavaLiteral::I32(1)),
+                                ))]),
+                            },
+                            JavaSwitchArm {
+                                pattern: JavaPattern::EnumVariant {
+                                    enumeration: oracle_enum,
+                                    variant: oracle_second,
+                                },
+                                body: JavaBlock::new(vec![JavaStmt::Return(Some(
+                                    JavaExpr::literal(int.clone(), JavaLiteral::I32(2)),
+                                ))]),
+                            },
+                            JavaSwitchArm {
+                                pattern: JavaPattern::Default,
+                                body: JavaBlock::new(vec![JavaStmt::ThrowAssertion(
+                                    JavaExpr::literal(
+                                        string.clone(),
+                                        JavaLiteral::String("unreachable".to_owned()),
+                                    ),
+                                )]),
+                            },
+                        ],
                     }]),
                 ),
             ],
         };
-        let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
         let file = builder.file(portable_codegen::TargetFile::new(
             portable_codegen::RelativeOutputPath::new(
                 "src/main/java/org/polyrust/generated/OracleStructured.java",
@@ -8719,13 +9052,24 @@ mod tests {
             portable_codegen::SourceRole::PublicApi,
             JavaPackage::Generated,
             JavaFilePlacement::Main,
-            vec![structured_record, structured_interface, structured_class]
-                .into_iter()
-                .map(|declaration| JavaFileItem::Type {
+            vec![
+                JavaFileItem::Type {
                     declared: vec![],
-                    declaration,
-                })
-                .collect(),
+                    declaration: structured_record,
+                },
+                JavaFileItem::Type {
+                    declared: vec![],
+                    declaration: structured_interface,
+                },
+                JavaFileItem::Type {
+                    declared: vec![
+                        GeneratedSymbolId::Type(oracle_enum),
+                        GeneratedSymbolId::Value(oracle_first),
+                        GeneratedSymbolId::Value(oracle_second),
+                    ],
+                    declaration: structured_class,
+                },
+            ],
             JavaSourceFileKind::CompilationUnit,
             verifier_source("structured-mutation-oracle-file"),
         ));
@@ -9925,5 +10269,149 @@ mod tests {
 
         let (builder, declarations) = setup(true);
         assert!(verify_fixture(builder, declarations).is_ok());
+    }
+
+    #[test]
+    fn native_enum_grammar_and_exhaustiveness_fail_closed() {
+        fn setup() -> (
+            portable_codegen::TargetAstBuilder<JavaDialect>,
+            GeneratedTypeId,
+            GeneratedValueId,
+            GeneratedValueId,
+            JavaTypeDeclaration,
+        ) {
+            let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+            let enumeration = builder.generated_type(portable_codegen::GeneratedType {
+                name: "Choice".to_owned(),
+                kind: JavaDeclarationKind::Enum,
+                visibility: JavaVisibility::Package,
+                origin: portable_codegen::GeneratedOrigin::Synthesized(
+                    portable_codegen::SynthesisReason::TestHarness,
+                ),
+                source: verifier_source("enum"),
+            });
+            let ty = TargetTypeRef::Generated(enumeration);
+            let first = builder.value(portable_codegen::GeneratedValue {
+                name: "FIRST".to_owned(),
+                ty: ty.clone(),
+                origin: portable_codegen::GeneratedOrigin::Synthesized(
+                    portable_codegen::SynthesisReason::TestHarness,
+                ),
+                source: verifier_source("first"),
+            });
+            let second = builder.value(portable_codegen::GeneratedValue {
+                name: "SECOND".to_owned(),
+                ty,
+                origin: portable_codegen::GeneratedOrigin::Synthesized(
+                    portable_codegen::SynthesisReason::TestHarness,
+                ),
+                source: verifier_source("second"),
+            });
+            let declaration = JavaTypeDeclaration {
+                declared: Some(enumeration),
+                kind: JavaDeclarationKind::Enum,
+                visibility: JavaVisibility::Package,
+                modifiers: vec![],
+                name: JavaIdentifier::from_portable("Choice"),
+                type_parameters: vec![],
+                record_components: vec![],
+                heritage: JavaHeritage::None,
+                permits: vec![],
+                members: vec![
+                    JavaMember::EnumConstant(JavaEnumConstant {
+                        declared: first,
+                        name: JavaIdentifier::from_portable("FIRST"),
+                    }),
+                    JavaMember::EnumConstant(JavaEnumConstant {
+                        declared: second,
+                        name: JavaIdentifier::from_portable("SECOND"),
+                    }),
+                ],
+            };
+            (builder, enumeration, first, second, declaration)
+        }
+
+        let (builder, enumeration, first, second, declaration) = setup();
+        assert!(
+            verify_fixture(
+                builder,
+                vec![(
+                    vec![
+                        GeneratedSymbolId::Type(enumeration),
+                        GeneratedSymbolId::Value(first),
+                        GeneratedSymbolId::Value(second),
+                    ],
+                    declaration,
+                )],
+            )
+            .is_ok()
+        );
+
+        let (builder, enumeration, first, second, mut empty) = setup();
+        empty.members.clear();
+        let diagnostics = verify_fixture(
+            builder,
+            vec![(
+                vec![
+                    GeneratedSymbolId::Type(enumeration),
+                    GeneratedSymbolId::Value(first),
+                    GeneratedSymbolId::Value(second),
+                ],
+                empty,
+            )],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::InvalidStructure
+                && value.message.contains("at least one constant")
+        }));
+
+        let (builder, enumeration, first, second, declaration) = setup();
+        let enum_type = JavaType::Reference(JavaTypeName::Generated(enumeration));
+        let selector = JavaExpr::local(enum_type.clone(), JavaIdentifier::from_portable("value"));
+        let switch = JavaStmt::Switch {
+            value: selector,
+            arms: vec![
+                JavaSwitchArm {
+                    pattern: JavaPattern::EnumVariant {
+                        enumeration,
+                        variant: first,
+                    },
+                    body: JavaBlock::new(vec![]),
+                },
+                JavaSwitchArm {
+                    pattern: JavaPattern::Default,
+                    body: JavaBlock::new(vec![JavaStmt::ThrowAssertion(JavaExpr::literal(
+                        JavaType::known(JavaKnownType::String),
+                        JavaLiteral::String("unreachable".to_owned()),
+                    ))]),
+                },
+            ],
+        };
+        let consumer = fixture_declaration(vec![structural_method(
+            "consume",
+            JavaType::primitive(JavaPrimitive::Void),
+            vec![parameter(enum_type, "value")],
+            JavaBlock::new(vec![switch]),
+        )]);
+        let diagnostics = verify_fixture(
+            builder,
+            vec![
+                (
+                    vec![
+                        GeneratedSymbolId::Type(enumeration),
+                        GeneratedSymbolId::Value(first),
+                        GeneratedSymbolId::Value(second),
+                    ],
+                    declaration,
+                ),
+                (vec![], consumer),
+            ],
+        )
+        .unwrap_err();
+        assert!(diagnostics.iter().any(|value| {
+            value.code == DiagnosticCode::NonExhaustiveMatch
+                && value.message.contains("every declared variant")
+        }));
     }
 }
