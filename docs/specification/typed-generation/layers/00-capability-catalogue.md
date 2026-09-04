@@ -152,6 +152,11 @@ unchanged does not establish support.
 Each `.support(mapping)` call consumes the plugin builder, infers
 `mapping::Capability`, and replaces exactly one `Missing` slot with
 `Implemented<Mapping>`. Only an implemented slot derives `Supports<C>`.
+An exhaustive built-in registry must also call `.unsupported::<C>()` for every
+capability it cannot yet implement. `Unsupported<C>` deliberately cannot derive
+`Supports<C>`; adding a catalogue row therefore breaks incomplete registries at
+compile time instead of silently claiming support. Catalogue rows are appended
+so the type-level indices of existing capabilities remain stable.
 
 ## Interface mapping bundle
 

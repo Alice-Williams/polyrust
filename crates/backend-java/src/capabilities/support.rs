@@ -2,7 +2,7 @@
 
 use portable_build::{
     Capability, CapabilityMapping, EmptyCapabilitySlots, LanguageCapabilityPlugin,
-    LanguagePluginBuilder, ReplaceMissing, language_plugin,
+    LanguagePluginBuilder, MarkUnsupported, ReplaceMissing, language_plugin,
 };
 use portable_core_ir::CoreIntrinsicExpr;
 
@@ -54,6 +54,9 @@ type JavaRegisteredSlots<Slots, M> = <Slots as ReplaceMissing<
     M,
 >>::Output;
 
+type JavaUnsupportedSlots<Slots, C> =
+    <Slots as MarkUnsupported<<C as Capability>::Index, C>>::Output;
+
 pub fn java_plugin_builder() -> JavaPluginBuilder {
     JavaPluginBuilder {
         inner: language_plugin(JavaDialect),
@@ -68,6 +71,16 @@ impl<Slots> JavaPluginBuilder<Slots> {
     {
         JavaPluginBuilder {
             inner: self.inner.support(mapping),
+        }
+    }
+
+    pub fn unsupported<C>(self) -> JavaPluginBuilder<JavaUnsupportedSlots<Slots, C>>
+    where
+        C: Capability,
+        Slots: MarkUnsupported<C::Index, C>,
+    {
+        JavaPluginBuilder {
+            inner: self.inner.unsupported::<C>(),
         }
     }
 

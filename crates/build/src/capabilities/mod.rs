@@ -10,6 +10,9 @@ mod bytes_values;
 mod char_values;
 mod checked_integer_arithmetic;
 mod checked_integer_shifts;
+mod conditionals;
+mod constants;
+mod enums;
 mod equality;
 mod f64_values;
 mod floating_point_arithmetic;
@@ -19,18 +22,27 @@ mod i32_values;
 mod i64_values;
 mod integer_bitwise;
 mod integer_conversions;
+mod interfaces;
 mod list_operations;
 mod list_values;
+mod local_bindings;
+mod loops;
+mod modules;
 mod option_operations;
 mod option_values;
 mod ordering;
+mod pattern_matching;
+mod portable_tests;
 mod records;
 mod result_operations;
+mod result_propagation;
 mod result_values;
 mod string_concatenation;
 mod string_inspection;
 mod string_transformation;
 mod text_values;
+mod type_aliases;
+mod unit_values;
 mod utf8_conversions;
 mod wrapping_integer_arithmetic;
 
@@ -41,6 +53,9 @@ pub use bytes_values::BytesValues;
 pub use char_values::CharValues;
 pub use checked_integer_arithmetic::CheckedIntegerArithmetic;
 pub use checked_integer_shifts::CheckedIntegerShifts;
+pub use conditionals::Conditionals;
+pub use constants::Constants;
+pub use enums::Enums;
 pub use equality::Equality;
 pub use f64_values::F64Values;
 pub use floating_point_arithmetic::FloatingPointArithmetic;
@@ -50,18 +65,27 @@ pub use i32_values::I32Values;
 pub use i64_values::I64Values;
 pub use integer_bitwise::IntegerBitwise;
 pub use integer_conversions::IntegerConversions;
+pub use interfaces::Interfaces;
 pub use list_operations::ListOperations;
 pub use list_values::ListValues;
+pub use local_bindings::LocalBindings;
+pub use loops::Loops;
+pub use modules::Modules;
 pub use option_operations::OptionOperations;
 pub use option_values::OptionValues;
 pub use ordering::Ordering;
+pub use pattern_matching::PatternMatching;
+pub use portable_tests::PortableTests;
 pub use records::Records;
 pub use result_operations::ResultOperations;
+pub use result_propagation::ResultPropagation;
 pub use result_values::ResultValues;
 pub use string_concatenation::StringConcatenation;
 pub use string_inspection::StringInspection;
 pub use string_transformation::StringTransformation;
 pub use text_values::TextValues;
+pub use type_aliases::TypeAliases;
+pub use unit_values::UnitValues;
 pub use utf8_conversions::Utf8Conversions;
 pub use wrapping_integer_arithmetic::WrappingIntegerArithmetic;
 
@@ -184,6 +208,19 @@ macro_rules! capability_catalogue {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Missing;
 
+/// A catalogued capability explicitly unavailable in one target plugin.
+///
+/// Unlike `Implemented<M>`, this slot intentionally does not implement
+/// `RegisteredMapping`, so it cannot establish a `Supports<C>` witness.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Unsupported<C: Capability>(PhantomData<C>);
+
+impl<C: Capability> Unsupported<C> {
+    const fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
 /// A capability slot containing its executable mapping.
 #[derive(Clone, Copy, Debug)]
 pub struct Implemented<M>(M);
@@ -230,6 +267,39 @@ pub trait ReplaceMissing<Index, Mapping> {
     type Output;
 
     fn replace(self, mapping: Mapping) -> Self::Output;
+}
+
+#[doc(hidden)]
+pub trait MarkUnsupported<Index, C: Capability> {
+    type Output;
+
+    fn mark_unsupported(self) -> Self::Output;
+}
+
+impl<Tail, C: Capability> MarkUnsupported<Here, C> for CapabilitySlots<Missing, Tail> {
+    type Output = CapabilitySlots<Unsupported<C>, Tail>;
+
+    fn mark_unsupported(self) -> Self::Output {
+        CapabilitySlots {
+            head: Unsupported::new(),
+            tail: self.tail,
+        }
+    }
+}
+
+impl<Head, Tail, Index, C> MarkUnsupported<There<Index>, C> for CapabilitySlots<Head, Tail>
+where
+    C: Capability,
+    Tail: MarkUnsupported<Index, C>,
+{
+    type Output = CapabilitySlots<Head, Tail::Output>;
+
+    fn mark_unsupported(self) -> Self::Output {
+        CapabilitySlots {
+            head: self.head,
+            tail: self.tail.mark_unsupported(),
+        }
+    }
 }
 
 impl<Tail, Mapping> ReplaceMissing<Here, Mapping> for CapabilitySlots<Missing, Tail> {
@@ -316,6 +386,20 @@ impl<D, Slots> LanguagePluginBuilder<D, Slots> {
         }
     }
 
+    /// Records an exhaustive, explicit unsupported decision for one capability.
+    pub fn unsupported<F>(
+        self,
+    ) -> LanguagePluginBuilder<D, <Slots as MarkUnsupported<F::Index, F>>::Output>
+    where
+        F: Capability,
+        Slots: MarkUnsupported<F::Index, F>,
+    {
+        LanguagePluginBuilder {
+            dialect: self.dialect,
+            slots: self.slots.mark_unsupported(),
+        }
+    }
+
     pub fn build(self) -> LanguageCapabilityPlugin<D, Slots> {
         LanguageCapabilityPlugin {
             dialect: self.dialect,
@@ -375,6 +459,24 @@ macro_rules! implemented_capability_slots {
     };
 }
 
+/// Builds a complete slot state with explicit implemented/unsupported rows.
+#[macro_export]
+macro_rules! capability_slots {
+    () => { $crate::CapabilitySlotEnd };
+    (implemented $head:ty, $($tail:tt)*) => {
+        $crate::CapabilitySlots<
+            $crate::Implemented<$head>,
+            $crate::capability_slots!($($tail)*)
+        >
+    };
+    (unsupported $capability:ty, $($tail:tt)*) => {
+        $crate::CapabilitySlots<
+            $crate::Unsupported<$capability>,
+            $crate::capability_slots!($($tail)*)
+        >
+    };
+}
+
 fn empty_capability_slots() -> EmptyCapabilitySlots {
     capability_slots_value!(
         Functions,
@@ -407,6 +509,18 @@ fn empty_capability_slots() -> EmptyCapabilitySlots {
         ResultOperations,
         IntegerConversions,
         Utf8Conversions,
+        Modules,
+        Constants,
+        TypeAliases,
+        Enums,
+        Interfaces,
+        PortableTests,
+        LocalBindings,
+        Conditionals,
+        Loops,
+        PatternMatching,
+        ResultPropagation,
+        UnitValues,
     )
 }
 
@@ -441,4 +555,16 @@ capability_catalogue!(
     ResultOperations,
     IntegerConversions,
     Utf8Conversions,
+    Modules,
+    Constants,
+    TypeAliases,
+    Enums,
+    Interfaces,
+    PortableTests,
+    LocalBindings,
+    Conditionals,
+    Loops,
+    PatternMatching,
+    ResultPropagation,
+    UnitValues,
 );

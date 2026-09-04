@@ -65,7 +65,7 @@ def verify_shared(root: Path) -> int:
     return len(catalogue)
 
 
-def verify_java(root: Path) -> int:
+def verify_java(root: Path) -> tuple[int, set[str]]:
     source = (root / "mod.rs").read_text(encoding="utf-8")
     ignored = {"dispatch", "support"}
     modules = [name for name in MODULE.findall(source) if name not in ignored]
@@ -112,15 +112,32 @@ def verify_java(root: Path) -> int:
             "Java mapping/registration mismatch: "
             f"mappings={sorted(mappings)!r}, registrations={sorted(registrations)!r}"
         )
-    return len(mappings)
+    unsupported = re.findall(
+        r"(?m)^\s*\.unsupported::<([A-Z][A-Za-z0-9]+)>\(\)$", source
+    )
+    if len(unsupported) != len(set(unsupported)):
+        fail("Java registration contains duplicate unsupported decisions")
+    supported_capabilities = set(mappings.values())
+    if supported_capabilities & set(unsupported):
+        fail("Java marks a capability as both supported and unsupported")
+    return len(mappings), supported_capabilities | set(unsupported)
 
 
 def main() -> None:
     shared_count = verify_shared(Path(sys.argv[1]))
-    java_count = verify_java(Path(sys.argv[2]))
+    java_count, java_decisions = verify_java(Path(sys.argv[2]))
+    shared_source = (Path(sys.argv[1]) / "mod.rs").read_text(encoding="utf-8")
+    shared_catalogue = CATALOGUE.findall(shared_source)
+    shared_names = set(re.findall(r"\b[A-Z][A-Za-z0-9]*\b", shared_catalogue[0]))
+    if java_decisions != shared_names:
+        fail(
+            "Java registry must decide every shared capability: "
+            f"decisions={sorted(java_decisions)!r}, catalogue={sorted(shared_names)!r}"
+        )
     print(
         f"capability layout: {shared_count} shared markers and "
-        f"{java_count} Java mappings verified one-per-file"
+        f"{java_count} Java mappings verified one-per-file; "
+        f"{len(java_decisions) - java_count} explicitly unsupported"
     )
 
 

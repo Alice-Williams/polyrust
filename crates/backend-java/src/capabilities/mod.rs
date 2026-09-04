@@ -1,6 +1,10 @@
 //! Java capability mappings and their exhaustive registration.
 
-use portable_build::{LanguageCapabilityPlugin, implemented_capability_slots};
+use portable_build::{
+    Conditionals, Constants, Enums, Interfaces, LanguageCapabilityPlugin, LocalBindings, Loops,
+    Modules, PatternMatching, PortableTests, ResultPropagation, TypeAliases, UnitValues,
+    capability_slots,
+};
 
 mod bool_values;
 mod boolean_logic;
@@ -79,37 +83,49 @@ pub(crate) use records::{JavaRecordDeclarationInput, JavaRecordsInput};
 
 use crate::dialect::JavaDialect;
 
-pub type JavaCapabilitySlots = implemented_capability_slots!(
-    JavaFunctions,
-    JavaRecords,
-    JavaBoolValues,
-    JavaI32Values,
-    JavaI64Values,
-    JavaF64Values,
-    JavaTextValues,
-    JavaBooleanLogic,
-    JavaEquality,
-    JavaOrdering,
-    JavaCheckedIntegerArithmetic,
-    JavaWrappingIntegerArithmetic,
-    JavaFloatingPointArithmetic,
-    JavaStringConcatenation,
-    JavaCharValues,
-    JavaBytesValues,
-    JavaListValues,
-    JavaOptionValues,
-    JavaResultValues,
-    JavaIntegerBitwise,
-    JavaCheckedIntegerShifts,
-    JavaFloatingPointInspection,
-    JavaStringInspection,
-    JavaStringTransformation,
-    JavaBytesOperations,
-    JavaListOperations,
-    JavaOptionOperations,
-    JavaResultOperations,
-    JavaIntegerConversions,
-    JavaUtf8Conversions,
+pub type JavaCapabilitySlots = capability_slots!(
+    implemented JavaFunctions,
+    implemented JavaRecords,
+    implemented JavaBoolValues,
+    implemented JavaI32Values,
+    implemented JavaI64Values,
+    implemented JavaF64Values,
+    implemented JavaTextValues,
+    implemented JavaBooleanLogic,
+    implemented JavaEquality,
+    implemented JavaOrdering,
+    implemented JavaCheckedIntegerArithmetic,
+    implemented JavaWrappingIntegerArithmetic,
+    implemented JavaFloatingPointArithmetic,
+    implemented JavaStringConcatenation,
+    implemented JavaCharValues,
+    implemented JavaBytesValues,
+    implemented JavaListValues,
+    implemented JavaOptionValues,
+    implemented JavaResultValues,
+    implemented JavaIntegerBitwise,
+    implemented JavaCheckedIntegerShifts,
+    implemented JavaFloatingPointInspection,
+    implemented JavaStringInspection,
+    implemented JavaStringTransformation,
+    implemented JavaBytesOperations,
+    implemented JavaListOperations,
+    implemented JavaOptionOperations,
+    implemented JavaResultOperations,
+    implemented JavaIntegerConversions,
+    implemented JavaUtf8Conversions,
+    unsupported Modules,
+    unsupported Constants,
+    unsupported TypeAliases,
+    unsupported Enums,
+    unsupported Interfaces,
+    unsupported PortableTests,
+    unsupported LocalBindings,
+    unsupported Conditionals,
+    unsupported Loops,
+    unsupported PatternMatching,
+    unsupported ResultPropagation,
+    unsupported UnitValues,
 );
 
 pub type JavaCapabilitySet = LanguageCapabilityPlugin<JavaDialect, JavaCapabilitySlots>;
@@ -146,5 +162,17 @@ pub(crate) fn java_capabilities() -> JavaCapabilitySet {
         .support(JavaResultOperations)
         .support(JavaIntegerConversions)
         .support(JavaUtf8Conversions)
+        .unsupported::<Modules>()
+        .unsupported::<Constants>()
+        .unsupported::<TypeAliases>()
+        .unsupported::<Enums>()
+        .unsupported::<Interfaces>()
+        .unsupported::<PortableTests>()
+        .unsupported::<LocalBindings>()
+        .unsupported::<Conditionals>()
+        .unsupported::<Loops>()
+        .unsupported::<PatternMatching>()
+        .unsupported::<ResultPropagation>()
+        .unsupported::<UnitValues>()
         .build()
 }
