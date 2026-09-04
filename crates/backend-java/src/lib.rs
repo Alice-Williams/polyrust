@@ -237,6 +237,115 @@ mod tests {
         .expect("fixture checks")
     }
 
+    fn capability_coverage_fixture() -> CheckedProgram {
+        let mut module = ModuleBuilder::new("java_capability_coverage");
+        module.alias("Count", Visibility::Public, vec![], Type::i64());
+        let truth = module.constant("TRUTH", Visibility::Public, vec![], Type::bool(), |body| {
+            body.constant_literal(Value::bool(true))
+        });
+
+        module.function("exercise", Visibility::Public, vec![], |function| {
+            function.returns(Type::unit());
+            function.body(|body| {
+                let mut statements = Vec::new();
+
+                let constant = body.constant(truth);
+                statements.push(body.expression_statement(constant));
+
+                let bool_value = body.literal(Value::bool(true));
+                let bool_not = body.intrinsic(Operation::BoolNot, [bool_value]);
+                statements.push(body.expression_statement(bool_not));
+
+                let equal_left = body.literal(Value::i32(1));
+                let equal_right = body.literal(Value::i32(1));
+                let equal = body.intrinsic(Operation::Equal, [equal_left, equal_right]);
+                statements.push(body.expression_statement(equal));
+
+                let less_left = body.literal(Value::i32(1));
+                let less_right = body.literal(Value::i32(2));
+                let less = body.intrinsic(Operation::Less, [less_left, less_right]);
+                statements.push(body.expression_statement(less));
+
+                let checked_left = body.literal(Value::i32(1));
+                let checked_right = body.literal(Value::i32(2));
+                let checked =
+                    body.intrinsic(Operation::IntAddChecked, [checked_left, checked_right]);
+                statements.push(body.expression_statement(checked));
+
+                let bit_left = body.literal(Value::i64(1));
+                let bit_right = body.literal(Value::i64(2));
+                let bitwise = body.intrinsic(Operation::IntBitAnd, [bit_left, bit_right]);
+                statements.push(body.expression_statement(bitwise));
+
+                let shift_value = body.literal(Value::i32(1));
+                let shift_distance = body.literal(Value::i32(2));
+                let shifted = body.intrinsic(
+                    Operation::IntShiftLeftChecked,
+                    [shift_value, shift_distance],
+                );
+                statements.push(body.expression_statement(shifted));
+
+                let float_left = body.literal(Value::f64(1.25));
+                let float_right = body.literal(Value::f64(2.5));
+                let float_sum = body.intrinsic(Operation::FloatAdd, [float_left, float_right]);
+                statements.push(body.expression_statement(float_sum));
+
+                let inspected_float = body.literal(Value::f64(f64::NAN));
+                let is_nan = body.intrinsic(Operation::FloatIsNaN, [inspected_float]);
+                statements.push(body.expression_statement(is_nan));
+
+                let character = body.literal(Value::char('λ'));
+                statements.push(body.expression_statement(character));
+
+                let trim_source = body.literal(Value::string("  value"));
+                let trim_chars = body.literal(Value::string(" "));
+                let trimmed = body.intrinsic(Operation::StringTrimStart, [trim_source, trim_chars]);
+                statements.push(body.expression_statement(trimmed));
+
+                let bytes_left = body.literal(Value::bytes([1, 2]));
+                let bytes_right = body.literal(Value::bytes([3, 4]));
+                let bytes = body.intrinsic(Operation::BytesConcat, [bytes_left, bytes_right]);
+                statements.push(body.expression_statement(bytes));
+
+                let option_value = body.literal(Value::i64(7));
+                let option = body.some(option_value);
+                let is_some = body.intrinsic(Operation::OptionIsSome, [option]);
+                statements.push(body.expression_statement(is_some));
+
+                let result_value = body.literal(Value::i64(7));
+                let result = body.ok(result_value, Type::string());
+                let is_ok = body.intrinsic(Operation::ResultIsOk, [result]);
+                statements.push(body.expression_statement(is_ok));
+
+                let narrow = body.literal(Value::i32(7));
+                let widened = body.intrinsic(Operation::WidenI32ToI64, [narrow]);
+                statements.push(body.expression_statement(widened));
+
+                let utf8_source = body.literal(Value::string("text"));
+                let utf8 = body.intrinsic(Operation::StringToUtf8, [utf8_source]);
+                statements.push(body.expression_statement(utf8));
+
+                let condition = body.literal(Value::bool(true));
+                let then_value = body.literal(Value::unit());
+                let then_block = body.block([], Some(then_value));
+                let else_value = body.literal(Value::unit());
+                let else_block = body.block([], Some(else_value));
+                let conditional = body.if_else(condition, then_block, else_block);
+                statements.push(body.expression_statement(conditional));
+
+                let list_item = body.literal(Value::i32(1));
+                let list = body.list(Type::i32(), [list_item]);
+                let loop_body = body.block([], None);
+                statements.push(body.for_each("item", list, loop_body));
+
+                let unit = body.literal(Value::unit());
+                body.block(statements, Some(unit))
+            });
+        });
+
+        module.finish().expect("capability coverage fixture checks")
+    }
+
     fn typed_fixture_manifests() -> [OutputManifest; 3] {
         let program = typed_program(portable_name!("java_inferred"), |builder| {
             let added = builder.function(
@@ -368,6 +477,76 @@ mod tests {
             OutputContents::Text(value) => value,
             OutputContents::Bytes(_) => panic!("Java source must be text"),
         }
+    }
+
+    #[test]
+    fn every_registered_java_capability_mapping_is_invoked() {
+        crate::capabilities::reset_java_mapping_invocations();
+
+        JavaBackend
+            .generate(&fixture(), &BackendOptions::default())
+            .expect("complete registration fixture generates");
+        JavaBackend
+            .generate(&capability_coverage_fixture(), &BackendOptions::default())
+            .expect("capability coverage fixture generates");
+        let interfaces = portable_check::v0::check_program(
+            portable_build::interface_composition_fixture().document,
+        )
+        .expect("interface composition fixture checks");
+        JavaBackend
+            .generate(&interfaces, &BackendOptions::default())
+            .expect("interface composition fixture generates");
+        let _ = typed_fixture_manifests();
+
+        let actual = crate::capabilities::java_mapping_invocations()
+            .into_iter()
+            .map(|name| name.rsplit("::").next().expect("capability type name"))
+            .collect::<BTreeSet<_>>();
+        let expected = BTreeSet::from([
+            "Functions",
+            "Records",
+            "BoolValues",
+            "I32Values",
+            "I64Values",
+            "F64Values",
+            "TextValues",
+            "BooleanLogic",
+            "Equality",
+            "Ordering",
+            "CheckedIntegerArithmetic",
+            "WrappingIntegerArithmetic",
+            "FloatingPointArithmetic",
+            "StringConcatenation",
+            "CharValues",
+            "BytesValues",
+            "ListValues",
+            "OptionValues",
+            "ResultValues",
+            "IntegerBitwise",
+            "CheckedIntegerShifts",
+            "FloatingPointInspection",
+            "StringInspection",
+            "StringTransformation",
+            "BytesOperations",
+            "ListOperations",
+            "OptionOperations",
+            "ResultOperations",
+            "IntegerConversions",
+            "Utf8Conversions",
+            "Modules",
+            "Constants",
+            "TypeAliases",
+            "Enums",
+            "Interfaces",
+            "PortableTests",
+            "LocalBindings",
+            "Conditionals",
+            "Loops",
+            "PatternMatching",
+            "ResultPropagation",
+            "UnitValues",
+        ]);
+        assert_eq!(actual, expected, "uninvoked Java capability mapping");
     }
 
     #[test]

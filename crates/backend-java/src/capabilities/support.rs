@@ -21,6 +21,65 @@ pub trait JavaCapabilityMapping:
 {
 }
 
+/// Transparent registration wrapper used to prove that every Java plugin slot
+/// is actually invoked. Its recorder is compiled only into this crate's tests.
+#[doc(hidden)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ObservedJavaMapping<M>(M);
+
+pub const fn observed<M>(mapping: M) -> ObservedJavaMapping<M> {
+    ObservedJavaMapping(mapping)
+}
+
+impl<M: JavaCapabilityMapping> sealed::JavaCapabilityMapping for ObservedJavaMapping<M> {}
+impl<M: JavaCapabilityMapping> JavaCapabilityMapping for ObservedJavaMapping<M> {}
+
+impl<M> CapabilityMapping<JavaDialect> for ObservedJavaMapping<M>
+where
+    M: JavaCapabilityMapping,
+{
+    type Capability = M::Capability;
+    type Context = M::Context;
+    type Input = M::Input;
+    type Output = M::Output;
+    type Error = M::Error;
+
+    fn lower(
+        &self,
+        context: &mut Self::Context,
+        input: Self::Input,
+    ) -> Result<Self::Output, Self::Error> {
+        record_java_mapping_invocation::<M::Capability>();
+        self.0.lower(context, input)
+    }
+}
+
+#[cfg(test)]
+std::thread_local! {
+    static INVOCATION_LEDGER: std::cell::RefCell<std::collections::BTreeSet<&'static str>> =
+        const { std::cell::RefCell::new(std::collections::BTreeSet::new()) };
+}
+
+#[cfg(test)]
+fn record_java_mapping_invocation<C: Capability>() {
+    INVOCATION_LEDGER.with(|ledger| {
+        ledger.borrow_mut().insert(std::any::type_name::<C>());
+    });
+}
+
+#[cfg(not(test))]
+fn record_java_mapping_invocation<C: Capability>() {}
+
+#[cfg(test)]
+pub(crate) fn reset_java_mapping_invocations() {
+    INVOCATION_LEDGER.with(|ledger| ledger.borrow_mut().clear());
+}
+
+#[cfg(test)]
+pub(crate) fn java_mapping_invocations() -> std::collections::BTreeSet<&'static str> {
+    INVOCATION_LEDGER.with(|ledger| ledger.borrow().clone())
+}
+
 /// Consuming Java-specific wrapper which admits only sealed Java AST mappings.
 ///
 /// A generic mapping whose output is not part of Java's checked AST cannot be

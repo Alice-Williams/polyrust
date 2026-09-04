@@ -125,97 +125,101 @@ pub(crate) use result_propagation::{JavaResultPropagationInput, JavaResultPropag
 pub(crate) use type_aliases::JavaTypeAliasInput;
 
 use crate::dialect::JavaDialect;
+use support::{ObservedJavaMapping, observed};
+
+#[cfg(test)]
+pub(crate) use support::{java_mapping_invocations, reset_java_mapping_invocations};
 
 pub type JavaCapabilitySlots = capability_slots!(
-    implemented JavaFunctions,
-    implemented JavaRecords,
-    implemented JavaBoolValues,
-    implemented JavaI32Values,
-    implemented JavaI64Values,
-    implemented JavaF64Values,
-    implemented JavaTextValues,
-    implemented JavaBooleanLogic,
-    implemented JavaEquality,
-    implemented JavaOrdering,
-    implemented JavaCheckedIntegerArithmetic,
-    implemented JavaWrappingIntegerArithmetic,
-    implemented JavaFloatingPointArithmetic,
-    implemented JavaStringConcatenation,
-    implemented JavaCharValues,
-    implemented JavaBytesValues,
-    implemented JavaListValues,
-    implemented JavaOptionValues,
-    implemented JavaResultValues,
-    implemented JavaIntegerBitwise,
-    implemented JavaCheckedIntegerShifts,
-    implemented JavaFloatingPointInspection,
-    implemented JavaStringInspection,
-    implemented JavaStringTransformation,
-    implemented JavaBytesOperations,
-    implemented JavaListOperations,
-    implemented JavaOptionOperations,
-    implemented JavaResultOperations,
-    implemented JavaIntegerConversions,
-    implemented JavaUtf8Conversions,
-    implemented JavaModules,
-    implemented JavaConstants,
-    implemented JavaTypeAliases,
-    implemented JavaEnums,
-    implemented JavaInterfaces,
-    implemented JavaPortableTests,
-    implemented JavaLocalBindings,
-    implemented JavaConditionals,
-    implemented JavaLoops,
-    implemented JavaPatternMatching,
-    implemented JavaResultPropagation,
-    implemented JavaUnitValues,
+    implemented ObservedJavaMapping<JavaFunctions>,
+    implemented ObservedJavaMapping<JavaRecords>,
+    implemented ObservedJavaMapping<JavaBoolValues>,
+    implemented ObservedJavaMapping<JavaI32Values>,
+    implemented ObservedJavaMapping<JavaI64Values>,
+    implemented ObservedJavaMapping<JavaF64Values>,
+    implemented ObservedJavaMapping<JavaTextValues>,
+    implemented ObservedJavaMapping<JavaBooleanLogic>,
+    implemented ObservedJavaMapping<JavaEquality>,
+    implemented ObservedJavaMapping<JavaOrdering>,
+    implemented ObservedJavaMapping<JavaCheckedIntegerArithmetic>,
+    implemented ObservedJavaMapping<JavaWrappingIntegerArithmetic>,
+    implemented ObservedJavaMapping<JavaFloatingPointArithmetic>,
+    implemented ObservedJavaMapping<JavaStringConcatenation>,
+    implemented ObservedJavaMapping<JavaCharValues>,
+    implemented ObservedJavaMapping<JavaBytesValues>,
+    implemented ObservedJavaMapping<JavaListValues>,
+    implemented ObservedJavaMapping<JavaOptionValues>,
+    implemented ObservedJavaMapping<JavaResultValues>,
+    implemented ObservedJavaMapping<JavaIntegerBitwise>,
+    implemented ObservedJavaMapping<JavaCheckedIntegerShifts>,
+    implemented ObservedJavaMapping<JavaFloatingPointInspection>,
+    implemented ObservedJavaMapping<JavaStringInspection>,
+    implemented ObservedJavaMapping<JavaStringTransformation>,
+    implemented ObservedJavaMapping<JavaBytesOperations>,
+    implemented ObservedJavaMapping<JavaListOperations>,
+    implemented ObservedJavaMapping<JavaOptionOperations>,
+    implemented ObservedJavaMapping<JavaResultOperations>,
+    implemented ObservedJavaMapping<JavaIntegerConversions>,
+    implemented ObservedJavaMapping<JavaUtf8Conversions>,
+    implemented ObservedJavaMapping<JavaModules>,
+    implemented ObservedJavaMapping<JavaConstants>,
+    implemented ObservedJavaMapping<JavaTypeAliases>,
+    implemented ObservedJavaMapping<JavaEnums>,
+    implemented ObservedJavaMapping<JavaInterfaces>,
+    implemented ObservedJavaMapping<JavaPortableTests>,
+    implemented ObservedJavaMapping<JavaLocalBindings>,
+    implemented ObservedJavaMapping<JavaConditionals>,
+    implemented ObservedJavaMapping<JavaLoops>,
+    implemented ObservedJavaMapping<JavaPatternMatching>,
+    implemented ObservedJavaMapping<JavaResultPropagation>,
+    implemented ObservedJavaMapping<JavaUnitValues>,
 );
 
 pub type JavaCapabilitySet = LanguageCapabilityPlugin<JavaDialect, JavaCapabilitySlots>;
 
 pub(crate) fn java_capabilities() -> JavaCapabilitySet {
     java_plugin_builder()
-        .support(JavaFunctions)
-        .support(JavaRecords)
-        .support(JavaBoolValues)
-        .support(JavaI32Values)
-        .support(JavaI64Values)
-        .support(JavaF64Values)
-        .support(JavaTextValues)
-        .support(JavaBooleanLogic)
-        .support(JavaEquality)
-        .support(JavaOrdering)
-        .support(JavaCheckedIntegerArithmetic)
-        .support(JavaWrappingIntegerArithmetic)
-        .support(JavaFloatingPointArithmetic)
-        .support(JavaStringConcatenation)
-        .support(JavaCharValues)
-        .support(JavaBytesValues)
-        .support(JavaListValues)
-        .support(JavaOptionValues)
-        .support(JavaResultValues)
-        .support(JavaIntegerBitwise)
-        .support(JavaCheckedIntegerShifts)
-        .support(JavaFloatingPointInspection)
-        .support(JavaStringInspection)
-        .support(JavaStringTransformation)
-        .support(JavaBytesOperations)
-        .support(JavaListOperations)
-        .support(JavaOptionOperations)
-        .support(JavaResultOperations)
-        .support(JavaIntegerConversions)
-        .support(JavaUtf8Conversions)
-        .support(JavaModules)
-        .support(JavaConstants)
-        .support(JavaTypeAliases)
-        .support(JavaEnums)
-        .support(JavaInterfaces)
-        .support(JavaPortableTests)
-        .support(JavaLocalBindings)
-        .support(JavaConditionals)
-        .support(JavaLoops)
-        .support(JavaPatternMatching)
-        .support(JavaResultPropagation)
-        .support(JavaUnitValues)
+        .support(observed(JavaFunctions))
+        .support(observed(JavaRecords))
+        .support(observed(JavaBoolValues))
+        .support(observed(JavaI32Values))
+        .support(observed(JavaI64Values))
+        .support(observed(JavaF64Values))
+        .support(observed(JavaTextValues))
+        .support(observed(JavaBooleanLogic))
+        .support(observed(JavaEquality))
+        .support(observed(JavaOrdering))
+        .support(observed(JavaCheckedIntegerArithmetic))
+        .support(observed(JavaWrappingIntegerArithmetic))
+        .support(observed(JavaFloatingPointArithmetic))
+        .support(observed(JavaStringConcatenation))
+        .support(observed(JavaCharValues))
+        .support(observed(JavaBytesValues))
+        .support(observed(JavaListValues))
+        .support(observed(JavaOptionValues))
+        .support(observed(JavaResultValues))
+        .support(observed(JavaIntegerBitwise))
+        .support(observed(JavaCheckedIntegerShifts))
+        .support(observed(JavaFloatingPointInspection))
+        .support(observed(JavaStringInspection))
+        .support(observed(JavaStringTransformation))
+        .support(observed(JavaBytesOperations))
+        .support(observed(JavaListOperations))
+        .support(observed(JavaOptionOperations))
+        .support(observed(JavaResultOperations))
+        .support(observed(JavaIntegerConversions))
+        .support(observed(JavaUtf8Conversions))
+        .support(observed(JavaModules))
+        .support(observed(JavaConstants))
+        .support(observed(JavaTypeAliases))
+        .support(observed(JavaEnums))
+        .support(observed(JavaInterfaces))
+        .support(observed(JavaPortableTests))
+        .support(observed(JavaLocalBindings))
+        .support(observed(JavaConditionals))
+        .support(observed(JavaLoops))
+        .support(observed(JavaPatternMatching))
+        .support(observed(JavaResultPropagation))
+        .support(observed(JavaUnitValues))
         .build()
 }
