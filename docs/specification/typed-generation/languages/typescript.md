@@ -6,11 +6,12 @@
 
 ## Inferred typed-program admission
 
-`TypeScriptDialect` MUST implement `Supports<F>` separately for each portable
-feature whose complete strict-TypeScript mapping has passed this specification.
-Typed generation accepts `TypedProgram<R>` only under
-`TypeScriptDialect: SupportsAll<R>`. There is no profile-wide, wildcard, or
-default support claim.
+`TypeScriptPluginBuilder` MUST register one typed `TsFeatureMapping<F>` for each
+portable feature whose complete strict-TypeScript mapping has passed this
+specification. Only an implemented builder slot derives
+`TypeScriptPlugin: Supports<F>`. Typed generation accepts `TypedProgram<R>`
+only under `TypeScriptPlugin: SupportsAll<R>`. There is no empty, profile-wide,
+wildcard, or default support claim.
 
 ## 1. Scope and package
 

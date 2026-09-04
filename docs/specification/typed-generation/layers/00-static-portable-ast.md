@@ -8,8 +8,8 @@
 
 This layer makes the portable authoring surface valid by construction and
 records exactly which portable functionality each program uses. A compiled
-Rust generator may invoke target `D` only when Rust can prove
-`D: SupportsAll<R>` for that program's inferred requirements.
+Rust generator may invoke a completed plugin `P` only when Rust can prove
+`P: SupportsAll<R>` for that program's inferred requirements.
 
 There is no monolithic or versioned feature profile. In particular, the public
 architecture has no `StaticV1`. Unknown runtime input remains a separate,
@@ -33,7 +33,10 @@ struct NoneRequired;
 struct Requires<Feature, Tail>;
 struct All<Left, Right>;
 
-trait Supports<Feature> {}
+trait Supports<Feature> {
+    type Mapping;
+    fn mapping(&self) -> &Self::Mapping;
+}
 trait SupportsAll<Requirements> {}
 ```
 
@@ -54,7 +57,7 @@ boundary are mandatory.
 - No constructor accepts caller-provided evidence that a feature was used or
   supported.
 
-The initial feature markers are:
+The feature markers are independently implementable semantic families:
 
 | Family | Markers |
 | --- | --- |
@@ -63,9 +66,17 @@ The initial feature markers are:
 | Values | `BoolValues`, `I32Values`, `I64Values`, `F64Values`, `TextValues` |
 | Operations | `BooleanLogic`, `Equality`, `Ordering`, `CheckedIntegerArithmetic`, `WrappingIntegerArithmetic`, `FloatingPointArithmetic`, `StringConcatenation` |
 
-Interfaces, interface values, implementations, composition, control flow,
-collections, options/results, and future constructs extend this catalogue with
-new independent markers rather than a new profile version.
+M34A-08U extends values with `CharValues`, `BytesValues`, `ListValues`,
+`OptionValues`, and `ResultValues`, and extends operations with integer
+bitwise/shift, float inspection, string inspection/transformation, bytes,
+lists, options/results, numeric conversion, and UTF-8 conversion families.
+Together these typed constructors cover every PolyIR v0 intrinsic. Interfaces,
+control flow, and additional declarations remain separate branded AST work;
+they are never smuggled through a generic intrinsic constructor.
+
+Interfaces, interface values, implementations, composition, control flow, and
+future constructs extend this catalogue with new independent markers rather
+than a new profile version.
 
 ## Arbitrary typed lists
 
@@ -105,13 +116,22 @@ encoded as arbitrary omissions from the authoring API.
 
 ## Target support
 
-Every target opts into individual features:
+Every plugin registers individual executable mappings through a consuming
+typestate builder:
 
 ```rust
-impl Supports<Functions> for JavaDialect {}
-impl Supports<I32Values> for JavaDialect {}
-impl Supports<WrappingIntegerArithmetic> for JavaDialect {}
+let java = JavaPluginBuilder::new()
+    .support::<Functions>(JavaFunctions)
+    .support::<I32Values>(JavaI32Values)
+    .support::<WrappingIntegerArithmetic>(JavaWrappingIntegerArithmetic)
+    .build();
 ```
+
+Each call changes one `Missing` slot to `Implemented<M>` and requires
+`M: FeatureMapping<JavaDialect, F>`. Only an implemented slot produces
+`Supports<F>`, whose `mapping()` method returns that exact handler. Duplicate
+registration is not representable, and a backend cannot manually write an
+empty support claim.
 
 Shared recursion derives the complete proof:
 
@@ -131,7 +151,7 @@ where
 
 There is no `SupportsAll<R>` fallback which treats unknown requirements as
 supported. A backend method accepts `TypedProgram<R>` only with the explicit
-bound `Dialect: SupportsAll<R>`.
+bound `Plugin: SupportsAll<R>`.
 
 ## Static and dynamic convergence
 
@@ -170,4 +190,5 @@ independent semantic feature registry.
 - An admitted Java program generates deterministically, compiles under the
   hermetic Java 21 toolchain with all warnings denied, and executes.
 - Source policy rejects closed profiles, arity-numbered typed APIs, unchecked
-  typed-program inputs, and target support fallback implementations.
+  typed-program inputs, target support fallback implementations, and
+  empty/manual backend support witnesses.

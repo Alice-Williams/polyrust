@@ -34,11 +34,12 @@ compile-time requirement tree. There is no versioned `StaticV1` profile.
 - Functions, calls, records, and constructors use recursively typed lists.
   Their lengths and element types must match at Rust compile time, with no
   public untyped-vector fallback.
-- Each target implements `Supports<F>` separately for every feature `F` it
-  implements completely.
-- `SupportsAll<R>` recursively proves that a target supports every requirement
+- Each target plugin registers a typed executable mapping separately for every
+  feature `F` it implements completely. ADR-0008 derives `Supports<F>` only
+  from that registration.
+- `SupportsAll<R>` recursively proves that a plugin supports every requirement
   carried by a program. It has no permissive blanket implementation.
-- Target generation is callable only under `D: SupportsAll<R>`.
+- Target generation is callable only under `P: SupportsAll<R>`.
 
 The static phase graph is:
 
@@ -46,7 +47,7 @@ The static phase graph is:
 typed constructors
   -> ProgramBuilder<inferred requirements>
   -> TypedProgram<R>
-  -> target D where D: SupportsAll<R>
+  -> plugin P where P: SupportsAll<R>
   -> certified target AST
   -> RenderReadyPackage<D>
   -> OutputManifest

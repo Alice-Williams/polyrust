@@ -12,10 +12,10 @@ without making the compiler's build depend on every language implementing
 every feature immediately.
 
 For typed programs, feature support is additionally a compile-time contract.
-`TypedProgram<R>` may be passed to target `D` only when
-`D: SupportsAll<R>`. The builder infers `R`; callers do not select a feature
-profile or assert which functionality they used. Each leaf in `R` requires a
-separate explicit `D: Supports<F>` implementation.
+`TypedProgram<R>` may be passed to completed plugin `P` only when
+`P: SupportsAll<R>`. The builder infers `R`; callers do not select a feature
+profile or assert which functionality they used. Each leaf in `R` requires one
+implemented plugin-builder slot containing a typed executable mapping.
 Runtime capability preflight remains mandatory for unknown/dynamic programs
 and as a defensive migration assertion, but it is not the primary proof for
 the typed path.
@@ -122,10 +122,16 @@ Registries MUST NOT use:
 
 ## Mapping registration
 
-A support decision and a lowering implementation are separate but linked.
-`Native(strategy)` or `Emulated(strategy)` MUST name a strategy with a
-registered lowering. An unreferenced lowering or strategy without a lowering
-is an error.
+A support decision and a lowering implementation are one registered fact.
+`LanguagePluginBuilder::support::<F>(mapping)` requires a typed
+`FeatureMapping<D, F>`, stores it, and changes the builder's `F` slot from
+`Missing` to `Implemented<Mapping>`. `Supports<F>` is derived only from that
+slot and returns the same stored mapping. A duplicate call is unavailable.
+
+`Native(strategy)` or `Emulated(strategy)` MUST be derived from a present
+registration and name the registered lowering strategy. An unreferenced
+lowering, evidence-only handler, strategy without a lowering, or support claim
+without a mapping is an error.
 
 A declarative macro SHOULD generate:
 
@@ -181,6 +187,8 @@ Ordering is target, feature family, feature variant, source provenance.
   registries.
 - Macro tests reject duplicate strategies, missing mappings, and wildcard
   fallback.
+- Compile-fail tests reject missing, duplicate, wrong-feature, wrong-dialect,
+  and wrong-target-AST plugin registrations.
 - Each plugin has an enumerated support snapshot.
 - One-feature CoreIR fixtures exercise every support decision.
 - Unsupported features reject only affected program-target pairs.

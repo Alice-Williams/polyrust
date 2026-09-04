@@ -6,11 +6,12 @@
 
 ## Inferred typed-program admission
 
-`PythonDialect` MUST implement `Supports<F>` separately for each portable
-feature whose complete Python mapping has passed this specification. Typed
+`PythonPluginBuilder` MUST register one typed `PythonFeatureMapping<F>` for each
+portable feature whose complete Python mapping has passed this specification.
+Only an implemented builder slot derives `PythonPlugin: Supports<F>`. Typed
 generation accepts `TypedProgram<R>` only under
-`PythonDialect: SupportsAll<R>`. Python's dynamic runtime does not justify a
-wildcard or default support implementation.
+`PythonPlugin: SupportsAll<R>`. Python's dynamic runtime does not justify an
+empty, wildcard, or default support implementation.
 
 ## 1. Scope and package
 

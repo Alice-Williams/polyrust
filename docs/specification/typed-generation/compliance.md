@@ -14,13 +14,13 @@ it is not evidence of typed executable syntax.
 | Surface | CoreIR input | Typed executable AST | Typed symbols and derived dependencies | Structural runtime | Render-ready certificate and total renderer | Result |
 | --- | --- | --- | --- | --- | --- | --- |
 | Shared codegen | `CoreProgram` is the only lowering input | Generic checked target AST | Catalogue/linker-derived bindings, imports, files, helpers, and packages | Typed helper DAG and structural items | Opaque verify/link/certify states, sealed certified adapter, and total structural-renderer extension point | **Pass** |
-| Inferred typed AST | `TypedProgram<R>` and its consuming builder replay privately through the checker and CoreIR verifier | Private `TypedExpr<T, R>` plus invariant body/record handles and recursive typed lists | Constant-checked names plus inferred requirements and recursive `SupportsAll<R>` | Not applicable at this layer | Admitted target adapters are total; rejection is an implementation defect | **Pass** |
+| Inferred typed AST | `TypedProgram<R>` and its consuming builder replay privately through the checker and CoreIR verifier | Private `TypedExpr<T, R>` plus invariant body/record handles and recursive typed lists | Constant-checked names plus inferred requirements; executable plugin registration pending M34A-08U | Not applicable at this layer | Admitted target adapters are total; rejection is an implementation defect | **Partial** pending M34A-08U |
 | Rust | Missing | Missing: `RustCode`/raw documents | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | TypeScript | Missing | Missing: paired `EcmaCode` | Manually attached fragment metadata | Raw runtime source | Paired source path | **Fail** |
 | JavaScript | Missing | Independently paired source exists | Shares manual ECMA metadata | Checked-in/runtime paired text | Not solely compiler-derived | **Fail** |
 | Python | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | Go | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
-| Java | Exhaustive verified `CoreProgram` lowering, including the inferred typed-program bridge | Closed Java 21 AST and pre/post-link verification | Per-feature `Supports<F>` evidence, closed catalogues, typed references, and linker-derived imports | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer | **Partial** pending user review and hosted evidence |
+| Java | Exhaustive verified `CoreProgram` lowering, including the inferred typed-program bridge | Closed Java 21 AST and pre/post-link verification | Empty `Supports<F>` witnesses must be replaced by executable Java plugin registrations in M34A-10U; imports remain linker-derived | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer | **Partial** pending M34A-10U and review |
 | C++20 | Missing | Missing: `CppCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 | C17 | Missing | Missing: `CCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 
@@ -51,6 +51,9 @@ The locations for rows which still fail are migration inputs, not allowlisted
 final architecture. Shared codegen implements the ADR-0005 target foundation,
 and ADR-0007 supersedes the coarse ADR-0006 profile with inferred per-feature
 requirements. Java is the first target migrated to that inferred path.
+ADR-0008 now records the accepted correction: inferred support is complete
+only when the plugin builder stores the executable mapping which produces the
+witness.
 
 ## Shared M34A-08T evidence
 
@@ -84,6 +87,10 @@ requirements. Java is the first target migrated to that inferred path.
   `33819834141` in all eight jobs, including cache-cold and cache-warm release
   gates. This row remains **Partial** only for the user's requested design
   review.
+
+This is retained historical evidence. M34A-08U/M34A-10U supersede the empty
+support-witness portion and add the complete typed intrinsic surface before the
+shared and Java rows can return to **Pass**.
 
 ## Shared M34A-08S evidence
 

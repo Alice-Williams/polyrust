@@ -12,12 +12,14 @@ optional structural runtime declarations, native/conformance tests, and
 negative compilation fixtures. A separately compiled consumer MUST be able to
 use every portable public API. No undeclared runtime dependency is permitted.
 
-Java is the first inferred typed-program target. `JavaDialect` MUST implement
-`Supports<F>` separately for every admitted portable feature. Its typed entry
-point accepts only `TypedProgram<R>` under the bound
-`JavaDialect: SupportsAll<R>`. Typed records, fields, constructors, functions,
-calls, primitive expressions, and operations lower through the same certified
-Java AST, linker, post-link checker, and total renderer described below.
+Java is the first inferred typed-program target. `JavaPluginBuilder` MUST
+register a typed executable `JavaFeatureMapping<F>` separately for every
+admitted portable feature. Only an `Implemented<Mapping>` builder slot derives
+`JavaPlugin: Supports<F>`, and `Supports<F>::mapping()` returns that exact
+handler. Its typed entry point accepts only `TypedProgram<R>` under the bound
+`JavaPlugin: SupportsAll<R>`. Typed records, fields, constructors, functions,
+calls, values, and operations lower through those registered handlers into the
+same certified Java AST, linker, post-link checker, and total renderer.
 
 The typed path has no user-caused Java syntax or capability diagnostic after
 construction. The current `CheckedProgram` entry point remains the explicitly
@@ -29,14 +31,29 @@ The concrete entry point is total at its public typed boundary:
 fn generate_typed<R>(&self, program: &TypedProgram<R>) -> OutputManifest
 where
     R: Requirements,
-    JavaDialect: SupportsAll<R>;
+    JavaPlugin: SupportsAll<R>;
 ```
 
 It delegates to the same verified CoreIR-to-Java compiler as the dynamic path.
 Any rejection is converted to an invariant panic identifying a PolyRust defect;
-it is not returned as a user validation branch. `JavaDialect` implements
-individual `Supports<F>` implementations explicitly. No profile, wildcard, or
-default implementation can make an unlisted feature admissible.
+it is not returned as a user validation branch. Java has no manual or empty
+`Supports<F>` implementations. No profile, wildcard, or default
+implementation can make an unregistered feature admissible.
+
+`JavaPluginBuilder::support::<F>(mapping)` consumes the builder, replaces the
+single `F` slot from `Missing` to `Implemented<Mapping>`, and requires
+`Mapping: JavaFeatureMapping<F>`. Every operation mapping accepts a closed,
+feature-specific enum containing already-lowered `JavaExpr` operands and
+returns a `JavaExpr` or typed `JavaExprPlan`; declaration/type mappings return
+their corresponding Java AST category. An erased feature input/output enum,
+source text, tokens, imports, helper names, and unchecked AST are forbidden.
+The Java lowerer calls the stored mapping. Merely storing evidence while a
+separate match performs the real lowering does not satisfy this specification.
+
+The dynamic `JavaCapabilityRegistry` derives feature presence and strategy
+from the same built plugin registration catalogue, then applies its existing
+shape-specific checks. It cannot advertise a feature whose mapping slot is
+missing.
 
 ## 2. Capability strategies
 
@@ -409,10 +426,17 @@ executable compilation unit flows through verified Java AST, automatic symbol
 resolution, render-ready certification, and total structural rendering.
 
 The Java typed path additionally passes only when every used feature has an
-explicit compile-time implementation, the checked-in inferred example
+executable compile-time mapping registered by the plugin builder, the
+checked-in inferred example
 exercises an arbitrary-arity function and record plus nested arithmetic, all
 invalid typed examples fail Rust compilation, and the accepted output compiles
 and executes under the hermetic Java 21 toolchain.
+
+M34A-10U also exercises the complete PolyIR v0 intrinsic catalogue exposed by
+M34A-08U: bitwise and shifts, float inspection, string transformations, bytes,
+lists, option/result operations, numeric conversions, and UTF-8 conversions.
+Every family has a separate registered Java mapping and native edge-case
+evidence; interfaces remain the separate Layer 6 branded surface.
 
 The checked-in authoring example is
 `crates/backend-java/examples/generate_typed.rs`. Bazel materializes its

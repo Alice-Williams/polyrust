@@ -7,11 +7,12 @@
 
 ## Inferred typed-program admission
 
-`CppDialect` MUST implement `Supports<F>` separately for each portable feature
-whose complete C++20 mapping has passed this specification. Typed generation
-accepts `TypedProgram<R>` only under `CppDialect: SupportsAll<R>`. Native and
-emulated mappings both require explicit feature evidence; there is no wildcard
-or default support claim.
+`CppPluginBuilder` MUST register one typed `CppFeatureMapping<F>` for each
+portable feature whose complete C++20 mapping has passed this specification.
+Only an implemented builder slot derives `CppPlugin: Supports<F>`. Typed
+generation accepts `TypedProgram<R>` only under
+`CppPlugin: SupportsAll<R>`. Native and emulated mappings both require an
+executable registration; there is no empty, wildcard, or default support claim.
 
 ## 1. Scope and package
 

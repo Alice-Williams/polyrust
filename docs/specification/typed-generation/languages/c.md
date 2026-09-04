@@ -7,10 +7,11 @@
 
 ## Inferred typed-program admission
 
-`CDialect` MUST implement `Supports<F>` separately for each portable feature
-whose complete C17 mapping has passed this specification. Typed generation
-accepts `TypedProgram<R>` only under `CDialect: SupportsAll<R>`. Runtime
-emulation does not justify a wildcard or default support claim.
+`CPluginBuilder` MUST register one typed `CFeatureMapping<F>` for each portable
+feature whose complete C17 mapping has passed this specification. Only an
+implemented builder slot derives `CPlugin: Supports<F>`. Typed generation
+accepts `TypedProgram<R>` only under `CPlugin: SupportsAll<R>`. Runtime
+emulation does not justify an empty, wildcard, or default support claim.
 
 ## 1. Scope and package
 

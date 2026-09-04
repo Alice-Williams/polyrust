@@ -71,8 +71,9 @@ returning.
 
 ## Plugin lowering contract
 
-A typed target entry point requires `D: SupportsAll<R>`. For that admitted
-profile, user-caused portable typing, capability, and target-syntax failures
+A typed target entry point requires `P: SupportsAll<R>`, where every support
+witness is derived from an executable plugin-builder registration. For that
+admitted profile, user-caused portable typing, capability, and target-syntax failures
 MUST be unrepresentable; lowering is total. A temporary private bridge may
 replay the dynamic checker as a defensive assertion during migration.
 

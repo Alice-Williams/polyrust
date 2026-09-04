@@ -6,12 +6,13 @@
 
 ## Inferred typed-program admission
 
-`RustDialect` MUST implement `Supports<F>` separately for each portable
-feature whose complete Rust mapping has passed this specification. Typed
+`RustPluginBuilder` MUST register one typed `RustFeatureMapping<F>` for each
+portable feature whose complete Rust mapping has passed this specification.
+Only an implemented builder slot derives `RustPlugin: Supports<F>`. Typed
 generation accepts `TypedProgram<R>` only under
-`RustDialect: SupportsAll<R>`. There is no profile-wide, wildcard, or default
-support claim; before this migration is complete, absent implementations make
-the typed call fail during generator compilation.
+`RustPlugin: SupportsAll<R>`. There is no empty, profile-wide, wildcard, or
+default support claim; before migration, absent mappings make the typed call
+fail during generator compilation.
 
 ## 1. Scope and package
 

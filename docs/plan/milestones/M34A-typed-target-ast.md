@@ -11,7 +11,7 @@ Replace dependency-complete executable text fragments with the accepted
 ADR-0004 pipeline as amended by ADR-0005 and ADR-0006. Static Rust-authored
 programs use the valid-by-construction path:
 
-`TypedProgram<R> -> TargetProgram<D, R> where D: SupportsAll<R>
+`TypedProgram<R> -> TargetProgram<P, R> where P: SupportsAll<R>
 -> RenderReadyPackage<D> -> RenderedPackage -> OutputManifest`.
 
 Unknown/dynamic input retains the fallible refinement path:
@@ -47,22 +47,24 @@ Shared layers:
 11. [M34A-08R — intrinsic validity certificates and total rendering](../tasks/M34A-08R-intrinsic-validity-rendering.md)
 12. [M34A-08S — static valid-by-construction portable AST](../tasks/M34A-08S-static-portable-ast.md)
 13. [M34A-08T — inferred feature builder](../tasks/M34A-08T-inferred-feature-builder.md)
+14. [M34A-08U — executable feature registration and complete intrinsic surface](../tasks/M34A-08U-executable-feature-registration.md)
 
 Language migrations:
 
-14. [M34A-10 — Java](../tasks/M34A-10-java.md) — in progress
+15. [M34A-10 — Java](../tasks/M34A-10-java.md) — in progress
     - [M34A-10R — blind-review remediation](../tasks/M34A-10R-java-review-remediation.md)
     - [M34A-10V — intrinsic Java syntax validity](../tasks/M34A-10V-java-intrinsic-validity.md)
     - [M34A-10S — static portable-program generation](../tasks/M34A-10S-java-static-program.md)
     - [M34A-10T — inferred capability generation](../tasks/M34A-10T-java-inferred-capabilities.md)
-15. [M34A-11 — C17](../tasks/M34A-11-c.md)
-16. [M34A-12 — Rust](../tasks/M34A-12-rust.md)
-17. [M34A-13 — TypeScript](../tasks/M34A-13-typescript.md)
-18. [M34A-14 — compiler-derived JavaScript](../tasks/M34A-14-javascript.md)
-19. [M34A-15 — Python](../tasks/M34A-15-python.md)
-20. [M34A-16 — Go](../tasks/M34A-16-go.md)
-21. [M34A-17 — C++20](../tasks/M34A-17-cpp.md)
-22. [M34A-18 — legacy deletion, historical replay, and release](../tasks/M34A-18-replay-release.md)
+    - [M34A-10U — executable Java plugin builder](../tasks/M34A-10U-java-plugin-builder.md)
+16. [M34A-11 — C17](../tasks/M34A-11-c.md)
+17. [M34A-12 — Rust](../tasks/M34A-12-rust.md)
+18. [M34A-13 — TypeScript](../tasks/M34A-13-typescript.md)
+19. [M34A-14 — compiler-derived JavaScript](../tasks/M34A-14-javascript.md)
+20. [M34A-15 — Python](../tasks/M34A-15-python.md)
+21. [M34A-16 — Go](../tasks/M34A-16-go.md)
+22. [M34A-17 — C++20](../tasks/M34A-17-cpp.md)
+23. [M34A-18 — legacy deletion, historical replay, and release](../tasks/M34A-18-replay-release.md)
 
 Tasks are dependency ordered. A task is committed and pushed only after its
 listed tests pass in the Linux development container. Language tasks update
@@ -76,6 +78,9 @@ the ADR-0004 compliance ledger in the same checkpoint.
   requirements; invalid operands,
   calls, returns, constructors, fields, identifiers, and unsupported target
   profiles fail during Rust compilation.
+- Every support proof comes from a plugin-builder slot containing the exact
+  executable typed mapping; empty/manual `Supports<F>` implementations are
+  absent.
 - Every renderer accepts only an opaque render-ready certificate, is total over
   its closed AST, and contains no executable template or source escape hatch.
 - The shared and all eight language rows in the typed-generation compliance
@@ -97,8 +102,10 @@ the ADR-0004 compliance ledger in the same checkpoint.
 
 ## Scope boundary
 
-M34A changes representation and adds the already accepted first-class interface
-surface. It does not add unrelated operators, source-language parsers,
-arbitrary inheritance, user-editable templates, or a new compatibility repo.
+M34A changes representation, adds the accepted first-class interface surface,
+and now exposes the complete already-defined PolyIR v0 intrinsic catalogue
+through M34A-08U. It does not add new portable semantics, source-language
+parsers, arbitrary inheritance, user-editable templates, or a new
+compatibility repo.
 The already completed M34-02 `FloatAbs` semantics are retained; the partial
 uncommitted M34-03 package is not carried into an architecture checkpoint.

@@ -43,6 +43,10 @@ task complete and handing Java back for review.
 
 ## Exit evidence
 
+> Historical note: ADR-0008 and M34A-10U supersede this task's empty
+> `JavaDialect: Supports<F>` witnesses with executable mappings registered on
+> the completed Java plugin. The remaining evidence below is retained.
+
 - `JavaDialect` explicitly implements all 18 initial `Supports<F>` witnesses;
   the typed entry point requires the recursively derived `SupportsAll<R>`.
 - The checked-in example uses an exact three-argument function call, a

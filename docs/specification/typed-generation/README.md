@@ -55,7 +55,7 @@ The primary static authoring path is:
 Typed Rust constructors
   -> ProgramBuilder<inferred requirements>
   -> TypedProgram<R>
-  -> TargetProgram<D, R> where D: SupportsAll<R>
+  -> TargetProgram<P, R> where P: SupportsAll<R>
   -> RenderReadyPackage<D>
   -> RenderedPackage
   -> OutputManifest

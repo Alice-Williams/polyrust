@@ -6,10 +6,11 @@
 
 ## Inferred typed-program admission
 
-`GoDialect` MUST implement `Supports<F>` separately for each portable feature
-whose complete Go mapping has passed this specification. Typed generation
-accepts `TypedProgram<R>` only under `GoDialect: SupportsAll<R>`. There is no
-profile-wide, wildcard, or default support claim.
+`GoPluginBuilder` MUST register one typed `GoFeatureMapping<F>` for each
+portable feature whose complete Go mapping has passed this specification. Only
+an implemented builder slot derives `GoPlugin: Supports<F>`. Typed generation
+accepts `TypedProgram<R>` only under `GoPlugin: SupportsAll<R>`. There is no
+empty, profile-wide, wildcard, or default support claim.
 
 ## 1. Scope and package
 
