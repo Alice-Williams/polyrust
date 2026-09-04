@@ -2909,7 +2909,7 @@ mod tests {
                     },
                 )
                 .builder;
-            let builder = builder
+            builder
                 .function(
                     portable_name!("string_transform"),
                     typed_list![],
@@ -2936,8 +2936,7 @@ mod tests {
                         body.string_trim_end(value, characters)
                     },
                 )
-                .builder;
-            builder
+                .builder
         });
 
         let core = portable_core_ir::lower_checked(program.checked_program())
