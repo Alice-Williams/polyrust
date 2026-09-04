@@ -191,6 +191,36 @@
 //! });
 //! ```
 //!
+//! Conditional branches must produce the same value type:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, portable_name, typed_list, typed_program};
+//! let _ = typed_program(portable_name!("conditional_type"), |builder| {
+//!     builder.function(portable_name!("bad"), typed_list![], I32::TYPE, |body, _| {
+//!         let condition = body.bool(true);
+//!         let yes = body.i32(1);
+//!         let no = body.text("no");
+//!         body.if_else(condition, yes, no)
+//!     }).builder
+//! });
+//! ```
+//!
+//! A lexical binding handle cannot escape its continuation:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, portable_name, typed_list, typed_program};
+//! let mut escaped = None;
+//! let _ = typed_program(portable_name!("binding_escape"), |builder| {
+//!     builder.function(portable_name!("bad"), typed_list![], I32::TYPE, |body, _| {
+//!         let value = body.i32(1);
+//!         body.let_value(portable_name!("value"), value, |body, local| {
+//!             escaped = Some(local);
+//!             body.i32(0)
+//!         })
+//!     }).builder
+//! });
+//! ```
+//!
 //! ```compile_fail
 //! use portable_build::{I32, Requirements, SupportsAll, TypedProgram, portable_name, typed_list, typed_program};
 //! struct EmptyDialect;
@@ -817,6 +847,16 @@ enum TypedNode {
     Literal(Value),
     Local(String),
     Constant(ConstantId),
+    LetValue {
+        name: String,
+        value: Box<TypedNode>,
+        result: Box<TypedNode>,
+    },
+    IfValue {
+        condition: Box<TypedNode>,
+        then_value: Box<TypedNode>,
+        else_value: Box<TypedNode>,
+    },
     Record {
         record: RecordId,
         fields: Vec<(RecordFieldId, TypedNode)>,
@@ -966,6 +1006,19 @@ pub const fn parameter<T, R: Requirements>(
 pub struct TypedLocal<'module, 'body, T, R: Requirements> {
     name: String,
     marker: PhantomData<InvariantExpressionBrand<'module, 'body, T, R>>,
+}
+
+type InvariantBindingBrand<'module, 'body, 'binding, T> = (
+    Cell<&'module ()>,
+    Cell<&'body ()>,
+    Cell<&'binding ()>,
+    fn(T) -> T,
+);
+
+/// An immutable local whose brand exists only inside its binding continuation.
+pub struct TypedBinding<'module, 'body, 'binding, T> {
+    name: String,
+    marker: PhantomData<InvariantBindingBrand<'module, 'body, 'binding, T>>,
 }
 
 impl<T, R: Requirements> Clone for TypedLocal<'_, '_, T, R> {
@@ -1638,6 +1691,12 @@ struct NameAllocator {
 }
 
 impl NameAllocator {
+    fn with_used(used: impl IntoIterator<Item = String>) -> Self {
+        Self {
+            used: used.into_iter().collect(),
+        }
+    }
+
     fn allocate(&mut self, preferred: PortableName) -> String {
         let preferred = preferred.preferred();
         if self.used.insert(preferred.to_owned()) {
@@ -1759,9 +1818,11 @@ impl<'module, Existing: Requirements> ProgramBuilder<'module, Existing> {
                     function.parameter(Parameter::new(name, ty));
                 }
                 function.returns(result.ir).body(|body| {
+                    let reserved_names = local_names.clone();
                     let mut names = local_names.into_iter();
                     let locals = P::make_locals(&mut names);
                     let mut typed = TypedBody {
+                        names: NameAllocator::with_used(reserved_names),
                         marker: PhantomData,
                     };
                     let result = build(&mut typed, locals);
@@ -1874,6 +1935,7 @@ impl<'module, Existing: Requirements> ProgramBuilder<'module, Existing> {
 
 /// The only expression factory for one branded function body.
 pub struct TypedBody<'module, 'body> {
+    names: NameAllocator,
     marker: PhantomData<(Cell<&'module ()>, Cell<&'body ()>)>,
 }
 
@@ -1885,6 +1947,13 @@ type ListConstructionRequirements<TypeR, ValuesR> = All<Requires<ListValues>, Al
 type OptionConstructionRequirements<R> = All<Requires<OptionValues>, R>;
 type ResultConstructionRequirements<OkR, ErrorR> = All<Requires<ResultValues>, All<OkR, ErrorR>>;
 type EnumBranchRequirements<ValueR, ArmsR> = All<Requires<Enums>, All<ValueR, ArmsR>>;
+type LocalBindingRequirements<ValueR, BodyR> = All<Requires<LocalBindings>, All<ValueR, BodyR>>;
+type ConditionalRequirements<ConditionR, ThenR, ElseR> =
+    All<Requires<Conditionals>, All<ConditionR, All<ThenR, ElseR>>>;
+type LocalBindingExpr<'module, 'body, Output, ValueR, BodyR> =
+    TypedExpr<'module, 'body, Output, LocalBindingRequirements<ValueR, BodyR>>;
+type ConditionalExpr<'module, 'body, Output, ConditionR, ThenR, ElseR> =
+    TypedExpr<'module, 'body, Output, ConditionalRequirements<ConditionR, ThenR, ElseR>>;
 
 impl<'module, 'body> TypedBody<'module, 'body> {
     fn expression<T, R: Requirements>(&self, node: TypedNode) -> TypedExpr<'module, 'body, T, R> {
@@ -1899,6 +1968,59 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         local: TypedLocal<'module, 'body, T, R>,
     ) -> TypedExpr<'module, 'body, T, With<Functions, R>> {
         self.expression(TypedNode::Local(local.name))
+    }
+
+    pub fn read_binding<'binding, T>(
+        &mut self,
+        local: TypedBinding<'module, 'body, 'binding, T>,
+    ) -> TypedExpr<'module, 'body, T, Requires<LocalBindings>> {
+        self.expression(TypedNode::Local(local.name))
+    }
+
+    pub fn let_value<T, ValueR, Output, BodyR>(
+        &mut self,
+        name: PortableName,
+        value: TypedExpr<'module, 'body, T, ValueR>,
+        then: impl for<'binding> FnOnce(
+            &mut TypedBody<'module, 'body>,
+            TypedBinding<'module, 'body, 'binding, T>,
+        ) -> TypedExpr<'module, 'body, Output, BodyR>,
+    ) -> LocalBindingExpr<'module, 'body, Output, ValueR, BodyR>
+    where
+        ValueR: Requirements,
+        BodyR: Requirements,
+    {
+        let name = self.names.allocate(name);
+        let result = then(
+            self,
+            TypedBinding {
+                name: name.clone(),
+                marker: PhantomData,
+            },
+        );
+        self.expression(TypedNode::LetValue {
+            name,
+            value: Box::new(value.node),
+            result: Box::new(result.node),
+        })
+    }
+
+    pub fn if_else<T, ConditionR, ThenR, ElseR>(
+        &mut self,
+        condition: TypedExpr<'module, 'body, Bool, ConditionR>,
+        then_value: TypedExpr<'module, 'body, T, ThenR>,
+        else_value: TypedExpr<'module, 'body, T, ElseR>,
+    ) -> ConditionalExpr<'module, 'body, T, ConditionR, ThenR, ElseR>
+    where
+        ConditionR: Requirements,
+        ThenR: Requirements,
+        ElseR: Requirements,
+    {
+        self.expression(TypedNode::IfValue {
+            condition: Box::new(condition.node),
+            then_value: Box::new(then_value.node),
+            else_value: Box::new(else_value.node),
+        })
     }
 
     pub fn constant<T>(
@@ -2755,6 +2877,29 @@ fn lower_expression(body: &mut BodyBuilder<'_>, node: TypedNode) -> crate::Expr 
         TypedNode::Literal(value) => body.literal(value),
         TypedNode::Local(name) => body.local(name),
         TypedNode::Constant(constant) => body.constant(constant),
+        TypedNode::LetValue {
+            name,
+            value,
+            result,
+        } => {
+            let value = lower_expression(body, *value);
+            let binding = body.let_statement(name, None, value);
+            let result = lower_expression(body, *result);
+            let block = body.block([binding], Some(result));
+            body.block_expression(block)
+        }
+        TypedNode::IfValue {
+            condition,
+            then_value,
+            else_value,
+        } => {
+            let condition = lower_expression(body, *condition);
+            let then_value = lower_expression(body, *then_value);
+            let then_block = body.block([], Some(then_value));
+            let else_value = lower_expression(body, *else_value);
+            let else_block = body.block([], Some(else_value));
+            body.if_else(condition, then_block, else_block)
+        }
         TypedNode::Record { record, fields } => {
             let fields = fields
                 .into_iter()
@@ -2983,6 +3128,47 @@ mod tests {
         let core = portable_core_ir::lower_checked(program.checked_program())
             .expect("typed constants and aliases lower to CoreIR");
         portable_core_ir::verify_core(&core).expect("typed constants and aliases verify");
+    }
+
+    #[test]
+    fn local_bindings_and_conditionals_are_typed_and_inferred() {
+        let program = typed_program(portable_name!("bindings_and_conditionals"), |builder| {
+            builder
+                .function(
+                    portable_name!("choose"),
+                    typed_list![],
+                    I32::TYPE,
+                    |body, _| {
+                        let bound = body.i32(7);
+                        body.let_value(portable_name!("bound"), bound, |body, local| {
+                            let condition = body.bool(true);
+                            let yes = body.read_binding(local);
+                            let no = body.i32(0);
+                            body.if_else(condition, yes, no)
+                        })
+                    },
+                )
+                .builder
+        });
+        let plugin = language_plugin(TestDialect)
+            .support(test_mapping::<Modules>())
+            .support(test_mapping::<Functions>())
+            .support(test_mapping::<I32Values>())
+            .support(test_mapping::<BoolValues>())
+            .support(test_mapping::<LocalBindings>())
+            .support(test_mapping::<Conditionals>())
+            .build();
+
+        fn admit<P, R: Requirements>(_plugin: &P, _program: &TypedProgram<R>)
+        where
+            P: SupportsAll<R>,
+        {
+        }
+
+        admit(&plugin, &program);
+        let core = portable_core_ir::lower_checked(program.checked_program())
+            .expect("typed bindings and conditionals lower to CoreIR");
+        portable_core_ir::verify_core(&core).expect("typed bindings and conditionals verify");
     }
 
     #[test]
