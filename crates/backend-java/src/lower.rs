@@ -32,12 +32,15 @@ use portable_ir::v0::Visibility;
 use crate::{
     ast::*,
     capabilities::{
-        JavaBytesInput, JavaCapabilitySet, JavaConcreteInterfaceCallInput, JavaConstantsInput,
+        JavaBytesInput, JavaCapabilitySet, JavaConcreteInterfaceCallInput,
+        JavaConditionalValueInput, JavaConditionalsInput, JavaConditionalsNode, JavaConstantsInput,
         JavaConstantsNode, JavaFunctionDeclarationInput, JavaFunctionsInput, JavaFunctionsNode,
         JavaInterfaceCallInput, JavaInterfaceDeclarationInput, JavaInterfaceImplementationInput,
         JavaInterfaceMethodInput, JavaInterfacesInput, JavaInterfacesNode, JavaIntrinsicFamily,
-        JavaListInput, JavaOptionInput, JavaRecordDeclarationInput, JavaRecordsInput,
-        JavaRecordsNode, JavaResultInput, JavaTypeAliasInput, classify_intrinsic,
+        JavaListInput, JavaLocalBindingInput, JavaLoopsInput, JavaOptionInput,
+        JavaRecordDeclarationInput, JavaRecordsInput, JavaRecordsNode, JavaResultInput,
+        JavaResultPropagationInput, JavaResultPropagationPlan, JavaTypeAliasInput,
+        classify_intrinsic,
     },
     capability::JavaCapabilitySelection,
     dialect::*,
@@ -1307,12 +1310,18 @@ impl<'a> Lowering<'a> {
                     let binding = self.core.local(*local).expect("verified local");
                     let plan = self.expr_plan(*value, callable_return)?;
                     statements.extend(plan.statements);
-                    statements.push(JavaStmt::Local {
-                        finality: JavaLocalFinality::Final,
-                        ty: self.ty(binding.ty)?,
-                        name: identifier(&binding.name),
-                        value: Some(plan.value),
-                    });
+                    statements.push(
+                        self.features
+                            .mapping_for::<portable_build::LocalBindings>()
+                            .lower(
+                                &mut (),
+                                JavaLocalBindingInput {
+                                    name: binding.name.clone(),
+                                    ty: self.ty(binding.ty)?,
+                                    value: plan.value,
+                                },
+                            )?,
+                    );
                 }
                 CoreStatement::ForEach {
                     binding,
@@ -1323,12 +1332,15 @@ impl<'a> Lowering<'a> {
                     let binding = self.core.local(*binding).expect("verified local");
                     let iterable = self.expr_plan(*iterable, callable_return)?;
                     statements.extend(iterable.statements);
-                    statements.push(JavaStmt::ForEach {
-                        binding_type: self.ty(binding.ty)?,
-                        binding: identifier(&binding.name),
-                        iterable: iterable.value,
-                        body: self.block(*body, BlockMode::StatementBody, callable_return)?,
-                    });
+                    statements.push(self.features.mapping_for::<portable_build::Loops>().lower(
+                        &mut (),
+                        JavaLoopsInput::ForEach {
+                            binding_type: self.ty(binding.ty)?,
+                            binding: binding.name.clone(),
+                            iterable: iterable.value,
+                            body: self.block(*body, BlockMode::StatementBody, callable_return)?,
+                        },
+                    )?);
                 }
                 CoreStatement::Return { value, .. } => {
                     let plan = match value {
@@ -1664,34 +1676,40 @@ impl<'a> Lowering<'a> {
             } => {
                 let condition = self.expr_plan(*condition, callable_return)?;
                 let (name, result_local) = self.temporary("ifResult", ty.clone());
-                let mut statements = condition.statements;
-                statements.push(JavaStmt::Local {
-                    finality: JavaLocalFinality::Mutable,
-                    ty,
-                    name,
-                    value: None,
-                });
-                statements.push(JavaStmt::If {
-                    condition: condition.value,
-                    then_block: self.block(
-                        *then_block,
-                        BlockMode::AssignResult {
-                            target: Box::new(result_local.clone()),
-                        },
-                        callable_return,
-                    )?,
-                    else_block: Some(self.block(
-                        *else_block,
-                        BlockMode::AssignResult {
-                            target: Box::new(result_local.clone()),
-                        },
-                        callable_return,
-                    )?),
-                });
-                Ok(ExprPlan {
-                    statements,
-                    value: result_local,
-                })
+                match self
+                    .features
+                    .mapping_for::<portable_build::Conditionals>()
+                    .lower(
+                        &mut (),
+                        JavaConditionalsInput::Value(Box::new(JavaConditionalValueInput {
+                            prefix: condition.statements,
+                            condition: condition.value,
+                            result_name: name,
+                            result_type: ty,
+                            then_block: self.block(
+                                *then_block,
+                                BlockMode::AssignResult {
+                                    target: Box::new(result_local.clone()),
+                                },
+                                callable_return,
+                            )?,
+                            else_block: self.block(
+                                *else_block,
+                                BlockMode::AssignResult {
+                                    target: Box::new(result_local),
+                                },
+                                callable_return,
+                            )?,
+                        })),
+                    )? {
+                    JavaConditionalsNode::Value { statements, value } => Ok(ExprPlan {
+                        statements,
+                        value: *value,
+                    }),
+                    JavaConditionalsNode::Statement(_) => Err(vec![diagnostic(
+                        "Java Conditionals mapping returned a statement for a value",
+                    )]),
+                }
             }
             CoreExprKind::Match { value, arms } => {
                 self.match_plan(*value, arms, expression.ty, callable_return)
@@ -3356,74 +3374,26 @@ impl<'a> Lowering<'a> {
 
     fn propagate_call(
         &self,
-        mut statements: Vec<JavaStmt>,
+        statements: Vec<JavaStmt>,
         call: JavaExpr,
         value_type: JavaType,
         callable_return: CoreTypeId,
     ) -> Result<ExprPlan, Vec<Diagnostic>> {
-        let result_type = call.ty.clone();
-        let (name, result) = self.temporary("callResult", result_type.clone());
-        statements.push(JavaStmt::Local {
-            finality: JavaLocalFinality::Final,
-            ty: result_type,
-            name,
-            value: Some(call),
-        });
-        let ok = member_call(
-            result.clone(),
-            "ok",
-            vec![],
-            JavaType::primitive(JavaPrimitive::Boolean),
-            JavaMemberOrigin::Runtime(JavaRuntimeMember::ResultOk),
-        );
-        let error_type = JavaType::known(JavaKnownType::RuntimeError);
-        let error = member_call(
-            result.clone(),
-            "error",
-            vec![],
-            error_type,
-            JavaMemberOrigin::Runtime(JavaRuntimeMember::ResultError),
-        );
-        let string = JavaType::known(JavaKnownType::String);
-        let failure = runtime_call(
-            JavaRuntimeCallable::Fail,
-            vec![
-                member_call(
-                    error.clone(),
-                    "code",
-                    vec![],
-                    string.clone(),
-                    JavaMemberOrigin::Runtime(JavaRuntimeMember::ErrorCode),
-                ),
-                member_call(
-                    error,
-                    "message",
-                    vec![],
-                    string,
-                    JavaMemberOrigin::Runtime(JavaRuntimeMember::ErrorMessage),
-                ),
-            ],
-            self.poly_result_type(callable_return)?,
-        );
-        statements.push(JavaStmt::If {
-            condition: unary(
-                JavaUnaryOperator::Not,
-                ok,
-                JavaType::primitive(JavaPrimitive::Boolean),
-            ),
-            then_block: JavaBlock::new(vec![JavaStmt::Return(Some(failure))]),
-            else_block: None,
-        });
-        Ok(ExprPlan {
-            statements,
-            value: member_call(
-                result,
-                "value",
-                vec![],
-                value_type,
-                JavaMemberOrigin::Runtime(JavaRuntimeMember::ResultValue),
-            ),
-        })
+        let (name, _) = self.temporary("callResult", call.ty.clone());
+        let JavaResultPropagationPlan { statements, value } = self
+            .features
+            .mapping_for::<portable_build::ResultPropagation>()
+            .lower(
+                &mut (),
+                JavaResultPropagationInput {
+                    prefix: statements,
+                    call,
+                    result_name: name,
+                    value_type,
+                    callable_result_type: self.poly_result_type(callable_return)?,
+                },
+            )?;
+        Ok(ExprPlan { statements, value })
     }
 
     fn short_circuit_boolean(
@@ -3734,7 +3704,7 @@ pub(crate) fn string_literal(value: &str) -> JavaExpr {
     )
 }
 
-fn unary(operator: JavaUnaryOperator, operand: JavaExpr, ty: JavaType) -> JavaExpr {
+pub(crate) fn unary(operator: JavaUnaryOperator, operand: JavaExpr, ty: JavaType) -> JavaExpr {
     JavaExpr {
         ty,
         precedence: JavaPrecedence::Unary,

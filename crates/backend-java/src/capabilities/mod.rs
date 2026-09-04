@@ -1,8 +1,7 @@
 //! Java capability mappings and their exhaustive registration.
 
 use portable_build::{
-    Conditionals, Enums, LanguageCapabilityPlugin, LocalBindings, Loops, Modules, PatternMatching,
-    PortableTests, ResultPropagation, capability_slots,
+    Enums, LanguageCapabilityPlugin, Modules, PatternMatching, PortableTests, capability_slots,
 };
 
 mod bool_values;
@@ -12,6 +11,7 @@ mod bytes_values;
 mod char_values;
 mod checked_integer_arithmetic;
 mod checked_integer_shifts;
+mod conditionals;
 mod constants;
 mod dispatch;
 mod equality;
@@ -26,11 +26,14 @@ mod integer_conversions;
 mod interfaces;
 mod list_operations;
 mod list_values;
+mod local_bindings;
+mod loops;
 mod option_operations;
 mod option_values;
 mod ordering;
 mod records;
 mod result_operations;
+mod result_propagation;
 mod result_values;
 mod string_concatenation;
 mod string_inspection;
@@ -50,6 +53,7 @@ pub use bytes_values::JavaBytesValues;
 pub use char_values::JavaCharValues;
 pub use checked_integer_arithmetic::JavaCheckedIntegerArithmetic;
 pub use checked_integer_shifts::JavaCheckedIntegerShifts;
+pub use conditionals::JavaConditionals;
 pub use constants::JavaConstants;
 pub use equality::JavaEquality;
 pub use f64_values::JavaF64Values;
@@ -65,6 +69,8 @@ pub use interfaces::JavaInterfaces;
 pub use list_operations::JavaListOperations;
 pub(crate) use list_values::JavaListInput;
 pub use list_values::JavaListValues;
+pub use local_bindings::JavaLocalBindings;
+pub use loops::JavaLoops;
 pub use option_operations::JavaOptionOperations;
 pub(crate) use option_values::JavaOptionInput;
 pub use option_values::JavaOptionValues;
@@ -72,6 +78,7 @@ pub use ordering::JavaOrdering;
 pub use records::JavaRecords;
 pub use records::JavaRecordsNode;
 pub use result_operations::JavaResultOperations;
+pub use result_propagation::JavaResultPropagation;
 pub(crate) use result_values::JavaResultInput;
 pub use result_values::JavaResultValues;
 pub use string_concatenation::JavaStringConcatenation;
@@ -84,6 +91,9 @@ pub use unit_values::JavaUnitValues;
 pub use utf8_conversions::JavaUtf8Conversions;
 pub use wrapping_integer_arithmetic::JavaWrappingIntegerArithmetic;
 
+pub(crate) use conditionals::{
+    JavaConditionalValueInput, JavaConditionalsInput, JavaConditionalsNode,
+};
 pub(crate) use constants::{JavaConstantsInput, JavaConstantsNode};
 pub(crate) use dispatch::{JavaIntrinsicFamily, classify_intrinsic};
 pub(crate) use functions::{JavaFunctionDeclarationInput, JavaFunctionsInput};
@@ -92,7 +102,10 @@ pub(crate) use interfaces::{
     JavaInterfaceImplementationInput, JavaInterfaceMethodInput, JavaInterfacesInput,
     JavaInterfacesNode,
 };
+pub(crate) use local_bindings::JavaLocalBindingInput;
+pub(crate) use loops::JavaLoopsInput;
 pub(crate) use records::{JavaRecordDeclarationInput, JavaRecordsInput};
+pub(crate) use result_propagation::{JavaResultPropagationInput, JavaResultPropagationPlan};
 pub(crate) use type_aliases::JavaTypeAliasInput;
 
 use crate::dialect::JavaDialect;
@@ -134,11 +147,11 @@ pub type JavaCapabilitySlots = capability_slots!(
     unsupported Enums,
     implemented JavaInterfaces,
     unsupported PortableTests,
-    unsupported LocalBindings,
-    unsupported Conditionals,
-    unsupported Loops,
+    implemented JavaLocalBindings,
+    implemented JavaConditionals,
+    implemented JavaLoops,
     unsupported PatternMatching,
-    unsupported ResultPropagation,
+    implemented JavaResultPropagation,
     implemented JavaUnitValues,
 );
 
@@ -182,11 +195,11 @@ pub(crate) fn java_capabilities() -> JavaCapabilitySet {
         .unsupported::<Enums>()
         .support(JavaInterfaces)
         .unsupported::<PortableTests>()
-        .unsupported::<LocalBindings>()
-        .unsupported::<Conditionals>()
-        .unsupported::<Loops>()
+        .support(JavaLocalBindings)
+        .support(JavaConditionals)
+        .support(JavaLoops)
         .unsupported::<PatternMatching>()
-        .unsupported::<ResultPropagation>()
+        .support(JavaResultPropagation)
         .support(JavaUnitValues)
         .build()
 }
