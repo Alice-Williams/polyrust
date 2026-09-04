@@ -70,6 +70,7 @@ contract as every other target.
 
 - [M15 — Examples and extension proof](milestones/M15-examples-extensions.md) — complete
 - [M16 — CI and release gate](milestones/M16-ci-release.md) — complete
+- [M16A — Persistent GitHub Actions Bazel cache](milestones/M16A-persistent-ci-cache.md) — in progress
 
 ### Phase 6 — Real-world compatibility
 

@@ -55,6 +55,13 @@ items, and no job can silently downgrade a required four-target check to success
 Publishing crates/packages, signing releases, public repository creation, and
 long-term performance optimization.
 
+## Follow-up hardening
+
+[M16A](M16A-persistent-ci-cache.md) corrects cross-run persistence while
+preserving this milestone's cache-cold and cache-warm proof. The original M16
+workflow warmed Bazel only between two executions in one job because its cold
+step deleted the restored cross-run Bazel directories.
+
 ## Exit evidence
 
 - [Hosted run 33447798324](https://github.com/Alice-Williams/polyrust/actions/runs/33447798324)
