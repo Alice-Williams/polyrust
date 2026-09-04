@@ -59,8 +59,10 @@ Implementation is complete locally pending the two hosted cache-lineage runs:
   to its not-yet-created `differential_test.sh`; that user-owned work remains
   untouched and is absent from clean hosted checkouts.
 - Corrective implementation checkpoint
-  `a011492f653d2667bfc0361c0761070deebfbf30` passed hosted population run
-  `33867368715` in all eight jobs. The release job explicitly reported that no
-  compatible `v3` lineage existed, then passed the isolated cache-cold gate,
-  passed the persistent-tree gate, and successfully saved the refreshed cache.
-  A second hosted run must now prove restoration before this task is complete.
+  `a011492f653d2667bfc0361c0761070deebfbf30` and evidence checkpoint
+  `d367b8ae19613a631fade7cc27d8f87f75244c44` passed every hosted test in runs
+  `33867368715` and `33870613132`, including both release gates. They are not
+  cache-population evidence: detailed logs showed that Docker-owned Cargo
+  files were unreadable to the cache action, whose tar failure was reported as
+  a non-fatal warning. Archive ownership/readability remediation and two fresh
+  hosted runs remain required.

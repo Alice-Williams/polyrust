@@ -177,6 +177,11 @@ jobs:
             -v "$RUNNER_TEMP/polyrust-cache/cargo-tools:/cargo-tools" \
             -e PATH=/cargo-tools/bin:/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin \
             -w /workspace "$IMAGE" bash tools/release/release_gate.sh
+      - name: Prepare persistent cache archive
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/polyrust-cache"
+          chmod -R u+rwX "$RUNNER_TEMP/polyrust-cache"
+          test -z "$(find "$RUNNER_TEMP/polyrust-cache" ! -readable -print -quit)"
       - name: Save refreshed persistent non-semantic caches
         if: ${{ success() }}
         uses: actions/cache/save@v6

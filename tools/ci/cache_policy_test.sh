@@ -31,7 +31,8 @@ def step(name: str, next_name: str | None) -> str:
 
 restore = step("Restore persistent non-semantic caches", "Report persistent cache restoration")
 cold = step("Cache-cold complete gate", "Cache-warm complete gate")
-warm = step("Cache-warm complete gate", "Save refreshed persistent non-semantic caches")
+warm = step("Cache-warm complete gate", "Prepare persistent cache archive")
+prepare = step("Prepare persistent cache archive", "Save refreshed persistent non-semantic caches")
 save = step("Save refreshed persistent non-semantic caches", None)
 
 require("uses: actions/cache/restore@v6" in restore, "cache restore action is not pinned")
@@ -50,7 +51,9 @@ require("${{ github.run_id }}-${{ github.run_attempt }}" in restore, "restore ke
 require("${{ github.run_id }}-${{ github.run_attempt }}" in save, "save key is not per attempt")
 require("restore-keys:" in restore, "compatible prefix restore is missing")
 require("if: ${{ success() }}" in save, "cache save is not success-gated")
-require(workflow.index("Cache-warm complete gate") < workflow.index("Save refreshed persistent non-semantic caches"), "cache saves before warm proof")
+require(workflow.index("Cache-warm complete gate") < workflow.index("Prepare persistent cache archive") < workflow.index("Save refreshed persistent non-semantic caches"), "cache archive preparation/save ordering is invalid")
+require('sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/polyrust-cache"' in prepare, "Docker-owned cache files are not transferred to the runner")
+require('find "$RUNNER_TEMP/polyrust-cache" ! -readable -print -quit' in prepare, "cache readability is not asserted before save")
 
 for cache_path in ("bazelisk", "bazel-repository", "bazel-disk"):
     persistent = f'$RUNNER_TEMP/polyrust-cache/{cache_path}:/root/.cache/{cache_path}'
