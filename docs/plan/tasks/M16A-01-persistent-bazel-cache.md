@@ -1,6 +1,6 @@
 # M16A-01 — Separate cold proof from persistent warm caches
 
-- Status: in-progress
+- Status: complete
 - Depends on: M16
 - Blocks: M16A completion
 
@@ -42,7 +42,7 @@ Mark complete only after the second hosted run supplies restoration evidence.
 
 ## Exit evidence
 
-Implementation is complete locally pending the two hosted cache-lineage runs:
+Implementation and cache-lineage evidence are complete:
 
 - The workflow restores and saves versioned persistent caches with a unique
   run-attempt key and a toolchain/dependency-compatible restore prefix.
@@ -64,12 +64,18 @@ Implementation is complete locally pending the two hosted cache-lineage runs:
   `33867368715` and `33870613132`, including both release gates. They are not
   cache-population evidence: detailed logs showed that Docker-owned Cargo
   files were unreadable to the cache action, whose tar failure was reported as
-  a non-fatal warning. Archive ownership/readability remediation and two fresh
-  hosted runs remain required.
+  a non-fatal warning. At that point, archive ownership/readability remediation
+  and two fresh hosted runs remained required.
 - Archive-permission checkpoint
   `9f257aa891e4db46dce50fa7fb75ead85c4b6ae3` passed hosted population run
   `33874194596` in all eight jobs. Its release job reported no prior compatible
   lineage, passed the isolated cold and persistent-tree gates, proved every
   cache entry readable after ownership normalization, and reported `Cache
   saved with key` for the expected `v3` run-attempt key. One later hosted run
-  must restore that exact compatibility lineage before completion.
+  was then required to restore that exact compatibility lineage.
+- Evidence checkpoint `034d9b5d01a6d1be70c397a0e66125865f61d45a`
+  passed hosted restoration run `33877881376` in all eight jobs. The release
+  log reports a 2,594 MB archive restored from the exact `9f257aa` key. The
+  isolated cold gate passed in 14m55s; the same complete release script passed
+  against the persistent cache in 1m48s; ownership/readability preparation
+  passed; and GitHub saved the refreshed `034d9b5` run-attempt key.
