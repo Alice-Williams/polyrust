@@ -1,6 +1,6 @@
 # M34A-10U — Build Java from registered feature mappings
 
-- Status: in-progress
+- Status: complete — implementation proven; ready for user review
 - Depends on: M34A-08U and M34A-10T
 - Blocks: renewed Java design review and M34A-11
 
@@ -50,8 +50,8 @@ then return Java to the user for design review before starting C17.
 
 ## Exit evidence
 
-Implementation is complete locally pending the immutable checkpoint, hosted
-CI, and the requested user review:
+Implementation and release evidence are complete; the requested user design
+review is the handoff gate before C17 begins:
 
 - `crates/backend-java/src/feature.rs` defines the sealed Java builder and all
   37 registered structural, value, construction, and operation mappings.
@@ -68,3 +68,7 @@ CI, and the requested user review:
   authoritative release gate passes all 236 tests, including Java 21
   `-Xlint:all -Werror`, native/conformance consumers, verifier/compiler-oracle
   tests, Rustfmt, strict Clippy, and Buildifier.
+- Corrective implementation checkpoint
+  `7b27a162ed884f96bdb630fa734e1736b6d8bc85` passed hosted CI run
+  `33859648230` in every job, including cache-cold and cache-warm release
+  gates. No later language migration has started.

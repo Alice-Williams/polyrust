@@ -14,13 +14,13 @@ it is not evidence of typed executable syntax.
 | Surface | CoreIR input | Typed executable AST | Typed symbols and derived dependencies | Structural runtime | Render-ready certificate and total renderer | Result |
 | --- | --- | --- | --- | --- | --- | --- |
 | Shared codegen | `CoreProgram` is the only lowering input | Generic checked target AST | Catalogue/linker-derived bindings, imports, files, helpers, and packages | Typed helper DAG and structural items | Opaque verify/link/certify states, sealed certified adapter, and total structural-renderer extension point | **Pass** |
-| Inferred typed AST | `TypedProgram<R>` and its consuming builder replay privately through the checker and CoreIR verifier | Private `TypedExpr<T, R>` plus invariant body/record handles, recursive typed lists, options, results, bytes, and chars | Constant-checked names plus inferred requirements and consuming executable plugin registration | Not applicable at this layer | Admitted target adapters are total; rejection is an implementation defect | **Partial** pending hosted CI for M34A-08U |
+| Inferred typed AST | `TypedProgram<R>` and its consuming builder replay privately through the checker and CoreIR verifier | Private `TypedExpr<T, R>` plus invariant body/record handles, recursive typed lists, options, results, bytes, and chars | Constant-checked names plus inferred requirements and consuming executable plugin registration | Not applicable at this layer | Admitted target adapters are total; rejection is an implementation defect | **Pass** |
 | Rust | Missing | Missing: `RustCode`/raw documents | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | TypeScript | Missing | Missing: paired `EcmaCode` | Manually attached fragment metadata | Raw runtime source | Paired source path | **Fail** |
 | JavaScript | Missing | Independently paired source exists | Shares manual ECMA metadata | Checked-in/runtime paired text | Not solely compiler-derived | **Fail** |
 | Python | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | Go | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
-| Java | Exhaustive verified `CoreProgram` lowering, including the inferred typed-program bridge | Closed Java 21 AST and pre/post-link verification | Sealed executable mappings are registered by consuming typestate builder; capability preflight consults the same mapping set; imports remain linker-derived | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer | **Partial** pending hosted CI and requested review |
+| Java | Exhaustive verified `CoreProgram` lowering, including the inferred typed-program bridge | Closed Java 21 AST and pre/post-link verification | Sealed executable mappings are registered by consuming typestate builder; capability preflight consults the same mapping set; imports remain linker-derived | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer | **Partial** pending requested review |
 | C++20 | Missing | Missing: `CppCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 | C17 | Missing | Missing: `CCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 
@@ -113,8 +113,11 @@ shared and Java rows can return to **Pass**.
   its separate Java 21 consumer executes numeric, text, bytes/UTF-8, list,
   option, and result mappings under `-Xlint:all -Werror`.
 - Local focused proof passes 27 of 27 tests. The uncached release gate passes
-  236 of 236 tests. Rows remain **Partial** until the exact pushed SHA passes
-  hosted CI; Java additionally awaits the user's requested design review.
+  236 of 236 tests. Corrective implementation checkpoint
+  `7b27a162ed884f96bdb630fa734e1736b6d8bc85` passed hosted CI run
+  `33859648230` in every job, including cache-cold and cache-warm release
+  gates. The shared inferred-AST row is therefore **Pass**; Java remains
+  **Partial** only for the user's requested design review.
 
 ## Shared M34A-08S evidence
 

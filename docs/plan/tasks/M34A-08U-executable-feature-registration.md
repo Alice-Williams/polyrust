@@ -1,6 +1,6 @@
 # M34A-08U — Register executable typed feature mappings
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-08T
 - Blocks: M34A-10U and every remaining typed-language migration
 
@@ -55,8 +55,7 @@ be green before either task is complete.
 
 ## Exit evidence
 
-Implementation is complete locally pending the immutable checkpoint and hosted
-CI:
+Implementation and release evidence are complete:
 
 - `crates/build/src/typed_program.rs` defines the closed feature catalogue,
   consuming slot builder, executable `FeatureMapping`, inferred `Supports<F>`,
@@ -71,3 +70,8 @@ CI:
 - The uncached authoritative release gate passes 236 of 236 tests, including
   Rustfmt, strict Clippy, Buildifier, documentation, source policy, and every
   tracked real-world differential/conformance target.
+- Corrective implementation checkpoint
+  `7b27a162ed884f96bdb630fa734e1736b6d8bc85` passed hosted CI run
+  `33859648230` in every job, including fast PR checks, both pinned Rust jobs,
+  both determinism jobs, Windows contract validation, cross-host comparison,
+  and cache-cold/cache-warm release gates.

@@ -47,7 +47,7 @@ Shared layers:
 11. [M34A-08R — intrinsic validity certificates and total rendering](../tasks/M34A-08R-intrinsic-validity-rendering.md)
 12. [M34A-08S — static valid-by-construction portable AST](../tasks/M34A-08S-static-portable-ast.md)
 13. [M34A-08T — inferred feature builder](../tasks/M34A-08T-inferred-feature-builder.md)
-14. [M34A-08U — executable feature registration and complete intrinsic surface](../tasks/M34A-08U-executable-feature-registration.md)
+14. [M34A-08U — executable feature registration and complete intrinsic surface](../tasks/M34A-08U-executable-feature-registration.md) — complete
 
 Language migrations:
 
@@ -56,7 +56,7 @@ Language migrations:
     - [M34A-10V — intrinsic Java syntax validity](../tasks/M34A-10V-java-intrinsic-validity.md)
     - [M34A-10S — static portable-program generation](../tasks/M34A-10S-java-static-program.md)
     - [M34A-10T — inferred capability generation](../tasks/M34A-10T-java-inferred-capabilities.md)
-    - [M34A-10U — executable Java plugin builder](../tasks/M34A-10U-java-plugin-builder.md)
+    - [M34A-10U — executable Java plugin builder](../tasks/M34A-10U-java-plugin-builder.md) — complete; ready for user review
 16. [M34A-11 — C17](../tasks/M34A-11-c.md)
 17. [M34A-12 — Rust](../tasks/M34A-12-rust.md)
 18. [M34A-13 — TypeScript](../tasks/M34A-13-typescript.md)
