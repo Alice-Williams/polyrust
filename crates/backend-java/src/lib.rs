@@ -6,18 +6,14 @@
 pub mod ast;
 mod capability;
 pub mod dialect;
+pub mod feature;
 mod lower;
 mod render;
 mod runtime;
 
 use std::collections::BTreeMap;
 
-use portable_build::{
-    BoolValues, BooleanLogic, CheckedIntegerArithmetic, Equality, F64Values, FieldAccess,
-    FloatingPointArithmetic, FunctionCalls, Functions, I32Values, I64Values, LocalReads, Ordering,
-    RecordConstruction, Records, Requirements, StringConcatenation, Supports, SupportsAll,
-    TextValues, TypedProgram, WrappingIntegerArithmetic,
-};
+use portable_build::{Feature, Requirements, Supports, SupportsAll, TypedProgram};
 use portable_check::v0::{Capability, CheckedProgram};
 use portable_codegen::{
     Backend, BackendDescriptor, BackendError, BackendOptions, BackendVersion, CanonicalCoreAdapter,
@@ -31,6 +27,7 @@ use portable_ir::v0::IrVersion;
 use crate::{
     capability::JavaCapabilityRegistry,
     dialect::{JavaDialect, JavaHelperCapability, JavaRuntimeHelper},
+    feature::{JavaFeatureSet, java_features},
     lower::JavaLowerer,
     render::JavaRenderer,
 };
@@ -49,7 +46,7 @@ impl JavaBackend {
     }
 
     fn compiler() -> TypedCompilerAdapter<CanonicalCoreAdapter, JavaPlugin> {
-        TypedCompilerAdapter::new(CanonicalCoreAdapter, JavaPlugin)
+        TypedCompilerAdapter::new(CanonicalCoreAdapter, JavaPlugin::new())
     }
 
     /// Generates Java from a valid-by-construction typed portable program.
@@ -80,37 +77,12 @@ impl JavaBackend {
     pub fn generate_typed<R>(&self, program: &TypedProgram<R>) -> OutputManifest
     where
         R: Requirements,
-        JavaDialect: SupportsAll<R>,
+        JavaPlugin: SupportsAll<R>,
     {
         self.generate(program.checked_program(), &BackendOptions::default())
             .unwrap_or_else(|error| panic!("TypedProgram Java invariant failure: {error:#?}"))
     }
 }
-
-macro_rules! java_supports {
-    ($($feature:ty),+ $(,)?) => {$(impl Supports<$feature> for JavaDialect {})+};
-}
-
-java_supports!(
-    Functions,
-    LocalReads,
-    FunctionCalls,
-    Records,
-    RecordConstruction,
-    FieldAccess,
-    BoolValues,
-    I32Values,
-    I64Values,
-    F64Values,
-    TextValues,
-    BooleanLogic,
-    Equality,
-    Ordering,
-    CheckedIntegerArithmetic,
-    WrappingIntegerArithmetic,
-    FloatingPointArithmetic,
-    StringConcatenation,
-);
 
 impl Backend for JavaBackend {
     fn descriptor(&self) -> BackendDescriptor {
@@ -181,8 +153,37 @@ fn helper_support(
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
-struct JavaPlugin;
+#[derive(Clone, Copy, Debug)]
+pub struct JavaPlugin {
+    features: JavaFeatureSet,
+}
+
+impl JavaPlugin {
+    fn new() -> Self {
+        Self {
+            features: java_features(),
+        }
+    }
+}
+
+impl Default for JavaPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<F> Supports<F> for JavaPlugin
+where
+    F: Feature,
+    JavaFeatureSet: Supports<F, Dialect = JavaDialect>,
+{
+    type Dialect = JavaDialect;
+    type Mapping = <JavaFeatureSet as Supports<F>>::Mapping;
+
+    fn mapping(&self) -> &Self::Mapping {
+        self.features.mapping()
+    }
+}
 
 impl TypedLanguagePlugin<CoreProgram> for JavaPlugin {
     type Dialect = JavaDialect;
@@ -201,10 +202,10 @@ impl TypedLanguagePlugin<CoreProgram> for JavaPlugin {
         JavaDialect
     }
     fn capability_registry(&self) -> Self::CapabilityRegistry {
-        JavaCapabilityRegistry
+        JavaCapabilityRegistry::new(self.features)
     }
     fn lowerer(&self) -> Self::Lowerer {
-        JavaLowerer
+        JavaLowerer::new(self.features)
     }
     fn resolver(&self) -> Self::Resolver {
         TargetLinker::new(JavaDialect)

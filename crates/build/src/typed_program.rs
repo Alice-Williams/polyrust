@@ -183,6 +183,124 @@
 //! });
 //! require_support(&program);
 //! ```
+//!
+//! A feature mapping cannot be registered twice because the first consuming
+//! call replaces its type-level `Missing` slot:
+//!
+//! ```compile_fail
+//! use portable_build::{FeatureMapping, I32Values, language_plugin};
+//! struct Dialect;
+//! #[derive(Clone, Copy)]
+//! struct Mapping;
+//! impl FeatureMapping<Dialect> for Mapping {
+//!     type Feature = I32Values;
+//!     type Context = ();
+//!     type Input = ();
+//!     type Output = ();
+//!     type Error = ();
+//!     fn lower(&self, _: &mut (), _: ()) -> Result<(), ()> { Ok(()) }
+//! }
+//! let _ = language_plugin(Dialect).support(Mapping).support(Mapping);
+//! ```
+//!
+//! A mapping for one dialect cannot be registered in another dialect:
+//!
+//! ```compile_fail
+//! use portable_build::{FeatureMapping, I32Values, language_plugin};
+//! struct First;
+//! struct Second;
+//! struct Mapping;
+//! impl FeatureMapping<First> for Mapping {
+//!     type Feature = I32Values;
+//!     type Context = ();
+//!     type Input = ();
+//!     type Output = ();
+//!     type Error = ();
+//!     fn lower(&self, _: &mut (), _: ()) -> Result<(), ()> { Ok(()) }
+//! }
+//! let _ = language_plugin(Second).support(Mapping);
+//! ```
+//!
+//! Homogeneous lists reject a differently typed element:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, portable_name, typed_list, typed_program};
+//! let _ = typed_program(portable_name!("mixed_list"), |builder| {
+//!     builder.function(portable_name!("bad"), typed_list![],
+//!         portable_build::list_type(I32::TYPE), |body, _| {
+//!             let integer = body.i32(1);
+//!             let text = body.text("two");
+//!             body.list(I32::TYPE, typed_list![integer, text])
+//!         }).builder
+//! });
+//! ```
+//!
+//! List operations require an element of the declared element type:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, portable_name, typed_list, typed_program};
+//! let _ = typed_program(portable_name!("list_element"), |builder| {
+//!     builder.function(portable_name!("bad"), typed_list![],
+//!         portable_build::list_type(I32::TYPE), |body, _| {
+//!             let integer = body.i32(1);
+//!             let list = body.list(I32::TYPE, typed_list![integer]);
+//!             let text = body.text("two");
+//!             body.list_append(list, text)
+//!         }).builder
+//! });
+//! ```
+//!
+//! Option fallbacks must have the option's inner type:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, portable_name, typed_list, typed_program};
+//! let _ = typed_program(portable_name!("option_fallback"), |builder| {
+//!     builder.function(portable_name!("bad"), typed_list![], I32::TYPE, |body, _| {
+//!         let value = body.none(I32::TYPE);
+//!         let fallback = body.text("zero");
+//!         body.option_unwrap_or(value, fallback)
+//!     }).builder
+//! });
+//! ```
+//!
+//! Result branches retain both exact branch types:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, Text, portable_name, result_type, typed_list, typed_program};
+//! let _ = typed_program(portable_name!("result_branch"), |builder| {
+//!     builder.function(portable_name!("bad"), typed_list![],
+//!         result_type(I32::TYPE, Text::TYPE), |body, _| {
+//!             let error = body.bool(false);
+//!             body.err(error, I32::TYPE)
+//!         }).builder
+//! });
+//! ```
+//!
+//! Replace-many accepts one or more typed replacement pairs, not raw strings:
+//!
+//! ```compile_fail
+//! use portable_build::{Text, portable_name, typed_list, typed_program};
+//! let _ = typed_program(portable_name!("replacement_shape"), |builder| {
+//!     builder.function(portable_name!("bad"), typed_list![], Text::TYPE, |body, _| {
+//!         let source = body.text("abc");
+//!         let raw = body.text("a");
+//!         body.string_replace_many(source, typed_list![raw])
+//!     }).builder
+//! });
+//! ```
+//!
+//! String and bytes operations cannot be confused:
+//!
+//! ```compile_fail
+//! use portable_build::{Text, portable_name, typed_list, typed_program};
+//! let _ = typed_program(portable_name!("string_bytes"), |builder| {
+//!     builder.function(portable_name!("bad"), typed_list![], Text::TYPE, |body, _| {
+//!         let left = body.text("a");
+//!         let right = body.bytes(vec![98]);
+//!         body.string_concat(left, right)
+//!     }).builder
+//! });
+//! ```
 
 use std::{cell::Cell, marker::PhantomData};
 
@@ -199,13 +317,18 @@ mod sealed {
     pub trait Parameters {}
     pub trait Arguments {}
     pub trait Fields {}
+    pub trait HomogeneousArguments {}
+    pub trait ReplacementArguments {}
     pub trait Equatable {}
     pub trait Ordered {}
     pub trait Integer {}
 }
 
 /// A feature which can be required by typed portable syntax.
-pub trait Feature: sealed::Feature {}
+pub trait Feature: sealed::Feature {
+    /// Position of this feature in the closed plugin mapping catalogue.
+    type Index;
+}
 
 /// A structural compile-time tree of inferred requirements.
 pub trait Requirements: sealed::Requirements {}
@@ -229,8 +352,28 @@ impl<F: Feature, Tail: Requirements> Requirements for Requires<F, Tail> {}
 impl<Left: Requirements, Right: Requirements> sealed::Requirements for All<Left, Right> {}
 impl<Left: Requirements, Right: Requirements> Requirements for All<Left, Right> {}
 
-/// Compile-time evidence that a dialect implements one portable feature.
-pub trait Supports<F: Feature> {}
+/// A typed executable mapping registered by one target dialect.
+pub trait FeatureMapping<D>: 'static {
+    type Feature: Feature;
+    type Context;
+    type Input;
+    type Output;
+    type Error;
+
+    fn lower(
+        &self,
+        context: &mut Self::Context,
+        input: Self::Input,
+    ) -> Result<Self::Output, Self::Error>;
+}
+
+/// Compile-time evidence that a plugin stores one executable feature mapping.
+pub trait Supports<F: Feature> {
+    type Dialect;
+    type Mapping: FeatureMapping<Self::Dialect, Feature = F>;
+
+    fn mapping(&self) -> &Self::Mapping;
+}
 
 /// Compile-time evidence that a dialect implements a complete requirement tree.
 pub trait SupportsAll<R: Requirements> {}
@@ -253,19 +396,280 @@ where
 {
 }
 
-macro_rules! feature_markers {
-    ($($(#[$meta:meta])* $name:ident),+ $(,)?) => {
-        $(
-            $(#[$meta])*
-            #[derive(Clone, Copy, Debug)]
-            pub enum $name {}
-            impl sealed::Feature for $name {}
-            impl Feature for $name {}
-        )+
+/// First position in a type-level feature-slot list.
+pub enum Here {}
+
+/// A later position in a type-level feature-slot list.
+pub enum There<Index> {
+    #[doc(hidden)]
+    Never(std::convert::Infallible, PhantomData<Index>),
+}
+
+macro_rules! feature_markers_at {
+    ($index:ty;) => {};
+    ($index:ty; $(#[$meta:meta])* $name:ident $(, $($(#[$tail_meta:meta])* $tail:ident),* $(,)?)?) => {
+        $(#[$meta])*
+        #[derive(Clone, Copy, Debug)]
+        pub enum $name {}
+        impl sealed::Feature for $name {}
+        impl Feature for $name {
+            type Index = $index;
+        }
+        feature_markers_at!(There<$index>; $($($(#[$tail_meta])* $tail),*)?);
     };
 }
 
-feature_markers!(
+macro_rules! missing_slots {
+    () => { FeatureSlotEnd };
+    ($head:ident $(, $tail:ident)* $(,)?) => {
+        FeatureSlots<Missing, missing_slots!($($tail),*)>
+    };
+}
+
+macro_rules! feature_catalogue {
+    ($($(#[$meta:meta])* $name:ident),+ $(,)?) => {
+        feature_markers_at!(Here; $($(#[$meta])* $name),+);
+
+        /// Empty mapping state containing one missing slot per portable feature.
+        pub type EmptyFeatureSlots = missing_slots!($($name),+);
+    };
+}
+
+/// Marker stored in an unregistered feature slot.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Missing;
+
+/// A feature slot containing its executable mapping.
+#[derive(Clone, Copy, Debug)]
+pub struct Implemented<M>(M);
+
+/// One slot followed by the remaining closed feature catalogue.
+#[derive(Clone, Copy, Debug)]
+pub struct FeatureSlots<Head, Tail> {
+    head: Head,
+    tail: Tail,
+}
+
+/// End of the closed feature catalogue.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct FeatureSlotEnd;
+
+#[doc(hidden)]
+pub trait SlotAt<Index> {
+    type Slot;
+
+    fn slot(&self) -> &Self::Slot;
+}
+
+impl<Head, Tail> SlotAt<Here> for FeatureSlots<Head, Tail> {
+    type Slot = Head;
+
+    fn slot(&self) -> &Self::Slot {
+        &self.head
+    }
+}
+
+impl<Head, Tail, Index> SlotAt<There<Index>> for FeatureSlots<Head, Tail>
+where
+    Tail: SlotAt<Index>,
+{
+    type Slot = Tail::Slot;
+
+    fn slot(&self) -> &Self::Slot {
+        self.tail.slot()
+    }
+}
+
+#[doc(hidden)]
+pub trait ReplaceMissing<Index, Mapping> {
+    type Output;
+
+    fn replace(self, mapping: Mapping) -> Self::Output;
+}
+
+impl<Tail, Mapping> ReplaceMissing<Here, Mapping> for FeatureSlots<Missing, Tail> {
+    type Output = FeatureSlots<Implemented<Mapping>, Tail>;
+
+    fn replace(self, mapping: Mapping) -> Self::Output {
+        FeatureSlots {
+            head: Implemented(mapping),
+            tail: self.tail,
+        }
+    }
+}
+
+impl<Head, Tail, Index, Mapping> ReplaceMissing<There<Index>, Mapping> for FeatureSlots<Head, Tail>
+where
+    Tail: ReplaceMissing<Index, Mapping>,
+{
+    type Output = FeatureSlots<Head, Tail::Output>;
+
+    fn replace(self, mapping: Mapping) -> Self::Output {
+        FeatureSlots {
+            head: self.head,
+            tail: self.tail.replace(mapping),
+        }
+    }
+}
+
+#[doc(hidden)]
+pub trait RegisteredMapping<D, F: Feature> {
+    type Mapping: FeatureMapping<D, Feature = F>;
+
+    fn mapping(&self) -> &Self::Mapping;
+}
+
+impl<D, F, M> RegisteredMapping<D, F> for Implemented<M>
+where
+    F: Feature,
+    M: FeatureMapping<D, Feature = F>,
+{
+    type Mapping = M;
+
+    fn mapping(&self) -> &Self::Mapping {
+        &self.0
+    }
+}
+
+/// Consuming builder for a target's executable feature mappings.
+pub struct LanguagePluginBuilder<D, Slots = EmptyFeatureSlots> {
+    dialect: D,
+    slots: Slots,
+}
+
+/// Completed typed feature plugin. Its slot state determines `Supports<F>`.
+#[derive(Clone, Copy, Debug)]
+pub struct LanguageFeaturePlugin<D, Slots> {
+    dialect: D,
+    slots: Slots,
+}
+
+type RegisteredSlots<D, Slots, M> =
+    <Slots as ReplaceMissing<<<M as FeatureMapping<D>>::Feature as Feature>::Index, M>>::Output;
+
+/// Starts an empty executable feature registry for `dialect`.
+pub fn language_plugin<D>(dialect: D) -> LanguagePluginBuilder<D> {
+    LanguagePluginBuilder {
+        dialect,
+        slots: empty_feature_slots(),
+    }
+}
+
+impl<D, Slots> LanguagePluginBuilder<D, Slots> {
+    /// Registers the feature inferred from `mapping` exactly once.
+    pub fn support<M>(self, mapping: M) -> LanguagePluginBuilder<D, RegisteredSlots<D, Slots, M>>
+    where
+        M: FeatureMapping<D>,
+        Slots: ReplaceMissing<<M::Feature as Feature>::Index, M>,
+    {
+        LanguagePluginBuilder {
+            dialect: self.dialect,
+            slots: self.slots.replace(mapping),
+        }
+    }
+
+    pub fn build(self) -> LanguageFeaturePlugin<D, Slots> {
+        LanguageFeaturePlugin {
+            dialect: self.dialect,
+            slots: self.slots,
+        }
+    }
+}
+
+impl<D, Slots> LanguageFeaturePlugin<D, Slots> {
+    pub const fn dialect(&self) -> &D {
+        &self.dialect
+    }
+
+    pub fn mapping_for<F>(&self) -> &<Self as Supports<F>>::Mapping
+    where
+        F: Feature,
+        Self: Supports<F>,
+    {
+        <Self as Supports<F>>::mapping(self)
+    }
+}
+
+impl<D, Slots, F> Supports<F> for LanguageFeaturePlugin<D, Slots>
+where
+    F: Feature,
+    Slots: SlotAt<F::Index>,
+    Slots::Slot: RegisteredMapping<D, F> + 'static,
+{
+    type Dialect = D;
+    type Mapping = <Slots::Slot as RegisteredMapping<D, F>>::Mapping;
+
+    fn mapping(&self) -> &Self::Mapping {
+        self.slots.slot().mapping()
+    }
+}
+
+macro_rules! feature_slots_value {
+    () => { FeatureSlotEnd };
+    ($head:ident $(, $tail:ident)* $(,)?) => {
+        FeatureSlots {
+            head: Missing,
+            tail: feature_slots_value!($($tail),*),
+        }
+    };
+}
+
+/// Builds the concrete slot-state type for a plugin which implements every
+/// catalogue feature in catalogue order.
+#[macro_export]
+macro_rules! implemented_feature_slots {
+    () => { $crate::FeatureSlotEnd };
+    ($head:ty $(, $tail:ty)* $(,)?) => {
+        $crate::FeatureSlots<
+            $crate::Implemented<$head>,
+            $crate::implemented_feature_slots!($($tail),*)
+        >
+    };
+}
+
+fn empty_feature_slots() -> EmptyFeatureSlots {
+    feature_slots_value!(
+        Functions,
+        LocalReads,
+        FunctionCalls,
+        Records,
+        RecordConstruction,
+        FieldAccess,
+        BoolValues,
+        I32Values,
+        I64Values,
+        F64Values,
+        TextValues,
+        BooleanLogic,
+        Equality,
+        Ordering,
+        CheckedIntegerArithmetic,
+        WrappingIntegerArithmetic,
+        FloatingPointArithmetic,
+        StringConcatenation,
+        CharValues,
+        BytesValues,
+        ListValues,
+        OptionValues,
+        ResultValues,
+        ListConstruction,
+        OptionConstruction,
+        ResultConstruction,
+        IntegerBitwise,
+        CheckedIntegerShifts,
+        FloatingPointInspection,
+        StringInspection,
+        StringTransformation,
+        BytesOperations,
+        ListOperations,
+        OptionOperations,
+        ResultInspection,
+        IntegerConversions,
+        Utf8Conversions,
+    )
+}
+
+feature_catalogue!(
     /// Function declarations.
     Functions,
     /// Reads through callable-branded locals.
@@ -302,6 +706,44 @@ feature_markers!(
     FloatingPointArithmetic,
     /// Text concatenation.
     StringConcatenation,
+    /// Unicode scalar values.
+    CharValues,
+    /// Immutable byte strings.
+    BytesValues,
+    /// Homogeneous immutable lists.
+    ListValues,
+    /// Optional values.
+    OptionValues,
+    /// Success/error tagged values.
+    ResultValues,
+    /// Homogeneous list construction.
+    ListConstruction,
+    /// Optional-value construction.
+    OptionConstruction,
+    /// Result-value construction.
+    ResultConstruction,
+    /// Integer complement and bitwise binary operations.
+    IntegerBitwise,
+    /// Range-checked integer shifts.
+    CheckedIntegerShifts,
+    /// Floating-point truncation and predicates.
+    FloatingPointInspection,
+    /// String lengths, searches, and predicates.
+    StringInspection,
+    /// String slicing, replacement, truncation, and trimming.
+    StringTransformation,
+    /// Immutable byte-string operations.
+    BytesOperations,
+    /// Immutable list operations.
+    ListOperations,
+    /// Optional-value predicates and fallback.
+    OptionOperations,
+    /// Result-value predicates.
+    ResultInspection,
+    /// Exact integer widening and checked narrowing.
+    IntegerConversions,
+    /// Checked UTF-8 encoding and decoding.
+    Utf8Conversions,
 );
 
 /// An ASCII portable identifier proven usable by every initial target.
@@ -494,6 +936,16 @@ pub enum I64 {}
 pub enum F64 {}
 /// Unicode string marker.
 pub enum Text {}
+/// Unicode scalar marker.
+pub enum Char {}
+/// Immutable byte-string marker.
+pub enum Bytes {}
+/// Homogeneous immutable-list marker.
+pub struct List<T>(PhantomData<fn() -> T>);
+/// Optional-value marker.
+pub struct Optional<T>(PhantomData<fn() -> T>);
+/// Success/error tagged-value marker.
+pub struct ResultValue<Ok, Error>(PhantomData<fn() -> (Ok, Error)>);
 
 macro_rules! primitive_type {
     ($marker:ident, $type_fn:ident, $feature:ident) => {
@@ -511,6 +963,40 @@ primitive_type!(I32, i32, I32Values);
 primitive_type!(I64, i64, I64Values);
 primitive_type!(F64, f64, F64Values);
 primitive_type!(Text, string, TextValues);
+primitive_type!(Char, char, CharValues);
+primitive_type!(Bytes, bytes, BytesValues);
+
+pub fn list_type<T, R: Requirements>(
+    element: TypedType<T, R>,
+) -> TypedType<List<T>, All<Requires<ListValues>, R>> {
+    TypedType {
+        ir: Type::list(element.ir),
+        marker: PhantomData,
+    }
+}
+
+pub fn option_type<T, R: Requirements>(
+    inner: TypedType<T, R>,
+) -> TypedType<Optional<T>, All<Requires<OptionValues>, R>> {
+    TypedType {
+        ir: Type::option(inner.ir),
+        marker: PhantomData,
+    }
+}
+
+pub fn result_type<Ok, OkR, Error, ErrorR>(
+    ok: TypedType<Ok, OkR>,
+    error: TypedType<Error, ErrorR>,
+) -> TypedType<ResultValue<Ok, Error>, ResultTypeRequirements<OkR, ErrorR>>
+where
+    OkR: Requirements,
+    ErrorR: Requirements,
+{
+    TypedType {
+        ir: Type::result(ok.ir, error.ir),
+        marker: PhantomData,
+    }
+}
 
 /// Values admitted by equality operations.
 pub trait TypedEquatable: sealed::Equatable {}
@@ -526,7 +1012,13 @@ macro_rules! equatable {
     )+};
 }
 
-equatable!(Bool, I32, I64, F64, Text);
+equatable!(Bool, I32, I64, F64, Text, Char, Bytes);
+impl<T: TypedEquatable> sealed::Equatable for List<T> {}
+impl<T: TypedEquatable> TypedEquatable for List<T> {}
+impl<T: TypedEquatable> sealed::Equatable for Optional<T> {}
+impl<T: TypedEquatable> TypedEquatable for Optional<T> {}
+impl<Ok: TypedEquatable, Error: TypedEquatable> sealed::Equatable for ResultValue<Ok, Error> {}
+impl<Ok: TypedEquatable, Error: TypedEquatable> TypedEquatable for ResultValue<Ok, Error> {}
 impl sealed::Ordered for I32 {}
 impl TypedOrdered for I32 {}
 impl sealed::Ordered for I64 {}
@@ -535,6 +1027,8 @@ impl sealed::Ordered for F64 {}
 impl TypedOrdered for F64 {}
 impl sealed::Ordered for Text {}
 impl TypedOrdered for Text {}
+impl sealed::Ordered for Char {}
+impl TypedOrdered for Char {}
 impl sealed::Integer for I32 {}
 impl TypedInteger for I32 {}
 impl sealed::Integer for I64 {}
@@ -568,6 +1062,20 @@ enum TypedNode {
     Call {
         function: FunctionId,
         arguments: Vec<TypedNode>,
+    },
+    List {
+        element: Type,
+        values: Vec<TypedNode>,
+    },
+    Some(Box<TypedNode>),
+    None(Type),
+    Ok {
+        value: Box<TypedNode>,
+        error: Type,
+    },
+    Err {
+        value: Box<TypedNode>,
+        ok: Type,
     },
     Intrinsic {
         operation: Operation,
@@ -708,6 +1216,147 @@ where
     fn into_nodes(self) -> ArgumentNodes {
         let mut nodes = vec![self.head.node];
         nodes.extend(self.tail.into_nodes().0);
+        ArgumentNodes(nodes)
+    }
+}
+
+/// A recursively typed homogeneous expression list.
+pub trait HomogeneousArgumentList<'module, 'body, T>: sealed::HomogeneousArguments {
+    type Requirements: Requirements;
+
+    #[doc(hidden)]
+    fn into_homogeneous_nodes(self) -> ArgumentNodes;
+}
+
+impl sealed::HomogeneousArguments for Nil {}
+impl<'module, 'body, T> HomogeneousArgumentList<'module, 'body, T> for Nil {
+    type Requirements = NoneRequired;
+
+    fn into_homogeneous_nodes(self) -> ArgumentNodes {
+        ArgumentNodes(Vec::new())
+    }
+}
+
+impl<'module, 'body, T, R, Tail> sealed::HomogeneousArguments
+    for Cons<TypedExpr<'module, 'body, T, R>, Tail>
+where
+    R: Requirements,
+    Tail: HomogeneousArgumentList<'module, 'body, T>,
+{
+}
+
+impl<'module, 'body, T, R, Tail> HomogeneousArgumentList<'module, 'body, T>
+    for Cons<TypedExpr<'module, 'body, T, R>, Tail>
+where
+    R: Requirements,
+    Tail: HomogeneousArgumentList<'module, 'body, T>,
+{
+    type Requirements = All<R, Tail::Requirements>;
+
+    fn into_homogeneous_nodes(self) -> ArgumentNodes {
+        let mut nodes = vec![self.head.node];
+        nodes.extend(self.tail.into_homogeneous_nodes().0);
+        ArgumentNodes(nodes)
+    }
+}
+
+/// One strongly typed needle/replacement pair for `string_replace_many`.
+pub struct TypedReplacement<'module, 'body, NeedleR, ReplacementR>
+where
+    NeedleR: Requirements,
+    ReplacementR: Requirements,
+{
+    needle: TypedExpr<'module, 'body, Text, NeedleR>,
+    replacement: TypedExpr<'module, 'body, Text, ReplacementR>,
+}
+
+pub fn replacement<'module, 'body, NeedleR, ReplacementR>(
+    needle: TypedExpr<'module, 'body, Text, NeedleR>,
+    replacement: TypedExpr<'module, 'body, Text, ReplacementR>,
+) -> TypedReplacement<'module, 'body, NeedleR, ReplacementR>
+where
+    NeedleR: Requirements,
+    ReplacementR: Requirements,
+{
+    TypedReplacement {
+        needle,
+        replacement,
+    }
+}
+
+/// Recursive list of string replacement pairs.
+pub trait ReplacementList<'module, 'body>: sealed::ReplacementArguments {
+    type Requirements: Requirements;
+
+    #[doc(hidden)]
+    fn into_replacement_nodes(self) -> ArgumentNodes;
+}
+
+/// Computes the inferred requirement tree for a non-empty replace-many list.
+#[doc(hidden)]
+pub trait ReplaceManyRequirements<'module, 'body, SourceR: Requirements>:
+    ReplacementList<'module, 'body>
+{
+    type Combined: Requirements;
+}
+
+impl<'module, 'body, SourceR, NeedleR, ReplacementR, Tail>
+    ReplaceManyRequirements<'module, 'body, SourceR>
+    for Cons<TypedReplacement<'module, 'body, NeedleR, ReplacementR>, Tail>
+where
+    SourceR: Requirements,
+    NeedleR: Requirements,
+    ReplacementR: Requirements,
+    Cons<TypedReplacement<'module, 'body, NeedleR, ReplacementR>, Tail>:
+        ReplacementList<'module, 'body>,
+{
+    type Combined = All<
+        Requires<StringTransformation>,
+        All<SourceR, <Self as ReplacementList<'module, 'body>>::Requirements>,
+    >;
+}
+
+type ReplaceManyExpr<'module, 'body, SourceR, NeedleR, ReplacementR, Tail> = TypedExpr<
+    'module,
+    'body,
+    Text,
+    <Cons<TypedReplacement<'module, 'body, NeedleR, ReplacementR>, Tail> as ReplaceManyRequirements<
+        'module,
+        'body,
+        SourceR,
+    >>::Combined,
+>;
+
+impl sealed::ReplacementArguments for Nil {}
+impl<'module, 'body> ReplacementList<'module, 'body> for Nil {
+    type Requirements = NoneRequired;
+
+    fn into_replacement_nodes(self) -> ArgumentNodes {
+        ArgumentNodes(Vec::new())
+    }
+}
+
+impl<'module, 'body, NeedleR, ReplacementR, Tail> sealed::ReplacementArguments
+    for Cons<TypedReplacement<'module, 'body, NeedleR, ReplacementR>, Tail>
+where
+    NeedleR: Requirements,
+    ReplacementR: Requirements,
+    Tail: ReplacementList<'module, 'body>,
+{
+}
+
+impl<'module, 'body, NeedleR, ReplacementR, Tail> ReplacementList<'module, 'body>
+    for Cons<TypedReplacement<'module, 'body, NeedleR, ReplacementR>, Tail>
+where
+    NeedleR: Requirements,
+    ReplacementR: Requirements,
+    Tail: ReplacementList<'module, 'body>,
+{
+    type Requirements = All<All<NeedleR, ReplacementR>, Tail::Requirements>;
+
+    fn into_replacement_nodes(self) -> ArgumentNodes {
+        let mut nodes = vec![self.head.needle.node, self.head.replacement.node];
+        nodes.extend(self.tail.into_replacement_nodes().0);
         ArgumentNodes(nodes)
     }
 }
@@ -1034,6 +1683,14 @@ pub struct TypedBody<'module, 'body> {
 
 type With<F, R> = All<Requires<F>, R>;
 type WithTwo<F, Left, Right> = All<Requires<F>, All<Left, Right>>;
+type WithThree<F, First, Second, Third> = All<Requires<F>, All<First, All<Second, Third>>>;
+type ResultTypeRequirements<OkR, ErrorR> = All<Requires<ResultValues>, All<OkR, ErrorR>>;
+type ListConstructionRequirements<TypeR, ValuesR> =
+    All<Requires<ListConstruction>, All<Requires<ListValues>, All<TypeR, ValuesR>>>;
+type OptionConstructionRequirements<R> =
+    All<Requires<OptionConstruction>, All<Requires<OptionValues>, R>>;
+type ResultConstructionRequirements<OkR, ErrorR> =
+    All<Requires<ResultConstruction>, All<Requires<ResultValues>, All<OkR, ErrorR>>>;
 
 impl<'module, 'body> TypedBody<'module, 'body> {
     fn expression<T, R: Requirements>(&self, node: TypedNode) -> TypedExpr<'module, 'body, T, R> {
@@ -1071,6 +1728,86 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         value: impl Into<String>,
     ) -> TypedExpr<'module, 'body, Text, Requires<TextValues>> {
         self.expression(TypedNode::Literal(Value::string(value)))
+    }
+
+    pub fn char(&mut self, value: char) -> TypedExpr<'module, 'body, Char, Requires<CharValues>> {
+        self.expression(TypedNode::Literal(Value::char(value)))
+    }
+
+    pub fn bytes(
+        &mut self,
+        value: impl Into<Vec<u8>>,
+    ) -> TypedExpr<'module, 'body, Bytes, Requires<BytesValues>> {
+        self.expression(TypedNode::Literal(Value::bytes(value)))
+    }
+
+    pub fn list<T, TypeR, Values>(
+        &mut self,
+        element: TypedType<T, TypeR>,
+        values: Values,
+    ) -> TypedExpr<'module, 'body, List<T>, ListConstructionRequirements<TypeR, Values::Requirements>>
+    where
+        TypeR: Requirements,
+        Values: HomogeneousArgumentList<'module, 'body, T>,
+    {
+        self.expression(TypedNode::List {
+            element: element.ir,
+            values: values.into_homogeneous_nodes().0,
+        })
+    }
+
+    pub fn some<T, R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, T, R>,
+    ) -> TypedExpr<'module, 'body, Optional<T>, OptionConstructionRequirements<R>> {
+        self.expression(TypedNode::Some(Box::new(value.node)))
+    }
+
+    pub fn none<T, R: Requirements>(
+        &mut self,
+        inner: TypedType<T, R>,
+    ) -> TypedExpr<'module, 'body, Optional<T>, OptionConstructionRequirements<R>> {
+        self.expression(TypedNode::None(inner.ir))
+    }
+
+    pub fn ok<Ok, OkR, Error, ErrorR>(
+        &mut self,
+        value: TypedExpr<'module, 'body, Ok, OkR>,
+        error: TypedType<Error, ErrorR>,
+    ) -> TypedExpr<
+        'module,
+        'body,
+        ResultValue<Ok, Error>,
+        ResultConstructionRequirements<OkR, ErrorR>,
+    >
+    where
+        OkR: Requirements,
+        ErrorR: Requirements,
+    {
+        self.expression(TypedNode::Ok {
+            value: Box::new(value.node),
+            error: error.ir,
+        })
+    }
+
+    pub fn err<Ok, OkR, Error, ErrorR>(
+        &mut self,
+        value: TypedExpr<'module, 'body, Error, ErrorR>,
+        ok: TypedType<Ok, OkR>,
+    ) -> TypedExpr<
+        'module,
+        'body,
+        ResultValue<Ok, Error>,
+        ResultConstructionRequirements<OkR, ErrorR>,
+    >
+    where
+        OkR: Requirements,
+        ErrorR: Requirements,
+    {
+        self.expression(TypedNode::Err {
+            value: Box::new(value.node),
+            ok: ok.ir,
+        })
     }
 
     pub fn construct<'record, Types, Handles, Arguments>(
@@ -1160,6 +1897,25 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         self.expression(TypedNode::Intrinsic {
             operation,
             arguments: vec![left.node, right.node],
+        })
+    }
+
+    fn ternary<A, B, C, Output, FeatureMarker, FirstR, SecondR, ThirdR>(
+        &mut self,
+        operation: Operation,
+        first: TypedExpr<'module, 'body, A, FirstR>,
+        second: TypedExpr<'module, 'body, B, SecondR>,
+        third: TypedExpr<'module, 'body, C, ThirdR>,
+    ) -> TypedExpr<'module, 'body, Output, WithThree<FeatureMarker, FirstR, SecondR, ThirdR>>
+    where
+        FeatureMarker: Feature,
+        FirstR: Requirements,
+        SecondR: Requirements,
+        ThirdR: Requirements,
+    {
+        self.expression(TypedNode::Intrinsic {
+            operation,
+            arguments: vec![first.node, second.node, third.node],
         })
     }
 
@@ -1312,6 +2068,53 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         self.binary(Operation::IntMulWrapping, left, right)
     }
 
+    pub fn int_bit_not<T: TypedInteger, R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, T, R>,
+    ) -> TypedExpr<'module, 'body, T, With<IntegerBitwise, R>> {
+        self.unary(Operation::IntBitNot, value)
+    }
+
+    pub fn int_bit_and<T: TypedInteger, L: Requirements, R: Requirements>(
+        &mut self,
+        left: TypedExpr<'module, 'body, T, L>,
+        right: TypedExpr<'module, 'body, T, R>,
+    ) -> TypedExpr<'module, 'body, T, WithTwo<IntegerBitwise, L, R>> {
+        self.binary(Operation::IntBitAnd, left, right)
+    }
+
+    pub fn int_bit_or<T: TypedInteger, L: Requirements, R: Requirements>(
+        &mut self,
+        left: TypedExpr<'module, 'body, T, L>,
+        right: TypedExpr<'module, 'body, T, R>,
+    ) -> TypedExpr<'module, 'body, T, WithTwo<IntegerBitwise, L, R>> {
+        self.binary(Operation::IntBitOr, left, right)
+    }
+
+    pub fn int_bit_xor<T: TypedInteger, L: Requirements, R: Requirements>(
+        &mut self,
+        left: TypedExpr<'module, 'body, T, L>,
+        right: TypedExpr<'module, 'body, T, R>,
+    ) -> TypedExpr<'module, 'body, T, WithTwo<IntegerBitwise, L, R>> {
+        self.binary(Operation::IntBitXor, left, right)
+    }
+
+    pub fn int_shift_left_checked<T: TypedInteger, L: Requirements, R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, T, L>,
+        distance: TypedExpr<'module, 'body, T, R>,
+    ) -> TypedExpr<'module, 'body, T, WithTwo<CheckedIntegerShifts, L, R>> {
+        self.binary(Operation::IntShiftLeftChecked, value, distance)
+    }
+
+    pub fn int_shift_right_checked<T: TypedInteger, L: Requirements, R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, T, L>,
+        distance: TypedExpr<'module, 'body, T, R>,
+    ) -> TypedExpr<'module, 'body, T, WithTwo<CheckedIntegerShifts, L, R>> {
+        self.binary(Operation::IntShiftRightChecked, value, distance)
+    }
+
     pub fn float_neg<R: Requirements>(
         &mut self,
         value: TypedExpr<'module, 'body, F64, R>,
@@ -1359,12 +2162,332 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         self.binary(Operation::FloatRemTrunc, left, right)
     }
 
+    pub fn float_trunc<R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, F64, R>,
+    ) -> TypedExpr<'module, 'body, F64, With<FloatingPointInspection, R>> {
+        self.unary(Operation::FloatTrunc, value)
+    }
+
+    pub fn float_is_nan<R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, F64, R>,
+    ) -> TypedExpr<'module, 'body, Bool, With<FloatingPointInspection, R>> {
+        self.unary(Operation::FloatIsNaN, value)
+    }
+
+    pub fn float_is_negative_zero<R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, F64, R>,
+    ) -> TypedExpr<'module, 'body, Bool, With<FloatingPointInspection, R>> {
+        self.unary(Operation::FloatIsNegativeZero, value)
+    }
+
+    pub fn float_abs<R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, F64, R>,
+    ) -> TypedExpr<'module, 'body, F64, With<FloatingPointInspection, R>> {
+        self.unary(Operation::FloatAbs, value)
+    }
+
+    pub fn widen_i32_to_i64<R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, I32, R>,
+    ) -> TypedExpr<'module, 'body, I64, With<IntegerConversions, R>> {
+        self.unary(Operation::WidenI32ToI64, value)
+    }
+
+    pub fn narrow_i64_to_i32_checked<R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, I64, R>,
+    ) -> TypedExpr<'module, 'body, I32, With<IntegerConversions, R>> {
+        self.unary(Operation::NarrowI64ToI32Checked, value)
+    }
+
     pub fn string_concat<L: Requirements, R: Requirements>(
         &mut self,
         left: TypedExpr<'module, 'body, Text, L>,
         right: TypedExpr<'module, 'body, Text, R>,
     ) -> TypedExpr<'module, 'body, Text, WithTwo<StringConcatenation, L, R>> {
         self.binary(Operation::StringConcat, left, right)
+    }
+
+    pub fn string_scalar_length<R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, Text, R>,
+    ) -> TypedExpr<'module, 'body, I64, With<StringInspection, R>> {
+        self.unary(Operation::StringScalarLength, value)
+    }
+
+    pub fn string_utf16_length<R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, Text, R>,
+    ) -> TypedExpr<'module, 'body, I64, With<StringInspection, R>> {
+        self.unary(Operation::StringUtf16Length, value)
+    }
+
+    pub fn string_index_of_literal<L: Requirements, R: Requirements>(
+        &mut self,
+        source: TypedExpr<'module, 'body, Text, L>,
+        needle: TypedExpr<'module, 'body, Text, R>,
+    ) -> TypedExpr<'module, 'body, Optional<I64>, WithTwo<StringInspection, L, R>> {
+        self.binary(Operation::StringIndexOfLiteral, source, needle)
+    }
+
+    pub fn string_slice_scalars<SourceR, StartR, EndR>(
+        &mut self,
+        source: TypedExpr<'module, 'body, Text, SourceR>,
+        start: TypedExpr<'module, 'body, I64, StartR>,
+        end: TypedExpr<'module, 'body, I64, EndR>,
+    ) -> TypedExpr<'module, 'body, Text, WithThree<StringTransformation, SourceR, StartR, EndR>>
+    where
+        SourceR: Requirements,
+        StartR: Requirements,
+        EndR: Requirements,
+    {
+        self.ternary(Operation::StringSliceScalars, source, start, end)
+    }
+
+    pub fn string_is_empty<R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, Text, R>,
+    ) -> TypedExpr<'module, 'body, Bool, With<StringInspection, R>> {
+        self.unary(Operation::StringIsEmpty, value)
+    }
+
+    pub fn string_contains<L: Requirements, R: Requirements>(
+        &mut self,
+        source: TypedExpr<'module, 'body, Text, L>,
+        needle: TypedExpr<'module, 'body, Text, R>,
+    ) -> TypedExpr<'module, 'body, Bool, WithTwo<StringInspection, L, R>> {
+        self.binary(Operation::StringContains, source, needle)
+    }
+
+    pub fn string_starts_with<L: Requirements, R: Requirements>(
+        &mut self,
+        source: TypedExpr<'module, 'body, Text, L>,
+        prefix: TypedExpr<'module, 'body, Text, R>,
+    ) -> TypedExpr<'module, 'body, Bool, WithTwo<StringInspection, L, R>> {
+        self.binary(Operation::StringStartsWith, source, prefix)
+    }
+
+    pub fn string_ends_with<L: Requirements, R: Requirements>(
+        &mut self,
+        source: TypedExpr<'module, 'body, Text, L>,
+        suffix: TypedExpr<'module, 'body, Text, R>,
+    ) -> TypedExpr<'module, 'body, Bool, WithTwo<StringInspection, L, R>> {
+        self.binary(Operation::StringEndsWith, source, suffix)
+    }
+
+    pub fn string_strip_prefix<L: Requirements, R: Requirements>(
+        &mut self,
+        source: TypedExpr<'module, 'body, Text, L>,
+        prefix: TypedExpr<'module, 'body, Text, R>,
+    ) -> TypedExpr<'module, 'body, Text, WithTwo<StringTransformation, L, R>> {
+        self.binary(Operation::StringStripPrefix, source, prefix)
+    }
+
+    pub fn string_replace_all<SourceR, NeedleR, ReplacementR>(
+        &mut self,
+        source: TypedExpr<'module, 'body, Text, SourceR>,
+        needle: TypedExpr<'module, 'body, Text, NeedleR>,
+        replacement: TypedExpr<'module, 'body, Text, ReplacementR>,
+    ) -> TypedExpr<
+        'module,
+        'body,
+        Text,
+        WithThree<StringTransformation, SourceR, NeedleR, ReplacementR>,
+    >
+    where
+        SourceR: Requirements,
+        NeedleR: Requirements,
+        ReplacementR: Requirements,
+    {
+        self.ternary(Operation::StringReplaceAll, source, needle, replacement)
+    }
+
+    pub fn string_replace_many<SourceR, NeedleR, ReplacementR, Tail>(
+        &mut self,
+        source: TypedExpr<'module, 'body, Text, SourceR>,
+        replacements: Cons<TypedReplacement<'module, 'body, NeedleR, ReplacementR>, Tail>,
+    ) -> ReplaceManyExpr<'module, 'body, SourceR, NeedleR, ReplacementR, Tail>
+    where
+        SourceR: Requirements,
+        NeedleR: Requirements,
+        ReplacementR: Requirements,
+        Cons<TypedReplacement<'module, 'body, NeedleR, ReplacementR>, Tail>:
+            ReplaceManyRequirements<'module, 'body, SourceR>,
+    {
+        let mut arguments = vec![source.node];
+        arguments.extend(replacements.into_replacement_nodes().0);
+        self.expression(TypedNode::Intrinsic {
+            operation: Operation::StringReplaceMany,
+            arguments,
+        })
+    }
+
+    pub fn string_truncate_utf8_bytes<L: Requirements, R: Requirements>(
+        &mut self,
+        source: TypedExpr<'module, 'body, Text, L>,
+        budget: TypedExpr<'module, 'body, F64, R>,
+    ) -> TypedExpr<'module, 'body, Text, WithTwo<StringTransformation, L, R>> {
+        self.binary(Operation::StringTruncateUtf8Bytes, source, budget)
+    }
+
+    pub fn string_trim_start<L: Requirements, R: Requirements>(
+        &mut self,
+        source: TypedExpr<'module, 'body, Text, L>,
+        characters: TypedExpr<'module, 'body, Text, R>,
+    ) -> TypedExpr<'module, 'body, Text, WithTwo<StringTransformation, L, R>> {
+        self.binary(Operation::StringTrimStart, source, characters)
+    }
+
+    pub fn string_trim_end<L: Requirements, R: Requirements>(
+        &mut self,
+        source: TypedExpr<'module, 'body, Text, L>,
+        characters: TypedExpr<'module, 'body, Text, R>,
+    ) -> TypedExpr<'module, 'body, Text, WithTwo<StringTransformation, L, R>> {
+        self.binary(Operation::StringTrimEnd, source, characters)
+    }
+
+    pub fn bytes_concat<L: Requirements, R: Requirements>(
+        &mut self,
+        left: TypedExpr<'module, 'body, Bytes, L>,
+        right: TypedExpr<'module, 'body, Bytes, R>,
+    ) -> TypedExpr<'module, 'body, Bytes, WithTwo<BytesOperations, L, R>> {
+        self.binary(Operation::BytesConcat, left, right)
+    }
+
+    pub fn bytes_replace_all<SourceR, NeedleR, ReplacementR>(
+        &mut self,
+        source: TypedExpr<'module, 'body, Bytes, SourceR>,
+        needle: TypedExpr<'module, 'body, Bytes, NeedleR>,
+        replacement: TypedExpr<'module, 'body, Bytes, ReplacementR>,
+    ) -> TypedExpr<'module, 'body, Bytes, WithThree<BytesOperations, SourceR, NeedleR, ReplacementR>>
+    where
+        SourceR: Requirements,
+        NeedleR: Requirements,
+        ReplacementR: Requirements,
+    {
+        self.ternary(Operation::BytesReplaceAll, source, needle, replacement)
+    }
+
+    pub fn bytes_length<R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, Bytes, R>,
+    ) -> TypedExpr<'module, 'body, I64, With<BytesOperations, R>> {
+        self.unary(Operation::BytesLength, value)
+    }
+
+    pub fn bytes_is_empty<R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, Bytes, R>,
+    ) -> TypedExpr<'module, 'body, Bool, With<BytesOperations, R>> {
+        self.unary(Operation::BytesIsEmpty, value)
+    }
+
+    pub fn list_length<T, R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, List<T>, R>,
+    ) -> TypedExpr<'module, 'body, I64, With<ListOperations, R>> {
+        self.unary(Operation::ListLength, value)
+    }
+
+    pub fn list_is_empty<T, R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, List<T>, R>,
+    ) -> TypedExpr<'module, 'body, Bool, With<ListOperations, R>> {
+        self.unary(Operation::ListIsEmpty, value)
+    }
+
+    pub fn list_get_checked<T, ListR: Requirements, IndexR: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, List<T>, ListR>,
+        index: TypedExpr<'module, 'body, I64, IndexR>,
+    ) -> TypedExpr<'module, 'body, T, WithTwo<ListOperations, ListR, IndexR>> {
+        self.binary(Operation::ListGetChecked, value, index)
+    }
+
+    pub fn list_append<T, ListR: Requirements, ValueR: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, List<T>, ListR>,
+        element: TypedExpr<'module, 'body, T, ValueR>,
+    ) -> TypedExpr<'module, 'body, List<T>, WithTwo<ListOperations, ListR, ValueR>> {
+        self.binary(Operation::ListAppend, value, element)
+    }
+
+    pub fn list_concat<T, L: Requirements, R: Requirements>(
+        &mut self,
+        left: TypedExpr<'module, 'body, List<T>, L>,
+        right: TypedExpr<'module, 'body, List<T>, R>,
+    ) -> TypedExpr<'module, 'body, List<T>, WithTwo<ListOperations, L, R>> {
+        self.binary(Operation::ListConcat, left, right)
+    }
+
+    pub fn list_contains<T: TypedEquatable, ListR: Requirements, ValueR: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, List<T>, ListR>,
+        element: TypedExpr<'module, 'body, T, ValueR>,
+    ) -> TypedExpr<'module, 'body, Bool, WithTwo<ListOperations, ListR, ValueR>> {
+        self.binary(Operation::ListContains, value, element)
+    }
+
+    pub fn list_index_of<T: TypedEquatable, ListR: Requirements, ValueR: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, List<T>, ListR>,
+        element: TypedExpr<'module, 'body, T, ValueR>,
+    ) -> TypedExpr<'module, 'body, Optional<I64>, WithTwo<ListOperations, ListR, ValueR>> {
+        self.binary(Operation::ListIndexOf, value, element)
+    }
+
+    pub fn option_is_some<T, R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, Optional<T>, R>,
+    ) -> TypedExpr<'module, 'body, Bool, With<OptionOperations, R>> {
+        self.unary(Operation::OptionIsSome, value)
+    }
+
+    pub fn option_is_none<T, R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, Optional<T>, R>,
+    ) -> TypedExpr<'module, 'body, Bool, With<OptionOperations, R>> {
+        self.unary(Operation::OptionIsNone, value)
+    }
+
+    pub fn option_unwrap_or<T, OptionR: Requirements, FallbackR: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, Optional<T>, OptionR>,
+        fallback: TypedExpr<'module, 'body, T, FallbackR>,
+    ) -> TypedExpr<'module, 'body, T, WithTwo<OptionOperations, OptionR, FallbackR>> {
+        self.binary(Operation::OptionUnwrapOr, value, fallback)
+    }
+
+    pub fn result_is_ok<Ok, Error, R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, ResultValue<Ok, Error>, R>,
+    ) -> TypedExpr<'module, 'body, Bool, With<ResultInspection, R>> {
+        self.unary(Operation::ResultIsOk, value)
+    }
+
+    pub fn result_is_err<Ok, Error, R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, ResultValue<Ok, Error>, R>,
+    ) -> TypedExpr<'module, 'body, Bool, With<ResultInspection, R>> {
+        self.unary(Operation::ResultIsErr, value)
+    }
+
+    pub fn string_to_utf8<R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, Text, R>,
+    ) -> TypedExpr<'module, 'body, Bytes, With<Utf8Conversions, R>> {
+        self.unary(Operation::StringToUtf8, value)
+    }
+
+    pub fn string_from_utf8_checked<R: Requirements>(
+        &mut self,
+        value: TypedExpr<'module, 'body, Bytes, R>,
+    ) -> TypedExpr<'module, 'body, Text, With<Utf8Conversions, R>> {
+        self.unary(Operation::StringFromUtf8Checked, value)
     }
 }
 
@@ -1393,6 +2516,26 @@ fn lower_expression(body: &mut BodyBuilder<'_>, node: TypedNode) -> crate::Expr 
                 .collect::<Vec<_>>();
             body.call(function, arguments)
         }
+        TypedNode::List { element, values } => {
+            let values = values
+                .into_iter()
+                .map(|value| lower_expression(body, value))
+                .collect::<Vec<_>>();
+            body.list(element, values)
+        }
+        TypedNode::Some(value) => {
+            let value = lower_expression(body, *value);
+            body.some(value)
+        }
+        TypedNode::None(inner) => body.none(inner),
+        TypedNode::Ok { value, error } => {
+            let value = lower_expression(body, *value);
+            body.ok(value, error)
+        }
+        TypedNode::Err { value, ok } => {
+            let value = lower_expression(body, *value);
+            body.err(value, ok)
+        }
         TypedNode::Intrinsic {
             operation,
             arguments,
@@ -1409,6 +2552,36 @@ fn lower_expression(body: &mut BodyBuilder<'_>, node: TypedNode) -> crate::Expr 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct TestDialect;
+
+    #[derive(Clone, Copy)]
+    struct TestI32Mapping;
+
+    impl FeatureMapping<TestDialect> for TestI32Mapping {
+        type Feature = I32Values;
+        type Context = usize;
+        type Input = i32;
+        type Output = i64;
+        type Error = ();
+
+        fn lower(&self, context: &mut usize, input: i32) -> Result<i64, ()> {
+            *context += 1;
+            Ok(i64::from(input))
+        }
+    }
+
+    #[test]
+    fn registered_subset_exposes_its_executable_mapping() {
+        let plugin = language_plugin(TestDialect).support(TestI32Mapping).build();
+        let mut invocations = 0;
+        let output = plugin
+            .mapping_for::<I32Values>()
+            .lower(&mut invocations, 42)
+            .expect("test mapping succeeds");
+        assert_eq!(output, 42);
+        assert_eq!(invocations, 1);
+    }
 
     #[test]
     fn infers_arbitrary_typed_function_and_record_shapes() {
@@ -1619,6 +2792,313 @@ mod tests {
         let core = portable_core_ir::lower_checked(program.checked_program())
             .expect("every typed constructor lowers to CoreIR");
         portable_core_ir::verify_core(&core).expect("every typed constructor verifies");
+    }
+
+    #[test]
+    fn extended_intrinsic_surface_replays_through_core_ir() {
+        let program = typed_program(portable_name!("extended_features"), |builder| {
+            let builder = builder
+                .function(
+                    portable_name!("bitwise"),
+                    typed_list![],
+                    I32::TYPE,
+                    |body, _| {
+                        let value = body.i32(12);
+                        let value = body.int_bit_not(value);
+                        let mask = body.i32(7);
+                        let value = body.int_bit_and(value, mask);
+                        let flag = body.i32(16);
+                        let value = body.int_bit_or(value, flag);
+                        let toggle = body.i32(3);
+                        body.int_bit_xor(value, toggle)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("shifts"),
+                    typed_list![],
+                    I64::TYPE,
+                    |body, _| {
+                        let value = body.i64(8);
+                        let one = body.i64(1);
+                        let value = body.int_shift_left_checked(value, one);
+                        let two = body.i64(2);
+                        body.int_shift_right_checked(value, two)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("float_inspection"),
+                    typed_list![],
+                    Bool::TYPE,
+                    |body, _| {
+                        let value = body.f64(-1.75);
+                        let truncated = body.float_trunc(value);
+                        let absolute = body.float_abs(truncated);
+                        let nan = body.float_is_nan(absolute);
+                        let negative_zero = body.f64(-0.0);
+                        let negative_zero = body.float_is_negative_zero(negative_zero);
+                        body.bool_or(nan, negative_zero)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("integer_conversions"),
+                    typed_list![],
+                    I32::TYPE,
+                    |body, _| {
+                        let value = body.i32(42);
+                        let wide = body.widen_i32_to_i64(value);
+                        body.narrow_i64_to_i32_checked(wide)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("char_value"),
+                    typed_list![],
+                    Bool::TYPE,
+                    |body, _| {
+                        let left = body.char('λ');
+                        let right = body.char('λ');
+                        body.equal(left, right)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("string_inspection"),
+                    typed_list![],
+                    Bool::TYPE,
+                    |body, _| {
+                        let source = body.text("polyrust");
+                        let empty = body.string_is_empty(source);
+                        let source = body.text("polyrust");
+                        let needle = body.text("rust");
+                        let contains = body.string_contains(source, needle);
+                        let first = body.bool_or(empty, contains);
+                        let source = body.text("polyrust");
+                        let prefix = body.text("poly");
+                        let starts = body.string_starts_with(source, prefix);
+                        let source = body.text("polyrust");
+                        let suffix = body.text("rust");
+                        let ends = body.string_ends_with(source, suffix);
+                        let second = body.bool_and(starts, ends);
+                        let predicates = body.bool_and(first, second);
+                        let source = body.text("λ");
+                        let scalars = body.string_scalar_length(source);
+                        let source = body.text("λ");
+                        let utf16 = body.string_utf16_length(source);
+                        let lengths = body.equal(scalars, utf16);
+                        body.bool_and(predicates, lengths)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("string_index"),
+                    typed_list![],
+                    option_type(I64::TYPE),
+                    |body, _| {
+                        let source = body.text("polyrust");
+                        let needle = body.text("rust");
+                        body.string_index_of_literal(source, needle)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("string_transform"),
+                    typed_list![],
+                    Text::TYPE,
+                    |body, _| {
+                        let source = body.text("  poly-rust  ");
+                        let start = body.i64(0);
+                        let end = body.i64(13);
+                        let value = body.string_slice_scalars(source, start, end);
+                        let prefix = body.text("  ");
+                        let value = body.string_strip_prefix(value, prefix);
+                        let needle = body.text("-");
+                        let replacement_value = body.text(" ");
+                        let value = body.string_replace_all(value, needle, replacement_value);
+                        let needle = body.text("poly");
+                        let replacement_value = body.text("many");
+                        let pair = replacement(needle, replacement_value);
+                        let value = body.string_replace_many(value, typed_list![pair]);
+                        let budget = body.f64(64.0);
+                        let value = body.string_truncate_utf8_bytes(value, budget);
+                        let characters = body.text(" ");
+                        let value = body.string_trim_start(value, characters);
+                        let characters = body.text(" ");
+                        body.string_trim_end(value, characters)
+                    },
+                )
+                .builder;
+            builder
+        });
+
+        let core = portable_core_ir::lower_checked(program.checked_program())
+            .expect("extended typed constructors lower to CoreIR");
+        portable_core_ir::verify_core(&core).expect("extended typed constructors verify");
+    }
+
+    #[test]
+    fn extended_collection_surface_replays_through_core_ir() {
+        let program = typed_program(portable_name!("extended_collections"), |builder| {
+            let builder = builder
+                .function(
+                    portable_name!("bytes_round_trip"),
+                    typed_list![],
+                    Text::TYPE,
+                    |body, _| {
+                        let text = body.text("poly");
+                        let left = body.string_to_utf8(text);
+                        let right = body.bytes(b"rust".to_vec());
+                        let bytes = body.bytes_concat(left, right);
+                        let needle = body.bytes(b"rust".to_vec());
+                        let replacement_value = body.bytes(b"lang".to_vec());
+                        let bytes = body.bytes_replace_all(bytes, needle, replacement_value);
+                        body.string_from_utf8_checked(bytes)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("bytes_inspection"),
+                    typed_list![],
+                    Bool::TYPE,
+                    |body, _| {
+                        let bytes = body.bytes(Vec::new());
+                        let empty = body.bytes_is_empty(bytes);
+                        let bytes = body.bytes(b"abc".to_vec());
+                        let length = body.bytes_length(bytes);
+                        let three = body.i64(3);
+                        let expected = body.equal(length, three);
+                        body.bool_and(empty, expected)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("list_value"),
+                    typed_list![],
+                    list_type(I32::TYPE),
+                    |body, _| {
+                        let one = body.i32(1);
+                        let list = body.list(I32::TYPE, typed_list![one]);
+                        let two = body.i32(2);
+                        let list = body.list_append(list, two);
+                        let three = body.i32(3);
+                        let tail = body.list(I32::TYPE, typed_list![three]);
+                        body.list_concat(list, tail)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("list_get"),
+                    typed_list![],
+                    I32::TYPE,
+                    |body, _| {
+                        let value = body.i32(7);
+                        let list = body.list(I32::TYPE, typed_list![value]);
+                        let index = body.i64(0);
+                        body.list_get_checked(list, index)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("list_inspection"),
+                    typed_list![],
+                    Bool::TYPE,
+                    |body, _| {
+                        let list = body.list(I32::TYPE, typed_list![]);
+                        let empty = body.list_is_empty(list);
+                        let one = body.i32(1);
+                        let list = body.list(I32::TYPE, typed_list![one]);
+                        let one = body.i32(1);
+                        let contains = body.list_contains(list, one);
+                        body.bool_and(empty, contains)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("list_length"),
+                    typed_list![],
+                    I64::TYPE,
+                    |body, _| {
+                        let one = body.i32(1);
+                        let list = body.list(I32::TYPE, typed_list![one]);
+                        body.list_length(list)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("list_index"),
+                    typed_list![],
+                    option_type(I64::TYPE),
+                    |body, _| {
+                        let one = body.i32(1);
+                        let list = body.list(I32::TYPE, typed_list![one]);
+                        let one = body.i32(1);
+                        body.list_index_of(list, one)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("option_value"),
+                    typed_list![],
+                    I32::TYPE,
+                    |body, _| {
+                        let seven = body.i32(7);
+                        let value = body.some(seven);
+                        let fallback = body.i32(0);
+                        body.option_unwrap_or(value, fallback)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("option_inspection"),
+                    typed_list![],
+                    Bool::TYPE,
+                    |body, _| {
+                        let seven = body.i32(7);
+                        let some = body.some(seven);
+                        let is_some = body.option_is_some(some);
+                        let none = body.none(I32::TYPE);
+                        let is_none = body.option_is_none(none);
+                        body.bool_and(is_some, is_none)
+                    },
+                )
+                .builder;
+            builder
+                .function(
+                    portable_name!("result_inspection"),
+                    typed_list![],
+                    Bool::TYPE,
+                    |body, _| {
+                        let value = body.i32(7);
+                        let ok = body.ok(value, Text::TYPE);
+                        let is_ok = body.result_is_ok(ok);
+                        let error = body.text("error");
+                        let err = body.err(error, I32::TYPE);
+                        let is_err = body.result_is_err(err);
+                        body.bool_and(is_ok, is_err)
+                    },
+                )
+                .builder
+        });
+        let core = portable_core_ir::lower_checked(program.checked_program())
+            .expect("typed collection constructors lower to CoreIR");
+        portable_core_ir::verify_core(&core).expect("typed collection constructors verify");
     }
 
     #[test]

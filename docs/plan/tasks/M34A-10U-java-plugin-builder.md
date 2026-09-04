@@ -1,6 +1,6 @@
 # M34A-10U — Build Java from registered feature mappings
 
-- Status: planned
+- Status: in-progress
 - Depends on: M34A-08U and M34A-10T
 - Blocks: renewed Java design review and M34A-11
 
@@ -13,7 +13,7 @@ verified Java AST.
 ## Definition of done
 
 - `JavaPluginBuilder` has one typed slot per independently supported portable
-  feature and `.support::<F>(JavaFMapping)` is its only support-registration
+  feature and `.support(JavaFMapping)` is its only support-registration
   path.
 - The built Java plugin, rather than `JavaDialect`, satisfies
   `SupportsAll<R>` for typed generation.
@@ -50,5 +50,21 @@ then return Java to the user for design review before starting C17.
 
 ## Exit evidence
 
-Pending implementation.
+Implementation is complete locally pending the immutable checkpoint, hosted
+CI, and the requested user review:
 
+- `crates/backend-java/src/feature.rs` defines the sealed Java builder and all
+  37 registered structural, value, construction, and operation mappings.
+- Each intrinsic family has a distinct `JavaIntrinsicMappingInput<F>` brand;
+  exhaustive enum dispatch obtains and invokes the stored family mapping.
+- `JavaPlugin`, rather than `JavaDialect`, satisfies inferred requirements.
+  Java capability preflight consults the same concrete mapping set before it
+  advertises mapped features.
+- Arbitrary mappings and string-output mappings cannot enter the Java builder;
+  concrete manual support witnesses are rejected by source policy.
+- The checked-in typed example generates and executes `extended_features()`
+  through a separately compiled Java consumer.
+- All 27 focused shared/Java/documentation/policy tests pass. The uncached
+  authoritative release gate passes all 236 tests, including Java 21
+  `-Xlint:all -Werror`, native/conformance consumers, verifier/compiler-oracle
+  tests, Rustfmt, strict Clippy, and Buildifier.

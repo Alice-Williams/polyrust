@@ -121,14 +121,14 @@ typestate builder:
 
 ```rust
 let java = JavaPluginBuilder::new()
-    .support::<Functions>(JavaFunctions)
-    .support::<I32Values>(JavaI32Values)
-    .support::<WrappingIntegerArithmetic>(JavaWrappingIntegerArithmetic)
+    .support(JavaFunctions)
+    .support(JavaI32Values)
+    .support(JavaWrappingIntegerArithmetic)
     .build();
 ```
 
 Each call changes one `Missing` slot to `Implemented<M>` and requires
-`M: FeatureMapping<JavaDialect, F>`. Only an implemented slot produces
+`M: FeatureMapping<JavaDialect, Feature = F>`. Only an implemented slot produces
 `Supports<F>`, whose `mapping()` method returns that exact handler. Duplicate
 registration is not representable, and a backend cannot manually write an
 empty support claim.

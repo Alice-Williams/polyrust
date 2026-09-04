@@ -15,8 +15,8 @@ frontend's PolyIR v0 intrinsic surface.
 - `Supports<F>` exposes an associated registered mapping rather than acting as
   an empty marker.
 - A consuming typestate plugin builder changes exactly one `Missing` slot to
-  `Implemented<M>` through `.support::<F>(mapping)`.
-- Registration requires `M: FeatureMapping<D, F>` and duplicate, missing,
+  `Implemented<M>` through `.support(mapping)`, with `F` inferred from `M`.
+- Registration requires `M: FeatureMapping<D, Feature = F>` and duplicate, missing,
   wrong-feature, wrong-dialect, and wrong-output registrations do not compile.
 - `Supports<F>` is derived only from an `Implemented<M>` slot; backends do not
   write manual support implementations.
@@ -55,5 +55,19 @@ be green before either task is complete.
 
 ## Exit evidence
 
-Pending implementation.
+Implementation is complete locally pending the immutable checkpoint and hosted
+CI:
 
+- `crates/build/src/typed_program.rs` defines the closed feature catalogue,
+  consuming slot builder, executable `FeatureMapping`, inferred `Supports<F>`,
+  typed collection/tagged values, and every PolyIR v0 intrinsic constructor.
+- Compile-pass tests execute a registered subset and replay the original and
+  extended intrinsic surfaces through checking and CoreIR verification.
+- An inventory comparison reports 70 authoritative PolyIR intrinsic variants,
+  70 distinct typed constructor mappings, and no missing or unknown operation.
+- Rust doctests reject duplicate/wrong-dialect registrations, wrong widths,
+  string/bytes confusion, heterogeneous/mismatched lists, mismatched option and
+  result types, malformed replacements, missing support, and proof forgery.
+- The uncached authoritative release gate passes 236 of 236 tests, including
+  Rustfmt, strict Clippy, Buildifier, documentation, source policy, and every
+  tracked real-world differential/conformance target.

@@ -13,7 +13,7 @@ negative compilation fixtures. A separately compiled consumer MUST be able to
 use every portable public API. No undeclared runtime dependency is permitted.
 
 Java is the first inferred typed-program target. `JavaPluginBuilder` MUST
-register a typed executable `JavaFeatureMapping<F>` separately for every
+register a typed executable `JavaFeatureMapping<Feature = F>` separately for every
 admitted portable feature. Only an `Implemented<Mapping>` builder slot derives
 `JavaPlugin: Supports<F>`, and `Supports<F>::mapping()` returns that exact
 handler. Its typed entry point accepts only `TypedProgram<R>` under the bound
@@ -40,9 +40,9 @@ it is not returned as a user validation branch. Java has no manual or empty
 `Supports<F>` implementations. No profile, wildcard, or default
 implementation can make an unregistered feature admissible.
 
-`JavaPluginBuilder::support::<F>(mapping)` consumes the builder, replaces the
-single `F` slot from `Missing` to `Implemented<Mapping>`, and requires
-`Mapping: JavaFeatureMapping<F>`. Every operation mapping accepts a closed,
+`JavaPluginBuilder::support(mapping)` infers `F`, consumes the builder, replaces
+the single `F` slot from `Missing` to `Implemented<Mapping>`, and requires
+`Mapping: JavaFeatureMapping<Feature = F>`. Every operation mapping accepts a closed,
 feature-specific enum containing already-lowered `JavaExpr` operands and
 returns a `JavaExpr` or typed `JavaExprPlan`; declaration/type mappings return
 their corresponding Java AST category. An erased feature input/output enum,

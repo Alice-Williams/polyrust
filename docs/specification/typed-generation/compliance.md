@@ -14,13 +14,13 @@ it is not evidence of typed executable syntax.
 | Surface | CoreIR input | Typed executable AST | Typed symbols and derived dependencies | Structural runtime | Render-ready certificate and total renderer | Result |
 | --- | --- | --- | --- | --- | --- | --- |
 | Shared codegen | `CoreProgram` is the only lowering input | Generic checked target AST | Catalogue/linker-derived bindings, imports, files, helpers, and packages | Typed helper DAG and structural items | Opaque verify/link/certify states, sealed certified adapter, and total structural-renderer extension point | **Pass** |
-| Inferred typed AST | `TypedProgram<R>` and its consuming builder replay privately through the checker and CoreIR verifier | Private `TypedExpr<T, R>` plus invariant body/record handles and recursive typed lists | Constant-checked names plus inferred requirements; executable plugin registration pending M34A-08U | Not applicable at this layer | Admitted target adapters are total; rejection is an implementation defect | **Partial** pending M34A-08U |
+| Inferred typed AST | `TypedProgram<R>` and its consuming builder replay privately through the checker and CoreIR verifier | Private `TypedExpr<T, R>` plus invariant body/record handles, recursive typed lists, options, results, bytes, and chars | Constant-checked names plus inferred requirements and consuming executable plugin registration | Not applicable at this layer | Admitted target adapters are total; rejection is an implementation defect | **Partial** pending hosted CI for M34A-08U |
 | Rust | Missing | Missing: `RustCode`/raw documents | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | TypeScript | Missing | Missing: paired `EcmaCode` | Manually attached fragment metadata | Raw runtime source | Paired source path | **Fail** |
 | JavaScript | Missing | Independently paired source exists | Shares manual ECMA metadata | Checked-in/runtime paired text | Not solely compiler-derived | **Fail** |
 | Python | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | Go | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
-| Java | Exhaustive verified `CoreProgram` lowering, including the inferred typed-program bridge | Closed Java 21 AST and pre/post-link verification | Empty `Supports<F>` witnesses must be replaced by executable Java plugin registrations in M34A-10U; imports remain linker-derived | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer | **Partial** pending M34A-10U and review |
+| Java | Exhaustive verified `CoreProgram` lowering, including the inferred typed-program bridge | Closed Java 21 AST and pre/post-link verification | Sealed executable mappings are registered by consuming typestate builder; capability preflight consults the same mapping set; imports remain linker-derived | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer | **Partial** pending hosted CI and requested review |
 | C++20 | Missing | Missing: `CppCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 | C17 | Missing | Missing: `CCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 
@@ -91,6 +91,30 @@ witness.
 This is retained historical evidence. M34A-08U/M34A-10U supersede the empty
 support-witness portion and add the complete typed intrinsic surface before the
 shared and Java rows can return to **Pass**.
+
+## Shared M34A-08U and Java M34A-10U evidence
+
+- `Supports<F>` now exposes its stored executable mapping. A closed typestate
+  slot catalogue derives support only from `Implemented<M>`; duplicate and
+  missing registrations are compile-time failures.
+- The typed frontend covers `Char`, `Bytes`, `List<T>`, `Option<T>`,
+  `Result<Ok, Error>`, and every existing PolyIR v0 intrinsic with recursive
+  typed operands and inferred feature families. Inventory proof finds 70
+  authoritative intrinsic variants and 70 distinct typed mappings with no
+  missing or unknown operation.
+- Java registers 37 sealed mappings. Intrinsic inputs are branded by feature,
+  the lowerer invokes the stored mapping, and dynamic capability preflight
+  consults that same concrete feature set.
+- Permanent positive and compile-fail tests cover executable subsets, CoreIR
+  replay, invalid typed operands/collections/branches/replacements, duplicate
+  or wrong-dialect registration, arbitrary Java mappings, and private proof
+  construction. Source policy rejects concrete backend support witnesses.
+- The generated typed Java package exposes an `extended_features()` example;
+  its separate Java 21 consumer executes numeric, text, bytes/UTF-8, list,
+  option, and result mappings under `-Xlint:all -Werror`.
+- Local focused proof passes 27 of 27 tests. The uncached release gate passes
+  236 of 236 tests. Rows remain **Partial** until the exact pushed SHA passes
+  hosted CI; Java additionally awaits the user's requested design review.
 
 ## Shared M34A-08S evidence
 

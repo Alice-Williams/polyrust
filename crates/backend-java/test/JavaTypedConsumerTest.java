@@ -18,5 +18,11 @@ public final class JavaTypedConsumerTest {
         || point.value().z() != 5) {
       throw new AssertionError("typed three-field construction did not preserve fields");
     }
+
+    org.polyrust.generated.Runtime.PolyResult<Boolean> extended =
+        org.polyrust.generated.Generated.extended_features();
+    if (!extended.ok() || !extended.value()) {
+      throw new AssertionError("typed extended feature families did not preserve semantics");
+    }
   }
 }

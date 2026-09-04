@@ -1,5 +1,14 @@
 use std::collections::BTreeMap;
 
+use portable_build::{
+    BoolValues, BooleanLogic, BytesOperations, BytesValues, CharValues, CheckedIntegerArithmetic,
+    CheckedIntegerShifts, Equality, F64Values, FloatingPointArithmetic, FloatingPointInspection,
+    FunctionCalls, Functions, I32Values, I64Values, IntegerBitwise, IntegerConversions,
+    ListConstruction, ListOperations, ListValues, LocalReads, OptionConstruction, OptionOperations,
+    OptionValues, Ordering, RecordConstruction, Records, ResultConstruction, ResultInspection,
+    ResultValues, StringConcatenation, StringInspection, StringTransformation, Supports,
+    TextValues, Utf8Conversions, WrappingIntegerArithmetic,
+};
 use portable_codegen::{
     CapabilityRegistry, ControlFeature, CoreFeature, DeclarationFeature, FeatureShape, FeatureUse,
     InterfaceFeature, OperationFeature, OwnershipFeature, SelectedFeature, SupportDecision,
@@ -13,10 +22,14 @@ use portable_core_ir::{
 };
 use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef, sort_diagnostics};
 
-use crate::ast::JavaIdentifier;
+use crate::{
+    ast::JavaIdentifier,
+    feature::{JavaFeatureSet, java_features},
+};
 
+#[doc(hidden)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum JavaLoweringStrategy {
+pub enum JavaLoweringStrategy {
     Declaration,
     DirectValue,
     StructuredControl,
@@ -65,9 +78,8 @@ impl JavaCapabilitySelection {
                 continue;
             }
 
-            let (expected_mode, expected_strategy) = match JavaCapabilityRegistry
-                .support(expected_use)
-            {
+            let registry = JavaCapabilityRegistry::default();
+            let (expected_mode, expected_strategy) = match registry.support(expected_use) {
                 SupportDecision::Native(strategy) => (SupportMode::Native, strategy),
                 SupportDecision::Emulated(strategy) => (SupportMode::Emulated, strategy),
                 SupportDecision::Unsupported(value) => {
@@ -115,8 +127,165 @@ impl JavaCapabilitySelection {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct JavaCapabilityRegistry;
+#[doc(hidden)]
+#[derive(Clone, Copy, Debug)]
+pub struct JavaCapabilityRegistry {
+    features: JavaFeatureSet,
+}
+
+impl JavaCapabilityRegistry {
+    pub(crate) fn new(features: JavaFeatureSet) -> Self {
+        Self { features }
+    }
+
+    fn registered<F>(&self)
+    where
+        F: portable_build::Feature,
+        JavaFeatureSet: Supports<F>,
+    {
+        let _ = self.features.mapping_for::<F>();
+    }
+
+    fn confirm_registered_mapping(&self, feature: CoreFeature) {
+        match feature {
+            CoreFeature::Declaration(DeclarationFeature::Function) => {
+                self.registered::<Functions>()
+            }
+            CoreFeature::Declaration(DeclarationFeature::Record) => self.registered::<Records>(),
+            CoreFeature::Type(TypeFeature::Bool) => self.registered::<BoolValues>(),
+            CoreFeature::Type(TypeFeature::I32) => self.registered::<I32Values>(),
+            CoreFeature::Type(TypeFeature::I64) => self.registered::<I64Values>(),
+            CoreFeature::Type(TypeFeature::F64) => self.registered::<F64Values>(),
+            CoreFeature::Type(TypeFeature::Char) => self.registered::<CharValues>(),
+            CoreFeature::Type(TypeFeature::String) => self.registered::<TextValues>(),
+            CoreFeature::Type(TypeFeature::Bytes) => self.registered::<BytesValues>(),
+            CoreFeature::Type(TypeFeature::List) => self.registered::<ListValues>(),
+            CoreFeature::Type(TypeFeature::Option) => self.registered::<OptionValues>(),
+            CoreFeature::Type(TypeFeature::Result) => self.registered::<ResultValues>(),
+            CoreFeature::Operation(OperationFeature::Local) => self.registered::<LocalReads>(),
+            CoreFeature::Operation(OperationFeature::Call) => self.registered::<FunctionCalls>(),
+            CoreFeature::Operation(OperationFeature::ConstructRecord) => {
+                self.registered::<RecordConstruction>()
+            }
+            CoreFeature::Operation(OperationFeature::Field) => {
+                self.registered::<portable_build::FieldAccess>()
+            }
+            CoreFeature::Operation(OperationFeature::ConstructList) => {
+                self.registered::<ListConstruction>()
+            }
+            CoreFeature::Operation(
+                OperationFeature::ConstructSome | OperationFeature::ConstructNone,
+            ) => self.registered::<OptionConstruction>(),
+            CoreFeature::Operation(
+                OperationFeature::ConstructOk | OperationFeature::ConstructErr,
+            ) => self.registered::<ResultConstruction>(),
+            CoreFeature::Operation(OperationFeature::Unary(operation)) => match operation {
+                CoreUnaryIntrinsic::BoolNot => self.registered::<BooleanLogic>(),
+                CoreUnaryIntrinsic::IntNegChecked => self.registered::<CheckedIntegerArithmetic>(),
+                CoreUnaryIntrinsic::IntNegWrapping => {
+                    self.registered::<WrappingIntegerArithmetic>()
+                }
+                CoreUnaryIntrinsic::IntBitNot => self.registered::<IntegerBitwise>(),
+                CoreUnaryIntrinsic::FloatNeg => self.registered::<FloatingPointArithmetic>(),
+                CoreUnaryIntrinsic::FloatTrunc
+                | CoreUnaryIntrinsic::FloatIsNaN
+                | CoreUnaryIntrinsic::FloatIsNegativeZero
+                | CoreUnaryIntrinsic::FloatAbs => self.registered::<FloatingPointInspection>(),
+                CoreUnaryIntrinsic::StringScalarLength
+                | CoreUnaryIntrinsic::StringUtf16Length
+                | CoreUnaryIntrinsic::StringIsEmpty => self.registered::<StringInspection>(),
+                CoreUnaryIntrinsic::BytesLength | CoreUnaryIntrinsic::BytesIsEmpty => {
+                    self.registered::<BytesOperations>()
+                }
+                CoreUnaryIntrinsic::ListLength | CoreUnaryIntrinsic::ListIsEmpty => {
+                    self.registered::<ListOperations>()
+                }
+                CoreUnaryIntrinsic::OptionIsSome | CoreUnaryIntrinsic::OptionIsNone => {
+                    self.registered::<OptionOperations>()
+                }
+                CoreUnaryIntrinsic::ResultIsOk | CoreUnaryIntrinsic::ResultIsErr => {
+                    self.registered::<ResultInspection>()
+                }
+                CoreUnaryIntrinsic::WidenI32ToI64 | CoreUnaryIntrinsic::NarrowI64ToI32Checked => {
+                    self.registered::<IntegerConversions>()
+                }
+                CoreUnaryIntrinsic::StringToUtf8 | CoreUnaryIntrinsic::StringFromUtf8Checked => {
+                    self.registered::<Utf8Conversions>()
+                }
+            },
+            CoreFeature::Operation(OperationFeature::Binary(operation)) => match operation {
+                CoreBinaryIntrinsic::BoolAnd | CoreBinaryIntrinsic::BoolOr => {
+                    self.registered::<BooleanLogic>()
+                }
+                CoreBinaryIntrinsic::Equal | CoreBinaryIntrinsic::NotEqual => {
+                    self.registered::<Equality>()
+                }
+                CoreBinaryIntrinsic::Less
+                | CoreBinaryIntrinsic::LessEqual
+                | CoreBinaryIntrinsic::Greater
+                | CoreBinaryIntrinsic::GreaterEqual => self.registered::<Ordering>(),
+                CoreBinaryIntrinsic::IntAddChecked
+                | CoreBinaryIntrinsic::IntSubChecked
+                | CoreBinaryIntrinsic::IntMulChecked
+                | CoreBinaryIntrinsic::IntDivChecked
+                | CoreBinaryIntrinsic::IntRemChecked => {
+                    self.registered::<CheckedIntegerArithmetic>()
+                }
+                CoreBinaryIntrinsic::IntAddWrapping
+                | CoreBinaryIntrinsic::IntSubWrapping
+                | CoreBinaryIntrinsic::IntMulWrapping => {
+                    self.registered::<WrappingIntegerArithmetic>()
+                }
+                CoreBinaryIntrinsic::FloatAdd
+                | CoreBinaryIntrinsic::FloatSub
+                | CoreBinaryIntrinsic::FloatMul
+                | CoreBinaryIntrinsic::FloatDiv
+                | CoreBinaryIntrinsic::FloatRemTrunc => {
+                    self.registered::<FloatingPointArithmetic>()
+                }
+                CoreBinaryIntrinsic::StringConcat => self.registered::<StringConcatenation>(),
+                CoreBinaryIntrinsic::IntBitAnd
+                | CoreBinaryIntrinsic::IntBitOr
+                | CoreBinaryIntrinsic::IntBitXor => self.registered::<IntegerBitwise>(),
+                CoreBinaryIntrinsic::IntShiftLeftChecked
+                | CoreBinaryIntrinsic::IntShiftRightChecked => {
+                    self.registered::<CheckedIntegerShifts>()
+                }
+                CoreBinaryIntrinsic::StringIndexOfLiteral
+                | CoreBinaryIntrinsic::StringContains
+                | CoreBinaryIntrinsic::StringStartsWith
+                | CoreBinaryIntrinsic::StringEndsWith => self.registered::<StringInspection>(),
+                CoreBinaryIntrinsic::StringStripPrefix
+                | CoreBinaryIntrinsic::StringTruncateUtf8Bytes
+                | CoreBinaryIntrinsic::StringTrimStart
+                | CoreBinaryIntrinsic::StringTrimEnd => self.registered::<StringTransformation>(),
+                CoreBinaryIntrinsic::BytesConcat => self.registered::<BytesOperations>(),
+                CoreBinaryIntrinsic::ListGetChecked
+                | CoreBinaryIntrinsic::ListAppend
+                | CoreBinaryIntrinsic::ListConcat
+                | CoreBinaryIntrinsic::ListContains
+                | CoreBinaryIntrinsic::ListIndexOf => self.registered::<ListOperations>(),
+                CoreBinaryIntrinsic::OptionUnwrapOr => self.registered::<OptionOperations>(),
+            },
+            CoreFeature::Operation(OperationFeature::Ternary(
+                CoreTernaryIntrinsic::StringSliceScalars | CoreTernaryIntrinsic::StringReplaceAll,
+            )) => self.registered::<StringTransformation>(),
+            CoreFeature::Operation(OperationFeature::Ternary(
+                CoreTernaryIntrinsic::BytesReplaceAll,
+            )) => self.registered::<BytesOperations>(),
+            CoreFeature::Operation(OperationFeature::Variadic(
+                CoreVariadicIntrinsic::StringReplaceMany,
+            )) => self.registered::<StringTransformation>(),
+            _ => {}
+        }
+    }
+}
+
+impl Default for JavaCapabilityRegistry {
+    fn default() -> Self {
+        Self::new(java_features())
+    }
+}
 
 impl CapabilityRegistry for JavaCapabilityRegistry {
     type Strategy = JavaLoweringStrategy;
@@ -134,6 +303,8 @@ impl CapabilityRegistry for JavaCapabilityRegistry {
                 option: None,
             });
         }
+
+        self.confirm_registered_mapping(usage.feature());
 
         use JavaLoweringStrategy::{
             Declaration, DirectValue, InterfaceDispatch, RuntimeHelper, StructuredControl,
@@ -833,7 +1004,7 @@ mod tests {
     #[test]
     fn target_id_matches_java_backend() {
         assert_eq!(
-            JavaCapabilityRegistry.target().as_str(),
+            JavaCapabilityRegistry::default().target().as_str(),
             "org.polyrust.java"
         );
     }
@@ -851,7 +1022,7 @@ mod tests {
         });
         let checked = module.finish().unwrap();
         let core = lower_checked(&checked).unwrap();
-        let selected = preflight_capabilities(&core, &JavaCapabilityRegistry).unwrap();
+        let selected = preflight_capabilities(&core, &JavaCapabilityRegistry::default()).unwrap();
         assert_eq!(
             selected.len(),
             portable_codegen::collect_core_features(&core).len()
@@ -871,7 +1042,7 @@ mod tests {
         });
         let checked = module.finish().unwrap();
         let core = lower_checked(&checked).unwrap();
-        let selected = preflight_capabilities(&core, &JavaCapabilityRegistry).unwrap();
+        let selected = preflight_capabilities(&core, &JavaCapabilityRegistry::default()).unwrap();
 
         let mut permuted_usage = JavaCapabilitySelection {
             selected: selected.clone(),

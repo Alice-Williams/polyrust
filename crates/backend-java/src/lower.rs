@@ -3,6 +3,13 @@ use std::{
     collections::{BTreeMap, BTreeSet},
 };
 
+use portable_build::{
+    BooleanLogic, BytesOperations, CheckedIntegerArithmetic, CheckedIntegerShifts, Equality,
+    Feature, FeatureMapping, FloatingPointArithmetic, FloatingPointInspection, IntegerBitwise,
+    IntegerConversions, ListOperations, OptionOperations, Ordering, ResultInspection,
+    StringConcatenation, StringInspection, StringTransformation, Supports, Utf8Conversions,
+    WrappingIntegerArithmetic,
+};
 use portable_codegen::{
     BackendOptions, FileGroupRole, GeneratedCallable, GeneratedCallableId,
     GeneratedInterfaceMethod, GeneratedInterfaceMethodId, GeneratedOrigin, GeneratedSymbolId,
@@ -22,10 +29,23 @@ use portable_core_ir::{
 use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef};
 use portable_ir::v0::Visibility;
 
-use crate::{ast::*, capability::JavaCapabilitySelection, dialect::*};
+use crate::{
+    ast::*,
+    capability::JavaCapabilitySelection,
+    dialect::*,
+    feature::{JavaFeatureSet, JavaIntrinsicFamily, classify_intrinsic},
+};
 
-#[derive(Clone, Copy, Debug, Default)]
-pub struct JavaLowerer;
+#[derive(Clone, Copy, Debug)]
+pub struct JavaLowerer {
+    features: JavaFeatureSet,
+}
+
+impl JavaLowerer {
+    pub(crate) const fn new(features: JavaFeatureSet) -> Self {
+        Self { features }
+    }
+}
 
 impl TargetLowerer<CoreProgram, JavaDialect> for JavaLowerer {
     type Capabilities = JavaCapabilitySelection;
@@ -36,7 +56,7 @@ impl TargetLowerer<CoreProgram, JavaDialect> for JavaLowerer {
         capabilities: &VerifiedCapabilities<Self::Capabilities>,
         _options: &BackendOptions,
     ) -> Result<TargetAstPackage<JavaDialect>, Vec<Diagnostic>> {
-        Lowering::new(core.value(), capabilities.selection()).lower()
+        Lowering::new(core.value(), capabilities.selection(), self.features).lower()
     }
 }
 
@@ -53,11 +73,16 @@ struct Lowering<'a> {
     interface_methods: BTreeMap<CoreInterfaceMethodId, GeneratedInterfaceMethodId>,
     constants: BTreeMap<CoreConstantId, GeneratedValueId>,
     capabilities: &'a JavaCapabilitySelection,
+    features: JavaFeatureSet,
     next_temporary: Cell<u32>,
 }
 
 impl<'a> Lowering<'a> {
-    fn new(core: &'a CoreProgram, capabilities: &'a JavaCapabilitySelection) -> Self {
+    fn new(
+        core: &'a CoreProgram,
+        capabilities: &'a JavaCapabilitySelection,
+        features: JavaFeatureSet,
+    ) -> Self {
         Self {
             core,
             builder: TargetAstBuilder::new(JavaDialect),
@@ -71,6 +96,7 @@ impl<'a> Lowering<'a> {
             interface_methods: BTreeMap::new(),
             constants: BTreeMap::new(),
             capabilities,
+            features,
             next_temporary: Cell::new(0),
         }
     }
@@ -466,7 +492,7 @@ impl<'a> Lowering<'a> {
                 }
             }
         }
-        Ok(JavaTypeDeclaration {
+        let declaration = JavaTypeDeclaration {
             declared: Some(self.records[&id]),
             kind: JavaDeclarationKind::Record,
             visibility: java_visibility(record.header.visibility),
@@ -492,7 +518,10 @@ impl<'a> Lowering<'a> {
             },
             permits: vec![],
             members,
-        })
+        };
+        self.features
+            .mapping_for::<portable_build::Records>()
+            .lower(&mut (), declaration)
     }
 
     fn enum_declarations(
@@ -784,7 +813,7 @@ impl<'a> Lowering<'a> {
         let (parameters, mut boundary) = self.callable_parameters(&value.parameters)?;
         let mut body = self.block(value.body, BlockMode::ReturnResult, value.return_type)?;
         boundary.append(&mut body.statements);
-        Ok(JavaMethod {
+        let method = JavaMethod {
             declared: JavaMethodDeclaration::Callable(self.functions[&id]),
             annotations: vec![],
             modifiers: vec![
@@ -796,7 +825,10 @@ impl<'a> Lowering<'a> {
             name: identifier(&value.header.name),
             parameters,
             body: Some(JavaBlock::new(boundary)),
-        })
+        };
+        self.features
+            .mapping_for::<portable_build::Functions>()
+            .lower(&mut (), method)
     }
 
     fn public_tagged_value_factories(&self) -> Result<Vec<JavaMember>, Vec<Diagnostic>> {
@@ -1311,6 +1343,46 @@ impl<'a> Lowering<'a> {
         });
     }
 
+    fn mapped_expr<F>(&self, value: JavaExpr) -> Result<JavaExpr, Vec<Diagnostic>>
+    where
+        F: Feature,
+        JavaFeatureSet: Supports<F, Dialect = JavaDialect>,
+        <JavaFeatureSet as Supports<F>>::Mapping: FeatureMapping<
+                JavaDialect,
+                Feature = F,
+                Context = (),
+                Input = JavaExpr,
+                Output = JavaExpr,
+                Error = Vec<Diagnostic>,
+            >,
+    {
+        self.features.mapping_for::<F>().lower(&mut (), value)
+    }
+
+    fn mapped_literal(
+        &self,
+        source: &CoreValue,
+        value: JavaExpr,
+    ) -> Result<JavaExpr, Vec<Diagnostic>> {
+        match source {
+            CoreValue::Bool(_) => self.mapped_expr::<portable_build::BoolValues>(value),
+            CoreValue::I32(_) => self.mapped_expr::<portable_build::I32Values>(value),
+            CoreValue::I64(_) => self.mapped_expr::<portable_build::I64Values>(value),
+            CoreValue::F64(_) => self.mapped_expr::<portable_build::F64Values>(value),
+            CoreValue::Char(_) => self.mapped_expr::<portable_build::CharValues>(value),
+            CoreValue::String(_) => self.mapped_expr::<portable_build::TextValues>(value),
+            CoreValue::Bytes(_) => self.mapped_expr::<portable_build::BytesValues>(value),
+            CoreValue::List(_) => self.mapped_expr::<portable_build::ListValues>(value),
+            CoreValue::None | CoreValue::Some(_) => {
+                self.mapped_expr::<portable_build::OptionValues>(value)
+            }
+            CoreValue::Ok(_) | CoreValue::Err(_) => {
+                self.mapped_expr::<portable_build::ResultValues>(value)
+            }
+            CoreValue::Unit | CoreValue::Record { .. } | CoreValue::Enum { .. } => Ok(value),
+        }
+    }
+
     fn expr_plan(
         &self,
         id: CoreExprId,
@@ -1323,13 +1395,16 @@ impl<'a> Lowering<'a> {
             .ok_or_else(|| vec![diagnostic("missing CoreIR expression")])?;
         let ty = self.ty(expression.ty)?;
         match &expression.kind {
-            CoreExprKind::Literal(value) => Ok(ExprPlan::pure(self.value(value, expression.ty)?)),
+            CoreExprKind::Literal(value) => {
+                let lowered = self.value(value, expression.ty)?;
+                Ok(ExprPlan::pure(self.mapped_literal(value, lowered)?))
+            }
             CoreExprKind::Local(id) => {
                 let local_value = self.core.local(*id).expect("verified local");
-                Ok(ExprPlan::pure(JavaExpr::local(
-                    ty,
-                    identifier(&local_value.name),
-                )))
+                let value = JavaExpr::local(ty, identifier(&local_value.name));
+                Ok(ExprPlan::pure(
+                    self.mapped_expr::<portable_build::LocalReads>(value)?,
+                ))
             }
             CoreExprKind::Constant(id) => Ok(ExprPlan::pure(JavaExpr {
                 ty,
@@ -1344,38 +1419,62 @@ impl<'a> Lowering<'a> {
                 kind: JavaExprKind::Value(JavaValueRef::This),
             })),
             CoreExprKind::ConstructRecord { record, fields } => {
-                self.construct_generated_plan(self.records[record], fields, ty, callable_return)
+                let mut plan = self.construct_generated_plan(
+                    self.records[record],
+                    fields,
+                    ty,
+                    callable_return,
+                )?;
+                plan.value = self.mapped_expr::<portable_build::RecordConstruction>(plan.value)?;
+                Ok(plan)
             }
             CoreExprKind::ConstructEnum {
                 variant, fields, ..
-            } => self.construct_generated_plan(self.variants[variant], fields, ty, callable_return),
+            } => {
+                let mut plan = self.construct_generated_plan(
+                    self.variants[variant],
+                    fields,
+                    ty,
+                    callable_return,
+                )?;
+                plan.value = self.mapped_expr::<portable_build::RecordConstruction>(plan.value)?;
+                Ok(plan)
+            }
             CoreExprKind::ConstructSome(value) => {
                 let mut plan = self.expr_plan(*value, callable_return)?;
                 plan.value = runtime_call(JavaRuntimeCallable::OptionSome, vec![plan.value], ty);
+                plan.value = self.mapped_expr::<portable_build::OptionConstruction>(plan.value)?;
+                plan.value = self.mapped_expr::<portable_build::OptionValues>(plan.value)?;
                 Ok(plan)
             }
-            CoreExprKind::ConstructNone { .. } => Ok(ExprPlan::pure(runtime_call(
-                JavaRuntimeCallable::OptionNone,
-                vec![],
-                ty,
-            ))),
+            CoreExprKind::ConstructNone { .. } => {
+                let value = runtime_call(JavaRuntimeCallable::OptionNone, vec![], ty);
+                let value = self.mapped_expr::<portable_build::OptionConstruction>(value)?;
+                Ok(ExprPlan::pure(
+                    self.mapped_expr::<portable_build::OptionValues>(value)?,
+                ))
+            }
             CoreExprKind::ConstructOk { value, .. } => {
                 let mut plan = self.expr_plan(*value, callable_return)?;
                 plan.value = runtime_call(JavaRuntimeCallable::ValueResultOk, vec![plan.value], ty);
+                plan.value = self.mapped_expr::<portable_build::ResultConstruction>(plan.value)?;
+                plan.value = self.mapped_expr::<portable_build::ResultValues>(plan.value)?;
                 Ok(plan)
             }
             CoreExprKind::ConstructErr { value, .. } => {
                 let mut plan = self.expr_plan(*value, callable_return)?;
                 plan.value =
                     runtime_call(JavaRuntimeCallable::ValueResultErr, vec![plan.value], ty);
+                plan.value = self.mapped_expr::<portable_build::ResultConstruction>(plan.value)?;
+                plan.value = self.mapped_expr::<portable_build::ResultValues>(plan.value)?;
                 Ok(plan)
             }
             CoreExprKind::ConstructList { elements, .. } => {
                 let (statements, values) = self.expr_list(elements, callable_return)?;
-                Ok(ExprPlan {
-                    statements,
-                    value: known_generic_call(JavaKnownCallable::ListOf, values, ty),
-                })
+                let value = known_generic_call(JavaKnownCallable::ListOf, values, ty);
+                let value = self.mapped_expr::<portable_build::ListConstruction>(value)?;
+                let value = self.mapped_expr::<portable_build::ListValues>(value)?;
+                Ok(ExprPlan { statements, value })
             }
             CoreExprKind::CoerceInterface { value, .. } => {
                 let mut plan = self.expr_plan(*value, callable_return)?;
@@ -1399,6 +1498,7 @@ impl<'a> Lowering<'a> {
                     ty,
                     JavaMemberOrigin::GeneratedField(*field),
                 );
+                plan.value = self.mapped_expr::<portable_build::FieldAccess>(plan.value)?;
                 Ok(plan)
             }
             CoreExprKind::Call {
@@ -1432,6 +1532,7 @@ impl<'a> Lowering<'a> {
                         arguments,
                     },
                 };
+                let call = self.mapped_expr::<portable_build::FunctionCalls>(call)?;
                 self.propagate_call(statements, call, ty, callable_return)
             }
             CoreExprKind::StaticMethodCall {
@@ -2625,15 +2726,96 @@ impl<'a> Lowering<'a> {
         value: CoreIntrinsicExpr<JavaExpr>,
         result: JavaType,
     ) -> Result<JavaIntrinsicExpr, Vec<Diagnostic>> {
+        let mut context = ();
+        match classify_intrinsic(value, result) {
+            JavaIntrinsicFamily::BooleanLogic(input) => self
+                .features
+                .mapping_for::<BooleanLogic>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::Equality(input) => self
+                .features
+                .mapping_for::<Equality>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::Ordering(input) => self
+                .features
+                .mapping_for::<Ordering>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::CheckedIntegerArithmetic(input) => self
+                .features
+                .mapping_for::<CheckedIntegerArithmetic>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::WrappingIntegerArithmetic(input) => self
+                .features
+                .mapping_for::<WrappingIntegerArithmetic>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::FloatingPointArithmetic(input) => self
+                .features
+                .mapping_for::<FloatingPointArithmetic>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::StringConcatenation(input) => self
+                .features
+                .mapping_for::<StringConcatenation>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::IntegerBitwise(input) => self
+                .features
+                .mapping_for::<IntegerBitwise>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::CheckedIntegerShifts(input) => self
+                .features
+                .mapping_for::<CheckedIntegerShifts>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::FloatingPointInspection(input) => self
+                .features
+                .mapping_for::<FloatingPointInspection>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::StringInspection(input) => self
+                .features
+                .mapping_for::<StringInspection>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::StringTransformation(input) => self
+                .features
+                .mapping_for::<StringTransformation>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::BytesOperations(input) => self
+                .features
+                .mapping_for::<BytesOperations>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::ListOperations(input) => self
+                .features
+                .mapping_for::<ListOperations>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::OptionOperations(input) => self
+                .features
+                .mapping_for::<OptionOperations>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::ResultInspection(input) => self
+                .features
+                .mapping_for::<ResultInspection>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::IntegerConversions(input) => self
+                .features
+                .mapping_for::<IntegerConversions>()
+                .lower(&mut context, input),
+            JavaIntrinsicFamily::Utf8Conversions(input) => self
+                .features
+                .mapping_for::<Utf8Conversions>()
+                .lower(&mut context, input),
+        }
+    }
+
+    fn intrinsic_java_raw(
+        value: CoreIntrinsicExpr<JavaExpr>,
+        result: JavaType,
+    ) -> Result<JavaIntrinsicExpr, Vec<Diagnostic>> {
         Ok(match value {
             CoreIntrinsicExpr::Unary { operation, operand } => {
-                self.unary_intrinsic(operation, operand, result)?
+                Self::unary_intrinsic(operation, operand, result)?
             }
             CoreIntrinsicExpr::Binary {
                 operation,
                 left,
                 right,
-            } => self.binary_intrinsic(operation, left, right, result)?,
+            } => Self::binary_intrinsic(operation, left, right, result)?,
             CoreIntrinsicExpr::Ternary {
                 operation,
                 first,
@@ -2682,7 +2864,6 @@ impl<'a> Lowering<'a> {
     }
 
     fn unary_intrinsic(
-        &self,
         operation: CoreUnaryIntrinsic,
         operand: JavaExpr,
         result: JavaType,
@@ -2815,7 +2996,6 @@ impl<'a> Lowering<'a> {
     }
 
     fn binary_intrinsic(
-        &self,
         operation: CoreBinaryIntrinsic,
         left: JavaExpr,
         right: JavaExpr,
@@ -3286,6 +3466,13 @@ impl<'a> Lowering<'a> {
     }
 }
 
+pub(crate) fn lower_intrinsic_expression(
+    value: CoreIntrinsicExpr<JavaExpr>,
+    result: JavaType,
+) -> Result<JavaIntrinsicExpr, Vec<Diagnostic>> {
+    Lowering::<'static>::intrinsic_java_raw(value, result)
+}
+
 fn path(value: &str) -> RelativeOutputPath {
     RelativeOutputPath::new(value).expect("static Java output path is safe")
 }
@@ -3326,7 +3513,8 @@ impl ExprPlan {
     }
 }
 
-enum JavaIntrinsicExpr {
+#[doc(hidden)]
+pub enum JavaIntrinsicExpr {
     Direct(JavaExpr),
     Fallible {
         call: JavaExpr,

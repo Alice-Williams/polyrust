@@ -29,15 +29,15 @@ Registration has the conceptual form:
 
 ```rust
 LanguagePluginBuilder::new()
-    .support::<Functions>(JavaFunctions)
-    .support::<Records>(JavaRecords)
-    .support::<BooleanLogic>(JavaBooleanLogic)
+    .support(JavaFunctions)
+    .support(JavaRecords)
+    .support(JavaBooleanLogic)
     .build()
 ```
 
-`support::<F>(mapping)` is available only when the corresponding slot is
-`Missing`, `mapping` implements `FeatureMapping<D, F>` for dialect `D`, and
-its output is the target-AST category specified for `F` by `D`.
+`support(mapping)` infers `F` from `mapping: FeatureMapping<D, Feature = F>`.
+It is available only when the corresponding slot is `Missing` and its output
+is the target-AST category specified for `F` by `D`.
 
 The call consumes the builder and changes that slot to
 `Implemented<Mapping>`. A duplicate registration therefore does not compile.
@@ -48,7 +48,8 @@ implementation and is never implemented manually by a backend.
 Conceptually:
 
 ```rust
-trait FeatureMapping<D, F> {
+trait FeatureMapping<D> {
+    type Feature;
     type Input;
     type Output;
 
@@ -133,4 +134,3 @@ operation is not exposed before its operand/result types are representable.
   preflight fails.
 - Every registered Java operation is invoked through its mapping object and
   generated output is compiled with Java 21 lint-as-error.
-

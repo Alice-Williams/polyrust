@@ -38,6 +38,9 @@ FORBIDDEN_CLOSED_TYPED_API = re.compile(
     r"\b(?:StaticV1|StaticFeatureProfile|static_program|"
     r"function[0-9]+|call[0-9]+|record[0-9]+|construct[0-9]+)\b"
 )
+FORBIDDEN_CONCRETE_SUPPORT_WITNESS = re.compile(
+    r"\bimpl\s+Supports\s*<\s*[A-Z][A-Za-z0-9_]*\s*>\s+for\s+"
+)
 
 CFG_TEST_ATTRIBUTE = "#[cfg(test)]"
 RAW_STRING_START = re.compile(r'(?:br|rb|r)(?P<hashes>#{0,255})"')
@@ -204,6 +207,7 @@ def offenders(path: str, source: str) -> list[str]:
         ("manual dependency attachment API", FORBIDDEN_MANUAL_DEPENDENCY_API),
         ("dependency discovery by text scan", FORBIDDEN_DEPENDENCY_TEXT_SCAN),
         ("closed or arity-numbered typed-builder API", FORBIDDEN_CLOSED_TYPED_API),
+        ("manual concrete feature-support witness", FORBIDDEN_CONCRETE_SUPPORT_WITNESS),
     ]:
         for match in pattern.finditer(source):
             line = source.count("\n", 0, match.start()) + 1
@@ -229,6 +233,7 @@ struct AstViolation { message: String }
         'body.contains("import java.util.List");',
         "let program = static_program::<StaticV1>(build);",
         "module.function2(name, left, right, body);",
+        "impl Supports<I32Values> for JavaDialect {}",
     ]
     for injected in rejected:
         if not offenders("injected.rs", injected):

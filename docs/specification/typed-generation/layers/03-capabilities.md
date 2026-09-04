@@ -123,8 +123,8 @@ Registries MUST NOT use:
 ## Mapping registration
 
 A support decision and a lowering implementation are one registered fact.
-`LanguagePluginBuilder::support::<F>(mapping)` requires a typed
-`FeatureMapping<D, F>`, stores it, and changes the builder's `F` slot from
+`LanguagePluginBuilder::support(mapping)` infers `F` from a typed
+`FeatureMapping<D, Feature = F>`, stores it, and changes the builder's `F` slot from
 `Missing` to `Implemented<Mapping>`. `Supports<F>` is derived only from that
 slot and returns the same stored mapping. A duplicate call is unavailable.
 
