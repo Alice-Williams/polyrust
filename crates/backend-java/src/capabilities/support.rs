@@ -93,35 +93,6 @@ impl<C: Capability> JavaIntrinsicMappingInput<C> {
     }
 }
 
-macro_rules! java_ast_mapping {
-    ($mapping:ident, $capability:ty, $ast:ty) => {
-        #[doc(hidden)]
-        #[derive(Clone, Copy, Debug, Default)]
-        pub struct $mapping;
-
-        impl crate::capabilities::support::sealed::JavaCapabilityMapping for $mapping {}
-        impl crate::capabilities::support::JavaCapabilityMapping for $mapping {}
-
-        impl portable_build::CapabilityMapping<crate::dialect::JavaDialect> for $mapping {
-            type Capability = $capability;
-            type Context = ();
-            type Input = $ast;
-            type Output = $ast;
-            type Error = Vec<portable_diagnostics::Diagnostic>;
-
-            fn lower(
-                &self,
-                _context: &mut Self::Context,
-                input: Self::Input,
-            ) -> Result<Self::Output, Self::Error> {
-                Ok(input)
-            }
-        }
-    };
-}
-
-pub(crate) use java_ast_mapping;
-
 macro_rules! java_intrinsic_mapping {
     ($mapping:ident, $capability:ty) => {
         #[doc(hidden)]

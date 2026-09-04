@@ -38,6 +38,7 @@ mod wrapping_integer_arithmetic;
 pub use bool_values::JavaBoolValues;
 pub use boolean_logic::JavaBooleanLogic;
 pub use bytes_operations::JavaBytesOperations;
+pub(crate) use bytes_values::JavaBytesInput;
 pub use bytes_values::JavaBytesValues;
 pub use char_values::JavaCharValues;
 pub use checked_integer_arithmetic::JavaCheckedIntegerArithmetic;
@@ -53,13 +54,16 @@ pub use i64_values::JavaI64Values;
 pub use integer_bitwise::JavaIntegerBitwise;
 pub use integer_conversions::JavaIntegerConversions;
 pub use list_operations::JavaListOperations;
+pub(crate) use list_values::JavaListInput;
 pub use list_values::JavaListValues;
 pub use option_operations::JavaOptionOperations;
+pub(crate) use option_values::JavaOptionInput;
 pub use option_values::JavaOptionValues;
 pub use ordering::JavaOrdering;
 pub use records::JavaRecords;
 pub use records::JavaRecordsNode;
 pub use result_operations::JavaResultOperations;
+pub(crate) use result_values::JavaResultInput;
 pub use result_values::JavaResultValues;
 pub use string_concatenation::JavaStringConcatenation;
 pub use string_inspection::JavaStringInspection;
@@ -70,6 +74,8 @@ pub use utf8_conversions::JavaUtf8Conversions;
 pub use wrapping_integer_arithmetic::JavaWrappingIntegerArithmetic;
 
 pub(crate) use dispatch::{JavaIntrinsicFamily, classify_intrinsic};
+pub(crate) use functions::{JavaFunctionDeclarationInput, JavaFunctionsInput};
+pub(crate) use records::{JavaRecordDeclarationInput, JavaRecordsInput};
 
 use crate::dialect::JavaDialect;
 

@@ -41,6 +41,10 @@ FORBIDDEN_CLOSED_TYPED_API = re.compile(
 FORBIDDEN_CONCRETE_SUPPORT_WITNESS = re.compile(
     r"\bimpl\s+Supports\s*<\s*[A-Z][A-Za-z0-9_]*\s*>\s+for\s+"
 )
+FORBIDDEN_JAVA_TARGET_MAPPING_INPUT = re.compile(
+    r"\btype\s+Input\s*=\s*(?:JavaExpr|JavaMethod|JavaTypeDeclaration)\s*;"
+)
+FORBIDDEN_IDENTITY_MAPPING_RETURN = re.compile(r"\bOk\s*\(\s*input\s*\)")
 
 CFG_TEST_ATTRIBUTE = "#[cfg(test)]"
 RAW_STRING_START = re.compile(r'(?:br|rb|r)(?P<hashes>#{0,255})"')
@@ -208,6 +212,8 @@ def offenders(path: str, source: str) -> list[str]:
         ("dependency discovery by text scan", FORBIDDEN_DEPENDENCY_TEXT_SCAN),
         ("closed or arity-numbered typed-builder API", FORBIDDEN_CLOSED_TYPED_API),
         ("manual concrete feature-support witness", FORBIDDEN_CONCRETE_SUPPORT_WITNESS),
+        ("completed Java AST used as mapping input", FORBIDDEN_JAVA_TARGET_MAPPING_INPUT),
+        ("identity capability mapping return", FORBIDDEN_IDENTITY_MAPPING_RETURN),
     ]:
         for match in pattern.finditer(source):
             line = source.count("\n", 0, match.start()) + 1
@@ -234,6 +240,8 @@ struct AstViolation { message: String }
         "let program = static_program::<StaticV1>(build);",
         "module.function2(name, left, right, body);",
         "impl Supports<I32Values> for JavaDialect {}",
+        "type Input = JavaExpr;",
+        "fn lower(input: Node) -> Result<Node, Error> { Ok(input) }",
     ]
     for injected in rejected:
         if not offenders("injected.rs", injected):
