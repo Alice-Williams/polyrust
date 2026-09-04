@@ -23,9 +23,16 @@ struct ProgramBuilder<R> { /* private accumulating builder */ }
 struct Expr<T, R> { /* result type T; inferred requirements R */ }
 struct Type<T, R> { /* value type T; representation requirements R */ }
 struct Local<T, R> { /* callable-branded local */ }
+struct Block<T, R> { /* typed statements plus a result */ }
+struct Statement<R> { /* typed statement with inferred requirements */ }
 struct Field<Record, T> { /* declaration-branded field */ }
 struct Record<Record, Fields> { /* exact field list */ }
 struct Function<Arguments, Result> { /* exact signature */ }
+struct Constant<T> { /* typed immutable declaration */ }
+struct Alias<T> { /* transparent named type */ }
+struct Enum<Variants> { /* payload-free variants */ }
+struct Interface<Methods> { /* exact method signatures */ }
+struct Implementation<Interface, Record, Bindings> { /* exact bindings */ }
 
 struct Nil;
 struct Cons<Head, Tail>;
@@ -57,29 +64,32 @@ boundary are mandatory.
 - No constructor accepts caller-provided evidence that a capability was used or
   supported.
 
-The capability markers are independently implementable semantic families:
+The closed capability set and ownership rules are defined by
+`00-capability-catalogue.md`. The typed AST MUST expose the complete initial
+catalogue through the following safe constructors:
 
-| Family | Markers |
+| Capability family | Required typed surface |
 | --- | --- |
-| Declarations and references | `Functions`, `Records` |
-| Values | `BoolValues`, `I32Values`, `I64Values`, `F64Values`, `TextValues` |
-| Operations | `BooleanLogic`, `Equality`, `Ordering`, `CheckedIntegerArithmetic`, `WrappingIntegerArithmetic`, `FloatingPointArithmetic`, `StringConcatenation` |
+| `Modules` | `typed_program` creates exactly one named module and always infers `Modules` |
+| `Constants` | typed immutable declaration, constant expression, and same-module reference |
+| `TypeAliases` | transparent named alias handle and named type witness |
+| `Functions` | arbitrary parameter list, branded parameter read, exact call, and ordinary return |
+| `Records` | declaration, exact construction, and branded field projection |
+| `Enums` | non-empty payload-free declaration, variant value, enum equality, and exhaustive ordered branch list |
+| `Interfaces` | arbitrary method signatures, exact implementation binding list, interface conversion, concrete call, and interface call |
+| `PortableTests` | typed function or method invocation plus exact value/error expectation |
+| `LocalBindings` | immutable binding which returns a fresh body-branded local handle |
+| `Conditionals` | value-producing and statement `if/else` with equal branch result types |
+| `Loops` | `for_each`, `while`, `break`, and `continue`; loop-control handles cannot escape their loop body |
+| `PatternMatching` | exhaustive option, result, and boolean branches plus structurally constrained wildcard fallback |
+| `ResultPropagation` | explicit propagation from `Result<T, E>` to the enclosing compatible result context |
+| value capabilities | typed type witnesses and constructors for unit, bool, i32, i64, f64, char, text, bytes, list, option, and result |
+| operation capabilities | one named typed constructor per PolyIR operation, with exact operand and result markers |
 
-`Functions` includes local reads and exact calls. `Records` includes exact
-construction and field projection. Value capabilities include construction of
-their values rather than advertising a second construction capability.
-
-M34A-08U extends values with `CharValues`, `BytesValues`, `ListValues`,
-`OptionValues`, and `ResultValues`, and extends operations with integer
-bitwise/shift, float inspection, string inspection/transformation, bytes,
-lists, options/results, numeric conversion, and UTF-8 conversion families.
-Together these typed constructors cover every PolyIR v0 intrinsic. Interfaces,
-control flow, and additional declarations remain separate branded AST work;
-they are never smuggled through a generic intrinsic constructor.
-
-Interfaces, interface values, implementations, composition, control flow, and
-future constructs extend this catalogue with new independent markers rather
-than a new profile version.
+No structural family is represented by a generic intrinsic constructor.
+Interfaces, control flow, tests, constants, and aliases use branded types which
+preserve their cross-reference relationships. Value capabilities own value
+construction; operation capabilities remain independently selectable.
 
 ## Arbitrary typed lists
 

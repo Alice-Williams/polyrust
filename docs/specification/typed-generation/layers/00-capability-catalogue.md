@@ -1,7 +1,7 @@
 # Portable capability catalogue
 
 - Status: normative for M34A-08V and later language migrations
-- Last updated: 2026-09-04
+- Last updated: 2026-09-05
 
 ## Purpose
 
@@ -199,6 +199,11 @@ require a hand-maintained source list.
 - Removing a mapping used by `TypedProgram<R>` makes its `SupportsAll<R>` call
   fail during Rust compilation.
 - Every registered mapping has invocation evidence.
+- A compile-pass inventory constructs at least one typed node owned by every
+  initial capability and proves the resulting requirement tree is accepted by
+  a complete test plugin.
+- Removing the constructor-owned capability leaf for any inventory row makes
+  that row's compile-time requirement assertion fail.
 - Dynamic preflight derives support from the same registration and performs
   shape checks before invoking any mapping.
 - Every accepted Java result passes post-link certification, total structural
