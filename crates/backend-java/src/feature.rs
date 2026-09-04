@@ -13,11 +13,7 @@ use crate::{
 
 pub type JavaCapabilitySlots = implemented_capability_slots!(
     JavaFunctions,
-    JavaLocalReads,
-    JavaFunctionCalls,
     JavaRecords,
-    JavaRecordConstruction,
-    JavaFieldAccess,
     JavaBoolValues,
     JavaI32Values,
     JavaI64Values,
@@ -35,9 +31,6 @@ pub type JavaCapabilitySlots = implemented_capability_slots!(
     JavaListValues,
     JavaOptionValues,
     JavaResultValues,
-    JavaListConstruction,
-    JavaOptionConstruction,
-    JavaResultConstruction,
     JavaIntegerBitwise,
     JavaCheckedIntegerShifts,
     JavaFloatingPointInspection,
@@ -46,7 +39,7 @@ pub type JavaCapabilitySlots = implemented_capability_slots!(
     JavaBytesOperations,
     JavaListOperations,
     JavaOptionOperations,
-    JavaResultInspection,
+    JavaResultOperations,
     JavaIntegerConversions,
     JavaUtf8Conversions,
 );
@@ -56,11 +49,7 @@ pub type JavaCapabilitySet = LanguageCapabilityPlugin<JavaDialect, JavaCapabilit
 pub(crate) fn java_capabilities() -> JavaCapabilitySet {
     java_plugin_builder()
         .support(JavaFunctions)
-        .support(JavaLocalReads)
-        .support(JavaFunctionCalls)
         .support(JavaRecords)
-        .support(JavaRecordConstruction)
-        .support(JavaFieldAccess)
         .support(JavaBoolValues)
         .support(JavaI32Values)
         .support(JavaI64Values)
@@ -78,9 +67,6 @@ pub(crate) fn java_capabilities() -> JavaCapabilitySet {
         .support(JavaListValues)
         .support(JavaOptionValues)
         .support(JavaResultValues)
-        .support(JavaListConstruction)
-        .support(JavaOptionConstruction)
-        .support(JavaResultConstruction)
         .support(JavaIntegerBitwise)
         .support(JavaCheckedIntegerShifts)
         .support(JavaFloatingPointInspection)
@@ -89,7 +75,7 @@ pub(crate) fn java_capabilities() -> JavaCapabilitySet {
         .support(JavaBytesOperations)
         .support(JavaListOperations)
         .support(JavaOptionOperations)
-        .support(JavaResultInspection)
+        .support(JavaResultOperations)
         .support(JavaIntegerConversions)
         .support(JavaUtf8Conversions)
         .build()
@@ -184,12 +170,64 @@ macro_rules! ast_mapping {
     };
 }
 
-ast_mapping!(JavaFunctions, Functions, JavaMethod);
-ast_mapping!(JavaLocalReads, LocalReads, JavaExpr);
-ast_mapping!(JavaFunctionCalls, FunctionCalls, JavaExpr);
-ast_mapping!(JavaRecords, Records, JavaTypeDeclaration);
-ast_mapping!(JavaRecordConstruction, RecordConstruction, JavaExpr);
-ast_mapping!(JavaFieldAccess, FieldAccess, JavaExpr);
+#[doc(hidden)]
+pub enum JavaFunctionsNode {
+    Declaration(JavaMethod),
+    Expression(JavaExpr),
+}
+
+#[doc(hidden)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct JavaFunctions;
+
+impl sealed::JavaCapabilityMapping for JavaFunctions {}
+impl JavaCapabilityMapping for JavaFunctions {}
+
+impl CapabilityMapping<JavaDialect> for JavaFunctions {
+    type Capability = Functions;
+    type Context = ();
+    type Input = JavaFunctionsNode;
+    type Output = JavaFunctionsNode;
+    type Error = Vec<Diagnostic>;
+
+    fn lower(
+        &self,
+        _context: &mut Self::Context,
+        input: Self::Input,
+    ) -> Result<Self::Output, Self::Error> {
+        Ok(input)
+    }
+}
+
+#[doc(hidden)]
+pub enum JavaRecordsNode {
+    Declaration(JavaTypeDeclaration),
+    Expression(JavaExpr),
+}
+
+#[doc(hidden)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct JavaRecords;
+
+impl sealed::JavaCapabilityMapping for JavaRecords {}
+impl JavaCapabilityMapping for JavaRecords {}
+
+impl CapabilityMapping<JavaDialect> for JavaRecords {
+    type Capability = Records;
+    type Context = ();
+    type Input = JavaRecordsNode;
+    type Output = JavaRecordsNode;
+    type Error = Vec<Diagnostic>;
+
+    fn lower(
+        &self,
+        _context: &mut Self::Context,
+        input: Self::Input,
+    ) -> Result<Self::Output, Self::Error> {
+        Ok(input)
+    }
+}
+
 ast_mapping!(JavaBoolValues, BoolValues, JavaExpr);
 ast_mapping!(JavaI32Values, I32Values, JavaExpr);
 ast_mapping!(JavaI64Values, I64Values, JavaExpr);
@@ -200,10 +238,6 @@ ast_mapping!(JavaBytesValues, BytesValues, JavaExpr);
 ast_mapping!(JavaListValues, ListValues, JavaExpr);
 ast_mapping!(JavaOptionValues, OptionValues, JavaExpr);
 ast_mapping!(JavaResultValues, ResultValues, JavaExpr);
-ast_mapping!(JavaListConstruction, ListConstruction, JavaExpr);
-ast_mapping!(JavaOptionConstruction, OptionConstruction, JavaExpr);
-ast_mapping!(JavaResultConstruction, ResultConstruction, JavaExpr);
-
 #[doc(hidden)]
 pub struct JavaIntrinsicMappingInput<F: Capability> {
     value: CoreIntrinsicExpr<JavaExpr>,
@@ -263,7 +297,7 @@ intrinsic_mapping!(JavaStringTransformation, StringTransformation);
 intrinsic_mapping!(JavaBytesOperations, BytesOperations);
 intrinsic_mapping!(JavaListOperations, ListOperations);
 intrinsic_mapping!(JavaOptionOperations, OptionOperations);
-intrinsic_mapping!(JavaResultInspection, ResultInspection);
+intrinsic_mapping!(JavaResultOperations, ResultOperations);
 intrinsic_mapping!(JavaIntegerConversions, IntegerConversions);
 intrinsic_mapping!(JavaUtf8Conversions, Utf8Conversions);
 
@@ -283,7 +317,7 @@ pub(crate) enum JavaIntrinsicFamily {
     BytesOperations(JavaIntrinsicMappingInput<BytesOperations>),
     ListOperations(JavaIntrinsicMappingInput<ListOperations>),
     OptionOperations(JavaIntrinsicMappingInput<OptionOperations>),
-    ResultInspection(JavaIntrinsicMappingInput<ResultInspection>),
+    ResultOperations(JavaIntrinsicMappingInput<ResultOperations>),
     IntegerConversions(JavaIntrinsicMappingInput<IntegerConversions>),
     Utf8Conversions(JavaIntrinsicMappingInput<Utf8Conversions>),
 }
@@ -311,7 +345,7 @@ pub(crate) fn classify_intrinsic(
         BytesOperations,
         ListOperations,
         OptionOperations,
-        ResultInspection,
+        ResultOperations,
         IntegerConversions,
         Utf8Conversions,
     }
@@ -332,7 +366,7 @@ pub(crate) fn classify_intrinsic(
             U::BytesLength | U::BytesIsEmpty => Family::BytesOperations,
             U::ListLength | U::ListIsEmpty => Family::ListOperations,
             U::OptionIsSome | U::OptionIsNone => Family::OptionOperations,
-            U::ResultIsOk | U::ResultIsErr => Family::ResultInspection,
+            U::ResultIsOk | U::ResultIsErr => Family::ResultOperations,
             U::WidenI32ToI64 | U::NarrowI64ToI32Checked => Family::IntegerConversions,
             U::StringToUtf8 | U::StringFromUtf8Checked => Family::Utf8Conversions,
         },
@@ -426,8 +460,8 @@ pub(crate) fn classify_intrinsic(
         Family::OptionOperations => {
             JavaIntrinsicFamily::OptionOperations(JavaIntrinsicMappingInput::new(value, result))
         }
-        Family::ResultInspection => {
-            JavaIntrinsicFamily::ResultInspection(JavaIntrinsicMappingInput::new(value, result))
+        Family::ResultOperations => {
+            JavaIntrinsicFamily::ResultOperations(JavaIntrinsicMappingInput::new(value, result))
         }
         Family::IntegerConversions => {
             JavaIntrinsicFamily::IntegerConversions(JavaIntrinsicMappingInput::new(value, result))

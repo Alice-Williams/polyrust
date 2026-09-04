@@ -50,21 +50,24 @@ boundary are mandatory.
 - A consuming program builder returns a new builder type after adding a
   declaration. Therefore a caller cannot mutate the program while discarding
   the corresponding requirement proof.
-- Requirement trees may contain repeated features. `SupportsAll` recursively
+- Requirement trees may contain repeated capabilities. `SupportsAll` recursively
   checks every leaf, so deduplication is not required for soundness.
 - Users normally bind the completed program with `let`; they do not manually
   name or maintain its inferred requirement type.
-- No constructor accepts caller-provided evidence that a feature was used or
+- No constructor accepts caller-provided evidence that a capability was used or
   supported.
 
 The capability markers are independently implementable semantic families:
 
 | Family | Markers |
 | --- | --- |
-| Declarations | `Functions`, `Records` |
-| References | `LocalReads`, `FunctionCalls`, `RecordConstruction`, `FieldAccess` |
+| Declarations and references | `Functions`, `Records` |
 | Values | `BoolValues`, `I32Values`, `I64Values`, `F64Values`, `TextValues` |
 | Operations | `BooleanLogic`, `Equality`, `Ordering`, `CheckedIntegerArithmetic`, `WrappingIntegerArithmetic`, `FloatingPointArithmetic`, `StringConcatenation` |
+
+`Functions` includes local reads and exact calls. `Records` includes exact
+construction and field projection. Value capabilities include construction of
+their values rather than advertising a second construction capability.
 
 M34A-08U extends values with `CharValues`, `BytesValues`, `ListValues`,
 `OptionValues`, and `ResultValues`, and extends operations with integer

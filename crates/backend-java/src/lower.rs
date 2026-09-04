@@ -7,7 +7,7 @@ use portable_build::{
     BooleanLogic, BytesOperations, Capability, CapabilityMapping, CheckedIntegerArithmetic,
     CheckedIntegerShifts, Equality, FloatingPointArithmetic, FloatingPointInspection,
     IntegerBitwise, IntegerConversions, ListOperations, OptionOperations, Ordering,
-    ResultInspection, StringConcatenation, StringInspection, StringTransformation, Supports,
+    ResultOperations, StringConcatenation, StringInspection, StringTransformation, Supports,
     Utf8Conversions, WrappingIntegerArithmetic,
 };
 use portable_codegen::{
@@ -33,7 +33,10 @@ use crate::{
     ast::*,
     capability::JavaCapabilitySelection,
     dialect::*,
-    feature::{JavaCapabilitySet, JavaIntrinsicFamily, classify_intrinsic},
+    feature::{
+        JavaCapabilitySet, JavaFunctionsNode, JavaIntrinsicFamily, JavaRecordsNode,
+        classify_intrinsic,
+    },
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -519,9 +522,16 @@ impl<'a> Lowering<'a> {
             permits: vec![],
             members,
         };
-        self.features
+        match self
+            .features
             .mapping_for::<portable_build::Records>()
-            .lower(&mut (), declaration)
+            .lower(&mut (), JavaRecordsNode::Declaration(declaration))?
+        {
+            JavaRecordsNode::Declaration(declaration) => Ok(declaration),
+            JavaRecordsNode::Expression(_) => Err(vec![diagnostic(
+                "Java Records mapping returned an expression for a declaration",
+            )]),
+        }
     }
 
     fn enum_declarations(
@@ -826,9 +836,16 @@ impl<'a> Lowering<'a> {
             parameters,
             body: Some(JavaBlock::new(boundary)),
         };
-        self.features
+        match self
+            .features
             .mapping_for::<portable_build::Functions>()
-            .lower(&mut (), method)
+            .lower(&mut (), JavaFunctionsNode::Declaration(method))?
+        {
+            JavaFunctionsNode::Declaration(method) => Ok(method),
+            JavaFunctionsNode::Expression(_) => Err(vec![diagnostic(
+                "Java Functions mapping returned an expression for a declaration",
+            )]),
+        }
     }
 
     fn public_tagged_value_factories(&self) -> Result<Vec<JavaMember>, Vec<Diagnostic>> {
@@ -1359,6 +1376,32 @@ impl<'a> Lowering<'a> {
         self.features.mapping_for::<F>().lower(&mut (), value)
     }
 
+    fn mapped_function_expr(&self, value: JavaExpr) -> Result<JavaExpr, Vec<Diagnostic>> {
+        match self
+            .features
+            .mapping_for::<portable_build::Functions>()
+            .lower(&mut (), JavaFunctionsNode::Expression(value))?
+        {
+            JavaFunctionsNode::Expression(value) => Ok(value),
+            JavaFunctionsNode::Declaration(_) => Err(vec![diagnostic(
+                "Java Functions mapping returned a declaration for an expression",
+            )]),
+        }
+    }
+
+    fn mapped_record_expr(&self, value: JavaExpr) -> Result<JavaExpr, Vec<Diagnostic>> {
+        match self
+            .features
+            .mapping_for::<portable_build::Records>()
+            .lower(&mut (), JavaRecordsNode::Expression(value))?
+        {
+            JavaRecordsNode::Expression(value) => Ok(value),
+            JavaRecordsNode::Declaration(_) => Err(vec![diagnostic(
+                "Java Records mapping returned a declaration for an expression",
+            )]),
+        }
+    }
+
     fn mapped_literal(
         &self,
         source: &CoreValue,
@@ -1402,9 +1445,7 @@ impl<'a> Lowering<'a> {
             CoreExprKind::Local(id) => {
                 let local_value = self.core.local(*id).expect("verified local");
                 let value = JavaExpr::local(ty, identifier(&local_value.name));
-                Ok(ExprPlan::pure(
-                    self.mapped_expr::<portable_build::LocalReads>(value)?,
-                ))
+                Ok(ExprPlan::pure(self.mapped_function_expr(value)?))
             }
             CoreExprKind::Constant(id) => Ok(ExprPlan::pure(JavaExpr {
                 ty,
@@ -1425,7 +1466,7 @@ impl<'a> Lowering<'a> {
                     ty,
                     callable_return,
                 )?;
-                plan.value = self.mapped_expr::<portable_build::RecordConstruction>(plan.value)?;
+                plan.value = self.mapped_record_expr(plan.value)?;
                 Ok(plan)
             }
             CoreExprKind::ConstructEnum {
@@ -1437,19 +1478,17 @@ impl<'a> Lowering<'a> {
                     ty,
                     callable_return,
                 )?;
-                plan.value = self.mapped_expr::<portable_build::RecordConstruction>(plan.value)?;
+                plan.value = self.mapped_record_expr(plan.value)?;
                 Ok(plan)
             }
             CoreExprKind::ConstructSome(value) => {
                 let mut plan = self.expr_plan(*value, callable_return)?;
                 plan.value = runtime_call(JavaRuntimeCallable::OptionSome, vec![plan.value], ty);
-                plan.value = self.mapped_expr::<portable_build::OptionConstruction>(plan.value)?;
                 plan.value = self.mapped_expr::<portable_build::OptionValues>(plan.value)?;
                 Ok(plan)
             }
             CoreExprKind::ConstructNone { .. } => {
                 let value = runtime_call(JavaRuntimeCallable::OptionNone, vec![], ty);
-                let value = self.mapped_expr::<portable_build::OptionConstruction>(value)?;
                 Ok(ExprPlan::pure(
                     self.mapped_expr::<portable_build::OptionValues>(value)?,
                 ))
@@ -1457,7 +1496,6 @@ impl<'a> Lowering<'a> {
             CoreExprKind::ConstructOk { value, .. } => {
                 let mut plan = self.expr_plan(*value, callable_return)?;
                 plan.value = runtime_call(JavaRuntimeCallable::ValueResultOk, vec![plan.value], ty);
-                plan.value = self.mapped_expr::<portable_build::ResultConstruction>(plan.value)?;
                 plan.value = self.mapped_expr::<portable_build::ResultValues>(plan.value)?;
                 Ok(plan)
             }
@@ -1465,14 +1503,12 @@ impl<'a> Lowering<'a> {
                 let mut plan = self.expr_plan(*value, callable_return)?;
                 plan.value =
                     runtime_call(JavaRuntimeCallable::ValueResultErr, vec![plan.value], ty);
-                plan.value = self.mapped_expr::<portable_build::ResultConstruction>(plan.value)?;
                 plan.value = self.mapped_expr::<portable_build::ResultValues>(plan.value)?;
                 Ok(plan)
             }
             CoreExprKind::ConstructList { elements, .. } => {
                 let (statements, values) = self.expr_list(elements, callable_return)?;
                 let value = known_generic_call(JavaKnownCallable::ListOf, values, ty);
-                let value = self.mapped_expr::<portable_build::ListConstruction>(value)?;
                 let value = self.mapped_expr::<portable_build::ListValues>(value)?;
                 Ok(ExprPlan { statements, value })
             }
@@ -1498,7 +1534,7 @@ impl<'a> Lowering<'a> {
                     ty,
                     JavaMemberOrigin::GeneratedField(*field),
                 );
-                plan.value = self.mapped_expr::<portable_build::FieldAccess>(plan.value)?;
+                plan.value = self.mapped_record_expr(plan.value)?;
                 Ok(plan)
             }
             CoreExprKind::Call {
@@ -1532,7 +1568,7 @@ impl<'a> Lowering<'a> {
                         arguments,
                     },
                 };
-                let call = self.mapped_expr::<portable_build::FunctionCalls>(call)?;
+                let call = self.mapped_function_expr(call)?;
                 self.propagate_call(statements, call, ty, callable_return)
             }
             CoreExprKind::StaticMethodCall {
@@ -2788,9 +2824,9 @@ impl<'a> Lowering<'a> {
                 .features
                 .mapping_for::<OptionOperations>()
                 .lower(&mut context, input),
-            JavaIntrinsicFamily::ResultInspection(input) => self
+            JavaIntrinsicFamily::ResultOperations(input) => self
                 .features
-                .mapping_for::<ResultInspection>()
+                .mapping_for::<ResultOperations>()
                 .lower(&mut context, input),
             JavaIntrinsicFamily::IntegerConversions(input) => self
                 .features

@@ -3,11 +3,10 @@ use std::collections::BTreeMap;
 use portable_build::{
     BoolValues, BooleanLogic, BytesOperations, BytesValues, CharValues, CheckedIntegerArithmetic,
     CheckedIntegerShifts, Equality, F64Values, FloatingPointArithmetic, FloatingPointInspection,
-    FunctionCalls, Functions, I32Values, I64Values, IntegerBitwise, IntegerConversions,
-    ListConstruction, ListOperations, ListValues, LocalReads, OptionConstruction, OptionOperations,
-    OptionValues, Ordering, RecordConstruction, Records, ResultConstruction, ResultInspection,
-    ResultValues, StringConcatenation, StringInspection, StringTransformation, Supports,
-    TextValues, Utf8Conversions, WrappingIntegerArithmetic,
+    Functions, I32Values, I64Values, IntegerBitwise, IntegerConversions, ListOperations,
+    ListValues, OptionOperations, OptionValues, Ordering, Records, ResultOperations, ResultValues,
+    StringConcatenation, StringInspection, StringTransformation, Supports, TextValues,
+    Utf8Conversions, WrappingIntegerArithmetic,
 };
 use portable_codegen::{
     CapabilityRegistry, ControlFeature, CoreFeature, DeclarationFeature, FeatureShape, FeatureUse,
@@ -162,23 +161,22 @@ impl JavaCapabilityRegistry {
             CoreFeature::Type(TypeFeature::List) => self.registered::<ListValues>(),
             CoreFeature::Type(TypeFeature::Option) => self.registered::<OptionValues>(),
             CoreFeature::Type(TypeFeature::Result) => self.registered::<ResultValues>(),
-            CoreFeature::Operation(OperationFeature::Local) => self.registered::<LocalReads>(),
-            CoreFeature::Operation(OperationFeature::Call) => self.registered::<FunctionCalls>(),
+            CoreFeature::Operation(OperationFeature::Local | OperationFeature::Call) => {
+                self.registered::<Functions>()
+            }
             CoreFeature::Operation(OperationFeature::ConstructRecord) => {
-                self.registered::<RecordConstruction>()
+                self.registered::<Records>()
             }
-            CoreFeature::Operation(OperationFeature::Field) => {
-                self.registered::<portable_build::FieldAccess>()
-            }
+            CoreFeature::Operation(OperationFeature::Field) => self.registered::<Records>(),
             CoreFeature::Operation(OperationFeature::ConstructList) => {
-                self.registered::<ListConstruction>()
+                self.registered::<ListValues>()
             }
             CoreFeature::Operation(
                 OperationFeature::ConstructSome | OperationFeature::ConstructNone,
-            ) => self.registered::<OptionConstruction>(),
+            ) => self.registered::<OptionValues>(),
             CoreFeature::Operation(
                 OperationFeature::ConstructOk | OperationFeature::ConstructErr,
-            ) => self.registered::<ResultConstruction>(),
+            ) => self.registered::<ResultValues>(),
             CoreFeature::Operation(OperationFeature::Unary(operation)) => match operation {
                 CoreUnaryIntrinsic::BoolNot => self.registered::<BooleanLogic>(),
                 CoreUnaryIntrinsic::IntNegChecked => self.registered::<CheckedIntegerArithmetic>(),
@@ -204,7 +202,7 @@ impl JavaCapabilityRegistry {
                     self.registered::<OptionOperations>()
                 }
                 CoreUnaryIntrinsic::ResultIsOk | CoreUnaryIntrinsic::ResultIsErr => {
-                    self.registered::<ResultInspection>()
+                    self.registered::<ResultOperations>()
                 }
                 CoreUnaryIntrinsic::WidenI32ToI64 | CoreUnaryIntrinsic::NarrowI64ToI32Checked => {
                     self.registered::<IntegerConversions>()

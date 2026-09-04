@@ -12,27 +12,20 @@ mod checked_integer_arithmetic;
 mod checked_integer_shifts;
 mod equality;
 mod f64_values;
-mod field_access;
 mod floating_point_arithmetic;
 mod floating_point_inspection;
-mod function_calls;
 mod functions;
 mod i32_values;
 mod i64_values;
 mod integer_bitwise;
 mod integer_conversions;
-mod list_construction;
 mod list_operations;
 mod list_values;
-mod local_reads;
-mod option_construction;
 mod option_operations;
 mod option_values;
 mod ordering;
-mod record_construction;
 mod records;
-mod result_construction;
-mod result_inspection;
+mod result_operations;
 mod result_values;
 mod string_concatenation;
 mod string_inspection;
@@ -50,27 +43,20 @@ pub use checked_integer_arithmetic::CheckedIntegerArithmetic;
 pub use checked_integer_shifts::CheckedIntegerShifts;
 pub use equality::Equality;
 pub use f64_values::F64Values;
-pub use field_access::FieldAccess;
 pub use floating_point_arithmetic::FloatingPointArithmetic;
 pub use floating_point_inspection::FloatingPointInspection;
-pub use function_calls::FunctionCalls;
 pub use functions::Functions;
 pub use i32_values::I32Values;
 pub use i64_values::I64Values;
 pub use integer_bitwise::IntegerBitwise;
 pub use integer_conversions::IntegerConversions;
-pub use list_construction::ListConstruction;
 pub use list_operations::ListOperations;
 pub use list_values::ListValues;
-pub use local_reads::LocalReads;
-pub use option_construction::OptionConstruction;
 pub use option_operations::OptionOperations;
 pub use option_values::OptionValues;
 pub use ordering::Ordering;
-pub use record_construction::RecordConstruction;
 pub use records::Records;
-pub use result_construction::ResultConstruction;
-pub use result_inspection::ResultInspection;
+pub use result_operations::ResultOperations;
 pub use result_values::ResultValues;
 pub use string_concatenation::StringConcatenation;
 pub use string_inspection::StringInspection;
@@ -392,11 +378,7 @@ macro_rules! implemented_capability_slots {
 fn empty_capability_slots() -> EmptyCapabilitySlots {
     capability_slots_value!(
         Functions,
-        LocalReads,
-        FunctionCalls,
         Records,
-        RecordConstruction,
-        FieldAccess,
         BoolValues,
         I32Values,
         I64Values,
@@ -414,9 +396,6 @@ fn empty_capability_slots() -> EmptyCapabilitySlots {
         ListValues,
         OptionValues,
         ResultValues,
-        ListConstruction,
-        OptionConstruction,
-        ResultConstruction,
         IntegerBitwise,
         CheckedIntegerShifts,
         FloatingPointInspection,
@@ -425,7 +404,7 @@ fn empty_capability_slots() -> EmptyCapabilitySlots {
         BytesOperations,
         ListOperations,
         OptionOperations,
-        ResultInspection,
+        ResultOperations,
         IntegerConversions,
         Utf8Conversions,
     )
@@ -433,11 +412,7 @@ fn empty_capability_slots() -> EmptyCapabilitySlots {
 
 capability_catalogue!(
     Functions,
-    LocalReads,
-    FunctionCalls,
     Records,
-    RecordConstruction,
-    FieldAccess,
     BoolValues,
     I32Values,
     I64Values,
@@ -455,9 +430,6 @@ capability_catalogue!(
     ListValues,
     OptionValues,
     ResultValues,
-    ListConstruction,
-    OptionConstruction,
-    ResultConstruction,
     IntegerBitwise,
     CheckedIntegerShifts,
     FloatingPointInspection,
@@ -466,7 +438,7 @@ capability_catalogue!(
     BytesOperations,
     ListOperations,
     OptionOperations,
-    ResultInspection,
+    ResultOperations,
     IntegerConversions,
     Utf8Conversions,
 );

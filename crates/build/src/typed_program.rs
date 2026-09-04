@@ -1262,12 +1262,9 @@ type With<F, R> = All<Requires<F>, R>;
 type WithTwo<F, Left, Right> = All<Requires<F>, All<Left, Right>>;
 type WithThree<F, First, Second, Third> = All<Requires<F>, All<First, All<Second, Third>>>;
 type ResultTypeRequirements<OkR, ErrorR> = All<Requires<ResultValues>, All<OkR, ErrorR>>;
-type ListConstructionRequirements<TypeR, ValuesR> =
-    All<Requires<ListConstruction>, All<Requires<ListValues>, All<TypeR, ValuesR>>>;
-type OptionConstructionRequirements<R> =
-    All<Requires<OptionConstruction>, All<Requires<OptionValues>, R>>;
-type ResultConstructionRequirements<OkR, ErrorR> =
-    All<Requires<ResultConstruction>, All<Requires<ResultValues>, All<OkR, ErrorR>>>;
+type ListConstructionRequirements<TypeR, ValuesR> = All<Requires<ListValues>, All<TypeR, ValuesR>>;
+type OptionConstructionRequirements<R> = All<Requires<OptionValues>, R>;
+type ResultConstructionRequirements<OkR, ErrorR> = All<Requires<ResultValues>, All<OkR, ErrorR>>;
 
 impl<'module, 'body> TypedBody<'module, 'body> {
     fn expression<T, R: Requirements>(&self, node: TypedNode) -> TypedExpr<'module, 'body, T, R> {
@@ -1280,7 +1277,7 @@ impl<'module, 'body> TypedBody<'module, 'body> {
     pub fn read<T, R: Requirements>(
         &mut self,
         local: TypedLocal<'module, 'body, T, R>,
-    ) -> TypedExpr<'module, 'body, T, With<LocalReads, R>> {
+    ) -> TypedExpr<'module, 'body, T, With<Functions, R>> {
         self.expression(TypedNode::Local(local.name))
     }
 
@@ -1395,7 +1392,7 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         'module,
         'body,
         RecordValue<'module, 'record>,
-        With<RecordConstruction, Arguments::Requirements>,
+        With<Records, Arguments::Requirements>,
     >
     where
         Arguments: ArgumentList<Types = Types>,
@@ -1416,7 +1413,7 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         &mut self,
         base: TypedExpr<'module, 'body, RecordValue<'module, 'record>, BaseRequirements>,
         field: TypedField<'module, 'record, T>,
-    ) -> TypedExpr<'module, 'body, T, With<FieldAccess, BaseRequirements>>
+    ) -> TypedExpr<'module, 'body, T, With<Records, BaseRequirements>>
     where
         BaseRequirements: Requirements,
     {
@@ -1430,7 +1427,7 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         &mut self,
         function: TypedFunction<'module, Arguments::Types, Output>,
         arguments: Arguments,
-    ) -> TypedExpr<'module, 'body, Output, With<FunctionCalls, Arguments::Requirements>>
+    ) -> TypedExpr<'module, 'body, Output, With<Functions, Arguments::Requirements>>
     where
         Arguments: ArgumentList,
     {
@@ -2042,14 +2039,14 @@ impl<'module, 'body> TypedBody<'module, 'body> {
     pub fn result_is_ok<Ok, Error, R: Requirements>(
         &mut self,
         value: TypedExpr<'module, 'body, ResultValue<Ok, Error>, R>,
-    ) -> TypedExpr<'module, 'body, Bool, With<ResultInspection, R>> {
+    ) -> TypedExpr<'module, 'body, Bool, With<ResultOperations, R>> {
         self.unary(Operation::ResultIsOk, value)
     }
 
     pub fn result_is_err<Ok, Error, R: Requirements>(
         &mut self,
         value: TypedExpr<'module, 'body, ResultValue<Ok, Error>, R>,
-    ) -> TypedExpr<'module, 'body, Bool, With<ResultInspection, R>> {
+    ) -> TypedExpr<'module, 'body, Bool, With<ResultOperations, R>> {
         self.unary(Operation::ResultIsErr, value)
     }
 
