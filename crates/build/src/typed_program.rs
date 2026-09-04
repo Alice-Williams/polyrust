@@ -184,6 +184,22 @@
 //! require_support(&program);
 //! ```
 //!
+//! Even an otherwise empty typed program is a named portable module, so a
+//! plugin without `Modules` cannot admit it:
+//!
+//! ```compile_fail
+//! use portable_build::{Requirements, SupportsAll, TypedProgram, portable_name, typed_program};
+//! struct EmptyDialect;
+//! fn require_support<R: Requirements>(program: &TypedProgram<R>)
+//! where
+//!     EmptyDialect: SupportsAll<R>,
+//! {
+//!     let _ = program;
+//! }
+//! let program = typed_program(portable_name!("module_required"), |builder| builder);
+//! require_support(&program);
+//! ```
+//!
 //! A feature mapping cannot be registered twice because the first consuming
 //! call replaces its type-level `Missing` slot:
 //!
@@ -621,6 +637,8 @@ impl<T, R: Requirements> Clone for TypedType<T, R> {
 
 /// Boolean value marker.
 pub enum Bool {}
+/// Unit value marker.
+pub enum Unit {}
 /// 32-bit signed integer marker.
 pub enum I32 {}
 /// 64-bit signed integer marker.
@@ -652,6 +670,7 @@ macro_rules! primitive_type {
 }
 
 primitive_type!(Bool, bool, BoolValues);
+primitive_type!(Unit, unit, UnitValues);
 primitive_type!(I32, i32, I32Values);
 primitive_type!(I64, i64, I64Values);
 primitive_type!(F64, f64, F64Values);
@@ -1413,6 +1432,7 @@ type FunctionRequirement<Existing, Parameters, Result, Body> =
     All<Existing, All<Requires<Functions>, All<Parameters, All<Result, Body>>>>;
 type RecordRequirement<Existing, Fields> = All<Existing, All<Requires<Records>, Fields>>;
 type EnumRequirement<Existing> = All<Existing, Requires<Enums>>;
+type ModuleRequirement<R> = All<Requires<Modules>, R>;
 type FunctionAdded<'module, Existing, Parameters, Output, OutputRequirements, BodyRequirements> =
     Added<
         ProgramBuilder<
@@ -1431,7 +1451,7 @@ type FunctionAdded<'module, Existing, Parameters, Output, OutputRequirements, Bo
 pub fn typed_program<R: Requirements>(
     name: PortableName,
     build: impl for<'module> FnOnce(ProgramBuilder<'module, NoneRequired>) -> ProgramBuilder<'module, R>,
-) -> TypedProgram<R> {
+) -> TypedProgram<ModuleRequirement<R>> {
     let builder = ProgramBuilder {
         dynamic: ModuleBuilder::new(name.preferred()),
         names: NameAllocator::default(),
@@ -1645,6 +1665,10 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         local: TypedLocal<'module, 'body, T, R>,
     ) -> TypedExpr<'module, 'body, T, With<Functions, R>> {
         self.expression(TypedNode::Local(local.name))
+    }
+
+    pub fn unit(&mut self) -> TypedExpr<'module, 'body, Unit, Requires<UnitValues>> {
+        self.expression(TypedNode::Literal(Value::unit()))
     }
 
     pub fn bool(&mut self, value: bool) -> TypedExpr<'module, 'body, Bool, Requires<BoolValues>> {
@@ -2545,6 +2569,25 @@ mod tests {
     struct TestDialect;
 
     #[derive(Clone, Copy)]
+    struct TestMapping<C: Capability>(PhantomData<C>);
+
+    impl<C: Capability + 'static> CapabilityMapping<TestDialect> for TestMapping<C> {
+        type Capability = C;
+        type Context = ();
+        type Input = ();
+        type Output = ();
+        type Error = ();
+
+        fn lower(&self, _context: &mut (), _input: ()) -> Result<(), ()> {
+            Ok(())
+        }
+    }
+
+    const fn test_mapping<C: Capability>() -> TestMapping<C> {
+        TestMapping(PhantomData)
+    }
+
+    #[derive(Clone, Copy)]
     struct TestI32Mapping;
 
     impl CapabilityMapping<TestDialect> for TestI32Mapping {
@@ -2570,6 +2613,36 @@ mod tests {
             .expect("test mapping succeeds");
         assert_eq!(output, 42);
         assert_eq!(invocations, 1);
+    }
+
+    #[test]
+    fn modules_and_unit_values_are_inferred_from_construction() {
+        let program = typed_program(portable_name!("module_and_unit"), |builder| {
+            builder
+                .function(
+                    portable_name!("unit"),
+                    typed_list![],
+                    Unit::TYPE,
+                    |body, _| body.unit(),
+                )
+                .builder
+        });
+        let plugin = language_plugin(TestDialect)
+            .support(test_mapping::<Modules>())
+            .support(test_mapping::<Functions>())
+            .support(test_mapping::<UnitValues>())
+            .build();
+
+        fn admit<P, R: Requirements>(_plugin: &P, _program: &TypedProgram<R>)
+        where
+            P: SupportsAll<R>,
+        {
+        }
+
+        admit(&plugin, &program);
+        let core = portable_core_ir::lower_checked(program.checked_program())
+            .expect("module/unit typed program lowers to CoreIR");
+        portable_core_ir::verify_core(&core).expect("module/unit typed CoreIR verifies");
     }
 
     #[test]
