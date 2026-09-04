@@ -1,9 +1,8 @@
 //! Java capability mappings and their exhaustive registration.
 
 use portable_build::{
-    Conditionals, Constants, Enums, Interfaces, LanguageCapabilityPlugin, LocalBindings, Loops,
-    Modules, PatternMatching, PortableTests, ResultPropagation, TypeAliases, UnitValues,
-    capability_slots,
+    Conditionals, Enums, Interfaces, LanguageCapabilityPlugin, LocalBindings, Loops, Modules,
+    PatternMatching, PortableTests, ResultPropagation, capability_slots,
 };
 
 mod bool_values;
@@ -13,6 +12,7 @@ mod bytes_values;
 mod char_values;
 mod checked_integer_arithmetic;
 mod checked_integer_shifts;
+mod constants;
 mod dispatch;
 mod equality;
 mod f64_values;
@@ -36,6 +36,8 @@ mod string_inspection;
 mod string_transformation;
 mod support;
 mod text_values;
+mod type_aliases;
+mod unit_values;
 mod utf8_conversions;
 mod wrapping_integer_arithmetic;
 
@@ -47,6 +49,7 @@ pub use bytes_values::JavaBytesValues;
 pub use char_values::JavaCharValues;
 pub use checked_integer_arithmetic::JavaCheckedIntegerArithmetic;
 pub use checked_integer_shifts::JavaCheckedIntegerShifts;
+pub use constants::JavaConstants;
 pub use equality::JavaEquality;
 pub use f64_values::JavaF64Values;
 pub use floating_point_arithmetic::JavaFloatingPointArithmetic;
@@ -74,12 +77,16 @@ pub use string_inspection::JavaStringInspection;
 pub use string_transformation::JavaStringTransformation;
 pub use support::{JavaCapabilityMapping, JavaPluginBuilder, java_plugin_builder};
 pub use text_values::JavaTextValues;
+pub use type_aliases::JavaTypeAliases;
+pub use unit_values::JavaUnitValues;
 pub use utf8_conversions::JavaUtf8Conversions;
 pub use wrapping_integer_arithmetic::JavaWrappingIntegerArithmetic;
 
+pub(crate) use constants::{JavaConstantsInput, JavaConstantsNode};
 pub(crate) use dispatch::{JavaIntrinsicFamily, classify_intrinsic};
 pub(crate) use functions::{JavaFunctionDeclarationInput, JavaFunctionsInput};
 pub(crate) use records::{JavaRecordDeclarationInput, JavaRecordsInput};
+pub(crate) use type_aliases::JavaTypeAliasInput;
 
 use crate::dialect::JavaDialect;
 
@@ -115,8 +122,8 @@ pub type JavaCapabilitySlots = capability_slots!(
     implemented JavaIntegerConversions,
     implemented JavaUtf8Conversions,
     unsupported Modules,
-    unsupported Constants,
-    unsupported TypeAliases,
+    implemented JavaConstants,
+    implemented JavaTypeAliases,
     unsupported Enums,
     unsupported Interfaces,
     unsupported PortableTests,
@@ -125,7 +132,7 @@ pub type JavaCapabilitySlots = capability_slots!(
     unsupported Loops,
     unsupported PatternMatching,
     unsupported ResultPropagation,
-    unsupported UnitValues,
+    implemented JavaUnitValues,
 );
 
 pub type JavaCapabilitySet = LanguageCapabilityPlugin<JavaDialect, JavaCapabilitySlots>;
@@ -163,8 +170,8 @@ pub(crate) fn java_capabilities() -> JavaCapabilitySet {
         .support(JavaIntegerConversions)
         .support(JavaUtf8Conversions)
         .unsupported::<Modules>()
-        .unsupported::<Constants>()
-        .unsupported::<TypeAliases>()
+        .support(JavaConstants)
+        .support(JavaTypeAliases)
         .unsupported::<Enums>()
         .unsupported::<Interfaces>()
         .unsupported::<PortableTests>()
@@ -173,6 +180,6 @@ pub(crate) fn java_capabilities() -> JavaCapabilitySet {
         .unsupported::<Loops>()
         .unsupported::<PatternMatching>()
         .unsupported::<ResultPropagation>()
-        .unsupported::<UnitValues>()
+        .support(JavaUnitValues)
         .build()
 }

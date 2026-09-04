@@ -32,10 +32,10 @@ use portable_ir::v0::Visibility;
 use crate::{
     ast::*,
     capabilities::{
-        JavaBytesInput, JavaCapabilitySet, JavaFunctionDeclarationInput, JavaFunctionsInput,
-        JavaFunctionsNode, JavaIntrinsicFamily, JavaListInput, JavaOptionInput,
-        JavaRecordDeclarationInput, JavaRecordsInput, JavaRecordsNode, JavaResultInput,
-        classify_intrinsic,
+        JavaBytesInput, JavaCapabilitySet, JavaConstantsInput, JavaConstantsNode,
+        JavaFunctionDeclarationInput, JavaFunctionsInput, JavaFunctionsNode, JavaIntrinsicFamily,
+        JavaListInput, JavaOptionInput, JavaRecordDeclarationInput, JavaRecordsInput,
+        JavaRecordsNode, JavaResultInput, JavaTypeAliasInput, classify_intrinsic,
     },
     capability::JavaCapabilitySelection,
     dialect::*,
@@ -319,8 +319,20 @@ impl<'a> Lowering<'a> {
                 CoreDeclaration::Function(id) => {
                     members.push(JavaMember::Method(self.function_method(id)?))
                 }
+                CoreDeclaration::Alias(id) => {
+                    let alias = self.core.alias(id).expect("verified alias");
+                    let _erased = self
+                        .features
+                        .mapping_for::<portable_build::TypeAliases>()
+                        .lower(
+                            &mut (),
+                            JavaTypeAliasInput {
+                                name: alias.header.name.clone(),
+                                target: self.ty(alias.target)?,
+                            },
+                        )?;
+                }
                 CoreDeclaration::Constant(_)
-                | CoreDeclaration::Alias(_)
                 | CoreDeclaration::Implementation(_)
                 | CoreDeclaration::Test(_) => {}
             }
@@ -804,17 +816,24 @@ impl<'a> Lowering<'a> {
 
     fn constant_field(&self, id: CoreConstantId) -> Result<JavaField, Vec<Diagnostic>> {
         let value = self.core.constant(id).expect("verified constant");
-        Ok(JavaField {
-            declared: Some(self.constants[&id]),
-            modifiers: vec![
-                visibility_modifier(value.header.visibility),
-                JavaModifier::Static,
-                JavaModifier::Final,
-            ],
-            ty: self.ty(value.ty)?,
-            name: identifier(&value.header.name),
-            initializer: Some(self.constant_expr(&value.value, value.ty)?),
-        })
+        match self
+            .features
+            .mapping_for::<portable_build::Constants>()
+            .lower(
+                &mut (),
+                JavaConstantsInput::Declaration {
+                    declared: self.constants[&id],
+                    visibility: value.header.visibility,
+                    name: value.header.name.clone(),
+                    ty: self.ty(value.ty)?,
+                    initializer: Box::new(self.constant_expr(&value.value, value.ty)?),
+                },
+            )? {
+            JavaConstantsNode::Declaration(field) => Ok(field),
+            JavaConstantsNode::Expression(_) => Err(vec![diagnostic(
+                "Java Constants mapping returned an expression for a declaration",
+            )]),
+        }
     }
 
     fn function_method(&self, id: CoreFunctionId) -> Result<JavaMethod, Vec<Diagnostic>> {
@@ -1297,7 +1316,7 @@ impl<'a> Lowering<'a> {
                 CoreStatement::Return { value, .. } => {
                     let plan = match value {
                         Some(value) => self.expr_plan(*value, callable_return)?,
-                        None => ExprPlan::pure(unit_value()),
+                        None => ExprPlan::pure(self.lower_unit_value()?),
                     };
                     statements.extend(plan.statements);
                     statements.push(JavaStmt::Return(Some(
@@ -1331,11 +1350,11 @@ impl<'a> Lowering<'a> {
         } else {
             match mode {
                 BlockMode::ReturnResult => statements.push(JavaStmt::Return(Some(
-                    self.success_result(unit_value(), callable_return)?,
+                    self.success_result(self.lower_unit_value()?, callable_return)?,
                 ))),
                 BlockMode::AssignResult { target } => statements.push(JavaStmt::Assign {
                     target: *target,
-                    value: unit_value(),
+                    value: self.lower_unit_value()?,
                 }),
                 BlockMode::StatementBody => {}
             }
@@ -1690,10 +1709,16 @@ impl<'a> Lowering<'a> {
         Ok(ExprPlan { statements, value })
     }
 
+    fn lower_unit_value(&self) -> Result<JavaExpr, Vec<Diagnostic>> {
+        self.features
+            .mapping_for::<portable_build::UnitValues>()
+            .lower(&mut (), ())
+    }
+
     fn value(&self, value: &CoreValue, expected: CoreTypeId) -> Result<JavaExpr, Vec<Diagnostic>> {
         let ty = self.ty(expected)?;
         match value {
-            CoreValue::Unit => Ok(unit_value()),
+            CoreValue::Unit => self.lower_unit_value(),
             CoreValue::Bool(value) => self
                 .features
                 .mapping_for::<portable_build::BoolValues>()
@@ -1865,13 +1890,21 @@ impl<'a> Lowering<'a> {
         let ty = self.ty(expected)?;
         match &value.kind {
             CoreConstantExprKind::Literal(value) => self.value(value, expected),
-            CoreConstantExprKind::Constant(id) => Ok(JavaExpr {
-                ty,
-                precedence: JavaPrecedence::Primary,
-                kind: JavaExprKind::Value(JavaValueRef::Generated(GeneratedSymbolId::Value(
-                    self.constants[id],
-                ))),
-            }),
+            CoreConstantExprKind::Constant(id) => match self
+                .features
+                .mapping_for::<portable_build::Constants>()
+                .lower(
+                    &mut (),
+                    JavaConstantsInput::Reference {
+                        symbol: self.constants[id],
+                        result: ty,
+                    },
+                )? {
+                JavaConstantsNode::Expression(value) => Ok(value),
+                JavaConstantsNode::Declaration(_) => Err(vec![diagnostic(
+                    "Java Constants mapping returned a declaration for a reference",
+                )]),
+            },
             CoreConstantExprKind::Record { record, fields } => {
                 let expressions = fields
                     .iter()
@@ -3617,7 +3650,7 @@ fn assert_true(condition: JavaExpr, message: &str) -> JavaStmt {
     }
 }
 
-fn unit_value() -> JavaExpr {
+pub(crate) fn java_unit_value() -> JavaExpr {
     new_known(
         JavaKnownConstructor::RuntimeUnit,
         JavaType::known(JavaKnownType::RuntimeUnit),
