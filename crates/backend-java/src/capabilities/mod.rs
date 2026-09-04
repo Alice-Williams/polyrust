@@ -1,8 +1,8 @@
 //! Java capability mappings and their exhaustive registration.
 
 use portable_build::{
-    Conditionals, Enums, Interfaces, LanguageCapabilityPlugin, LocalBindings, Loops, Modules,
-    PatternMatching, PortableTests, ResultPropagation, capability_slots,
+    Conditionals, Enums, LanguageCapabilityPlugin, LocalBindings, Loops, Modules, PatternMatching,
+    PortableTests, ResultPropagation, capability_slots,
 };
 
 mod bool_values;
@@ -23,6 +23,7 @@ mod i32_values;
 mod i64_values;
 mod integer_bitwise;
 mod integer_conversions;
+mod interfaces;
 mod list_operations;
 mod list_values;
 mod option_operations;
@@ -60,6 +61,7 @@ pub use i32_values::JavaI32Values;
 pub use i64_values::JavaI64Values;
 pub use integer_bitwise::JavaIntegerBitwise;
 pub use integer_conversions::JavaIntegerConversions;
+pub use interfaces::JavaInterfaces;
 pub use list_operations::JavaListOperations;
 pub(crate) use list_values::JavaListInput;
 pub use list_values::JavaListValues;
@@ -85,6 +87,11 @@ pub use wrapping_integer_arithmetic::JavaWrappingIntegerArithmetic;
 pub(crate) use constants::{JavaConstantsInput, JavaConstantsNode};
 pub(crate) use dispatch::{JavaIntrinsicFamily, classify_intrinsic};
 pub(crate) use functions::{JavaFunctionDeclarationInput, JavaFunctionsInput};
+pub(crate) use interfaces::{
+    JavaConcreteInterfaceCallInput, JavaInterfaceCallInput, JavaInterfaceDeclarationInput,
+    JavaInterfaceImplementationInput, JavaInterfaceMethodInput, JavaInterfacesInput,
+    JavaInterfacesNode,
+};
 pub(crate) use records::{JavaRecordDeclarationInput, JavaRecordsInput};
 pub(crate) use type_aliases::JavaTypeAliasInput;
 
@@ -125,7 +132,7 @@ pub type JavaCapabilitySlots = capability_slots!(
     implemented JavaConstants,
     implemented JavaTypeAliases,
     unsupported Enums,
-    unsupported Interfaces,
+    implemented JavaInterfaces,
     unsupported PortableTests,
     unsupported LocalBindings,
     unsupported Conditionals,
@@ -173,7 +180,7 @@ pub(crate) fn java_capabilities() -> JavaCapabilitySet {
         .support(JavaConstants)
         .support(JavaTypeAliases)
         .unsupported::<Enums>()
-        .unsupported::<Interfaces>()
+        .support(JavaInterfaces)
         .unsupported::<PortableTests>()
         .unsupported::<LocalBindings>()
         .unsupported::<Conditionals>()

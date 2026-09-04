@@ -32,8 +32,10 @@ use portable_ir::v0::Visibility;
 use crate::{
     ast::*,
     capabilities::{
-        JavaBytesInput, JavaCapabilitySet, JavaConstantsInput, JavaConstantsNode,
-        JavaFunctionDeclarationInput, JavaFunctionsInput, JavaFunctionsNode, JavaIntrinsicFamily,
+        JavaBytesInput, JavaCapabilitySet, JavaConcreteInterfaceCallInput, JavaConstantsInput,
+        JavaConstantsNode, JavaFunctionDeclarationInput, JavaFunctionsInput, JavaFunctionsNode,
+        JavaInterfaceCallInput, JavaInterfaceDeclarationInput, JavaInterfaceImplementationInput,
+        JavaInterfaceMethodInput, JavaInterfacesInput, JavaInterfacesNode, JavaIntrinsicFamily,
         JavaListInput, JavaOptionInput, JavaRecordDeclarationInput, JavaRecordsInput,
         JavaRecordsNode, JavaResultInput, JavaTypeAliasInput, classify_intrinsic,
     },
@@ -767,35 +769,42 @@ impl<'a> Lowering<'a> {
                 ))
             })
             .collect();
-        let mut members = Vec::new();
-        for method_id in &interface.methods {
-            let method = self
-                .core
-                .interface_method(*method_id)
-                .expect("verified method");
-            members.push(JavaMember::Method(JavaMethod {
-                declared: JavaMethodDeclaration::Interface(self.interface_methods[method_id]),
-                annotations: vec![],
-                modifiers: vec![JavaModifier::Public, JavaModifier::Abstract],
-                type_parameters: vec![],
-                return_type: self.poly_result_type(method.return_type)?,
-                name: identifier(&method.header.name),
-                parameters: self.parameters(&method.parameters)?,
-                body: None,
-            }));
+        let methods = interface
+            .methods
+            .iter()
+            .map(|method_id| {
+                let method = self
+                    .core
+                    .interface_method(*method_id)
+                    .expect("verified method");
+                Ok(JavaInterfaceMethodInput {
+                    declared: self.interface_methods[method_id],
+                    name: method.header.name.clone(),
+                    parameters: self.parameters(&method.parameters)?,
+                    return_type: self.poly_result_type(method.return_type)?,
+                })
+            })
+            .collect::<Result<Vec<_>, Vec<Diagnostic>>>()?;
+        match self
+            .features
+            .mapping_for::<portable_build::Interfaces>()
+            .lower(
+                &mut (),
+                JavaInterfacesInput::Declaration(Box::new(JavaInterfaceDeclarationInput {
+                    declared: self.interfaces[&id],
+                    visibility: interface.header.visibility,
+                    name: interface.header.name.clone(),
+                    permits,
+                    methods,
+                })),
+            )? {
+            JavaInterfacesNode::Declaration(declaration) => Ok(*declaration),
+            JavaInterfacesNode::Method(_) | JavaInterfacesNode::Expression(_) => {
+                Err(vec![diagnostic(
+                    "Java Interfaces mapping returned the wrong declaration node",
+                )])
+            }
         }
-        Ok(JavaTypeDeclaration {
-            declared: Some(self.interfaces[&id]),
-            kind: JavaDeclarationKind::SealedInterface,
-            visibility: java_visibility(interface.header.visibility),
-            modifiers: vec![JavaModifier::Static],
-            name: identifier(&interface.header.name),
-            type_parameters: vec![],
-            record_components: vec![],
-            heritage: JavaHeritage::None,
-            permits,
-            members,
-        })
     }
 
     fn parameters(
@@ -1020,19 +1029,27 @@ impl<'a> Lowering<'a> {
         let (parameters, mut boundary) = self.callable_parameters(&value.parameters)?;
         let mut body = self.block(value.body, BlockMode::ReturnResult, value.return_type)?;
         boundary.append(&mut body.statements);
-        Ok(JavaMethod {
-            declared: JavaMethodDeclaration::Implementation {
-                method: id,
-                interface: self.interface_methods[&value.interface_method],
-            },
-            annotations: vec![JavaAnnotation::Override],
-            modifiers: vec![JavaModifier::Public],
-            type_parameters: vec![],
-            return_type: self.poly_result_type(value.return_type)?,
-            name: identifier(&value.header.name),
-            parameters,
-            body: Some(JavaBlock::new(boundary)),
-        })
+        match self
+            .features
+            .mapping_for::<portable_build::Interfaces>()
+            .lower(
+                &mut (),
+                JavaInterfacesInput::Implementation(Box::new(JavaInterfaceImplementationInput {
+                    method: id,
+                    interface_method: self.interface_methods[&value.interface_method],
+                    name: value.header.name.clone(),
+                    parameters,
+                    return_type: self.poly_result_type(value.return_type)?,
+                    body: JavaBlock::new(boundary),
+                })),
+            )? {
+            JavaInterfacesNode::Method(method) => Ok(*method),
+            JavaInterfacesNode::Declaration(_) | JavaInterfacesNode::Expression(_) => {
+                Err(vec![diagnostic(
+                    "Java Interfaces mapping returned the wrong implementation node",
+                )])
+            }
+        }
     }
 
     fn callable_parameters(
@@ -1400,6 +1417,24 @@ impl<'a> Lowering<'a> {
         }
     }
 
+    fn lower_interface_expr(
+        &self,
+        input: JavaInterfacesInput,
+    ) -> Result<JavaExpr, Vec<Diagnostic>> {
+        match self
+            .features
+            .mapping_for::<portable_build::Interfaces>()
+            .lower(&mut (), input)?
+        {
+            JavaInterfacesNode::Expression(value) => Ok(*value),
+            JavaInterfacesNode::Declaration(_) | JavaInterfacesNode::Method(_) => {
+                Err(vec![diagnostic(
+                    "Java Interfaces mapping returned a declaration for an expression",
+                )])
+            }
+        }
+    }
+
     fn expr_plan(
         &self,
         id: CoreExprId,
@@ -1505,14 +1540,10 @@ impl<'a> Lowering<'a> {
             }
             CoreExprKind::CoerceInterface { value, .. } => {
                 let mut plan = self.expr_plan(*value, callable_return)?;
-                plan.value = JavaExpr {
-                    ty: ty.clone(),
-                    precedence: JavaPrecedence::Unary,
-                    kind: JavaExprKind::Cast {
-                        target: ty,
-                        value: Box::new(plan.value),
-                    },
-                };
+                plan.value = self.lower_interface_expr(JavaInterfacesInput::Coerce {
+                    value: Box::new(plan.value),
+                    result: ty,
+                })?;
                 Ok(plan)
             }
             CoreExprKind::Field { value, field } => {
@@ -1571,13 +1602,15 @@ impl<'a> Lowering<'a> {
                     self.expr_list(arguments, callable_return)?;
                 receiver.statements.extend(argument_statements);
                 let result = self.poly_result_type(method_value.return_type)?;
-                let call = member_call(
-                    receiver.value,
-                    &method_value.header.name,
-                    arguments,
-                    result,
-                    JavaMemberOrigin::GeneratedImplementation(*method),
-                );
+                let call = self.lower_interface_expr(JavaInterfacesInput::ConcreteCall(
+                    Box::new(JavaConcreteInterfaceCallInput {
+                        receiver: receiver.value,
+                        name: method_value.header.name.clone(),
+                        arguments,
+                        result,
+                        method: *method,
+                    }),
+                ))?;
                 self.propagate_call(receiver.statements, call, ty, callable_return)
             }
             CoreExprKind::InterfaceCall {
@@ -1610,18 +1643,15 @@ impl<'a> Lowering<'a> {
                     nullable_result: false,
                     pure: true,
                 };
-                let call = JavaExpr {
-                    ty: result,
-                    precedence: JavaPrecedence::Primary,
-                    kind: JavaExprKind::Call {
-                        callable: JavaCallableRef::Interface {
-                            symbol: self.interface_methods[method],
-                            signature,
-                        },
-                        receiver: Some(Box::new(receiver.value)),
+                let call = self.lower_interface_expr(JavaInterfacesInput::InterfaceCall(
+                    Box::new(JavaInterfaceCallInput {
+                        receiver: receiver.value,
                         arguments,
-                    },
-                };
+                        result,
+                        symbol: self.interface_methods[method],
+                        signature,
+                    }),
+                ))?;
                 self.propagate_call(receiver.statements, call, ty, callable_return)
             }
             CoreExprKind::Intrinsic(value) => {
