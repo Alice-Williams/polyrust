@@ -1,8 +1,6 @@
 //! Java capability mappings and their exhaustive registration.
 
-use portable_build::{
-    Enums, LanguageCapabilityPlugin, Modules, PatternMatching, PortableTests, capability_slots,
-};
+use portable_build::{Enums, LanguageCapabilityPlugin, Modules, PortableTests, capability_slots};
 
 mod bool_values;
 mod boolean_logic;
@@ -31,6 +29,7 @@ mod loops;
 mod option_operations;
 mod option_values;
 mod ordering;
+mod pattern_matching;
 mod records;
 mod result_operations;
 mod result_propagation;
@@ -75,6 +74,7 @@ pub use option_operations::JavaOptionOperations;
 pub(crate) use option_values::JavaOptionInput;
 pub use option_values::JavaOptionValues;
 pub use ordering::JavaOrdering;
+pub use pattern_matching::JavaPatternMatching;
 pub use records::JavaRecords;
 pub use records::JavaRecordsNode;
 pub use result_operations::JavaResultOperations;
@@ -104,6 +104,10 @@ pub(crate) use interfaces::{
 };
 pub(crate) use local_bindings::JavaLocalBindingInput;
 pub(crate) use loops::JavaLoopsInput;
+pub(crate) use pattern_matching::{
+    JavaLoweredPattern, JavaMatchArmInput, JavaMatchInput, JavaPatternFieldBindingInput,
+    JavaPatternInput, JavaPatternMatchPlan, JavaPatternMatchingInput, JavaPatternMatchingNode,
+};
 pub(crate) use records::{JavaRecordDeclarationInput, JavaRecordsInput};
 pub(crate) use result_propagation::{JavaResultPropagationInput, JavaResultPropagationPlan};
 pub(crate) use type_aliases::JavaTypeAliasInput;
@@ -150,7 +154,7 @@ pub type JavaCapabilitySlots = capability_slots!(
     implemented JavaLocalBindings,
     implemented JavaConditionals,
     implemented JavaLoops,
-    unsupported PatternMatching,
+    implemented JavaPatternMatching,
     implemented JavaResultPropagation,
     implemented JavaUnitValues,
 );
@@ -198,7 +202,7 @@ pub(crate) fn java_capabilities() -> JavaCapabilitySet {
         .support(JavaLocalBindings)
         .support(JavaConditionals)
         .support(JavaLoops)
-        .unsupported::<PatternMatching>()
+        .support(JavaPatternMatching)
         .support(JavaResultPropagation)
         .support(JavaUnitValues)
         .build()

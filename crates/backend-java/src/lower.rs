@@ -37,7 +37,9 @@ use crate::{
         JavaConstantsNode, JavaFunctionDeclarationInput, JavaFunctionsInput, JavaFunctionsNode,
         JavaInterfaceCallInput, JavaInterfaceDeclarationInput, JavaInterfaceImplementationInput,
         JavaInterfaceMethodInput, JavaInterfacesInput, JavaInterfacesNode, JavaIntrinsicFamily,
-        JavaListInput, JavaLocalBindingInput, JavaLoopsInput, JavaOptionInput,
+        JavaListInput, JavaLocalBindingInput, JavaLoopsInput, JavaLoweredPattern,
+        JavaMatchArmInput, JavaMatchInput, JavaOptionInput, JavaPatternFieldBindingInput,
+        JavaPatternInput, JavaPatternMatchPlan, JavaPatternMatchingInput, JavaPatternMatchingNode,
         JavaRecordDeclarationInput, JavaRecordsInput, JavaRecordsNode, JavaResultInput,
         JavaResultPropagationInput, JavaResultPropagationPlan, JavaTypeAliasInput,
         classify_intrinsic,
@@ -2305,44 +2307,44 @@ impl<'a> Lowering<'a> {
         let result_type = self.ty(result)?;
         let (matched_name, matched_local) = self.temporary("matchValue", matched_type.clone());
         let (result_name, result_local) = self.temporary("matchResult", result_type.clone());
-        let mut statements = matched.statements;
-        statements.push(JavaStmt::Local {
-            finality: JavaLocalFinality::Final,
-            ty: matched_type,
-            name: matched_name,
-            value: Some(matched.value),
-        });
-        statements.push(JavaStmt::Local {
-            finality: JavaLocalFinality::Mutable,
-            ty: result_type,
-            name: result_name,
-            value: None,
-        });
-        let mut otherwise = JavaBlock::new(vec![JavaStmt::ThrowAssertion(string_literal(
-            "verified CoreIR match was unexpectedly non-exhaustive",
-        ))]);
-        for (index, arm) in arms.iter().enumerate().rev() {
-            let (condition, mut bindings) =
-                self.pattern(&arm.pattern, matched_local.clone(), index)?;
-            let mut body = self.block(
-                arm.body,
-                BlockMode::AssignResult {
-                    target: Box::new(result_local.clone()),
-                },
-                callable_return,
-            )?;
-            bindings.append(&mut body.statements);
-            otherwise = JavaBlock::new(vec![JavaStmt::If {
-                condition,
-                then_block: JavaBlock::new(bindings),
-                else_block: Some(otherwise),
-            }]);
+        let arms = arms
+            .iter()
+            .enumerate()
+            .map(|(index, arm)| {
+                Ok(JavaMatchArmInput {
+                    pattern: self.pattern(&arm.pattern, matched_local.clone(), index)?,
+                    body: self.block(
+                        arm.body,
+                        BlockMode::AssignResult {
+                            target: Box::new(result_local.clone()),
+                        },
+                        callable_return,
+                    )?,
+                })
+            })
+            .collect::<Result<Vec<_>, Vec<Diagnostic>>>()?;
+        match self
+            .features
+            .mapping_for::<portable_build::PatternMatching>()
+            .lower(
+                &mut (),
+                JavaPatternMatchingInput::Match(Box::new(JavaMatchInput {
+                    prefix: matched.statements,
+                    matched: matched.value,
+                    matched_name,
+                    result_name,
+                    result_type,
+                    arms,
+                })),
+            )? {
+            JavaPatternMatchingNode::Match(plan) => {
+                let JavaPatternMatchPlan { statements, value } = *plan;
+                Ok(ExprPlan { statements, value })
+            }
+            JavaPatternMatchingNode::Pattern(_) => Err(vec![diagnostic(
+                "Java PatternMatching mapping returned a pattern for a match",
+            )]),
         }
-        statements.extend(otherwise.statements);
-        Ok(ExprPlan {
-            statements,
-            value: result_local,
-        })
     }
 
     fn pattern(
@@ -2350,36 +2352,19 @@ impl<'a> Lowering<'a> {
         pattern: &CorePattern,
         matched: JavaExpr,
         index: usize,
-    ) -> Result<(JavaExpr, Vec<JavaStmt>), Vec<Diagnostic>> {
-        let boolean = JavaType::primitive(JavaPrimitive::Boolean);
-        Ok(match pattern {
-            CorePattern::Wildcard { .. } => (bool_literal(true), vec![]),
-            CorePattern::Bool { value, .. } => (
-                binary(
-                    JavaBinaryOperator::Equal,
-                    matched,
-                    bool_literal(*value),
-                    boolean,
-                ),
-                vec![],
-            ),
+    ) -> Result<JavaLoweredPattern, Vec<Diagnostic>> {
+        let input = match pattern {
+            CorePattern::Wildcard { .. } => JavaPatternInput::Wildcard,
+            CorePattern::Bool { value, .. } => JavaPatternInput::Bool {
+                matched: Box::new(matched),
+                value: *value,
+            },
             CorePattern::EnumVariant {
                 variant, bindings, ..
             } => {
                 let variant_type =
                     JavaType::Reference(JavaTypeName::Generated(self.variants[variant]));
-                let variant_name = identifier(&format!("matchedVariant{index}"));
-                let condition = JavaExpr {
-                    ty: boolean,
-                    precedence: JavaPrecedence::Relational,
-                    kind: JavaExprKind::InstanceOf {
-                        value: Box::new(matched),
-                        target: variant_type.clone(),
-                        binding: Some(variant_name.clone()),
-                    },
-                };
-                let receiver = JavaExpr::local(variant_type, variant_name);
-                let statements = bindings
+                let bindings = bindings
                     .iter()
                     .map(|binding| {
                         let local_value = self
@@ -2387,82 +2372,60 @@ impl<'a> Lowering<'a> {
                             .local(binding.binding)
                             .expect("verified pattern local");
                         let field = self.core.field(binding.field).expect("verified field");
-                        Ok(JavaStmt::Local {
-                            finality: JavaLocalFinality::Final,
-                            ty: self.ty(local_value.ty)?,
-                            name: identifier(&local_value.name),
-                            value: Some(member_call(
-                                receiver.clone(),
-                                &field.header.name,
-                                vec![],
-                                self.ty(field.ty)?,
-                                JavaMemberOrigin::GeneratedField(binding.field),
-                            )),
+                        Ok(JavaPatternFieldBindingInput {
+                            binding_name: local_value.name.clone(),
+                            binding_type: self.ty(local_value.ty)?,
+                            field_name: field.header.name.clone(),
+                            field_type: self.ty(field.ty)?,
+                            field: binding.field,
                         })
                     })
                     .collect::<Result<Vec<_>, Vec<Diagnostic>>>()?;
-                (condition, statements)
+                JavaPatternInput::EnumVariant {
+                    matched: Box::new(matched),
+                    variant_type,
+                    variant_name: format!("matchedVariant{index}"),
+                    bindings,
+                }
             }
-            CorePattern::None { .. } => {
-                let some = runtime_call(
-                    JavaRuntimeCallable::OptionIsSome,
-                    vec![matched],
-                    boolean.clone(),
-                );
-                (unary(JavaUnaryOperator::Not, some, boolean), vec![])
-            }
+            CorePattern::None { .. } => JavaPatternInput::None {
+                matched: Box::new(matched),
+            },
             CorePattern::Some { binding, .. } => {
                 let local_value = self.core.local(*binding).expect("verified pattern local");
-                let condition = runtime_call(
-                    JavaRuntimeCallable::OptionIsSome,
-                    vec![matched.clone()],
-                    boolean,
-                );
-                let value = runtime_call(
-                    JavaRuntimeCallable::OptionValue,
-                    vec![matched],
-                    self.ty(local_value.ty)?,
-                );
-                (
-                    condition,
-                    vec![JavaStmt::Local {
-                        finality: JavaLocalFinality::Final,
-                        ty: self.ty(local_value.ty)?,
-                        name: identifier(&local_value.name),
-                        value: Some(value),
-                    }],
-                )
+                JavaPatternInput::Some {
+                    matched: Box::new(matched),
+                    binding_name: local_value.name.clone(),
+                    binding_type: self.ty(local_value.ty)?,
+                }
             }
-            CorePattern::Ok { binding, .. } | CorePattern::Err { binding, .. } => {
+            CorePattern::Ok { binding, .. } => {
                 let local_value = self.core.local(*binding).expect("verified pattern local");
-                let is_ok = runtime_call(
-                    JavaRuntimeCallable::ValueResultIsOk,
-                    vec![matched.clone()],
-                    boolean.clone(),
-                );
-                let success = matches!(pattern, CorePattern::Ok { .. });
-                let condition = if success {
-                    is_ok
-                } else {
-                    unary(JavaUnaryOperator::Not, is_ok, boolean)
-                };
-                let callable = if success {
-                    JavaRuntimeCallable::ValueResultValue
-                } else {
-                    JavaRuntimeCallable::ValueResultError
-                };
-                let value = runtime_call(callable, vec![matched], self.ty(local_value.ty)?);
-                (
-                    condition,
-                    vec![JavaStmt::Local {
-                        finality: JavaLocalFinality::Final,
-                        ty: self.ty(local_value.ty)?,
-                        name: identifier(&local_value.name),
-                        value: Some(value),
-                    }],
-                )
+                JavaPatternInput::Ok {
+                    matched: Box::new(matched),
+                    binding_name: local_value.name.clone(),
+                    binding_type: self.ty(local_value.ty)?,
+                }
             }
-        })
+            CorePattern::Err { binding, .. } => {
+                let local_value = self.core.local(*binding).expect("verified pattern local");
+                JavaPatternInput::Err {
+                    matched: Box::new(matched),
+                    binding_name: local_value.name.clone(),
+                    binding_type: self.ty(local_value.ty)?,
+                }
+            }
+        };
+        match self
+            .features
+            .mapping_for::<portable_build::PatternMatching>()
+            .lower(&mut (), JavaPatternMatchingInput::Pattern(Box::new(input)))?
+        {
+            JavaPatternMatchingNode::Pattern(pattern) => Ok(*pattern),
+            JavaPatternMatchingNode::Match(_) => Err(vec![diagnostic(
+                "Java PatternMatching mapping returned a match for a pattern",
+            )]),
+        }
     }
 
     fn intrinsic_plan(
@@ -3715,7 +3678,12 @@ pub(crate) fn unary(operator: JavaUnaryOperator, operand: JavaExpr, ty: JavaType
     }
 }
 
-fn binary(operator: JavaBinaryOperator, left: JavaExpr, right: JavaExpr, ty: JavaType) -> JavaExpr {
+pub(crate) fn binary(
+    operator: JavaBinaryOperator,
+    left: JavaExpr,
+    right: JavaExpr,
+    ty: JavaType,
+) -> JavaExpr {
     let precedence = match operator {
         JavaBinaryOperator::LogicalOr => JavaPrecedence::LogicalOr,
         JavaBinaryOperator::LogicalAnd => JavaPrecedence::LogicalAnd,
