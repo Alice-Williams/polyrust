@@ -1,6 +1,6 @@
 //! Java capability mappings and their exhaustive registration.
 
-use portable_build::{Enums, LanguageCapabilityPlugin, Modules, PortableTests, capability_slots};
+use portable_build::{Enums, LanguageCapabilityPlugin, PortableTests, capability_slots};
 
 mod bool_values;
 mod boolean_logic;
@@ -26,6 +26,7 @@ mod list_operations;
 mod list_values;
 mod local_bindings;
 mod loops;
+mod modules;
 mod option_operations;
 mod option_values;
 mod ordering;
@@ -70,6 +71,7 @@ pub(crate) use list_values::JavaListInput;
 pub use list_values::JavaListValues;
 pub use local_bindings::JavaLocalBindings;
 pub use loops::JavaLoops;
+pub use modules::JavaModules;
 pub use option_operations::JavaOptionOperations;
 pub(crate) use option_values::JavaOptionInput;
 pub use option_values::JavaOptionValues;
@@ -104,6 +106,7 @@ pub(crate) use interfaces::{
 };
 pub(crate) use local_bindings::JavaLocalBindingInput;
 pub(crate) use loops::JavaLoopsInput;
+pub(crate) use modules::JavaModuleInput;
 pub(crate) use pattern_matching::{
     JavaLoweredPattern, JavaMatchArmInput, JavaMatchInput, JavaPatternFieldBindingInput,
     JavaPatternInput, JavaPatternMatchPlan, JavaPatternMatchingInput, JavaPatternMatchingNode,
@@ -145,7 +148,7 @@ pub type JavaCapabilitySlots = capability_slots!(
     implemented JavaResultOperations,
     implemented JavaIntegerConversions,
     implemented JavaUtf8Conversions,
-    unsupported Modules,
+    implemented JavaModules,
     implemented JavaConstants,
     implemented JavaTypeAliases,
     unsupported Enums,
@@ -193,7 +196,7 @@ pub(crate) fn java_capabilities() -> JavaCapabilitySet {
         .support(JavaResultOperations)
         .support(JavaIntegerConversions)
         .support(JavaUtf8Conversions)
-        .unsupported::<Modules>()
+        .support(JavaModules)
         .support(JavaConstants)
         .support(JavaTypeAliases)
         .unsupported::<Enums>()

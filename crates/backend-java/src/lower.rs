@@ -38,11 +38,11 @@ use crate::{
         JavaInterfaceCallInput, JavaInterfaceDeclarationInput, JavaInterfaceImplementationInput,
         JavaInterfaceMethodInput, JavaInterfacesInput, JavaInterfacesNode, JavaIntrinsicFamily,
         JavaListInput, JavaLocalBindingInput, JavaLoopsInput, JavaLoweredPattern,
-        JavaMatchArmInput, JavaMatchInput, JavaOptionInput, JavaPatternFieldBindingInput,
-        JavaPatternInput, JavaPatternMatchPlan, JavaPatternMatchingInput, JavaPatternMatchingNode,
-        JavaRecordDeclarationInput, JavaRecordsInput, JavaRecordsNode, JavaResultInput,
-        JavaResultPropagationInput, JavaResultPropagationPlan, JavaTypeAliasInput,
-        classify_intrinsic,
+        JavaMatchArmInput, JavaMatchInput, JavaModuleInput, JavaOptionInput,
+        JavaPatternFieldBindingInput, JavaPatternInput, JavaPatternMatchPlan,
+        JavaPatternMatchingInput, JavaPatternMatchingNode, JavaRecordDeclarationInput,
+        JavaRecordsInput, JavaRecordsNode, JavaResultInput, JavaResultPropagationInput,
+        JavaResultPropagationPlan, JavaTypeAliasInput, classify_intrinsic,
     },
     capability::JavaCapabilitySelection,
     dialect::*,
@@ -345,31 +345,18 @@ impl<'a> Lowering<'a> {
             }
         }
         members.extend(self.public_tagged_value_factories()?);
-        members.insert(0, JavaMember::Constructor(private_constructor("Generated")));
-        let declaration = JavaTypeDeclaration {
-            declared: self.entry,
-            kind: JavaDeclarationKind::FinalClass,
-            visibility: JavaVisibility::Public,
-            modifiers: vec![],
-            name: identifier("Generated"),
-            type_parameters: vec![],
-            record_components: vec![],
-            heritage: JavaHeritage::None,
-            permits: vec![],
-            members,
-        };
-        Ok(self.builder.file(TargetFile::new(
-            path("src/main/java/org/polyrust/generated/Generated.java"),
-            SourceRole::PublicApi,
-            JavaPackage::Generated,
-            JavaFilePlacement::Main,
-            vec![JavaFileItem::Type {
-                declared: self.declared.clone(),
-                declaration,
-            }],
-            JavaSourceFileKind::CompilationUnit,
-            source("generated-file"),
-        )))
+        let file = self
+            .features
+            .mapping_for::<portable_build::Modules>()
+            .lower(
+                &mut (),
+                JavaModuleInput {
+                    entry: self.entry.expect("Java module entry registered"),
+                    declared: self.declared.clone(),
+                    members,
+                },
+            )?;
+        Ok(self.builder.file(file))
     }
 
     fn ordered_constant_ids(&self) -> Result<Vec<CoreConstantId>, Vec<Diagnostic>> {
@@ -3458,11 +3445,11 @@ pub(crate) fn lower_intrinsic_expression(
     Lowering::<'static>::intrinsic_java_raw(value, result)
 }
 
-fn path(value: &str) -> RelativeOutputPath {
+pub(crate) fn path(value: &str) -> RelativeOutputPath {
     RelativeOutputPath::new(value).expect("static Java output path is safe")
 }
 
-fn source(value: &str) -> SourceRef {
+pub(crate) fn source(value: &str) -> SourceRef {
     SourceRef::logical(["java-lowering", value])
 }
 
@@ -3569,7 +3556,7 @@ pub(crate) fn visibility_modifier(value: Visibility) -> JavaModifier {
     }
 }
 
-fn private_constructor(name: &str) -> JavaConstructor {
+pub(crate) fn private_constructor(name: &str) -> JavaConstructor {
     JavaConstructor {
         modifiers: vec![JavaModifier::Private],
         name: identifier(name),
