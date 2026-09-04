@@ -66,3 +66,10 @@ Implementation is complete locally pending the two hosted cache-lineage runs:
   files were unreadable to the cache action, whose tar failure was reported as
   a non-fatal warning. Archive ownership/readability remediation and two fresh
   hosted runs remain required.
+- Archive-permission checkpoint
+  `9f257aa891e4db46dce50fa7fb75ead85c4b6ae3` passed hosted population run
+  `33874194596` in all eight jobs. Its release job reported no prior compatible
+  lineage, passed the isolated cold and persistent-tree gates, proved every
+  cache entry readable after ownership normalization, and reported `Cache
+  saved with key` for the expected `v3` run-attempt key. One later hosted run
+  must restore that exact compatibility lineage before completion.
