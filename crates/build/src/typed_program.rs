@@ -166,6 +166,31 @@
 //! let _ = TypedProgram::<NoneRequired> { checked: panic!(), marker: panic!() };
 //! ```
 //!
+//! Constant initializers return the exact declared type:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, portable_name, typed_program};
+//! let _ = typed_program(portable_name!("constant_type"), |builder| {
+//!     builder.constant(portable_name!("VALUE"), I32::TYPE, |body| body.bool(true)).builder
+//! });
+//! ```
+//!
+//! Transparent aliases retain distinct declaration brands in the typed AST:
+//!
+//! ```compile_fail
+//! use portable_build::{I64, portable_name, typed_list, typed_program};
+//! let _ = typed_program(portable_name!("alias_brand"), |builder| {
+//!     builder.alias(portable_name!("First"), I64::TYPE, |builder, first| {
+//!         builder.alias(portable_name!("Second"), I64::TYPE, |builder, second| {
+//!             builder.function(portable_name!("bad"), typed_list![], second.ty(), |body, _| {
+//!                 let value = body.i64(7);
+//!                 body.alias_wrap(&first, value)
+//!             }).builder
+//!         })
+//!     })
+//! });
+//! ```
+//!
 //! ```compile_fail
 //! use portable_build::{I32, Requirements, SupportsAll, TypedProgram, portable_name, typed_list, typed_program};
 //! struct EmptyDialect;
@@ -437,8 +462,8 @@ use portable_check::v0::CheckedProgram;
 
 use crate::capabilities::*;
 use crate::{
-    BodyBuilder, EnumId, EnumVariantId, FunctionId, ModuleBuilder, Operation, Parameter,
-    RecordFieldId, RecordId, Type, Value, Visibility,
+    AliasId, BodyBuilder, ConstantId, EnumId, EnumVariantId, FunctionId, ModuleBuilder, Operation,
+    Parameter, RecordFieldId, RecordId, Type, Value, Visibility,
 };
 
 mod sealed {
@@ -658,6 +683,12 @@ pub struct Optional<T>(PhantomData<fn() -> T>);
 /// Success/error tagged-value marker.
 pub struct ResultValue<Ok, Error>(PhantomData<fn() -> (Ok, Error)>);
 
+type InvariantAliasBrand<'module, 'alias, T, R> =
+    (Cell<&'module ()>, Cell<&'alias ()>, fn(T, R) -> (T, R));
+
+/// A transparent alias value branded with its exact declaration.
+pub struct AliasValue<'module, 'alias, T>(PhantomData<InvariantAliasBrand<'module, 'alias, T, ()>>);
+
 macro_rules! primitive_type {
     ($marker:ident, $type_fn:ident, $feature:ident) => {
         impl $marker {
@@ -785,6 +816,7 @@ pub struct TypedExpr<'module, 'body, T, R: Requirements> {
 enum TypedNode {
     Literal(Value),
     Local(String),
+    Constant(ConstantId),
     Record {
         record: RecordId,
         fields: Vec<(RecordFieldId, TypedNode)>,
@@ -824,6 +856,97 @@ enum TypedNode {
         operation: Operation,
         arguments: Vec<TypedNode>,
     },
+}
+
+/// A typed constant expression owned by one constant declaration.
+type InvariantConstantBrand<'module, 'constant, T, R> =
+    fn(&'module (), &'constant (), T, R) -> (T, R);
+
+pub struct TypedConstantExpr<'module, 'constant, T, R: Requirements> {
+    node: TypedConstantNode,
+    marker: PhantomData<InvariantConstantBrand<'module, 'constant, T, R>>,
+}
+
+enum TypedConstantNode {
+    Literal(Value),
+    Reference(ConstantId),
+}
+
+/// The constant-expression factory for one declaration.
+pub struct TypedConstantBody<'module, 'constant> {
+    marker: PhantomData<(Cell<&'module ()>, Cell<&'constant ()>)>,
+}
+
+impl<'module, 'constant> TypedConstantBody<'module, 'constant> {
+    fn expression<T, R: Requirements>(
+        &self,
+        node: TypedConstantNode,
+    ) -> TypedConstantExpr<'module, 'constant, T, R> {
+        TypedConstantExpr {
+            node,
+            marker: PhantomData,
+        }
+    }
+
+    pub fn unit(&mut self) -> TypedConstantExpr<'module, 'constant, Unit, Requires<UnitValues>> {
+        self.expression(TypedConstantNode::Literal(Value::unit()))
+    }
+
+    pub fn bool(
+        &mut self,
+        value: bool,
+    ) -> TypedConstantExpr<'module, 'constant, Bool, Requires<BoolValues>> {
+        self.expression(TypedConstantNode::Literal(Value::bool(value)))
+    }
+
+    pub fn i32(
+        &mut self,
+        value: i32,
+    ) -> TypedConstantExpr<'module, 'constant, I32, Requires<I32Values>> {
+        self.expression(TypedConstantNode::Literal(Value::i32(value)))
+    }
+
+    pub fn i64(
+        &mut self,
+        value: i64,
+    ) -> TypedConstantExpr<'module, 'constant, I64, Requires<I64Values>> {
+        self.expression(TypedConstantNode::Literal(Value::i64(value)))
+    }
+
+    pub fn f64(
+        &mut self,
+        value: f64,
+    ) -> TypedConstantExpr<'module, 'constant, F64, Requires<F64Values>> {
+        self.expression(TypedConstantNode::Literal(Value::f64(value)))
+    }
+
+    pub fn text(
+        &mut self,
+        value: impl Into<String>,
+    ) -> TypedConstantExpr<'module, 'constant, Text, Requires<TextValues>> {
+        self.expression(TypedConstantNode::Literal(Value::string(value)))
+    }
+
+    pub fn char(
+        &mut self,
+        value: char,
+    ) -> TypedConstantExpr<'module, 'constant, Char, Requires<CharValues>> {
+        self.expression(TypedConstantNode::Literal(Value::char(value)))
+    }
+
+    pub fn bytes(
+        &mut self,
+        value: impl Into<Vec<u8>>,
+    ) -> TypedConstantExpr<'module, 'constant, Bytes, Requires<BytesValues>> {
+        self.expression(TypedConstantNode::Literal(Value::bytes(value)))
+    }
+
+    pub fn read<T>(
+        &mut self,
+        constant: TypedConstant<'module, T>,
+    ) -> TypedConstantExpr<'module, 'constant, T, Requires<Constants>> {
+        self.expression(TypedConstantNode::Reference(constant.raw))
+    }
 }
 
 /// A typed parameter specification.
@@ -1372,6 +1495,35 @@ pub struct TypedFunction<'module, Arguments, Result> {
     marker: PhantomData<fn(&'module (), Arguments) -> Result>,
 }
 
+/// A typed immutable constant handle tied to its module.
+pub struct TypedConstant<'module, T> {
+    raw: ConstantId,
+    marker: PhantomData<fn(&'module ()) -> T>,
+}
+
+impl<T> Copy for TypedConstant<'_, T> {}
+impl<T> Clone for TypedConstant<'_, T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+/// A transparent type alias and its exact declaration brand.
+pub struct TypedAlias<'module, 'alias, T, R: Requirements> {
+    raw: AliasId,
+    target: Type,
+    marker: PhantomData<InvariantAliasBrand<'module, 'alias, T, R>>,
+}
+
+impl<'module, 'alias, T, R: Requirements> TypedAlias<'module, 'alias, T, R> {
+    pub fn ty(&self) -> TypedType<AliasValue<'module, 'alias, T>, All<Requires<TypeAliases>, R>> {
+        TypedType {
+            ir: Type::named(self.raw),
+            marker: PhantomData,
+        }
+    }
+}
+
 impl<A, R> Copy for TypedFunction<'_, A, R> {}
 impl<A, R> Clone for TypedFunction<'_, A, R> {
     fn clone(&self) -> Self {
@@ -1433,6 +1585,18 @@ type FunctionRequirement<Existing, Parameters, Result, Body> =
 type RecordRequirement<Existing, Fields> = All<Existing, All<Requires<Records>, Fields>>;
 type EnumRequirement<Existing> = All<Existing, Requires<Enums>>;
 type ModuleRequirement<R> = All<Requires<Modules>, R>;
+type ConstantRequirement<Existing, TypeR, ValueR> =
+    All<Existing, All<Requires<Constants>, All<TypeR, ValueR>>>;
+type AliasRequirement<Existing, TargetR> = All<Existing, All<Requires<TypeAliases>, TargetR>>;
+type AliasConversionRequirements<AliasR, ValueR> = All<Requires<TypeAliases>, All<AliasR, ValueR>>;
+type AliasWrappedExpr<'module, 'body, 'alias, T, AliasR, ValueR> = TypedExpr<
+    'module,
+    'body,
+    AliasValue<'module, 'alias, T>,
+    AliasConversionRequirements<AliasR, ValueR>,
+>;
+type AliasUnwrappedExpr<'module, 'body, T, AliasR, ValueR> =
+    TypedExpr<'module, 'body, T, AliasConversionRequirements<AliasR, ValueR>>;
 type FunctionAdded<'module, Existing, Parameters, Output, OutputRequirements, BodyRequirements> =
     Added<
         ProgramBuilder<
@@ -1491,6 +1655,76 @@ impl NameAllocator {
 }
 
 impl<'module, Existing: Requirements> ProgramBuilder<'module, Existing> {
+    pub fn constant<T, TypeR, ValueR>(
+        mut self,
+        name: PortableName,
+        ty: TypedType<T, TypeR>,
+        build: impl for<'constant> FnOnce(
+            &mut TypedConstantBody<'module, 'constant>,
+        ) -> TypedConstantExpr<'module, 'constant, T, ValueR>,
+    ) -> Added<
+        ProgramBuilder<'module, ConstantRequirement<Existing, TypeR, ValueR>>,
+        TypedConstant<'module, T>,
+    >
+    where
+        TypeR: Requirements,
+        ValueR: Requirements,
+    {
+        let name = self.names.allocate(name);
+        let raw = self
+            .dynamic
+            .constant(name, Visibility::Public, vec![], ty.ir, |body| {
+                let mut typed = TypedConstantBody {
+                    marker: PhantomData,
+                };
+                let value = build(&mut typed);
+                lower_constant_expression(body, value.node)
+            });
+        Added {
+            builder: ProgramBuilder {
+                dynamic: self.dynamic,
+                names: self.names,
+                marker: PhantomData,
+            },
+            handle: TypedConstant {
+                raw,
+                marker: PhantomData,
+            },
+        }
+    }
+
+    pub fn alias<T, TargetR, OutputRequirements>(
+        mut self,
+        name: PortableName,
+        target: TypedType<T, TargetR>,
+        then: impl for<'alias> FnOnce(
+            ProgramBuilder<'module, AliasRequirement<Existing, TargetR>>,
+            TypedAlias<'module, 'alias, T, TargetR>,
+        ) -> ProgramBuilder<'module, OutputRequirements>,
+    ) -> ProgramBuilder<'module, OutputRequirements>
+    where
+        TargetR: Requirements,
+        OutputRequirements: Requirements,
+    {
+        let name = self.names.allocate(name);
+        let target_ir = target.ir;
+        let raw = self
+            .dynamic
+            .alias(name, Visibility::Public, vec![], target_ir.clone());
+        then(
+            ProgramBuilder {
+                dynamic: self.dynamic,
+                names: self.names,
+                marker: PhantomData,
+            },
+            TypedAlias {
+                raw,
+                target: target_ir,
+                marker: PhantomData,
+            },
+        )
+    }
+
     pub fn function<P, Output, OutputRequirements, BodyRequirements>(
         mut self,
         name: PortableName,
@@ -1665,6 +1899,39 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         local: TypedLocal<'module, 'body, T, R>,
     ) -> TypedExpr<'module, 'body, T, With<Functions, R>> {
         self.expression(TypedNode::Local(local.name))
+    }
+
+    pub fn constant<T>(
+        &mut self,
+        constant: TypedConstant<'module, T>,
+    ) -> TypedExpr<'module, 'body, T, Requires<Constants>> {
+        self.expression(TypedNode::Constant(constant.raw))
+    }
+
+    pub fn alias_wrap<'alias, T, AliasR, ValueR>(
+        &mut self,
+        alias: &TypedAlias<'module, 'alias, T, AliasR>,
+        value: TypedExpr<'module, 'body, T, ValueR>,
+    ) -> AliasWrappedExpr<'module, 'body, 'alias, T, AliasR, ValueR>
+    where
+        AliasR: Requirements,
+        ValueR: Requirements,
+    {
+        let _ = &alias.target;
+        self.expression(value.node)
+    }
+
+    pub fn alias_unwrap<'alias, T, AliasR, ValueR>(
+        &mut self,
+        alias: &TypedAlias<'module, 'alias, T, AliasR>,
+        value: TypedExpr<'module, 'body, AliasValue<'module, 'alias, T>, ValueR>,
+    ) -> AliasUnwrappedExpr<'module, 'body, T, AliasR, ValueR>
+    where
+        AliasR: Requirements,
+        ValueR: Requirements,
+    {
+        let _ = &alias.target;
+        self.expression(value.node)
     }
 
     pub fn unit(&mut self) -> TypedExpr<'module, 'body, Unit, Requires<UnitValues>> {
@@ -2487,6 +2754,7 @@ fn lower_expression(body: &mut BodyBuilder<'_>, node: TypedNode) -> crate::Expr 
     match node {
         TypedNode::Literal(value) => body.literal(value),
         TypedNode::Local(name) => body.local(name),
+        TypedNode::Constant(constant) => body.constant(constant),
         TypedNode::Record { record, fields } => {
             let fields = fields
                 .into_iter()
@@ -2559,6 +2827,16 @@ fn lower_expression(body: &mut BodyBuilder<'_>, node: TypedNode) -> crate::Expr 
                 .collect::<Vec<_>>();
             body.intrinsic(operation, arguments)
         }
+    }
+}
+
+fn lower_constant_expression(
+    body: &mut BodyBuilder<'_>,
+    node: TypedConstantNode,
+) -> crate::ConstantExpr {
+    match node {
+        TypedConstantNode::Literal(value) => body.constant_literal(value),
+        TypedConstantNode::Reference(constant) => body.constant_reference(constant),
     }
 }
 
@@ -2643,6 +2921,68 @@ mod tests {
         let core = portable_core_ir::lower_checked(program.checked_program())
             .expect("module/unit typed program lowers to CoreIR");
         portable_core_ir::verify_core(&core).expect("module/unit typed CoreIR verifies");
+    }
+
+    #[test]
+    fn constants_and_aliases_are_typed_and_inferred() {
+        let program = typed_program(portable_name!("constants_and_aliases"), |builder| {
+            let added =
+                builder.constant(portable_name!("TRUTH"), Bool::TYPE, |body| body.bool(true));
+            let truth = added.handle;
+            added
+                .builder
+                .alias(portable_name!("Count"), I64::TYPE, |builder, count| {
+                    let builder = builder
+                        .function(
+                            portable_name!("truth"),
+                            typed_list![],
+                            Bool::TYPE,
+                            |body, _| body.constant(truth),
+                        )
+                        .builder;
+                    builder
+                        .function(
+                            portable_name!("count"),
+                            typed_list![],
+                            count.ty(),
+                            |body, _| {
+                                let value = body.i64(7);
+                                body.alias_wrap(&count, value)
+                            },
+                        )
+                        .builder
+                        .function(
+                            portable_name!("unwrapped_count"),
+                            typed_list![],
+                            I64::TYPE,
+                            |body, _| {
+                                let value = body.i64(7);
+                                let value = body.alias_wrap(&count, value);
+                                body.alias_unwrap(&count, value)
+                            },
+                        )
+                        .builder
+                })
+        });
+        let plugin = language_plugin(TestDialect)
+            .support(test_mapping::<Modules>())
+            .support(test_mapping::<Constants>())
+            .support(test_mapping::<TypeAliases>())
+            .support(test_mapping::<Functions>())
+            .support(test_mapping::<BoolValues>())
+            .support(test_mapping::<I64Values>())
+            .build();
+
+        fn admit<P, R: Requirements>(_plugin: &P, _program: &TypedProgram<R>)
+        where
+            P: SupportsAll<R>,
+        {
+        }
+
+        admit(&plugin, &program);
+        let core = portable_core_ir::lower_checked(program.checked_program())
+            .expect("typed constants and aliases lower to CoreIR");
+        portable_core_ir::verify_core(&core).expect("typed constants and aliases verify");
     }
 
     #[test]
