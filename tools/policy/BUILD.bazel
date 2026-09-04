@@ -5,6 +5,7 @@ sh_test(
     srcs = ["capability_layout_test.sh"],
     data = [
         "capability_layout_test.py",
+        "//crates/backend-java:language_ir_policy_sources",
         "//crates/build:typed_builder_policy_sources",
     ],
     visibility = ["//visibility:public"],

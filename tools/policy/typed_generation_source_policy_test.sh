@@ -11,4 +11,5 @@ python3 \
   "${root}/crates/build/src/capabilities/"*.rs \
   "${root}/crates/codegen/src/linking.rs" \
   "${root}/crates/codegen/src/target_ast.rs" \
-  "${root}/crates/backend-java/src/"*.rs
+  "${root}/crates/backend-java/src/"*.rs \
+  "${root}/crates/backend-java/src/capabilities/"*.rs

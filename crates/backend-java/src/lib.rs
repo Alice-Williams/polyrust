@@ -4,9 +4,9 @@
 #![forbid(unsafe_code)]
 
 pub mod ast;
+pub mod capabilities;
 mod capability;
 pub mod dialect;
-pub mod feature;
 mod lower;
 mod render;
 mod runtime;
@@ -27,9 +27,9 @@ use portable_core_ir::CoreProgram;
 use portable_ir::v0::IrVersion;
 
 use crate::{
+    capabilities::{JavaCapabilitySet, java_capabilities},
     capability::JavaCapabilityRegistry,
     dialect::{JavaDialect, JavaHelperCapability, JavaRuntimeHelper},
-    feature::{JavaCapabilitySet, java_capabilities},
     lower::JavaLowerer,
     render::JavaRenderer,
 };

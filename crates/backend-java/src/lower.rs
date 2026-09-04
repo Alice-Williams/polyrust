@@ -31,12 +31,12 @@ use portable_ir::v0::Visibility;
 
 use crate::{
     ast::*,
-    capability::JavaCapabilitySelection,
-    dialect::*,
-    feature::{
+    capabilities::{
         JavaCapabilitySet, JavaFunctionsNode, JavaIntrinsicFamily, JavaRecordsNode,
         classify_intrinsic,
     },
+    capability::JavaCapabilitySelection,
+    dialect::*,
 };
 
 #[derive(Clone, Copy, Debug)]

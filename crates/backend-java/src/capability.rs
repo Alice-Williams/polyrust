@@ -23,7 +23,7 @@ use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef, sort_diagnosti
 
 use crate::{
     ast::JavaIdentifier,
-    feature::{JavaCapabilitySet, java_capabilities},
+    capabilities::{JavaCapabilitySet, java_capabilities},
 };
 
 #[doc(hidden)]
