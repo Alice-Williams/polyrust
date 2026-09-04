@@ -37,6 +37,6 @@ rust_doc_test(
 
 filegroup(
     name = "typed_builder_policy_sources",
-    srcs = ["src/typed_program.rs"],
+    srcs = ["src/typed_program.rs"] + glob(["src/capabilities/**/*.rs"]),
     visibility = ["//visibility:public"],
 )

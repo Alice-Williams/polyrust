@@ -11,7 +11,7 @@ use crate::{
     lower::{JavaIntrinsicExpr, lower_intrinsic_expression},
 };
 
-pub type JavaFeatureSlots = implemented_feature_slots!(
+pub type JavaCapabilitySlots = implemented_capability_slots!(
     JavaFunctions,
     JavaLocalReads,
     JavaFunctionCalls,
@@ -51,9 +51,9 @@ pub type JavaFeatureSlots = implemented_feature_slots!(
     JavaUtf8Conversions,
 );
 
-pub type JavaFeatureSet = LanguageFeaturePlugin<JavaDialect, JavaFeatureSlots>;
+pub type JavaCapabilitySet = LanguageCapabilityPlugin<JavaDialect, JavaCapabilitySlots>;
 
-pub(crate) fn java_features() -> JavaFeatureSet {
+pub(crate) fn java_capabilities() -> JavaCapabilitySet {
     java_plugin_builder()
         .support(JavaFunctions)
         .support(JavaLocalReads)
@@ -96,12 +96,12 @@ pub(crate) fn java_features() -> JavaFeatureSet {
 }
 
 mod sealed {
-    pub trait JavaFeatureMapping {}
+    pub trait JavaCapabilityMapping {}
 }
 
 /// A Java mapping admitted by the sealed Java plugin builder.
-pub trait JavaFeatureMapping:
-    sealed::JavaFeatureMapping + FeatureMapping<JavaDialect> + Copy + Send + Sync
+pub trait JavaCapabilityMapping:
+    sealed::JavaCapabilityMapping + CapabilityMapping<JavaDialect> + Copy + Send + Sync
 {
 }
 
@@ -112,10 +112,10 @@ pub trait JavaFeatureMapping:
 ///
 /// ```compile_fail
 /// use portable_backend_java::{dialect::JavaDialect, feature::java_plugin_builder};
-/// use portable_build::{FeatureMapping, I32Values};
+/// use portable_build::{CapabilityMapping, I32Values};
 /// struct SourceStringMapping;
-/// impl FeatureMapping<JavaDialect> for SourceStringMapping {
-///     type Feature = I32Values;
+/// impl CapabilityMapping<JavaDialect> for SourceStringMapping {
+///     type Capability = I32Values;
 ///     type Context = ();
 ///     type Input = i32;
 ///     type Output = String;
@@ -126,12 +126,12 @@ pub trait JavaFeatureMapping:
 /// }
 /// let _ = java_plugin_builder().support(SourceStringMapping);
 /// ```
-pub struct JavaPluginBuilder<Slots = EmptyFeatureSlots> {
+pub struct JavaPluginBuilder<Slots = EmptyCapabilitySlots> {
     inner: LanguagePluginBuilder<JavaDialect, Slots>,
 }
 
 type JavaRegisteredSlots<Slots, M> = <Slots as ReplaceMissing<
-    <<M as FeatureMapping<JavaDialect>>::Feature as Feature>::Index,
+    <<M as CapabilityMapping<JavaDialect>>::Capability as Capability>::Index,
     M,
 >>::Output;
 
@@ -144,15 +144,15 @@ pub fn java_plugin_builder() -> JavaPluginBuilder {
 impl<Slots> JavaPluginBuilder<Slots> {
     pub fn support<M>(self, mapping: M) -> JavaPluginBuilder<JavaRegisteredSlots<Slots, M>>
     where
-        M: JavaFeatureMapping,
-        Slots: ReplaceMissing<<M::Feature as Feature>::Index, M>,
+        M: JavaCapabilityMapping,
+        Slots: ReplaceMissing<<M::Capability as Capability>::Index, M>,
     {
         JavaPluginBuilder {
             inner: self.inner.support(mapping),
         }
     }
 
-    pub fn build(self) -> LanguageFeaturePlugin<JavaDialect, Slots> {
+    pub fn build(self) -> LanguageCapabilityPlugin<JavaDialect, Slots> {
         self.inner.build()
     }
 }
@@ -163,11 +163,11 @@ macro_rules! ast_mapping {
         #[derive(Clone, Copy, Debug, Default)]
         pub struct $mapping;
 
-        impl sealed::JavaFeatureMapping for $mapping {}
-        impl JavaFeatureMapping for $mapping {}
+        impl sealed::JavaCapabilityMapping for $mapping {}
+        impl JavaCapabilityMapping for $mapping {}
 
-        impl FeatureMapping<JavaDialect> for $mapping {
-            type Feature = $feature;
+        impl CapabilityMapping<JavaDialect> for $mapping {
+            type Capability = $feature;
             type Context = ();
             type Input = $ast;
             type Output = $ast;
@@ -205,13 +205,13 @@ ast_mapping!(JavaOptionConstruction, OptionConstruction, JavaExpr);
 ast_mapping!(JavaResultConstruction, ResultConstruction, JavaExpr);
 
 #[doc(hidden)]
-pub struct JavaIntrinsicMappingInput<F: Feature> {
+pub struct JavaIntrinsicMappingInput<F: Capability> {
     value: CoreIntrinsicExpr<JavaExpr>,
     result: JavaType,
     feature: std::marker::PhantomData<F>,
 }
 
-impl<F: Feature> JavaIntrinsicMappingInput<F> {
+impl<F: Capability> JavaIntrinsicMappingInput<F> {
     fn new(value: CoreIntrinsicExpr<JavaExpr>, result: JavaType) -> Self {
         Self {
             value,
@@ -227,11 +227,11 @@ macro_rules! intrinsic_mapping {
         #[derive(Clone, Copy, Debug, Default)]
         pub struct $mapping;
 
-        impl sealed::JavaFeatureMapping for $mapping {}
-        impl JavaFeatureMapping for $mapping {}
+        impl sealed::JavaCapabilityMapping for $mapping {}
+        impl JavaCapabilityMapping for $mapping {}
 
-        impl FeatureMapping<JavaDialect> for $mapping {
-            type Feature = $feature;
+        impl CapabilityMapping<JavaDialect> for $mapping {
+            type Capability = $feature;
             type Context = ();
             type Input = JavaIntrinsicMappingInput<$feature>;
             type Output = JavaIntrinsicExpr;

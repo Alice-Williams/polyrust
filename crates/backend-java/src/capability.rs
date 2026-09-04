@@ -24,7 +24,7 @@ use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef, sort_diagnosti
 
 use crate::{
     ast::JavaIdentifier,
-    feature::{JavaFeatureSet, java_features},
+    feature::{JavaCapabilitySet, java_capabilities},
 };
 
 #[doc(hidden)]
@@ -130,18 +130,18 @@ impl JavaCapabilitySelection {
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug)]
 pub struct JavaCapabilityRegistry {
-    features: JavaFeatureSet,
+    features: JavaCapabilitySet,
 }
 
 impl JavaCapabilityRegistry {
-    pub(crate) fn new(features: JavaFeatureSet) -> Self {
+    pub(crate) fn new(features: JavaCapabilitySet) -> Self {
         Self { features }
     }
 
     fn registered<F>(&self)
     where
-        F: portable_build::Feature,
-        JavaFeatureSet: Supports<F>,
+        F: portable_build::Capability,
+        JavaCapabilitySet: Supports<F>,
     {
         let _ = self.features.mapping_for::<F>();
     }
@@ -283,7 +283,7 @@ impl JavaCapabilityRegistry {
 
 impl Default for JavaCapabilityRegistry {
     fn default() -> Self {
-        Self::new(java_features())
+        Self::new(java_capabilities())
     }
 }
 

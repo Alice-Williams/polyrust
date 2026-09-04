@@ -77,6 +77,7 @@
 //! ```
 
 mod body;
+mod capabilities;
 mod handles;
 mod interface_fixture;
 mod module;
@@ -84,6 +85,7 @@ mod typed_program;
 mod value;
 
 pub use body::*;
+pub use capabilities::*;
 pub use handles::*;
 pub use interface_fixture::*;
 pub use module::*;

@@ -1,6 +1,16 @@
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 sh_test(
+    name = "capability_layout_test",
+    srcs = ["capability_layout_test.sh"],
+    data = [
+        "capability_layout_test.py",
+        "//crates/build:typed_builder_policy_sources",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
     name = "typed_generation_source_policy_test",
     srcs = ["typed_generation_source_policy_test.sh"],
     data = [

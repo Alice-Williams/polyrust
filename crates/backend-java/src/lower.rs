@@ -4,11 +4,11 @@ use std::{
 };
 
 use portable_build::{
-    BooleanLogic, BytesOperations, CheckedIntegerArithmetic, CheckedIntegerShifts, Equality,
-    Feature, FeatureMapping, FloatingPointArithmetic, FloatingPointInspection, IntegerBitwise,
-    IntegerConversions, ListOperations, OptionOperations, Ordering, ResultInspection,
-    StringConcatenation, StringInspection, StringTransformation, Supports, Utf8Conversions,
-    WrappingIntegerArithmetic,
+    BooleanLogic, BytesOperations, Capability, CapabilityMapping, CheckedIntegerArithmetic,
+    CheckedIntegerShifts, Equality, FloatingPointArithmetic, FloatingPointInspection,
+    IntegerBitwise, IntegerConversions, ListOperations, OptionOperations, Ordering,
+    ResultInspection, StringConcatenation, StringInspection, StringTransformation, Supports,
+    Utf8Conversions, WrappingIntegerArithmetic,
 };
 use portable_codegen::{
     BackendOptions, FileGroupRole, GeneratedCallable, GeneratedCallableId,
@@ -33,16 +33,16 @@ use crate::{
     ast::*,
     capability::JavaCapabilitySelection,
     dialect::*,
-    feature::{JavaFeatureSet, JavaIntrinsicFamily, classify_intrinsic},
+    feature::{JavaCapabilitySet, JavaIntrinsicFamily, classify_intrinsic},
 };
 
 #[derive(Clone, Copy, Debug)]
 pub struct JavaLowerer {
-    features: JavaFeatureSet,
+    features: JavaCapabilitySet,
 }
 
 impl JavaLowerer {
-    pub(crate) const fn new(features: JavaFeatureSet) -> Self {
+    pub(crate) const fn new(features: JavaCapabilitySet) -> Self {
         Self { features }
     }
 }
@@ -73,7 +73,7 @@ struct Lowering<'a> {
     interface_methods: BTreeMap<CoreInterfaceMethodId, GeneratedInterfaceMethodId>,
     constants: BTreeMap<CoreConstantId, GeneratedValueId>,
     capabilities: &'a JavaCapabilitySelection,
-    features: JavaFeatureSet,
+    features: JavaCapabilitySet,
     next_temporary: Cell<u32>,
 }
 
@@ -81,7 +81,7 @@ impl<'a> Lowering<'a> {
     fn new(
         core: &'a CoreProgram,
         capabilities: &'a JavaCapabilitySelection,
-        features: JavaFeatureSet,
+        features: JavaCapabilitySet,
     ) -> Self {
         Self {
             core,
@@ -1345,11 +1345,11 @@ impl<'a> Lowering<'a> {
 
     fn mapped_expr<F>(&self, value: JavaExpr) -> Result<JavaExpr, Vec<Diagnostic>>
     where
-        F: Feature,
-        JavaFeatureSet: Supports<F, Dialect = JavaDialect>,
-        <JavaFeatureSet as Supports<F>>::Mapping: FeatureMapping<
+        F: Capability,
+        JavaCapabilitySet: Supports<F, Dialect = JavaDialect>,
+        <JavaCapabilitySet as Supports<F>>::Mapping: CapabilityMapping<
                 JavaDialect,
-                Feature = F,
+                Capability = F,
                 Context = (),
                 Input = JavaExpr,
                 Output = JavaExpr,

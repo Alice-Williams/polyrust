@@ -13,7 +13,9 @@ mod runtime;
 
 use std::collections::BTreeMap;
 
-use portable_build::{Feature, Requirements, Supports, SupportsAll, TypedProgram};
+use portable_build::{
+    Capability as PortableCapability, Requirements, Supports, SupportsAll, TypedProgram,
+};
 use portable_check::v0::{Capability, CheckedProgram};
 use portable_codegen::{
     Backend, BackendDescriptor, BackendError, BackendOptions, BackendVersion, CanonicalCoreAdapter,
@@ -27,7 +29,7 @@ use portable_ir::v0::IrVersion;
 use crate::{
     capability::JavaCapabilityRegistry,
     dialect::{JavaDialect, JavaHelperCapability, JavaRuntimeHelper},
-    feature::{JavaFeatureSet, java_features},
+    feature::{JavaCapabilitySet, java_capabilities},
     lower::JavaLowerer,
     render::JavaRenderer,
 };
@@ -155,13 +157,13 @@ fn helper_support(
 
 #[derive(Clone, Copy, Debug)]
 pub struct JavaPlugin {
-    features: JavaFeatureSet,
+    features: JavaCapabilitySet,
 }
 
 impl JavaPlugin {
     fn new() -> Self {
         Self {
-            features: java_features(),
+            features: java_capabilities(),
         }
     }
 }
@@ -174,11 +176,11 @@ impl Default for JavaPlugin {
 
 impl<F> Supports<F> for JavaPlugin
 where
-    F: Feature,
-    JavaFeatureSet: Supports<F, Dialect = JavaDialect>,
+    F: PortableCapability,
+    JavaCapabilitySet: Supports<F, Dialect = JavaDialect>,
 {
     type Dialect = JavaDialect;
-    type Mapping = <JavaFeatureSet as Supports<F>>::Mapping;
+    type Mapping = <JavaCapabilitySet as Supports<F>>::Mapping;
 
     fn mapping(&self) -> &Self::Mapping {
         self.features.mapping()

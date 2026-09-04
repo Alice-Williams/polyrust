@@ -188,12 +188,12 @@
 //! call replaces its type-level `Missing` slot:
 //!
 //! ```compile_fail
-//! use portable_build::{FeatureMapping, I32Values, language_plugin};
+//! use portable_build::{CapabilityMapping, I32Values, language_plugin};
 //! struct Dialect;
 //! #[derive(Clone, Copy)]
 //! struct Mapping;
-//! impl FeatureMapping<Dialect> for Mapping {
-//!     type Feature = I32Values;
+//! impl CapabilityMapping<Dialect> for Mapping {
+//!     type Capability = I32Values;
 //!     type Context = ();
 //!     type Input = ();
 //!     type Output = ();
@@ -206,12 +206,12 @@
 //! A mapping for one dialect cannot be registered in another dialect:
 //!
 //! ```compile_fail
-//! use portable_build::{FeatureMapping, I32Values, language_plugin};
+//! use portable_build::{CapabilityMapping, I32Values, language_plugin};
 //! struct First;
 //! struct Second;
 //! struct Mapping;
-//! impl FeatureMapping<First> for Mapping {
-//!     type Feature = I32Values;
+//! impl CapabilityMapping<First> for Mapping {
+//!     type Capability = I32Values;
 //!     type Context = ();
 //!     type Input = ();
 //!     type Output = ();
@@ -306,14 +306,13 @@ use std::{cell::Cell, marker::PhantomData};
 
 use portable_check::v0::CheckedProgram;
 
+use crate::capabilities::*;
 use crate::{
     BodyBuilder, FunctionId, ModuleBuilder, Operation, Parameter, RecordFieldId, RecordId, Type,
     Value, Visibility,
 };
 
 mod sealed {
-    pub trait Feature {}
-    pub trait Requirements {}
     pub trait Parameters {}
     pub trait Arguments {}
     pub trait Fields {}
@@ -323,428 +322,6 @@ mod sealed {
     pub trait Ordered {}
     pub trait Integer {}
 }
-
-/// A feature which can be required by typed portable syntax.
-pub trait Feature: sealed::Feature {
-    /// Position of this feature in the closed plugin mapping catalogue.
-    type Index;
-}
-
-/// A structural compile-time tree of inferred requirements.
-pub trait Requirements: sealed::Requirements {}
-
-/// The empty requirement tree.
-#[derive(Clone, Copy, Debug)]
-pub struct NoneRequired;
-
-/// One required feature followed by another requirement tree.
-#[derive(Clone, Copy, Debug)]
-pub struct Requires<F: Feature, Tail: Requirements = NoneRequired>(PhantomData<(F, Tail)>);
-
-/// The conjunction of two requirement trees.
-#[derive(Clone, Copy, Debug)]
-pub struct All<Left: Requirements, Right: Requirements>(PhantomData<(Left, Right)>);
-
-impl sealed::Requirements for NoneRequired {}
-impl Requirements for NoneRequired {}
-impl<F: Feature, Tail: Requirements> sealed::Requirements for Requires<F, Tail> {}
-impl<F: Feature, Tail: Requirements> Requirements for Requires<F, Tail> {}
-impl<Left: Requirements, Right: Requirements> sealed::Requirements for All<Left, Right> {}
-impl<Left: Requirements, Right: Requirements> Requirements for All<Left, Right> {}
-
-/// A typed executable mapping registered by one target dialect.
-pub trait FeatureMapping<D>: 'static {
-    type Feature: Feature;
-    type Context;
-    type Input;
-    type Output;
-    type Error;
-
-    fn lower(
-        &self,
-        context: &mut Self::Context,
-        input: Self::Input,
-    ) -> Result<Self::Output, Self::Error>;
-}
-
-/// Compile-time evidence that a plugin stores one executable feature mapping.
-pub trait Supports<F: Feature> {
-    type Dialect;
-    type Mapping: FeatureMapping<Self::Dialect, Feature = F>;
-
-    fn mapping(&self) -> &Self::Mapping;
-}
-
-/// Compile-time evidence that a dialect implements a complete requirement tree.
-pub trait SupportsAll<R: Requirements> {}
-
-impl<D> SupportsAll<NoneRequired> for D {}
-
-impl<D, F, Tail> SupportsAll<Requires<F, Tail>> for D
-where
-    F: Feature,
-    Tail: Requirements,
-    D: Supports<F> + SupportsAll<Tail>,
-{
-}
-
-impl<D, Left, Right> SupportsAll<All<Left, Right>> for D
-where
-    Left: Requirements,
-    Right: Requirements,
-    D: SupportsAll<Left> + SupportsAll<Right>,
-{
-}
-
-/// First position in a type-level feature-slot list.
-pub enum Here {}
-
-/// A later position in a type-level feature-slot list.
-pub enum There<Index> {
-    #[doc(hidden)]
-    Never(std::convert::Infallible, PhantomData<Index>),
-}
-
-macro_rules! feature_markers_at {
-    ($index:ty;) => {};
-    ($index:ty; $(#[$meta:meta])* $name:ident $(, $($(#[$tail_meta:meta])* $tail:ident),* $(,)?)?) => {
-        $(#[$meta])*
-        #[derive(Clone, Copy, Debug)]
-        pub enum $name {}
-        impl sealed::Feature for $name {}
-        impl Feature for $name {
-            type Index = $index;
-        }
-        feature_markers_at!(There<$index>; $($($(#[$tail_meta])* $tail),*)?);
-    };
-}
-
-macro_rules! missing_slots {
-    () => { FeatureSlotEnd };
-    ($head:ident $(, $tail:ident)* $(,)?) => {
-        FeatureSlots<Missing, missing_slots!($($tail),*)>
-    };
-}
-
-macro_rules! feature_catalogue {
-    ($($(#[$meta:meta])* $name:ident),+ $(,)?) => {
-        feature_markers_at!(Here; $($(#[$meta])* $name),+);
-
-        /// Empty mapping state containing one missing slot per portable feature.
-        pub type EmptyFeatureSlots = missing_slots!($($name),+);
-    };
-}
-
-/// Marker stored in an unregistered feature slot.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct Missing;
-
-/// A feature slot containing its executable mapping.
-#[derive(Clone, Copy, Debug)]
-pub struct Implemented<M>(M);
-
-/// One slot followed by the remaining closed feature catalogue.
-#[derive(Clone, Copy, Debug)]
-pub struct FeatureSlots<Head, Tail> {
-    head: Head,
-    tail: Tail,
-}
-
-/// End of the closed feature catalogue.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct FeatureSlotEnd;
-
-#[doc(hidden)]
-pub trait SlotAt<Index> {
-    type Slot;
-
-    fn slot(&self) -> &Self::Slot;
-}
-
-impl<Head, Tail> SlotAt<Here> for FeatureSlots<Head, Tail> {
-    type Slot = Head;
-
-    fn slot(&self) -> &Self::Slot {
-        &self.head
-    }
-}
-
-impl<Head, Tail, Index> SlotAt<There<Index>> for FeatureSlots<Head, Tail>
-where
-    Tail: SlotAt<Index>,
-{
-    type Slot = Tail::Slot;
-
-    fn slot(&self) -> &Self::Slot {
-        self.tail.slot()
-    }
-}
-
-#[doc(hidden)]
-pub trait ReplaceMissing<Index, Mapping> {
-    type Output;
-
-    fn replace(self, mapping: Mapping) -> Self::Output;
-}
-
-impl<Tail, Mapping> ReplaceMissing<Here, Mapping> for FeatureSlots<Missing, Tail> {
-    type Output = FeatureSlots<Implemented<Mapping>, Tail>;
-
-    fn replace(self, mapping: Mapping) -> Self::Output {
-        FeatureSlots {
-            head: Implemented(mapping),
-            tail: self.tail,
-        }
-    }
-}
-
-impl<Head, Tail, Index, Mapping> ReplaceMissing<There<Index>, Mapping> for FeatureSlots<Head, Tail>
-where
-    Tail: ReplaceMissing<Index, Mapping>,
-{
-    type Output = FeatureSlots<Head, Tail::Output>;
-
-    fn replace(self, mapping: Mapping) -> Self::Output {
-        FeatureSlots {
-            head: self.head,
-            tail: self.tail.replace(mapping),
-        }
-    }
-}
-
-#[doc(hidden)]
-pub trait RegisteredMapping<D, F: Feature> {
-    type Mapping: FeatureMapping<D, Feature = F>;
-
-    fn mapping(&self) -> &Self::Mapping;
-}
-
-impl<D, F, M> RegisteredMapping<D, F> for Implemented<M>
-where
-    F: Feature,
-    M: FeatureMapping<D, Feature = F>,
-{
-    type Mapping = M;
-
-    fn mapping(&self) -> &Self::Mapping {
-        &self.0
-    }
-}
-
-/// Consuming builder for a target's executable feature mappings.
-pub struct LanguagePluginBuilder<D, Slots = EmptyFeatureSlots> {
-    dialect: D,
-    slots: Slots,
-}
-
-/// Completed typed feature plugin. Its slot state determines `Supports<F>`.
-#[derive(Clone, Copy, Debug)]
-pub struct LanguageFeaturePlugin<D, Slots> {
-    dialect: D,
-    slots: Slots,
-}
-
-type RegisteredSlots<D, Slots, M> =
-    <Slots as ReplaceMissing<<<M as FeatureMapping<D>>::Feature as Feature>::Index, M>>::Output;
-
-/// Starts an empty executable feature registry for `dialect`.
-pub fn language_plugin<D>(dialect: D) -> LanguagePluginBuilder<D> {
-    LanguagePluginBuilder {
-        dialect,
-        slots: empty_feature_slots(),
-    }
-}
-
-impl<D, Slots> LanguagePluginBuilder<D, Slots> {
-    /// Registers the feature inferred from `mapping` exactly once.
-    pub fn support<M>(self, mapping: M) -> LanguagePluginBuilder<D, RegisteredSlots<D, Slots, M>>
-    where
-        M: FeatureMapping<D>,
-        Slots: ReplaceMissing<<M::Feature as Feature>::Index, M>,
-    {
-        LanguagePluginBuilder {
-            dialect: self.dialect,
-            slots: self.slots.replace(mapping),
-        }
-    }
-
-    pub fn build(self) -> LanguageFeaturePlugin<D, Slots> {
-        LanguageFeaturePlugin {
-            dialect: self.dialect,
-            slots: self.slots,
-        }
-    }
-}
-
-impl<D, Slots> LanguageFeaturePlugin<D, Slots> {
-    pub const fn dialect(&self) -> &D {
-        &self.dialect
-    }
-
-    pub fn mapping_for<F>(&self) -> &<Self as Supports<F>>::Mapping
-    where
-        F: Feature,
-        Self: Supports<F>,
-    {
-        <Self as Supports<F>>::mapping(self)
-    }
-}
-
-impl<D, Slots, F> Supports<F> for LanguageFeaturePlugin<D, Slots>
-where
-    F: Feature,
-    Slots: SlotAt<F::Index>,
-    Slots::Slot: RegisteredMapping<D, F> + 'static,
-{
-    type Dialect = D;
-    type Mapping = <Slots::Slot as RegisteredMapping<D, F>>::Mapping;
-
-    fn mapping(&self) -> &Self::Mapping {
-        self.slots.slot().mapping()
-    }
-}
-
-macro_rules! feature_slots_value {
-    () => { FeatureSlotEnd };
-    ($head:ident $(, $tail:ident)* $(,)?) => {
-        FeatureSlots {
-            head: Missing,
-            tail: feature_slots_value!($($tail),*),
-        }
-    };
-}
-
-/// Builds the concrete slot-state type for a plugin which implements every
-/// catalogue feature in catalogue order.
-#[macro_export]
-macro_rules! implemented_feature_slots {
-    () => { $crate::FeatureSlotEnd };
-    ($head:ty $(, $tail:ty)* $(,)?) => {
-        $crate::FeatureSlots<
-            $crate::Implemented<$head>,
-            $crate::implemented_feature_slots!($($tail),*)
-        >
-    };
-}
-
-fn empty_feature_slots() -> EmptyFeatureSlots {
-    feature_slots_value!(
-        Functions,
-        LocalReads,
-        FunctionCalls,
-        Records,
-        RecordConstruction,
-        FieldAccess,
-        BoolValues,
-        I32Values,
-        I64Values,
-        F64Values,
-        TextValues,
-        BooleanLogic,
-        Equality,
-        Ordering,
-        CheckedIntegerArithmetic,
-        WrappingIntegerArithmetic,
-        FloatingPointArithmetic,
-        StringConcatenation,
-        CharValues,
-        BytesValues,
-        ListValues,
-        OptionValues,
-        ResultValues,
-        ListConstruction,
-        OptionConstruction,
-        ResultConstruction,
-        IntegerBitwise,
-        CheckedIntegerShifts,
-        FloatingPointInspection,
-        StringInspection,
-        StringTransformation,
-        BytesOperations,
-        ListOperations,
-        OptionOperations,
-        ResultInspection,
-        IntegerConversions,
-        Utf8Conversions,
-    )
-}
-
-feature_catalogue!(
-    /// Function declarations.
-    Functions,
-    /// Reads through callable-branded locals.
-    LocalReads,
-    /// Calls through typed function handles.
-    FunctionCalls,
-    /// Record declarations.
-    Records,
-    /// Exact typed record construction.
-    RecordConstruction,
-    /// Projection through declaration-branded fields.
-    FieldAccess,
-    /// Boolean values.
-    BoolValues,
-    /// Signed 32-bit values.
-    I32Values,
-    /// Signed 64-bit values.
-    I64Values,
-    /// IEEE-754 binary64 values.
-    F64Values,
-    /// Unicode text values.
-    TextValues,
-    /// Boolean operations.
-    BooleanLogic,
-    /// Equality operations.
-    Equality,
-    /// Ordered comparisons.
-    Ordering,
-    /// Checked signed-integer arithmetic.
-    CheckedIntegerArithmetic,
-    /// Two's-complement wrapping signed-integer arithmetic.
-    WrappingIntegerArithmetic,
-    /// Binary64 arithmetic.
-    FloatingPointArithmetic,
-    /// Text concatenation.
-    StringConcatenation,
-    /// Unicode scalar values.
-    CharValues,
-    /// Immutable byte strings.
-    BytesValues,
-    /// Homogeneous immutable lists.
-    ListValues,
-    /// Optional values.
-    OptionValues,
-    /// Success/error tagged values.
-    ResultValues,
-    /// Homogeneous list construction.
-    ListConstruction,
-    /// Optional-value construction.
-    OptionConstruction,
-    /// Result-value construction.
-    ResultConstruction,
-    /// Integer complement and bitwise binary operations.
-    IntegerBitwise,
-    /// Range-checked integer shifts.
-    CheckedIntegerShifts,
-    /// Floating-point truncation and predicates.
-    FloatingPointInspection,
-    /// String lengths, searches, and predicates.
-    StringInspection,
-    /// String slicing, replacement, truncation, and trimming.
-    StringTransformation,
-    /// Immutable byte-string operations.
-    BytesOperations,
-    /// Immutable list operations.
-    ListOperations,
-    /// Optional-value predicates and fallback.
-    OptionOperations,
-    /// Result-value predicates.
-    ResultInspection,
-    /// Exact integer widening and checked narrowing.
-    IntegerConversions,
-    /// Checked UTF-8 encoding and decoding.
-    Utf8Conversions,
-);
 
 /// An ASCII portable identifier proven usable by every initial target.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1869,7 +1446,7 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         value: TypedExpr<'module, 'body, A, InputRequirements>,
     ) -> TypedExpr<'module, 'body, Output, With<FeatureMarker, InputRequirements>>
     where
-        FeatureMarker: Feature,
+        FeatureMarker: Capability,
         InputRequirements: Requirements,
     {
         self.expression(TypedNode::Intrinsic {
@@ -1890,7 +1467,7 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         WithTwo<FeatureMarker, LeftRequirements, RightRequirements>,
     >
     where
-        FeatureMarker: Feature,
+        FeatureMarker: Capability,
         LeftRequirements: Requirements,
         RightRequirements: Requirements,
     {
@@ -1908,7 +1485,7 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         third: TypedExpr<'module, 'body, C, ThirdR>,
     ) -> TypedExpr<'module, 'body, Output, WithThree<FeatureMarker, FirstR, SecondR, ThirdR>>
     where
-        FeatureMarker: Feature,
+        FeatureMarker: Capability,
         FirstR: Requirements,
         SecondR: Requirements,
         ThirdR: Requirements,
@@ -2558,8 +2135,8 @@ mod tests {
     #[derive(Clone, Copy)]
     struct TestI32Mapping;
 
-    impl FeatureMapping<TestDialect> for TestI32Mapping {
-        type Feature = I32Values;
+    impl CapabilityMapping<TestDialect> for TestI32Mapping {
+        type Capability = I32Values;
         type Context = usize;
         type Input = i32;
         type Output = i64;
