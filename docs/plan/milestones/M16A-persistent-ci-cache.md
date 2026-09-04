@@ -1,6 +1,6 @@
 # M16A — Persist Bazel caches across GitHub Actions runs
 
-- Status: in-progress
+- Status: complete
 - Phase: 5
 - Depends on: M16
 
@@ -42,3 +42,7 @@ cache checkout contents, or skip semantic work based on cache state.
 - Local actionlint 1.7.12, cache policy, Buildifier, documentation, and the
   uncached 237/237 tracked release suite passed before the implementation
   push.
+- M16A-02 checkpoint `d4174d24f57b67b27b25956e9321e06be06724a3`
+  passed hosted run `33889219486` in all eight jobs. The release job contains
+  one successful `Cached complete release gate` step followed by successful
+  cache preparation and save steps.

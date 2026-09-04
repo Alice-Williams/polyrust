@@ -1,6 +1,6 @@
 # M16A-02 — Remove the redundant cold release gate
 
-- Status: in progress
+- Status: complete
 - Depends on: M16A-01
 - Blocks: none
 
@@ -39,3 +39,12 @@ run supplies the final evidence.
   Rust and Bazel linters.
 - An immediate normal cached replay also passes 237 of 237 while executing
   only one test; Bazel reports the other 236 results as cached.
+
+## Hosted evidence
+
+- Implementation checkpoint
+  `d4174d24f57b67b27b25956e9321e06be06724a3` passed GitHub Actions run
+  `33889219486` in all eight jobs.
+- The hosted release job contains exactly one successful
+  `Cached complete release gate` step. Cache restoration, archive
+  preparation, and refreshed cache saving all succeeded.
