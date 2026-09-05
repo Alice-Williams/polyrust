@@ -27,7 +27,9 @@ capability.
 - Typed blocks and statements cover immutable locals, conditionals, loops,
   non-enum pattern matching, and explicit result propagation. Loop controls,
   locals, fields, enum variants, interface methods, and implementation
-  bindings are branded so they cannot be used outside their owner.
+  bindings are branded so they cannot be used outside their owner. The v0
+  `Loops` surface is bounded `for_each`; unbounded loops and loop-control
+  statements remain deferred semantics.
 - Mapping inputs are portable typed AST or verified CoreIR values, never
   already-complete target AST passed through unchanged.
 - Deferred capabilities are absent rather than represented by placeholders.

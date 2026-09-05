@@ -80,9 +80,9 @@ catalogue through the following safe constructors:
 | `PortableTests` | typed function or method invocation plus exact value/error expectation |
 | `LocalBindings` | immutable binding which returns a fresh body-branded local handle |
 | `Conditionals` | value-producing and statement `if/else` with equal branch result types |
-| `Loops` | `for_each`, `while`, `break`, and `continue`; loop-control handles cannot escape their loop body |
+| `Loops` | bounded `for_each`; its immutable iteration binding cannot escape the loop body |
 | `PatternMatching` | exhaustive option, result, and boolean branches plus structurally constrained wildcard fallback |
-| `ResultPropagation` | explicit propagation from `Result<T, E>` to the enclosing compatible result context |
+| `ResultPropagation` | propagation of a fallible function or method call through its enclosing callable |
 | value capabilities | typed type witnesses and constructors for unit, bool, i32, i64, f64, char, text, bytes, list, option, and result |
 | operation capabilities | one named typed constructor per PolyIR operation, with exact operand and result markers |
 

@@ -221,6 +221,23 @@
 //! });
 //! ```
 //!
+//! A bounded-loop iteration handle cannot escape its body:
+//!
+//! ```compile_fail
+//! use portable_build::{Unit, list_type, portable_name, typed_list, typed_program, I32};
+//! let mut escaped = None;
+//! let _ = typed_program(portable_name!("loop_escape"), |builder| {
+//!     builder.function(portable_name!("bad"), typed_list![], Unit::TYPE, |body, _| {
+//!         let item = body.i32(1);
+//!         let items = body.list(I32::TYPE, typed_list![item]);
+//!         body.for_each(portable_name!("item"), items, |body, item| {
+//!             escaped = Some(item);
+//!             body.unit()
+//!         })
+//!     }).builder
+//! });
+//! ```
+//!
 //! ```compile_fail
 //! use portable_build::{I32, Requirements, SupportsAll, TypedProgram, portable_name, typed_list, typed_program};
 //! struct EmptyDialect;
@@ -272,6 +289,54 @@
 //!     fn lower(&self, _: &mut (), _: ()) -> Result<(), ()> { Ok(()) }
 //! }
 //! let _ = language_plugin(Dialect).support(Mapping).support(Mapping);
+//! ```
+//!
+//! A plugin which implements functions but omits call propagation cannot
+//! admit a typed program containing a call:
+//!
+//! ```compile_fail
+//! use std::marker::PhantomData;
+//! use portable_build::{
+//!     Capability, CapabilityMapping, Functions, I32, I32Values, Modules,
+//!     Requirements, SupportsAll, TypedProgram, language_plugin, parameter,
+//!     portable_name, typed_list, typed_program,
+//! };
+//! struct Dialect;
+//! #[derive(Clone, Copy)]
+//! struct Mapping<C: Capability>(PhantomData<C>);
+//! impl<C: Capability + 'static> CapabilityMapping<Dialect> for Mapping<C> {
+//!     type Capability = C;
+//!     type Context = ();
+//!     type Input = ();
+//!     type Output = ();
+//!     type Error = ();
+//!     fn lower(&self, _: &mut (), _: ()) -> Result<(), ()> { Ok(()) }
+//! }
+//! const fn mapping<C: Capability>() -> Mapping<C> { Mapping(PhantomData) }
+//! let program = typed_program(portable_name!("missing_propagation"), |builder| {
+//!     let added = builder.function(
+//!         portable_name!("identity"),
+//!         typed_list![parameter(portable_name!("value"), I32::TYPE)],
+//!         I32::TYPE,
+//!         |body, values| body.read(values.head),
+//!     );
+//!     let identity = added.handle;
+//!     added.builder.function(
+//!         portable_name!("caller"), typed_list![], I32::TYPE,
+//!         |body, _| {
+//!             let value = body.i32(7);
+//!             body.call(identity, typed_list![value])
+//!         },
+//!     ).builder
+//! });
+//! let plugin = language_plugin(Dialect)
+//!     .support(mapping::<Modules>())
+//!     .support(mapping::<Functions>())
+//!     .support(mapping::<I32Values>())
+//!     .build();
+//! fn admit<P, R: Requirements>(plugin: &P, program: &TypedProgram<R>)
+//! where P: SupportsAll<R> { let _ = (plugin, program); }
+//! admit(&plugin, &program);
 //! ```
 //!
 //! A mapping for one dialect cannot be registered in another dialect:
@@ -857,6 +922,11 @@ enum TypedNode {
         then_value: Box<TypedNode>,
         else_value: Box<TypedNode>,
     },
+    ForEach {
+        binding: String,
+        iterable: Box<TypedNode>,
+        body: Box<TypedNode>,
+    },
     Record {
         record: RecordId,
         fields: Vec<(RecordFieldId, TypedNode)>,
@@ -1019,6 +1089,19 @@ type InvariantBindingBrand<'module, 'body, 'binding, T> = (
 pub struct TypedBinding<'module, 'body, 'binding, T> {
     name: String,
     marker: PhantomData<InvariantBindingBrand<'module, 'body, 'binding, T>>,
+}
+
+type InvariantLoopItemBrand<'module, 'body, 'iteration, T> = (
+    Cell<&'module ()>,
+    Cell<&'body ()>,
+    Cell<&'iteration ()>,
+    fn(T) -> T,
+);
+
+/// One immutable iteration value scoped to a single `for_each` body.
+pub struct TypedLoopItem<'module, 'body, 'iteration, T> {
+    name: String,
+    marker: PhantomData<InvariantLoopItemBrand<'module, 'body, 'iteration, T>>,
 }
 
 impl<T, R: Requirements> Clone for TypedLocal<'_, '_, T, R> {
@@ -1950,10 +2033,16 @@ type EnumBranchRequirements<ValueR, ArmsR> = All<Requires<Enums>, All<ValueR, Ar
 type LocalBindingRequirements<ValueR, BodyR> = All<Requires<LocalBindings>, All<ValueR, BodyR>>;
 type ConditionalRequirements<ConditionR, ThenR, ElseR> =
     All<Requires<Conditionals>, All<ConditionR, All<ThenR, ElseR>>>;
+type LoopRequirements<IterableR, BodyR> =
+    All<Requires<Loops>, All<IterableR, All<BodyR, Requires<UnitValues>>>>;
+type FunctionCallRequirements<ArgumentR> =
+    All<Requires<Functions>, All<Requires<ResultPropagation>, ArgumentR>>;
 type LocalBindingExpr<'module, 'body, Output, ValueR, BodyR> =
     TypedExpr<'module, 'body, Output, LocalBindingRequirements<ValueR, BodyR>>;
 type ConditionalExpr<'module, 'body, Output, ConditionR, ThenR, ElseR> =
     TypedExpr<'module, 'body, Output, ConditionalRequirements<ConditionR, ThenR, ElseR>>;
+type LoopExpr<'module, 'body, IterableR, BodyR> =
+    TypedExpr<'module, 'body, Unit, LoopRequirements<IterableR, BodyR>>;
 
 impl<'module, 'body> TypedBody<'module, 'body> {
     fn expression<T, R: Requirements>(&self, node: TypedNode) -> TypedExpr<'module, 'body, T, R> {
@@ -1975,6 +2064,13 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         local: TypedBinding<'module, 'body, 'binding, T>,
     ) -> TypedExpr<'module, 'body, T, Requires<LocalBindings>> {
         self.expression(TypedNode::Local(local.name))
+    }
+
+    pub fn read_loop_item<'iteration, T>(
+        &mut self,
+        item: TypedLoopItem<'module, 'body, 'iteration, T>,
+    ) -> TypedExpr<'module, 'body, T, Requires<Loops>> {
+        self.expression(TypedNode::Local(item.name))
     }
 
     pub fn let_value<T, ValueR, Output, BodyR>(
@@ -2020,6 +2116,34 @@ impl<'module, 'body> TypedBody<'module, 'body> {
             condition: Box::new(condition.node),
             then_value: Box::new(then_value.node),
             else_value: Box::new(else_value.node),
+        })
+    }
+
+    pub fn for_each<T, IterableR, BodyR>(
+        &mut self,
+        name: PortableName,
+        iterable: TypedExpr<'module, 'body, List<T>, IterableR>,
+        build: impl for<'iteration> FnOnce(
+            &mut TypedBody<'module, 'body>,
+            TypedLoopItem<'module, 'body, 'iteration, T>,
+        ) -> TypedExpr<'module, 'body, Unit, BodyR>,
+    ) -> LoopExpr<'module, 'body, IterableR, BodyR>
+    where
+        IterableR: Requirements,
+        BodyR: Requirements,
+    {
+        let name = self.names.allocate(name);
+        let loop_body = build(
+            self,
+            TypedLoopItem {
+                name: name.clone(),
+                marker: PhantomData,
+            },
+        );
+        self.expression(TypedNode::ForEach {
+            binding: name,
+            iterable: Box::new(iterable.node),
+            body: Box::new(loop_body.node),
         })
     }
 
@@ -2234,7 +2358,7 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         &mut self,
         function: TypedFunction<'module, Arguments::Types, Output>,
         arguments: Arguments,
-    ) -> TypedExpr<'module, 'body, Output, With<Functions, Arguments::Requirements>>
+    ) -> TypedExpr<'module, 'body, Output, FunctionCallRequirements<Arguments::Requirements>>
     where
         Arguments: ArgumentList,
     {
@@ -2900,6 +3024,20 @@ fn lower_expression(body: &mut BodyBuilder<'_>, node: TypedNode) -> crate::Expr 
             let else_block = body.block([], Some(else_value));
             body.if_else(condition, then_block, else_block)
         }
+        TypedNode::ForEach {
+            binding,
+            iterable,
+            body: loop_value,
+        } => {
+            let iterable = lower_expression(body, *iterable);
+            let loop_value = lower_expression(body, *loop_value);
+            let evaluate = body.expression_statement(loop_value);
+            let loop_body = body.block([evaluate], None);
+            let statement = body.for_each(binding, iterable, loop_body);
+            let unit = body.literal(Value::unit());
+            let block = body.block([statement], Some(unit));
+            body.block_expression(block)
+        }
         TypedNode::Record { record, fields } => {
             let fields = fields
                 .into_iter()
@@ -3169,6 +3307,57 @@ mod tests {
         let core = portable_core_ir::lower_checked(program.checked_program())
             .expect("typed bindings and conditionals lower to CoreIR");
         portable_core_ir::verify_core(&core).expect("typed bindings and conditionals verify");
+    }
+
+    #[test]
+    fn bounded_loops_and_call_propagation_are_typed_and_inferred() {
+        let program = typed_program(portable_name!("loops_and_propagation"), |builder| {
+            let added = builder.function(
+                portable_name!("identity"),
+                typed_list![parameter(portable_name!("value"), I32::TYPE)],
+                I32::TYPE,
+                |body, values| body.read(values.head),
+            );
+            let identity = added.handle;
+            added
+                .builder
+                .function(
+                    portable_name!("visit"),
+                    typed_list![],
+                    Unit::TYPE,
+                    |body, _| {
+                        let item = body.i32(7);
+                        let items = body.list(I32::TYPE, typed_list![item]);
+                        body.for_each(portable_name!("item"), items, |body, item| {
+                            let item = body.read_loop_item(item);
+                            let called = body.call(identity, typed_list![item]);
+                            body.let_value(portable_name!("called"), called, |body, _| body.unit())
+                        })
+                    },
+                )
+                .builder
+        });
+        let plugin = language_plugin(TestDialect)
+            .support(test_mapping::<Modules>())
+            .support(test_mapping::<Functions>())
+            .support(test_mapping::<I32Values>())
+            .support(test_mapping::<ListValues>())
+            .support(test_mapping::<Loops>())
+            .support(test_mapping::<LocalBindings>())
+            .support(test_mapping::<ResultPropagation>())
+            .support(test_mapping::<UnitValues>())
+            .build();
+
+        fn admit<P, R: Requirements>(_plugin: &P, _program: &TypedProgram<R>)
+        where
+            P: SupportsAll<R>,
+        {
+        }
+
+        admit(&plugin, &program);
+        let core = portable_core_ir::lower_checked(program.checked_program())
+            .expect("typed loop and propagation lower to CoreIR");
+        portable_core_ir::verify_core(&core).expect("typed loop and propagation verify");
     }
 
     #[test]

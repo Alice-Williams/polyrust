@@ -62,12 +62,12 @@ expresses a component field and typed delegation to that component.
 | --- | --- |
 | `LocalBindings` | immutable typed lexical bindings |
 | `Conditionals` | statement and value-producing if/else |
-| `Loops` | bounded for-each, while, break, and continue |
+| `Loops` | bounded immutable-list `for_each` iteration |
 | `PatternMatching` | exhaustive option, result, boolean, and wildcard branching |
 | `ResultPropagation` | explicit early propagation of portable results without exceptions |
 
-Mutable locals, mutable records, exceptions, and unbounded target-specific
-control flow are not part of the initial catalogue.
+Mutable locals, mutable records, exceptions, unbounded loops, `break`, and
+`continue` are not part of the initial catalogue.
 
 Payload-free enum branching belongs exclusively to `Enums`, because a target
 cannot coherently claim the enum declaration/value contract without also

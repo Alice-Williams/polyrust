@@ -1,5 +1,5 @@
 //! The `Loops` portable capability.
 
-/// Marker for bounded iteration, while, break, and continue.
+/// Marker for bounded immutable-list iteration.
 #[derive(Clone, Copy, Debug)]
 pub enum Loops {}
