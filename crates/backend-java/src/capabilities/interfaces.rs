@@ -39,7 +39,7 @@ pub struct JavaInterfaceDeclarationInput {
 pub struct JavaInterfaceImplementationInput {
     pub(crate) method: CoreImplementationMethodId,
     pub(crate) interface_method: GeneratedInterfaceMethodId,
-    pub(crate) name: String,
+    pub(crate) interface_method_name: String,
     pub(crate) parameters: Vec<JavaParameter>,
     pub(crate) return_type: JavaType,
     pub(crate) body: JavaBlock,
@@ -57,7 +57,7 @@ pub struct JavaInterfaceCallInput {
 #[doc(hidden)]
 pub struct JavaConcreteInterfaceCallInput {
     pub(crate) receiver: JavaExpr,
-    pub(crate) name: String,
+    pub(crate) interface_method_name: String,
     pub(crate) arguments: Vec<JavaExpr>,
     pub(crate) result: JavaType,
     pub(crate) method: CoreImplementationMethodId,
@@ -81,6 +81,9 @@ pub enum JavaInterfacesNode {
     Method(Box<JavaMethod>),
     Expression(Box<JavaExpr>),
 }
+
+impl sealed::JavaMappingOutput for JavaInterfacesNode {}
+impl super::support::JavaMappingOutput for JavaInterfacesNode {}
 
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
@@ -142,7 +145,7 @@ impl CapabilityMapping<JavaDialect> for JavaInterfaces {
                     modifiers: vec![JavaModifier::Public],
                     type_parameters: vec![],
                     return_type: input.return_type,
-                    name: identifier(&input.name),
+                    name: identifier(&input.interface_method_name),
                     parameters: input.parameters,
                     body: Some(input.body),
                 }))
@@ -160,7 +163,7 @@ impl CapabilityMapping<JavaDialect> for JavaInterfaces {
             JavaInterfacesInput::ConcreteCall(input) => {
                 JavaInterfacesNode::Expression(Box::new(member_call(
                     input.receiver,
-                    &input.name,
+                    &input.interface_method_name,
                     input.arguments,
                     input.result,
                     JavaMemberOrigin::GeneratedImplementation(input.method),

@@ -48,6 +48,9 @@ pub enum JavaRecordsNode {
     Expression(JavaExpr),
 }
 
+impl sealed::JavaMappingOutput for JavaRecordsNode {}
+impl super::support::JavaMappingOutput for JavaRecordsNode {}
+
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JavaRecords;

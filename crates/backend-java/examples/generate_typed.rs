@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use portable_backend_java::JavaBackend;
 use portable_build::{
-    I32, Text, enum_arm, field, parameter, portable_name, typed_list, typed_program, variant,
+    Bool, I32, Text, enum_arm, field, interface_method, method_binding, parameter, portable_name,
+    typed_list, typed_program, variant,
 };
 use portable_codegen::OutputContents;
 
@@ -134,7 +135,7 @@ fn main() {
                     .builder
             },
         );
-        builder.enumeration(
+        let builder = builder.enumeration(
             portable_name!("TrafficLight"),
             typed_list![
                 variant(portable_name!("RED")),
@@ -185,6 +186,117 @@ fn main() {
                         },
                     )
                     .builder
+            },
+        );
+        builder.record(
+            portable_name!("Counter"),
+            typed_list![field(portable_name!("value"), I32::TYPE)],
+            |builder, counter| {
+                builder.interface(
+                    portable_name!("CounterView"),
+                    typed_list![
+                        interface_method(portable_name!("read"), typed_list![], I32::TYPE),
+                        interface_method(
+                            portable_name!("add"),
+                            typed_list![parameter(portable_name!("delta"), I32::TYPE)],
+                            I32::TYPE,
+                        ),
+                        interface_method(portable_name!("is_zero"), typed_list![], Bool::TYPE),
+                    ],
+                    |builder, view| {
+                        let read = method_binding(
+                            &counter,
+                            &view.methods().head,
+                            portable_name!("read_counter"),
+                            |body, receiver, _| body.field(receiver, counter.fields().head),
+                        );
+                        let add = method_binding(
+                            &counter,
+                            &view.methods().tail.head,
+                            portable_name!("add_counter"),
+                            |body, receiver, parameters| {
+                                let value = body.field(receiver, counter.fields().head);
+                                let delta = body.read(parameters.head);
+                                body.int_add_wrapping(value, delta)
+                            },
+                        );
+                        let is_zero = method_binding(
+                            &counter,
+                            &view.methods().tail.tail.head,
+                            portable_name!("counter_is_zero"),
+                            |body, receiver, _| {
+                                let value = body.field(receiver, counter.fields().head);
+                                let zero = body.i32(0);
+                                body.equal(value, zero)
+                            },
+                        );
+                        builder.implementation(
+                            portable_name!("CounterViewForCounter"),
+                            &view,
+                            &counter,
+                            typed_list![read, add, is_zero],
+                            |builder, implementation| {
+                                let concrete_read = implementation.methods().head;
+                                let builder = builder
+                                    .function(
+                                        portable_name!("read_counter_concrete"),
+                                        typed_list![parameter(
+                                            portable_name!("counter"),
+                                            counter.ty(),
+                                        )],
+                                        I32::TYPE,
+                                        |body, parameters| {
+                                            let receiver = body.read(parameters.head);
+                                            body.concrete_method(
+                                                &implementation,
+                                                concrete_read,
+                                                receiver,
+                                                typed_list![],
+                                            )
+                                        },
+                                    )
+                                    .builder;
+                                let builder = builder
+                                    .function(
+                                        portable_name!("read_counter_dynamic"),
+                                        typed_list![parameter(
+                                            portable_name!("counter"),
+                                            counter.ty(),
+                                        )],
+                                        I32::TYPE,
+                                        |body, parameters| {
+                                            let receiver = body.read(parameters.head);
+                                            let receiver =
+                                                body.interface_value(&implementation, receiver);
+                                            body.interface_method(
+                                                &view,
+                                                &view.methods().head,
+                                                receiver,
+                                                typed_list![],
+                                            )
+                                        },
+                                    )
+                                    .builder;
+                                builder.portable_test(
+                                    portable_name!("typed_interface_dispatch"),
+                                    |test| {
+                                        let value = test.i32(9);
+                                        let receiver = test.record(&counter, typed_list![value]);
+                                        let invocation = test.method(
+                                            &implementation,
+                                            concrete_read,
+                                            receiver,
+                                            typed_list![],
+                                        );
+                                        let expected_value = test.i32(9);
+                                        let expected = test.expect_value(expected_value);
+                                        (invocation, expected)
+                                    },
+                                )
+                            },
+                        )
+                    },
+                )
             },
         )
     });

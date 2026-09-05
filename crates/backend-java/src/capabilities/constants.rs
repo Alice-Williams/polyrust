@@ -35,6 +35,9 @@ pub enum JavaConstantsNode {
     Expression(JavaExpr),
 }
 
+impl sealed::JavaMappingOutput for JavaConstantsNode {}
+impl super::support::JavaMappingOutput for JavaConstantsNode {}
+
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JavaConstants;

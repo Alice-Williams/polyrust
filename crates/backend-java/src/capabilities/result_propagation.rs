@@ -28,6 +28,9 @@ pub struct JavaResultPropagationPlan {
     pub(crate) value: JavaExpr,
 }
 
+impl sealed::JavaMappingOutput for JavaResultPropagationPlan {}
+impl super::support::JavaMappingOutput for JavaResultPropagationPlan {}
+
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JavaResultPropagation;

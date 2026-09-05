@@ -44,6 +44,9 @@ pub enum JavaFunctionsNode {
     Expression(JavaExpr),
 }
 
+impl sealed::JavaMappingOutput for JavaFunctionsNode {}
+impl super::support::JavaMappingOutput for JavaFunctionsNode {}
+
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JavaFunctions;

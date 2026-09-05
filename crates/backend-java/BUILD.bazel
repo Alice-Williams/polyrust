@@ -126,6 +126,55 @@ java_test(
     deps = [":typed_generated_api"],
 )
 
+java_test(
+    name = "generated_typed_native_test",
+    srcs = [
+        ":typed-generated/src/main/java/org/polyrust/generated/Generated.java",
+        ":typed-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        ":typed-generated/src/test/java/org/polyrust/generated/GeneratedTest.java",
+    ],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
+    main_class = "org.polyrust.generated.GeneratedTest",
+    use_testrunner = False,
+    visibility = ["//visibility:public"],
+)
+
+java_test(
+    name = "generated_typed_conformance_test",
+    srcs = [
+        ":typed-generated/src/main/java/org/polyrust/generated/Generated.java",
+        ":typed-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        ":typed-generated/src/test/java/org/polyrust/generated/ConformanceTest.java",
+    ],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
+    main_class = "org.polyrust.generated.ConformanceTest",
+    use_testrunner = False,
+    visibility = ["//visibility:public"],
+)
+
+sh_test(
+    name = "generated_typed_negative_type_test",
+    srcs = ["//tools/java:negative_compile_test.sh"],
+    args = [
+        "$(location :typed-generated/src/main/java/org/polyrust/generated/Runtime.java)",
+        "$(location :typed-generated/src/main/java/org/polyrust/generated/Generated.java)",
+        "$(location :typed-generated/src/test/java/org/polyrust/generated/InvalidTypes.java)",
+    ],
+    data = [
+        ":typed-generated/src/main/java/org/polyrust/generated/Generated.java",
+        ":typed-generated/src/main/java/org/polyrust/generated/Runtime.java",
+        ":typed-generated/src/test/java/org/polyrust/generated/InvalidTypes.java",
+        "@bazel_tools//tools/jdk:current_java_runtime",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 genrule(
     name = "generate_v0_package",
     srcs = ["//crates/build:testdata/registration.poly.json"],

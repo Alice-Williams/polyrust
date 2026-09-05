@@ -90,7 +90,9 @@ pub use result_values::JavaResultValues;
 pub use string_concatenation::JavaStringConcatenation;
 pub use string_inspection::JavaStringInspection;
 pub use string_transformation::JavaStringTransformation;
-pub use support::{JavaCapabilityMapping, JavaPluginBuilder, java_plugin_builder};
+pub use support::{
+    JavaCapabilityMapping, JavaMappingOutput, JavaPluginBuilder, java_plugin_builder,
+};
 pub use text_values::JavaTextValues;
 pub use type_aliases::JavaTypeAliases;
 pub use unit_values::JavaUnitValues;

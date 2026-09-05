@@ -51,6 +51,9 @@ pub enum JavaPortableTestsNode {
     Harness(JavaTypeDeclaration),
 }
 
+impl sealed::JavaMappingOutput for JavaPortableTestsNode {}
+impl super::support::JavaMappingOutput for JavaPortableTestsNode {}
+
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JavaPortableTests;

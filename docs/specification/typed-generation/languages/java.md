@@ -434,11 +434,13 @@ executable compilation unit flows through verified Java AST, automatic symbol
 resolution, render-ready certification, and total structural rendering.
 
 The Java typed path additionally passes only when every used feature has an
-executable compile-time mapping registered by the plugin builder, the
-checked-in inferred example
-exercises an arbitrary-arity function and record plus nested arithmetic, all
-invalid typed examples fail Rust compilation, and the accepted output compiles
-and executes under the hermetic Java 21 toolchain.
+executable compile-time mapping registered by the plugin builder. The
+checked-in inferred example exercises an arbitrary-arity function and record,
+nested arithmetic, a three-method interface with exact implementation
+bindings, both concrete and interface dispatch, and a typed portable test. All
+invalid typed examples fail Rust compilation, and every generated main,
+native-test, conformance-test, and negative-type source is compiled or executed
+under the hermetic Java 21 toolchain.
 
 M34A-10U also exercises the complete PolyIR v0 intrinsic catalogue exposed by
 M34A-08U: bitwise and shifts, float inspection, string transformations, bytes,
@@ -451,6 +453,9 @@ The checked-in authoring example is
 six-file package under the `generate_typed_package` target. The independent
 consumer checks that `computed()` evaluates `(7 + 2) * (7 - 2) + 5` as `50`
 and that `make_point(3, 4, 5)` returns a `Point3` with the exact three fields.
+It also constructs `Counter(9)` and proves that both concrete and interface
+dispatch return `9`; the generated native and conformance harnesses execute the
+same typed portable-test declaration.
 Generated operator operands are parenthesized, with final temporaries
 preserving portable left-to-right evaluation order. The example therefore
 proves that neither callable nor record shape is capped at arity two.

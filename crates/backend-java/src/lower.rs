@@ -1105,6 +1105,10 @@ impl<'a> Lowering<'a> {
             .core
             .implementation_method(id)
             .expect("verified implementation method");
+        let interface_method = self
+            .core
+            .interface_method(value.interface_method)
+            .expect("verified interface method");
         let (parameters, mut boundary) = self.callable_parameters(&value.parameters)?;
         let mut body = self.block(value.body, BlockMode::ReturnResult, value.return_type)?;
         boundary.append(&mut body.statements);
@@ -1116,7 +1120,7 @@ impl<'a> Lowering<'a> {
                 JavaInterfacesInput::Implementation(Box::new(JavaInterfaceImplementationInput {
                     method: id,
                     interface_method: self.interface_methods[&value.interface_method],
-                    name: value.header.name.clone(),
+                    interface_method_name: interface_method.header.name.clone(),
                     parameters,
                     return_type: self.poly_result_type(value.return_type)?,
                     body: JavaBlock::new(boundary),
@@ -1698,6 +1702,10 @@ impl<'a> Lowering<'a> {
                     .core
                     .implementation_method(*method)
                     .expect("verified method");
+                let interface_method = self
+                    .core
+                    .interface_method(method_value.interface_method)
+                    .expect("verified interface method");
                 let mut receiver =
                     self.stabilize_plan(self.expr_plan(*receiver, callable_return)?, "receiver");
                 let (argument_statements, arguments) =
@@ -1707,7 +1715,7 @@ impl<'a> Lowering<'a> {
                 let call = self.lower_interface_expr(JavaInterfacesInput::ConcreteCall(
                     Box::new(JavaConcreteInterfaceCallInput {
                         receiver: receiver.value,
-                        name: method_value.header.name.clone(),
+                        interface_method_name: interface_method.header.name.clone(),
                         arguments,
                         result,
                         method: *method,
@@ -2203,19 +2211,25 @@ impl<'a> Lowering<'a> {
                         .core
                         .implementation_method(*method)
                         .expect("verified method");
+                    let interface_method = self
+                        .core
+                        .interface_method(method_value.interface_method)
+                        .expect("verified interface method");
                     let receiver = self.typed_value(receiver)?;
                     let arguments = arguments
                         .iter()
                         .map(|value| self.typed_value(value))
                         .collect::<Result<Vec<_>, _>>()?;
                     let result = self.poly_result_type(method_value.return_type)?;
-                    member_call(
-                        receiver,
-                        &method_value.header.name,
-                        arguments,
-                        result,
-                        JavaMemberOrigin::GeneratedImplementation(*method),
-                    )
+                    self.lower_interface_expr(JavaInterfacesInput::ConcreteCall(Box::new(
+                        JavaConcreteInterfaceCallInput {
+                            receiver,
+                            interface_method_name: interface_method.header.name.clone(),
+                            arguments,
+                            result,
+                            method: *method,
+                        },
+                    )))?
                 }
             };
             let expected = match &test.expected {

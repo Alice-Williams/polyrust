@@ -23,6 +23,9 @@ pub struct JavaErasedTypeAlias {
     pub(crate) _target: JavaType,
 }
 
+impl sealed::JavaMappingOutput for JavaErasedTypeAlias {}
+impl super::support::JavaMappingOutput for JavaErasedTypeAlias {}
+
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JavaTypeAliases;

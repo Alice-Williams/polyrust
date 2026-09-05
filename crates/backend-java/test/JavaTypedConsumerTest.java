@@ -46,5 +46,18 @@ public final class JavaTypedConsumerTest {
     if (!enumBranch.ok() || enumBranch.value() != 2) {
       throw new AssertionError("typed exhaustive enum branch did not preserve semantics");
     }
+
+    org.polyrust.generated.Generated.Counter counter =
+        new org.polyrust.generated.Generated.Counter(9);
+    org.polyrust.generated.Runtime.PolyResult<Integer> concrete =
+        org.polyrust.generated.Generated.read_counter_concrete(counter);
+    org.polyrust.generated.Runtime.PolyResult<Integer> dynamic =
+        org.polyrust.generated.Generated.read_counter_dynamic(counter);
+    if (!concrete.ok()
+        || concrete.value() != 9
+        || !dynamic.ok()
+        || dynamic.value() != 9) {
+      throw new AssertionError("typed interface dispatch did not preserve semantics");
+    }
   }
 }

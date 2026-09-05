@@ -41,6 +41,9 @@ pub enum JavaConditionalsNode {
     },
 }
 
+impl sealed::JavaMappingOutput for JavaConditionalsNode {}
+impl super::support::JavaMappingOutput for JavaConditionalsNode {}
+
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JavaConditionals;

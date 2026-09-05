@@ -62,6 +62,9 @@ pub enum JavaEnumsNode {
     Statement(Box<JavaStmt>),
 }
 
+impl sealed::JavaMappingOutput for JavaEnumsNode {}
+impl super::support::JavaMappingOutput for JavaEnumsNode {}
+
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JavaEnums;

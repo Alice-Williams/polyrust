@@ -1,6 +1,6 @@
 # M34A-10W — Make Java capability mappings authoritative
 
-- Status: planned
+- Status: in-progress
 - Depends on: M34A-08V and M34A-10U
 - Blocks: completion of M34A-10R and M34A-11
 

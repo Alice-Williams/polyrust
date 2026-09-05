@@ -96,6 +96,9 @@ pub enum JavaPatternMatchingNode {
     Match(Box<JavaPatternMatchPlan>),
 }
 
+impl sealed::JavaMappingOutput for JavaPatternMatchingNode {}
+impl super::support::JavaMappingOutput for JavaPatternMatchingNode {}
+
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JavaPatternMatching;

@@ -7,17 +7,48 @@ use portable_build::{
 use portable_core_ir::CoreIntrinsicExpr;
 
 use crate::{
-    ast::{JavaExpr, JavaType},
+    ast::{JavaExpr, JavaStmt, JavaType},
     dialect::JavaDialect,
+    lower::JavaIntrinsicExpr,
 };
+use portable_codegen::TargetFile;
 
 pub(crate) mod sealed {
     pub trait JavaCapabilityMapping {}
+    pub trait JavaMappingOutput {}
 }
 
+/// Closed set of typed Java AST or lowering-plan output categories.
+pub trait JavaMappingOutput: sealed::JavaMappingOutput {}
+
+impl sealed::JavaMappingOutput for JavaExpr {}
+impl JavaMappingOutput for JavaExpr {}
+impl sealed::JavaMappingOutput for JavaStmt {}
+impl JavaMappingOutput for JavaStmt {}
+impl sealed::JavaMappingOutput for JavaIntrinsicExpr {}
+impl JavaMappingOutput for JavaIntrinsicExpr {}
+impl sealed::JavaMappingOutput for TargetFile<JavaDialect> {}
+impl JavaMappingOutput for TargetFile<JavaDialect> {}
+
 /// A Java mapping admitted by the sealed Java plugin builder.
+///
+/// Each mapping's input is capability-specific. Even two mappings that both
+/// ultimately produce a `JavaExpr` cannot be called with one another's input:
+///
+/// ```compile_fail
+/// use portable_backend_java::{
+///     capabilities::JavaI32Values,
+///     dialect::JavaDialect,
+/// };
+/// use portable_build::CapabilityMapping;
+/// let mapping = JavaI32Values;
+/// let _: <JavaI32Values as CapabilityMapping<JavaDialect>>::Output =
+///     mapping.lower(&mut (), true).unwrap();
+/// ```
 pub trait JavaCapabilityMapping:
     sealed::JavaCapabilityMapping + CapabilityMapping<JavaDialect> + Copy + Send + Sync
+where
+    Self::Output: JavaMappingOutput,
 {
 }
 
@@ -31,12 +62,19 @@ pub const fn observed<M>(mapping: M) -> ObservedJavaMapping<M> {
     ObservedJavaMapping(mapping)
 }
 
-impl<M: JavaCapabilityMapping> sealed::JavaCapabilityMapping for ObservedJavaMapping<M> {}
-impl<M: JavaCapabilityMapping> JavaCapabilityMapping for ObservedJavaMapping<M> {}
+impl<M: JavaCapabilityMapping> sealed::JavaCapabilityMapping for ObservedJavaMapping<M> where
+    M::Output: JavaMappingOutput
+{
+}
+impl<M: JavaCapabilityMapping> JavaCapabilityMapping for ObservedJavaMapping<M> where
+    M::Output: JavaMappingOutput
+{
+}
 
 impl<M> CapabilityMapping<JavaDialect> for ObservedJavaMapping<M>
 where
     M: JavaCapabilityMapping,
+    M::Output: JavaMappingOutput,
 {
     type Capability = M::Capability;
     type Context = M::Context;
@@ -104,6 +142,15 @@ pub(crate) fn java_mapping_invocations() -> std::collections::BTreeSet<&'static 
 /// }
 /// let _ = java_plugin_builder().support(SourceStringMapping);
 /// ```
+///
+/// Output categories are independently sealed even inside generic helper
+/// code; source strings are not Java AST:
+///
+/// ```compile_fail
+/// use portable_backend_java::capabilities::JavaMappingOutput;
+/// fn accepts_java_output<T: JavaMappingOutput>() {}
+/// accepts_java_output::<String>();
+/// ```
 pub struct JavaPluginBuilder<Slots = EmptyCapabilitySlots> {
     inner: LanguagePluginBuilder<JavaDialect, Slots>,
 }
@@ -126,6 +173,7 @@ impl<Slots> JavaPluginBuilder<Slots> {
     pub fn support<M>(self, mapping: M) -> JavaPluginBuilder<JavaRegisteredSlots<Slots, M>>
     where
         M: JavaCapabilityMapping,
+        M::Output: JavaMappingOutput,
         Slots: ReplaceMissing<<M::Capability as Capability>::Index, M>,
     {
         JavaPluginBuilder {
