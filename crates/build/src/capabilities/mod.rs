@@ -208,6 +208,12 @@ macro_rules! capability_catalogue {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Missing;
 
+/// Marker used by the requirement-inventory fold for a capability which is
+/// present at least once in an inferred requirement tree.
+#[doc(hidden)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Required;
+
 /// A catalogued capability explicitly unavailable in one target plugin.
 ///
 /// Unlike `Implemented<M>`, this slot intentionally does not implement
@@ -267,6 +273,64 @@ pub trait ReplaceMissing<Index, Mapping> {
     type Output;
 
     fn replace(self, mapping: Mapping) -> Self::Output;
+}
+
+#[doc(hidden)]
+pub trait MarkRequired<Index> {
+    type Output;
+}
+
+impl<Tail> MarkRequired<Here> for CapabilitySlots<Missing, Tail> {
+    type Output = CapabilitySlots<Required, Tail>;
+}
+
+impl<Tail> MarkRequired<Here> for CapabilitySlots<Required, Tail> {
+    type Output = CapabilitySlots<Required, Tail>;
+}
+
+impl<Head, Tail, Index> MarkRequired<There<Index>> for CapabilitySlots<Head, Tail>
+where
+    Tail: MarkRequired<Index>,
+{
+    type Output = CapabilitySlots<Head, Tail::Output>;
+}
+
+/// Folds a structural requirement tree into the closed capability-slot list.
+#[doc(hidden)]
+pub trait FoldRequirements<Slots>: Requirements {
+    type Output;
+}
+
+impl<Slots> FoldRequirements<Slots> for NoneRequired {
+    type Output = Slots;
+}
+
+impl<F, Tail, Slots> FoldRequirements<Slots> for Requires<F, Tail>
+where
+    F: Capability,
+    Tail: Requirements + FoldRequirements<<Slots as MarkRequired<F::Index>>::Output>,
+    Slots: MarkRequired<F::Index>,
+{
+    type Output = <Tail as FoldRequirements<<Slots as MarkRequired<F::Index>>::Output>>::Output;
+}
+
+impl<Left, Right, Slots> FoldRequirements<Slots> for All<Left, Right>
+where
+    Left: Requirements + FoldRequirements<Slots>,
+    Right: Requirements + FoldRequirements<<Left as FoldRequirements<Slots>>::Output>,
+{
+    type Output = <Right as FoldRequirements<<Left as FoldRequirements<Slots>>::Output>>::Output;
+}
+
+/// Compile-time evidence that an inferred requirement tree contains `C`.
+pub trait ContainsCapability<C: Capability>: Requirements {}
+
+impl<R, C> ContainsCapability<C> for R
+where
+    R: Requirements + FoldRequirements<EmptyCapabilitySlots>,
+    C: Capability,
+    <R as FoldRequirements<EmptyCapabilitySlots>>::Output: SlotAt<C::Index, Slot = Required>,
+{
 }
 
 #[doc(hidden)]

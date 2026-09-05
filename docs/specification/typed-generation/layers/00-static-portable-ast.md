@@ -45,6 +45,7 @@ trait Supports<Capability> {
     fn mapping(&self) -> &Self::Mapping;
 }
 trait SupportsAll<Requirements> {}
+trait ContainsCapability<Capability> {}
 ```
 
 Concrete names may differ, but the represented relationships and privacy
@@ -63,6 +64,11 @@ boundary are mandatory.
   name or maintain its inferred requirement type.
 - No constructor accepts caller-provided evidence that a capability was used or
   supported.
+- `ContainsCapability<C>` folds the inferred structural requirement tree into
+  the closed catalogue and is implemented only when `C` is present. The
+  exhaustive constructor inventory uses this proof so deleting a constructor's
+  requirement leaf is a compile-time test failure, not merely a coverage-count
+  change.
 
 The closed capability set and ownership rules are defined by
 `00-capability-catalogue.md`. The typed AST MUST expose the complete initial

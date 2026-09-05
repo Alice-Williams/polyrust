@@ -14,6 +14,10 @@ REEXPORT = re.compile(
 )
 MARKER = re.compile(r"(?m)^pub enum ([A-Z][A-Za-z0-9]*) \{\}$")
 CATALOGUE = re.compile(r"(?s)capability_catalogue!\((.*?)\);")
+INVENTORY = re.compile(
+    r"(?s)const CAPABILITY_CONSTRUCTOR_INVENTORY:.*?= \[(.*?)\];"
+)
+PRESENCE_ASSERTION = re.compile(r"(?s)assert_capabilities!\((.*?)\);")
 
 
 def fail(message: str) -> None:
@@ -61,6 +65,31 @@ def verify_shared(root: Path) -> int:
         fail("the closed catalogue contains duplicate capability markers")
     if set(catalogue) != set(exported):
         fail(f"catalogue/export mismatch: catalogue={catalogue!r}, exports={exported!r}")
+
+    typed_source = (root.parent / "typed_program.rs").read_text(encoding="utf-8")
+    inventories = INVENTORY.findall(typed_source)
+    if len(inventories) != 1:
+        fail("typed_program.rs must contain exactly one constructor inventory")
+    inventory_names = re.findall(
+        r'\(\s*"([A-Z][A-Za-z0-9]*)"\s*,', inventories[0]
+    )
+    if len(inventory_names) != len(set(inventory_names)):
+        fail("typed constructor inventory contains duplicate capability rows")
+    if set(inventory_names) != set(catalogue):
+        fail(
+            "typed constructor inventory/catalogue mismatch: "
+            f"inventory={inventory_names!r}, catalogue={catalogue!r}"
+        )
+
+    asserted_names: set[str] = set()
+    for assertion in PRESENCE_ASSERTION.findall(typed_source):
+        asserted_names.update(re.findall(r"\b[A-Z][A-Za-z0-9]*\b", assertion))
+    asserted_names &= set(catalogue)
+    if asserted_names != set(catalogue):
+        fail(
+            "every catalogued capability needs a compiled ContainsCapability assertion: "
+            f"asserted={sorted(asserted_names)!r}, catalogue={sorted(catalogue)!r}"
+        )
 
     return len(catalogue)
 

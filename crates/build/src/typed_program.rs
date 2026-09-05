@@ -715,6 +715,24 @@
 //!     })
 //! });
 //! ```
+//!
+//! Capability-presence proofs are exact: an inferred requirement tree cannot
+//! claim a capability which none of its constructors emitted:
+//!
+//! ```compile_fail
+//! use portable_build::{BoolValues, ContainsCapability, I32, Requirements, TypedProgram, portable_name, typed_list, typed_program};
+//! fn requires_boolean<R>(_: &TypedProgram<R>)
+//! where
+//!     R: Requirements + ContainsCapability<BoolValues>,
+//! {}
+//! let program = typed_program(portable_name!("only_i32"), |builder| {
+//!     builder.function(
+//!         portable_name!("value"), typed_list![], I32::TYPE,
+//!         |body, _| body.i32(1),
+//!     ).builder
+//! });
+//! requires_boolean(&program);
+//! ```
 
 use std::{cell::Cell, marker::PhantomData};
 
@@ -4583,6 +4601,90 @@ mod tests {
         TestMapping(PhantomData)
     }
 
+    fn assert_contains<C, R>(_program: &TypedProgram<R>)
+    where
+        C: Capability,
+        R: Requirements + ContainsCapability<C>,
+    {
+    }
+
+    macro_rules! assert_capabilities {
+        ($program:expr; $($capability:ty),+ $(,)?) => {
+            $(assert_contains::<$capability, _>($program);)+
+        };
+    }
+
+    const CAPABILITY_CONSTRUCTOR_INVENTORY: [(&str, &str); 42] = [
+        ("Functions", "ProgramBuilder::function / TypedBody::call"),
+        ("Records", "ProgramBuilder::record / TypedBody::construct"),
+        ("BoolValues", "TypedBody::bool"),
+        ("I32Values", "TypedBody::i32"),
+        ("I64Values", "TypedBody::i64"),
+        ("F64Values", "TypedBody::f64"),
+        ("TextValues", "TypedBody::text"),
+        ("BooleanLogic", "TypedBody::bool_not / bool_and / bool_or"),
+        ("Equality", "TypedBody::equal / not_equal"),
+        (
+            "Ordering",
+            "TypedBody::less / less_equal / greater / greater_equal",
+        ),
+        ("CheckedIntegerArithmetic", "TypedBody::int_*_checked"),
+        ("WrappingIntegerArithmetic", "TypedBody::int_*_wrapping"),
+        ("FloatingPointArithmetic", "TypedBody::float_*"),
+        ("StringConcatenation", "TypedBody::string_concat"),
+        ("CharValues", "TypedBody::char"),
+        ("BytesValues", "TypedBody::bytes"),
+        ("ListValues", "TypedBody::list"),
+        ("OptionValues", "TypedBody::some / none"),
+        ("ResultValues", "TypedBody::ok / err"),
+        ("IntegerBitwise", "TypedBody::int_bit_*"),
+        ("CheckedIntegerShifts", "TypedBody::int_shift_*_checked"),
+        ("FloatingPointInspection", "TypedBody::float_* inspection"),
+        ("StringInspection", "TypedBody::string_* inspection"),
+        ("StringTransformation", "TypedBody::string_* transformation"),
+        ("BytesOperations", "TypedBody::bytes_*"),
+        ("ListOperations", "TypedBody::list_*"),
+        ("OptionOperations", "TypedBody::option_*"),
+        ("ResultOperations", "TypedBody::result_*"),
+        ("IntegerConversions", "TypedBody integer conversions"),
+        ("Utf8Conversions", "TypedBody UTF-8 conversions"),
+        ("Modules", "typed_program"),
+        (
+            "Constants",
+            "ProgramBuilder::constant / TypedBody::constant",
+        ),
+        (
+            "TypeAliases",
+            "ProgramBuilder::alias / TypedBody::alias_wrap",
+        ),
+        (
+            "Enums",
+            "ProgramBuilder::enumeration / TypedBody::enum_variant",
+        ),
+        ("Interfaces", "ProgramBuilder::interface / implementation"),
+        ("PortableTests", "ProgramBuilder::portable_test"),
+        ("LocalBindings", "TypedBody::let_value"),
+        ("Conditionals", "TypedBody::if_else"),
+        ("Loops", "TypedBody::for_each"),
+        ("PatternMatching", "TypedBody::match_*"),
+        ("ResultPropagation", "TypedBody callable and method calls"),
+        ("UnitValues", "TypedBody::unit"),
+    ];
+
+    #[test]
+    fn capability_inventory_names_one_constructor_owner_per_catalogue_row() {
+        let names = CAPABILITY_CONSTRUCTOR_INVENTORY
+            .iter()
+            .map(|(capability, _)| *capability)
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(names.len(), CAPABILITY_CONSTRUCTOR_INVENTORY.len());
+        assert!(
+            CAPABILITY_CONSTRUCTOR_INVENTORY
+                .iter()
+                .all(|(_, constructor)| !constructor.is_empty())
+        );
+    }
+
     #[derive(Clone, Copy)]
     struct TestI32Mapping;
 
@@ -4623,6 +4725,7 @@ mod tests {
                 )
                 .builder
         });
+        assert_capabilities!(&program; Modules, Functions, UnitValues);
         let plugin = language_plugin(TestDialect)
             .support(test_mapping::<Modules>())
             .support(test_mapping::<Functions>())
@@ -4682,6 +4785,15 @@ mod tests {
                         .builder
                 })
         });
+        assert_capabilities!(
+            &program;
+            Modules,
+            Constants,
+            TypeAliases,
+            Functions,
+            BoolValues,
+            I64Values,
+        );
         let plugin = language_plugin(TestDialect)
             .support(test_mapping::<Modules>())
             .support(test_mapping::<Constants>())
@@ -4737,6 +4849,15 @@ mod tests {
                 (invocation, expected)
             })
         });
+        assert_capabilities!(
+            &program;
+            Modules,
+            Functions,
+            I32Values,
+            TextValues,
+            CheckedIntegerArithmetic,
+            PortableTests,
+        );
         let plugin = language_plugin(TestDialect)
             .support(test_mapping::<Modules>())
             .support(test_mapping::<Functions>())
@@ -4780,6 +4901,15 @@ mod tests {
                 )
                 .builder
         });
+        assert_capabilities!(
+            &program;
+            Modules,
+            Functions,
+            I32Values,
+            BoolValues,
+            LocalBindings,
+            Conditionals,
+        );
         let plugin = language_plugin(TestDialect)
             .support(test_mapping::<Modules>())
             .support(test_mapping::<Functions>())
@@ -4829,6 +4959,17 @@ mod tests {
                 )
                 .builder
         });
+        assert_capabilities!(
+            &program;
+            Modules,
+            Functions,
+            I32Values,
+            ListValues,
+            Loops,
+            LocalBindings,
+            ResultPropagation,
+            UnitValues,
+        );
         let plugin = language_plugin(TestDialect)
             .support(test_mapping::<Modules>())
             .support(test_mapping::<Functions>())
@@ -4906,6 +5047,18 @@ mod tests {
                 )
                 .builder
         });
+        assert_capabilities!(
+            &program;
+            Modules,
+            Functions,
+            BoolValues,
+            I32Values,
+            TextValues,
+            OptionValues,
+            ResultValues,
+            PatternMatching,
+            StringInspection,
+        );
         let plugin = language_plugin(TestDialect)
             .support(test_mapping::<Modules>())
             .support(test_mapping::<Functions>())
@@ -4928,6 +5081,69 @@ mod tests {
         let core = portable_core_ir::lower_checked(program.checked_program())
             .expect("typed pattern matches lower to CoreIR");
         portable_core_ir::verify_core(&core).expect("typed pattern matches verify");
+    }
+
+    #[test]
+    fn payload_free_enums_use_arbitrary_exact_variant_and_arm_lists() {
+        let program = typed_program(portable_name!("typed_enum"), |builder| {
+            builder.enumeration(
+                portable_name!("TrafficLight"),
+                typed_list![
+                    variant(portable_name!("RED")),
+                    variant(portable_name!("AMBER")),
+                    variant(portable_name!("GREEN")),
+                ],
+                |builder, light| {
+                    builder
+                        .function(
+                            portable_name!("priority"),
+                            typed_list![parameter(portable_name!("light"), light.ty())],
+                            I32::TYPE,
+                            |body, parameters| {
+                                let value = body.read(parameters.head);
+                                let red = body.i32(3);
+                                let amber = body.i32(2);
+                                let green = body.i32(1);
+                                body.enum_match(
+                                    &light,
+                                    value,
+                                    typed_list![
+                                        enum_arm(light.variants().head, red),
+                                        enum_arm(light.variants().tail.head, amber),
+                                        enum_arm(light.variants().tail.tail.head, green),
+                                    ],
+                                )
+                            },
+                        )
+                        .builder
+                        .function(
+                            portable_name!("default_light"),
+                            typed_list![],
+                            light.ty(),
+                            |body, _| body.enum_variant(&light, light.variants().tail.tail.head),
+                        )
+                        .builder
+                },
+            )
+        });
+        assert_capabilities!(&program; Modules, Enums, Functions, I32Values);
+        let plugin = language_plugin(TestDialect)
+            .support(test_mapping::<Modules>())
+            .support(test_mapping::<Enums>())
+            .support(test_mapping::<Functions>())
+            .support(test_mapping::<I32Values>())
+            .build();
+
+        fn admit<P, R: Requirements>(_plugin: &P, _program: &TypedProgram<R>)
+        where
+            P: SupportsAll<R>,
+        {
+        }
+
+        admit(&plugin, &program);
+        let core = portable_core_ir::lower_checked(program.checked_program())
+            .expect("typed payload-free enum lowers to CoreIR");
+        portable_core_ir::verify_core(&core).expect("typed payload-free enum verifies");
     }
 
     #[test]
@@ -5046,6 +5262,19 @@ mod tests {
                 },
             )
         });
+        assert_capabilities!(
+            &program;
+            Modules,
+            Records,
+            Interfaces,
+            Functions,
+            I32Values,
+            BoolValues,
+            WrappingIntegerArithmetic,
+            Equality,
+            ResultPropagation,
+            PortableTests,
+        );
         let plugin = language_plugin(TestDialect)
             .support(test_mapping::<Modules>())
             .support(test_mapping::<Records>())
@@ -5275,6 +5504,15 @@ mod tests {
                 },
             )
         });
+        assert_capabilities!(
+            &program;
+            Modules,
+            Functions,
+            Records,
+            I32Values,
+            WrappingIntegerArithmetic,
+            ResultPropagation,
+        );
         assert_eq!(program.checked_program().module().declarations.len(), 5);
         let core = portable_core_ir::lower_checked(program.checked_program())
             .expect("typed program lowers to CoreIR");
@@ -5411,6 +5649,24 @@ mod tests {
                 )
                 .builder
         });
+
+        assert_capabilities!(
+            &program;
+            Modules,
+            Functions,
+            BoolValues,
+            I32Values,
+            I64Values,
+            F64Values,
+            TextValues,
+            BooleanLogic,
+            Equality,
+            Ordering,
+            CheckedIntegerArithmetic,
+            WrappingIntegerArithmetic,
+            FloatingPointArithmetic,
+            StringConcatenation,
+        );
 
         let core = portable_core_ir::lower_checked(program.checked_program())
             .expect("every typed constructor lowers to CoreIR");
@@ -5561,6 +5817,27 @@ mod tests {
                 )
                 .builder
         });
+
+        assert_capabilities!(
+            &program;
+            Modules,
+            Functions,
+            BoolValues,
+            I32Values,
+            I64Values,
+            F64Values,
+            TextValues,
+            CharValues,
+            BooleanLogic,
+            Equality,
+            IntegerBitwise,
+            CheckedIntegerShifts,
+            FloatingPointInspection,
+            IntegerConversions,
+            StringInspection,
+            StringTransformation,
+            OptionValues,
+        );
 
         let core = portable_core_ir::lower_checked(program.checked_program())
             .expect("extended typed constructors lower to CoreIR");
@@ -5718,6 +5995,26 @@ mod tests {
                 )
                 .builder
         });
+        assert_capabilities!(
+            &program;
+            Modules,
+            Functions,
+            BoolValues,
+            I32Values,
+            I64Values,
+            TextValues,
+            BytesValues,
+            ListValues,
+            OptionValues,
+            ResultValues,
+            BooleanLogic,
+            Equality,
+            Utf8Conversions,
+            BytesOperations,
+            ListOperations,
+            OptionOperations,
+            ResultOperations,
+        );
         let core = portable_core_ir::lower_checked(program.checked_program())
             .expect("typed collection constructors lower to CoreIR");
         portable_core_ir::verify_core(&core).expect("typed collection constructors verify");
