@@ -1,6 +1,6 @@
 # M34A-08V — Make capabilities the typed portable extension unit
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-08U
 - Blocks: M34A-10W and every remaining language migration
 
@@ -56,3 +56,25 @@ capability.
 
 Commit and push the normative specification before implementation. Commit and
 push the shared implementation only after all named tests pass.
+
+## Completion evidence
+
+- `crates/build/src/capabilities/` contains 42 marker files; the layout policy
+  proves an exact one-file, one-export, one-catalogue-row relationship.
+- The typed frontend covers all declaration, value, operation, control-flow,
+  payload-free enum, interface/conformance, and portable-test constructors.
+  `ContainsCapability<C>` folds inferred requirement trees into the closed
+  catalogue, and compiled assertions cover every inventory row.
+- Arbitrary three-element function, record, enum, interface-method, and exact
+  implementation-binding lists pass. Incomplete/cross-branded interfaces,
+  wrong test arguments/results, absent capability claims, and the other named
+  invalid programs fail Rust compilation.
+- Typed portable tests pass in the reference evaluator for normal function
+  results, structured checked-overflow errors, and concrete implementation
+  method invocation.
+- Linux dev-container `bazelisk --batch test //:release_gate
+  --test_output=errors`: 238/238 passed on 2026-09-05.
+- Linux dev-container full tracked graph, excluding only the unrelated
+  untracked partial `examples/real-world/stdlib-abs/` package:
+  `bazelisk --batch test --test_output=errors -- //...
+  -//examples/real-world/stdlib-abs/...`: 300/300 passed on 2026-09-05.

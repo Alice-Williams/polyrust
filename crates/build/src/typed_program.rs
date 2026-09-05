@@ -4884,7 +4884,7 @@ mod tests {
     #[test]
     fn local_bindings_and_conditionals_are_typed_and_inferred() {
         let program = typed_program(portable_name!("bindings_and_conditionals"), |builder| {
-            builder
+            let builder = builder
                 .function(
                     portable_name!("choose"),
                     typed_list![],
@@ -4899,6 +4899,19 @@ mod tests {
                         })
                     },
                 )
+                .builder;
+            builder
+                .function(
+                    portable_name!("conditional_statement"),
+                    typed_list![],
+                    Unit::TYPE,
+                    |body, _| {
+                        let condition = body.bool(true);
+                        let then_unit = body.unit();
+                        let else_unit = body.unit();
+                        body.if_else(condition, then_unit, else_unit)
+                    },
+                )
                 .builder
         });
         assert_capabilities!(
@@ -4909,6 +4922,7 @@ mod tests {
             BoolValues,
             LocalBindings,
             Conditionals,
+            UnitValues,
         );
         let plugin = language_plugin(TestDialect)
             .support(test_mapping::<Modules>())
@@ -4917,6 +4931,7 @@ mod tests {
             .support(test_mapping::<BoolValues>())
             .support(test_mapping::<LocalBindings>())
             .support(test_mapping::<Conditionals>())
+            .support(test_mapping::<UnitValues>())
             .build();
 
         fn admit<P, R: Requirements>(_plugin: &P, _program: &TypedProgram<R>)

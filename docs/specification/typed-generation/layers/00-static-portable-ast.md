@@ -97,6 +97,14 @@ Interfaces, control flow, tests, constants, and aliases use branded types which
 preserve their cross-reference relationships. Value capabilities own value
 construction; operation capabilities remain independently selectable.
 
+The statement form of `if/else` is the value constructor instantiated with
+`Unit` for both branches. This preserves one equal-branch typing rule instead
+of introducing a second untyped statement escape hatch. CPS-style constructors
+such as `let_value` and `for_each` are valid representations of `Block` and
+`Statement`: their higher-ranked callbacks issue scoped brands which cannot
+escape, while their returned expression carries the whole block's inferred
+requirements.
+
 ## Arbitrary typed lists
 
 One recursive `Nil`/`Cons` representation is shared by:

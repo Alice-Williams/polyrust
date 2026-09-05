@@ -48,7 +48,7 @@ Shared layers:
 12. [M34A-08S — static valid-by-construction portable AST](../tasks/M34A-08S-static-portable-ast.md)
 13. [M34A-08T — inferred feature builder](../tasks/M34A-08T-inferred-feature-builder.md)
 14. [M34A-08U — executable feature registration and complete intrinsic surface](../tasks/M34A-08U-executable-feature-registration.md) — complete
-15. [M34A-08V — semantic capability catalogue and per-capability modules](../tasks/M34A-08V-capability-catalogue.md) — in progress
+15. [M34A-08V — semantic capability catalogue and per-capability modules](../tasks/M34A-08V-capability-catalogue.md) — complete
 
 Language migrations:
 
