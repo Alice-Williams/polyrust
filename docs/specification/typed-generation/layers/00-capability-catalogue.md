@@ -189,6 +189,21 @@ requires a method and receiver carrying the same interface brand. Declaring a
 second implementation for the same record issues an independent witness and
 is the portable representation of multiple conformance.
 
+## Portable-test mapping bundle
+
+`PortableTests` owns typed function and concrete-method invocations plus their
+expected outcomes. Test arguments use a recursive value list whose associated
+type list must equal the callable parameter list. A method test additionally
+requires the exact record receiver brand and an implementation method carrying
+the same fresh implementation brand as its conformance witness.
+
+A normal expected value carries the invocation result marker, so a mismatched
+type is rejected by Rust. A structured error expectation is independently
+typed because portable runtime errors are data and are not required to have
+the callable's normal return type. Test values use the complete immutable
+portable value algebra; they do not accept a public `(Type, Value)` escape
+hatch.
+
 ## Source layout
 
 Shared markers and contracts live under

@@ -674,6 +674,47 @@
 //!     )
 //! });
 //! ```
+//!
+//! Portable-test arguments must have the callable's exact recursive type list:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, parameter, portable_name, typed_list, typed_program};
+//! let _ = typed_program(portable_name!("test_argument_type"), |builder| {
+//!     let added = builder.function(
+//!         portable_name!("identity"),
+//!         typed_list![parameter(portable_name!("value"), I32::TYPE)],
+//!         I32::TYPE,
+//!         |body, values| body.read(values.head),
+//!     );
+//!     added.builder.portable_test(portable_name!("bad"), |test| {
+//!         let wrong = test.bool(true);
+//!         let invocation = test.function(added.handle, typed_list![wrong]);
+//!         let expected_value = test.i32(1);
+//!         let expected = test.expect_value(expected_value);
+//!         (invocation, expected)
+//!     })
+//! });
+//! ```
+//!
+//! A normal expected value must have the invocation's exact result marker:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, portable_name, typed_list, typed_program};
+//! let _ = typed_program(portable_name!("test_expected_type"), |builder| {
+//!     let added = builder.function(
+//!         portable_name!("answer"),
+//!         typed_list![],
+//!         I32::TYPE,
+//!         |body, _| body.i32(42),
+//!     );
+//!     added.builder.portable_test(portable_name!("bad"), |test| {
+//!         let invocation = test.function(added.handle, typed_list![]);
+//!         let wrong = test.bool(true);
+//!         let expected = test.expect_value(wrong);
+//!         (invocation, expected)
+//!     })
+//! });
+//! ```
 
 use std::{cell::Cell, marker::PhantomData};
 
@@ -681,9 +722,10 @@ use portable_check::v0::CheckedProgram;
 
 use crate::capabilities::*;
 use crate::{
-    AliasId, BodyBuilder, ConstantId, EnumId, EnumVariantId, FunctionId, ImplementationBuilder,
-    ImplementationId, ImplementationMethodId, InterfaceBuilder, InterfaceId, InterfaceMethodId,
-    ModuleBuilder, Operation, Parameter, RecordFieldId, RecordId, Type, Value, Visibility,
+    AliasId, BodyBuilder, ConstantId, EnumId, EnumVariantId, Expected, FunctionId,
+    ImplementationBuilder, ImplementationId, ImplementationMethodId, InterfaceBuilder, InterfaceId,
+    InterfaceMethodId, Invocation, ModuleBuilder, Operation, Parameter, RecordFieldId, RecordId,
+    Type, TypedValue, Value, Visibility,
 };
 
 mod sealed {
@@ -700,6 +742,8 @@ mod sealed {
     pub trait Integer {}
     pub trait InterfaceMethods {}
     pub trait ImplementationBindings {}
+    pub trait TestValues {}
+    pub trait HomogeneousTestValues {}
 }
 
 /// An ASCII portable identifier proven usable by every initial target.
@@ -1800,6 +1844,375 @@ where
     }
 }
 
+type InvariantTestValueBrand<'module, T, R> = (Cell<&'module ()>, fn(T, R) -> (T, R));
+
+/// A fully typed, immutable portable value used by behavioral tests.
+pub struct TypedTestValue<'module, T, R: Requirements> {
+    ty: Type,
+    value: Value,
+    marker: PhantomData<InvariantTestValueBrand<'module, T, R>>,
+}
+
+impl<'module, T, R: Requirements> TypedTestValue<'module, T, R> {
+    fn into_raw(self) -> TypedValue {
+        TypedValue::new(self.ty, self.value)
+    }
+}
+
+/// Recursive list of typed portable-test values.
+pub trait TestValueList<'module>: sealed::TestValues {
+    type Types;
+    type Requirements: Requirements;
+
+    #[doc(hidden)]
+    fn into_parts(self) -> TestValueParts;
+}
+
+#[doc(hidden)]
+pub struct TestValueParts(Vec<(Type, Value)>);
+
+impl sealed::TestValues for Nil {}
+impl<'module> TestValueList<'module> for Nil {
+    type Types = Nil;
+    type Requirements = NoneRequired;
+
+    fn into_parts(self) -> TestValueParts {
+        TestValueParts(Vec::new())
+    }
+}
+
+impl<'module, T, R, Tail> sealed::TestValues for Cons<TypedTestValue<'module, T, R>, Tail>
+where
+    R: Requirements,
+    Tail: TestValueList<'module>,
+{
+}
+
+impl<'module, T, R, Tail> TestValueList<'module> for Cons<TypedTestValue<'module, T, R>, Tail>
+where
+    R: Requirements,
+    Tail: TestValueList<'module>,
+{
+    type Types = Cons<T, Tail::Types>;
+    type Requirements = All<R, Tail::Requirements>;
+
+    fn into_parts(self) -> TestValueParts {
+        let mut parts = vec![(self.head.ty, self.head.value)];
+        parts.extend(self.tail.into_parts().0);
+        TestValueParts(parts)
+    }
+}
+
+/// Recursive homogeneous list used by portable list values in tests.
+pub trait HomogeneousTestValueList<'module, T>: sealed::HomogeneousTestValues {
+    type Requirements: Requirements;
+
+    #[doc(hidden)]
+    fn into_values(self) -> TestValues;
+}
+
+#[doc(hidden)]
+pub struct TestValues(Vec<Value>);
+
+impl sealed::HomogeneousTestValues for Nil {}
+impl<'module, T> HomogeneousTestValueList<'module, T> for Nil {
+    type Requirements = NoneRequired;
+
+    fn into_values(self) -> TestValues {
+        TestValues(Vec::new())
+    }
+}
+
+impl<'module, T, R, Tail> sealed::HomogeneousTestValues
+    for Cons<TypedTestValue<'module, T, R>, Tail>
+where
+    R: Requirements,
+    Tail: HomogeneousTestValueList<'module, T>,
+{
+}
+
+impl<'module, T, R, Tail> HomogeneousTestValueList<'module, T>
+    for Cons<TypedTestValue<'module, T, R>, Tail>
+where
+    R: Requirements,
+    Tail: HomogeneousTestValueList<'module, T>,
+{
+    type Requirements = All<R, Tail::Requirements>;
+
+    fn into_values(self) -> TestValues {
+        let mut values = vec![self.head.value];
+        values.extend(self.tail.into_values().0);
+        TestValues(values)
+    }
+}
+
+/// A typed test invocation whose result marker is the callable's result.
+type InvariantTestResultBrand<Output, R> = fn(Output, R) -> (Output, R);
+
+pub struct TypedTestInvocation<Output, R: Requirements> {
+    raw: Invocation,
+    marker: PhantomData<InvariantTestResultBrand<Output, R>>,
+}
+
+/// A typed expected outcome for one invocation result marker.
+pub struct TypedExpected<Output, R: Requirements> {
+    raw: Expected,
+    marker: PhantomData<InvariantTestResultBrand<Output, R>>,
+}
+
+/// The only value and invocation factory available to a typed portable test.
+pub struct TypedTestBuilder<'module> {
+    marker: PhantomData<Cell<&'module ()>>,
+}
+
+type TestListRequirements<TypeR, ValuesR> = All<Requires<ListValues>, All<TypeR, ValuesR>>;
+type TestOptionRequirements<R> = All<Requires<OptionValues>, R>;
+type TestResultRequirements<OkR, ErrorR> = All<Requires<ResultValues>, All<OkR, ErrorR>>;
+type TypedAliasTestValue<'module, 'alias, T, AliasR, ValueR> = TypedTestValue<
+    'module,
+    AliasValue<'module, 'alias, T>,
+    All<Requires<TypeAliases>, All<AliasR, ValueR>>,
+>;
+
+impl<'module> TypedTestBuilder<'module> {
+    fn value<T, R: Requirements>(
+        &mut self,
+        ty: Type,
+        value: Value,
+    ) -> TypedTestValue<'module, T, R> {
+        TypedTestValue {
+            ty,
+            value,
+            marker: PhantomData,
+        }
+    }
+
+    pub fn unit(&mut self) -> TypedTestValue<'module, Unit, Requires<UnitValues>> {
+        self.value(Type::unit(), Value::unit())
+    }
+
+    pub fn bool(&mut self, value: bool) -> TypedTestValue<'module, Bool, Requires<BoolValues>> {
+        self.value(Type::bool(), Value::bool(value))
+    }
+
+    pub fn i32(&mut self, value: i32) -> TypedTestValue<'module, I32, Requires<I32Values>> {
+        self.value(Type::i32(), Value::i32(value))
+    }
+
+    pub fn i64(&mut self, value: i64) -> TypedTestValue<'module, I64, Requires<I64Values>> {
+        self.value(Type::i64(), Value::i64(value))
+    }
+
+    pub fn f64(&mut self, value: f64) -> TypedTestValue<'module, F64, Requires<F64Values>> {
+        self.value(Type::f64(), Value::f64(value))
+    }
+
+    pub fn text(
+        &mut self,
+        value: impl Into<String>,
+    ) -> TypedTestValue<'module, Text, Requires<TextValues>> {
+        self.value(Type::string(), Value::string(value))
+    }
+
+    pub fn char(&mut self, value: char) -> TypedTestValue<'module, Char, Requires<CharValues>> {
+        self.value(Type::char(), Value::char(value))
+    }
+
+    pub fn bytes(
+        &mut self,
+        value: impl Into<Vec<u8>>,
+    ) -> TypedTestValue<'module, Bytes, Requires<BytesValues>> {
+        self.value(Type::bytes(), Value::bytes(value))
+    }
+
+    pub fn list<T, TypeR, Values>(
+        &mut self,
+        element: TypedType<T, TypeR>,
+        values: Values,
+    ) -> TypedTestValue<'module, List<T>, TestListRequirements<TypeR, Values::Requirements>>
+    where
+        TypeR: Requirements,
+        Values: HomogeneousTestValueList<'module, T>,
+    {
+        self.value(Type::list(element.ir), Value::list(values.into_values().0))
+    }
+
+    pub fn some<T, R: Requirements>(
+        &mut self,
+        value: TypedTestValue<'module, T, R>,
+    ) -> TypedTestValue<'module, Optional<T>, TestOptionRequirements<R>> {
+        self.value(Type::option(value.ty), Value::some(value.value))
+    }
+
+    pub fn none<T, R: Requirements>(
+        &mut self,
+        inner: TypedType<T, R>,
+    ) -> TypedTestValue<'module, Optional<T>, TestOptionRequirements<R>> {
+        self.value(Type::option(inner.ir), Value::none())
+    }
+
+    pub fn ok<Ok, OkR, Error, ErrorR>(
+        &mut self,
+        value: TypedTestValue<'module, Ok, OkR>,
+        error: TypedType<Error, ErrorR>,
+    ) -> TypedTestValue<'module, ResultValue<Ok, Error>, TestResultRequirements<OkR, ErrorR>>
+    where
+        OkR: Requirements,
+        ErrorR: Requirements,
+    {
+        self.value(Type::result(value.ty, error.ir), Value::ok(value.value))
+    }
+
+    pub fn err<Ok, OkR, Error, ErrorR>(
+        &mut self,
+        value: TypedTestValue<'module, Error, ErrorR>,
+        ok: TypedType<Ok, OkR>,
+    ) -> TypedTestValue<'module, ResultValue<Ok, Error>, TestResultRequirements<OkR, ErrorR>>
+    where
+        OkR: Requirements,
+        ErrorR: Requirements,
+    {
+        self.value(Type::result(ok.ir, value.ty), Value::err(value.value))
+    }
+
+    pub fn record<'record, Types, Handles, Values>(
+        &mut self,
+        record: &TypedRecord<'module, 'record, Types, Handles>,
+        values: Values,
+    ) -> TypedTestValue<
+        'module,
+        RecordValue<'module, 'record>,
+        All<Requires<Records>, Values::Requirements>,
+    >
+    where
+        Values: TestValueList<'module, Types = Types>,
+    {
+        let values = values.into_parts().0;
+        assert_eq!(
+            record.field_ids.len(),
+            values.len(),
+            "typed test record arity"
+        );
+        self.value(
+            Type::named(record.raw),
+            Value::record(
+                record.raw,
+                record
+                    .field_ids
+                    .iter()
+                    .copied()
+                    .zip(values.into_iter().map(|(_, value)| value)),
+            ),
+        )
+    }
+
+    pub fn alias_wrap<'alias, T, AliasR, ValueR>(
+        &mut self,
+        alias: &TypedAlias<'module, 'alias, T, AliasR>,
+        value: TypedTestValue<'module, T, ValueR>,
+    ) -> TypedAliasTestValue<'module, 'alias, T, AliasR, ValueR>
+    where
+        AliasR: Requirements,
+        ValueR: Requirements,
+    {
+        self.value(Type::named(alias.raw), value.value)
+    }
+
+    pub fn enum_variant<'enumeration, Handles, Position>(
+        &mut self,
+        enumeration: &TypedEnum<'module, 'enumeration, Handles>,
+        variant: TypedVariant<'module, 'enumeration, Position>,
+    ) -> TypedTestValue<'module, EnumValue<'module, 'enumeration>, Requires<Enums>> {
+        self.value(
+            Type::named(enumeration.raw),
+            Value::enumeration(enumeration.raw, variant.raw, []),
+        )
+    }
+
+    pub fn function<Arguments, Output>(
+        &mut self,
+        function: TypedFunction<'module, Arguments::Types, Output>,
+        arguments: Arguments,
+    ) -> TypedTestInvocation<Output, Arguments::Requirements>
+    where
+        Arguments: TestValueList<'module>,
+    {
+        let arguments = arguments
+            .into_parts()
+            .0
+            .into_iter()
+            .map(|(ty, value)| TypedValue::new(ty, value));
+        TypedTestInvocation {
+            raw: Invocation::function(function.raw, arguments),
+            marker: PhantomData,
+        }
+    }
+
+    pub fn method<
+        'implementation,
+        'interface,
+        'record,
+        Methods,
+        Position,
+        Parameters,
+        Output,
+        ReceiverR,
+        Arguments,
+    >(
+        &mut self,
+        implementation: &TypedImplementation<
+            'module,
+            'implementation,
+            'interface,
+            'record,
+            Methods,
+        >,
+        method: TypedImplementationMethod<'module, 'implementation, Position, Parameters, Output>,
+        receiver: TypedTestValue<'module, RecordValue<'module, 'record>, ReceiverR>,
+        arguments: Arguments,
+    ) -> TypedTestInvocation<Output, All<ReceiverR, Arguments::Requirements>>
+    where
+        Parameters: ParameterList,
+        ReceiverR: Requirements,
+        Arguments: TestValueList<'module, Types = Parameters::Types>,
+    {
+        let arguments = arguments
+            .into_parts()
+            .0
+            .into_iter()
+            .map(|(ty, value)| TypedValue::new(ty, value));
+        TypedTestInvocation {
+            raw: Invocation::method(
+                implementation.raw,
+                method.raw,
+                receiver.into_raw(),
+                arguments,
+            ),
+            marker: PhantomData,
+        }
+    }
+
+    pub fn expect_value<Output, R: Requirements>(
+        &mut self,
+        value: TypedTestValue<'module, Output, R>,
+    ) -> TypedExpected<Output, R> {
+        TypedExpected {
+            raw: Expected::value(value.into_raw()),
+            marker: PhantomData,
+        }
+    }
+
+    pub fn expect_error<Output, Error, R: Requirements>(
+        &mut self,
+        value: TypedTestValue<'module, Error, R>,
+    ) -> TypedExpected<Output, R> {
+        TypedExpected {
+            raw: Expected::error(value.into_raw()),
+            marker: PhantomData,
+        }
+    }
+}
+
 /// A recursively typed homogeneous expression list.
 pub trait HomogeneousArgumentList<'module, 'body, T>: sealed::HomogeneousArguments {
     type Requirements: Requirements;
@@ -2325,6 +2738,8 @@ type AliasRequirement<Existing, TargetR> = All<Existing, All<Requires<TypeAliase
 type InterfaceRequirement<Existing, Methods> = All<Existing, All<Requires<Interfaces>, Methods>>;
 type ImplementationRequirement<Existing, Bindings> =
     All<Existing, All<Requires<Interfaces>, Bindings>>;
+type PortableTestRequirement<Existing, InvocationR, ExpectedR> =
+    All<Existing, All<Requires<PortableTests>, All<InvocationR, ExpectedR>>>;
 type AliasConversionRequirements<AliasR, ValueR> = All<Requires<TypeAliases>, All<AliasR, ValueR>>;
 type AliasWrappedExpr<'module, 'body, 'alias, T, AliasR, ValueR> = TypedExpr<
     'module,
@@ -2486,6 +2901,39 @@ impl<'module, Existing: Requirements> ProgramBuilder<'module, Existing> {
                 marker: PhantomData,
             },
         )
+    }
+
+    pub fn portable_test<Output, InvocationR, ExpectedR>(
+        mut self,
+        name: PortableName,
+        build: impl FnOnce(
+            &mut TypedTestBuilder<'module>,
+        ) -> (
+            TypedTestInvocation<Output, InvocationR>,
+            TypedExpected<Output, ExpectedR>,
+        ),
+    ) -> ProgramBuilder<'module, PortableTestRequirement<Existing, InvocationR, ExpectedR>>
+    where
+        InvocationR: Requirements,
+        ExpectedR: Requirements,
+    {
+        let name = self.names.allocate(name);
+        let mut test = TypedTestBuilder {
+            marker: PhantomData,
+        };
+        let (invocation, expected) = build(&mut test);
+        self.dynamic.portable_test(
+            name,
+            Visibility::Public,
+            vec![],
+            invocation.raw,
+            expected.raw,
+        );
+        ProgramBuilder {
+            dynamic: self.dynamic,
+            names: self.names,
+            marker: PhantomData,
+        }
     }
 
     pub fn constant<T, TypeR, ValueR>(
@@ -4256,6 +4704,63 @@ mod tests {
     }
 
     #[test]
+    fn portable_function_tests_type_arguments_values_and_structured_errors() {
+        let program = typed_program(portable_name!("typed_function_tests"), |builder| {
+            let added = builder.function(
+                portable_name!("checked_add"),
+                typed_list![
+                    parameter(portable_name!("left"), I32::TYPE),
+                    parameter(portable_name!("right"), I32::TYPE),
+                ],
+                I32::TYPE,
+                |body, parameters| {
+                    let left = body.read(parameters.head);
+                    let right = body.read(parameters.tail.head);
+                    body.int_add_checked(left, right)
+                },
+            );
+            let checked_add = added.handle;
+            let builder = added.builder.portable_test(portable_name!("adds"), |test| {
+                let left = test.i32(1);
+                let right = test.i32(2);
+                let invocation = test.function(checked_add, typed_list![left, right]);
+                let value = test.i32(3);
+                let expected = test.expect_value(value);
+                (invocation, expected)
+            });
+            builder.portable_test(portable_name!("overflow"), |test| {
+                let left = test.i32(i32::MAX);
+                let right = test.i32(1);
+                let invocation = test.function(checked_add, typed_list![left, right]);
+                let error = test.text("checked_overflow");
+                let expected = test.expect_error(error);
+                (invocation, expected)
+            })
+        });
+        let plugin = language_plugin(TestDialect)
+            .support(test_mapping::<Modules>())
+            .support(test_mapping::<Functions>())
+            .support(test_mapping::<I32Values>())
+            .support(test_mapping::<TextValues>())
+            .support(test_mapping::<CheckedIntegerArithmetic>())
+            .support(test_mapping::<PortableTests>())
+            .build();
+
+        fn admit<P, R: Requirements>(_plugin: &P, _program: &TypedProgram<R>)
+        where
+            P: SupportsAll<R>,
+        {
+        }
+
+        admit(&plugin, &program);
+        let core = portable_core_ir::lower_checked(program.checked_program())
+            .expect("typed function tests lower to CoreIR");
+        portable_core_ir::verify_core(&core).expect("typed function tests verify");
+        let outcomes = portable_eval::Evaluator::new(program.checked_program()).run_all_tests();
+        assert!(outcomes.iter().all(|outcome| outcome.passed));
+    }
+
+    #[test]
     fn local_bindings_and_conditionals_are_typed_and_inferred() {
         let program = typed_program(portable_name!("bindings_and_conditionals"), |builder| {
             builder
@@ -4496,7 +5001,7 @@ mod tests {
                                             },
                                         )
                                         .builder;
-                                    builder
+                                    let builder = builder
                                         .function(
                                             portable_name!("read_dynamic"),
                                             typed_list![parameter(
@@ -4516,7 +5021,24 @@ mod tests {
                                                 )
                                             },
                                         )
-                                        .builder
+                                        .builder;
+                                    builder.portable_test(
+                                        portable_name!("reads_concrete_method"),
+                                        |test| {
+                                            let value = test.i32(9);
+                                            let receiver =
+                                                test.record(&counter, typed_list![value]);
+                                            let invocation = test.method(
+                                                &implementation,
+                                                concrete_read,
+                                                receiver,
+                                                typed_list![],
+                                            );
+                                            let expected_value = test.i32(9);
+                                            let expected = test.expect_value(expected_value);
+                                            (invocation, expected)
+                                        },
+                                    )
                                 },
                             )
                         },
@@ -4534,6 +5056,7 @@ mod tests {
             .support(test_mapping::<WrappingIntegerArithmetic>())
             .support(test_mapping::<Equality>())
             .support(test_mapping::<ResultPropagation>())
+            .support(test_mapping::<PortableTests>())
             .build();
 
         fn admit<P, R: Requirements>(_plugin: &P, _program: &TypedProgram<R>)
@@ -4546,6 +5069,8 @@ mod tests {
         let core = portable_core_ir::lower_checked(program.checked_program())
             .expect("typed interfaces lower to CoreIR");
         portable_core_ir::verify_core(&core).expect("typed interfaces verify");
+        let outcomes = portable_eval::Evaluator::new(program.checked_program()).run_all_tests();
+        assert!(outcomes.iter().all(|outcome| outcome.passed));
     }
 
     #[test]
