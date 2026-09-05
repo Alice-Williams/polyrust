@@ -238,6 +238,59 @@
 //! });
 //! ```
 //!
+//! Boolean matching has no constructor with a missing arm:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, portable_name, typed_list, typed_program};
+//! let _ = typed_program(portable_name!("missing_bool_arm"), |builder| {
+//!     builder.function(portable_name!("bad"), typed_list![], I32::TYPE, |body, _| {
+//!         let value = body.bool(true);
+//!         let when_true = body.i32(1);
+//!         body.match_bool(value, when_true)
+//!     }).builder
+//! });
+//! ```
+//!
+//! Option match branches must produce the same result type:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, option_type, parameter, portable_name, typed_list, typed_program};
+//! let _ = typed_program(portable_name!("option_branch_type"), |builder| {
+//!     builder.function(
+//!         portable_name!("bad"),
+//!         typed_list![parameter(portable_name!("value"), option_type(I32::TYPE))],
+//!         I32::TYPE,
+//!         |body, values| {
+//!             let value = body.read(values.head);
+//!             let none = body.i32(0);
+//!             body.match_option(value, none, portable_name!("some"), |body, _| body.text("bad"))
+//!         },
+//!     ).builder
+//! });
+//! ```
+//!
+//! Pattern bindings cannot escape their arm:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, option_type, parameter, portable_name, typed_list, typed_program};
+//! let mut escaped = None;
+//! let _ = typed_program(portable_name!("pattern_escape"), |builder| {
+//!     builder.function(
+//!         portable_name!("bad"),
+//!         typed_list![parameter(portable_name!("value"), option_type(I32::TYPE))],
+//!         I32::TYPE,
+//!         |body, values| {
+//!             let value = body.read(values.head);
+//!             let none = body.i32(0);
+//!             body.match_option(value, none, portable_name!("some"), |body, some| {
+//!                 escaped = Some(some);
+//!                 body.i32(1)
+//!             })
+//!         },
+//!     ).builder
+//! });
+//! ```
+//!
 //! ```compile_fail
 //! use portable_build::{I32, Requirements, SupportsAll, TypedProgram, portable_name, typed_list, typed_program};
 //! struct EmptyDialect;
@@ -927,6 +980,24 @@ enum TypedNode {
         iterable: Box<TypedNode>,
         body: Box<TypedNode>,
     },
+    BoolMatch {
+        value: Box<TypedNode>,
+        when_false: Box<TypedNode>,
+        when_true: Box<TypedNode>,
+    },
+    OptionMatch {
+        value: Box<TypedNode>,
+        none: Box<TypedNode>,
+        some_binding: String,
+        some: Box<TypedNode>,
+    },
+    ResultMatch {
+        value: Box<TypedNode>,
+        ok_binding: String,
+        ok: Box<TypedNode>,
+        error_binding: String,
+        error: Box<TypedNode>,
+    },
     Record {
         record: RecordId,
         fields: Vec<(RecordFieldId, TypedNode)>,
@@ -1102,6 +1173,19 @@ type InvariantLoopItemBrand<'module, 'body, 'iteration, T> = (
 pub struct TypedLoopItem<'module, 'body, 'iteration, T> {
     name: String,
     marker: PhantomData<InvariantLoopItemBrand<'module, 'body, 'iteration, T>>,
+}
+
+type InvariantPatternBindingBrand<'module, 'body, 'arm, T> = (
+    Cell<&'module ()>,
+    Cell<&'body ()>,
+    Cell<&'arm ()>,
+    fn(T) -> T,
+);
+
+/// A value bound by exactly one typed match arm.
+pub struct TypedPatternBinding<'module, 'body, 'arm, T> {
+    name: String,
+    marker: PhantomData<InvariantPatternBindingBrand<'module, 'body, 'arm, T>>,
 }
 
 impl<T, R: Requirements> Clone for TypedLocal<'_, '_, T, R> {
@@ -2037,12 +2121,16 @@ type LoopRequirements<IterableR, BodyR> =
     All<Requires<Loops>, All<IterableR, All<BodyR, Requires<UnitValues>>>>;
 type FunctionCallRequirements<ArgumentR> =
     All<Requires<Functions>, All<Requires<ResultPropagation>, ArgumentR>>;
+type PatternRequirements<ValueR, FirstR, SecondR> =
+    All<Requires<PatternMatching>, All<ValueR, All<FirstR, SecondR>>>;
 type LocalBindingExpr<'module, 'body, Output, ValueR, BodyR> =
     TypedExpr<'module, 'body, Output, LocalBindingRequirements<ValueR, BodyR>>;
 type ConditionalExpr<'module, 'body, Output, ConditionR, ThenR, ElseR> =
     TypedExpr<'module, 'body, Output, ConditionalRequirements<ConditionR, ThenR, ElseR>>;
 type LoopExpr<'module, 'body, IterableR, BodyR> =
     TypedExpr<'module, 'body, Unit, LoopRequirements<IterableR, BodyR>>;
+type PatternExpr<'module, 'body, Output, ValueR, FirstR, SecondR> =
+    TypedExpr<'module, 'body, Output, PatternRequirements<ValueR, FirstR, SecondR>>;
 
 impl<'module, 'body> TypedBody<'module, 'body> {
     fn expression<T, R: Requirements>(&self, node: TypedNode) -> TypedExpr<'module, 'body, T, R> {
@@ -2071,6 +2159,13 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         item: TypedLoopItem<'module, 'body, 'iteration, T>,
     ) -> TypedExpr<'module, 'body, T, Requires<Loops>> {
         self.expression(TypedNode::Local(item.name))
+    }
+
+    pub fn read_pattern<'arm, T>(
+        &mut self,
+        binding: TypedPatternBinding<'module, 'body, 'arm, T>,
+    ) -> TypedExpr<'module, 'body, T, Requires<PatternMatching>> {
+        self.expression(TypedNode::Local(binding.name))
     }
 
     pub fn let_value<T, ValueR, Output, BodyR>(
@@ -2144,6 +2239,99 @@ impl<'module, 'body> TypedBody<'module, 'body> {
             binding: name,
             iterable: Box::new(iterable.node),
             body: Box::new(loop_body.node),
+        })
+    }
+
+    pub fn match_bool<T, ValueR, FalseR, TrueR>(
+        &mut self,
+        value: TypedExpr<'module, 'body, Bool, ValueR>,
+        when_false: TypedExpr<'module, 'body, T, FalseR>,
+        when_true: TypedExpr<'module, 'body, T, TrueR>,
+    ) -> PatternExpr<'module, 'body, T, ValueR, FalseR, TrueR>
+    where
+        ValueR: Requirements,
+        FalseR: Requirements,
+        TrueR: Requirements,
+    {
+        self.expression(TypedNode::BoolMatch {
+            value: Box::new(value.node),
+            when_false: Box::new(when_false.node),
+            when_true: Box::new(when_true.node),
+        })
+    }
+
+    pub fn match_option<T, Output, ValueR, NoneR, SomeR>(
+        &mut self,
+        value: TypedExpr<'module, 'body, Optional<T>, ValueR>,
+        none: TypedExpr<'module, 'body, Output, NoneR>,
+        binding: PortableName,
+        some: impl for<'arm> FnOnce(
+            &mut TypedBody<'module, 'body>,
+            TypedPatternBinding<'module, 'body, 'arm, T>,
+        ) -> TypedExpr<'module, 'body, Output, SomeR>,
+    ) -> PatternExpr<'module, 'body, Output, ValueR, NoneR, SomeR>
+    where
+        ValueR: Requirements,
+        NoneR: Requirements,
+        SomeR: Requirements,
+    {
+        let binding = self.names.allocate(binding);
+        let some = some(
+            self,
+            TypedPatternBinding {
+                name: binding.clone(),
+                marker: PhantomData,
+            },
+        );
+        self.expression(TypedNode::OptionMatch {
+            value: Box::new(value.node),
+            none: Box::new(none.node),
+            some_binding: binding,
+            some: Box::new(some.node),
+        })
+    }
+
+    pub fn match_result<Ok, Error, Output, ValueR, OkR, ErrorR>(
+        &mut self,
+        value: TypedExpr<'module, 'body, ResultValue<Ok, Error>, ValueR>,
+        ok_binding: PortableName,
+        ok: impl for<'arm> FnOnce(
+            &mut TypedBody<'module, 'body>,
+            TypedPatternBinding<'module, 'body, 'arm, Ok>,
+        ) -> TypedExpr<'module, 'body, Output, OkR>,
+        error_binding: PortableName,
+        error: impl for<'arm> FnOnce(
+            &mut TypedBody<'module, 'body>,
+            TypedPatternBinding<'module, 'body, 'arm, Error>,
+        ) -> TypedExpr<'module, 'body, Output, ErrorR>,
+    ) -> PatternExpr<'module, 'body, Output, ValueR, OkR, ErrorR>
+    where
+        ValueR: Requirements,
+        OkR: Requirements,
+        ErrorR: Requirements,
+    {
+        let ok_binding = self.names.allocate(ok_binding);
+        let ok = ok(
+            self,
+            TypedPatternBinding {
+                name: ok_binding.clone(),
+                marker: PhantomData,
+            },
+        );
+        let error_binding = self.names.allocate(error_binding);
+        let error = error(
+            self,
+            TypedPatternBinding {
+                name: error_binding.clone(),
+                marker: PhantomData,
+            },
+        );
+        self.expression(TypedNode::ResultMatch {
+            value: Box::new(value.node),
+            ok_binding,
+            ok: Box::new(ok.node),
+            error_binding,
+            error: Box::new(error.node),
         })
     }
 
@@ -3038,6 +3226,57 @@ fn lower_expression(body: &mut BodyBuilder<'_>, node: TypedNode) -> crate::Expr 
             let block = body.block([statement], Some(unit));
             body.block_expression(block)
         }
+        TypedNode::BoolMatch {
+            value,
+            when_false,
+            when_true,
+        } => {
+            let value = lower_expression(body, *value);
+            let when_false = lower_expression(body, *when_false);
+            let false_pattern = body.bool_pattern(false);
+            let false_block = body.block([], Some(when_false));
+            let false_arm = body.match_arm(false_pattern, false_block);
+            let when_true = lower_expression(body, *when_true);
+            let true_pattern = body.bool_pattern(true);
+            let true_block = body.block([], Some(when_true));
+            let true_arm = body.match_arm(true_pattern, true_block);
+            body.match_value(value, [false_arm, true_arm])
+        }
+        TypedNode::OptionMatch {
+            value,
+            none,
+            some_binding,
+            some,
+        } => {
+            let value = lower_expression(body, *value);
+            let none = lower_expression(body, *none);
+            let none_pattern = body.none_pattern();
+            let none_block = body.block([], Some(none));
+            let none_arm = body.match_arm(none_pattern, none_block);
+            let some = lower_expression(body, *some);
+            let some_pattern = body.some_pattern(some_binding);
+            let some_block = body.block([], Some(some));
+            let some_arm = body.match_arm(some_pattern, some_block);
+            body.match_value(value, [none_arm, some_arm])
+        }
+        TypedNode::ResultMatch {
+            value,
+            ok_binding,
+            ok,
+            error_binding,
+            error,
+        } => {
+            let value = lower_expression(body, *value);
+            let ok = lower_expression(body, *ok);
+            let ok_pattern = body.ok_pattern(ok_binding);
+            let ok_block = body.block([], Some(ok));
+            let ok_arm = body.match_arm(ok_pattern, ok_block);
+            let error = lower_expression(body, *error);
+            let error_pattern = body.err_pattern(error_binding);
+            let error_block = body.block([], Some(error));
+            let error_arm = body.match_arm(error_pattern, error_block);
+            body.match_value(value, [ok_arm, error_arm])
+        }
         TypedNode::Record { record, fields } => {
             let fields = fields
                 .into_iter()
@@ -3358,6 +3597,84 @@ mod tests {
         let core = portable_core_ir::lower_checked(program.checked_program())
             .expect("typed loop and propagation lower to CoreIR");
         portable_core_ir::verify_core(&core).expect("typed loop and propagation verify");
+    }
+
+    #[test]
+    fn bool_option_and_result_matches_are_exhaustive_and_inferred() {
+        let program = typed_program(portable_name!("typed_patterns"), |builder| {
+            let builder = builder
+                .function(
+                    portable_name!("bool_rank"),
+                    typed_list![parameter(portable_name!("value"), Bool::TYPE)],
+                    I32::TYPE,
+                    |body, values| {
+                        let value = body.read(values.head);
+                        let when_false = body.i32(0);
+                        let when_true = body.i32(1);
+                        body.match_bool(value, when_false, when_true)
+                    },
+                )
+                .builder;
+            let builder = builder
+                .function(
+                    portable_name!("option_value"),
+                    typed_list![parameter(portable_name!("value"), option_type(I32::TYPE))],
+                    I32::TYPE,
+                    |body, values| {
+                        let value = body.read(values.head);
+                        let none = body.i32(0);
+                        body.match_option(value, none, portable_name!("some"), |body, some| {
+                            body.read_pattern(some)
+                        })
+                    },
+                )
+                .builder;
+            builder
+                .function(
+                    portable_name!("result_ok"),
+                    typed_list![parameter(
+                        portable_name!("value"),
+                        result_type(I32::TYPE, Text::TYPE),
+                    )],
+                    Bool::TYPE,
+                    |body, values| {
+                        let value = body.read(values.head);
+                        body.match_result(
+                            value,
+                            portable_name!("ok"),
+                            |body, _| body.bool(true),
+                            portable_name!("error"),
+                            |body, error| {
+                                let error = body.read_pattern(error);
+                                body.string_is_empty(error)
+                            },
+                        )
+                    },
+                )
+                .builder
+        });
+        let plugin = language_plugin(TestDialect)
+            .support(test_mapping::<Modules>())
+            .support(test_mapping::<Functions>())
+            .support(test_mapping::<BoolValues>())
+            .support(test_mapping::<I32Values>())
+            .support(test_mapping::<TextValues>())
+            .support(test_mapping::<OptionValues>())
+            .support(test_mapping::<ResultValues>())
+            .support(test_mapping::<PatternMatching>())
+            .support(test_mapping::<StringInspection>())
+            .build();
+
+        fn admit<P, R: Requirements>(_plugin: &P, _program: &TypedProgram<R>)
+        where
+            P: SupportsAll<R>,
+        {
+        }
+
+        admit(&plugin, &program);
+        let core = portable_core_ir::lower_checked(program.checked_program())
+            .expect("typed pattern matches lower to CoreIR");
+        portable_core_ir::verify_core(&core).expect("typed pattern matches verify");
     }
 
     #[test]
