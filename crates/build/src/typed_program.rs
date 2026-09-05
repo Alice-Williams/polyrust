@@ -603,6 +603,77 @@
 //!     )
 //! });
 //! ```
+//!
+//! An implementation must bind every interface method exactly once and in
+//! declaration order. A shorter binding list has a different type:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, field, interface_method, method_binding, portable_name, typed_list, typed_program};
+//! let _ = typed_program(portable_name!("missing_binding"), |builder| {
+//!     builder.record(
+//!         portable_name!("Value"),
+//!         typed_list![field(portable_name!("value"), I32::TYPE)],
+//!         |builder, value| builder.interface(
+//!             portable_name!("Pair"),
+//!             typed_list![
+//!                 interface_method(portable_name!("first"), typed_list![], I32::TYPE),
+//!                 interface_method(portable_name!("second"), typed_list![], I32::TYPE),
+//!             ],
+//!             |builder, interface| {
+//!                 let first = method_binding(
+//!                     &value,
+//!                     &interface.methods().head,
+//!                     portable_name!("first_impl"),
+//!                     |body, receiver, _| body.field(receiver, value.fields().head),
+//!                 );
+//!                 builder.implementation(
+//!                     portable_name!("PairForValue"),
+//!                     &interface,
+//!                     &value,
+//!                     typed_list![first],
+//!                     |builder, _| builder,
+//!                 )
+//!             },
+//!         ),
+//!     )
+//! });
+//! ```
+//!
+//! A binding branded by one interface cannot implement another interface,
+//! even when their structural signatures happen to match:
+//!
+//! ```compile_fail
+//! use portable_build::{I32, field, interface_method, method_binding, portable_name, typed_list, typed_program};
+//! let _ = typed_program(portable_name!("wrong_interface"), |builder| {
+//!     builder.record(
+//!         portable_name!("Value"),
+//!         typed_list![field(portable_name!("value"), I32::TYPE)],
+//!         |builder, value| builder.interface(
+//!             portable_name!("Left"),
+//!             typed_list![interface_method(portable_name!("read"), typed_list![], I32::TYPE)],
+//!             |builder, left| builder.interface(
+//!                 portable_name!("Right"),
+//!                 typed_list![interface_method(portable_name!("read"), typed_list![], I32::TYPE)],
+//!                 |builder, right| {
+//!                     let wrong = method_binding(
+//!                         &value,
+//!                         &left.methods().head,
+//!                         portable_name!("read_impl"),
+//!                         |body, receiver, _| body.field(receiver, value.fields().head),
+//!                     );
+//!                     builder.implementation(
+//!                         portable_name!("RightForValue"),
+//!                         &right,
+//!                         &value,
+//!                         typed_list![wrong],
+//!                         |builder, _| builder,
+//!                     )
+//!                 },
+//!             ),
+//!         ),
+//!     )
+//! });
+//! ```
 
 use std::{cell::Cell, marker::PhantomData};
 
@@ -610,8 +681,9 @@ use portable_check::v0::CheckedProgram;
 
 use crate::capabilities::*;
 use crate::{
-    AliasId, BodyBuilder, ConstantId, EnumId, EnumVariantId, FunctionId, ModuleBuilder, Operation,
-    Parameter, RecordFieldId, RecordId, Type, Value, Visibility,
+    AliasId, BodyBuilder, ConstantId, EnumId, EnumVariantId, FunctionId, ImplementationBuilder,
+    ImplementationId, ImplementationMethodId, InterfaceBuilder, InterfaceId, InterfaceMethodId,
+    ModuleBuilder, Operation, Parameter, RecordFieldId, RecordId, Type, Value, Visibility,
 };
 
 mod sealed {
@@ -626,6 +698,8 @@ mod sealed {
     pub trait Equatable {}
     pub trait Ordered {}
     pub trait Integer {}
+    pub trait InterfaceMethods {}
+    pub trait ImplementationBindings {}
 }
 
 /// An ASCII portable identifier proven usable by every initial target.
@@ -837,6 +911,11 @@ type InvariantAliasBrand<'module, 'alias, T, R> =
 /// A transparent alias value branded with its exact declaration.
 pub struct AliasValue<'module, 'alias, T>(PhantomData<InvariantAliasBrand<'module, 'alias, T, ()>>);
 
+/// A first-class interface value branded with its exact declaration.
+pub struct InterfaceValue<'module, 'interface>(
+    PhantomData<(Cell<&'module ()>, Cell<&'interface ()>)>,
+);
+
 macro_rules! primitive_type {
     ($marker:ident, $type_fn:ident, $feature:ident) => {
         impl $marker {
@@ -965,6 +1044,7 @@ enum TypedNode {
     Literal(Value),
     Local(String),
     Constant(ConstantId),
+    SelfValue,
     LetValue {
         name: String,
         value: Box<TypedNode>,
@@ -1017,6 +1097,22 @@ enum TypedNode {
     },
     Call {
         function: FunctionId,
+        arguments: Vec<TypedNode>,
+    },
+    InterfaceValue {
+        implementation: ImplementationId,
+        value: Box<TypedNode>,
+    },
+    ConcreteMethod {
+        receiver: Box<TypedNode>,
+        implementation: ImplementationId,
+        method: ImplementationMethodId,
+        arguments: Vec<TypedNode>,
+    },
+    InterfaceMethod {
+        receiver: Box<TypedNode>,
+        interface: InterfaceId,
+        method: InterfaceMethodId,
         arguments: Vec<TypedNode>,
     },
     List {
@@ -1257,6 +1353,404 @@ where
                 marker: PhantomData,
             },
             Tail::make_locals(names),
+        )
+    }
+}
+
+/// One typed interface-method signature.
+pub struct TypedInterfaceMethodSpec<Parameters, Output, OutputR: Requirements> {
+    name: PortableName,
+    parameters: Parameters,
+    result: TypedType<Output, OutputR>,
+}
+
+pub const fn interface_method<Parameters, Output, OutputR: Requirements>(
+    name: PortableName,
+    parameters: Parameters,
+    result: TypedType<Output, OutputR>,
+) -> TypedInterfaceMethodSpec<Parameters, Output, OutputR> {
+    TypedInterfaceMethodSpec {
+        name,
+        parameters,
+        result,
+    }
+}
+
+type InvariantInterfaceMethodBrand<'module, 'interface, Position, Parameters, Output> = (
+    Cell<&'module ()>,
+    Cell<&'interface ()>,
+    fn(Position, Parameters) -> Output,
+);
+
+/// A method tied to one interface, exact signature, and list position.
+pub struct TypedInterfaceMethod<'module, 'interface, Position, Parameters, Output> {
+    raw: InterfaceMethodId,
+    parameters: Vec<(String, Type)>,
+    result: Type,
+    marker: PhantomData<
+        InvariantInterfaceMethodBrand<'module, 'interface, Position, Parameters, Output>,
+    >,
+}
+
+impl<Position, Parameters, Output> Clone
+    for TypedInterfaceMethod<'_, '_, Position, Parameters, Output>
+{
+    fn clone(&self) -> Self {
+        Self {
+            raw: self.raw,
+            parameters: self.parameters.clone(),
+            result: self.result.clone(),
+            marker: PhantomData,
+        }
+    }
+}
+
+/// Recursive list of typed interface-method signatures.
+pub trait InterfaceMethodList: sealed::InterfaceMethods {
+    type Handles<'module, 'interface>;
+    type Requirements: Requirements;
+
+    #[doc(hidden)]
+    fn declare<'module, 'interface>(
+        self,
+        builder: &mut InterfaceBuilder<'_>,
+    ) -> Self::Handles<'module, 'interface>;
+}
+
+impl sealed::InterfaceMethods for Nil {}
+impl InterfaceMethodList for Nil {
+    type Handles<'module, 'interface> = Nil;
+    type Requirements = NoneRequired;
+
+    fn declare<'module, 'interface>(
+        self,
+        _builder: &mut InterfaceBuilder<'_>,
+    ) -> Self::Handles<'module, 'interface> {
+        Nil
+    }
+}
+
+impl<Parameters, Output, OutputR, Tail> sealed::InterfaceMethods
+    for Cons<TypedInterfaceMethodSpec<Parameters, Output, OutputR>, Tail>
+where
+    Parameters: ParameterList,
+    OutputR: Requirements,
+    Tail: InterfaceMethodList,
+{
+}
+
+impl<Parameters, Output, OutputR, Tail> InterfaceMethodList
+    for Cons<TypedInterfaceMethodSpec<Parameters, Output, OutputR>, Tail>
+where
+    Parameters: ParameterList,
+    OutputR: Requirements,
+    Tail: InterfaceMethodList,
+{
+    type Handles<'module, 'interface> = Cons<
+        TypedInterfaceMethod<'module, 'interface, Tail, Parameters, Output>,
+        Tail::Handles<'module, 'interface>,
+    >;
+    type Requirements =
+        All<Parameters::Requirements, All<OutputR, <Tail as InterfaceMethodList>::Requirements>>;
+
+    fn declare<'module, 'interface>(
+        self,
+        builder: &mut InterfaceBuilder<'_>,
+    ) -> Self::Handles<'module, 'interface> {
+        let mut parameters = Vec::new();
+        self.head.parameters.append_raw(&mut parameters);
+        let mut names = NameAllocator::default();
+        let parameters = parameters
+            .into_iter()
+            .map(|(name, ty)| (names.allocate(name), ty))
+            .collect::<Vec<_>>();
+        let raw = builder.method(
+            self.head.name.preferred(),
+            vec![],
+            parameters
+                .iter()
+                .map(|(name, ty)| Parameter::new(name.clone(), ty.clone()))
+                .collect(),
+            Some(self.head.result.ir.clone()),
+        );
+        Cons::new(
+            TypedInterfaceMethod {
+                raw,
+                parameters,
+                result: self.head.result.ir,
+                marker: PhantomData,
+            },
+            self.tail.declare(builder),
+        )
+    }
+}
+
+/// One exact interface-method implementation body.
+type InvariantMethodBindingBrand<
+    'module,
+    'interface,
+    'record,
+    Position,
+    Parameters,
+    Output,
+    BodyR,
+> = (
+    InvariantInterfaceMethodBrand<'module, 'interface, Position, Parameters, Output>,
+    InvariantRecordBrand<'module, 'record, ()>,
+    fn() -> BodyR,
+);
+
+pub struct TypedMethodBinding<
+    'module,
+    'interface,
+    'record,
+    Position,
+    Parameters,
+    Output,
+    BodyR: Requirements,
+    Build,
+> {
+    name: PortableName,
+    interface_method: InterfaceMethodId,
+    parameters: Vec<(String, Type)>,
+    result: Type,
+    build: Build,
+    marker: PhantomData<
+        InvariantMethodBindingBrand<
+            'module,
+            'interface,
+            'record,
+            Position,
+            Parameters,
+            Output,
+            BodyR,
+        >,
+    >,
+}
+
+type InterfaceSelfExpr<'module, 'body, 'record> =
+    TypedExpr<'module, 'body, RecordValue<'module, 'record>, Requires<Interfaces>>;
+
+pub fn method_binding<
+    'module,
+    'interface,
+    'record,
+    Position,
+    Parameters,
+    Output,
+    BodyR,
+    Build,
+    RecordTypes,
+    RecordHandles,
+>(
+    _record: &TypedRecord<'module, 'record, RecordTypes, RecordHandles>,
+    method: &TypedInterfaceMethod<'module, 'interface, Position, Parameters, Output>,
+    name: PortableName,
+    build: Build,
+) -> TypedMethodBinding<'module, 'interface, 'record, Position, Parameters, Output, BodyR, Build>
+where
+    Parameters: ParameterList,
+    BodyR: Requirements,
+    Build: for<'body> FnOnce(
+        &mut TypedBody<'module, 'body>,
+        InterfaceSelfExpr<'module, 'body, 'record>,
+        Parameters::Locals<'module, 'body>,
+    ) -> TypedExpr<'module, 'body, Output, BodyR>,
+{
+    TypedMethodBinding {
+        name,
+        interface_method: method.raw,
+        parameters: method.parameters.clone(),
+        result: method.result.clone(),
+        build,
+        marker: PhantomData,
+    }
+}
+
+/// Recursive exact implementation-binding list.
+pub trait ImplementationBindingList<'module, 'interface, 'record>:
+    sealed::ImplementationBindings
+{
+    type MethodHandles;
+    type Requirements: Requirements;
+    type Handles<'implementation>;
+
+    #[doc(hidden)]
+    fn declare<'implementation>(
+        self,
+        builder: &mut ImplementationBuilder<'_>,
+    ) -> Self::Handles<'implementation>;
+}
+
+impl sealed::ImplementationBindings for Nil {}
+impl<'module, 'interface, 'record> ImplementationBindingList<'module, 'interface, 'record> for Nil {
+    type MethodHandles = Nil;
+    type Requirements = NoneRequired;
+    type Handles<'implementation> = Nil;
+
+    fn declare<'implementation>(
+        self,
+        _builder: &mut ImplementationBuilder<'_>,
+    ) -> Self::Handles<'implementation> {
+        Nil
+    }
+}
+
+type InvariantImplementationMethodBrand<'module, 'implementation, Position, Parameters, Output> = (
+    Cell<&'module ()>,
+    Cell<&'implementation ()>,
+    fn(Position, Parameters) -> Output,
+);
+
+/// A concrete implementation method tied to its exact binding position.
+pub struct TypedImplementationMethod<'module, 'implementation, Position, Parameters, Output> {
+    raw: ImplementationMethodId,
+    marker: PhantomData<
+        InvariantImplementationMethodBrand<'module, 'implementation, Position, Parameters, Output>,
+    >,
+}
+
+impl<Position, Parameters, Output> Copy
+    for TypedImplementationMethod<'_, '_, Position, Parameters, Output>
+{
+}
+impl<Position, Parameters, Output> Clone
+    for TypedImplementationMethod<'_, '_, Position, Parameters, Output>
+{
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+type InvariantImplementationBrand<'module, 'implementation, 'interface, 'record, Methods> = (
+    Cell<&'module ()>,
+    Cell<&'implementation ()>,
+    Cell<&'interface ()>,
+    Cell<&'record ()>,
+    fn(Methods) -> Methods,
+);
+
+/// An exact conformance witness between one record and one interface.
+pub struct TypedImplementation<'module, 'implementation, 'interface, 'record, Methods> {
+    raw: ImplementationId,
+    methods: Methods,
+    marker: PhantomData<
+        InvariantImplementationBrand<'module, 'implementation, 'interface, 'record, Methods>,
+    >,
+}
+
+impl<'module, 'implementation, 'interface, 'record, Methods>
+    TypedImplementation<'module, 'implementation, 'interface, 'record, Methods>
+{
+    pub const fn methods(&self) -> &Methods {
+        &self.methods
+    }
+}
+
+impl<'module, 'interface, 'record, Position, Parameters, Output, BodyR, Build, Tail>
+    sealed::ImplementationBindings
+    for Cons<
+        TypedMethodBinding<
+            'module,
+            'interface,
+            'record,
+            Position,
+            Parameters,
+            Output,
+            BodyR,
+            Build,
+        >,
+        Tail,
+    >
+where
+    Parameters: ParameterList,
+    BodyR: Requirements,
+    Build: for<'body> FnOnce(
+        &mut TypedBody<'module, 'body>,
+        InterfaceSelfExpr<'module, 'body, 'record>,
+        Parameters::Locals<'module, 'body>,
+    ) -> TypedExpr<'module, 'body, Output, BodyR>,
+    Tail: ImplementationBindingList<'module, 'interface, 'record>,
+{
+}
+
+impl<'module, 'interface, 'record, Position, Parameters, Output, BodyR, Build, Tail>
+    ImplementationBindingList<'module, 'interface, 'record>
+    for Cons<
+        TypedMethodBinding<
+            'module,
+            'interface,
+            'record,
+            Position,
+            Parameters,
+            Output,
+            BodyR,
+            Build,
+        >,
+        Tail,
+    >
+where
+    Parameters: ParameterList,
+    BodyR: Requirements,
+    Build: for<'body> FnOnce(
+        &mut TypedBody<'module, 'body>,
+        InterfaceSelfExpr<'module, 'body, 'record>,
+        Parameters::Locals<'module, 'body>,
+    ) -> TypedExpr<'module, 'body, Output, BodyR>,
+    Tail: ImplementationBindingList<'module, 'interface, 'record>,
+{
+    type MethodHandles = Cons<
+        TypedInterfaceMethod<'module, 'interface, Position, Parameters, Output>,
+        Tail::MethodHandles,
+    >;
+    type Requirements = All<
+        All<Requires<Interfaces>, BodyR>,
+        <Tail as ImplementationBindingList<'module, 'interface, 'record>>::Requirements,
+    >;
+    type Handles<'implementation> = Cons<
+        TypedImplementationMethod<'module, 'implementation, Position, Parameters, Output>,
+        Tail::Handles<'implementation>,
+    >;
+
+    fn declare<'implementation>(
+        self,
+        builder: &mut ImplementationBuilder<'_>,
+    ) -> Self::Handles<'implementation> {
+        let binding = self.head;
+        let raw_parameters = binding.parameters.clone();
+        let local_names = raw_parameters
+            .iter()
+            .map(|(name, _)| name.clone())
+            .collect::<Vec<_>>();
+        let (raw, ()) = builder.method(
+            binding.name.preferred(),
+            binding.interface_method,
+            vec![],
+            |method| {
+                for (name, ty) in raw_parameters {
+                    method.parameter(Parameter::new(name, ty));
+                }
+                method.returns(binding.result).body(|body| {
+                    let reserved_names = local_names.clone();
+                    let mut names = local_names.into_iter();
+                    let locals = Parameters::make_locals(&mut names);
+                    let mut typed = TypedBody {
+                        names: NameAllocator::with_used(reserved_names),
+                        marker: PhantomData,
+                    };
+                    let receiver = typed.expression(TypedNode::SelfValue);
+                    let result = (binding.build)(&mut typed, receiver, locals);
+                    let result = lower_expression(body, result.node);
+                    body.block([], Some(result))
+                });
+            },
+        );
+        Cons::new(
+            TypedImplementationMethod {
+                raw,
+                marker: PhantomData,
+            },
+            self.tail.declare(builder),
         )
     }
 }
@@ -1735,6 +2229,26 @@ pub struct TypedAlias<'module, 'alias, T, R: Requirements> {
     marker: PhantomData<InvariantAliasBrand<'module, 'alias, T, R>>,
 }
 
+/// A flat interface and its exact branded method-handle list.
+pub struct TypedInterface<'module, 'interface, Handles> {
+    raw: InterfaceId,
+    methods: Handles,
+    marker: PhantomData<(Cell<&'module ()>, Cell<&'interface ()>)>,
+}
+
+impl<'module, 'interface, Handles> TypedInterface<'module, 'interface, Handles> {
+    pub fn ty(&self) -> TypedType<InterfaceValue<'module, 'interface>, Requires<Interfaces>> {
+        TypedType {
+            ir: Type::interface(self.raw),
+            marker: PhantomData,
+        }
+    }
+
+    pub const fn methods(&self) -> &Handles {
+        &self.methods
+    }
+}
+
 impl<'module, 'alias, T, R: Requirements> TypedAlias<'module, 'alias, T, R> {
     pub fn ty(&self) -> TypedType<AliasValue<'module, 'alias, T>, All<Requires<TypeAliases>, R>> {
         TypedType {
@@ -1808,6 +2322,9 @@ type ModuleRequirement<R> = All<Requires<Modules>, R>;
 type ConstantRequirement<Existing, TypeR, ValueR> =
     All<Existing, All<Requires<Constants>, All<TypeR, ValueR>>>;
 type AliasRequirement<Existing, TargetR> = All<Existing, All<Requires<TypeAliases>, TargetR>>;
+type InterfaceRequirement<Existing, Methods> = All<Existing, All<Requires<Interfaces>, Methods>>;
+type ImplementationRequirement<Existing, Bindings> =
+    All<Existing, All<Requires<Interfaces>, Bindings>>;
 type AliasConversionRequirements<AliasR, ValueR> = All<Requires<TypeAliases>, All<AliasR, ValueR>>;
 type AliasWrappedExpr<'module, 'body, 'alias, T, AliasR, ValueR> = TypedExpr<
     'module,
@@ -1881,6 +2398,96 @@ impl NameAllocator {
 }
 
 impl<'module, Existing: Requirements> ProgramBuilder<'module, Existing> {
+    pub fn interface<Methods, OutputRequirements>(
+        mut self,
+        name: PortableName,
+        methods: Methods,
+        then: impl for<'interface> FnOnce(
+            ProgramBuilder<'module, InterfaceRequirement<Existing, Methods::Requirements>>,
+            TypedInterface<'module, 'interface, Methods::Handles<'module, 'interface>>,
+        ) -> ProgramBuilder<'module, OutputRequirements>,
+    ) -> ProgramBuilder<'module, OutputRequirements>
+    where
+        Methods: InterfaceMethodList,
+        OutputRequirements: Requirements,
+    {
+        let name = self.names.allocate(name);
+        let (raw, handles) = self
+            .dynamic
+            .interface(name, Visibility::Public, vec![], |builder| {
+                methods.declare(builder)
+            });
+        then(
+            ProgramBuilder {
+                dynamic: self.dynamic,
+                names: self.names,
+                marker: PhantomData,
+            },
+            TypedInterface {
+                raw,
+                methods: handles,
+                marker: PhantomData,
+            },
+        )
+    }
+
+    pub fn implementation<
+        'interface,
+        'record,
+        InterfaceHandles,
+        RecordTypes,
+        RecordHandles,
+        Bindings,
+        OutputRequirements,
+    >(
+        mut self,
+        name: PortableName,
+        interface: &TypedInterface<'module, 'interface, InterfaceHandles>,
+        record: &TypedRecord<'module, 'record, RecordTypes, RecordHandles>,
+        bindings: Bindings,
+        then: impl for<'implementation> FnOnce(
+            ProgramBuilder<'module, ImplementationRequirement<Existing, Bindings::Requirements>>,
+            TypedImplementation<
+                'module,
+                'implementation,
+                'interface,
+                'record,
+                Bindings::Handles<'implementation>,
+            >,
+        ) -> ProgramBuilder<'module, OutputRequirements>,
+    ) -> ProgramBuilder<'module, OutputRequirements>
+    where
+        Bindings: ImplementationBindingList<
+                'module,
+                'interface,
+                'record,
+                MethodHandles = InterfaceHandles,
+            >,
+        OutputRequirements: Requirements,
+    {
+        let name = self.names.allocate(name);
+        let (raw, methods) = self.dynamic.implementation(
+            name,
+            Visibility::Public,
+            vec![],
+            interface.raw,
+            record.raw,
+            |builder| bindings.declare(builder),
+        );
+        then(
+            ProgramBuilder {
+                dynamic: self.dynamic,
+                names: self.names,
+                marker: PhantomData,
+            },
+            TypedImplementation {
+                raw,
+                methods,
+                marker: PhantomData,
+            },
+        )
+    }
+
     pub fn constant<T, TypeR, ValueR>(
         mut self,
         name: PortableName,
@@ -2121,6 +2728,9 @@ type LoopRequirements<IterableR, BodyR> =
     All<Requires<Loops>, All<IterableR, All<BodyR, Requires<UnitValues>>>>;
 type FunctionCallRequirements<ArgumentR> =
     All<Requires<Functions>, All<Requires<ResultPropagation>, ArgumentR>>;
+type InterfaceValueRequirements<ValueR> = All<Requires<Interfaces>, ValueR>;
+type MethodCallRequirements<ReceiverR, ArgumentR> =
+    All<Requires<Interfaces>, All<Requires<ResultPropagation>, All<ReceiverR, ArgumentR>>>;
 type PatternRequirements<ValueR, FirstR, SecondR> =
     All<Requires<PatternMatching>, All<ValueR, All<FirstR, SecondR>>>;
 type LocalBindingExpr<'module, 'body, Output, ValueR, BodyR> =
@@ -2552,6 +3162,110 @@ impl<'module, 'body> TypedBody<'module, 'body> {
     {
         self.expression(TypedNode::Call {
             function: function.raw,
+            arguments: arguments.into_nodes().0,
+        })
+    }
+
+    pub fn interface_value<'implementation, 'interface, 'record, Methods, ValueRequirements>(
+        &mut self,
+        implementation: &TypedImplementation<
+            'module,
+            'implementation,
+            'interface,
+            'record,
+            Methods,
+        >,
+        value: TypedExpr<'module, 'body, RecordValue<'module, 'record>, ValueRequirements>,
+    ) -> TypedExpr<
+        'module,
+        'body,
+        InterfaceValue<'module, 'interface>,
+        InterfaceValueRequirements<ValueRequirements>,
+    >
+    where
+        ValueRequirements: Requirements,
+    {
+        self.expression(TypedNode::InterfaceValue {
+            implementation: implementation.raw,
+            value: Box::new(value.node),
+        })
+    }
+
+    pub fn concrete_method<
+        'implementation,
+        'interface,
+        'record,
+        Methods,
+        Position,
+        Parameters,
+        Output,
+        ReceiverRequirements,
+        Arguments,
+    >(
+        &mut self,
+        implementation: &TypedImplementation<
+            'module,
+            'implementation,
+            'interface,
+            'record,
+            Methods,
+        >,
+        method: TypedImplementationMethod<'module, 'implementation, Position, Parameters, Output>,
+        receiver: TypedExpr<'module, 'body, RecordValue<'module, 'record>, ReceiverRequirements>,
+        arguments: Arguments,
+    ) -> TypedExpr<
+        'module,
+        'body,
+        Output,
+        MethodCallRequirements<ReceiverRequirements, Arguments::Requirements>,
+    >
+    where
+        Parameters: ParameterList,
+        ReceiverRequirements: Requirements,
+        Arguments: ArgumentList<Types = Parameters::Types>,
+    {
+        self.expression(TypedNode::ConcreteMethod {
+            receiver: Box::new(receiver.node),
+            implementation: implementation.raw,
+            method: method.raw,
+            arguments: arguments.into_nodes().0,
+        })
+    }
+
+    pub fn interface_method<
+        'interface,
+        InterfaceHandles,
+        Position,
+        Parameters,
+        Output,
+        ReceiverRequirements,
+        Arguments,
+    >(
+        &mut self,
+        interface: &TypedInterface<'module, 'interface, InterfaceHandles>,
+        method: &TypedInterfaceMethod<'module, 'interface, Position, Parameters, Output>,
+        receiver: TypedExpr<
+            'module,
+            'body,
+            InterfaceValue<'module, 'interface>,
+            ReceiverRequirements,
+        >,
+        arguments: Arguments,
+    ) -> TypedExpr<
+        'module,
+        'body,
+        Output,
+        MethodCallRequirements<ReceiverRequirements, Arguments::Requirements>,
+    >
+    where
+        Parameters: ParameterList,
+        ReceiverRequirements: Requirements,
+        Arguments: ArgumentList<Types = Parameters::Types>,
+    {
+        self.expression(TypedNode::InterfaceMethod {
+            receiver: Box::new(receiver.node),
+            interface: interface.raw,
+            method: method.raw,
             arguments: arguments.into_nodes().0,
         })
     }
@@ -3189,6 +3903,7 @@ fn lower_expression(body: &mut BodyBuilder<'_>, node: TypedNode) -> crate::Expr 
         TypedNode::Literal(value) => body.literal(value),
         TypedNode::Local(name) => body.local(name),
         TypedNode::Constant(constant) => body.constant(constant),
+        TypedNode::SelfValue => body.self_value(),
         TypedNode::LetValue {
             name,
             value,
@@ -3318,6 +4033,39 @@ fn lower_expression(body: &mut BodyBuilder<'_>, node: TypedNode) -> crate::Expr 
                 .map(|argument| lower_expression(body, argument))
                 .collect::<Vec<_>>();
             body.call(function, arguments)
+        }
+        TypedNode::InterfaceValue {
+            implementation,
+            value,
+        } => {
+            let value = lower_expression(body, *value);
+            body.interface_value(implementation, value)
+        }
+        TypedNode::ConcreteMethod {
+            receiver,
+            implementation,
+            method,
+            arguments,
+        } => {
+            let receiver = lower_expression(body, *receiver);
+            let arguments = arguments
+                .into_iter()
+                .map(|argument| lower_expression(body, argument))
+                .collect::<Vec<_>>();
+            body.concrete_method(receiver, implementation, method, arguments)
+        }
+        TypedNode::InterfaceMethod {
+            receiver,
+            interface,
+            method,
+            arguments,
+        } => {
+            let receiver = lower_expression(body, *receiver);
+            let arguments = arguments
+                .into_iter()
+                .map(|argument| lower_expression(body, argument))
+                .collect::<Vec<_>>();
+            body.interface_method(receiver, interface, method, arguments)
         }
         TypedNode::List { element, values } => {
             let values = values
@@ -3675,6 +4423,262 @@ mod tests {
         let core = portable_core_ir::lower_checked(program.checked_program())
             .expect("typed pattern matches lower to CoreIR");
         portable_core_ir::verify_core(&core).expect("typed pattern matches verify");
+    }
+
+    #[test]
+    fn interfaces_require_exact_bindings_and_brand_both_dispatch_forms() {
+        let program = typed_program(portable_name!("typed_interfaces"), |builder| {
+            builder.record(
+                portable_name!("Counter"),
+                typed_list![field(portable_name!("value"), I32::TYPE)],
+                |builder, counter| {
+                    builder.interface(
+                        portable_name!("CounterView"),
+                        typed_list![
+                            interface_method(portable_name!("read"), typed_list![], I32::TYPE),
+                            interface_method(
+                                portable_name!("add"),
+                                typed_list![parameter(portable_name!("delta"), I32::TYPE)],
+                                I32::TYPE,
+                            ),
+                            interface_method(portable_name!("is_zero"), typed_list![], Bool::TYPE,),
+                        ],
+                        |builder, view| {
+                            let read = method_binding(
+                                &counter,
+                                &view.methods().head,
+                                portable_name!("read_counter"),
+                                |body, receiver, _| body.field(receiver, counter.fields().head),
+                            );
+                            let add = method_binding(
+                                &counter,
+                                &view.methods().tail.head,
+                                portable_name!("add_counter"),
+                                |body, receiver, parameters| {
+                                    let value = body.field(receiver, counter.fields().head);
+                                    let delta = body.read(parameters.head);
+                                    body.int_add_wrapping(value, delta)
+                                },
+                            );
+                            let is_zero = method_binding(
+                                &counter,
+                                &view.methods().tail.tail.head,
+                                portable_name!("counter_is_zero"),
+                                |body, receiver, _| {
+                                    let value = body.field(receiver, counter.fields().head);
+                                    let zero = body.i32(0);
+                                    body.equal(value, zero)
+                                },
+                            );
+                            builder.implementation(
+                                portable_name!("CounterViewForCounter"),
+                                &view,
+                                &counter,
+                                typed_list![read, add, is_zero],
+                                |builder, implementation| {
+                                    let concrete_read = implementation.methods().head;
+                                    let builder = builder
+                                        .function(
+                                            portable_name!("read_concrete"),
+                                            typed_list![parameter(
+                                                portable_name!("counter"),
+                                                counter.ty(),
+                                            )],
+                                            I32::TYPE,
+                                            |body, parameters| {
+                                                let receiver = body.read(parameters.head);
+                                                body.concrete_method(
+                                                    &implementation,
+                                                    concrete_read,
+                                                    receiver,
+                                                    typed_list![],
+                                                )
+                                            },
+                                        )
+                                        .builder;
+                                    builder
+                                        .function(
+                                            portable_name!("read_dynamic"),
+                                            typed_list![parameter(
+                                                portable_name!("counter"),
+                                                counter.ty(),
+                                            )],
+                                            I32::TYPE,
+                                            |body, parameters| {
+                                                let receiver = body.read(parameters.head);
+                                                let receiver =
+                                                    body.interface_value(&implementation, receiver);
+                                                body.interface_method(
+                                                    &view,
+                                                    &view.methods().head,
+                                                    receiver,
+                                                    typed_list![],
+                                                )
+                                            },
+                                        )
+                                        .builder
+                                },
+                            )
+                        },
+                    )
+                },
+            )
+        });
+        let plugin = language_plugin(TestDialect)
+            .support(test_mapping::<Modules>())
+            .support(test_mapping::<Records>())
+            .support(test_mapping::<Interfaces>())
+            .support(test_mapping::<Functions>())
+            .support(test_mapping::<I32Values>())
+            .support(test_mapping::<BoolValues>())
+            .support(test_mapping::<WrappingIntegerArithmetic>())
+            .support(test_mapping::<Equality>())
+            .support(test_mapping::<ResultPropagation>())
+            .build();
+
+        fn admit<P, R: Requirements>(_plugin: &P, _program: &TypedProgram<R>)
+        where
+            P: SupportsAll<R>,
+        {
+        }
+
+        admit(&plugin, &program);
+        let core = portable_core_ir::lower_checked(program.checked_program())
+            .expect("typed interfaces lower to CoreIR");
+        portable_core_ir::verify_core(&core).expect("typed interfaces verify");
+    }
+
+    #[test]
+    fn one_record_can_carry_independent_interface_conformance_witnesses() {
+        let program = typed_program(portable_name!("multiple_conformance"), |builder| {
+            builder.record(
+                portable_name!("Value"),
+                typed_list![field(portable_name!("value"), I32::TYPE)],
+                |builder, value| {
+                    builder.interface(
+                        portable_name!("LeftView"),
+                        typed_list![interface_method(
+                            portable_name!("read_left"),
+                            typed_list![],
+                            I32::TYPE,
+                        )],
+                        |builder, left| {
+                            builder.interface(
+                                portable_name!("RightView"),
+                                typed_list![interface_method(
+                                    portable_name!("read_right"),
+                                    typed_list![],
+                                    I32::TYPE,
+                                )],
+                                |builder, right| {
+                                    let left_binding = method_binding(
+                                        &value,
+                                        &left.methods().head,
+                                        portable_name!("read_left_impl"),
+                                        |body, receiver, _| {
+                                            body.field(receiver, value.fields().head)
+                                        },
+                                    );
+                                    let right_binding = method_binding(
+                                        &value,
+                                        &right.methods().head,
+                                        portable_name!("read_right_impl"),
+                                        |body, receiver, _| {
+                                            body.field(receiver, value.fields().head)
+                                        },
+                                    );
+                                    builder.implementation(
+                                        portable_name!("LeftForValue"),
+                                        &left,
+                                        &value,
+                                        typed_list![left_binding],
+                                        |builder, left_implementation| {
+                                            builder.implementation(
+                                                portable_name!("RightForValue"),
+                                                &right,
+                                                &value,
+                                                typed_list![right_binding],
+                                                |builder, right_implementation| {
+                                                    let builder = builder
+                                                        .function(
+                                                            portable_name!("through_left"),
+                                                            typed_list![parameter(
+                                                                portable_name!("value"),
+                                                                value.ty(),
+                                                            )],
+                                                            I32::TYPE,
+                                                            |body, parameters| {
+                                                                let receiver =
+                                                                    body.read(parameters.head);
+                                                                let receiver = body
+                                                                    .interface_value(
+                                                                        &left_implementation,
+                                                                        receiver,
+                                                                    );
+                                                                body.interface_method(
+                                                                    &left,
+                                                                    &left.methods().head,
+                                                                    receiver,
+                                                                    typed_list![],
+                                                                )
+                                                            },
+                                                        )
+                                                        .builder;
+                                                    builder
+                                                        .function(
+                                                            portable_name!("through_right"),
+                                                            typed_list![parameter(
+                                                                portable_name!("value"),
+                                                                value.ty(),
+                                                            )],
+                                                            I32::TYPE,
+                                                            |body, parameters| {
+                                                                let receiver =
+                                                                    body.read(parameters.head);
+                                                                let receiver = body
+                                                                    .interface_value(
+                                                                        &right_implementation,
+                                                                        receiver,
+                                                                    );
+                                                                body.interface_method(
+                                                                    &right,
+                                                                    &right.methods().head,
+                                                                    receiver,
+                                                                    typed_list![],
+                                                                )
+                                                            },
+                                                        )
+                                                        .builder
+                                                },
+                                            )
+                                        },
+                                    )
+                                },
+                            )
+                        },
+                    )
+                },
+            )
+        });
+        let plugin = language_plugin(TestDialect)
+            .support(test_mapping::<Modules>())
+            .support(test_mapping::<Records>())
+            .support(test_mapping::<Interfaces>())
+            .support(test_mapping::<Functions>())
+            .support(test_mapping::<I32Values>())
+            .support(test_mapping::<ResultPropagation>())
+            .build();
+
+        fn admit<P, R: Requirements>(_plugin: &P, _program: &TypedProgram<R>)
+        where
+            P: SupportsAll<R>,
+        {
+        }
+
+        admit(&plugin, &program);
+        let core = portable_core_ir::lower_checked(program.checked_program())
+            .expect("multiple typed conformances lower to CoreIR");
+        portable_core_ir::verify_core(&core).expect("multiple typed conformances verify");
     }
 
     #[test]

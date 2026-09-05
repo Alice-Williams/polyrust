@@ -175,7 +175,19 @@ and interface-value calls.
 Generic interface identities, methods, records, and bindings are branded. An
 implementation contains one binding for every declared method, no duplicates,
 and no foreign method. Receiver, parameter, and result types are part of those
-brands.
+brands. `InterfaceMethodList::Handles` and
+`ImplementationBindingList::MethodHandles` are recursive associated types;
+the typed implementation constructor requires them to be equal. Consequently,
+missing, duplicate, or reordered bindings do not satisfy the constructor's
+Rust trait bound.
+
+The constructor issues a fresh `TypedImplementation` conformance witness and
+fresh branded implementation-method handles. Interface conversion requires
+that witness and a value carrying its exact record brand. Concrete dispatch
+requires a method carrying the same implementation brand; interface dispatch
+requires a method and receiver carrying the same interface brand. Declaring a
+second implementation for the same record issues an independent witness and
+is the portable representation of multiple conformance.
 
 ## Source layout
 
