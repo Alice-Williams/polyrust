@@ -8,7 +8,7 @@ test -n "${rust_manifest}" && test -n "${go_bin}"
 readonly generated="$(dirname "$(dirname "${rust_manifest}")")"
 readonly work="$(mktemp -d)"
 trap 'rm -rf "${work}"' EXIT
-cp -RL "${generated}/." "${work}/"
+cp --no-preserve=mode -RL "${generated}/." "${work}/"
 
 export CARGO_HOME="${work}/cargo-home"
 export CARGO_TARGET_DIR="${work}/cargo-target"

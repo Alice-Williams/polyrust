@@ -7,7 +7,7 @@ test -n "$index"
 package="$(dirname "$(dirname "$index")")"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-cp -RL "$package/." "$work/"
+cp --no-preserve=mode -RL "$package/." "$work/"
 cd "$work"
 export PATH="${PATH:-}:/usr/local/bin:/usr/bin:/bin"
 prettier --write . >/dev/null

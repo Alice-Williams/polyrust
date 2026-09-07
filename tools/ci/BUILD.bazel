@@ -1,6 +1,32 @@
 load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
+sh_test(
+    name = "writable_copy_test",
+    srcs = ["writable_copy_test.sh"],
+    data = [
+        "writable_copy_test.py",
+        "//crates/backend-python:test_generated.sh",
+        "//crates/backend-rust:test_generated.sh",
+        "//crates/backend-typescript:test_generated.sh",
+        "//crates/backend-typescript:test_generated_javascript.sh",
+        "//examples/models-and-validation:native_test.sh",
+        "//examples/real-world/escape-string-regexp:native_test.sh",
+        "//examples/real-world/has-flag:native_test.sh",
+        "//examples/real-world/html-escaper:native_test.sh",
+        "//examples/real-world/is-fullwidth-code-point:native_test.sh",
+        "//examples/real-world/normalize-newline:native_test.sh",
+        "//examples/real-world/parse-ms:native_test.sh",
+        "//examples/real-world/slash:native_test.sh",
+        "//examples/real-world/split-on-first:native_test.sh",
+        "//examples/real-world/stdlib-is-negative-zero:native_test.sh",
+        "//examples/real-world/strip-bom:native_test.sh",
+        "//examples/real-world/trim-newlines:native_test.sh",
+        "//examples/real-world/truncate-utf8-bytes:native_test.sh",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 sh_binary(
     name = "install_bazelisk",
     srcs = ["install_bazelisk.sh"],

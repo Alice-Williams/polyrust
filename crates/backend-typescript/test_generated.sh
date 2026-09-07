@@ -7,14 +7,14 @@ test -n "$index"
 package="$(dirname "$(dirname "$index")")"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-cp -RL "$package/." "$work/"
+cp --no-preserve=mode -RL "$package/." "$work/"
 cd "$work"
 export PATH="${PATH:-}:/usr/local/bin:/usr/bin:/bin"
 prettier --write . >/dev/null
 prettier --check .
 tsc --noEmit
 npm test
-cp tests/invalid-types.ts src/invalid-types.ts
+cp --no-preserve=mode tests/invalid-types.ts src/invalid-types.ts
 tsc --noEmit
 if grep -R -E '\bi64[^\n]*number|\b(unsafe|reflect)\b' src/index.ts src/runtime.ts; then
   echo "forbidden generated construct" >&2

@@ -7,7 +7,7 @@ test -n "$module"
 package="$(dirname "$(dirname "$(dirname "$module")")")"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-cp -RL "$package/." "$work/"
+cp --no-preserve=mode -RL "$package/." "$work/"
 cd "$work"
 export PATH="${PATH:-}:/opt/polyrust-python-tools/bin:/usr/local/bin:/usr/bin:/bin"
 export PYTHONPATH="$work/src"

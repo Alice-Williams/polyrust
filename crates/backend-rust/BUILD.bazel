@@ -3,6 +3,11 @@ load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 exports_files(["Cargo.toml"])
 
+exports_files(
+    ["test_generated.sh"],
+    visibility = ["//tools/ci:__pkg__"],
+)
+
 rust_library(
     name = "portable_backend_rust",
     srcs = glob(["src/**/*.rs"]),

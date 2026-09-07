@@ -11,10 +11,10 @@ export PATH="${PATH:-}:/usr/local/cargo/bin:/usr/bin:/bin"
 readonly cargo_bin="$(command -v cargo)"
 
 mkdir -p "${package}/src"
-cp "${generated}/Cargo.toml" "${package}/Cargo.toml"
-cp "${generated}/src/lib.rs" "${package}/src/lib.rs"
-cp "${generated}/src/conformance.rs" "${package}/src/conformance.rs"
-cp "${generated}/src/polyrust_runtime.rs" "${package}/src/polyrust_runtime.rs"
+cp --no-preserve=mode "${generated}/Cargo.toml" "${package}/Cargo.toml"
+cp --no-preserve=mode "${generated}/src/lib.rs" "${package}/src/lib.rs"
+cp --no-preserve=mode "${generated}/src/conformance.rs" "${package}/src/conformance.rs"
+cp --no-preserve=mode "${generated}/src/polyrust_runtime.rs" "${package}/src/polyrust_runtime.rs"
 
 export CARGO_TARGET_DIR="${TEST_TMPDIR}/cargo-target"
 "${cargo_bin}" fmt --manifest-path "${package}/Cargo.toml" --all
@@ -29,7 +29,7 @@ if [[ "${unsafe_count}" != "1" ]]; then
   exit 1
 fi
 
-cp -R "${package}" "${invalid}"
+cp --no-preserve=mode -R "${package}" "${invalid}"
 printf '\npub unsafe fn deliberately_invalid_backend_artifact() {}\n' >> "${invalid}/src/lib.rs"
 if "${cargo_bin}" check --manifest-path "${invalid}/Cargo.toml" >"${TEST_TMPDIR}/compile-fail.log" 2>&1; then
   echo "deliberately unsafe generated artifact unexpectedly compiled" >&2
