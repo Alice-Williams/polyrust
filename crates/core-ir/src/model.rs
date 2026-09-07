@@ -193,7 +193,7 @@ pub struct CoreParameter {
     pub local: Option<CoreLocalId>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CoreLocalKind {
     Parameter,

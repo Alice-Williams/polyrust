@@ -20,6 +20,13 @@ Runtime capability preflight remains mandatory for unknown/dynamic programs
 and as a defensive migration assertion, but it is not the primary proof for
 the typed path.
 
+Support applies to every shape admitted by the capability's typed constructors,
+including an interface with no implementations. Backend naming conflicts and
+target representation constraints MUST be resolved by the mapping; they are
+not grounds for narrowing an already-admitted generic program after the
+`SupportsAll<R>` boundary. Defensive invariant panics detect implementation
+defects; their presence does not prove this totality contract.
+
 ## Feature model
 
 Closed feature families and variants are Rust enums:

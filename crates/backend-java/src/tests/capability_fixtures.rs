@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) fn capability_coverage_fixture() -> CheckedProgram {
+pub(crate) fn capability_coverage_fixture() -> CheckedProgram {
     let mut module = ModuleBuilder::new("java_capability_coverage");
     module.alias("Count", Visibility::Public, vec![], Type::i64());
     let truth = module.constant("TRUTH", Visibility::Public, vec![], Type::bool(), |body| {

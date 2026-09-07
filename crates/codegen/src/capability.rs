@@ -1,3 +1,7 @@
+mod operation_shapes;
+pub use operation_shapes::EqualityOperandShape;
+use operation_shapes::intrinsic_feature;
+
 use std::collections::BTreeMap;
 
 use portable_core_ir::*;
@@ -128,6 +132,8 @@ pub struct InterfaceUse {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FeatureShape {
     Unit,
+    Equality(EqualityOperandShape),
+    LocalBinding(CoreLocalKind),
     Aggregate { field_count: u32 },
     Callable { parameter_count: u32 },
     Interface(InterfaceUse),
@@ -468,7 +474,12 @@ impl<'a> FeatureCollector<'a> {
                     field_count: usize_to_u32(elements.len()),
                 },
             ),
-            CoreConstantExprKind::Intrinsic(intrinsic) => intrinsic_feature(intrinsic),
+            CoreConstantExprKind::Intrinsic(intrinsic) => {
+                intrinsic_feature(self.program, intrinsic, |operand| {
+                    constant_expression_type(self.program, operand)
+                        .expect("verified constant operand type")
+                })
+            }
         };
         self.add(CoreFeature::Operation(feature), shape, &expression.source);
         match &expression.kind {
@@ -508,7 +519,7 @@ impl<'a> FeatureCollector<'a> {
                 CoreFeature::Ownership(OwnershipFeature::OwnedImmutableValue),
                 &expression.source,
             );
-            let (feature, shape) = expression_feature(&expression.kind);
+            let (feature, shape) = expression_feature(self.program, &expression.kind);
             self.add(CoreFeature::Operation(feature), shape, &expression.source);
             match &expression.kind {
                 CoreExprKind::StaticMethodCall { .. } => self.unit(
@@ -597,10 +608,16 @@ impl<'a> FeatureCollector<'a> {
     }
 }
 
-fn expression_feature(expression: &CoreExprKind) -> (OperationFeature, FeatureShape) {
+fn expression_feature(
+    program: &CoreProgram,
+    expression: &CoreExprKind,
+) -> (OperationFeature, FeatureShape) {
     match expression {
         CoreExprKind::Literal(_) => (OperationFeature::Literal, FeatureShape::Unit),
-        CoreExprKind::Local(_) => (OperationFeature::Local, FeatureShape::Unit),
+        CoreExprKind::Local(id) => (
+            OperationFeature::Local,
+            FeatureShape::LocalBinding(program.local(*id).expect("verified local binding").kind),
+        ),
         CoreExprKind::Constant(_) => (OperationFeature::Constant, FeatureShape::Unit),
         CoreExprKind::SelfValue(_) => (OperationFeature::SelfValue, FeatureShape::Unit),
         CoreExprKind::ConstructRecord { fields, .. } => (
@@ -647,7 +664,13 @@ fn expression_feature(expression: &CoreExprKind) -> (OperationFeature, FeatureSh
                 parameter_count: usize_to_u32(arguments.len()),
             },
         ),
-        CoreExprKind::Intrinsic(intrinsic) => intrinsic_feature(intrinsic),
+        CoreExprKind::Intrinsic(intrinsic) => intrinsic_feature(program, intrinsic, |operand| {
+            program
+                .expressions()
+                .get(*operand)
+                .expect("verified intrinsic operand")
+                .ty
+        }),
         CoreExprKind::If { .. } => (OperationFeature::If, FeatureShape::Unit),
         CoreExprKind::Match { arms, .. } => (
             OperationFeature::Match,
@@ -656,29 +679,6 @@ fn expression_feature(expression: &CoreExprKind) -> (OperationFeature, FeatureSh
             },
         ),
         CoreExprKind::Block(_) => (OperationFeature::Block, FeatureShape::Unit),
-    }
-}
-
-fn intrinsic_feature<T>(intrinsic: &CoreIntrinsicExpr<T>) -> (OperationFeature, FeatureShape) {
-    match intrinsic {
-        CoreIntrinsicExpr::Unary { operation, .. } => {
-            (OperationFeature::Unary(*operation), FeatureShape::Unit)
-        }
-        CoreIntrinsicExpr::Binary { operation, .. } => {
-            (OperationFeature::Binary(*operation), FeatureShape::Unit)
-        }
-        CoreIntrinsicExpr::Ternary { operation, .. } => {
-            (OperationFeature::Ternary(*operation), FeatureShape::Unit)
-        }
-        CoreIntrinsicExpr::Variadic {
-            operation,
-            arguments,
-        } => (
-            OperationFeature::Variadic(*operation),
-            FeatureShape::Variadic {
-                operand_count: usize_to_u32(arguments.len()),
-            },
-        ),
     }
 }
 

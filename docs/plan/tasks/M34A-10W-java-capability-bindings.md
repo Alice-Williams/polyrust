@@ -73,8 +73,54 @@ complete portable/CoreIR-to-Java-AST translation for capability `C`.
 - [ ] Pass the full local/release gates, hosted CI, and a fresh blind review
   with no accepted correctness or architecture findings.
 
+## Third blind review: accepted follow-up work
+
+The fresh Sol Extra High review found core issues, not optional extensions.
+Portable error expectations must compare error codes only; Option/Result
+boundary construction must invoke the owning mappings; enum comparison and
+local-read preflight must preserve the exact capability owner. Focused
+regressions accompany those repairs.
+
+Two broader blockers require separate implementation/proof checkpoints:
+
+- [M34A-10X: typed-shape totality](M34A-10X-java-typed-totality.md), including
+  the user's decision that interfaces with no implementations remain valid.
+- [M34A-10Y: mapping-owned strategy certificates](M34A-10Y-java-strategy-certificates.md).
+
+Earlier checked checklist items do not override these newly demonstrated gaps.
+This task and the Java migration remain in-progress until they are resolved.
+
+### Hosted CI test-harness repair
+
+Run `34132478868` for `6d891dc` failed 17 native tests because their temporary
+copies retained read-only Bazel input modes. Formatters then failed with
+permission errors on the unprivileged GitHub runner; root execution in the
+development container masked the defect. Native copies now explicitly omit
+source modes. `//tools/ci:writable_copy_test` exercises the actual copy flags
+against read-only regular/symlinked inputs as an unprivileged user and checks
+that original contents and permissions remain unchanged. Caches stay enabled.
+
+The tracked-package local gate must query rule targets using
+`kind(rule, set(//package:* ...))`, not use `//package:all`: some packages
+define a suite literally named `all`, hiding other test rules under that
+ambiguous spelling. Filtering to rules also excludes source files and implicit
+auxiliary outputs (such as unconfigured stripped C++ binaries). Earlier
+293-target runs did not cover the same complete test set as CI's `//...`.
+
 ## Commit gate
 
-Commit and push only after the complete Java proof passes. Hosted CI for the
-exact checkpoint and a fresh uncapped review are required before marking the
-task complete.
+Latest remediation proof (2026-09-07): all 307 tests selected from tracked rule
+targets passed, the explicit release suite passed 244/244, and deterministic
+conformance reported 50 cases with evaluator and all eight targets agreeing.
+These gates include Rustfmt, strict Clippy, Buildifier, generated Java native
+tests, and the new unprivileged-copy regression. A fresh Sol Extra High static
+review found no unresolved core issues in this scoped repair patch; its
+boundary-ownership test gap was fixed with independently reset factory and
+normalization tests. It did not certify the still-open M34A-10X/10Y work.
+Hosted CI for the new checkpoint remains required.
+
+Remediation checkpoints may be committed and pushed after their complete local
+Java, tracked-repository, and release proofs pass; they MUST explicitly retain
+the task's in-progress status. Hosted CI for the final exact checkpoint and a
+fresh uncapped review with no accepted unresolved findings are required before
+marking the task complete.

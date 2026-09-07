@@ -192,36 +192,20 @@ fn lower_case(input: JavaPortableTestCaseInput) -> Vec<JavaStmt> {
             );
             let string = JavaType::known(JavaKnownType::String);
             let actual_code = member_call(
-                error.clone(),
+                error,
                 "code",
                 vec![],
-                string.clone(),
+                string,
                 JavaMemberOrigin::Runtime(JavaRuntimeMember::ErrorCode),
             );
             statements.push(assert_true(
                 runtime_call(
                     JavaRuntimeCallable::SemanticEqual,
-                    vec![actual_code, expected.clone()],
-                    boolean.clone(),
-                ),
-                false,
-                format!("portable test {index} ({name}) error code mismatch"),
-            ));
-            let actual_message = member_call(
-                error,
-                "message",
-                vec![],
-                string,
-                JavaMemberOrigin::Runtime(JavaRuntimeMember::ErrorMessage),
-            );
-            statements.push(assert_true(
-                runtime_call(
-                    JavaRuntimeCallable::SemanticEqual,
-                    vec![actual_message, expected],
+                    vec![actual_code, expected],
                     boolean,
                 ),
                 false,
-                format!("portable test {index} ({name}) error message mismatch"),
+                format!("portable test {index} ({name}) error code mismatch"),
             ));
         }
     }
@@ -311,3 +295,7 @@ fn assert_true(condition: JavaExpr, negate: bool, message: String) -> JavaStmt {
         else_block: None,
     }
 }
+
+#[cfg(test)]
+#[path = "../tests/portable_error.rs"]
+mod tests;

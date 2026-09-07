@@ -172,6 +172,14 @@ declarations, implementation declarations, exact method-to-function bindings,
 conversion through a named conformance witness, concrete implementation calls,
 and interface-value calls.
 
+An interface MAY have zero implementations. Declaration validity MUST NOT
+depend on a later implementation being added to the program. A backend claiming
+`Supports<Interfaces>` MUST represent this shape safely; it MUST NOT require a
+dummy portable implementation, open an otherwise closed immutable boundary to
+foreign implementations, or fail typed generation because the interface is
+uninhabited. A target-only synthetic representation is not a portable
+implementation and MUST NOT issue a generic conformance witness.
+
 Generic interface identities, methods, records, and bindings are branded. An
 implementation contains one binding for every declared method, no duplicates,
 and no foreign method. Receiver, parameter, and result types are part of those

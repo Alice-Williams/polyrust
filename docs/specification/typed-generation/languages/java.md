@@ -96,6 +96,18 @@ switch.
 
 ## 2. Capability strategies
 
+Implementation status: the totality and exact-strategy contracts above are
+requirements, not yet fully established guarantees. Review of M34A-10W found
+admitted names, erased interface signatures, and zero-implementation interfaces
+which the current Java preflight rejects, plus strategy certificates selected
+independently of executable mappings. These are completion blockers tracked in
+[M34A-10X](../../../plan/tasks/M34A-10X-java-typed-totality.md) and
+[M34A-10Y](../../../plan/tasks/M34A-10Y-java-strategy-certificates.md).
+
+Interfaces with zero implementations MUST remain valid portable inputs. Java's
+required safe representation and its proof obligations are specified in
+[unimplemented interfaces](java/unimplemented-interfaces.md).
+
 The exhaustive Java registry distinguishes native primitive/reference
 semantics from emulated unsigned/checked operations, exact float bits,
 immutable byte/list values, tagged option/result, and portable Unicode scalar

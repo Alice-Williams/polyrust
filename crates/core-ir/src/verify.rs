@@ -24,6 +24,22 @@ struct Verifier<'a> {
     diagnostics: Vec<Diagnostic>,
 }
 
+/// Infer a constant operand type using the same rules as CoreIR verification.
+///
+/// This query is not a verification certificate. `None` means the operand
+/// lacks enough type information or violates an intrinsic typing rule.
+pub fn constant_expression_type(
+    program: &CoreProgram,
+    expression: &CoreConstantExpr,
+) -> Option<CoreTypeId> {
+    let mut verifier = Verifier {
+        program,
+        diagnostics: vec![],
+    };
+    let ty = verifier.constant_expression_type(expression);
+    verifier.diagnostics.is_empty().then_some(ty).flatten()
+}
+
 impl Verifier<'_> {
     fn check_program(&mut self) {
         self.check_types();

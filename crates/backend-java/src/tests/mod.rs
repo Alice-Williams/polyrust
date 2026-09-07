@@ -1,7 +1,7 @@
 use super::*;
 use std::collections::BTreeSet;
 
-mod capability_fixtures;
+pub(crate) mod capability_fixtures;
 mod mapping_coverage;
 mod typed_fixture;
 use capability_fixtures::{capability_coverage_fixture, portable_method_invocation_fixture};
