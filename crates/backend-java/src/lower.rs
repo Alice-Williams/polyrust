@@ -126,7 +126,7 @@ impl<'a> Lowering<'a> {
     }
 
     fn lower(mut self) -> Result<TargetAstPackage<JavaDialect>, Vec<Diagnostic>> {
-        self.capabilities.validate_for(self.core)?;
+        self.capabilities.validate_for(self.core, self.features)?;
         self.register_types();
         self.register_interface_sealing()?;
         self.register_values_and_callables()?;

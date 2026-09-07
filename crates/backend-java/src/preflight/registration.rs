@@ -7,7 +7,7 @@ impl JavaCapabilityRegistry {
         Self { features }
     }
 
-    fn registered<F>(&self)
+    pub(super) fn registered<F>(&self) -> JavaFeatureOwner
     where
         F: portable_build::Capability,
         JavaCapabilitySet: Supports<F>,
@@ -15,11 +15,14 @@ impl JavaCapabilityRegistry {
         let _ = self.features.mapping_for::<F>();
         #[cfg(test)]
         preflight_ownership_tests::record::<F>();
+        JavaFeatureOwner::Mapping(F::ID)
     }
 
-    pub(super) fn confirm_registered_mapping(&self, usage: &FeatureUse) {
-        self.registered::<Modules>();
-        match usage.feature() {
+    pub(super) fn confirm_registered_mapping(&self, usage: &FeatureUse) -> JavaFeatureAdmission {
+        let mut prerequisites = Vec::new();
+        let _ = self.registered::<Modules>();
+        prerequisites.push(CapabilityId::Modules);
+        let owner = match usage.feature() {
             CoreFeature::Declaration(DeclarationFeature::Constant) => {
                 self.registered::<Constants>()
             }
@@ -53,7 +56,9 @@ impl JavaCapabilityRegistry {
             CoreFeature::Control(ControlFeature::ForEach) => self.registered::<Loops>(),
             CoreFeature::Control(ControlFeature::Return) => self.registered::<Functions>(),
             CoreFeature::Control(ControlFeature::If) => self.registered::<Conditionals>(),
-            CoreFeature::Control(ControlFeature::EnumPattern) => self.registered::<Enums>(),
+            CoreFeature::Control(ControlFeature::EnumPattern) => {
+                JavaFeatureOwner::Structural(JavaStructuralAdmission::MatchDispatch)
+            }
             CoreFeature::Control(
                 ControlFeature::WildcardPattern
                 | ControlFeature::BoolPattern
@@ -62,9 +67,15 @@ impl JavaCapabilityRegistry {
                 | ControlFeature::OkPattern
                 | ControlFeature::ErrPattern,
             ) => self.registered::<PatternMatching>(),
-            CoreFeature::Control(
-                ControlFeature::Block | ControlFeature::Evaluate | ControlFeature::Match,
-            ) => {}
+            CoreFeature::Control(ControlFeature::Block) => {
+                JavaFeatureOwner::Structural(JavaStructuralAdmission::BlockAssembly)
+            }
+            CoreFeature::Control(ControlFeature::Evaluate) => {
+                JavaFeatureOwner::Structural(JavaStructuralAdmission::EvaluationSequence)
+            }
+            CoreFeature::Control(ControlFeature::Match) => {
+                JavaFeatureOwner::Structural(JavaStructuralAdmission::MatchDispatch)
+            }
             CoreFeature::Interface(
                 InterfaceFeature::Declaration
                 | InterfaceFeature::Conformance
@@ -75,8 +86,10 @@ impl JavaCapabilityRegistry {
             ) => self.registered::<Interfaces>(),
             CoreFeature::Ownership(
                 OwnershipFeature::OnceLeftToRight | OwnershipFeature::OwnedImmutableValue,
-            ) => {}
-            CoreFeature::Operation(OperationFeature::Literal) => {}
+            ) => JavaFeatureOwner::Structural(JavaStructuralAdmission::OwnershipContract),
+            CoreFeature::Operation(OperationFeature::Literal) => {
+                JavaFeatureOwner::Structural(JavaStructuralAdmission::LiteralDispatch)
+            }
             CoreFeature::Operation(OperationFeature::Local) => match usage.shape() {
                 FeatureShape::LocalBinding(CoreLocalKind::Parameter) => {
                     self.registered::<Functions>()
@@ -91,8 +104,10 @@ impl JavaCapabilityRegistry {
                 _ => unreachable!("local binding shape was validated"),
             },
             CoreFeature::Operation(OperationFeature::Call) => {
-                self.registered::<Functions>();
-                self.registered::<ResultPropagation>();
+                let owner = self.registered::<Functions>();
+                let _ = self.registered::<ResultPropagation>();
+                prerequisites.push(CapabilityId::ResultPropagation);
+                owner
             }
             CoreFeature::Operation(OperationFeature::Constant) => self.registered::<Constants>(),
             CoreFeature::Operation(OperationFeature::SelfValue) => self.registered::<Interfaces>(),
@@ -107,8 +122,10 @@ impl JavaCapabilityRegistry {
             CoreFeature::Operation(
                 OperationFeature::StaticMethodCall | OperationFeature::InterfaceCall,
             ) => {
-                self.registered::<Interfaces>();
-                self.registered::<ResultPropagation>();
+                let owner = self.registered::<Interfaces>();
+                let _ = self.registered::<ResultPropagation>();
+                prerequisites.push(CapabilityId::ResultPropagation);
+                owner
             }
             CoreFeature::Operation(OperationFeature::ConstructList) => {
                 self.registered::<ListValues>()
@@ -122,8 +139,10 @@ impl JavaCapabilityRegistry {
             CoreFeature::Operation(OperationFeature::Unary(operation)) => match operation {
                 CoreUnaryIntrinsic::BoolNot => self.registered::<BooleanLogic>(),
                 CoreUnaryIntrinsic::IntNegChecked => {
-                    self.registered::<CheckedIntegerArithmetic>();
-                    self.registered::<ResultPropagation>();
+                    let owner = self.registered::<CheckedIntegerArithmetic>();
+                    let _ = self.registered::<ResultPropagation>();
+                    prerequisites.push(CapabilityId::ResultPropagation);
+                    owner
                 }
                 CoreUnaryIntrinsic::IntNegWrapping => {
                     self.registered::<WrappingIntegerArithmetic>()
@@ -135,8 +154,10 @@ impl JavaCapabilityRegistry {
                 | CoreUnaryIntrinsic::FloatIsNegativeZero
                 | CoreUnaryIntrinsic::FloatAbs => self.registered::<FloatingPointInspection>(),
                 CoreUnaryIntrinsic::StringScalarLength => {
-                    self.registered::<StringInspection>();
-                    self.registered::<ResultPropagation>();
+                    let owner = self.registered::<StringInspection>();
+                    let _ = self.registered::<ResultPropagation>();
+                    prerequisites.push(CapabilityId::ResultPropagation);
+                    owner
                 }
                 CoreUnaryIntrinsic::StringUtf16Length | CoreUnaryIntrinsic::StringIsEmpty => {
                     self.registered::<StringInspection>()
@@ -155,13 +176,17 @@ impl JavaCapabilityRegistry {
                 }
                 CoreUnaryIntrinsic::WidenI32ToI64 => self.registered::<IntegerConversions>(),
                 CoreUnaryIntrinsic::NarrowI64ToI32Checked => {
-                    self.registered::<IntegerConversions>();
-                    self.registered::<ResultPropagation>();
+                    let owner = self.registered::<IntegerConversions>();
+                    let _ = self.registered::<ResultPropagation>();
+                    prerequisites.push(CapabilityId::ResultPropagation);
+                    owner
                 }
                 CoreUnaryIntrinsic::StringToUtf8 => self.registered::<Utf8Conversions>(),
                 CoreUnaryIntrinsic::StringFromUtf8Checked => {
-                    self.registered::<Utf8Conversions>();
-                    self.registered::<ResultPropagation>();
+                    let owner = self.registered::<Utf8Conversions>();
+                    let _ = self.registered::<ResultPropagation>();
+                    prerequisites.push(CapabilityId::ResultPropagation);
+                    owner
                 }
             },
             CoreFeature::Operation(OperationFeature::Binary(operation)) => match operation {
@@ -173,9 +198,9 @@ impl JavaCapabilityRegistry {
                         usage.shape(),
                         FeatureShape::Equality(EqualityOperandShape::PayloadFreeEnum)
                     ) {
-                        self.registered::<Enums>();
+                        self.registered::<Enums>()
                     } else {
-                        self.registered::<Equality>();
+                        self.registered::<Equality>()
                     }
                 }
                 CoreBinaryIntrinsic::Less
@@ -187,8 +212,10 @@ impl JavaCapabilityRegistry {
                 | CoreBinaryIntrinsic::IntMulChecked
                 | CoreBinaryIntrinsic::IntDivChecked
                 | CoreBinaryIntrinsic::IntRemChecked => {
-                    self.registered::<CheckedIntegerArithmetic>();
-                    self.registered::<ResultPropagation>();
+                    let owner = self.registered::<CheckedIntegerArithmetic>();
+                    let _ = self.registered::<ResultPropagation>();
+                    prerequisites.push(CapabilityId::ResultPropagation);
+                    owner
                 }
                 CoreBinaryIntrinsic::IntAddWrapping
                 | CoreBinaryIntrinsic::IntSubWrapping
@@ -208,8 +235,10 @@ impl JavaCapabilityRegistry {
                 | CoreBinaryIntrinsic::IntBitXor => self.registered::<IntegerBitwise>(),
                 CoreBinaryIntrinsic::IntShiftLeftChecked
                 | CoreBinaryIntrinsic::IntShiftRightChecked => {
-                    self.registered::<CheckedIntegerShifts>();
-                    self.registered::<ResultPropagation>();
+                    let owner = self.registered::<CheckedIntegerShifts>();
+                    let _ = self.registered::<ResultPropagation>();
+                    prerequisites.push(CapabilityId::ResultPropagation);
+                    owner
                 }
                 CoreBinaryIntrinsic::StringIndexOfLiteral
                 | CoreBinaryIntrinsic::StringContains
@@ -221,8 +250,10 @@ impl JavaCapabilityRegistry {
                 | CoreBinaryIntrinsic::StringTrimEnd => self.registered::<StringTransformation>(),
                 CoreBinaryIntrinsic::BytesConcat => self.registered::<BytesOperations>(),
                 CoreBinaryIntrinsic::ListGetChecked => {
-                    self.registered::<ListOperations>();
-                    self.registered::<ResultPropagation>();
+                    let owner = self.registered::<ListOperations>();
+                    let _ = self.registered::<ResultPropagation>();
+                    prerequisites.push(CapabilityId::ResultPropagation);
+                    owner
                 }
                 CoreBinaryIntrinsic::ListAppend
                 | CoreBinaryIntrinsic::ListConcat
@@ -240,7 +271,17 @@ impl JavaCapabilityRegistry {
                 CoreVariadicIntrinsic::StringReplaceMany,
             )) => self.registered::<StringTransformation>(),
             CoreFeature::Operation(OperationFeature::If) => self.registered::<Conditionals>(),
-            CoreFeature::Operation(OperationFeature::Match | OperationFeature::Block) => {}
+            CoreFeature::Operation(OperationFeature::Match) => {
+                JavaFeatureOwner::Structural(JavaStructuralAdmission::MatchDispatch)
+            }
+            CoreFeature::Operation(OperationFeature::Block) => {
+                JavaFeatureOwner::Structural(JavaStructuralAdmission::BlockAssembly)
+            }
+        };
+        JavaFeatureAdmission {
+            usage: usage.clone(),
+            owner,
+            prerequisites,
         }
     }
 }

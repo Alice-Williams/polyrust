@@ -8,7 +8,7 @@ use crate::capabilities::{
     JavaPatternMatchingInput, JavaPatternMatchingNode,
 };
 use portable_build::CapabilityMapping;
-use portable_core_ir::{CoreEnumId, CoreExprId, CoreMatchArm, CorePattern, CoreType, CoreTypeId};
+use portable_core_ir::{CoreEnumId, CoreExprId, CoreMatchArm, CorePattern, CoreTypeId};
 use portable_diagnostics::Diagnostic;
 
 impl Lowering<'_> {
@@ -19,23 +19,15 @@ impl Lowering<'_> {
         result: CoreTypeId,
         callable_return: CoreTypeId,
     ) -> Result<ExprPlan, Vec<Diagnostic>> {
-        let matched_expression = self
-            .core
-            .expressions()
-            .get(value)
-            .expect("verified match expression");
-        if let Some(CoreType::Enum(enumeration)) = self.core.types().get(matched_expression.ty)
-            && self.enum_is_payload_free(*enumeration)
-            && arms
-                .iter()
-                .all(|arm| matches!(arm.pattern, CorePattern::EnumVariant { .. }))
+        if let crate::preflight::JavaMatchDispatch::NativeEnum(enumeration) =
+            crate::preflight::match_dispatch(self.core, value, arms)
         {
             return self.payload_free_enum_match_plan(
                 value,
                 arms,
                 result,
                 callable_return,
-                *enumeration,
+                enumeration,
             );
         }
         let matched = self.expr_plan(value, callable_return)?;
@@ -177,8 +169,24 @@ impl Lowering<'_> {
                 value: *value,
             },
             CorePattern::EnumVariant {
-                variant, bindings, ..
+                enumeration,
+                variant,
+                bindings,
+                ..
             } => {
+                if self.enum_is_payload_free(*enumeration) {
+                    let variant_value = self.enum_variant_expr(*enumeration, *variant)?;
+                    let condition = self.lower_enum_expr(JavaEnumsInput::Equality {
+                        operator: crate::capabilities::JavaEnumEqualityOperator::Equal,
+                        enumeration: self.enums[enumeration],
+                        left: Box::new(matched),
+                        right: Box::new(variant_value),
+                    })?;
+                    return Ok(JavaLoweredPattern {
+                        condition,
+                        bindings: vec![],
+                    });
+                }
                 let variant_type =
                     JavaType::Reference(JavaTypeName::Generated(self.variants[variant]));
                 let bindings = bindings

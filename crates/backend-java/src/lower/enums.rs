@@ -108,14 +108,7 @@ impl Lowering<'_> {
     }
 
     pub(super) fn enum_is_payload_free(&self, id: CoreEnumId) -> bool {
-        self.core.enumeration(id).is_some_and(|enumeration| {
-            !enumeration.variants.is_empty()
-                && enumeration.variants.iter().all(|variant| {
-                    self.core
-                        .variant(*variant)
-                        .is_some_and(|variant| variant.fields.is_empty())
-                })
-        })
+        crate::preflight::payload_free_enum(self.core, id)
     }
 
     pub(super) fn enum_variant_expr(

@@ -95,9 +95,14 @@ are canonicalized and deduplicated.
 
 ## Language capability registry
 
-Every plugin owns one statically defined `CapabilityRegistry<D>`. The registry
-maps each closed feature variant to a typed lowering strategy enum for that
-dialect.
+Every plugin owns one statically defined registry. The registry maps each
+closed feature variant to exact typed admission: registered owner and required
+prerequisites. When strategy depends only on portable shape, it may also select
+the dialect's lowering strategy at this stage. If strategy depends on already
+lowered target inputs, it MUST instead defer that choice to a mandatory checked
+mapping invocation; it MUST NOT encode admission as a guessed Native/Emulated
+decision. TargetCapabilityRegistry may therefore return a plugin-local typed
+admission selection rather than the generic early-strategy SelectedFeature.
 
 ```rust
 enum JavaInterfaceStrategy {
@@ -135,6 +140,11 @@ A support decision and a lowering implementation are one registered fact.
 `Missing` to `Implemented<Mapping>`. `Supports<C>` is derived only from that
 slot and returns the same stored mapping. A duplicate call is unavailable.
 
+A dialect-specific builder may automatically store a sealed checked wrapper
+around that mapping. Supports<C> then returns the checked executable wrapper
+containing the supplied instance. It MUST NOT permit unwrapped registration to
+bypass mandatory invocation certification.
+
 `Native(strategy)` or `Emulated(strategy)` MUST be derived from a present
 registration and name the registered lowering strategy. An unreferenced
 lowering, evidence-only handler, strategy without a lowering, or support claim
@@ -158,12 +168,17 @@ For each requested target, preflight:
 1. enumerates exact `FeatureUse` values in CoreIR;
 2. queries the plugin registry;
 3. validates shape restrictions;
-4. confirms every selected strategy has a lowering;
+4. confirms every required owner/prerequisite slot has a lowering, and any
+   strategy selected at this stage belongs to that registered mapping;
 5. returns all unsupported-use diagnostics; and
 6. invokes no lowering if any used feature is unsupported.
 
 An unsupported feature in an unrequested target is irrelevant. When all eight
-outputs are requested, every use must be native or emulated in all eight.
+outputs are requested, every use must have admitted mappings in all eight.
+For input-dependent strategies, the registered wrapper selects a closed plan
+before consuming target input and checks its actual output against the plan.
+Verification MUST distinguish nodes owned by the mapping from opaque operand
+subtrees; recursively classifying an entire output tree is not sufficient.
 
 ## Options
 

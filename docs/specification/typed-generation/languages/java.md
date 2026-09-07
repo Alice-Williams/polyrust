@@ -15,8 +15,8 @@ use every portable public API. No undeclared runtime dependency is permitted.
 Java is the first inferred typed-program target. `JavaPluginBuilder` MUST
 register a typed executable `JavaCapabilityMapping<Capability = C>` separately
 for every admitted portable capability. Only an `Implemented<Mapping>` builder
-slot derives `JavaPlugin: Supports<C>`, and `Supports<C>::mapping()` returns that exact
-handler. Its typed entry point accepts only `TypedProgram<R>` under the bound
+slot derives `JavaPlugin: Supports<C>`, and `Supports<C>::mapping()` returns the
+checked executable wrapper containing that exact handler. Its typed entry point accepts only `TypedProgram<R>` under the bound
 `JavaPlugin: SupportsAll<R>`. Typed records, fields, constructors, functions,
 calls, values, and operations lower through those registered handlers into the
 same certified Java AST, linker, post-link checker, and total renderer.
@@ -41,7 +41,7 @@ it is not returned as a user validation branch. Java has no manual or empty
 implementation can make an unregistered feature admissible.
 
 `JavaPluginBuilder::support(mapping)` infers `C`, consumes the builder, replaces
-the single `C` slot from `Missing` to `Implemented<Mapping>`, and requires
+the single `C` slot from `Missing` to `Implemented<CheckedJavaMapping<Mapping>>`, and requires
 `Mapping: JavaCapabilityMapping<Capability = C>`. Every operation mapping accepts a closed,
 feature-specific enum containing already-lowered `JavaExpr` operands and
 returns a `JavaExpr` or typed `JavaExprPlan`; declaration/type mappings return
@@ -90,16 +90,17 @@ the orchestrator only resolves symbols and lowers its component/member inputs.
 This legacy input does not introduce tagged unions into the typed portable
 enum capability, whose variants remain payload-free.
 
-The dynamic `JavaCapabilityRegistry` derives feature presence and strategy
-from the same built plugin registration catalogue, then applies its existing
-shape-specific checks. It cannot advertise a feature whose mapping slot is
-missing. Calls and fallible intrinsics additionally confirm the registered
-`ResultPropagation` slot during preflight. Payload-free enum construction is a
-native Java enum strategy; tagged emulation is reserved for legacy dynamic
-payload shapes outside the typed generic AST. The selected strategy is a
-preflight certificate checked against the exact CoreIR use set; executable
-lowering is owned by the registered mapping rather than a second strategy
-switch.
+The dynamic Java registry certifies exact feature-use admission, capability
+ownership, and prerequisite slots from the same plugin catalogue used by the
+lowerer. It cannot advertise a missing mapping. Calls and fallible intrinsics
+also require ResultPropagation. Preflight does not guess an AST strategy before
+lowered operands and prerequisites exist.
+
+Each registered mapping MUST then select an exact typed plan from its closed
+input. The automatic checked wrapper invokes that mapping and independently
+checks its actual output against the selected mapping-owned skeleton. The
+[admission and strategy certificate contract](java/strategy-certificates.md)
+defines the stages, representation rules, and required mismatch tests.
 
 ## 2. Capability strategies
 
@@ -128,8 +129,9 @@ Implementation status: the totality and exact-strategy contracts above are
 requirements, not yet fully established guarantees. M34A-10X now implements
 identity-keyed name allocation and the target-only uninhabited interface
 representation, with typed/native/mutation regressions; its integration and
-fresh review are still required. Strategy certificates remain selected
-independently of executable mappings. These completion gates are tracked in
+fresh review are still required. The two-stage admission/strategy contract is
+being implemented; the checked-wrapper requirement is not yet a completed
+guarantee. These completion gates are tracked in
 [M34A-10X](../../../plan/tasks/M34A-10X-java-typed-totality.md) and
 [M34A-10Y](../../../plan/tasks/M34A-10Y-java-strategy-certificates.md).
 

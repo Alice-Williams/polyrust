@@ -15,16 +15,17 @@ pub(super) fn record<C>() {
     CONFIRMED.with_borrow_mut(|confirmed| confirmed.push(type_name::<C>()));
 }
 
-fn confirm<C>(usage: &FeatureUse) -> SupportDecision<JavaLoweringStrategy> {
+fn confirm<C: portable_build::Capability>(usage: &FeatureUse) -> JavaFeatureOwner {
     CONFIRMED.with_borrow_mut(Vec::clear);
-    let decision = JavaCapabilityRegistry::default().support(usage);
+    let decision = JavaCapabilityRegistry::default().admit(usage).unwrap();
     CONFIRMED.with_borrow(|confirmed| {
         assert_eq!(
             confirmed.as_slice(),
             [type_name::<Modules>(), type_name::<C>()]
         );
     });
-    decision
+    assert_eq!(decision.prerequisites, vec![CapabilityId::Modules]);
+    decision.owner
 }
 
 #[test]
@@ -75,7 +76,7 @@ fn payload_free_enum_comparisons_certify_enums_not_general_equality() {
             );
             assert_eq!(
                 confirm::<Enums>(usage),
-                SupportDecision::Native(JavaLoweringStrategy::DirectValue)
+                JavaFeatureOwner::Mapping(CapabilityId::Enums)
             );
             seen.insert(op);
         }
@@ -110,7 +111,12 @@ fn local_reads_preserve_all_four_checked_binding_origins() {
             };
             assert_eq!(
                 decision,
-                SupportDecision::Native(JavaLoweringStrategy::DirectValue)
+                JavaFeatureOwner::Mapping(match kind {
+                    CoreLocalKind::Parameter => CapabilityId::Functions,
+                    CoreLocalKind::Let => CapabilityId::LocalBindings,
+                    CoreLocalKind::ForEach => CapabilityId::Loops,
+                    CoreLocalKind::Pattern => CapabilityId::PatternMatching,
+                })
             );
             seen.insert(*kind);
         }
@@ -168,7 +174,7 @@ fn constant_enum_comparison_preserves_operand_type_through_references() {
             );
             assert_eq!(
                 confirm::<Enums>(usage),
-                SupportDecision::Native(JavaLoweringStrategy::DirectValue)
+                JavaFeatureOwner::Mapping(CapabilityId::Enums)
             );
             count += 1;
         }

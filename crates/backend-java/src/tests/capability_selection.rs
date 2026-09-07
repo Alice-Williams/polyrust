@@ -31,7 +31,7 @@ fn target_id_matches_java_backend() {
 }
 
 #[test]
-fn empty_checked_program_selects_every_collected_feature() {
+fn identity_checked_program_selects_every_collected_feature() {
     let mut module = ModuleBuilder::new("capability_java");
     module.function("identity", Visibility::Public, vec![], |function| {
         function.parameter(Parameter::new("value", Type::bool()));
@@ -43,7 +43,10 @@ fn empty_checked_program_selects_every_collected_feature() {
     });
     let checked = module.finish().unwrap();
     let core = lower_checked(&checked).unwrap();
-    let selected = preflight_capabilities(&core, &JavaCapabilityRegistry::default()).unwrap();
+    let selected = JavaCapabilityRegistry::default()
+        .select(&core)
+        .unwrap()
+        .selected;
     assert_eq!(
         selected.len(),
         portable_codegen::collect_core_features(&core).len()
@@ -51,7 +54,7 @@ fn empty_checked_program_selects_every_collected_feature() {
 }
 
 #[test]
-fn exact_selection_rejects_feature_and_strategy_permutations() {
+fn exact_selection_rejects_feature_owner_and_prerequisite_permutations() {
     let mut module = ModuleBuilder::new("capability_selection");
     module.function("identity", Visibility::Public, vec![], |function| {
         function.parameter(Parameter::new("value", Type::bool()));
@@ -63,30 +66,45 @@ fn exact_selection_rejects_feature_and_strategy_permutations() {
     });
     let checked = module.finish().unwrap();
     let core = lower_checked(&checked).unwrap();
-    let selected = preflight_capabilities(&core, &JavaCapabilityRegistry::default()).unwrap();
+    let selected = JavaCapabilityRegistry::default()
+        .select(&core)
+        .unwrap()
+        .selected;
 
     let mut permuted_usage = JavaCapabilitySelection {
         selected: selected.clone(),
+        ..JavaCapabilitySelection::for_test(&core)
     };
     permuted_usage.selected.swap(0, 1);
-    assert!(permuted_usage.validate_for(&core).is_err());
+    assert!(
+        permuted_usage
+            .validate_for(&core, java_capabilities())
+            .is_err()
+    );
 
-    let mut mismatched_strategy = JavaCapabilitySelection { selected };
-    let declaration = mismatched_strategy
+    let mut mismatched_owner = JavaCapabilitySelection {
+        selected,
+        ..JavaCapabilitySelection::for_test(&core)
+    };
+    let declaration = mismatched_owner
         .selected
         .iter()
-        .position(|value| value.strategy == JavaLoweringStrategy::Declaration)
-        .expect("declaration strategy");
-    let direct = mismatched_strategy
-        .selected
-        .iter()
-        .position(|value| value.strategy == JavaLoweringStrategy::DirectValue)
-        .expect("direct strategy");
-    let declaration_strategy = mismatched_strategy.selected[declaration].strategy;
-    mismatched_strategy.selected[declaration].strategy =
-        mismatched_strategy.selected[direct].strategy;
-    mismatched_strategy.selected[direct].strategy = declaration_strategy;
-    assert!(mismatched_strategy.validate_for(&core).is_err());
+        .position(|value| value.owner == JavaFeatureOwner::Mapping(CapabilityId::Functions))
+        .expect("function owner");
+    mismatched_owner.selected[declaration].owner = JavaFeatureOwner::Mapping(CapabilityId::Enums);
+    assert!(
+        mismatched_owner
+            .validate_for(&core, java_capabilities())
+            .is_err()
+    );
+
+    let mut mismatched_prerequisites = JavaCapabilitySelection::for_test(&core);
+    mismatched_prerequisites.selected[0].prerequisites.clear();
+    assert!(
+        mismatched_prerequisites
+            .validate_for(&core, java_capabilities())
+            .is_err()
+    );
 }
 
 #[test]

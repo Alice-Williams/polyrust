@@ -100,6 +100,8 @@ mod sealed {
 pub trait Capability: sealed::Capability {
     /// Position of this capability in the closed plugin mapping catalogue.
     type Index;
+    /// Closed identity for diagnostics and dynamic admission inventories.
+    const ID: CapabilityId;
 }
 
 /// A structural compile-time tree of inferred requirements.
@@ -260,10 +262,11 @@ pub enum There<Index> {
 
 macro_rules! capability_markers_at {
     ($index:ty;) => {};
-    ($index:ty; $name:ty $(, $tail:ty)* $(,)?) => {
+    ($index:ty; $name:ident $(, $tail:ident)* $(,)?) => {
         impl sealed::Capability for $name {}
         impl Capability for $name {
             type Index = $index;
+            const ID: CapabilityId = CapabilityId::$name;
         }
         capability_markers_at!(There<$index>; $($tail),*);
     };
@@ -278,6 +281,10 @@ macro_rules! missing_slots {
 
 macro_rules! capability_catalogue {
     ($($name:ident),+ $(,)?) => {
+        /// Runtime identity derived from the same closed catalogue as typed slots.
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+        pub enum CapabilityId { $($name),+ }
+
         capability_markers_at!(Here; $($name),+);
 
         /// Empty mapping state containing one missing slot per portable capability.
