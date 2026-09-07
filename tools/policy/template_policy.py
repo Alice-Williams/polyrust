@@ -59,7 +59,10 @@ def offenders(path: str, source: str) -> list[str]:
             for finding in offenders(f"{path}.embedded.hbs", decoded):
                 _, _, message = finding.partition(":1: ")
                 findings.append(f"{path}:{line}: {message or finding}")
-        if path.replace("\\", "/").endswith("backend-java/src/render.rs"):
+        normalized_path = path.replace("\\", "/")
+        java_renderer_root = normalized_path.endswith("backend-java/src/render.rs")
+        java_renderer_child = "backend-java/src/render/" in normalized_path
+        if java_renderer_root or java_renderer_child:
             for label, pattern in [
                 ("executable Java template or serialized render view", JAVA_EXECUTABLE_TEMPLATE),
                 ("wildcard Java grammar render arm", WILDCARD_MATCH_ARM),
@@ -68,6 +71,7 @@ def offenders(path: str, source: str) -> list[str]:
                 for match in pattern.finditer(production):
                     line = production.count("\n", 0, match.start()) + 1
                     findings.append(f"{path}:{line}: {label}")
+        if java_renderer_root:
             for required in [
                 "impl TotalSourceRenderer<JavaDialect> for JavaRenderer",
                 "CertifiedSourceFile<'_, JavaDialect>",
@@ -150,6 +154,14 @@ impl TotalSourceRenderer<JavaDialect> for JavaRenderer {
     ]:
         if not offenders(java_path, injected):
             raise AssertionError("unsafe Java renderer shape was not rejected")
+        for child_path in [
+            "crates/backend-java/src/render/expressions.rs",
+            r"crates\backend-java\src\render\nested\statements.rs",
+        ]:
+            if not offenders(child_path, injected):
+                raise AssertionError("child Java renderer bypassed structural policy")
+    if offenders("crates/backend-java/src/render/syntax.rs", "fn indent() {}"):
+        raise AssertionError("renderer child incorrectly requires the root entry point")
 
 
 def main() -> int:

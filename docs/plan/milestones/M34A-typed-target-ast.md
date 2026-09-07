@@ -61,6 +61,7 @@ Language migrations:
     - [M34A-10W — authoritative Java capability bindings](../tasks/M34A-10W-java-capability-bindings.md)
     - [M34A-10X — Java typed-shape totality](../tasks/M34A-10X-java-typed-totality.md) — planned; blocks Java completion
     - [M34A-10Y — mapping-owned strategy certificates](../tasks/M34A-10Y-java-strategy-certificates.md) — planned; blocks Java completion
+    - [M34A-10Z — Java module decomposition](../tasks/M34A-10Z-java-module-decomposition.md) — in-progress; incremental cleanup alongside correctness work
 17. [M34A-11 — C17](../tasks/M34A-11-c.md)
 18. [M34A-12 — Rust](../tasks/M34A-12-rust.md)
 19. [M34A-13 — TypeScript](../tasks/M34A-13-typescript.md)
