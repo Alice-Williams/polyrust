@@ -213,6 +213,7 @@ test_suite(
         ":rustfmt_test",
         "//crates/backend-c:abi_shapes_ownership_test",
         "//crates/backend-c:abi_shapes_sanitizer_test",
+        "//crates/backend-java:cargo_oracle_environment_test",
         "//crates/backend-java:generated_capability_methods_test",
         "//crates/backend-java:generated_capability_operations_test",
         "//crates/backend-java:generated_typed_conformance_test",

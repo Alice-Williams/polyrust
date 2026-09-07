@@ -7,8 +7,17 @@ use std::process::Command;
 fn jdk_tool(name: &str) -> PathBuf {
     let runfiles = std::env::var_os("RUNFILES_DIR")
         .or_else(|| std::env::var_os("TEST_SRCDIR"))
-        .map(PathBuf::from)
-        .expect("totality compiler oracle requires Bazel runfiles");
+        .map(PathBuf::from);
+    let Some(runfiles) = runfiles else {
+        // Cargo compatibility jobs have no Bazel runfiles. Prefer the runner's
+        // explicit Java 21 installation; --release 21 still rejects older JDKs.
+        return std::env::var_os("JAVA_HOME_21_X64")
+            .or_else(|| std::env::var_os("JAVA_HOME"))
+            .map_or_else(
+                || PathBuf::from(name),
+                |root| PathBuf::from(root).join("bin").join(name),
+            );
+    };
     std::fs::read_dir(runfiles)
         .expect("read runfiles")
         .filter_map(Result::ok)
@@ -30,8 +39,20 @@ pub(super) struct CompiledPackage {
 
 impl CompiledPackage {
     pub(super) fn new(manifest: &OutputManifest, case: &str) -> Self {
-        let root = PathBuf::from(std::env::var_os("TEST_TMPDIR").expect("Bazel test directory"))
-            .join(case);
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let parent = std::env::var_os("TEST_TMPDIR").map_or_else(std::env::temp_dir, PathBuf::from);
+        let root = loop {
+            let nonce = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let candidate = parent.join(format!(
+                "polyrust-java-{}-{nonce}-{case}",
+                std::process::id()
+            ));
+            match std::fs::create_dir(&candidate) {
+                Ok(()) => break candidate,
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) => panic!("create isolated compiler scratch: {error}"),
+            }
+        };
         let classes = root.join("generated-classes");
         std::fs::create_dir_all(&classes).expect("create compiler output");
         let sources = ["Generated.java", "Runtime.java"].map(|name| {
@@ -112,6 +133,13 @@ impl CompiledPackage {
         let output = self.root.join("consumer-classes");
         std::fs::create_dir_all(&output).expect("create consumer output");
         compile_against(&self.classes, &output, &path)
+    }
+}
+
+impl Drop for CompiledPackage {
+    fn drop(&mut self) {
+        // Only the unique directory created by this instance is owned here.
+        let _ = std::fs::remove_dir_all(&self.root);
     }
 }
 

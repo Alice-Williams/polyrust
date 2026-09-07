@@ -61,6 +61,31 @@ mark Java complete before hosted CI and the review have passed.
 
 ## Implementation and audit evidence
 
+### Cargo compatibility follow-up
+
+Hosted run 34168215103 passed lint, Windows-contract, and determinism jobs but
+failed both Rust compatibility jobs: 18 compiler-oracle tests assumed Bazel's
+TEST_TMPDIR and runfiles variables also existed under Cargo. This was a harness
+failure before Java compilation, not a generated-Java failure.
+
+The oracle now keeps the hermetic JDK under Bazel and selects an explicit Java
+21/JAVA_HOME installation outside it. Scratch directories are exclusive,
+process/nonce-scoped, and removed by their owning fixture. No native compilation
+is skipped. A release-gated shell regression clears all Bazel environment
+variables, checks that the selected Rust test exists, and compiles/runs its
+generated Java consumer with the pinned JDK.
+
+Fresh Sol Extra High read-only review found no actionable defect in this scoped
+repair. Local proof includes 309/309 tracked tests (433 rule targets), Java and
+strict lint targets, and actual Cargo 1.98 execution: 119 unit tests and seven
+doctests pass. The expanded release gate passes 246/246; deterministic
+conformance passes 50 cases and one portable test across all eight targets.
+These local counts include the concurrent stage-1 admission regressions;
+this checkpoint commits only the independent harness repair.
+Hosted CI for the repaired checkpoint remains required.
+
+### Totality and identity proof
+
 - Final uncapped Sol Extra High review of the complete ownership/provenance
   follow-up found no remaining actionable Java validity or identity defects.
   This was a read-only full-tree review, not a replacement for executable proof.
