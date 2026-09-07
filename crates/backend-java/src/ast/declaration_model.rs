@@ -35,6 +35,17 @@ pub enum JavaAnnotation {
     SafeVarargs,
 }
 
+impl JavaAnnotation {
+    pub const ALL: [Self; 2] = [Self::Override, Self::SafeVarargs];
+
+    pub const fn simple_name(self) -> &'static str {
+        match self {
+            Self::Override => "Override",
+            Self::SafeVarargs => "SafeVarargs",
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct JavaParameter {
     pub ty: JavaType,
@@ -75,7 +86,9 @@ pub enum JavaMethodDeclaration {
     Implementation {
         method: portable_core_ir::CoreImplementationMethodId,
         interface: GeneratedInterfaceMethodId,
+        witness: super::implementation_witness::JavaImplementationWitness,
     },
+    UninhabitedImplementation(GeneratedInterfaceMethodId),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -113,6 +126,7 @@ pub enum JavaDeclarationKind {
     FinalClass,
     Record,
     Enum,
+    UninhabitedEnum(GeneratedTypeId),
     Interface,
     SealedInterface,
 }

@@ -155,36 +155,15 @@ impl Lowering<'_> {
                 format!("Result{}_{}{}_{}", ok.len(), ok, error.len(), error)
             }
             CoreType::Record(record) => {
-                let name = identifier(
-                    &self
-                        .core
-                        .record(*record)
-                        .expect("verified record")
-                        .header
-                        .name,
-                );
+                let name = self.names.record(*record);
                 length_prefixed_type("Record", name.as_str())
             }
             CoreType::Enum(enumeration) => {
-                let name = identifier(
-                    &self
-                        .core
-                        .enumeration(*enumeration)
-                        .expect("verified enum")
-                        .header
-                        .name,
-                );
+                let name = self.names.enumeration(*enumeration);
                 length_prefixed_type("Enum", name.as_str())
             }
             CoreType::Interface(interface) => {
-                let name = identifier(
-                    &self
-                        .core
-                        .interface(*interface)
-                        .expect("verified interface")
-                        .header
-                        .name,
-                );
+                let name = self.names.interface(*interface);
                 length_prefixed_type("Interface", name.as_str())
             }
         };

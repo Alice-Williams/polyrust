@@ -16,6 +16,7 @@ impl Lowering<'_> {
             JavaPackage::Generated,
             JavaFilePlacement::NativeTest,
             vec![JavaFileItem::Type {
+                conformances: crate::ast::JavaConformanceInventory::structural().into(),
                 declared: vec![],
                 declaration,
             }],

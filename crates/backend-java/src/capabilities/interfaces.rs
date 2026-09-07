@@ -1,5 +1,8 @@
 //! Java mapping for the complete `Interfaces` capability.
 
+mod sealing;
+pub(crate) use sealing::JavaUninhabitedInterfaceInput;
+
 use portable_build::{CapabilityMapping, Interfaces};
 use portable_codegen::{GeneratedInterfaceMethodId, GeneratedTypeId};
 use portable_core_ir::CoreImplementationMethodId;
@@ -19,6 +22,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaInterfaceMethodInput {
     pub(crate) declared: GeneratedInterfaceMethodId,
     pub(crate) name: String,
@@ -33,11 +37,13 @@ pub struct JavaInterfaceDeclarationInput {
     pub(crate) name: String,
     pub(crate) permits: Vec<JavaType>,
     pub(crate) methods: Vec<JavaInterfaceMethodInput>,
+    pub(crate) uninhabited: Option<JavaUninhabitedInterfaceInput>,
 }
 
 #[doc(hidden)]
 pub struct JavaInterfaceImplementationInput {
     pub(crate) method: CoreImplementationMethodId,
+    pub(crate) witness: crate::ast::JavaImplementationWitness,
     pub(crate) interface_method: GeneratedInterfaceMethodId,
     pub(crate) interface_method_name: String,
     pub(crate) parameters: Vec<JavaParameter>,
@@ -77,6 +83,11 @@ pub struct JavaConcreteInterfaceCallInput {
 
 #[doc(hidden)]
 pub enum JavaInterfacesInput {
+    UninhabitedType {
+        interface: GeneratedTypeId,
+        name: String,
+        source: portable_diagnostics::SourceRef,
+    },
     Type {
         interface: GeneratedTypeId,
     },
@@ -96,8 +107,9 @@ pub enum JavaInterfacesInput {
 
 #[doc(hidden)]
 pub enum JavaInterfacesNode {
+    UninhabitedType(Box<portable_codegen::GeneratedType<JavaDialect>>),
     Type(JavaType),
-    Declaration(Box<JavaTypeDeclaration>),
+    Declaration(Vec<JavaTypeDeclaration>),
     Conformance(JavaInterfaceConformancePlan),
     Expression(Box<JavaExpr>),
 }
@@ -125,10 +137,20 @@ impl CapabilityMapping<JavaDialect> for JavaInterfaces {
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
         Ok(match input {
+            JavaInterfacesInput::UninhabitedType {
+                interface,
+                name,
+                source,
+            } => JavaInterfacesNode::UninhabitedType(Box::new(sealing::uninhabited_type(
+                interface, &name, source,
+            ))),
             JavaInterfacesInput::Type { interface } => JavaInterfacesNode::Type(
                 JavaType::Reference(crate::ast::JavaTypeName::Generated(interface)),
             ),
             JavaInterfacesInput::Declaration(input) => {
+                let synthetic = input.uninhabited.as_ref().map(|synthetic| {
+                    sealing::uninhabited_declaration(input.declared, synthetic, &input.methods)
+                });
                 let members = input
                     .methods
                     .into_iter()
@@ -145,7 +167,7 @@ impl CapabilityMapping<JavaDialect> for JavaInterfaces {
                         })
                     })
                     .collect();
-                JavaInterfacesNode::Declaration(Box::new(JavaTypeDeclaration {
+                let declaration = JavaTypeDeclaration {
                     declared: Some(input.declared),
                     kind: JavaDeclarationKind::SealedInterface,
                     visibility: java_visibility(input.visibility),
@@ -156,7 +178,10 @@ impl CapabilityMapping<JavaDialect> for JavaInterfaces {
                     heritage: JavaHeritage::None,
                     permits: input.permits,
                     members,
-                }))
+                };
+                JavaInterfacesNode::Declaration(
+                    std::iter::once(declaration).chain(synthetic).collect(),
+                )
             }
             JavaInterfacesInput::Conformance(input) => {
                 let heritage = JavaHeritage::Interfaces(
@@ -228,6 +253,7 @@ fn lower_implementation_method(input: JavaInterfaceImplementationInput) -> JavaM
         declared: JavaMethodDeclaration::Implementation {
             method: input.method,
             interface: input.interface_method,
+            witness: input.witness,
         },
         annotations: vec![JavaAnnotation::Override],
         modifiers: vec![JavaModifier::Public],

@@ -7,7 +7,6 @@ use portable_codegen::{
 };
 use portable_core_ir::lower_checked;
 
-use super::shapes::JavaObjectMethod;
 use super::*;
 
 fn preflight_diagnostics(checked: &portable_check::v0::CheckedProgram) -> Vec<Diagnostic> {
@@ -91,24 +90,24 @@ fn exact_selection_rejects_feature_and_strategy_permutations() {
 }
 
 #[test]
-fn record_restricted_component_stops_at_preflight() {
+fn record_restricted_component_allocates_distinct_java_name() {
     let mut module = ModuleBuilder::new("java_record_restricted");
     module.record("Bad", Visibility::Public, vec![], |record| {
         record.field("hashCode", Type::i32(), vec![]);
     });
     let checked = module.finish().unwrap();
-    let diagnostics = preflight_diagnostics(&checked);
-    assert_eq!(diagnostics.len(), 1);
-    assert!(
-        diagnostics[0]
-            .message
-            .contains("record component name \"hashCode\"")
+    let manifest = crate::JavaBackend
+        .generate(&checked, &BackendOptions::default())
+        .expect("portable name has a Java allocation");
+    let generated = crate::tests::generated_text(
+        &manifest,
+        "src/main/java/org/polyrust/generated/Generated.java",
     );
-    assert_eq!(diagnostics[0].target.as_deref(), Some("org.polyrust.java"));
+    assert!(generated.contains("record Bad(int hashCode_1)"));
 }
 
 #[test]
-fn inherited_object_static_method_stops_at_preflight() {
+fn inherited_object_static_method_allocates_distinct_java_name() {
     let mut module = ModuleBuilder::new("java_object_static");
     module.function("hashCode", Visibility::Public, vec![], |function| {
         function.returns(Type::i32());
@@ -118,18 +117,18 @@ fn inherited_object_static_method_stops_at_preflight() {
         });
     });
     let checked = module.finish().unwrap();
-    let diagnostics = preflight_diagnostics(&checked);
-    assert_eq!(diagnostics.len(), 1);
-    assert!(
-        diagnostics[0]
-            .message
-            .contains("static method hashCode() conflicts")
+    let manifest = crate::JavaBackend
+        .generate(&checked, &BackendOptions::default())
+        .expect("portable name has a Java allocation");
+    let generated = crate::tests::generated_text(
+        &manifest,
+        "src/main/java/org/polyrust/generated/Generated.java",
     );
-    assert_eq!(diagnostics[0].target.as_deref(), Some("org.polyrust.java"));
+    assert!(generated.contains("hashCode_1()"));
 }
 
 #[test]
-fn nonfinal_object_interface_method_stops_at_preflight() {
+fn nonfinal_object_interface_method_allocates_distinct_java_name() {
     let mut module = ModuleBuilder::new("java_object_interface");
     let (interface, method) = module.interface("Bad", Visibility::Public, vec![], |interface| {
         interface.method("toString", vec![], vec![], Some(Type::string()))
@@ -152,42 +151,50 @@ fn nonfinal_object_interface_method_stops_at_preflight() {
         },
     );
     let checked = module.finish().unwrap();
-    let diagnostics = preflight_diagnostics(&checked);
-    assert_eq!(diagnostics.len(), 1);
-    assert!(
-        diagnostics[0]
-            .message
-            .contains("interface method toString() conflicts")
+    let manifest = crate::JavaBackend
+        .generate(&checked, &BackendOptions::default())
+        .expect("portable name has a Java allocation");
+    let generated = crate::tests::generated_text(
+        &manifest,
+        "src/main/java/org/polyrust/generated/Generated.java",
     );
-    assert_eq!(diagnostics[0].target.as_deref(), Some("org.polyrust.java"));
+    assert!(generated.contains("toString_1()"));
 }
 
 #[test]
-fn inherited_object_method_catalogue_matches_java_signatures() {
-    for (name, parameters) in [
-        ("getClass", vec![]),
-        ("hashCode", vec![]),
-        ("clone", vec![]),
-        ("toString", vec![]),
-        ("notify", vec![]),
-        ("notifyAll", vec![]),
-        ("wait", vec![]),
-        ("wait", vec!["long".to_owned()]),
-        ("wait", vec!["long".to_owned(), "int".to_owned()]),
-        ("finalize", vec![]),
+fn all_inherited_object_names_allocate_safely() {
+    for name in [
+        "getClass",
+        "hashCode",
+        "clone",
+        "toString",
+        "notify",
+        "notifyAll",
+        "wait",
+        "finalize",
     ] {
-        assert!(
-            JavaObjectMethod::from_erased_signature(name, &parameters).is_some(),
-            "missing java.lang.Object signature {name}({})",
-            parameters.join(", ")
+        let mut module = ModuleBuilder::new("object_names");
+        module.function(name, Visibility::Public, vec![], |function| {
+            function.returns(Type::i32());
+            function.body(|body| {
+                let value = body.literal(Value::i32(1));
+                body.block([], Some(value))
+            });
+        });
+        let checked = module.finish().unwrap();
+        let manifest = crate::JavaBackend
+            .generate(&checked, &BackendOptions::default())
+            .expect("Object method name is mapped");
+        let generated = crate::tests::generated_text(
+            &manifest,
+            "src/main/java/org/polyrust/generated/Generated.java",
         );
+        assert!(generated.contains(&format!("{name}_1()")));
     }
-    assert!(JavaObjectMethod::from_erased_signature("hashCode", &["int".to_owned()]).is_none());
-    assert!(JavaObjectMethod::from_erased_signature("equals", &["Object".to_owned()]).is_none());
 }
 
 #[test]
-fn final_object_interface_method_stops_at_preflight() {
+fn final_object_interface_method_allocates_distinct_java_name() {
     let mut module = ModuleBuilder::new("java_object_final");
     let (interface, method) = module.interface("Bad", Visibility::Public, vec![], |interface| {
         interface.method("getClass", vec![], vec![], Some(Type::bool()))
@@ -210,18 +217,18 @@ fn final_object_interface_method_stops_at_preflight() {
         },
     );
     let checked = module.finish().unwrap();
-    let diagnostics = preflight_diagnostics(&checked);
-    assert_eq!(diagnostics.len(), 1);
-    assert!(
-        diagnostics[0]
-            .message
-            .contains("inherited java.lang.Object method")
+    let manifest = crate::JavaBackend
+        .generate(&checked, &BackendOptions::default())
+        .expect("portable name has a Java allocation");
+    let generated = crate::tests::generated_text(
+        &manifest,
+        "src/main/java/org/polyrust/generated/Generated.java",
     );
-    assert_eq!(diagnostics[0].target.as_deref(), Some("org.polyrust.java"));
+    assert!(generated.contains("getClass_1()"));
 }
 
 #[test]
-fn clone_interface_method_stops_at_preflight() {
+fn clone_interface_method_allocates_distinct_java_name() {
     let mut module = ModuleBuilder::new("java_object_clone");
     let (interface, method) = module.interface("Bad", Visibility::Public, vec![], |interface| {
         interface.method("clone", vec![], vec![], Some(Type::i32()))
@@ -244,18 +251,18 @@ fn clone_interface_method_stops_at_preflight() {
         },
     );
     let checked = module.finish().unwrap();
-    let diagnostics = preflight_diagnostics(&checked);
-    assert_eq!(diagnostics.len(), 1);
-    assert!(
-        diagnostics[0]
-            .message
-            .contains("interface method clone() conflicts")
+    let manifest = crate::JavaBackend
+        .generate(&checked, &BackendOptions::default())
+        .expect("portable name has a Java allocation");
+    let generated = crate::tests::generated_text(
+        &manifest,
+        "src/main/java/org/polyrust/generated/Generated.java",
     );
-    assert_eq!(diagnostics[0].target.as_deref(), Some("org.polyrust.java"));
+    assert!(generated.contains("clone_1()"));
 }
 
 #[test]
-fn record_accessor_implementation_method_stops_at_preflight() {
+fn record_accessor_implementation_method_allocates_distinct_java_name() {
     let mut module = ModuleBuilder::new("java_accessor_collision");
     let (interface, method) =
         module.interface("Readable", Visibility::Public, vec![], |interface| {
@@ -281,14 +288,14 @@ fn record_accessor_implementation_method_stops_at_preflight() {
         },
     );
     let checked = module.finish().unwrap();
-    let diagnostics = preflight_diagnostics(&checked);
-    assert_eq!(diagnostics.len(), 1);
-    assert!(
-        diagnostics[0]
-            .message
-            .contains("record accessor read() collides")
+    let manifest = crate::JavaBackend
+        .generate(&checked, &BackendOptions::default())
+        .expect("portable name has a Java allocation");
+    let generated = crate::tests::generated_text(
+        &manifest,
+        "src/main/java/org/polyrust/generated/Generated.java",
     );
-    assert_eq!(diagnostics[0].target.as_deref(), Some("org.polyrust.java"));
+    assert!(generated.contains("read_1()"));
 }
 
 #[test]

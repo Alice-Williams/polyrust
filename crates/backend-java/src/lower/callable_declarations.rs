@@ -1,6 +1,5 @@
 //! Java lowering: callable declarations.
 
-use super::declaration_builders::identifier;
 use super::{BlockMode, Lowering, diagnostic};
 use crate::ast::{
     JavaBlock, JavaExpr, JavaField, JavaIdentifier, JavaLocalFinality, JavaMethod,
@@ -21,10 +20,11 @@ impl Lowering<'_> {
     ) -> Result<Vec<JavaParameter>, Vec<Diagnostic>> {
         values
             .iter()
-            .map(|parameter| {
+            .zip(self.names.parameters(values))
+            .map(|(parameter, name)| {
                 Ok(JavaParameter {
                     ty: self.ty(parameter.ty)?,
-                    name: identifier(&parameter.header.name),
+                    name,
                     final_parameter: true,
                 })
             })
@@ -41,7 +41,7 @@ impl Lowering<'_> {
                 JavaConstantsInput::Declaration {
                     declared: self.constants[&id],
                     visibility: value.header.visibility,
-                    name: value.header.name.clone(),
+                    name: self.names.constant(id).as_str().to_owned(),
                     ty: self.ty(value.ty)?,
                     initializer: Box::new(self.constant_expr(&value.value, value.ty)?),
                 },
@@ -69,7 +69,7 @@ impl Lowering<'_> {
                 JavaFunctionsInput::Declaration(Box::new(JavaFunctionDeclarationInput {
                     declared: JavaMethodDeclaration::Callable(self.functions[&id]),
                     visibility: value.header.visibility,
-                    name: value.header.name.clone(),
+                    name: self.names.function(id).as_str().to_owned(),
                     parameters,
                     return_type: self.poly_result_type(value.return_type)?,
                     body: JavaBlock::new(boundary),
@@ -92,17 +92,27 @@ impl Lowering<'_> {
             .core
             .implementation_method(id)
             .expect("verified implementation method");
-        let interface_method = self
-            .core
-            .interface_method(value.interface_method)
-            .expect("verified interface method");
         let (parameters, mut boundary) = self.callable_parameters(&value.parameters)?;
         let mut body = self.block(value.body, BlockMode::ReturnResult, value.return_type)?;
         boundary.append(&mut body.statements);
         Ok(JavaInterfaceImplementationInput {
             method: id,
+            witness: crate::ast::JavaImplementationWitness::from_checked(
+                self.core,
+                id,
+                self.records[&self
+                    .core
+                    .implementation(value.implementation)
+                    .expect("checked implementation")
+                    .record],
+                self.interface_methods[&value.interface_method],
+            ),
             interface_method: self.interface_methods[&value.interface_method],
-            interface_method_name: interface_method.header.name.clone(),
+            interface_method_name: self
+                .names
+                .method(value.interface_method)
+                .as_str()
+                .to_owned(),
             parameters,
             return_type: self.poly_result_type(value.return_type)?,
             body: JavaBlock::new(boundary),
@@ -116,11 +126,15 @@ impl Lowering<'_> {
         let mut parameters = Vec::with_capacity(values.len());
         let mut boundary = Vec::new();
         for (index, parameter) in values.iter().enumerate() {
+            let name = self
+                .names
+                .local(parameter.local.expect("checked callable parameter binding"))
+                .clone();
             let ty = self.ty(parameter.ty)?;
             if matches!(ty, JavaType::Primitive(_)) {
                 parameters.push(JavaParameter {
                     ty,
-                    name: identifier(&parameter.header.name),
+                    name,
                     final_parameter: true,
                 });
                 continue;
@@ -138,7 +152,7 @@ impl Lowering<'_> {
             boundary.push(JavaStmt::Local {
                 finality: JavaLocalFinality::Final,
                 ty,
-                name: identifier(&parameter.header.name),
+                name,
                 value: Some(normalized.value),
             });
         }

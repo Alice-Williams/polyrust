@@ -32,7 +32,7 @@ impl Lowering<'_> {
             CoreExprKind::Literal(value) => Ok(ExprPlan::pure(self.value(value, expression.ty)?)),
             CoreExprKind::Local(id) => {
                 let local_value = self.core.local(*id).expect("verified local");
-                let name = local_value.name.clone();
+                let name = self.names.local(*id).as_str().to_owned();
                 let value = match local_value.kind {
                     CoreLocalKind::Parameter => {
                         self.lower_function_expr(JavaFunctionsInput::ParameterRead { ty, name })?
@@ -230,11 +230,10 @@ impl Lowering<'_> {
                 Ok(plan)
             }
             CoreExprKind::Field { value, field } => {
-                let field_value = self.core.field(*field).expect("verified field");
                 let mut plan = self.expr_plan(*value, callable_return)?;
                 plan.value = self.lower_record_expr(JavaRecordsInput::Field {
                     receiver: Box::new(plan.value),
-                    name: field_value.header.name.clone(),
+                    name: self.names.field(*field).as_str().to_owned(),
                     result: ty,
                     origin: JavaMemberOrigin::GeneratedField(*field),
                 })?;
@@ -279,10 +278,6 @@ impl Lowering<'_> {
                     .core
                     .implementation_method(*method)
                     .expect("verified method");
-                let interface_method = self
-                    .core
-                    .interface_method(method_value.interface_method)
-                    .expect("verified interface method");
                 let mut receiver =
                     self.stabilize_plan(self.expr_plan(*receiver, callable_return)?, "receiver");
                 let (argument_statements, arguments) =
@@ -292,7 +287,11 @@ impl Lowering<'_> {
                 let call = self.lower_interface_expr(JavaInterfacesInput::ConcreteCall(
                     Box::new(JavaConcreteInterfaceCallInput {
                         receiver: receiver.value,
-                        interface_method_name: interface_method.header.name.clone(),
+                        interface_method_name: self
+                            .names
+                            .method(method_value.interface_method)
+                            .as_str()
+                            .to_owned(),
                         arguments,
                         result,
                         method: *method,

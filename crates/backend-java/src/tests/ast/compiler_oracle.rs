@@ -151,6 +151,7 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
             JavaPackage::Generated,
             JavaFilePlacement::Main,
             vec![JavaFileItem::Type {
+                conformances: crate::ast::JavaConformanceInventory::structural().into(),
                 declared: vec![],
                 declaration,
             }],
@@ -219,6 +220,7 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
     let oracle_enum_type = JavaType::Reference(JavaTypeName::Generated(oracle_enum));
     let oracle_enum_target = TargetTypeRef::Generated(oracle_enum);
     let oracle_first = builder.value(portable_codegen::GeneratedValue {
+        visibility: crate::ast::JavaVisibility::Public,
         name: "FIRST".to_owned(),
         ty: oracle_enum_target.clone(),
         origin: portable_codegen::GeneratedOrigin::Synthesized(
@@ -227,6 +229,7 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
         source: verifier_source("oracle-first"),
     });
     let oracle_second = builder.value(portable_codegen::GeneratedValue {
+        visibility: crate::ast::JavaVisibility::Public,
         name: "SECOND".to_owned(),
         ty: oracle_enum_target,
         origin: portable_codegen::GeneratedOrigin::Synthesized(
@@ -431,6 +434,7 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
                 ),
             ],
         };
+    let owner_fixtures = super::synthetic_owner_fixtures::items(&mut builder);
     let file = builder.file(portable_codegen::TargetFile::new(
         portable_codegen::RelativeOutputPath::new(
             "src/main/java/org/polyrust/generated/OracleStructured.java",
@@ -441,14 +445,34 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
         JavaFilePlacement::Main,
         vec![
             JavaFileItem::Type {
+                conformances: crate::ast::JavaConformanceInventory::structural().into(),
                 declared: vec![],
                 declaration: structured_record,
             },
             JavaFileItem::Type {
+                conformances: crate::ast::JavaConformanceInventory::structural().into(),
                 declared: vec![],
                 declaration: structured_interface,
             },
             JavaFileItem::Type {
+                conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                declared: vec![],
+                declaration: super::fixture_declaration(vec![structural_method(
+                    "crossItemChoice",
+                    JavaType::Reference(JavaTypeName::Generated(oracle_enum)),
+                    vec![],
+                    JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
+                        ty: JavaType::Reference(JavaTypeName::Generated(oracle_enum)),
+                        precedence: JavaPrecedence::Primary,
+                        kind: JavaExprKind::Value(super::JavaValueRef::EnumVariant {
+                            enumeration: oracle_enum,
+                            variant: oracle_first,
+                        }),
+                    }))]),
+                )]),
+            },
+            JavaFileItem::Type {
+                conformances: crate::ast::JavaConformanceInventory::structural().into(),
                 declared: vec![
                     GeneratedSymbolId::Type(oracle_enum),
                     GeneratedSymbolId::Value(oracle_first),
@@ -456,7 +480,10 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
                 ],
                 declaration: structured_class,
             },
-        ],
+        ]
+        .into_iter()
+        .chain(owner_fixtures)
+        .collect(),
         JavaSourceFileKind::CompilationUnit,
         verifier_source("structured-mutation-oracle-file"),
     ));

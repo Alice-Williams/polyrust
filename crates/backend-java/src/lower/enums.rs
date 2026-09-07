@@ -1,6 +1,5 @@
 //! Java lowering: enums.
 
-use super::declaration_builders::identifier;
 use super::{Lowering, diagnostic};
 use crate::ast::{
     JavaExpr, JavaMember, JavaRecordComponent, JavaRecordComponentOrigin, JavaRuntimeMember,
@@ -26,19 +25,13 @@ impl Lowering<'_> {
                 JavaEnumsInput::Declaration {
                     declared: self.enums[&id],
                     visibility: enumeration.header.visibility,
-                    name: enumeration.header.name.clone(),
+                    name: self.names.enumeration(id).as_str().to_owned(),
                     variants: enumeration
                         .variants
                         .iter()
-                        .map(|variant_id| {
-                            let variant = self
-                                .core
-                                .variant(*variant_id)
-                                .expect("verified enum variant");
-                            JavaEnumVariantInput {
-                                declared: self.enum_values[variant_id],
-                                name: variant.header.name.clone(),
-                            }
+                        .map(|variant_id| JavaEnumVariantInput {
+                            declared: self.enum_values[variant_id],
+                            name: self.names.enum_value(*variant_id).as_str().to_owned(),
                         })
                         .collect(),
                 },
@@ -57,7 +50,7 @@ impl Lowering<'_> {
             .map(|variant_id| {
                 let variant = self.core.variant(*variant_id).expect("verified variant");
                 let variant_type = self.variants[variant_id];
-                let name = format!("{}{}", enumeration.header.name, variant.header.name);
+                let name = self.names.variant(*variant_id).as_str().to_owned();
                 Ok(JavaEnumPayloadVariantInput {
                     declared: variant_type,
                     name: name.clone(),
@@ -69,7 +62,7 @@ impl Lowering<'_> {
                             Ok(JavaRecordComponent {
                                 origin: JavaRecordComponentOrigin::Core(*field),
                                 ty: self.ty(value.ty)?,
-                                name: identifier(&value.header.name),
+                                name: self.names.field(*field).clone(),
                             })
                         })
                         .collect::<Result<Vec<_>, Vec<Diagnostic>>>()?,
@@ -101,7 +94,7 @@ impl Lowering<'_> {
             JavaEnumsInput::PayloadDeclaration {
                 declared: self.enums[&id],
                 visibility: enumeration.header.visibility,
-                name: enumeration.header.name.clone(),
+                name: self.names.enumeration(id).as_str().to_owned(),
                 variants,
             },
         )? {

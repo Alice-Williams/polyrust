@@ -71,6 +71,7 @@ fn generated_interface_implementations_require_exact_generic_signatures() {
             body: None,
         })],
     };
+    let (core_method, witness) = fixture_core_implementation_method(implementation, method);
     let implementation_declaration = JavaTypeDeclaration {
         declared: Some(implementation),
         kind: JavaDeclarationKind::FinalClass,
@@ -85,8 +86,9 @@ fn generated_interface_implementations_require_exact_generic_signatures() {
         permits: vec![],
         members: vec![JavaMember::Method(JavaMethod {
             declared: JavaMethodDeclaration::Implementation {
-                method: fixture_core_implementation_method(),
+                method: core_method,
                 interface: method,
+                witness,
             },
             annotations: vec![JavaAnnotation::Override],
             modifiers: vec![JavaModifier::Public],

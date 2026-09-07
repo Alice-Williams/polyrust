@@ -52,7 +52,9 @@ pub(super) fn verify_sealed_permits(
         let valid_declaration = find_type_declaration(value, context).is_some_and(|candidate| {
             matches!(
                 candidate.kind,
-                JavaDeclarationKind::FinalClass | JavaDeclarationKind::Record
+                JavaDeclarationKind::FinalClass
+                    | JavaDeclarationKind::Record
+                    | JavaDeclarationKind::UninhabitedEnum(_)
             ) && matches!(
                 candidate.heritage,
                 JavaHeritage::Interfaces(ref interfaces)
@@ -98,7 +100,9 @@ fn collect_generated_implementors(
     if let Some(id) = declaration.declared
         && matches!(
             declaration.kind,
-            JavaDeclarationKind::FinalClass | JavaDeclarationKind::Record
+            JavaDeclarationKind::FinalClass
+                | JavaDeclarationKind::Record
+                | JavaDeclarationKind::UninhabitedEnum(_)
         )
         && matches!(
             declaration.heritage,

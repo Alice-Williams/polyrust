@@ -35,6 +35,9 @@ pub(super) fn verify_block_scope_in_context(
     context: Option<&TargetAstContext<'_, JavaDialect>>,
 ) -> Vec<AstViolation> {
     let mut violations = Vec::new();
+    if let Some(context) = context {
+        violations.extend(scope.protect_qualifiers(context));
+    }
     let mut can_complete_normally = true;
     for statement in &block.statements {
         if !can_complete_normally {
@@ -98,7 +101,7 @@ pub(super) fn verify_block_scope_in_context(
             } => {
                 violations.extend(verify_expr_scope(condition, scope));
                 let mut then_scope = scope.clone();
-                collect_positive_pattern_bindings(condition, &mut then_scope);
+                collect_positive_pattern_bindings(condition, &mut then_scope, &mut violations);
                 violations.extend(verify_block_scope_in_context(
                     then_block,
                     &mut then_scope,
@@ -139,13 +142,15 @@ pub(super) fn verify_block_scope_in_context(
                     } = &operand.kind
                     && !scope.bindings.contains_key(binding)
                 {
-                    scope.bindings.insert(
+                    scope.bind(
                         binding.clone(),
                         JavaLexicalBinding {
                             ty: target.clone(),
                             mutable: false,
                             definitely_assigned: true,
                         },
+                        "Java pattern binding conflicts with an overlapping lexical binding",
+                        &mut violations,
                     );
                 }
             }
@@ -193,7 +198,7 @@ pub(super) fn verify_block_scope_in_context(
                     JavaLoopCondition::Always | JavaLoopCondition::Dynamic => {}
                 }
                 let mut body_scope = scope.clone();
-                collect_positive_pattern_bindings(condition, &mut body_scope);
+                collect_positive_pattern_bindings(condition, &mut body_scope, &mut violations);
                 violations.extend(verify_block_scope_in_context(
                     body,
                     &mut body_scope,
@@ -281,7 +286,11 @@ pub(super) fn verify_block_scope_in_context(
     violations
 }
 
-fn collect_positive_pattern_bindings(value: &JavaExpr, scope: &mut JavaLexicalScope) {
+fn collect_positive_pattern_bindings(
+    value: &JavaExpr,
+    scope: &mut JavaLexicalScope,
+    violations: &mut Vec<AstViolation>,
+) {
     match &value.kind {
         JavaExprKind::InstanceOf {
             target,
@@ -289,13 +298,15 @@ fn collect_positive_pattern_bindings(value: &JavaExpr, scope: &mut JavaLexicalSc
             ..
         } => {
             if !scope.bindings.contains_key(binding) {
-                scope.bindings.insert(
+                scope.bind(
                     binding.clone(),
                     JavaLexicalBinding {
                         ty: target.clone(),
                         mutable: false,
                         definitely_assigned: true,
                     },
+                    "Java pattern binding conflicts with an overlapping lexical binding",
+                    violations,
                 );
             }
         }
@@ -304,8 +315,8 @@ fn collect_positive_pattern_bindings(value: &JavaExpr, scope: &mut JavaLexicalSc
             left,
             right,
         } => {
-            collect_positive_pattern_bindings(left, scope);
-            collect_positive_pattern_bindings(right, scope);
+            collect_positive_pattern_bindings(left, scope, violations);
+            collect_positive_pattern_bindings(right, scope, violations);
         }
         _ => {}
     }

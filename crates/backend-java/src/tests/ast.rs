@@ -52,6 +52,23 @@ fn fixture_declaration(members: Vec<JavaMember>) -> JavaTypeDeclaration {
     }
 }
 
+fn ordinary_owner_fixture() -> (
+    portable_codegen::TargetAstBuilder<JavaDialect>,
+    GeneratedTypeId,
+) {
+    let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
+    let owner = builder.generated_type(portable_codegen::GeneratedType {
+        name: "Fixture".to_owned(),
+        kind: JavaDeclarationKind::FinalClass,
+        visibility: JavaVisibility::Package,
+        origin: portable_codegen::GeneratedOrigin::Synthesized(
+            portable_codegen::SynthesisReason::TestHarness,
+        ),
+        source: verifier_source("ordinary-owner"),
+    });
+    (builder, owner)
+}
+
 fn verify_fixture(
     builder: portable_codegen::TargetAstBuilder<JavaDialect>,
     declarations: Vec<(Vec<GeneratedSymbolId>, JavaTypeDeclaration)>,
@@ -63,6 +80,7 @@ fn verify_fixture(
         declarations
             .into_iter()
             .map(|(declared, declaration)| JavaFileItem::Type {
+                conformances: crate::ast::JavaConformanceInventory::structural().into(),
                 declared,
                 declaration,
             })
@@ -184,7 +202,13 @@ fn fixture_core_field() -> CoreFieldId {
         .expect("fixture contains a record field")
 }
 
-fn fixture_core_implementation_method() -> portable_core_ir::CoreImplementationMethodId {
+fn fixture_core_implementation_method(
+    owner: GeneratedTypeId,
+    target_method: portable_codegen::GeneratedInterfaceMethodId,
+) -> (
+    portable_core_ir::CoreImplementationMethodId,
+    super::JavaImplementationWitness,
+) {
     let checked = portable_check::v0::check_program(
         portable_ir::v0::from_json(include_bytes!(
             "../../../build/testdata/registration.poly.json"
@@ -193,13 +217,20 @@ fn fixture_core_implementation_method() -> portable_core_ir::CoreImplementationM
     )
     .expect("fixture checks");
     let core = portable_core_ir::lower_checked(&checked).expect("fixture lowers to CoreIR");
-    core.implementations()
+    let method = core
+        .implementations()
         .first()
         .and_then(|implementation| implementation.methods.first())
         .copied()
-        .expect("fixture contains an implementation method")
+        .expect("fixture contains an implementation method");
+    (
+        method,
+        super::JavaImplementationWitness::from_checked(&core, method, owner, target_method),
+    )
 }
 
+#[path = "ast/access.rs"]
+mod access;
 #[path = "ast/array_ownership.rs"]
 mod array_ownership;
 #[path = "ast/catch_order.rs"]
@@ -234,10 +265,14 @@ mod negative_members;
 mod pattern_bindings;
 #[path = "ast/privileged_literals.rs"]
 mod privileged_literals;
+#[path = "ast/qualifier_bindings.rs"]
+mod qualifier_bindings;
 #[path = "ast/sealed_permits.rs"]
 mod sealed_permits;
 #[path = "ast/statement_grammar.rs"]
 mod statement_grammar;
+#[path = "ast/synthetic_owner_fixtures.rs"]
+mod synthetic_owner_fixtures;
 #[path = "ast/type_and_operator_checks.rs"]
 mod type_and_operator_checks;
 #[path = "ast/types_and_casts.rs"]

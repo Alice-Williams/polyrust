@@ -8,7 +8,9 @@ use super::{
 
 #[test]
 fn native_enum_grammar_and_exhaustiveness_fail_closed() {
-    fn setup() -> (
+    fn setup(
+        visibility: JavaVisibility,
+    ) -> (
         portable_codegen::TargetAstBuilder<JavaDialect>,
         GeneratedTypeId,
         GeneratedValueId,
@@ -27,6 +29,7 @@ fn native_enum_grammar_and_exhaustiveness_fail_closed() {
         });
         let ty = TargetTypeRef::Generated(enumeration);
         let first = builder.value(portable_codegen::GeneratedValue {
+            visibility,
             name: "FIRST".to_owned(),
             ty: ty.clone(),
             origin: portable_codegen::GeneratedOrigin::Synthesized(
@@ -35,6 +38,7 @@ fn native_enum_grammar_and_exhaustiveness_fail_closed() {
             source: verifier_source("first"),
         });
         let second = builder.value(portable_codegen::GeneratedValue {
+            visibility: crate::ast::JavaVisibility::Public,
             name: "SECOND".to_owned(),
             ty,
             origin: portable_codegen::GeneratedOrigin::Synthesized(
@@ -66,7 +70,7 @@ fn native_enum_grammar_and_exhaustiveness_fail_closed() {
         (builder, enumeration, first, second, declaration)
     }
 
-    let (builder, enumeration, first, second, declaration) = setup();
+    let (builder, enumeration, first, second, declaration) = setup(JavaVisibility::Public);
     assert!(
         verify_fixture(
             builder,
@@ -82,7 +86,37 @@ fn native_enum_grammar_and_exhaustiveness_fail_closed() {
         .is_ok()
     );
 
-    let (builder, enumeration, first, second, mut empty) = setup();
+    for wrong_visibility in [false, true] {
+        let visibility = if wrong_visibility {
+            JavaVisibility::Private
+        } else {
+            JavaVisibility::Public
+        };
+        let (builder, enumeration, first, second, mut declaration) = setup(visibility);
+        if !wrong_visibility {
+            let JavaMember::EnumConstant(value) = &mut declaration.members[0] else {
+                unreachable!()
+            };
+            value.name = JavaIdentifier::from_portable("WRONG_NAME");
+        }
+        let result = verify_fixture(
+            builder,
+            vec![(
+                vec![
+                    GeneratedSymbolId::Type(enumeration),
+                    GeneratedSymbolId::Value(first),
+                    GeneratedSymbolId::Value(second),
+                ],
+                declaration,
+            )],
+        );
+        assert!(
+            result.is_err(),
+            "enum value name/visibility mutation was accepted"
+        );
+    }
+
+    let (builder, enumeration, first, second, mut empty) = setup(JavaVisibility::Public);
     empty.members.clear();
     let diagnostics = verify_fixture(
         builder,
@@ -101,7 +135,7 @@ fn native_enum_grammar_and_exhaustiveness_fail_closed() {
             && value.message.contains("at least one constant")
     }));
 
-    let (builder, enumeration, first, second, declaration) = setup();
+    let (builder, enumeration, first, second, declaration) = setup(JavaVisibility::Public);
     let enum_type = JavaType::Reference(JavaTypeName::Generated(enumeration));
     let selector = JavaExpr::local(enum_type.clone(), JavaIdentifier::from_portable("value"));
     let switch = JavaStmt::Switch {

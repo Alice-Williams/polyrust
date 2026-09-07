@@ -127,6 +127,7 @@ pub(crate) use interfaces::{
     JavaConcreteInterfaceCallInput, JavaInterfaceCallInput, JavaInterfaceConformanceInput,
     JavaInterfaceConformancePlan, JavaInterfaceDeclarationInput, JavaInterfaceImplementationInput,
     JavaInterfaceMethodInput, JavaInterfacesInput, JavaInterfacesNode,
+    JavaUninhabitedInterfaceInput,
 };
 pub(crate) use list_operations::JavaListOperationsInput;
 pub(crate) use local_bindings::{JavaLocalBindingsInput, JavaLocalBindingsNode};

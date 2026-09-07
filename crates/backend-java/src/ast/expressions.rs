@@ -6,7 +6,7 @@ use super::expression_model::{
 use super::expression_nodes::{JavaConstructorRef, JavaExpr, JavaExprKind, JavaFieldRef};
 use super::field_metadata::structural_field_metadata;
 use super::generated_members::{
-    generated_enum_variant_matches, generated_field_matches, generated_value_matches,
+    generated_enum_variant_matches, generated_field_matches, generated_static_value_matches,
 };
 use super::identifiers::JavaIdentifier;
 use super::invocations::{
@@ -209,7 +209,7 @@ impl JavaExpr {
             }
             JavaExprKind::Value(value) => match value {
                 JavaValueRef::Generated(GeneratedSymbolId::Value(id)) => {
-                    match generated_value_matches(*id, &self.ty, context) {
+                    match generated_static_value_matches(*id, &self.ty, context) {
                         Some(true) => {}
                         Some(false) => violations.push(type_error(
                             "generated Java value reference type disagrees with its authoritative registration",

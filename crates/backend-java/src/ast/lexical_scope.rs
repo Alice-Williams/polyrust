@@ -27,6 +27,7 @@ pub(super) struct JavaLexicalScope {
     pub(super) owner: Option<JavaType>,
     pub(super) constructor: bool,
     pub(super) owner_fields: BTreeMap<JavaIdentifier, JavaFieldMetadata>,
+    qualifiers: BTreeSet<JavaIdentifier>,
 }
 
 impl JavaLexicalScope {
@@ -37,6 +38,10 @@ impl JavaLexicalScope {
         duplicate_message: &'static str,
         violations: &mut Vec<AstViolation>,
     ) -> bool {
+        if self.qualifiers.contains(&name) {
+            violations.push(super::qualifier_names::violation());
+            return false;
+        }
         if self.bindings.contains_key(&name) {
             violations.push(AstViolation::new(
                 DiagnosticCode::DuplicateDeclaration,
@@ -46,6 +51,19 @@ impl JavaLexicalScope {
         }
         self.bindings.insert(name, binding);
         true
+    }
+
+    pub(super) fn protect_qualifiers(
+        &mut self,
+        context: &portable_codegen::TargetAstContext<'_, crate::dialect::JavaDialect>,
+    ) -> Vec<AstViolation> {
+        self.qualifiers
+            .extend(super::qualifier_names::in_context(context));
+        self.bindings
+            .keys()
+            .filter(|name| self.qualifiers.contains(*name))
+            .map(|_| super::qualifier_names::violation())
+            .collect()
     }
 
     pub(super) fn mark_local_assigned(&mut self, target: &JavaExpr) {
@@ -90,6 +108,7 @@ impl JavaLexicalScope {
         declaration: Option<&JavaTypeDeclaration>,
     ) -> (Self, Vec<AstViolation>) {
         let mut scope = Self {
+            qualifiers: super::qualifier_names::known_names(),
             bindings: BTreeMap::new(),
             allows_this: !method.modifiers.contains(&JavaModifier::Static),
             owner,
@@ -141,6 +160,7 @@ impl JavaLexicalScope {
         declaration: Option<&JavaTypeDeclaration>,
     ) -> Self {
         Self {
+            qualifiers: super::qualifier_names::known_names(),
             bindings: BTreeMap::new(),
             allows_this: !field.modifiers.contains(&JavaModifier::Static),
             owner,
@@ -231,6 +251,12 @@ pub(super) fn verify_pattern_binding_uniqueness(
             | JavaExprKind::ArrayOwnershipTransition { value, .. } => pending.push(value),
             JavaExprKind::InstanceOf { value, binding, .. } => {
                 pending.push(value);
+                if binding
+                    .as_ref()
+                    .is_some_and(|name| scope.qualifiers.contains(name))
+                {
+                    violations.push(super::qualifier_names::violation());
+                }
                 if let Some(binding) = binding
                     && (scope.bindings.contains_key(binding)
                         || !expression_bindings.insert(binding.clone()))

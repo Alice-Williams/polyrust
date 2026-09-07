@@ -45,10 +45,9 @@ impl Lowering<'_> {
         let (result_name, result_local) = self.temporary("matchResult", result_type.clone());
         let arms = arms
             .iter()
-            .enumerate()
-            .map(|(index, arm)| {
+            .map(|arm| {
                 Ok(JavaMatchArmInput {
-                    pattern: self.pattern(&arm.pattern, matched_local.clone(), index)?,
+                    pattern: self.pattern(&arm.pattern, matched_local.clone())?,
                     body: self.block(
                         arm.body,
                         BlockMode::AssignResult {
@@ -170,7 +169,6 @@ impl Lowering<'_> {
         &self,
         pattern: &CorePattern,
         matched: JavaExpr,
-        index: usize,
     ) -> Result<JavaLoweredPattern, Vec<Diagnostic>> {
         let input = match pattern {
             CorePattern::Wildcard { .. } => JavaPatternInput::Wildcard,
@@ -192,18 +190,19 @@ impl Lowering<'_> {
                             .expect("verified pattern local");
                         let field = self.core.field(binding.field).expect("verified field");
                         Ok(JavaPatternFieldBindingInput {
-                            binding_name: local_value.name.clone(),
+                            binding_name: self.names.local(binding.binding).as_str().to_owned(),
                             binding_type: self.ty(local_value.ty)?,
-                            field_name: field.header.name.clone(),
+                            field_name: self.names.field(binding.field).as_str().to_owned(),
                             field_type: self.ty(field.ty)?,
                             field: binding.field,
                         })
                     })
                     .collect::<Result<Vec<_>, Vec<Diagnostic>>>()?;
+                let (variant_name, _) = self.temporary("matchedVariant", variant_type.clone());
                 JavaPatternInput::EnumVariant {
                     matched: Box::new(matched),
                     variant_type,
-                    variant_name: format!("matchedVariant{index}"),
+                    variant_name: variant_name.as_str().to_owned(),
                     bindings,
                 }
             }
@@ -214,7 +213,7 @@ impl Lowering<'_> {
                 let local_value = self.core.local(*binding).expect("verified pattern local");
                 JavaPatternInput::Some {
                     matched: Box::new(matched),
-                    binding_name: local_value.name.clone(),
+                    binding_name: self.names.local(*binding).as_str().to_owned(),
                     binding_type: self.ty(local_value.ty)?,
                 }
             }
@@ -222,7 +221,7 @@ impl Lowering<'_> {
                 let local_value = self.core.local(*binding).expect("verified pattern local");
                 JavaPatternInput::Ok {
                     matched: Box::new(matched),
-                    binding_name: local_value.name.clone(),
+                    binding_name: self.names.local(*binding).as_str().to_owned(),
                     binding_type: self.ty(local_value.ty)?,
                 }
             }
@@ -230,7 +229,7 @@ impl Lowering<'_> {
                 let local_value = self.core.local(*binding).expect("verified pattern local");
                 JavaPatternInput::Err {
                     matched: Box::new(matched),
-                    binding_name: local_value.name.clone(),
+                    binding_name: self.names.local(*binding).as_str().to_owned(),
                     binding_type: self.ty(local_value.ty)?,
                 }
             }

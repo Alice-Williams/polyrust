@@ -113,6 +113,7 @@ pub enum SynthesisReason {
     EvaluationTemporary,
     OwnershipAdapter,
     InterfaceAdapter,
+    UninhabitedInterface,
     TestHarness,
     PackageEntryPoint,
 }
@@ -156,6 +157,7 @@ pub struct GeneratedInterfaceMethod<D: TypedAstDialect> {
 pub struct GeneratedValue<D: TypedAstDialect> {
     pub name: String,
     pub ty: TargetTypeRef<D>,
+    pub visibility: D::Visibility,
     pub origin: GeneratedOrigin<D>,
     pub source: SourceRef,
 }
@@ -1722,24 +1724,28 @@ mod tests {
             source: source("interface-method"),
         });
         let value = builder.value(GeneratedValue {
+            visibility: TestVisibility::Public,
             name: "seed".to_owned(),
             ty: integer(),
             origin: GeneratedOrigin::Synthesized(SynthesisReason::EvaluationTemporary),
             source: source("value"),
         });
         let _known_value = builder.value(GeneratedValue {
+            visibility: TestVisibility::Public,
             name: "label".to_owned(),
             ty: TargetTypeRef::Known(TestKnownType::Utf8String),
             origin: GeneratedOrigin::Synthesized(SynthesisReason::TestHarness),
             source: source("known-value"),
         });
         let _runtime_value = builder.value(GeneratedValue {
+            visibility: TestVisibility::Public,
             name: "error".to_owned(),
             ty: TargetTypeRef::Runtime(TestRuntimeType::RuntimeError),
             origin: GeneratedOrigin::Runtime(TestSymbolOrigin::ArithmeticRuntime),
             source: source("runtime-value"),
         });
         let _constructed_value = builder.value(GeneratedValue {
+            visibility: TestVisibility::Public,
             name: "numbers".to_owned(),
             ty: TargetTypeRef::Constructed(TestConstructedType::I64List),
             origin: GeneratedOrigin::Synthesized(SynthesisReason::EvaluationTemporary),

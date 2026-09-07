@@ -3,11 +3,7 @@
 mod registration;
 mod shapes;
 
-use shapes::{
-    erased_conformance_collisions, fallible_constant_diagnostics, java_illegal_shape_diagnostics,
-    valid_shape,
-};
-use std::collections::BTreeMap;
+use shapes::{fallible_constant_diagnostics, valid_shape};
 
 use portable_build::{
     BoolValues, BooleanLogic, BytesOperations, BytesValues, CharValues, CheckedIntegerArithmetic,
@@ -27,16 +23,12 @@ use portable_codegen::{
     preflight_capabilities,
 };
 use portable_core_ir::{
-    CoreBinaryIntrinsic, CoreConstantExpr, CoreConstantExprKind, CoreDeclaration,
-    CoreIntrinsicExpr, CoreLocalKind, CoreProgram, CoreRecordId, CoreTernaryIntrinsic, CoreType,
-    CoreTypeId, CoreUnaryIntrinsic, CoreVariadicIntrinsic,
+    CoreBinaryIntrinsic, CoreConstantExpr, CoreConstantExprKind, CoreIntrinsicExpr, CoreLocalKind,
+    CoreProgram, CoreTernaryIntrinsic, CoreUnaryIntrinsic, CoreVariadicIntrinsic,
 };
 use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef, sort_diagnostics};
 
-use crate::{
-    ast::JavaIdentifier,
-    capabilities::{JavaCapabilitySet, java_capabilities},
-};
+use crate::capabilities::{JavaCapabilitySet, java_capabilities};
 
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -386,8 +378,6 @@ impl TargetCapabilityRegistry<CoreProgram> for JavaCapabilityRegistry {
                 vec![]
             }
         };
-        diagnostics.extend(java_illegal_shape_diagnostics(core.value()));
-        diagnostics.extend(erased_conformance_collisions(core.value()));
         diagnostics.extend(fallible_constant_diagnostics(core.value()));
         sort_diagnostics(&mut diagnostics);
         if diagnostics.is_empty() {

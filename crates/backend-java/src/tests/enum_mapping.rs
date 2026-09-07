@@ -22,12 +22,14 @@ fn enum_symbols(name: &str) -> (GeneratedTypeId, GeneratedValueId, GeneratedValu
     });
     let value_type = TargetTypeRef::Generated(enumeration);
     let first = builder.value(GeneratedValue {
+        visibility: crate::ast::JavaVisibility::Public,
         name: "FIRST".to_owned(),
         ty: value_type.clone(),
         origin: GeneratedOrigin::Synthesized(SynthesisReason::TestHarness),
         source: source("first"),
     });
     let second = builder.value(GeneratedValue {
+        visibility: crate::ast::JavaVisibility::Public,
         name: "SECOND".to_owned(),
         ty: value_type,
         origin: GeneratedOrigin::Synthesized(SynthesisReason::TestHarness),

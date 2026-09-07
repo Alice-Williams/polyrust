@@ -38,10 +38,12 @@ mod evaluation_plans;
 mod expression_builders;
 mod expressions;
 mod generated_file;
+mod interface_sealing;
 mod interfaces;
 mod intrinsic_mapping;
 mod intrinsic_plans;
 mod mapping_nodes;
+mod names;
 mod native_test_file;
 mod patterns;
 mod portable_tests;
@@ -78,6 +80,7 @@ impl TargetLowerer<CoreProgram, JavaDialect> for JavaLowerer {
 
 struct Lowering<'a> {
     core: &'a CoreProgram,
+    names: names::JavaPortableNames,
     builder: TargetAstBuilder<JavaDialect>,
     declared: Vec<GeneratedSymbolId>,
     entry: Option<GeneratedTypeId>,
@@ -86,6 +89,7 @@ struct Lowering<'a> {
     variants: BTreeMap<CoreVariantId, GeneratedTypeId>,
     enum_values: BTreeMap<CoreVariantId, GeneratedValueId>,
     interfaces: BTreeMap<CoreInterfaceId, GeneratedTypeId>,
+    uninhabited: BTreeMap<CoreInterfaceId, crate::capabilities::JavaUninhabitedInterfaceInput>,
     functions: BTreeMap<CoreFunctionId, GeneratedCallableId>,
     interface_methods: BTreeMap<CoreInterfaceMethodId, GeneratedInterfaceMethodId>,
     constants: BTreeMap<CoreConstantId, GeneratedValueId>,
@@ -102,6 +106,7 @@ impl<'a> Lowering<'a> {
     ) -> Self {
         Self {
             core,
+            names: names::JavaPortableNames::new(core),
             builder: TargetAstBuilder::new(JavaDialect),
             declared: vec![],
             entry: None,
@@ -110,6 +115,7 @@ impl<'a> Lowering<'a> {
             variants: BTreeMap::new(),
             enum_values: BTreeMap::new(),
             interfaces: BTreeMap::new(),
+            uninhabited: BTreeMap::new(),
             functions: BTreeMap::new(),
             interface_methods: BTreeMap::new(),
             constants: BTreeMap::new(),
@@ -122,6 +128,7 @@ impl<'a> Lowering<'a> {
     fn lower(mut self) -> Result<TargetAstPackage<JavaDialect>, Vec<Diagnostic>> {
         self.capabilities.validate_for(self.core)?;
         self.register_types();
+        self.register_interface_sealing()?;
         self.register_values_and_callables()?;
         let generated = self.generated_file()?;
         let runtime = self.runtime_file()?;
@@ -185,6 +192,28 @@ struct ExprPlan {
     statements: Vec<JavaStmt>,
     value: JavaExpr,
 }
+
+#[cfg(test)]
+#[path = "tests/conformance_mutations.rs"]
+mod conformance_mutations;
+#[cfg(test)]
+#[path = "tests/implementation_mutations.rs"]
+mod implementation_mutations;
+#[cfg(test)]
+#[path = "tests/lowering_fixture.rs"]
+mod lowering_fixture;
+#[cfg(test)]
+#[path = "tests/placement_mutations.rs"]
+mod placement_mutations;
+#[cfg(test)]
+#[path = "tests/static_value_mutations.rs"]
+mod static_value_mutations;
+#[cfg(test)]
+#[path = "tests/uninhabited_mutations.rs"]
+mod uninhabited_mutations;
+#[cfg(test)]
+#[path = "tests/value_category_mutations.rs"]
+mod value_category_mutations;
 
 impl ExprPlan {
     fn pure(value: JavaExpr) -> Self {

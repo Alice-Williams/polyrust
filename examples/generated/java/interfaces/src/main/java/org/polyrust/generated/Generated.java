@@ -98,117 +98,117 @@ public final class Generated {
     return org.polyrust.generated.Runtime.ok(__polyrust_callResult_5.value());
   }
   public static org.polyrust.generated.Runtime.PolyResult<String> dynamic_dispatch(final Labelled __polyrust_input_0, final String __polyrust_input_1) {
-    final Labelled value = Objects.requireNonNull(__polyrust_input_0);
-    final String prefix = org.polyrust.generated.Runtime.requireScalarString(__polyrust_input_1);
-    final org.polyrust.generated.Runtime.PolyResult<String> __polyrust_callResult_6 = value.label(prefix);
+    final Labelled value_1 = Objects.requireNonNull(__polyrust_input_0);
+    final String prefix_1 = org.polyrust.generated.Runtime.requireScalarString(__polyrust_input_1);
+    final org.polyrust.generated.Runtime.PolyResult<String> __polyrust_callResult_6 = value_1.label(prefix_1);
     if ((!__polyrust_callResult_6.ok())) {
       return org.polyrust.generated.Runtime.fail(__polyrust_callResult_6.error().code(), __polyrust_callResult_6.error().message());
      }
     return org.polyrust.generated.Runtime.ok(__polyrust_callResult_6.value());
   }
   public static org.polyrust.generated.Runtime.PolyResult<String> enum_dispatch(final Label __polyrust_input_0) {
-    final Label value = Objects.requireNonNull(__polyrust_input_0);
-    final Labelled __polyrust_argument_7 = ((Labelled) value);
+    final Label value_2 = Objects.requireNonNull(__polyrust_input_0);
+    final Labelled __polyrust_argument_7 = ((Labelled) value_2);
     final Envelope __polyrust_matchValue_8 = ((Envelope) new EnvelopeWrapped(__polyrust_argument_7));
     String __polyrust_matchResult_9;
-    if ((__polyrust_matchValue_8 instanceof EnvelopeWrapped matchedVariant0)) {
-      final Labelled renderer = matchedVariant0.renderer();
-      final org.polyrust.generated.Runtime.PolyResult<String> __polyrust_callResult_10 = renderer.label("enum:");
-      if ((!__polyrust_callResult_10.ok())) {
-        return org.polyrust.generated.Runtime.fail(__polyrust_callResult_10.error().code(), __polyrust_callResult_10.error().message());
+    if ((__polyrust_matchValue_8 instanceof EnvelopeWrapped __polyrust_matchedVariant_10_user)) {
+      final Labelled renderer = __polyrust_matchedVariant_10_user.renderer();
+      final org.polyrust.generated.Runtime.PolyResult<String> __polyrust_callResult_11 = renderer.label("enum:");
+      if ((!__polyrust_callResult_11.ok())) {
+        return org.polyrust.generated.Runtime.fail(__polyrust_callResult_11.error().code(), __polyrust_callResult_11.error().message());
        }
-      __polyrust_matchResult_9 = __polyrust_callResult_10.value();
+      __polyrust_matchResult_9 = __polyrust_callResult_11.value();
      } else {
       throw new AssertionError("verified CoreIR match was unexpectedly non-exhaustive");
     }
     return org.polyrust.generated.Runtime.ok(__polyrust_matchResult_9);
   }
   public static org.polyrust.generated.Runtime.PolyResult<String> list_dispatch(final Label __polyrust_input_0) {
-    final Label value = Objects.requireNonNull(__polyrust_input_0);
-    final Labelled __polyrust_argument_11 = ((Labelled) value);
-    final List<Labelled> __polyrust_intrinsicOperand_12 = List.of(__polyrust_argument_11);
-    final org.polyrust.generated.Runtime.PolyResult<Labelled> __polyrust_callResult_13 = org.polyrust.generated.Runtime.listGet(__polyrust_intrinsicOperand_12, 0L);
-    if ((!__polyrust_callResult_13.ok())) {
-      return org.polyrust.generated.Runtime.fail(__polyrust_callResult_13.error().code(), __polyrust_callResult_13.error().message());
+    final Label value_3 = Objects.requireNonNull(__polyrust_input_0);
+    final Labelled __polyrust_argument_12 = ((Labelled) value_3);
+    final List<Labelled> __polyrust_intrinsicOperand_13 = List.of(__polyrust_argument_12);
+    final org.polyrust.generated.Runtime.PolyResult<Labelled> __polyrust_callResult_14 = org.polyrust.generated.Runtime.listGet(__polyrust_intrinsicOperand_13, 0L);
+    if ((!__polyrust_callResult_14.ok())) {
+      return org.polyrust.generated.Runtime.fail(__polyrust_callResult_14.error().code(), __polyrust_callResult_14.error().message());
      }
-    final Labelled __polyrust_receiver_14 = __polyrust_callResult_13.value();
-    final org.polyrust.generated.Runtime.PolyResult<String> __polyrust_callResult_15 = __polyrust_receiver_14.label("list:");
-    if ((!__polyrust_callResult_15.ok())) {
-      return org.polyrust.generated.Runtime.fail(__polyrust_callResult_15.error().code(), __polyrust_callResult_15.error().message());
-     }
-    return org.polyrust.generated.Runtime.ok(__polyrust_callResult_15.value());
-  }
-  public static org.polyrust.generated.Runtime.PolyResult<String> local_dispatch(final Label __polyrust_input_0) {
-    final Label value = Objects.requireNonNull(__polyrust_input_0);
-    final Labelled renderer = ((Labelled) value);
-    final org.polyrust.generated.Runtime.PolyResult<String> __polyrust_callResult_16 = renderer.label("local:");
+    final Labelled __polyrust_receiver_15 = __polyrust_callResult_14.value();
+    final org.polyrust.generated.Runtime.PolyResult<String> __polyrust_callResult_16 = __polyrust_receiver_15.label("list:");
     if ((!__polyrust_callResult_16.ok())) {
       return org.polyrust.generated.Runtime.fail(__polyrust_callResult_16.error().code(), __polyrust_callResult_16.error().message());
      }
     return org.polyrust.generated.Runtime.ok(__polyrust_callResult_16.value());
   }
-  public static org.polyrust.generated.Runtime.PolyResult<Long> measured_dispatch(final Label __polyrust_input_0) {
-    final Label value = Objects.requireNonNull(__polyrust_input_0);
-    final Measured __polyrust_receiver_17 = ((Measured) value);
-    final org.polyrust.generated.Runtime.PolyResult<Long> __polyrust_callResult_18 = __polyrust_receiver_17.measure();
-    if ((!__polyrust_callResult_18.ok())) {
-      return org.polyrust.generated.Runtime.fail(__polyrust_callResult_18.error().code(), __polyrust_callResult_18.error().message());
+  public static org.polyrust.generated.Runtime.PolyResult<String> local_dispatch(final Label __polyrust_input_0) {
+    final Label value_4 = Objects.requireNonNull(__polyrust_input_0);
+    final Labelled renderer_1 = ((Labelled) value_4);
+    final org.polyrust.generated.Runtime.PolyResult<String> __polyrust_callResult_17 = renderer_1.label("local:");
+    if ((!__polyrust_callResult_17.ok())) {
+      return org.polyrust.generated.Runtime.fail(__polyrust_callResult_17.error().code(), __polyrust_callResult_17.error().message());
      }
-    return org.polyrust.generated.Runtime.ok(__polyrust_callResult_18.value());
+    return org.polyrust.generated.Runtime.ok(__polyrust_callResult_17.value());
+  }
+  public static org.polyrust.generated.Runtime.PolyResult<Long> measured_dispatch(final Label __polyrust_input_0) {
+    final Label value_5 = Objects.requireNonNull(__polyrust_input_0);
+    final Measured __polyrust_receiver_18 = ((Measured) value_5);
+    final org.polyrust.generated.Runtime.PolyResult<Long> __polyrust_callResult_19 = __polyrust_receiver_18.measure();
+    if ((!__polyrust_callResult_19.ok())) {
+      return org.polyrust.generated.Runtime.fail(__polyrust_callResult_19.error().code(), __polyrust_callResult_19.error().message());
+     }
+    return org.polyrust.generated.Runtime.ok(__polyrust_callResult_19.value());
   }
   public static org.polyrust.generated.Runtime.PolyResult<String> option_dispatch(final Label __polyrust_input_0) {
-    final Label value = Objects.requireNonNull(__polyrust_input_0);
-    final org.polyrust.generated.Runtime.PolyOption<Labelled> __polyrust_matchValue_19 = org.polyrust.generated.Runtime.optionSome(((Labelled) value));
-    String __polyrust_matchResult_20;
-    if (org.polyrust.generated.Runtime.optionIsSome(__polyrust_matchValue_19)) {
-      final Labelled renderer = org.polyrust.generated.Runtime.optionValue(__polyrust_matchValue_19);
-      final org.polyrust.generated.Runtime.PolyResult<String> __polyrust_callResult_21 = renderer.label("option:");
-      if ((!__polyrust_callResult_21.ok())) {
-        return org.polyrust.generated.Runtime.fail(__polyrust_callResult_21.error().code(), __polyrust_callResult_21.error().message());
+    final Label value_6 = Objects.requireNonNull(__polyrust_input_0);
+    final org.polyrust.generated.Runtime.PolyOption<Labelled> __polyrust_matchValue_20 = org.polyrust.generated.Runtime.optionSome(((Labelled) value_6));
+    String __polyrust_matchResult_21;
+    if (org.polyrust.generated.Runtime.optionIsSome(__polyrust_matchValue_20)) {
+      final Labelled renderer_2 = org.polyrust.generated.Runtime.optionValue(__polyrust_matchValue_20);
+      final org.polyrust.generated.Runtime.PolyResult<String> __polyrust_callResult_22 = renderer_2.label("option:");
+      if ((!__polyrust_callResult_22.ok())) {
+        return org.polyrust.generated.Runtime.fail(__polyrust_callResult_22.error().code(), __polyrust_callResult_22.error().message());
        }
-      __polyrust_matchResult_20 = __polyrust_callResult_21.value();
+      __polyrust_matchResult_21 = __polyrust_callResult_22.value();
      } else {
-      if ((!org.polyrust.generated.Runtime.optionIsSome(__polyrust_matchValue_19))) {
-        __polyrust_matchResult_20 = "none";
+      if ((!org.polyrust.generated.Runtime.optionIsSome(__polyrust_matchValue_20))) {
+        __polyrust_matchResult_21 = "none";
        } else {
         throw new AssertionError("verified CoreIR match was unexpectedly non-exhaustive");
       }
     }
-    return org.polyrust.generated.Runtime.ok(__polyrust_matchResult_20);
+    return org.polyrust.generated.Runtime.ok(__polyrust_matchResult_21);
   }
   public static org.polyrust.generated.Runtime.PolyResult<String> result_dispatch(final Label __polyrust_input_0) {
-    final Label value = Objects.requireNonNull(__polyrust_input_0);
-    final org.polyrust.generated.Runtime.PolyValueResult<Labelled, String> __polyrust_matchValue_22 = org.polyrust.generated.Runtime.valueResultOk(((Labelled) value));
-    String __polyrust_matchResult_23;
-    if (org.polyrust.generated.Runtime.valueResultIsOk(__polyrust_matchValue_22)) {
-      final Labelled renderer = org.polyrust.generated.Runtime.valueResultValue(__polyrust_matchValue_22);
-      final org.polyrust.generated.Runtime.PolyResult<String> __polyrust_callResult_24 = renderer.label("result:");
-      if ((!__polyrust_callResult_24.ok())) {
-        return org.polyrust.generated.Runtime.fail(__polyrust_callResult_24.error().code(), __polyrust_callResult_24.error().message());
+    final Label value_7 = Objects.requireNonNull(__polyrust_input_0);
+    final org.polyrust.generated.Runtime.PolyValueResult<Labelled, String> __polyrust_matchValue_23 = org.polyrust.generated.Runtime.valueResultOk(((Labelled) value_7));
+    String __polyrust_matchResult_24;
+    if (org.polyrust.generated.Runtime.valueResultIsOk(__polyrust_matchValue_23)) {
+      final Labelled renderer_3 = org.polyrust.generated.Runtime.valueResultValue(__polyrust_matchValue_23);
+      final org.polyrust.generated.Runtime.PolyResult<String> __polyrust_callResult_25 = renderer_3.label("result:");
+      if ((!__polyrust_callResult_25.ok())) {
+        return org.polyrust.generated.Runtime.fail(__polyrust_callResult_25.error().code(), __polyrust_callResult_25.error().message());
        }
-      __polyrust_matchResult_23 = __polyrust_callResult_24.value();
+      __polyrust_matchResult_24 = __polyrust_callResult_25.value();
      } else {
-      if ((!org.polyrust.generated.Runtime.valueResultIsOk(__polyrust_matchValue_22))) {
-        final String message = org.polyrust.generated.Runtime.valueResultError(__polyrust_matchValue_22);
-        __polyrust_matchResult_23 = message;
+      if ((!org.polyrust.generated.Runtime.valueResultIsOk(__polyrust_matchValue_23))) {
+        final String message = org.polyrust.generated.Runtime.valueResultError(__polyrust_matchValue_23);
+        __polyrust_matchResult_24 = message;
        } else {
         throw new AssertionError("verified CoreIR match was unexpectedly non-exhaustive");
       }
     }
-    return org.polyrust.generated.Runtime.ok(__polyrust_matchResult_23);
+    return org.polyrust.generated.Runtime.ok(__polyrust_matchResult_24);
   }
   public static org.polyrust.generated.Runtime.PolyResult<Labelled> return_interface(final Label __polyrust_input_0) {
-    final Label value = Objects.requireNonNull(__polyrust_input_0);
-    return org.polyrust.generated.Runtime.ok(((Labelled) value));
+    final Label value_8 = Objects.requireNonNull(__polyrust_input_0);
+    return org.polyrust.generated.Runtime.ok(((Labelled) value_8));
   }
   public static org.polyrust.generated.Runtime.PolyResult<String> static_dispatch(final Label __polyrust_input_0, final String __polyrust_input_1) {
-    final Label value = Objects.requireNonNull(__polyrust_input_0);
-    final String prefix = org.polyrust.generated.Runtime.requireScalarString(__polyrust_input_1);
-    final org.polyrust.generated.Runtime.PolyResult<String> __polyrust_callResult_25 = value.label(prefix);
-    if ((!__polyrust_callResult_25.ok())) {
-      return org.polyrust.generated.Runtime.fail(__polyrust_callResult_25.error().code(), __polyrust_callResult_25.error().message());
+    final Label value_9 = Objects.requireNonNull(__polyrust_input_0);
+    final String prefix_2 = org.polyrust.generated.Runtime.requireScalarString(__polyrust_input_1);
+    final org.polyrust.generated.Runtime.PolyResult<String> __polyrust_callResult_26 = value_9.label(prefix_2);
+    if ((!__polyrust_callResult_26.ok())) {
+      return org.polyrust.generated.Runtime.fail(__polyrust_callResult_26.error().code(), __polyrust_callResult_26.error().message());
      }
-    return org.polyrust.generated.Runtime.ok(__polyrust_callResult_25.value());
+    return org.polyrust.generated.Runtime.ok(__polyrust_callResult_26.value());
   }
   public static org.polyrust.generated.Runtime.PolyOption<Labelled> __polyrust_noneOfOption19_Interface8_Labelled() {
     return org.polyrust.generated.Runtime.optionNone();

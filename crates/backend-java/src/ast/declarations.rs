@@ -71,6 +71,27 @@ impl JavaTypeDeclaration {
     ) -> Vec<AstViolation> {
         let mut violations =
             verify_modifiers_for(&self.modifiers, JavaModifierSite::Type { top_level });
+        violations.extend(super::qualifier_names::verify_declaration(
+            self,
+            context,
+            enclosing_names,
+        ));
+        if let Some(id) = self.declared
+            && !context.generated_type(id).is_some_and(|registered| {
+                registered.kind == self.kind
+                    && registered.visibility == self.visibility
+                    && registered.name == self.name.as_str()
+                    && (!matches!(
+                        registered.origin,
+                        portable_codegen::GeneratedOrigin::CoreDeclaration(_)
+                    ) || self.type_parameters.is_empty())
+            })
+        {
+            violations.push(AstViolation::new(
+                DiagnosticCode::InvalidStructure,
+                "Java type declaration does not match its registered kind, name, and visibility",
+            ));
+        }
         if enclosing_names.contains(&self.name) {
             violations.push(AstViolation::new(
                 DiagnosticCode::DuplicateDeclaration,
@@ -121,6 +142,7 @@ impl JavaTypeDeclaration {
             ));
         }
         violations.extend(verify_declaration_kind_grammar(self));
+        violations.extend(super::uninhabited::verify(self, context, top_level));
         violations.extend(verify_sealed_permits(self, context));
         violations.extend(verify_field_initializer_declaration_order(self));
         match &self.heritage {

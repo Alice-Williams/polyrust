@@ -34,7 +34,7 @@ impl Lowering<'_> {
                         .lower(
                             &mut (),
                             JavaLocalBindingsInput::Bind {
-                                name: binding.name.clone(),
+                                name: self.names.local(*local).as_str().to_owned(),
                                 ty: self.ty(binding.ty)?,
                                 value: Box::new(plan.value),
                             },
@@ -54,6 +54,7 @@ impl Lowering<'_> {
                     body,
                     ..
                 } => {
+                    let binding_name = self.names.local(*binding).as_str().to_owned();
                     let binding = self.core.local(*binding).expect("verified local");
                     let iterable = self.expr_plan(*iterable, callable_return)?;
                     statements.extend(iterable.statements);
@@ -61,7 +62,7 @@ impl Lowering<'_> {
                         &mut (),
                         JavaLoopsInput::ForEach {
                             binding_type: self.ty(binding.ty)?,
-                            binding: binding.name.clone(),
+                            binding: binding_name,
                             iterable: Box::new(iterable.value),
                             body: self.block(*body, BlockMode::StatementBody, callable_return)?,
                         },

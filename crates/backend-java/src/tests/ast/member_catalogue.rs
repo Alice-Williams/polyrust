@@ -29,6 +29,7 @@ fn runtime_member_catalogue_rejects_false_owner_and_result_claims() {
 fn value_references_match_authoritative_registered_and_known_field_types() {
     let mut builder = portable_codegen::TargetAstBuilder::new(JavaDialect);
     let generated = builder.value(portable_codegen::GeneratedValue {
+        visibility: crate::ast::JavaVisibility::Public,
         name: "number".to_owned(),
         ty: TargetTypeRef::Primitive(JavaPrimitive::Int),
         origin: portable_codegen::GeneratedOrigin::Synthesized(

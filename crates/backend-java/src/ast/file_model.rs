@@ -7,6 +7,7 @@ use portable_codegen::GeneratedSymbolId;
 pub enum JavaFileItem {
     Type {
         declared: Vec<GeneratedSymbolId>,
+        conformances: Box<super::conformance_inventory::JavaConformanceInventory>,
         declaration: JavaTypeDeclaration,
     },
     RuntimeMembers {

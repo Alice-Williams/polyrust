@@ -26,7 +26,7 @@ impl Lowering<'_> {
                 CoreDeclaration::Record(id) => {
                     let item = self.core.record(id).expect("verified record");
                     let generated = self.builder.generated_type(GeneratedType {
-                        name: item.header.name.clone(),
+                        name: self.names.record(id).as_str().to_owned(),
                         kind: JavaDeclarationKind::Record,
                         visibility: java_visibility(item.header.visibility),
                         origin: GeneratedOrigin::CoreDeclaration(*declaration),
@@ -39,7 +39,7 @@ impl Lowering<'_> {
                     let item = self.core.enumeration(id).expect("verified enum");
                     let payload_free = self.enum_is_payload_free(id);
                     let generated = self.builder.generated_type(GeneratedType {
-                        name: item.header.name.clone(),
+                        name: self.names.enumeration(id).as_str().to_owned(),
                         kind: if payload_free {
                             JavaDeclarationKind::Enum
                         } else {
@@ -54,7 +54,7 @@ impl Lowering<'_> {
                     for variant in item.variants.iter().filter(|_| !payload_free) {
                         let value = self.core.variant(*variant).expect("verified variant");
                         let generated = self.builder.generated_type(GeneratedType {
-                            name: format!("{}{}", item.header.name, value.header.name),
+                            name: self.names.variant(*variant).as_str().to_owned(),
                             kind: JavaDeclarationKind::Record,
                             visibility: java_visibility(item.header.visibility),
                             origin: GeneratedOrigin::CoreDeclaration(*declaration),
@@ -67,7 +67,7 @@ impl Lowering<'_> {
                 CoreDeclaration::Interface(id) => {
                     let item = self.core.interface(id).expect("verified interface");
                     let generated = self.builder.generated_type(GeneratedType {
-                        name: item.header.name.clone(),
+                        name: self.names.interface(id).as_str().to_owned(),
                         kind: JavaDeclarationKind::SealedInterface,
                         visibility: java_visibility(item.header.visibility),
                         origin: GeneratedOrigin::CoreDeclaration(*declaration),
@@ -92,7 +92,8 @@ impl Lowering<'_> {
                     let value = self.core.constant(id).expect("verified constant");
                     let java_type = self.ty(value.ty)?;
                     let symbol = self.builder.value(GeneratedValue {
-                        name: value.header.name.clone(),
+                        visibility: java_visibility(value.header.visibility),
+                        name: self.names.constant(id).as_str().to_owned(),
                         ty: JavaDialect.registered_type(&java_type),
                         origin: GeneratedOrigin::CoreDeclaration(*declaration),
                         source: value.header.source.clone(),
@@ -112,7 +113,7 @@ impl Lowering<'_> {
                         .collect::<Result<Vec<_>, _>>()?;
                     let result = self.poly_result_type(value.return_type)?;
                     let symbol = self.builder.callable(GeneratedCallable {
-                        name: value.header.name.clone(),
+                        name: self.names.function(id).as_str().to_owned(),
                         signature: TargetCallableSignature {
                             invocation: JavaInvocationKind::Static,
                             receiver: None,
@@ -146,7 +147,7 @@ impl Lowering<'_> {
                         let result = self.poly_result_type(method.return_type)?;
                         let symbol = self.builder.interface_method(GeneratedInterfaceMethod {
                             owner,
-                            name: method.header.name.clone(),
+                            name: self.names.method(*method_id).as_str().to_owned(),
                             signature: TargetCallableSignature {
                                 invocation: JavaInvocationKind::Instance,
                                 receiver: Some(JavaDialect.registered_type(&receiver)),
@@ -172,7 +173,8 @@ impl Lowering<'_> {
                         for variant_id in &enumeration.variants {
                             let variant = self.core.variant(*variant_id).expect("verified variant");
                             let symbol = self.builder.value(GeneratedValue {
-                                name: variant.header.name.clone(),
+                                visibility: crate::ast::JavaVisibility::Public,
+                                name: self.names.enum_value(*variant_id).as_str().to_owned(),
                                 ty: JavaDialect.registered_type(&ty),
                                 origin: GeneratedOrigin::CoreDeclaration(*declaration),
                                 source: variant.header.source.clone(),

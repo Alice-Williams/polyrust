@@ -19,6 +19,7 @@ mod arena_nodes;
 pub use arena_nodes::{JavaArenaExpression, JavaArenaStatement};
 mod ast_binding;
 mod catalogue;
+mod declaration_paths;
 mod file_checks;
 mod linker;
 

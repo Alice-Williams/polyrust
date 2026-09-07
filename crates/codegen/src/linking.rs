@@ -1546,11 +1546,18 @@ fn derive_and_validate_file_graph<D: LinkerDialect>(
             (0..package.callables().len())
                 .map(|index| GeneratedSymbolId::Callable(GeneratedCallableId::from_index(index))),
         )
+        .chain((0..package.interface_methods().len()).map(|index| {
+            GeneratedSymbolId::InterfaceMethod(GeneratedInterfaceMethodId::from_index(index))
+        }))
+        .chain(
+            (0..package.values().len())
+                .map(|index| GeneratedSymbolId::Value(GeneratedValueId::from_index(index))),
+        )
     {
         if !declarations.contains_key(&symbol) {
             diagnostics.push(Diagnostic::error(
                 DiagnosticCode::InvalidStructure,
-                "generated top-level symbol is not placed in a source file",
+                "generated symbol is not placed in a source file",
                 generated_symbol_source(package, symbol)
                     .cloned()
                     .unwrap_or_else(|| SourceRef::logical(["target-linker", "file-graph"])),
@@ -1632,7 +1639,9 @@ fn generated_symbol_is_public<D: LinkerDialect>(
             .interface_method(id)
             .and_then(|value| package.generated_type(value.owner))
             .is_some_and(|owner| dialect.is_public(&owner.visibility)),
-        GeneratedSymbolId::Value(_) => false,
+        GeneratedSymbolId::Value(id) => package
+            .value(id)
+            .is_some_and(|value| dialect.is_public(&value.visibility)),
     }
 }
 
@@ -1763,7 +1772,7 @@ fn allocate_bindings<D: LinkerDialect>(
             requested: value.name.clone(),
             namespace: dialect.value_namespace(),
             scope: BindingScope::Package,
-            public: false,
+            public: dialect.is_public(&value.visibility),
             source: value.source.clone(),
         });
     }
@@ -3793,13 +3802,15 @@ mod tests {
             origin: GeneratedOrigin::Synthesized(SynthesisReason::PackageEntryPoint),
             source: source("generated-callable"),
         });
-        let _first_value = builder.value(GeneratedValue {
+        let first_value = builder.value(GeneratedValue {
+            visibility: Visibility::Private,
             name: "temporary".to_owned(),
             ty: TargetTypeRef::Known(KnownType::Clock),
             origin: GeneratedOrigin::Synthesized(SynthesisReason::EvaluationTemporary),
             source: source("first-value"),
         });
-        let _second_value = builder.value(GeneratedValue {
+        let second_value = builder.value(GeneratedValue {
+            visibility: Visibility::Private,
             name: "temporary".to_owned(),
             ty: TargetTypeRef::Runtime(RuntimeType::Error),
             origin: GeneratedOrigin::Runtime(AstOrigin::Runtime),
@@ -3847,6 +3858,8 @@ mod tests {
                 FileItem::Declaration(GeneratedSymbolId::Type(generated_type)),
                 FileItem::Declaration(GeneratedSymbolId::Type(_private_type)),
                 FileItem::Declaration(GeneratedSymbolId::Callable(callable)),
+                FileItem::Declaration(GeneratedSymbolId::Value(first_value)),
+                FileItem::Declaration(GeneratedSymbolId::Value(second_value)),
                 FileItem::Root(statement),
             ],
             Template::Source,
@@ -4325,6 +4338,8 @@ mod tests {
         );
         assert_eq!(verify_linked_package(&permitted), Ok(()));
     }
+
+    include!("tests/linking_value_visibility.rs");
 
     #[test]
     fn public_collision_fails_while_private_collision_is_stably_renamed() {

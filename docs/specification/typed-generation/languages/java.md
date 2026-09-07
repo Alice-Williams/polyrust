@@ -103,11 +103,33 @@ switch.
 
 ## 2. Capability strategies
 
+### Target declaration identity and access
+
+Every top-level type name MUST be unique across the generated Java package,
+including structural declarations without generated IDs. Nominal declarations
+and every lexical binding form MUST respect the shared qualifier catalogue.
+Runtime/test/entry spellings require their authenticated role and placement;
+runtime nested-type exceptions require the exact registered helper AST.
+
+Generated static-value references MUST identify static fields, not enum
+variants. Enum references retain their exact enum owner. Synthetic generated
+types, callables, and values MUST resolve through typed paths derived from their
+actual AST declarations, never an assumed Generated container. Declaration-side
+spellings and constructors MUST agree with those canonical paths.
+
+Private types, enclosing types, static members, constructors, and record fields
+MUST be accessed only from the same top-level Java nest. Sharing a source file
+does not establish private access. Generated construction of an explicitly
+nested class requires static membership; records/enums/interfaces retain Java's
+implicit-static rules. These checks supplement signature/identity verification
+and do not claim arbitrary Core-to-AST functional equivalence.
+
 Implementation status: the totality and exact-strategy contracts above are
-requirements, not yet fully established guarantees. Review of M34A-10W found
-admitted names, erased interface signatures, and zero-implementation interfaces
-which the current Java preflight rejects, plus strategy certificates selected
-independently of executable mappings. These are completion blockers tracked in
+requirements, not yet fully established guarantees. M34A-10X now implements
+identity-keyed name allocation and the target-only uninhabited interface
+representation, with typed/native/mutation regressions; its integration and
+fresh review are still required. Strategy certificates remain selected
+independently of executable mappings. These completion gates are tracked in
 [M34A-10X](../../../plan/tasks/M34A-10X-java-typed-totality.md) and
 [M34A-10Y](../../../plan/tasks/M34A-10Y-java-strategy-certificates.md).
 
@@ -294,8 +316,9 @@ option/result branch.
 Portable interfaces lower to flat sealed Java interfaces with no `extends`
 clause. Their `permits` list is derived exactly from checked implementation
 declarations, and immutable generated records/final classes explicitly
-`implement` them. An interface with no generated implementation is an explicit
-unsupported Java shape rather than an open extension point. Multiple
+`implement` them. An interface with no generated implementation uses the certified
+private zero-constant enum described in [unimplemented interfaces](java/unimplemented-interfaces.md),
+not an open extension point. Multiple
 independent interface conformances are allowed. First-class interface values
 use native Java interface dispatch, while generated APIs avoid `null`, reject
 external implementations at Java compilation time, and do not expose object
@@ -307,19 +330,68 @@ registered interface declaration. The implementation-origin enum alone is not
 proof of an override. Interface conformance and `@Override` validation use the
 same exact predicate.
 
+Registered symbols retain their supported lexical placement:
+the non-generic package entry is top-level, portable nominal declarations are its
+direct children, and registered static functions/constants remain direct members
+of their source-unit owner. Moving a symbol without changing its references MUST
+be rejected. The shared linker requires all catalogue entries, including unused
+interface methods and values, to have source-file declarations.
+
+Core function and constant references MUST remain explicitly owner-qualified even
+within the same source unit, so nested accessors/fields and locals cannot change
+their identity through Java lexical lookup. Declaration sites print only member
+spellings. Allocation reserves known type and annotation names, package roots,
+generated shells, and allocated nominal qualifiers across value-binding scopes;
+these are backend mappings, not new generic protected-name restrictions.
+The target verifier independently enforces these qualifier-safe binding scopes;
+allocation is not a substitute for verification of caller-constructed target AST.
+Abstract methods receive the same parameter uniqueness checks as concrete methods.
+Interface member reservations include inherited and implicit enum methods even
+when implementations currently exist, keeping API spellings stable if the set
+later becomes empty. Preferred-name preservation excludes that compatibility set.
+
+Every concrete implementation declaration retains a private-field checked
+method witness. Verification binds its Core implementation method identity to
+the generated record owner and interface method, including their registered
+Core origins, even when no call or coercion references the method.
+
 A generated interface's method set consists only of registered
 `JavaMethodDeclaration::Interface` identities. Structural members are admitted
 only in non-generated typed shells; conformance verification must reject, not
 filter out, any unregistered method in a generated interface.
 
+The file's declared-symbol inventory MUST equal its actual AST declarations,
+with each identity appearing exactly once. Removing both an interface method
+and its implementation does not remove the registered obligation. Multiple
+type declaration nodes cannot share one generated type identity, regardless
+of their requested spellings.
+
 Composition uses final named fields and explicit delegation. Default methods,
 interface-extension chains, abstract reusable base classes, and inherited state
 are forbidden for portable implementation.
 
-Shape preflight rejects generated static or interface method signatures that
-would illegally hide, override, or conflict with inherited `java.lang.Object`
-members after Java normalization and erasure. This applies even when the
-portable source name is otherwise legal.
+Portable names are not Java spelling promises. The Java allocator retains
+typed CoreIR declaration, field, variant, method, and local identities while
+choosing legal distinct spellings. It resolves inherited `Object` conflicts,
+record accessor versus interface method collisions, generic erasure collisions,
+generated/runtime type names, and normalization collisions. Declarations,
+constructors, projections, constants, public option/result factory suffixes,
+and both dispatch forms MUST use that same allocation. Target-only interface
+types join this namespace before AST verification. These representable names
+are not preflight errors.
+
+Allocation preserves a preferred normalized name outside the declared reservation
+sets and reserves all requests within each allocation phase before numeric suffixing.
+Ordinary portable nominal declarations and legacy payload-variant types have
+priority over private synthetic uninhabited types. After ordinary types have their
+names, the allocator derives every synthetic request from the allocated interface
+names and reserves that complete second-phase request set before suffixing it.
+Private implementation helpers MUST NOT perturb ordinary/public nominal spellings
+when implementation counts change. Distinct interface methods never merge.
+Local binding identities currently use a conservative
+package-wide namespace; interface-only parameter lists have their own namespace.
+Internal temporary prefixes remain disjoint from portable names. The target
+AST verifier still rejects illegal or forged raw Java names and signatures.
 
 `JavaHeritage` may express the shared target-only one-edge adapter policy. Its
 only certified class-extension form is a generated final leaf extending one

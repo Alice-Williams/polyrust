@@ -1,6 +1,5 @@
 //! Java lowering: records.
 
-use super::declaration_builders::identifier;
 use super::{Lowering, diagnostic};
 use crate::ast::{
     JavaHeritage, JavaKnownType, JavaMember, JavaRecordComponent, JavaRecordComponentOrigin,
@@ -24,7 +23,7 @@ impl Lowering<'_> {
         let mut members = vec![
             JavaMember::Constructor(self.generated_record_constructor(
                 self.records[&id],
-                &record.header.name,
+                self.names.record(id).as_str(),
                 record.header.visibility,
                 &record.fields,
             )?),
@@ -94,7 +93,7 @@ impl Lowering<'_> {
                 JavaRecordsInput::Declaration(Box::new(JavaRecordDeclarationInput {
                     declared: self.records[&id],
                     visibility: record.header.visibility,
-                    name: record.header.name.clone(),
+                    name: self.names.record(id).as_str().to_owned(),
                     components: record
                         .fields
                         .iter()
@@ -103,7 +102,7 @@ impl Lowering<'_> {
                             Ok(JavaRecordComponent {
                                 origin: JavaRecordComponentOrigin::Core(*field),
                                 ty: self.ty(value.ty)?,
-                                name: identifier(&value.header.name),
+                                name: self.names.field(*field).clone(),
                             })
                         })
                         .collect::<Result<Vec<_>, Vec<Diagnostic>>>()?,

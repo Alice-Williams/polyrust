@@ -3,13 +3,20 @@ use std::collections::BTreeSet;
 
 pub(crate) mod capability_fixtures;
 mod mapping_coverage;
+mod name_identity_consumers;
+mod nested_payload_matches;
+mod totality_empty_interfaces;
+mod totality_interfaces;
+mod totality_names;
+mod totality_nominal_factories;
+mod totality_oracle;
 mod typed_fixture;
 use capability_fixtures::{capability_coverage_fixture, portable_method_invocation_fixture};
 use portable_build::{
     Expected, I32, Invocation, ModuleBuilder, Operation, Parameter, Type, TypedValue, Value,
     Visibility, enum_arm, field, parameter, portable_name, typed_list, typed_program, variant,
 };
-use portable_codegen::{OutputContents, TypedGenerationError, TypedPipelineStage};
+use portable_codegen::OutputContents;
 use typed_fixture::typed_fixture_manifests;
 
 fn fixture() -> CheckedProgram {
@@ -22,7 +29,7 @@ fn fixture() -> CheckedProgram {
     .expect("fixture checks")
 }
 
-fn generated_text<'a>(manifest: &'a OutputManifest, path: &str) -> &'a str {
+pub(super) fn generated_text<'a>(manifest: &'a OutputManifest, path: &str) -> &'a str {
     match manifest.file(path).expect("generated file").contents() {
         OutputContents::Text(value) => value,
         OutputContents::Bytes(_) => panic!("Java source must be text"),
@@ -208,7 +215,7 @@ fn canonical_interface_and_composition_corpus_is_flat_and_deterministic() {
 }
 
 #[test]
-fn overlapping_erased_interface_methods_stop_at_capability_preflight() {
+fn overlapping_erased_interface_methods_preserve_distinct_dispatch() {
     let mut module = ModuleBuilder::new("java_overlap");
     let (first, first_method) =
         module.interface("First", Visibility::Public, vec![], |interface| {
@@ -252,24 +259,29 @@ fn overlapping_erased_interface_methods_stop_at_capability_preflight() {
         },
     );
     let checked = module.finish().expect("portable overlap is valid");
-    let error = JavaBackend::compiler()
-        .compile_checked(&checked, &BackendOptions::default())
-        .unwrap_err();
-    match error {
-        TypedGenerationError::Phase {
-            stage: TypedPipelineStage::CapabilityPreflight,
-            diagnostics,
-        } => {
-            assert_eq!(diagnostics.len(), 1);
-            assert_eq!(diagnostics[0].target.as_deref(), Some("org.polyrust.java"));
-            assert!(
-                diagnostics[0]
-                    .message
-                    .contains("Java-erased method render() collides")
-            );
+    let manifest = JavaBackend
+        .generate(&checked, &BackendOptions::default())
+        .unwrap();
+    totality_oracle::CompiledPackage::new(&manifest, "overlapping-methods").consumer(
+        r#"
+package org.polyrust.consumer;
+import org.polyrust.generated.Generated;
+public final class Consumer {
+    private Consumer() {}
+    public static void main(String[] args) {
+        Generated.Value value = new Generated.Value();
+        Generated.First first = value;
+        Generated.Second second = value;
+        if (!first.render().value().equals("first")
+            || !second.render_1().value().equals("second")
+            || !value.render().value().equals("first")
+            || !value.render_1().value().equals("second")) {
+            throw new AssertionError("interface identities merged");
         }
-        other => panic!("unexpected generation error: {other:?}"),
     }
+}
+"#,
+    );
 }
 
 #[test]

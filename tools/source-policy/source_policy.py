@@ -199,7 +199,7 @@ def _test_module_spans(mask: str) -> list[tuple[int, int]]:
 
 def _test_function_spans(mask: str) -> list[tuple[int, int]]:
     pattern = re.compile(
-        r"#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]\s*fn\s+[A-Za-z_][A-Za-z0-9_]*\s*\("
+        r"#\s*\[\s*(?:cfg\s*\(\s*test\s*\)|test)\s*\]\s*fn\s+[A-Za-z_][A-Za-z0-9_]*\s*\("
     )
     spans = []
     for match in pattern.finditer(mask):
@@ -291,6 +291,15 @@ const BODY: &str = "plain body";
     fake = '// #[cfg(test)]\nfn production() { let body = "import forbidden"; }'
     if not rust_template_offenders("fake-test.rs", fake):
         raise AssertionError("commented test attribute hid a production directive")
+    unit_test = '#[test] fn consumer() { let source = "import fixture"; }'
+    if rust_template_offenders("unit-test.rs", unit_test):
+        raise AssertionError("Rust test-harness-only function was rejected")
+    trailing = unit_test + '\nfn production() { let body = "import forbidden"; }'
+    if len(rust_template_offenders("after-unit-test.rs", trailing)) != 1:
+        raise AssertionError("unit test hid a production directive")
+    fake = '// #[test]\nfn production() { let body = "import forbidden"; }'
+    if not rust_template_offenders("fake-unit-test.rs", fake):
+        raise AssertionError("commented unit-test attribute hid a production directive")
     typed = 'template(ExampleTemplateId::Import, "import {{path}};\\n", &["path"]);'
     if rust_template_offenders("typed.rs", typed):
         raise AssertionError("typed import template was rejected")

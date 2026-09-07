@@ -28,7 +28,11 @@ impl Lowering<'_> {
                     );
                 }
                 CoreDeclaration::Interface(id) => {
-                    members.push(JavaMember::NestedType(self.interface_declaration(id)?));
+                    members.extend(
+                        self.interface_declarations(id)?
+                            .into_iter()
+                            .map(JavaMember::NestedType),
+                    );
                 }
                 CoreDeclaration::Function(id) => {
                     members.push(JavaMember::Method(self.function_method(id)?))
@@ -58,6 +62,7 @@ impl Lowering<'_> {
             .lower(
                 &mut (),
                 JavaModuleInput {
+                    conformances: crate::ast::JavaConformanceInventory::from_checked(self.core),
                     entry: self.entry.expect("Java module entry registered"),
                     declared: self.declared.clone(),
                     members,

@@ -48,6 +48,7 @@ impl JavaMember {
                         )));
                     }
                     JavaMethodDeclaration::Interface(value)
+                    | JavaMethodDeclaration::UninhabitedImplementation(value)
                     | JavaMethodDeclaration::Implementation {
                         interface: value, ..
                     } => {
@@ -90,6 +91,7 @@ impl JavaMember {
                 let mut violations =
                     verify_modifiers_for(&field.modifiers, JavaModifierSite::Field);
                 violations.extend(field.ty.verify(JavaTypeUse::Field));
+                violations.extend(super::field_registration::verify(field, context));
                 if field.initializer.is_none()
                     && field.modifiers.contains(&JavaModifier::Static)
                     && field.modifiers.contains(&JavaModifier::Final)
@@ -143,6 +145,22 @@ impl JavaMember {
                 let ty = JavaType::Reference(JavaTypeName::Generated(owner));
                 if declaration.kind == JavaDeclarationKind::Enum
                     && generated_value_matches(value.declared, &ty, context) == Some(true)
+                    && context.value(value.declared).is_some_and(|registered| {
+                        registered.name == value.name.as_str()
+                            && registered.visibility == super::JavaVisibility::Public
+                            && match registered.origin {
+                                portable_codegen::GeneratedOrigin::CoreDeclaration(
+                                    portable_core_ir::CoreDeclaration::Enum(id),
+                                ) => context.generated_type(owner).is_some_and(|owner| {
+                                    owner.origin
+                                        == portable_codegen::GeneratedOrigin::CoreDeclaration(
+                                            portable_core_ir::CoreDeclaration::Enum(id),
+                                        )
+                                }),
+                                portable_codegen::GeneratedOrigin::CoreDeclaration(_) => false,
+                                _ => true,
+                            }
+                    })
                 {
                     vec![]
                 } else {
@@ -174,14 +192,15 @@ impl JavaMember {
                         "abstract methods have no body and concrete methods have a body",
                     ));
                 }
+                let (mut scope, scope_violations) = JavaLexicalScope::for_method_in_declaration(
+                    method,
+                    owner.cloned(),
+                    declaration,
+                );
+                violations.extend(scope_violations);
+                violations.extend(scope.protect_qualifiers(context));
                 if let Some(body) = &method.body {
                     violations.extend(body.verify(context));
-                    let (mut scope, scope_violations) = JavaLexicalScope::for_method_in_declaration(
-                        method,
-                        owner.cloned(),
-                        declaration,
-                    );
-                    violations.extend(scope_violations);
                     violations.extend(verify_block_scope_in_context(
                         body,
                         &mut scope,

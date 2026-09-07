@@ -2,13 +2,12 @@
 
 use super::declaration_model::{
     JavaDeclarationKind, JavaHeritage, JavaMember, JavaMethod, JavaMethodDeclaration, JavaModifier,
-    JavaTypeDeclaration,
+    JavaTypeDeclaration, JavaVisibility,
 };
 use super::file_model::JavaFileItem;
 use super::identifiers::JavaIdentifier;
 use super::method_contracts::{
-    interface_implementation_matches, registered_interface_implementation_matches,
-    runtime_semantic_implementation_matches,
+    registered_interface_implementation_matches, runtime_semantic_implementation_matches,
 };
 use super::runtime_members::JavaRuntimeMember;
 use super::types::{JavaKnownType, JavaType, JavaTypeName};
@@ -45,10 +44,15 @@ pub(super) fn verify_interface_conformance(
                                 if matches!(
                                     method.declared,
                                     JavaMethodDeclaration::Implementation { interface, .. }
+                                    | JavaMethodDeclaration::UninhabitedImplementation(interface)
                                         if interface == required_method
                                 ) =>
                             {
                                 registered_interface_implementation_matches(
+                                    declaration,
+                                    method,
+                                    context,
+                                ) || super::uninhabited::method_matches(
                                     declaration,
                                     method,
                                     context,
@@ -159,7 +163,8 @@ pub(super) fn verify_method_registration(
             None,
         ),
         JavaMethodDeclaration::Interface(id)
-        | JavaMethodDeclaration::Implementation { interface: id, .. } => (
+        | JavaMethodDeclaration::Implementation { interface: id, .. }
+        | JavaMethodDeclaration::UninhabitedImplementation(id) => (
             context.interface_method(id).map(|value| &value.signature),
             context
                 .interface_method(id)
@@ -186,27 +191,34 @@ pub(super) fn verify_method_registration(
         registered.parameters == actual_parameters && registered.return_type == actual_return;
     let declaration_matches = match method.declared {
         JavaMethodDeclaration::Structural => true,
-        JavaMethodDeclaration::Callable(_) => {
+        JavaMethodDeclaration::Callable(id) => {
             registered.invocation == JavaInvocationKind::Static
                 && registered.receiver.is_none()
                 && static_method
+                && context.callable(id).is_some_and(|callable| {
+                    let public = method.modifiers.contains(&JavaModifier::Public);
+                    let private = method.modifiers.contains(&JavaModifier::Private);
+                    match callable.visibility {
+                        JavaVisibility::Public => public && !private,
+                        JavaVisibility::Private => private && !public,
+                        JavaVisibility::Package => !public && !private,
+                    }
+                })
         }
         JavaMethodDeclaration::Interface(_) => {
             registered.invocation == JavaInvocationKind::Instance
                 && !static_method
                 && receiver_owner == declaration.declared
         }
-        JavaMethodDeclaration::Implementation { .. } => receiver_owner.is_some_and(|owner| {
-            interface_implementation_matches(
-                declaration,
-                method,
-                registered,
-                expected_name.expect("registered interface method has a name"),
-                owner,
-            )
-        }),
+        JavaMethodDeclaration::Implementation { .. } => {
+            registered_interface_implementation_matches(declaration, method, context)
+        }
+        JavaMethodDeclaration::UninhabitedImplementation(_) => {
+            super::uninhabited::method_matches(declaration, method, context)
+        }
     };
-    if name_matches && signature_matches && declaration_matches {
+    if name_matches && signature_matches && declaration_matches && method.type_parameters.is_empty()
+    {
         vec![]
     } else {
         vec![AstViolation::new(

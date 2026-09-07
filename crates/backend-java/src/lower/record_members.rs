@@ -30,7 +30,7 @@ impl Lowering<'_> {
         for field_id in fields {
             let field = self.core.field(*field_id).expect("verified field");
             let ty = self.ty(field.ty)?;
-            let field_name = identifier(&field.header.name);
+            let field_name = self.names.field(*field_id).clone();
             let input = JavaExpr::local(ty.clone(), field_name.clone());
             let normalized = self.normalize_boundary_value(field.ty, input)?;
             statements.extend(normalized.statements);
@@ -96,14 +96,14 @@ impl Lowering<'_> {
                     vec![
                         member_call(
                             this.clone(),
-                            &metadata.header.name,
+                            self.names.field(*field).as_str(),
                             vec![],
                             field_type.clone(),
                             JavaMemberOrigin::GeneratedField(*field),
                         ),
                         member_call(
                             other.clone(),
-                            &metadata.header.name,
+                            self.names.field(*field).as_str(),
                             vec![],
                             field_type,
                             JavaMemberOrigin::GeneratedField(*field),

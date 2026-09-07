@@ -185,6 +185,12 @@ impl LinkerDialect for JavaDialect {
         let locally_declared = item.declared_symbols().into_iter().collect::<BTreeSet<_>>();
         let mut names = BTreeMap::new();
         for symbol in item.symbols() {
+            if let TargetSymbolRef::Generated(id) = symbol
+                && let Some(path) = super::declaration_paths::synthetic_path(package, id)?
+            {
+                names.insert(symbol, JavaResolvedName::DeclaredPath(path));
+                continue;
+            }
             let Some(resolved) = references.get(&symbol) else {
                 return Err(AstViolation::new(
                     DiagnosticCode::UnresolvedReference,
@@ -201,10 +207,24 @@ impl LinkerDialect for JavaDialect {
                     ) && !locally_declared.contains(&GeneratedSymbolId::Type(id))
                 }
                 TargetSymbolRef::Generated(GeneratedSymbolId::Callable(id)) => {
-                    !locally_declared.contains(&GeneratedSymbolId::Callable(id))
+                    package.callable(id).is_some_and(|value| {
+                        matches!(
+                            value.origin,
+                            GeneratedOrigin::CoreDeclaration(
+                                portable_core_ir::CoreDeclaration::Function(_)
+                            )
+                        )
+                    }) || !locally_declared.contains(&GeneratedSymbolId::Callable(id))
                 }
                 TargetSymbolRef::Generated(GeneratedSymbolId::Value(id)) => {
-                    !locally_declared.contains(&GeneratedSymbolId::Value(id))
+                    package.value(id).is_some_and(|value| {
+                        matches!(
+                            value.origin,
+                            GeneratedOrigin::CoreDeclaration(
+                                portable_core_ir::CoreDeclaration::Constant(_)
+                            )
+                        )
+                    }) || !locally_declared.contains(&GeneratedSymbolId::Value(id))
                 }
                 _ => false,
             };

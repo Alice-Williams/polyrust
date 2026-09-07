@@ -19,7 +19,10 @@ filegroup(
 
 rust_library(
     name = "portable_codegen",
-    srcs = glob(["src/**/*.rs"]),
+    srcs = glob(
+        ["src/**/*.rs"],
+        exclude = ["src/tests/**"],
+    ),
     crate_name = "portable_codegen",
     edition = "2024",
     visibility = ["//visibility:public"],
@@ -36,14 +39,38 @@ rust_library(
 
 rust_test(
     name = "portable_codegen_test",
-    crate = ":portable_codegen",
-    deps = ["//crates/build:portable_build"],
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "portable_codegen",
+    crate_root = "src/lib.rs",
+    edition = "2024",
+    deps = [
+        "//crates/build:portable_build",
+        "//crates/check:portable_check",
+        "//crates/core-ir:portable_core_ir",
+        "//crates/diagnostics:portable_diagnostics",
+        "//crates/ir:portable_ir",
+        "@crates//:handlebars",
+        "@crates//:serde",
+        "@crates//:serde_json",
+    ],
 )
 
 rust_test(
     name = "typed_pipeline_test",
-    crate = ":portable_codegen",
-    deps = ["//crates/build:portable_build"],
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "portable_codegen",
+    crate_root = "src/lib.rs",
+    edition = "2024",
+    deps = [
+        "//crates/build:portable_build",
+        "//crates/check:portable_check",
+        "//crates/core-ir:portable_core_ir",
+        "//crates/diagnostics:portable_diagnostics",
+        "//crates/ir:portable_ir",
+        "@crates//:handlebars",
+        "@crates//:serde",
+        "@crates//:serde_json",
+    ],
 )
 
 test_suite(
@@ -72,16 +99,40 @@ test_suite(
 
 rust_test(
     name = "capability_registry_test",
-    crate = ":portable_codegen",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "portable_codegen",
+    crate_root = "src/lib.rs",
+    edition = "2024",
     visibility = ["//visibility:public"],
-    deps = ["//crates/build:portable_build"],
+    deps = [
+        "//crates/build:portable_build",
+        "//crates/check:portable_check",
+        "//crates/core-ir:portable_core_ir",
+        "//crates/diagnostics:portable_diagnostics",
+        "//crates/ir:portable_ir",
+        "@crates//:handlebars",
+        "@crates//:serde",
+        "@crates//:serde_json",
+    ],
 )
 
 rust_test(
     name = "target_ast_test",
-    crate = ":portable_codegen",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "portable_codegen",
+    crate_root = "src/lib.rs",
+    edition = "2024",
     visibility = ["//visibility:public"],
-    deps = ["//crates/build:portable_build"],
+    deps = [
+        "//crates/build:portable_build",
+        "//crates/check:portable_check",
+        "//crates/core-ir:portable_core_ir",
+        "//crates/diagnostics:portable_diagnostics",
+        "//crates/ir:portable_ir",
+        "@crates//:handlebars",
+        "@crates//:serde",
+        "@crates//:serde_json",
+    ],
 )
 
 test_suite(
@@ -92,16 +143,40 @@ test_suite(
 
 rust_test(
     name = "symbol_catalogue_test",
-    crate = ":portable_codegen",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "portable_codegen",
+    crate_root = "src/lib.rs",
+    edition = "2024",
     visibility = ["//visibility:public"],
-    deps = ["//crates/build:portable_build"],
+    deps = [
+        "//crates/build:portable_build",
+        "//crates/check:portable_check",
+        "//crates/core-ir:portable_core_ir",
+        "//crates/diagnostics:portable_diagnostics",
+        "//crates/ir:portable_ir",
+        "@crates//:handlebars",
+        "@crates//:serde",
+        "@crates//:serde_json",
+    ],
 )
 
 rust_test(
     name = "target_linker_test",
-    crate = ":portable_codegen",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "portable_codegen",
+    crate_root = "src/lib.rs",
+    edition = "2024",
     visibility = ["//visibility:public"],
-    deps = ["//crates/build:portable_build"],
+    deps = [
+        "//crates/build:portable_build",
+        "//crates/check:portable_check",
+        "//crates/core-ir:portable_core_ir",
+        "//crates/diagnostics:portable_diagnostics",
+        "//crates/ir:portable_ir",
+        "@crates//:handlebars",
+        "@crates//:serde",
+        "@crates//:serde_json",
+    ],
 )
 
 test_suite(

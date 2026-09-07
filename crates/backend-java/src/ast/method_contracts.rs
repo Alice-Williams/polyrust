@@ -54,6 +54,14 @@ fn method_has_override_target(
 ) -> bool {
     if matches!(
         method.declared,
+        JavaMethodDeclaration::UninhabitedImplementation(_)
+    ) {
+        return declaration.is_some_and(|declaration| {
+            super::uninhabited::method_matches(declaration, method, context)
+        });
+    }
+    if matches!(
+        method.declared,
         JavaMethodDeclaration::Implementation { .. }
     ) {
         return declaration.is_some_and(|declaration| {
@@ -104,9 +112,15 @@ pub(super) fn registered_interface_implementation_matches(
     method: &JavaMethod,
     context: &TargetAstContext<'_, JavaDialect>,
 ) -> bool {
-    let JavaMethodDeclaration::Implementation { interface, .. } = method.declared else {
+    let JavaMethodDeclaration::Implementation {
+        interface, witness, ..
+    } = method.declared
+    else {
         return false;
     };
+    if !witness.matches(declaration, method.declared, context) {
+        return false;
+    }
     let Some(registered) = context.interface_method(interface) else {
         return false;
     };
@@ -132,6 +146,7 @@ pub(super) fn interface_implementation_matches(
         .map(|parameter| JavaDialect.registered_type(&parameter.ty))
         .collect::<Vec<_>>();
     public_concrete_instance_method(method)
+        && method.type_parameters.is_empty()
         && method.name == JavaIdentifier::from_portable(expected_name)
         && registered.invocation == JavaInvocationKind::Instance
         && registered.receiver == Some(TargetTypeRef::Generated(owner))

@@ -11,12 +11,12 @@ use portable_core_ir::CoreInterfaceId;
 use portable_diagnostics::Diagnostic;
 
 impl Lowering<'_> {
-    pub(super) fn interface_declaration(
+    pub(super) fn interface_declarations(
         &self,
         id: CoreInterfaceId,
-    ) -> Result<JavaTypeDeclaration, Vec<Diagnostic>> {
+    ) -> Result<Vec<JavaTypeDeclaration>, Vec<Diagnostic>> {
         let interface = self.core.interface(id).expect("verified interface");
-        let permits = self
+        let mut permits: Vec<JavaType> = self
             .core
             .implementations()
             .iter()
@@ -27,6 +27,11 @@ impl Lowering<'_> {
                 ))
             })
             .collect();
+        if let Some(synthetic) = self.uninhabited.get(&id) {
+            permits.push(JavaType::Reference(JavaTypeName::Generated(
+                synthetic.declared,
+            )));
+        }
         let methods = interface
             .methods
             .iter()
@@ -37,7 +42,7 @@ impl Lowering<'_> {
                     .expect("verified method");
                 Ok(JavaInterfaceMethodInput {
                     declared: self.interface_methods[method_id],
-                    name: method.header.name.clone(),
+                    name: self.names.method(*method_id).as_str().to_owned(),
                     parameters: self.parameters(&method.parameters)?,
                     return_type: self.poly_result_type(method.return_type)?,
                 })
@@ -51,13 +56,15 @@ impl Lowering<'_> {
                 JavaInterfacesInput::Declaration(Box::new(JavaInterfaceDeclarationInput {
                     declared: self.interfaces[&id],
                     visibility: interface.header.visibility,
-                    name: interface.header.name.clone(),
+                    name: self.names.interface(id).as_str().to_owned(),
                     permits,
                     methods,
+                    uninhabited: self.uninhabited.get(&id).cloned(),
                 })),
             )? {
-            JavaInterfacesNode::Declaration(declaration) => Ok(*declaration),
-            JavaInterfacesNode::Type(_)
+            JavaInterfacesNode::Declaration(declarations) => Ok(declarations),
+            JavaInterfacesNode::UninhabitedType(_)
+            | JavaInterfacesNode::Type(_)
             | JavaInterfacesNode::Conformance(_)
             | JavaInterfacesNode::Expression(_) => Err(vec![diagnostic(
                 "Java Interfaces mapping returned the wrong declaration node",

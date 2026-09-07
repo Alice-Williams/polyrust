@@ -2,10 +2,9 @@ use super::{
     DiagnosticCode, GeneratedSymbolId, JavaBlock, JavaConstructor, JavaDeclarationKind,
     JavaDialect, JavaExpr, JavaExprKind, JavaField, JavaFieldRef, JavaHeritage, JavaIdentifier,
     JavaKnownType, JavaLiteral, JavaMember, JavaMethod, JavaMethodDeclaration, JavaModifier,
-    JavaPrecedence, JavaPrimitive, JavaRecordComponent, JavaRecordComponentOrigin,
-    JavaRuntimeMember, JavaStmt, JavaType, JavaTypeDeclaration, JavaTypeName, JavaValueRef,
-    JavaVisibility, fixture_core_field, fixture_declaration, parameter, verifier_source,
-    verify_fixture,
+    JavaPrecedence, JavaPrimitive, JavaRecordComponent, JavaRecordComponentOrigin, JavaStmt,
+    JavaType, JavaTypeDeclaration, JavaTypeName, JavaValueRef, JavaVisibility, fixture_core_field,
+    fixture_declaration, parameter, verifier_source, verify_fixture,
 };
 
 #[test]
@@ -85,7 +84,8 @@ fn this_references_must_match_the_lexical_owner() {
 #[test]
 fn structural_fields_require_declared_type_and_final_assignment_context() {
     let int = JavaType::primitive(JavaPrimitive::Int);
-    let owner = JavaType::known(JavaKnownType::RuntimeError);
+    let (builder, owner_id) = super::ordinary_owner_fixture();
+    let owner = JavaType::Reference(JavaTypeName::Generated(owner_id));
     let string = JavaType::known(JavaKnownType::String);
     let this = || JavaExpr {
         ty: owner.clone(),
@@ -104,33 +104,38 @@ fn structural_fields_require_declared_type_and_final_assignment_context() {
         },
     };
     let valid = JavaTypeDeclaration {
-        declared: None,
-        kind: JavaDeclarationKind::Record,
+        declared: Some(owner_id),
+        kind: JavaDeclarationKind::FinalClass,
         visibility: JavaVisibility::Package,
         modifiers: vec![],
-        name: JavaIdentifier::from_portable("PolyError"),
+        name: JavaIdentifier::from_portable("Fixture"),
         type_parameters: vec![],
-        record_components: vec![JavaRecordComponent {
-            origin: JavaRecordComponentOrigin::Runtime(JavaRuntimeMember::ErrorCode),
-            ty: string.clone(),
-            name: JavaIdentifier::from_portable("code"),
-        }],
+        record_components: vec![],
         heritage: JavaHeritage::None,
         permits: vec![],
-        members: vec![JavaMember::Constructor(JavaConstructor {
-            modifiers: vec![],
-            name: JavaIdentifier::from_portable("PolyError"),
-            parameters: vec![parameter(string.clone(), "code")],
-            body: JavaBlock::new(vec![JavaStmt::Assign {
-                target: field("code", string.clone()),
-                value: JavaExpr::local(string.clone(), JavaIdentifier::from_portable("code")),
-            }]),
-        })],
+        members: vec![
+            JavaMember::Field(JavaField {
+                declared: None,
+                modifiers: vec![JavaModifier::Private, JavaModifier::Final],
+                ty: string.clone(),
+                name: JavaIdentifier::from_portable("code"),
+                initializer: None,
+            }),
+            JavaMember::Constructor(JavaConstructor {
+                modifiers: vec![],
+                name: JavaIdentifier::from_portable("Fixture"),
+                parameters: vec![parameter(string.clone(), "code")],
+                body: JavaBlock::new(vec![JavaStmt::Assign {
+                    target: field("code", string.clone()),
+                    value: JavaExpr::local(string.clone(), JavaIdentifier::from_portable("code")),
+                }]),
+            }),
+        ],
     };
     assert!(
         verify_fixture(
-            portable_codegen::TargetAstBuilder::new(JavaDialect),
-            vec![(vec![], valid)],
+            builder,
+            vec![(vec![GeneratedSymbolId::Type(owner_id)], valid)],
         )
         .is_ok()
     );

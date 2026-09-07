@@ -141,7 +141,8 @@ impl Lowering<'_> {
                     },
                 )? {
                 JavaInterfacesNode::Type(ty) => Ok(ty),
-                JavaInterfacesNode::Declaration(_)
+                JavaInterfacesNode::UninhabitedType(_)
+                | JavaInterfacesNode::Declaration(_)
                 | JavaInterfacesNode::Conformance(_)
                 | JavaInterfacesNode::Expression(_) => Err(vec![diagnostic(
                     "Java Interfaces mapping returned a non-type for an interface type",

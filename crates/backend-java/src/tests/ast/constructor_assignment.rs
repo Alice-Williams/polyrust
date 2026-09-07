@@ -1,14 +1,15 @@
 use super::{
-    DiagnosticCode, JavaBlock, JavaConstructor, JavaDialect, JavaExpr, JavaField, JavaIdentifier,
-    JavaKnownType, JavaLiteral, JavaMember, JavaModifier, JavaPrimitive, JavaStmt, JavaType,
-    fixture_declaration, parameter, this_field, verify_fixture,
+    DiagnosticCode, JavaBlock, JavaConstructor, JavaExpr, JavaField, JavaIdentifier, JavaLiteral,
+    JavaMember, JavaModifier, JavaPrimitive, JavaStmt, JavaType, fixture_declaration,
+    ordinary_owner_fixture, parameter, this_field, verify_fixture,
 };
 
 #[test]
 fn blank_final_fields_are_assigned_exactly_once_on_every_normal_constructor_exit() {
     let int = JavaType::primitive(JavaPrimitive::Int);
     let boolean = JavaType::primitive(JavaPrimitive::Boolean);
-    let owner = JavaType::known(JavaKnownType::RuntimeError);
+    let (_, owner_id) = ordinary_owner_fixture();
+    let owner = JavaType::Reference(super::JavaTypeName::Generated(owner_id));
     let assignment = || JavaStmt::Assign {
         target: this_field(owner.clone(), int.clone(), "value"),
         value: JavaExpr::literal(int.clone(), JavaLiteral::I32(1)),
@@ -16,7 +17,7 @@ fn blank_final_fields_are_assigned_exactly_once_on_every_normal_constructor_exit
     let constructor = |parameters, statements| {
         JavaMember::Constructor(JavaConstructor {
             modifiers: vec![],
-            name: JavaIdentifier::from_portable("PolyError"),
+            name: JavaIdentifier::from_portable("Fixture"),
             parameters,
             body: JavaBlock::new(statements),
         })
@@ -31,13 +32,13 @@ fn blank_final_fields_are_assigned_exactly_once_on_every_normal_constructor_exit
         })];
         members.extend(constructor);
         let mut declaration = fixture_declaration(members);
-        declaration.name = JavaIdentifier::from_portable("PolyError");
+        declaration.declared = Some(owner_id);
         declaration
     };
     let verify = |declaration| {
         verify_fixture(
-            portable_codegen::TargetAstBuilder::new(JavaDialect),
-            vec![(vec![], declaration)],
+            ordinary_owner_fixture().0,
+            vec![(vec![super::GeneratedSymbolId::Type(owner_id)], declaration)],
         )
     };
 

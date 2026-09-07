@@ -1,6 +1,6 @@
 # Java interfaces with no portable implementations
 
-- Status: normative design; implementation pending M34A-10X
+- Status: implemented locally in M34A-10X; integration and review pending
 - Decision: zero implementations is valid in the generic `Interfaces` capability
 
 ## Representation
@@ -28,8 +28,9 @@ add inheritance to the generic frontend or introduce an inheritance chain.
 - CoreIR preserves the interface and its empty implementation set unchanged.
 - The Java mapping chooses this representation and requests a fresh typed
   generated symbol with an explicit synthesis reason.
-- The symbol allocator reserves collision-free names; the synthetic name is
-  not constructed or referenced through raw source text.
+- The symbol allocator reserves collision-free names in the same namespace
+  as user nominal types before unresolved AST verification, not only during
+  linking. The synthetic name is not referenced through raw source text.
 - The Java AST models the empty enum, exact conformance, methods, and permits
   edge structurally. Verification checks their matching identities and types.
 - The linker resolves all references; rendering only prints certified nodes.
@@ -37,6 +38,17 @@ add inheritance to the generic frontend or introduce an inheritance chain.
 The AST verifier MUST NOT globally relax sealed-interface or enum checks to
 admit this representation. Any new internal privilege must be restricted to
 this exact synthesized shape and independently tested against mutations.
+
+The concrete AST variant is `UninhabitedEnum(interface_id)`, distinct from
+ordinary `Enum`. Its registration uses `SynthesisReason::UninhabitedInterface`.
+Each method carries `UninhabitedImplementation(interface_method_id)`, never a
+forged portable implementation ID. Verification checks the exact registered
+owner and generic signature, private visibility, exclusive permits edge,
+zero values, no constructors or exposed factories, and the fixed assertion
+body, and agreement with the registered declaration name. A generated type
+identity has exactly one AST declaration in the package, even if a duplicate
+node claims a different spelling. The normal nonempty portable-enum grammar
+is unchanged.
 
 ## Required evidence
 

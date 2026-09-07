@@ -49,6 +49,7 @@ fn verify_file_at_path(
         JavaPackage::Generated,
         placement,
         vec![JavaFileItem::Type {
+            conformances: crate::ast::JavaConformanceInventory::structural().into(),
             declared: vec![],
             declaration,
         }],
@@ -289,6 +290,7 @@ fn negative_nodes_and_heritage_exceptions_are_confined_and_fail_closed() {
 #[test]
 fn linked_runtime_members_are_verified_in_the_combined_class() {
     let shell = JavaFileItem::Type {
+        conformances: crate::ast::JavaConformanceInventory::structural().into(),
         declared: vec![],
         declaration: JavaTypeDeclaration {
             declared: None,

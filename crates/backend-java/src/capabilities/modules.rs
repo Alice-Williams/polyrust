@@ -16,6 +16,7 @@ use crate::{
 
 #[doc(hidden)]
 pub struct JavaModuleInput {
+    pub(crate) conformances: crate::ast::JavaConformanceInventory,
     pub(crate) entry: GeneratedTypeId,
     pub(crate) declared: Vec<GeneratedSymbolId>,
     pub(crate) members: Vec<JavaMember>,
@@ -61,6 +62,7 @@ impl CapabilityMapping<JavaDialect> for JavaModules {
             JavaPackage::Generated,
             JavaFilePlacement::Main,
             vec![JavaFileItem::Type {
+                conformances: input.conformances.into(),
                 declared: input.declared,
                 declaration,
             }],

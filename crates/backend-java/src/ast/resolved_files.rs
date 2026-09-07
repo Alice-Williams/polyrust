@@ -16,6 +16,7 @@ pub struct ResolvedJavaFileItem {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JavaResolvedName {
     Local(JavaIdentifier),
+    DeclaredPath(JavaDeclaredPath),
     Qualified(crate::dialect::JavaQualifiedName),
     GeneratedMember {
         owner: crate::dialect::JavaGeneratedContainer,
@@ -25,6 +26,14 @@ pub enum JavaResolvedName {
         owner: crate::dialect::JavaQualifiedName,
         member: crate::dialect::JavaMemberName,
     },
+}
+
+/// A generated declaration's verified lexical path, never a guessed container.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct JavaDeclaredPath {
+    pub(crate) package: JavaPackage,
+    pub(crate) owners: Vec<JavaIdentifier>,
+    pub(crate) member: JavaIdentifier,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]

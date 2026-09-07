@@ -73,6 +73,7 @@ impl Lowering<'_> {
         {
             JavaInterfacesNode::Expression(value) => Ok(*value),
             JavaInterfacesNode::Type(_)
+            | JavaInterfacesNode::UninhabitedType(_)
             | JavaInterfacesNode::Declaration(_)
             | JavaInterfacesNode::Conformance(_) => Err(vec![diagnostic(
                 "Java Interfaces mapping returned a declaration for an expression",

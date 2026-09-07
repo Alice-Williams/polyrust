@@ -15,9 +15,20 @@ impl TargetFileItemNode<JavaDialect> for JavaFileItem {
         match self {
             Self::Type {
                 declared,
+                conformances,
                 declaration,
             } => {
                 let mut violations = declaration.verify(context, true);
+                violations.extend(super::access::verify(self, context));
+                violations.extend(super::declaration_placement::verify(declaration, context));
+                violations.extend(conformances.verify(declaration, context));
+                violations.extend(super::file_symbols::verify_declaration_inventory(
+                    declared,
+                    declaration,
+                ));
+                violations.extend(super::file_symbols::verify_unique_type_declarations(
+                    context,
+                ));
                 violations.extend(verify_privileged_literals_in_declaration(declaration, None));
                 for symbol in declared {
                     let present = match symbol {
@@ -42,11 +53,19 @@ impl TargetFileItemNode<JavaDialect> for JavaFileItem {
                 let mut violations = members
                     .iter()
                     .flat_map(|value| {
-                        let mut violations = value.verify(context);
+                        // Nested declarations need their Runtime lexical owner.
+                        // The composed-file verifier checks them once the exact
+                        // runtime shell and all registered fragments are joined.
+                        let mut violations = if matches!(value, super::JavaMember::NestedType(_)) {
+                            Vec::new()
+                        } else {
+                            value.verify(context)
+                        };
                         violations.extend(verify_member_type_context(value, &variables, context));
                         violations
                     })
                     .collect::<Vec<_>>();
+                violations.extend(super::access::verify(self, context));
                 for member in members {
                     violations.extend(verify_privileged_literals_in_member(
                         member,

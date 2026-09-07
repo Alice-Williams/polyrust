@@ -45,6 +45,23 @@ pub(super) fn generated_value_matches(
     )
 }
 
+pub(super) fn generated_static_value_matches(
+    value: GeneratedValueId,
+    ty: &JavaType,
+    context: &TargetAstContext<'_, JavaDialect>,
+) -> Option<bool> {
+    let type_matches = generated_value_matches(value, ty, context)?;
+    let is_field = context.files().any(|file| {
+        file.items().iter().any(|item| {
+            matches!(item, JavaFileItem::Type { declaration, .. }
+            if declaration.members.iter().any(|member| {
+                matches!(member, JavaMember::Field(field) if field.declared == Some(value))
+            }))
+        })
+    });
+    Some(type_matches && is_field)
+}
+
 fn find_generated_value_type(
     declaration: &JavaTypeDeclaration,
     value: GeneratedValueId,

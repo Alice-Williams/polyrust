@@ -1,12 +1,17 @@
 //! Typed Java syntax models and responsibility-specific verification.
 
+mod access;
 mod blocks;
+mod expression_visit;
 pub use blocks::{JavaBlock, JavaLocalFinality};
 mod callable_references;
 mod completion;
+mod conformance_inventory;
+pub use conformance_inventory::JavaConformanceInventory;
 mod constructor_flow;
 mod declaration_grammar;
 mod declaration_model;
+mod declaration_placement;
 pub use declaration_model::{
     JavaAnnotation, JavaCompileFailField, JavaConstructor, JavaDeclarationKind, JavaEnumConstant,
     JavaField, JavaHeritage, JavaMember, JavaMethod, JavaMethodDeclaration, JavaModifier,
@@ -25,6 +30,7 @@ mod expression_nodes;
 pub use expression_nodes::{JavaConstructorRef, JavaExpr, JavaExprKind, JavaFieldRef};
 mod expressions;
 mod field_metadata;
+mod field_registration;
 mod file_model;
 pub use file_model::JavaFileItem;
 mod file_symbols;
@@ -33,7 +39,9 @@ mod final_assignment;
 mod generated_members;
 mod identifiers;
 pub use identifiers::JavaIdentifier;
+mod implementation_witness;
 mod initializers;
+pub use implementation_witness::JavaImplementationWitness;
 mod interface_conformance;
 mod interface_witness;
 pub use interface_witness::JavaInterfaceWitness;
@@ -47,10 +55,11 @@ mod modifiers;
 mod object_members;
 mod operator_signatures;
 mod privileged_literals;
+pub(crate) mod qualifier_names;
 mod resolved_files;
 pub use resolved_files::{
-    JavaCompilationUnit, JavaFilePlacement, JavaPackage, JavaResolvedName, JavaSourceFileKind,
-    ResolvedJavaFileItem,
+    JavaCompilationUnit, JavaDeclaredPath, JavaFilePlacement, JavaPackage, JavaResolvedName,
+    JavaSourceFileKind, ResolvedJavaFileItem,
 };
 mod runtime_members;
 pub use runtime_members::JavaRuntimeMember;
@@ -63,6 +72,7 @@ mod statements;
 mod switch_patterns;
 mod type_context;
 mod types;
+pub(crate) mod uninhabited;
 pub use types::{
     JavaArrayOwnership, JavaArrayOwnershipTransition, JavaKnownType, JavaPrimitive, JavaType,
     JavaTypeName, JavaTypeUse, JavaWildcardBound,

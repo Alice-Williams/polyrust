@@ -36,10 +36,7 @@ pub(super) fn render_type_with_extra(
     let declaration_modifiers = modifiers(&value.modifiers);
     let type_parameters = render_type_parameters(&value.type_parameters);
     let declaration_name = match value.declared {
-        Some(symbol) => resolved_name(
-            names,
-            &TargetSymbolRef::Generated(GeneratedSymbolId::Type(symbol)),
-        )?,
+        Some(symbol) => resolved_generated_member_name(names, GeneratedSymbolId::Type(symbol))?,
         None => value.name.as_str().to_owned(),
     };
     let heritage = render_heritage(&value.heritage, names)?;
@@ -91,6 +88,9 @@ pub(super) fn render_type_with_extra(
         }
         JavaDeclarationKind::Interface => Ok(format!(
             "{indent}{visibility}{declaration_modifiers}interface {declaration_name}{type_parameters} {{\n{members}{indent}}}\n"
+        )),
+        JavaDeclarationKind::UninhabitedEnum(_) => Ok(format!(
+            "{indent}{visibility}enum {declaration_name}{heritage} {{\n{indent}    ;\n{members}{indent}}}\n"
         )),
         JavaDeclarationKind::SealedInterface => Ok(format!(
             "{indent}{visibility}{declaration_modifiers}sealed interface {declaration_name}{type_parameters} permits {permits} {{\n{members}{indent}}}\n"
@@ -148,10 +148,7 @@ fn render_field(
         None => String::new(),
     };
     let field_name = match value.declared {
-        Some(symbol) => resolved_name(
-            names,
-            &TargetSymbolRef::Generated(GeneratedSymbolId::Value(symbol)),
-        )?,
+        Some(symbol) => resolved_generated_member_name(names, GeneratedSymbolId::Value(symbol))?,
         None => value.name.as_str().to_owned(),
     };
     Ok(format!(
@@ -172,11 +169,11 @@ fn render_method(
     let return_type = render_java_type(&value.return_type, names)?;
     let parameters = render_parameters(&value.parameters, names)?;
     let method_name = match value.declared {
-        JavaMethodDeclaration::Callable(symbol) => resolved_name(
-            names,
-            &TargetSymbolRef::Generated(GeneratedSymbolId::Callable(symbol)),
-        )?,
+        JavaMethodDeclaration::Callable(symbol) => {
+            resolved_generated_member_name(names, GeneratedSymbolId::Callable(symbol))?
+        }
         JavaMethodDeclaration::Interface(symbol)
+        | JavaMethodDeclaration::UninhabitedImplementation(symbol)
         | JavaMethodDeclaration::Implementation {
             interface: symbol, ..
         } => resolved_name(
@@ -218,10 +215,7 @@ fn render_annotations(values: &[JavaAnnotation], depth: usize) -> String {
     let mut output = String::new();
     let indent = indent(depth);
     for value in values {
-        let name = match value {
-            JavaAnnotation::Override => "Override",
-            JavaAnnotation::SafeVarargs => "SafeVarargs",
-        };
+        let name = value.simple_name();
         output.push_str(&format!("{indent}@{name}\n"));
     }
     output

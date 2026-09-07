@@ -13,6 +13,7 @@ fn generated_field_initializers_reject_self_and_forward_references() {
         name: &str,
     ) -> GeneratedValueId {
         builder.value(portable_codegen::GeneratedValue {
+            visibility: crate::ast::JavaVisibility::Package,
             name: name.to_owned(),
             ty: TargetTypeRef::Primitive(JavaPrimitive::Int),
             origin: portable_codegen::GeneratedOrigin::Synthesized(

@@ -63,10 +63,6 @@ impl Lowering<'_> {
                         .core
                         .implementation_method(*method)
                         .expect("verified method");
-                    let interface_method = self
-                        .core
-                        .interface_method(method_value.interface_method)
-                        .expect("verified interface method");
                     let receiver = self.typed_value(receiver)?;
                     let arguments = arguments
                         .iter()
@@ -76,7 +72,11 @@ impl Lowering<'_> {
                     self.lower_portable_test_invocation(JavaPortableTestsInput::MethodInvocation(
                         JavaPortableMethodInvocationInput {
                             receiver,
-                            method_name: interface_method.header.name.clone(),
+                            method_name: self
+                                .names
+                                .method(method_value.interface_method)
+                                .as_str()
+                                .to_owned(),
                             arguments,
                             result,
                             method: *method,
