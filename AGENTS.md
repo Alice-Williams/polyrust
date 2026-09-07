@@ -15,6 +15,12 @@
 
 # Engineering workflow
 
+- Keep source and test files focused on one responsibility. Aim for fewer
+  than 500 lines; split a file before it grows beyond 1,000 lines.
+- Put substantial fixtures and test suites in dedicated modules. Use separate
+  Bazel targets at stable dependency boundaries when independent caching is
+  useful; splitting Rust modules alone does not create independent actions.
+
 - The milestone contract and dependency order live in `docs/plan/README.md`.
   Read the active milestone before implementation and cite its ID in commits.
 - Commit and push after each completed milestone. Do not combine unrelated

@@ -28,6 +28,9 @@ pub struct JavaRecordDeclarationInput {
 
 #[doc(hidden)]
 pub enum JavaRecordsInput {
+    Type {
+        record: GeneratedTypeId,
+    },
     Declaration(Box<JavaRecordDeclarationInput>),
     Construction {
         owner: GeneratedTypeId,
@@ -44,6 +47,7 @@ pub enum JavaRecordsInput {
 
 #[doc(hidden)]
 pub enum JavaRecordsNode {
+    Type(JavaType),
     Declaration(JavaTypeDeclaration),
     Expression(JavaExpr),
 }
@@ -71,6 +75,9 @@ impl CapabilityMapping<JavaDialect> for JavaRecords {
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
         Ok(match input {
+            JavaRecordsInput::Type { record } => {
+                JavaRecordsNode::Type(JavaType::Reference(JavaTypeName::Generated(record)))
+            }
             JavaRecordsInput::Declaration(input) => {
                 JavaRecordsNode::Declaration(JavaTypeDeclaration {
                     declared: Some(input.declared),

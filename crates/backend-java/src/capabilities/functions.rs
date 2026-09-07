@@ -8,7 +8,7 @@ use super::support::{JavaCapabilityMapping, sealed};
 use crate::{
     ast::{
         JavaBlock, JavaCallableRef, JavaExpr, JavaExprKind, JavaMethod, JavaMethodDeclaration,
-        JavaModifier, JavaParameter, JavaPrecedence, JavaType,
+        JavaModifier, JavaParameter, JavaPrecedence, JavaStmt, JavaType,
     },
     dialect::JavaDialect,
     lower::{identifier, visibility_modifier},
@@ -27,9 +27,12 @@ pub struct JavaFunctionDeclarationInput {
 #[doc(hidden)]
 pub enum JavaFunctionsInput {
     Declaration(Box<JavaFunctionDeclarationInput>),
-    Local {
+    ParameterRead {
         ty: JavaType,
         name: String,
+    },
+    Return {
+        value: JavaExpr,
     },
     Call {
         result: JavaType,
@@ -42,6 +45,7 @@ pub enum JavaFunctionsInput {
 pub enum JavaFunctionsNode {
     Declaration(JavaMethod),
     Expression(JavaExpr),
+    Statement(Box<JavaStmt>),
 }
 
 impl sealed::JavaMappingOutput for JavaFunctionsNode {}
@@ -77,8 +81,11 @@ impl CapabilityMapping<JavaDialect> for JavaFunctions {
                 parameters: input.parameters,
                 body: Some(input.body),
             }),
-            JavaFunctionsInput::Local { ty, name } => {
+            JavaFunctionsInput::ParameterRead { ty, name } => {
                 JavaFunctionsNode::Expression(JavaExpr::local(ty, identifier(&name)))
+            }
+            JavaFunctionsInput::Return { value } => {
+                JavaFunctionsNode::Statement(Box::new(JavaStmt::Return(Some(value))))
             }
             JavaFunctionsInput::Call {
                 result,

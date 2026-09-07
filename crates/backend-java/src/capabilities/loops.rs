@@ -15,16 +15,23 @@ pub enum JavaLoopsInput {
     ForEach {
         binding_type: JavaType,
         binding: String,
-        iterable: JavaExpr,
+        iterable: Box<JavaExpr>,
         body: JavaBlock,
     },
-    While {
-        condition: JavaExpr,
-        body: JavaBlock,
+    BindingRead {
+        binding_type: JavaType,
+        binding: String,
     },
-    Break,
-    Continue,
 }
+
+#[doc(hidden)]
+pub enum JavaLoopsNode {
+    Statement(Box<JavaStmt>),
+    Expression(Box<JavaExpr>),
+}
+
+impl sealed::JavaMappingOutput for JavaLoopsNode {}
+impl super::support::JavaMappingOutput for JavaLoopsNode {}
 
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
@@ -37,7 +44,7 @@ impl CapabilityMapping<JavaDialect> for JavaLoops {
     type Capability = Loops;
     type Context = ();
     type Input = JavaLoopsInput;
-    type Output = JavaStmt;
+    type Output = JavaLoopsNode;
     type Error = Vec<Diagnostic>;
 
     fn lower(
@@ -51,15 +58,19 @@ impl CapabilityMapping<JavaDialect> for JavaLoops {
                 binding,
                 iterable,
                 body,
-            } => JavaStmt::ForEach {
+            } => JavaLoopsNode::Statement(Box::new(JavaStmt::ForEach {
                 binding_type,
                 binding: identifier(&binding),
-                iterable,
+                iterable: *iterable,
                 body,
-            },
-            JavaLoopsInput::While { condition, body } => JavaStmt::While { condition, body },
-            JavaLoopsInput::Break => JavaStmt::Break,
-            JavaLoopsInput::Continue => JavaStmt::Continue,
+            })),
+            JavaLoopsInput::BindingRead {
+                binding_type,
+                binding,
+            } => JavaLoopsNode::Expression(Box::new(JavaExpr::local(
+                binding_type,
+                identifier(&binding),
+            ))),
         })
     }
 }

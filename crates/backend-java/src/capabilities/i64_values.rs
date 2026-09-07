@@ -3,8 +3,18 @@
 use portable_build::{CapabilityMapping, I64Values};
 use portable_diagnostics::Diagnostic;
 
-use super::support::{JavaCapabilityMapping, sealed};
-use crate::{ast::JavaExpr, dialect::JavaDialect, lower::i64_literal};
+use super::support::{JavaCapabilityMapping, JavaValueNode, sealed};
+use crate::{
+    ast::{JavaPrimitive, JavaType},
+    dialect::JavaDialect,
+    lower::i64_literal,
+};
+
+#[doc(hidden)]
+pub enum JavaI64ValuesInput {
+    Type,
+    Value(i64),
+}
 
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
@@ -16,8 +26,8 @@ impl JavaCapabilityMapping for JavaI64Values {}
 impl CapabilityMapping<JavaDialect> for JavaI64Values {
     type Capability = I64Values;
     type Context = ();
-    type Input = i64;
-    type Output = JavaExpr;
+    type Input = JavaI64ValuesInput;
+    type Output = JavaValueNode;
     type Error = Vec<Diagnostic>;
 
     fn lower(
@@ -25,6 +35,13 @@ impl CapabilityMapping<JavaDialect> for JavaI64Values {
         _context: &mut Self::Context,
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
-        Ok(i64_literal(input))
+        Ok(match input {
+            JavaI64ValuesInput::Type => {
+                JavaValueNode::Type(JavaType::primitive(JavaPrimitive::Long))
+            }
+            JavaI64ValuesInput::Value(value) => {
+                JavaValueNode::Expression(Box::new(i64_literal(value)))
+            }
+        })
     }
 }

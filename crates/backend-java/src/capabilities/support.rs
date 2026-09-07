@@ -1,15 +1,13 @@
 //! Shared Java capability registration machinery.
 
-use portable_build::{
-    Capability, CapabilityMapping, EmptyCapabilitySlots, LanguageCapabilityPlugin,
-    LanguagePluginBuilder, MarkUnsupported, ReplaceMissing, language_plugin,
-};
-use portable_core_ir::CoreIntrinsicExpr;
-
 use crate::{
     ast::{JavaExpr, JavaStmt, JavaType},
     dialect::JavaDialect,
     lower::JavaIntrinsicExpr,
+};
+use portable_build::{
+    Capability, CapabilityMapping, EmptyCapabilitySlots, LanguageCapabilityPlugin,
+    LanguagePluginBuilder, MarkUnsupported, ReplaceMissing, language_plugin,
 };
 use portable_codegen::TargetFile;
 
@@ -27,6 +25,15 @@ impl sealed::JavaMappingOutput for JavaStmt {}
 impl JavaMappingOutput for JavaStmt {}
 impl sealed::JavaMappingOutput for JavaIntrinsicExpr {}
 impl JavaMappingOutput for JavaIntrinsicExpr {}
+
+#[doc(hidden)]
+pub enum JavaValueNode {
+    Type(JavaType),
+    Expression(Box<JavaExpr>),
+}
+
+impl sealed::JavaMappingOutput for JavaValueNode {}
+impl JavaMappingOutput for JavaValueNode {}
 impl sealed::JavaMappingOutput for TargetFile<JavaDialect> {}
 impl JavaMappingOutput for TargetFile<JavaDialect> {}
 
@@ -87,26 +94,29 @@ where
         context: &mut Self::Context,
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
-        record_java_mapping_invocation::<M::Capability>();
+        record_java_mapping_invocation::<M::Capability, M::Input>(&input);
         self.0.lower(context, input)
     }
 }
 
 #[cfg(test)]
 std::thread_local! {
-    static INVOCATION_LEDGER: std::cell::RefCell<std::collections::BTreeSet<&'static str>> =
+    static INVOCATION_LEDGER: std::cell::RefCell<std::collections::BTreeSet<(&'static str, String)>> =
         const { std::cell::RefCell::new(std::collections::BTreeSet::new()) };
 }
 
 #[cfg(test)]
-fn record_java_mapping_invocation<C: Capability>() {
+fn record_java_mapping_invocation<C: Capability, I>(input: &I) {
     INVOCATION_LEDGER.with(|ledger| {
-        ledger.borrow_mut().insert(std::any::type_name::<C>());
+        ledger.borrow_mut().insert((
+            std::any::type_name::<C>(),
+            format!("{:?}", std::mem::discriminant(input)),
+        ));
     });
 }
 
 #[cfg(not(test))]
-fn record_java_mapping_invocation<C: Capability>() {}
+fn record_java_mapping_invocation<C: Capability, I>(_input: &I) {}
 
 #[cfg(test)]
 pub(crate) fn reset_java_mapping_invocations() {
@@ -115,7 +125,24 @@ pub(crate) fn reset_java_mapping_invocations() {
 
 #[cfg(test)]
 pub(crate) fn java_mapping_invocations() -> std::collections::BTreeSet<&'static str> {
-    INVOCATION_LEDGER.with(|ledger| ledger.borrow().clone())
+    INVOCATION_LEDGER.with(|ledger| {
+        ledger
+            .borrow()
+            .iter()
+            .map(|(capability, _)| *capability)
+            .collect()
+    })
+}
+
+#[cfg(test)]
+pub(crate) fn java_mapping_operation_counts() -> std::collections::BTreeMap<&'static str, usize> {
+    INVOCATION_LEDGER.with(|ledger| {
+        let mut counts = std::collections::BTreeMap::new();
+        for (capability, _) in ledger.borrow().iter() {
+            *counts.entry(*capability).or_default() += 1;
+        }
+        counts
+    })
 }
 
 /// Consuming Java-specific wrapper which admits only sealed Java AST mappings.
@@ -196,25 +223,8 @@ impl<Slots> JavaPluginBuilder<Slots> {
     }
 }
 
-#[doc(hidden)]
-pub struct JavaIntrinsicMappingInput<C: Capability> {
-    pub(crate) value: CoreIntrinsicExpr<JavaExpr>,
-    pub(crate) result: JavaType,
-    capability: std::marker::PhantomData<C>,
-}
-
-impl<C: Capability> JavaIntrinsicMappingInput<C> {
-    pub(crate) fn new(value: CoreIntrinsicExpr<JavaExpr>, result: JavaType) -> Self {
-        Self {
-            value,
-            result,
-            capability: std::marker::PhantomData,
-        }
-    }
-}
-
-macro_rules! java_intrinsic_mapping {
-    ($mapping:ident, $capability:ty) => {
+macro_rules! java_operation_mapping {
+    ($mapping:ident, $capability:ty, $input:ty, $output:ty, $lower:path) => {
         #[doc(hidden)]
         #[derive(Clone, Copy, Debug, Default)]
         pub struct $mapping;
@@ -225,19 +235,19 @@ macro_rules! java_intrinsic_mapping {
         impl portable_build::CapabilityMapping<crate::dialect::JavaDialect> for $mapping {
             type Capability = $capability;
             type Context = ();
-            type Input = crate::capabilities::support::JavaIntrinsicMappingInput<$capability>;
-            type Output = crate::lower::JavaIntrinsicExpr;
+            type Input = $input;
+            type Output = $output;
             type Error = Vec<portable_diagnostics::Diagnostic>;
 
             fn lower(
                 &self,
                 _context: &mut Self::Context,
-                input: Self::Input,
+                input: $input,
             ) -> Result<Self::Output, Self::Error> {
-                crate::lower::lower_intrinsic_expression(input.value, input.result)
+                $lower(input)
             }
         }
     };
 }
 
-pub(crate) use java_intrinsic_mapping;
+pub(crate) use java_operation_mapping;

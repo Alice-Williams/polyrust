@@ -25,13 +25,37 @@ pub struct JavaEnumVariantInput {
 }
 
 #[doc(hidden)]
+pub struct JavaEnumPayloadVariantInput {
+    pub(crate) declared: GeneratedTypeId,
+    pub(crate) name: String,
+    pub(crate) components: Vec<crate::ast::JavaRecordComponent>,
+    pub(crate) members: Vec<JavaMember>,
+}
+
+#[doc(hidden)]
 pub struct JavaEnumBranchInput {
     pub(crate) variant: GeneratedValueId,
     pub(crate) body: JavaBlock,
 }
 
 #[doc(hidden)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum JavaEnumEqualityOperator {
+    Equal,
+    NotEqual,
+}
+
+#[doc(hidden)]
 pub enum JavaEnumsInput {
+    PayloadDeclaration {
+        declared: GeneratedTypeId,
+        visibility: Visibility,
+        name: String,
+        variants: Vec<JavaEnumPayloadVariantInput>,
+    },
+    Type {
+        enumeration: GeneratedTypeId,
+    },
     Declaration {
         declared: GeneratedTypeId,
         visibility: Visibility,
@@ -43,9 +67,15 @@ pub enum JavaEnumsInput {
         variant: GeneratedValueId,
     },
     Equality {
+        operator: JavaEnumEqualityOperator,
         enumeration: GeneratedTypeId,
         left: Box<JavaExpr>,
         right: Box<JavaExpr>,
+    },
+    PayloadConstruction {
+        variant: GeneratedTypeId,
+        arguments: Vec<JavaExpr>,
+        result: JavaType,
     },
     Branch {
         selector: Box<JavaExpr>,
@@ -57,7 +87,8 @@ pub enum JavaEnumsInput {
 
 #[doc(hidden)]
 pub enum JavaEnumsNode {
-    Declaration(Box<JavaTypeDeclaration>),
+    Type(JavaType),
+    Declaration(Vec<JavaTypeDeclaration>),
     Expression(Box<JavaExpr>),
     Statement(Box<JavaStmt>),
 }
@@ -85,12 +116,52 @@ impl CapabilityMapping<JavaDialect> for JavaEnums {
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
         match input {
+            JavaEnumsInput::PayloadDeclaration {
+                declared,
+                visibility,
+                name,
+                variants,
+            } => {
+                let visibility = java_visibility(visibility);
+                let mut declarations = vec![JavaTypeDeclaration {
+                    declared: Some(declared),
+                    kind: JavaDeclarationKind::SealedInterface,
+                    visibility,
+                    modifiers: vec![crate::ast::JavaModifier::Static],
+                    name: identifier(&name),
+                    type_parameters: vec![],
+                    record_components: vec![],
+                    heritage: JavaHeritage::None,
+                    permits: variants
+                        .iter()
+                        .map(|variant| enum_type(variant.declared))
+                        .collect(),
+                    members: vec![],
+                }];
+                declarations.extend(variants.into_iter().map(|variant| JavaTypeDeclaration {
+                    declared: Some(variant.declared),
+                    kind: JavaDeclarationKind::Record,
+                    visibility,
+                    modifiers: vec![crate::ast::JavaModifier::Static],
+                    name: identifier(&variant.name),
+                    type_parameters: vec![],
+                    record_components: variant.components,
+                    heritage: JavaHeritage::Interfaces(vec![
+                        enum_type(declared),
+                        JavaType::known(crate::ast::JavaKnownType::RuntimeSemanticValue),
+                    ]),
+                    permits: vec![],
+                    members: variant.members,
+                }));
+                Ok(JavaEnumsNode::Declaration(declarations))
+            }
+            JavaEnumsInput::Type { enumeration } => Ok(JavaEnumsNode::Type(enum_type(enumeration))),
             JavaEnumsInput::Declaration {
                 declared,
                 visibility,
                 name,
                 variants,
-            } => Ok(JavaEnumsNode::Declaration(Box::new(JavaTypeDeclaration {
+            } => Ok(JavaEnumsNode::Declaration(vec![JavaTypeDeclaration {
                 declared: Some(declared),
                 kind: JavaDeclarationKind::Enum,
                 visibility: java_visibility(visibility),
@@ -109,7 +180,7 @@ impl CapabilityMapping<JavaDialect> for JavaEnums {
                         })
                     })
                     .collect(),
-            }))),
+            }])),
             JavaEnumsInput::Variant {
                 enumeration,
                 variant,
@@ -122,6 +193,7 @@ impl CapabilityMapping<JavaDialect> for JavaEnums {
                 }),
             }))),
             JavaEnumsInput::Equality {
+                operator,
                 enumeration,
                 left,
                 right,
@@ -132,11 +204,45 @@ impl CapabilityMapping<JavaDialect> for JavaEnums {
                     ));
                 }
                 Ok(JavaEnumsNode::Expression(Box::new(binary(
-                    JavaBinaryOperator::Equal,
+                    match operator {
+                        JavaEnumEqualityOperator::Equal => JavaBinaryOperator::Equal,
+                        JavaEnumEqualityOperator::NotEqual => JavaBinaryOperator::NotEqual,
+                    },
                     *left,
                     *right,
                     JavaType::primitive(crate::ast::JavaPrimitive::Boolean),
                 ))))
+            }
+            JavaEnumsInput::PayloadConstruction {
+                variant,
+                arguments,
+                result,
+            } => {
+                let variant_type = JavaType::Reference(JavaTypeName::Generated(variant));
+                let created = JavaExpr {
+                    ty: variant_type.clone(),
+                    precedence: JavaPrecedence::Primary,
+                    kind: JavaExprKind::New {
+                        constructor: crate::ast::JavaConstructorRef::Generated {
+                            owner: variant,
+                            parameters: arguments.iter().map(|value| value.ty.clone()).collect(),
+                        },
+                        arguments,
+                    },
+                };
+                let value = if variant_type == result {
+                    created
+                } else {
+                    JavaExpr {
+                        ty: result.clone(),
+                        precedence: JavaPrecedence::Unary,
+                        kind: JavaExprKind::Cast {
+                            target: result,
+                            value: Box::new(created),
+                        },
+                    }
+                };
+                Ok(JavaEnumsNode::Expression(Box::new(value)))
             }
             JavaEnumsInput::Branch {
                 selector,
@@ -198,169 +304,5 @@ fn enum_diagnostic(message: &str) -> Vec<Diagnostic> {
 }
 
 #[cfg(test)]
-mod tests {
-    use portable_build::CapabilityMapping;
-    use portable_codegen::{
-        GeneratedOrigin, GeneratedType, GeneratedValue, SynthesisReason, TargetAstBuilder,
-        TargetTypeRef,
-    };
-
-    use super::*;
-    use crate::ast::{JavaIdentifier, JavaKnownType, JavaLiteral, JavaPrimitive, JavaVisibility};
-
-    fn source(label: &str) -> SourceRef {
-        SourceRef::logical(["java-enums-mapping-test", label])
-    }
-
-    fn enum_symbols(name: &str) -> (GeneratedTypeId, GeneratedValueId, GeneratedValueId) {
-        let mut builder = TargetAstBuilder::new(JavaDialect);
-        let enumeration = builder.generated_type(GeneratedType {
-            name: name.to_owned(),
-            kind: JavaDeclarationKind::Enum,
-            visibility: JavaVisibility::Public,
-            origin: GeneratedOrigin::Synthesized(SynthesisReason::TestHarness),
-            source: source(name),
-        });
-        let value_type = TargetTypeRef::Generated(enumeration);
-        let first = builder.value(GeneratedValue {
-            name: "FIRST".to_owned(),
-            ty: value_type.clone(),
-            origin: GeneratedOrigin::Synthesized(SynthesisReason::TestHarness),
-            source: source("first"),
-        });
-        let second = builder.value(GeneratedValue {
-            name: "SECOND".to_owned(),
-            ty: value_type,
-            origin: GeneratedOrigin::Synthesized(SynthesisReason::TestHarness),
-            source: source("second"),
-        });
-        (enumeration, first, second)
-    }
-
-    fn local(enumeration: GeneratedTypeId, name: &str) -> JavaExpr {
-        JavaExpr::local(enum_type(enumeration), JavaIdentifier::from_portable(name))
-    }
-
-    fn arm(variant: GeneratedValueId, value: i32) -> JavaEnumBranchInput {
-        JavaEnumBranchInput {
-            variant,
-            body: JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr::literal(
-                JavaType::primitive(JavaPrimitive::Int),
-                JavaLiteral::I32(value),
-            )))]),
-        }
-    }
-
-    #[test]
-    fn every_enum_mapping_operation_constructs_typed_java_ast() {
-        let (enumeration, first, second) = enum_symbols("Choice");
-        let mapping = JavaEnums;
-
-        let declaration = mapping
-            .lower(
-                &mut (),
-                JavaEnumsInput::Declaration {
-                    declared: enumeration,
-                    visibility: Visibility::Public,
-                    name: "Choice".to_owned(),
-                    variants: vec![
-                        JavaEnumVariantInput {
-                            declared: first,
-                            name: "FIRST".to_owned(),
-                        },
-                        JavaEnumVariantInput {
-                            declared: second,
-                            name: "SECOND".to_owned(),
-                        },
-                    ],
-                },
-            )
-            .expect("enum declaration maps");
-        assert!(matches!(
-            declaration,
-            JavaEnumsNode::Declaration(value)
-                if value.kind == JavaDeclarationKind::Enum && value.members.len() == 2
-        ));
-
-        let variant = mapping
-            .lower(
-                &mut (),
-                JavaEnumsInput::Variant {
-                    enumeration,
-                    variant: first,
-                },
-            )
-            .expect("enum variant maps");
-        assert!(matches!(variant, JavaEnumsNode::Expression(_)));
-
-        let equality = mapping
-            .lower(
-                &mut (),
-                JavaEnumsInput::Equality {
-                    enumeration,
-                    left: Box::new(local(enumeration, "left")),
-                    right: Box::new(local(enumeration, "right")),
-                },
-            )
-            .expect("enum equality maps");
-        assert!(matches!(equality, JavaEnumsNode::Expression(_)));
-
-        let branch = mapping
-            .lower(
-                &mut (),
-                JavaEnumsInput::Branch {
-                    selector: Box::new(local(enumeration, "value")),
-                    enumeration,
-                    declared_variants: vec![first, second],
-                    arms: vec![arm(first, 1), arm(second, 2)],
-                },
-            )
-            .expect("exhaustive enum branch maps");
-        assert!(matches!(
-            branch,
-            JavaEnumsNode::Statement(value)
-                if matches!(*value, JavaStmt::Switch { ref arms, .. } if arms.len() == 3)
-        ));
-    }
-
-    #[test]
-    fn enum_mapping_rejects_wrong_types_and_non_exhaustive_branches() {
-        let (enumeration, first, second) = enum_symbols("Choice");
-        let mapping = JavaEnums;
-
-        let equality = mapping.lower(
-            &mut (),
-            JavaEnumsInput::Equality {
-                enumeration,
-                left: Box::new(local(enumeration, "left")),
-                right: Box::new(JavaExpr::local(
-                    JavaType::known(JavaKnownType::String),
-                    JavaIdentifier::from_portable("right"),
-                )),
-            },
-        );
-        assert!(equality.is_err());
-
-        let missing = mapping.lower(
-            &mut (),
-            JavaEnumsInput::Branch {
-                selector: Box::new(local(enumeration, "value")),
-                enumeration,
-                declared_variants: vec![first, second],
-                arms: vec![arm(first, 1)],
-            },
-        );
-        assert!(missing.is_err());
-
-        let duplicate = mapping.lower(
-            &mut (),
-            JavaEnumsInput::Branch {
-                selector: Box::new(local(enumeration, "value")),
-                enumeration,
-                declared_variants: vec![first, second],
-                arms: vec![arm(first, 1), arm(first, 2)],
-            },
-        );
-        assert!(duplicate.is_err());
-    }
-}
+#[path = "../tests/enum_mapping.rs"]
+mod tests;

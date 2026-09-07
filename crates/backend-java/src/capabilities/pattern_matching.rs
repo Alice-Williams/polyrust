@@ -88,12 +88,17 @@ pub struct JavaPatternMatchPlan {
 pub enum JavaPatternMatchingInput {
     Pattern(Box<JavaPatternInput>),
     Match(Box<JavaMatchInput>),
+    BindingRead {
+        binding_type: JavaType,
+        binding: String,
+    },
 }
 
 #[doc(hidden)]
 pub enum JavaPatternMatchingNode {
     Pattern(Box<JavaLoweredPattern>),
     Match(Box<JavaPatternMatchPlan>),
+    Expression(Box<JavaExpr>),
 }
 
 impl sealed::JavaMappingOutput for JavaPatternMatchingNode {}
@@ -125,6 +130,13 @@ impl CapabilityMapping<JavaDialect> for JavaPatternMatching {
             JavaPatternMatchingInput::Match(input) => {
                 JavaPatternMatchingNode::Match(Box::new(lower_match(*input)))
             }
+            JavaPatternMatchingInput::BindingRead {
+                binding_type,
+                binding,
+            } => JavaPatternMatchingNode::Expression(Box::new(JavaExpr::local(
+                binding_type,
+                identifier(&binding),
+            ))),
         })
     }
 }

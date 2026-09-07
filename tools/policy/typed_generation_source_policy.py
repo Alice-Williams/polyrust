@@ -44,6 +44,7 @@ FORBIDDEN_CONCRETE_SUPPORT_WITNESS = re.compile(
 FORBIDDEN_JAVA_TARGET_MAPPING_INPUT = re.compile(
     r"\btype\s+Input\s*=\s*(?:JavaExpr|JavaMethod|JavaTypeDeclaration)\s*;"
 )
+FORBIDDEN_ERASED_JAVA_OPERATION_INPUT = re.compile(r"\bJavaIntrinsicMappingInput\b")
 FORBIDDEN_IDENTITY_MAPPING_RETURN = re.compile(r"\bOk\s*\(\s*input\s*\)")
 
 CFG_TEST_ATTRIBUTE = "#[cfg(test)]"
@@ -213,6 +214,7 @@ def offenders(path: str, source: str) -> list[str]:
         ("closed or arity-numbered typed-builder API", FORBIDDEN_CLOSED_TYPED_API),
         ("manual concrete feature-support witness", FORBIDDEN_CONCRETE_SUPPORT_WITNESS),
         ("completed Java AST used as mapping input", FORBIDDEN_JAVA_TARGET_MAPPING_INPUT),
+        ("erased all-intrinsics Java mapping input", FORBIDDEN_ERASED_JAVA_OPERATION_INPUT),
         ("identity capability mapping return", FORBIDDEN_IDENTITY_MAPPING_RETURN),
     ]:
         for match in pattern.finditer(source):
@@ -241,6 +243,7 @@ struct AstViolation { message: String }
         "module.function2(name, left, right, body);",
         "impl Supports<I32Values> for JavaDialect {}",
         "type Input = JavaExpr;",
+        "type Input = JavaIntrinsicMappingInput<JavaExpr>;",
         "fn lower(input: Node) -> Result<Node, Error> { Ok(input) }",
     ]
     for injected in rejected:

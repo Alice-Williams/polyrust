@@ -147,6 +147,87 @@ pub trait Supports<F: Capability> {
     fn mapping(&self) -> &Self::Mapping;
 }
 
+/// Implements exact support delegation for every capability in the closed
+/// catalogue. The wrapper obtains each witness only from its corresponding
+/// `Implemented<Mapping>` slot.
+#[macro_export]
+macro_rules! delegate_catalogue_support {
+    ($wrapper:ty, $field:ident, $dialect:ty, $slots:ty) => {
+        $crate::__delegate_catalogue_support_impl!(
+            $wrapper,
+            $field,
+            $dialect,
+            $slots;
+            Modules,
+            Constants,
+            TypeAliases,
+            Functions,
+            Records,
+            Enums,
+            Interfaces,
+            PortableTests,
+            LocalBindings,
+            Conditionals,
+            Loops,
+            PatternMatching,
+            ResultPropagation,
+            UnitValues,
+            BoolValues,
+            I32Values,
+            I64Values,
+            F64Values,
+            CharValues,
+            TextValues,
+            BytesValues,
+            ListValues,
+            OptionValues,
+            ResultValues,
+            BooleanLogic,
+            Equality,
+            Ordering,
+            CheckedIntegerArithmetic,
+            WrappingIntegerArithmetic,
+            IntegerBitwise,
+            CheckedIntegerShifts,
+            FloatingPointArithmetic,
+            FloatingPointInspection,
+            IntegerConversions,
+            StringConcatenation,
+            StringInspection,
+            StringTransformation,
+            Utf8Conversions,
+            BytesOperations,
+            ListOperations,
+            OptionOperations,
+            ResultOperations
+        );
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __delegate_catalogue_support_impl {
+    ($wrapper:ty, $field:ident, $dialect:ty, $slots:ty; $($capability:ident),+ $(,)?) => {
+        $(
+            impl $crate::Supports<$crate::$capability> for $wrapper
+            where
+                $crate::LanguageCapabilityPlugin<$dialect, $slots>:
+                    $crate::Supports<$crate::$capability, Dialect = $dialect>,
+            {
+                type Dialect = $dialect;
+                type Mapping = <$crate::LanguageCapabilityPlugin<
+                    $dialect,
+                    $slots,
+                > as $crate::Supports<$crate::$capability>>::Mapping;
+
+                fn mapping(&self) -> &Self::Mapping {
+                    self.$field.mapping_for::<$crate::$capability>()
+                }
+            }
+        )+
+    };
+}
+
 /// Compile-time evidence that a dialect implements a complete requirement tree.
 pub trait SupportsAll<R: Requirements> {}
 

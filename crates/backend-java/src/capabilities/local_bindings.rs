@@ -11,11 +11,26 @@ use crate::{
 };
 
 #[doc(hidden)]
-pub struct JavaLocalBindingInput {
-    pub(crate) name: String,
-    pub(crate) ty: JavaType,
-    pub(crate) value: JavaExpr,
+pub enum JavaLocalBindingsInput {
+    Bind {
+        name: String,
+        ty: JavaType,
+        value: Box<JavaExpr>,
+    },
+    Read {
+        name: String,
+        ty: JavaType,
+    },
 }
+
+#[doc(hidden)]
+pub enum JavaLocalBindingsNode {
+    Statement(Box<JavaStmt>),
+    Expression(Box<JavaExpr>),
+}
+
+impl sealed::JavaMappingOutput for JavaLocalBindingsNode {}
+impl super::support::JavaMappingOutput for JavaLocalBindingsNode {}
 
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
@@ -27,8 +42,8 @@ impl JavaCapabilityMapping for JavaLocalBindings {}
 impl CapabilityMapping<JavaDialect> for JavaLocalBindings {
     type Capability = LocalBindings;
     type Context = ();
-    type Input = JavaLocalBindingInput;
-    type Output = JavaStmt;
+    type Input = JavaLocalBindingsInput;
+    type Output = JavaLocalBindingsNode;
     type Error = Vec<Diagnostic>;
 
     fn lower(
@@ -36,11 +51,18 @@ impl CapabilityMapping<JavaDialect> for JavaLocalBindings {
         _context: &mut Self::Context,
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
-        Ok(JavaStmt::Local {
-            finality: JavaLocalFinality::Final,
-            ty: input.ty,
-            name: identifier(&input.name),
-            value: Some(input.value),
+        Ok(match input {
+            JavaLocalBindingsInput::Bind { name, ty, value } => {
+                JavaLocalBindingsNode::Statement(Box::new(JavaStmt::Local {
+                    finality: JavaLocalFinality::Final,
+                    ty,
+                    name: identifier(&name),
+                    value: Some(*value),
+                }))
+            }
+            JavaLocalBindingsInput::Read { name, ty } => {
+                JavaLocalBindingsNode::Expression(Box::new(JavaExpr::local(ty, identifier(&name))))
+            }
         })
     }
 }

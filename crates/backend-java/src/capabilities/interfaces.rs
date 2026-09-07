@@ -46,6 +46,18 @@ pub struct JavaInterfaceImplementationInput {
 }
 
 #[doc(hidden)]
+pub struct JavaInterfaceConformanceInput {
+    pub(crate) interfaces: Vec<GeneratedTypeId>,
+    pub(crate) methods: Vec<JavaInterfaceImplementationInput>,
+}
+
+#[doc(hidden)]
+pub struct JavaInterfaceConformancePlan {
+    pub(crate) heritage: JavaHeritage,
+    pub(crate) members: Vec<JavaMember>,
+}
+
+#[doc(hidden)]
 pub struct JavaInterfaceCallInput {
     pub(crate) receiver: JavaExpr,
     pub(crate) arguments: Vec<JavaExpr>,
@@ -65,9 +77,16 @@ pub struct JavaConcreteInterfaceCallInput {
 
 #[doc(hidden)]
 pub enum JavaInterfacesInput {
+    Type {
+        interface: GeneratedTypeId,
+    },
     Declaration(Box<JavaInterfaceDeclarationInput>),
-    Implementation(Box<JavaInterfaceImplementationInput>),
+    Conformance(Box<JavaInterfaceConformanceInput>),
+    SelfValue {
+        record: GeneratedTypeId,
+    },
     Coerce {
+        implementation: crate::ast::JavaInterfaceWitness,
         value: Box<JavaExpr>,
         result: JavaType,
     },
@@ -77,8 +96,9 @@ pub enum JavaInterfacesInput {
 
 #[doc(hidden)]
 pub enum JavaInterfacesNode {
+    Type(JavaType),
     Declaration(Box<JavaTypeDeclaration>),
-    Method(Box<JavaMethod>),
+    Conformance(JavaInterfaceConformancePlan),
     Expression(Box<JavaExpr>),
 }
 
@@ -105,6 +125,9 @@ impl CapabilityMapping<JavaDialect> for JavaInterfaces {
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
         Ok(match input {
+            JavaInterfacesInput::Type { interface } => JavaInterfacesNode::Type(
+                JavaType::Reference(crate::ast::JavaTypeName::Generated(interface)),
+            ),
             JavaInterfacesInput::Declaration(input) => {
                 let members = input
                     .methods
@@ -135,31 +158,44 @@ impl CapabilityMapping<JavaDialect> for JavaInterfaces {
                     members,
                 }))
             }
-            JavaInterfacesInput::Implementation(input) => {
-                JavaInterfacesNode::Method(Box::new(JavaMethod {
-                    declared: JavaMethodDeclaration::Implementation {
-                        method: input.method,
-                        interface: input.interface_method,
-                    },
-                    annotations: vec![JavaAnnotation::Override],
-                    modifiers: vec![JavaModifier::Public],
-                    type_parameters: vec![],
-                    return_type: input.return_type,
-                    name: identifier(&input.interface_method_name),
-                    parameters: input.parameters,
-                    body: Some(input.body),
-                }))
+            JavaInterfacesInput::Conformance(input) => {
+                let heritage = JavaHeritage::Interfaces(
+                    input
+                        .interfaces
+                        .into_iter()
+                        .map(|interface| {
+                            JavaType::Reference(crate::ast::JavaTypeName::Generated(interface))
+                        })
+                        .collect(),
+                );
+                let members = input
+                    .methods
+                    .into_iter()
+                    .map(lower_implementation_method)
+                    .map(JavaMember::Method)
+                    .collect();
+                JavaInterfacesNode::Conformance(JavaInterfaceConformancePlan { heritage, members })
             }
-            JavaInterfacesInput::Coerce { value, result } => {
+            JavaInterfacesInput::SelfValue { record } => {
                 JavaInterfacesNode::Expression(Box::new(JavaExpr {
-                    ty: result.clone(),
-                    precedence: JavaPrecedence::Unary,
-                    kind: JavaExprKind::Cast {
-                        target: result,
-                        value,
-                    },
+                    ty: JavaType::Reference(crate::ast::JavaTypeName::Generated(record)),
+                    precedence: JavaPrecedence::Primary,
+                    kind: JavaExprKind::Value(crate::ast::JavaValueRef::This),
                 }))
             }
+            JavaInterfacesInput::Coerce {
+                implementation,
+                value,
+                result,
+            } => JavaInterfacesNode::Expression(Box::new(JavaExpr {
+                ty: result.clone(),
+                precedence: JavaPrecedence::Unary,
+                kind: JavaExprKind::InterfaceCoercion {
+                    implementation,
+                    target: result,
+                    value,
+                },
+            })),
             JavaInterfacesInput::ConcreteCall(input) => {
                 JavaInterfacesNode::Expression(Box::new(member_call(
                     input.receiver,
@@ -184,5 +220,21 @@ impl CapabilityMapping<JavaDialect> for JavaInterfaces {
                 }))
             }
         })
+    }
+}
+
+fn lower_implementation_method(input: JavaInterfaceImplementationInput) -> JavaMethod {
+    JavaMethod {
+        declared: JavaMethodDeclaration::Implementation {
+            method: input.method,
+            interface: input.interface_method,
+        },
+        annotations: vec![JavaAnnotation::Override],
+        modifiers: vec![JavaModifier::Public],
+        type_parameters: vec![],
+        return_type: input.return_type,
+        name: identifier(&input.interface_method_name),
+        parameters: input.parameters,
+        body: Some(input.body),
     }
 }

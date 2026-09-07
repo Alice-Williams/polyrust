@@ -114,7 +114,7 @@ def verify_java(root: Path) -> tuple[int, set[str]]:
 
     mappings: dict[str, str] = {}
     macro_mapping = re.compile(
-        r"java_(?:ast|intrinsic)_mapping!\("
+        r"java_(?:ast|intrinsic|operation)_mapping!\("
         r"\s*(Java[A-Za-z0-9]+)\s*,\s*([A-Z][A-Za-z0-9]+)"
     )
     direct_name = re.compile(r"(?m)^pub struct (Java[A-Za-z0-9]+);$")
@@ -136,6 +136,12 @@ def verify_java(root: Path) -> tuple[int, set[str]]:
             mapping, capability = names[0], capabilities[0]
         if mapping in mappings:
             fail(f"Java mapping {mapping} is defined more than once")
+        expected_module = re.sub(r"(?<!^)(?=[A-Z])", "_", capability).lower()
+        if module != expected_module:
+            fail(
+                f"{module}.rs maps {capability}; expected one-to-one file "
+                f"{expected_module}.rs"
+            )
         mappings[mapping] = capability
 
     if set(registrations) != set(mappings):
@@ -160,6 +166,21 @@ def main() -> None:
     shared_source = (Path(sys.argv[1]) / "mod.rs").read_text(encoding="utf-8")
     shared_catalogue = CATALOGUE.findall(shared_source)
     shared_names = set(re.findall(r"\b[A-Z][A-Za-z0-9]*\b", shared_catalogue[0]))
+    delegation_source = (Path(sys.argv[1]) / "mod.rs").read_text(encoding="utf-8")
+    delegation = re.findall(
+        r"(?s)__delegate_catalogue_support_impl!\(.*?;\s*(.*?)\s*\);",
+        delegation_source,
+    )
+    if len(delegation) != 1:
+        fail("closed catalogue must contain exactly one exact-support delegation list")
+    delegated_names = set(
+        re.findall(r"\b[A-Z][A-Za-z0-9]*\b", delegation[0])
+    )
+    if delegated_names != shared_names:
+        fail(
+            "exact-support delegation/catalogue mismatch: "
+            f"delegated={sorted(delegated_names)!r}, catalogue={sorted(shared_names)!r}"
+        )
     if java_decisions != shared_names:
         fail(
             "Java registry must decide every shared capability: "

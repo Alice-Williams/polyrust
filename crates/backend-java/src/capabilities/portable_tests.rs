@@ -1,15 +1,18 @@
 //! Java mapping for the complete `PortableTests` capability.
 
 use portable_build::{CapabilityMapping, PortableTests};
+use portable_codegen::GeneratedCallableId;
+use portable_core_ir::CoreImplementationMethodId;
 use portable_diagnostics::Diagnostic;
 
 use super::support::{JavaCapabilityMapping, sealed};
 use crate::{
     ast::{
-        JavaArrayOwnership, JavaBlock, JavaDeclarationKind, JavaExpr, JavaHeritage, JavaKnownType,
-        JavaLocalFinality, JavaMember, JavaMemberOrigin, JavaMethod, JavaMethodDeclaration,
-        JavaModifier, JavaParameter, JavaPrimitive, JavaRuntimeMember, JavaStmt, JavaType,
-        JavaTypeDeclaration, JavaUnaryOperator, JavaVisibility,
+        JavaArrayOwnership, JavaBlock, JavaCallableRef, JavaDeclarationKind, JavaExpr,
+        JavaExprKind, JavaHeritage, JavaKnownType, JavaLocalFinality, JavaMember, JavaMemberOrigin,
+        JavaMethod, JavaMethodDeclaration, JavaMethodSignature, JavaModifier, JavaParameter,
+        JavaPrecedence, JavaPrimitive, JavaRuntimeMember, JavaStmt, JavaType, JavaTypeDeclaration,
+        JavaUnaryOperator, JavaVisibility,
     },
     dialect::{JavaDialect, JavaRuntimeCallable},
     lower::{
@@ -40,13 +43,32 @@ pub struct JavaPortableTestHarnessInput {
 }
 
 #[doc(hidden)]
+pub struct JavaPortableFunctionInvocationInput {
+    pub(crate) symbol: GeneratedCallableId,
+    pub(crate) signature: JavaMethodSignature,
+    pub(crate) arguments: Vec<JavaExpr>,
+}
+
+#[doc(hidden)]
+pub struct JavaPortableMethodInvocationInput {
+    pub(crate) method: CoreImplementationMethodId,
+    pub(crate) method_name: String,
+    pub(crate) receiver: JavaExpr,
+    pub(crate) arguments: Vec<JavaExpr>,
+    pub(crate) result: JavaType,
+}
+
+#[doc(hidden)]
 pub enum JavaPortableTestsInput {
+    FunctionInvocation(JavaPortableFunctionInvocationInput),
+    MethodInvocation(JavaPortableMethodInvocationInput),
     Case(Box<JavaPortableTestCaseInput>),
     Harness(JavaPortableTestHarnessInput),
 }
 
 #[doc(hidden)]
 pub enum JavaPortableTestsNode {
+    Expression(JavaExpr),
     Case(Vec<JavaStmt>),
     Harness(JavaTypeDeclaration),
 }
@@ -74,6 +96,30 @@ impl CapabilityMapping<JavaDialect> for JavaPortableTests {
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
         Ok(match input {
+            JavaPortableTestsInput::FunctionInvocation(input) => {
+                let result = input.signature.result.clone();
+                JavaPortableTestsNode::Expression(JavaExpr {
+                    ty: result,
+                    precedence: JavaPrecedence::Primary,
+                    kind: JavaExprKind::Call {
+                        callable: JavaCallableRef::Generated {
+                            symbol: input.symbol,
+                            signature: input.signature,
+                        },
+                        receiver: None,
+                        arguments: input.arguments,
+                    },
+                })
+            }
+            JavaPortableTestsInput::MethodInvocation(input) => {
+                JavaPortableTestsNode::Expression(member_call(
+                    input.receiver,
+                    &input.method_name,
+                    input.arguments,
+                    input.result,
+                    JavaMemberOrigin::GeneratedImplementation(input.method),
+                ))
+            }
             JavaPortableTestsInput::Case(input) => JavaPortableTestsNode::Case(lower_case(*input)),
             JavaPortableTestsInput::Harness(input) => {
                 JavaPortableTestsNode::Harness(lower_harness(input))

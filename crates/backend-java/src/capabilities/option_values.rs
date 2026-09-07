@@ -3,15 +3,18 @@
 use portable_build::{CapabilityMapping, OptionValues};
 use portable_diagnostics::Diagnostic;
 
-use super::support::{JavaCapabilityMapping, sealed};
+use super::support::{JavaCapabilityMapping, JavaValueNode, sealed};
 use crate::{
-    ast::{JavaExpr, JavaType},
+    ast::{JavaExpr, JavaKnownType, JavaType},
     dialect::{JavaDialect, JavaRuntimeCallable},
     lower::runtime_call,
 };
 
 #[doc(hidden)]
 pub enum JavaOptionInput {
+    Type {
+        inner: JavaType,
+    },
     None {
         result: JavaType,
     },
@@ -32,7 +35,7 @@ impl CapabilityMapping<JavaDialect> for JavaOptionValues {
     type Capability = OptionValues;
     type Context = ();
     type Input = JavaOptionInput;
-    type Output = JavaExpr;
+    type Output = JavaValueNode;
     type Error = Vec<Diagnostic>;
 
     fn lower(
@@ -41,11 +44,19 @@ impl CapabilityMapping<JavaDialect> for JavaOptionValues {
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
         let (callable, arguments, result) = match input {
+            JavaOptionInput::Type { inner } => {
+                return Ok(JavaValueNode::Type(JavaType::generic(
+                    JavaKnownType::RuntimeOption,
+                    vec![inner.boxed()],
+                )));
+            }
             JavaOptionInput::None { result } => (JavaRuntimeCallable::OptionNone, vec![], result),
             JavaOptionInput::Some { value, result } => {
                 (JavaRuntimeCallable::OptionSome, vec![*value], result)
             }
         };
-        Ok(runtime_call(callable, arguments, result))
+        Ok(JavaValueNode::Expression(Box::new(runtime_call(
+            callable, arguments, result,
+        ))))
     }
 }

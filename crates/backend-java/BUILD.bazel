@@ -4,9 +4,82 @@ load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 exports_files(["Cargo.toml"])
 
+rust_binary(
+    name = "generate_capability_fixture",
+    srcs = [
+        "examples/generate_capabilities.rs",
+        "src/tests/capability_fixtures.rs",
+    ],
+    crate_root = "examples/generate_capabilities.rs",
+    edition = "2024",
+    visibility = ["//:__pkg__"],
+    deps = [
+        ":portable_backend_java",
+        "//crates/build:portable_build",
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+    ],
+)
+
+genrule(
+    name = "generate_capability_packages",
+    outs = [
+        "capability-generated/" + fixture + "/" + path
+        for fixture in [
+            "operations",
+            "methods",
+        ]
+        for path in [
+            "README.md",
+            "src/main/java/org/polyrust/generated/Generated.java",
+            "src/main/java/org/polyrust/generated/Runtime.java",
+            "src/test/java/org/polyrust/generated/GeneratedTest.java",
+            "src/test/java/org/polyrust/generated/ConformanceTest.java",
+            "src/test/java/org/polyrust/generated/InvalidTypes.java",
+        ]
+    ],
+    cmd = "$(location :generate_capability_fixture) $(@D)/capability-generated",
+    tools = [":generate_capability_fixture"],
+)
+
+java_test(
+    name = "generated_capability_operations_test",
+    srcs = [
+        ":capability-generated/operations/src/main/java/org/polyrust/generated/Generated.java",
+        ":capability-generated/operations/src/main/java/org/polyrust/generated/Runtime.java",
+        ":capability-generated/operations/src/test/java/org/polyrust/generated/GeneratedTest.java",
+    ],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
+    main_class = "org.polyrust.generated.GeneratedTest",
+    use_testrunner = False,
+    visibility = ["//visibility:public"],
+)
+
+java_test(
+    name = "generated_capability_methods_test",
+    srcs = [
+        ":capability-generated/methods/src/main/java/org/polyrust/generated/Generated.java",
+        ":capability-generated/methods/src/main/java/org/polyrust/generated/Runtime.java",
+        ":capability-generated/methods/src/test/java/org/polyrust/generated/GeneratedTest.java",
+    ],
+    javacopts = [
+        "-Werror",
+        "-Xlint:all",
+    ],
+    main_class = "org.polyrust.generated.GeneratedTest",
+    use_testrunner = False,
+    visibility = ["//visibility:public"],
+)
+
 rust_library(
     name = "portable_backend_java",
-    srcs = glob(["src/**/*.rs"]),
+    srcs = glob(
+        ["src/**/*.rs"],
+        exclude = ["src/tests/**/*.rs"],
+    ),
     crate_name = "portable_backend_java",
     edition = "2024",
     visibility = ["//visibility:public"],
@@ -27,11 +100,21 @@ rust_doc_test(
 
 rust_test(
     name = "portable_backend_java_test",
+    srcs = glob(["src/**/*.rs"]),
     compile_data = ["//crates/build:testdata/registration.poly.json"],
-    crate = ":portable_backend_java",
+    crate_name = "portable_backend_java",
+    crate_root = "src/lib.rs",
     data = ["@bazel_tools//tools/jdk:current_java_runtime"],
+    edition = "2024",
     visibility = ["//visibility:public"],
-    deps = ["//crates/build:portable_build"],
+    deps = [
+        "//crates/build:portable_build",
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+        "//crates/core-ir:portable_core_ir",
+        "//crates/diagnostics:portable_diagnostics",
+        "//crates/ir:portable_ir",
+    ],
 )
 
 rust_binary(

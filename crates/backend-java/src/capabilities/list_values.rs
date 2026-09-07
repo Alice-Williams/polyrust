@@ -3,17 +3,22 @@
 use portable_build::{CapabilityMapping, ListValues};
 use portable_diagnostics::Diagnostic;
 
-use super::support::{JavaCapabilityMapping, sealed};
+use super::support::{JavaCapabilityMapping, JavaValueNode, sealed};
 use crate::{
-    ast::{JavaExpr, JavaType},
+    ast::{JavaExpr, JavaKnownType, JavaType},
     dialect::{JavaDialect, JavaKnownCallable},
     lower::known_generic_call,
 };
 
 #[doc(hidden)]
-pub struct JavaListInput {
-    pub(crate) elements: Vec<JavaExpr>,
-    pub(crate) result: JavaType,
+pub enum JavaListInput {
+    Type {
+        element: JavaType,
+    },
+    Value {
+        elements: Vec<JavaExpr>,
+        result: JavaType,
+    },
 }
 
 #[doc(hidden)]
@@ -27,7 +32,7 @@ impl CapabilityMapping<JavaDialect> for JavaListValues {
     type Capability = ListValues;
     type Context = ();
     type Input = JavaListInput;
-    type Output = JavaExpr;
+    type Output = JavaValueNode;
     type Error = Vec<Diagnostic>;
 
     fn lower(
@@ -35,10 +40,14 @@ impl CapabilityMapping<JavaDialect> for JavaListValues {
         _context: &mut Self::Context,
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
-        Ok(known_generic_call(
-            JavaKnownCallable::ListOf,
-            input.elements,
-            input.result,
-        ))
+        Ok(match input {
+            JavaListInput::Type { element } => JavaValueNode::Type(JavaType::generic(
+                JavaKnownType::List,
+                vec![element.boxed()],
+            )),
+            JavaListInput::Value { elements, result } => JavaValueNode::Expression(Box::new(
+                known_generic_call(JavaKnownCallable::ListOf, elements, result),
+            )),
+        })
     }
 }

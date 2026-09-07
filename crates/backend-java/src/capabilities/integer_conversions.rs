@@ -2,6 +2,43 @@
 
 use portable_build::IntegerConversions;
 
-use super::support::java_intrinsic_mapping;
+use super::support::java_operation_mapping;
+use crate::{
+    ast::{JavaExpr, JavaExprKind, JavaPrecedence, JavaType},
+    dialect::JavaRuntimeCallable,
+    lower::{JavaIntrinsicExpr, runtime_fallible},
+};
 
-java_intrinsic_mapping!(JavaIntegerConversions, IntegerConversions);
+#[doc(hidden)]
+pub enum JavaIntegerConversionsInput {
+    WidenI32ToI64 { operand: JavaExpr, result: JavaType },
+    NarrowI64ToI32Checked { operand: JavaExpr, result: JavaType },
+}
+
+fn lower_integer_conversions(
+    input: JavaIntegerConversionsInput,
+) -> Result<JavaIntrinsicExpr, Vec<portable_diagnostics::Diagnostic>> {
+    Ok(match input {
+        JavaIntegerConversionsInput::WidenI32ToI64 { operand, result } => {
+            JavaIntrinsicExpr::Direct(JavaExpr {
+                ty: result.clone(),
+                precedence: JavaPrecedence::Unary,
+                kind: JavaExprKind::Cast {
+                    target: result,
+                    value: Box::new(operand),
+                },
+            })
+        }
+        JavaIntegerConversionsInput::NarrowI64ToI32Checked { operand, result } => {
+            runtime_fallible(JavaRuntimeCallable::NarrowI64ToI32, vec![operand], result)
+        }
+    })
+}
+
+java_operation_mapping!(
+    JavaIntegerConversions,
+    IntegerConversions,
+    JavaIntegerConversionsInput,
+    JavaIntrinsicExpr,
+    lower_integer_conversions
+);

@@ -38,6 +38,41 @@ complete portable/CoreIR-to-Java-AST translation for capability `C`.
   `-Xlint:all -Werror`, Rustfmt, strict Clippy, Buildifier, full tracked
   repository, and release gates pass in the Linux development container.
 
+## Review-remediation checklist
+
+- [x] Replace the erased all-intrinsics input and central Java operation match
+  with one exact input enum and lowering function per operation capability.
+- [x] Route short-circuit Boolean logic through `BooleanLogic`.
+- [x] Route target type construction and all literal/composite construction
+  through the owning value, record, enum, or interface mapping.
+- [x] Give `Functions` returns and parameter reads; dispatch `let`, loop, and
+  pattern reads to their verified owning capabilities.
+- [x] Route normal and constant references through `Constants`.
+- [x] Make `Interfaces` map complete multiple-conformance bundles and make
+  `PortableTests` map its own invocation forms.
+- [x] Remove out-of-catalogue Java loop mapping inputs and unused duplicate
+  conditional inputs.
+- [x] Replace Java's blanket manual `Supports<F>` implementation with exact
+  catalogue-generated delegation whose bounds require every implemented slot.
+- [x] Make dynamic preflight confirm `ResultPropagation` for calls and fallible
+  operations and report payload-free enum construction as native.
+- [x] Extend source/layout policy for exact filenames, operation inputs,
+  catalogue delegation, and registrations.
+- [x] Infer `ResultPropagation` for every fallible typed intrinsic; prove a
+  checked-arithmetic program fails admission without it and passes with it.
+- [x] Map interface `self`, both enum comparison operators, and record/enum
+  portable-value construction through their owning capabilities.
+- [x] Move legacy payload-enum declaration groups through an exact `Enums`
+  input, removing the remaining direct declaration bypass from the orchestrator.
+- [x] Preserve exact checked conformance evidence through interface coercion
+  and validate its target types and implementation methods during certification.
+- [x] Exercise every closed mapping input variant and add independently
+  compiled/executed Java operation and concrete-method fixture targets.
+- [x] Move substantial Java entry-point tests and fixtures to focused files;
+  record the source-size and Bazel action-boundary guidance.
+- [ ] Pass the full local/release gates, hosted CI, and a fresh blind review
+  with no accepted correctness or architecture findings.
+
 ## Commit gate
 
 Commit and push only after the complete Java proof passes. Hosted CI for the

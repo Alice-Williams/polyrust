@@ -3182,6 +3182,9 @@ pub struct TypedBody<'module, 'body> {
 type With<F, R> = All<Requires<F>, R>;
 type WithTwo<F, Left, Right> = All<Requires<F>, All<Left, Right>>;
 type WithThree<F, First, Second, Third> = All<Requires<F>, All<First, All<Second, Third>>>;
+type WithFallible<F, R> = All<Requires<F>, All<Requires<ResultPropagation>, R>>;
+type WithTwoFallible<F, Left, Right> =
+    All<Requires<F>, All<Requires<ResultPropagation>, All<Left, Right>>>;
 type ResultTypeRequirements<OkR, ErrorR> = All<Requires<ResultValues>, All<OkR, ErrorR>>;
 type ListConstructionRequirements<TypeR, ValuesR> = All<Requires<ListValues>, All<TypeR, ValuesR>>;
 type OptionConstructionRequirements<R> = All<Requires<OptionValues>, R>;
@@ -3773,6 +3776,43 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         })
     }
 
+    fn fallible_unary<A, Output, FeatureMarker, InputRequirements>(
+        &mut self,
+        operation: Operation,
+        value: TypedExpr<'module, 'body, A, InputRequirements>,
+    ) -> TypedExpr<'module, 'body, Output, WithFallible<FeatureMarker, InputRequirements>>
+    where
+        FeatureMarker: Capability,
+        InputRequirements: Requirements,
+    {
+        self.expression(TypedNode::Intrinsic {
+            operation,
+            arguments: vec![value.node],
+        })
+    }
+
+    fn fallible_binary<A, B, Output, FeatureMarker, LeftRequirements, RightRequirements>(
+        &mut self,
+        operation: Operation,
+        left: TypedExpr<'module, 'body, A, LeftRequirements>,
+        right: TypedExpr<'module, 'body, B, RightRequirements>,
+    ) -> TypedExpr<
+        'module,
+        'body,
+        Output,
+        WithTwoFallible<FeatureMarker, LeftRequirements, RightRequirements>,
+    >
+    where
+        FeatureMarker: Capability,
+        LeftRequirements: Requirements,
+        RightRequirements: Requirements,
+    {
+        self.expression(TypedNode::Intrinsic {
+            operation,
+            arguments: vec![left.node, right.node],
+        })
+    }
+
     fn ternary<A, B, C, Output, FeatureMarker, FirstR, SecondR, ThirdR>(
         &mut self,
         operation: Operation,
@@ -3866,48 +3906,48 @@ impl<'module, 'body> TypedBody<'module, 'body> {
     pub fn int_neg_checked<T: TypedInteger, R: Requirements>(
         &mut self,
         value: TypedExpr<'module, 'body, T, R>,
-    ) -> TypedExpr<'module, 'body, T, With<CheckedIntegerArithmetic, R>> {
-        self.unary(Operation::IntNegChecked, value)
+    ) -> TypedExpr<'module, 'body, T, WithFallible<CheckedIntegerArithmetic, R>> {
+        self.fallible_unary(Operation::IntNegChecked, value)
     }
 
     pub fn int_add_checked<T: TypedInteger, L: Requirements, R: Requirements>(
         &mut self,
         left: TypedExpr<'module, 'body, T, L>,
         right: TypedExpr<'module, 'body, T, R>,
-    ) -> TypedExpr<'module, 'body, T, WithTwo<CheckedIntegerArithmetic, L, R>> {
-        self.binary(Operation::IntAddChecked, left, right)
+    ) -> TypedExpr<'module, 'body, T, WithTwoFallible<CheckedIntegerArithmetic, L, R>> {
+        self.fallible_binary(Operation::IntAddChecked, left, right)
     }
 
     pub fn int_sub_checked<T: TypedInteger, L: Requirements, R: Requirements>(
         &mut self,
         left: TypedExpr<'module, 'body, T, L>,
         right: TypedExpr<'module, 'body, T, R>,
-    ) -> TypedExpr<'module, 'body, T, WithTwo<CheckedIntegerArithmetic, L, R>> {
-        self.binary(Operation::IntSubChecked, left, right)
+    ) -> TypedExpr<'module, 'body, T, WithTwoFallible<CheckedIntegerArithmetic, L, R>> {
+        self.fallible_binary(Operation::IntSubChecked, left, right)
     }
 
     pub fn int_mul_checked<T: TypedInteger, L: Requirements, R: Requirements>(
         &mut self,
         left: TypedExpr<'module, 'body, T, L>,
         right: TypedExpr<'module, 'body, T, R>,
-    ) -> TypedExpr<'module, 'body, T, WithTwo<CheckedIntegerArithmetic, L, R>> {
-        self.binary(Operation::IntMulChecked, left, right)
+    ) -> TypedExpr<'module, 'body, T, WithTwoFallible<CheckedIntegerArithmetic, L, R>> {
+        self.fallible_binary(Operation::IntMulChecked, left, right)
     }
 
     pub fn int_div_checked<T: TypedInteger, L: Requirements, R: Requirements>(
         &mut self,
         left: TypedExpr<'module, 'body, T, L>,
         right: TypedExpr<'module, 'body, T, R>,
-    ) -> TypedExpr<'module, 'body, T, WithTwo<CheckedIntegerArithmetic, L, R>> {
-        self.binary(Operation::IntDivChecked, left, right)
+    ) -> TypedExpr<'module, 'body, T, WithTwoFallible<CheckedIntegerArithmetic, L, R>> {
+        self.fallible_binary(Operation::IntDivChecked, left, right)
     }
 
     pub fn int_rem_checked<T: TypedInteger, L: Requirements, R: Requirements>(
         &mut self,
         left: TypedExpr<'module, 'body, T, L>,
         right: TypedExpr<'module, 'body, T, R>,
-    ) -> TypedExpr<'module, 'body, T, WithTwo<CheckedIntegerArithmetic, L, R>> {
-        self.binary(Operation::IntRemChecked, left, right)
+    ) -> TypedExpr<'module, 'body, T, WithTwoFallible<CheckedIntegerArithmetic, L, R>> {
+        self.fallible_binary(Operation::IntRemChecked, left, right)
     }
 
     pub fn int_neg_wrapping<T: TypedInteger, R: Requirements>(
@@ -3976,16 +4016,16 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         &mut self,
         value: TypedExpr<'module, 'body, T, L>,
         distance: TypedExpr<'module, 'body, T, R>,
-    ) -> TypedExpr<'module, 'body, T, WithTwo<CheckedIntegerShifts, L, R>> {
-        self.binary(Operation::IntShiftLeftChecked, value, distance)
+    ) -> TypedExpr<'module, 'body, T, WithTwoFallible<CheckedIntegerShifts, L, R>> {
+        self.fallible_binary(Operation::IntShiftLeftChecked, value, distance)
     }
 
     pub fn int_shift_right_checked<T: TypedInteger, L: Requirements, R: Requirements>(
         &mut self,
         value: TypedExpr<'module, 'body, T, L>,
         distance: TypedExpr<'module, 'body, T, R>,
-    ) -> TypedExpr<'module, 'body, T, WithTwo<CheckedIntegerShifts, L, R>> {
-        self.binary(Operation::IntShiftRightChecked, value, distance)
+    ) -> TypedExpr<'module, 'body, T, WithTwoFallible<CheckedIntegerShifts, L, R>> {
+        self.fallible_binary(Operation::IntShiftRightChecked, value, distance)
     }
 
     pub fn float_neg<R: Requirements>(
@@ -4073,8 +4113,8 @@ impl<'module, 'body> TypedBody<'module, 'body> {
     pub fn narrow_i64_to_i32_checked<R: Requirements>(
         &mut self,
         value: TypedExpr<'module, 'body, I64, R>,
-    ) -> TypedExpr<'module, 'body, I32, With<IntegerConversions, R>> {
-        self.unary(Operation::NarrowI64ToI32Checked, value)
+    ) -> TypedExpr<'module, 'body, I32, WithFallible<IntegerConversions, R>> {
+        self.fallible_unary(Operation::NarrowI64ToI32Checked, value)
     }
 
     pub fn string_concat<L: Requirements, R: Requirements>(
@@ -4088,8 +4128,8 @@ impl<'module, 'body> TypedBody<'module, 'body> {
     pub fn string_scalar_length<R: Requirements>(
         &mut self,
         value: TypedExpr<'module, 'body, Text, R>,
-    ) -> TypedExpr<'module, 'body, I64, With<StringInspection, R>> {
-        self.unary(Operation::StringScalarLength, value)
+    ) -> TypedExpr<'module, 'body, I64, WithFallible<StringInspection, R>> {
+        self.fallible_unary(Operation::StringScalarLength, value)
     }
 
     pub fn string_utf16_length<R: Requirements>(
@@ -4277,8 +4317,8 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         &mut self,
         value: TypedExpr<'module, 'body, List<T>, ListR>,
         index: TypedExpr<'module, 'body, I64, IndexR>,
-    ) -> TypedExpr<'module, 'body, T, WithTwo<ListOperations, ListR, IndexR>> {
-        self.binary(Operation::ListGetChecked, value, index)
+    ) -> TypedExpr<'module, 'body, T, WithTwoFallible<ListOperations, ListR, IndexR>> {
+        self.fallible_binary(Operation::ListGetChecked, value, index)
     }
 
     pub fn list_append<T, ListR: Requirements, ValueR: Requirements>(
@@ -4359,8 +4399,8 @@ impl<'module, 'body> TypedBody<'module, 'body> {
     pub fn string_from_utf8_checked<R: Requirements>(
         &mut self,
         value: TypedExpr<'module, 'body, Bytes, R>,
-    ) -> TypedExpr<'module, 'body, Text, With<Utf8Conversions, R>> {
-        self.unary(Operation::StringFromUtf8Checked, value)
+    ) -> TypedExpr<'module, 'body, Text, WithFallible<Utf8Conversions, R>> {
+        self.fallible_unary(Operation::StringFromUtf8Checked, value)
     }
 }
 
@@ -4856,6 +4896,7 @@ mod tests {
             I32Values,
             TextValues,
             CheckedIntegerArithmetic,
+            ResultPropagation,
             PortableTests,
         );
         let plugin = language_plugin(TestDialect)
@@ -4864,6 +4905,7 @@ mod tests {
             .support(test_mapping::<I32Values>())
             .support(test_mapping::<TextValues>())
             .support(test_mapping::<CheckedIntegerArithmetic>())
+            .support(test_mapping::<ResultPropagation>())
             .support(test_mapping::<PortableTests>())
             .build();
 

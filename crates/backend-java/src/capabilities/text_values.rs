@@ -3,8 +3,18 @@
 use portable_build::{CapabilityMapping, TextValues};
 use portable_diagnostics::Diagnostic;
 
-use super::support::{JavaCapabilityMapping, sealed};
-use crate::{ast::JavaExpr, dialect::JavaDialect, lower::string_literal};
+use super::support::{JavaCapabilityMapping, JavaValueNode, sealed};
+use crate::{
+    ast::{JavaKnownType, JavaType},
+    dialect::JavaDialect,
+    lower::string_literal,
+};
+
+#[doc(hidden)]
+pub enum JavaTextValuesInput {
+    Type,
+    Value(String),
+}
 
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
@@ -16,8 +26,8 @@ impl JavaCapabilityMapping for JavaTextValues {}
 impl CapabilityMapping<JavaDialect> for JavaTextValues {
     type Capability = TextValues;
     type Context = ();
-    type Input = String;
-    type Output = JavaExpr;
+    type Input = JavaTextValuesInput;
+    type Output = JavaValueNode;
     type Error = Vec<Diagnostic>;
 
     fn lower(
@@ -25,6 +35,13 @@ impl CapabilityMapping<JavaDialect> for JavaTextValues {
         _context: &mut Self::Context,
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
-        Ok(string_literal(&input))
+        Ok(match input {
+            JavaTextValuesInput::Type => {
+                JavaValueNode::Type(JavaType::known(JavaKnownType::String))
+            }
+            JavaTextValuesInput::Value(value) => {
+                JavaValueNode::Expression(Box::new(string_literal(&value)))
+            }
+        })
     }
 }

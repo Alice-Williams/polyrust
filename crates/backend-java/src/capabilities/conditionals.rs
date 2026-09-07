@@ -20,21 +20,12 @@ pub struct JavaConditionalValueInput {
 }
 
 #[doc(hidden)]
-pub struct JavaConditionalStatementInput {
-    pub condition: JavaExpr,
-    pub then_block: JavaBlock,
-    pub else_block: Option<JavaBlock>,
-}
-
-#[doc(hidden)]
 pub enum JavaConditionalsInput {
-    Statement(Box<JavaConditionalStatementInput>),
     Value(Box<JavaConditionalValueInput>),
 }
 
 #[doc(hidden)]
 pub enum JavaConditionalsNode {
-    Statement(Box<JavaStmt>),
     Value {
         statements: Vec<JavaStmt>,
         value: Box<JavaExpr>,
@@ -64,13 +55,6 @@ impl CapabilityMapping<JavaDialect> for JavaConditionals {
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
         Ok(match input {
-            JavaConditionalsInput::Statement(input) => {
-                JavaConditionalsNode::Statement(Box::new(JavaStmt::If {
-                    condition: input.condition,
-                    then_block: input.then_block,
-                    else_block: input.else_block,
-                }))
-            }
             JavaConditionalsInput::Value(input) => {
                 let name = input.result_name;
                 let value = JavaExpr::local(input.result_type.clone(), name.clone());

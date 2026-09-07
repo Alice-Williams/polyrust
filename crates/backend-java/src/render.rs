@@ -645,7 +645,12 @@ fn render_expr(
             };
             Ok(format!("{receiver}.{field}"))
         }
-        JavaExprKind::Cast { target, value } => {
+        JavaExprKind::Cast { target, value }
+        | JavaExprKind::InterfaceCoercion {
+            target,
+            value,
+            implementation: _,
+        } => {
             let target = render_java_type(target, names)?;
             let value = render_expr(value, names, file)?;
             Ok(format!("(({target}) {value})"))

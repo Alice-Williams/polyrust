@@ -37,3 +37,7 @@ path = "examples/generate_v0.rs"
 [[example]]
 name = "generate_java_typed"
 path = "examples/generate_typed.rs"
+
+[[example]]
+name = "generate_java_capabilities"
+path = "examples/generate_capabilities.rs"

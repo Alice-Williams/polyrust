@@ -3,8 +3,18 @@
 use portable_build::{CapabilityMapping, CharValues};
 use portable_diagnostics::Diagnostic;
 
-use super::support::{JavaCapabilityMapping, sealed};
-use crate::{ast::JavaExpr, dialect::JavaDialect, lower::scalar_literal};
+use super::support::{JavaCapabilityMapping, JavaValueNode, sealed};
+use crate::{
+    ast::{JavaKnownType, JavaType},
+    dialect::JavaDialect,
+    lower::scalar_literal,
+};
+
+#[doc(hidden)]
+pub enum JavaCharValuesInput {
+    Type,
+    Value(char),
+}
 
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
@@ -16,8 +26,8 @@ impl JavaCapabilityMapping for JavaCharValues {}
 impl CapabilityMapping<JavaDialect> for JavaCharValues {
     type Capability = CharValues;
     type Context = ();
-    type Input = char;
-    type Output = JavaExpr;
+    type Input = JavaCharValuesInput;
+    type Output = JavaValueNode;
     type Error = Vec<Diagnostic>;
 
     fn lower(
@@ -25,6 +35,13 @@ impl CapabilityMapping<JavaDialect> for JavaCharValues {
         _context: &mut Self::Context,
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
-        Ok(scalar_literal(input))
+        Ok(match input {
+            JavaCharValuesInput::Type => {
+                JavaValueNode::Type(JavaType::known(JavaKnownType::RuntimeScalar))
+            }
+            JavaCharValuesInput::Value(value) => {
+                JavaValueNode::Expression(Box::new(scalar_literal(value)))
+            }
+        })
     }
 }

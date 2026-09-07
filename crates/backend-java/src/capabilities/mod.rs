@@ -99,38 +99,70 @@ pub use unit_values::JavaUnitValues;
 pub use utf8_conversions::JavaUtf8Conversions;
 pub use wrapping_integer_arithmetic::JavaWrappingIntegerArithmetic;
 
+pub(crate) use bool_values::JavaBoolValuesInput;
+pub(crate) use boolean_logic::{JavaBooleanLogicInput, JavaBooleanLogicPlan};
+pub(crate) use bytes_operations::JavaBytesOperationsInput;
+pub(crate) use char_values::JavaCharValuesInput;
+pub(crate) use checked_integer_arithmetic::JavaCheckedIntegerArithmeticInput;
+pub(crate) use checked_integer_shifts::JavaCheckedIntegerShiftsInput;
 pub(crate) use conditionals::{
     JavaConditionalValueInput, JavaConditionalsInput, JavaConditionalsNode,
 };
 pub(crate) use constants::{JavaConstantsInput, JavaConstantsNode};
 pub(crate) use dispatch::{JavaIntrinsicFamily, classify_intrinsic};
-pub(crate) use enums::{JavaEnumBranchInput, JavaEnumVariantInput, JavaEnumsInput, JavaEnumsNode};
-pub(crate) use functions::{JavaFunctionDeclarationInput, JavaFunctionsInput};
-pub(crate) use interfaces::{
-    JavaConcreteInterfaceCallInput, JavaInterfaceCallInput, JavaInterfaceDeclarationInput,
-    JavaInterfaceImplementationInput, JavaInterfaceMethodInput, JavaInterfacesInput,
-    JavaInterfacesNode,
+pub(crate) use enums::{
+    JavaEnumBranchInput, JavaEnumEqualityOperator, JavaEnumPayloadVariantInput,
+    JavaEnumVariantInput, JavaEnumsInput, JavaEnumsNode,
 };
-pub(crate) use local_bindings::JavaLocalBindingInput;
-pub(crate) use loops::JavaLoopsInput;
+pub(crate) use equality::JavaEqualityInput;
+pub(crate) use f64_values::JavaF64ValuesInput;
+pub(crate) use floating_point_arithmetic::JavaFloatingPointArithmeticInput;
+pub(crate) use floating_point_inspection::JavaFloatingPointInspectionInput;
+pub(crate) use functions::{JavaFunctionDeclarationInput, JavaFunctionsInput};
+pub(crate) use i32_values::JavaI32ValuesInput;
+pub(crate) use i64_values::JavaI64ValuesInput;
+pub(crate) use integer_bitwise::JavaIntegerBitwiseInput;
+pub(crate) use integer_conversions::JavaIntegerConversionsInput;
+pub(crate) use interfaces::{
+    JavaConcreteInterfaceCallInput, JavaInterfaceCallInput, JavaInterfaceConformanceInput,
+    JavaInterfaceConformancePlan, JavaInterfaceDeclarationInput, JavaInterfaceImplementationInput,
+    JavaInterfaceMethodInput, JavaInterfacesInput, JavaInterfacesNode,
+};
+pub(crate) use list_operations::JavaListOperationsInput;
+pub(crate) use local_bindings::{JavaLocalBindingsInput, JavaLocalBindingsNode};
+pub(crate) use loops::{JavaLoopsInput, JavaLoopsNode};
 pub(crate) use modules::JavaModuleInput;
+pub(crate) use option_operations::JavaOptionOperationsInput;
+pub(crate) use ordering::JavaOrderingInput;
 pub(crate) use pattern_matching::{
     JavaLoweredPattern, JavaMatchArmInput, JavaMatchInput, JavaPatternFieldBindingInput,
     JavaPatternInput, JavaPatternMatchPlan, JavaPatternMatchingInput, JavaPatternMatchingNode,
 };
 pub(crate) use portable_tests::{
+    JavaPortableFunctionInvocationInput, JavaPortableMethodInvocationInput,
     JavaPortableTestCaseInput, JavaPortableTestExpectation, JavaPortableTestHarnessInput,
     JavaPortableTestsInput, JavaPortableTestsNode,
 };
 pub(crate) use records::{JavaRecordDeclarationInput, JavaRecordsInput};
+pub(crate) use result_operations::JavaResultOperationsInput;
 pub(crate) use result_propagation::{JavaResultPropagationInput, JavaResultPropagationPlan};
+pub(crate) use string_concatenation::JavaStringConcatenationInput;
+pub(crate) use string_inspection::JavaStringInspectionInput;
+pub(crate) use string_transformation::JavaStringTransformationInput;
+pub(crate) use support::JavaValueNode;
+pub(crate) use text_values::JavaTextValuesInput;
 pub(crate) use type_aliases::JavaTypeAliasInput;
+pub(crate) use unit_values::JavaUnitValuesInput;
+pub(crate) use utf8_conversions::JavaUtf8ConversionsInput;
+pub(crate) use wrapping_integer_arithmetic::JavaWrappingIntegerArithmeticInput;
 
 use crate::dialect::JavaDialect;
 use support::{ObservedJavaMapping, observed};
 
 #[cfg(test)]
-pub(crate) use support::{java_mapping_invocations, reset_java_mapping_invocations};
+pub(crate) use support::{
+    java_mapping_invocations, java_mapping_operation_counts, reset_java_mapping_invocations,
+};
 
 pub type JavaCapabilitySlots = capability_slots!(
     implemented ObservedJavaMapping<JavaFunctions>,

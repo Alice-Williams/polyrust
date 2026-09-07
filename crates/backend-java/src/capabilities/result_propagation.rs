@@ -1,4 +1,42 @@
 //! Java mapping for the complete `ResultPropagation` capability.
+//!
+//! Checked arithmetic requires propagation even when there is no function call.
+//! This plugin contains every other inferred capability, so its missing
+//! propagation mapping must prevent admission at Rust compile time:
+//!
+//! ```compile_fail
+//! use portable_backend_java::{capabilities::*, dialect::JavaDialect};
+//! use portable_build::{I32, Requirements, SupportsAll, TypedProgram,
+//!     language_plugin, portable_name, typed_list, typed_program};
+//! let program = typed_program(portable_name!("checked_negation"), |builder| {
+//!     builder.function(portable_name!("negate"), typed_list![], I32::TYPE,
+//!         |body, _| { let value = body.i32(1); body.int_neg_checked(value) }
+//!     ).builder
+//! });
+//! let plugin = language_plugin(JavaDialect)
+//!     .support(JavaModules).support(JavaFunctions).support(JavaI32Values)
+//!     .support(JavaCheckedIntegerArithmetic).build();
+//! fn admit<P: SupportsAll<R>, R: Requirements>(_: &P, _: &TypedProgram<R>) {}
+//! admit(&plugin, &program);
+//! ```
+//!
+//! Adding that exact mapping admits the same operation:
+//!
+//! ```
+//! use portable_backend_java::{capabilities::*, dialect::JavaDialect};
+//! use portable_build::{I32, Requirements, SupportsAll, TypedProgram,
+//!     language_plugin, portable_name, typed_list, typed_program};
+//! let program = typed_program(portable_name!("checked_negation"), |builder| {
+//!     builder.function(portable_name!("negate"), typed_list![], I32::TYPE,
+//!         |body, _| { let value = body.i32(1); body.int_neg_checked(value) }
+//!     ).builder
+//! });
+//! let plugin = language_plugin(JavaDialect)
+//!     .support(JavaModules).support(JavaFunctions).support(JavaI32Values)
+//!     .support(JavaCheckedIntegerArithmetic).support(JavaResultPropagation).build();
+//! fn admit<P: SupportsAll<R>, R: Requirements>(_: &P, _: &TypedProgram<R>) {}
+//! admit(&plugin, &program);
+//! ```
 
 use portable_build::{CapabilityMapping, ResultPropagation};
 use portable_diagnostics::Diagnostic;

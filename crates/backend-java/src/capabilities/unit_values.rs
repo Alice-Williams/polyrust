@@ -3,8 +3,19 @@
 use portable_build::{CapabilityMapping, UnitValues};
 use portable_diagnostics::Diagnostic;
 
+use super::support::JavaValueNode;
 use super::support::{JavaCapabilityMapping, sealed};
-use crate::{ast::JavaExpr, dialect::JavaDialect, lower::java_unit_value};
+use crate::{
+    ast::{JavaKnownType, JavaType},
+    dialect::JavaDialect,
+    lower::java_unit_value,
+};
+
+#[doc(hidden)]
+pub enum JavaUnitValuesInput {
+    Type,
+    Value,
+}
 
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
@@ -16,15 +27,20 @@ impl JavaCapabilityMapping for JavaUnitValues {}
 impl CapabilityMapping<JavaDialect> for JavaUnitValues {
     type Capability = UnitValues;
     type Context = ();
-    type Input = ();
-    type Output = JavaExpr;
+    type Input = JavaUnitValuesInput;
+    type Output = JavaValueNode;
     type Error = Vec<Diagnostic>;
 
     fn lower(
         &self,
         _context: &mut Self::Context,
-        (): Self::Input,
+        input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
-        Ok(java_unit_value())
+        Ok(match input {
+            JavaUnitValuesInput::Type => {
+                JavaValueNode::Type(JavaType::known(JavaKnownType::RuntimeUnit))
+            }
+            JavaUnitValuesInput::Value => JavaValueNode::Expression(Box::new(java_unit_value())),
+        })
     }
 }

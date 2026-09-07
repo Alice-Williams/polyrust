@@ -3,17 +3,17 @@
 use portable_build::{BytesValues, CapabilityMapping};
 use portable_diagnostics::Diagnostic;
 
-use super::support::{JavaCapabilityMapping, sealed};
+use super::support::{JavaCapabilityMapping, JavaValueNode, sealed};
 use crate::{
-    ast::{JavaExpr, JavaKnownType, JavaPrimitive, JavaType},
+    ast::{JavaKnownType, JavaPrimitive, JavaType},
     dialect::{JavaDialect, JavaKnownCallable, JavaRuntimeCallable},
     lower::{i32_literal, known_generic_call, runtime_call},
 };
 
 #[doc(hidden)]
-pub struct JavaBytesInput {
-    pub(crate) values: Vec<u8>,
-    pub(crate) result: JavaType,
+pub enum JavaBytesInput {
+    Type,
+    Value { values: Vec<u8>, result: JavaType },
 }
 
 #[doc(hidden)]
@@ -27,7 +27,7 @@ impl CapabilityMapping<JavaDialect> for JavaBytesValues {
     type Capability = BytesValues;
     type Context = ();
     type Input = JavaBytesInput;
-    type Output = JavaExpr;
+    type Output = JavaValueNode;
     type Error = Vec<Diagnostic>;
 
     fn lower(
@@ -35,23 +35,29 @@ impl CapabilityMapping<JavaDialect> for JavaBytesValues {
         _context: &mut Self::Context,
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
-        let list = JavaType::generic(
-            JavaKnownType::List,
-            vec![JavaType::Boxed(JavaPrimitive::Int)],
-        );
-        let elements = input
-            .values
-            .into_iter()
-            .map(|value| i32_literal(i32::from(value)))
-            .collect();
-        Ok(runtime_call(
-            JavaRuntimeCallable::BytesOf,
-            vec![known_generic_call(
-                JavaKnownCallable::ListOf,
-                elements,
-                list,
-            )],
-            input.result,
-        ))
+        Ok(match input {
+            JavaBytesInput::Type => {
+                JavaValueNode::Type(JavaType::known(JavaKnownType::RuntimeBytes))
+            }
+            JavaBytesInput::Value { values, result } => {
+                let list = JavaType::generic(
+                    JavaKnownType::List,
+                    vec![JavaType::Boxed(JavaPrimitive::Int)],
+                );
+                let elements = values
+                    .into_iter()
+                    .map(|value| i32_literal(i32::from(value)))
+                    .collect();
+                JavaValueNode::Expression(Box::new(runtime_call(
+                    JavaRuntimeCallable::BytesOf,
+                    vec![known_generic_call(
+                        JavaKnownCallable::ListOf,
+                        elements,
+                        list,
+                    )],
+                    result,
+                )))
+            }
+        })
     }
 }

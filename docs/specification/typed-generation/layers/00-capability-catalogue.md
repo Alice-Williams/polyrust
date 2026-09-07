@@ -217,6 +217,47 @@ supported capability. Registration order lives only in that directory's
 `mod.rs`. Bazel targets use recursive globs; adding a capability file MUST NOT
 require a hand-maintained source list.
 
+The filename is the snake-case spelling of the capability marker. For example,
+`CheckedIntegerArithmetic` is defined in shared
+`checked_integer_arithmetic.rs` and Java's exact mapping is defined in its own
+`checked_integer_arithmetic.rs`. Machinery files such as `mod.rs`, `support.rs`,
+and a semantics-free exhaustive dispatcher are not capabilities and cannot
+declare a mapping. A layout gate compares marker modules, catalogue rows,
+support delegation, language mapping files, and plugin registrations.
+
+Source files SHOULD remain focused on one responsibility and below 500 lines.
+Implementations MUST split growing files before they exceed 1,000 lines;
+existing oversized modules are migration debt, not a template for new work.
+Substantial tests and fixtures belong in dedicated modules. Use separate Bazel
+targets at stable dependency boundaries to obtain independent cached actions;
+splitting Rust modules alone does not provide that cache separation.
+
+## Mapping ownership
+
+The compiler orchestrator may recursively lower child nodes, preserve source
+evaluation order, and resolve stable target symbols. It MUST pass each
+capability mapping an exact enum or struct naming the portable operation being
+performed. The mapping owns the target representation selected for that
+operation. In particular:
+
+- value mappings distinguish target-type construction from target-value
+  construction with closed input enums;
+- local reads are dispatched by their verified origin: parameter, `let`,
+  `for_each`, or pattern binding;
+- operation mappings use one closed enum per capability and cannot receive an
+  erased all-intrinsics wrapper;
+- `Interfaces` receives and maps the complete conformance bundle, including
+  every implemented interface and method binding for one record;
+- `PortableTests` maps test-specific function and concrete-method invocations
+  as well as expectations and harness structure; and
+- a fallible call or intrinsic requires `ResultPropagation` during typed
+  inference and dynamic preflight before lowering begins.
+
+Lowered child AST values do not transfer ownership of the parent operation.
+For example, `BooleanLogic::And` may receive two already-lowered typed
+operands, but only the Boolean-logic mapping may choose Java short-circuit
+syntax and the necessary statement plan.
+
 ## Proof obligations
 
 - Adding a capability makes every exhaustive built-in registry fail until it
@@ -226,6 +267,9 @@ require a hand-maintained source list.
 - Removing a mapping used by `TypedProgram<R>` makes its `SupportsAll<R>` call
   fail during Rust compilation.
 - Every registered mapping has invocation evidence.
+- Every closed mapping input variant has exercised dispatch evidence, not just
+  a capability-name presence check. Operation fixtures also compile and execute
+  as generated programs; invocation counters are not a compiler oracle.
 - A compile-pass inventory constructs at least one typed node owned by every
   initial capability and proves the resulting requirement tree is accepted by
   a complete test plugin.

@@ -3,15 +3,16 @@
 use portable_build::{CapabilityMapping, ResultValues};
 use portable_diagnostics::Diagnostic;
 
-use super::support::{JavaCapabilityMapping, sealed};
+use super::support::{JavaCapabilityMapping, JavaValueNode, sealed};
 use crate::{
-    ast::{JavaExpr, JavaType},
+    ast::{JavaExpr, JavaKnownType, JavaType},
     dialect::{JavaDialect, JavaRuntimeCallable},
     lower::runtime_call,
 };
 
 #[doc(hidden)]
 pub enum JavaResultInput {
+    Type { ok: JavaType, error: JavaType },
     Ok { value: JavaExpr, result: JavaType },
     Err { value: JavaExpr, result: JavaType },
 }
@@ -27,7 +28,7 @@ impl CapabilityMapping<JavaDialect> for JavaResultValues {
     type Capability = ResultValues;
     type Context = ();
     type Input = JavaResultInput;
-    type Output = JavaExpr;
+    type Output = JavaValueNode;
     type Error = Vec<Diagnostic>;
 
     fn lower(
@@ -36,6 +37,12 @@ impl CapabilityMapping<JavaDialect> for JavaResultValues {
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
         let (callable, value, result) = match input {
+            JavaResultInput::Type { ok, error } => {
+                return Ok(JavaValueNode::Type(JavaType::generic(
+                    JavaKnownType::RuntimeValueResult,
+                    vec![ok.boxed(), error.boxed()],
+                )));
+            }
             JavaResultInput::Ok { value, result } => {
                 (JavaRuntimeCallable::ValueResultOk, value, result)
             }
@@ -43,6 +50,10 @@ impl CapabilityMapping<JavaDialect> for JavaResultValues {
                 (JavaRuntimeCallable::ValueResultErr, value, result)
             }
         };
-        Ok(runtime_call(callable, vec![value], result))
+        Ok(JavaValueNode::Expression(Box::new(runtime_call(
+            callable,
+            vec![value],
+            result,
+        ))))
     }
 }

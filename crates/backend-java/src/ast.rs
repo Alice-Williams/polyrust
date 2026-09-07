@@ -1,5 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+mod interface_witness;
+pub use interface_witness::JavaInterfaceWitness;
+
 use portable_codegen::{
     AstViolation, GeneratedCallableId, GeneratedInterfaceMethodId, GeneratedSymbolId,
     GeneratedTypeId, GeneratedValueId, TargetAstContext, TargetCallableRef,
@@ -874,6 +877,11 @@ pub enum JavaExprKind {
         target: JavaType,
         value: Box<JavaExpr>,
     },
+    InterfaceCoercion {
+        implementation: JavaInterfaceWitness,
+        target: JavaType,
+        value: Box<JavaExpr>,
+    },
     ArrayOwnershipTransition {
         transition: JavaArrayOwnershipTransition,
         value: Box<JavaExpr>,
@@ -1029,7 +1037,12 @@ impl JavaExpr {
                     }
                 }
             }
-            JavaExprKind::Cast { target, value } => {
+            JavaExprKind::Cast { target, value }
+            | JavaExprKind::InterfaceCoercion {
+                target,
+                value,
+                implementation: _,
+            } => {
                 target.symbols(symbols);
                 value.symbols(symbols);
             }
@@ -1290,6 +1303,27 @@ impl JavaExpr {
                 } else if !java_cast_is_legal(target, &value.ty, context) {
                     violations.push(type_error(
                         "Java cast is not legal between the declared source and target types",
+                    ));
+                }
+            }
+            JavaExprKind::InterfaceCoercion {
+                implementation,
+                target,
+                value,
+            } => {
+                violations.extend(implementation.verify(&value.ty, target, context));
+                violations.extend(target.verify(JavaTypeUse::Value));
+                violations.extend(value.verify(context));
+                if target != &self.ty {
+                    violations.push(type_error("interface coercion target type mismatch"));
+                }
+                if target == &value.ty {
+                    violations.push(type_error(
+                        "Java interface coercion is redundant and would fail javac -Xlint:cast -Werror",
+                    ));
+                } else if !java_cast_is_legal(target, &value.ty, context) {
+                    violations.push(type_error(
+                        "Java interface coercion is not legal between the declared source and target types",
                     ));
                 }
             }
@@ -2404,6 +2438,7 @@ fn verify_pattern_binding_uniqueness(
             }
             JavaExprKind::Field { receiver, .. } => pending.push(receiver),
             JavaExprKind::Cast { value, .. }
+            | JavaExprKind::InterfaceCoercion { value, .. }
             | JavaExprKind::ArrayOwnershipTransition { value, .. } => pending.push(value),
             JavaExprKind::InstanceOf { value, binding, .. } => {
                 pending.push(value);
@@ -2527,6 +2562,7 @@ fn verify_expr_scope_structure(value: &JavaExpr, scope: &JavaLexicalScope) -> Ve
             }
         }
         JavaExprKind::Cast { value, .. }
+        | JavaExprKind::InterfaceCoercion { value, .. }
         | JavaExprKind::ArrayOwnershipTransition { value, .. }
         | JavaExprKind::InstanceOf { value, .. } => {
             violations.extend(verify_expr_scope_structure(value, scope));
@@ -2714,6 +2750,7 @@ fn expr_checked_exceptions(
             exceptions.extend(expr_checked_exceptions(receiver, context));
         }
         JavaExprKind::Cast { value, .. }
+        | JavaExprKind::InterfaceCoercion { value, .. }
         | JavaExprKind::ArrayOwnershipTransition { value, .. }
         | JavaExprKind::InstanceOf { value, .. } => {
             exceptions.extend(expr_checked_exceptions(value, context));
@@ -3251,6 +3288,7 @@ fn java_compile_time_boolean(value: &JavaExpr) -> Option<bool> {
         | JavaExprKind::ArrayIndex { .. }
         | JavaExprKind::Field { .. }
         | JavaExprKind::Cast { .. }
+        | JavaExprKind::InterfaceCoercion { .. }
         | JavaExprKind::ArrayOwnershipTransition { .. }
         | JavaExprKind::InstanceOf { .. }
         | JavaExprKind::Lambda { .. } => None,
@@ -3279,7 +3317,9 @@ fn expression_has_runtime_dependency(value: &JavaExpr) -> bool {
                 || expression_has_runtime_dependency(when_true)
                 || expression_has_runtime_dependency(when_false)
         }
-        JavaExprKind::Cast { value, .. } | JavaExprKind::ArrayOwnershipTransition { value, .. } => {
+        JavaExprKind::Cast { value, .. }
+        | JavaExprKind::InterfaceCoercion { value, .. }
+        | JavaExprKind::ArrayOwnershipTransition { value, .. } => {
             expression_has_runtime_dependency(value)
         }
         JavaExprKind::Call { .. }
@@ -3441,6 +3481,7 @@ fn collect_blank_final_reads(
                 }
             }
             JavaExprKind::Cast { value, .. }
+            | JavaExprKind::InterfaceCoercion { value, .. }
             | JavaExprKind::ArrayOwnershipTransition { value, .. }
             | JavaExprKind::InstanceOf { value, .. } => pending.push(value),
         }
@@ -4698,6 +4739,11 @@ fn verify_expression_type_context(
             violations.extend(verify_contextual_type(&field.ty(), variables, context));
         }
         JavaExprKind::Cast { target, value }
+        | JavaExprKind::InterfaceCoercion {
+            target,
+            value,
+            implementation: _,
+        }
         | JavaExprKind::InstanceOf {
             target,
             value,
@@ -6519,6 +6565,7 @@ fn verify_privileged_literals_in_expression(
             violations.extend(verify_privileged_literals_in_expression(receiver, scope));
         }
         JavaExprKind::Cast { value, .. }
+        | JavaExprKind::InterfaceCoercion { value, .. }
         | JavaExprKind::ArrayOwnershipTransition { value, .. }
         | JavaExprKind::InstanceOf { value, .. } => {
             violations.extend(verify_privileged_literals_in_expression(value, scope));

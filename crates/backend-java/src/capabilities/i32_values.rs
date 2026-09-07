@@ -3,8 +3,18 @@
 use portable_build::{CapabilityMapping, I32Values};
 use portable_diagnostics::Diagnostic;
 
-use super::support::{JavaCapabilityMapping, sealed};
-use crate::{ast::JavaExpr, dialect::JavaDialect, lower::i32_literal};
+use super::support::{JavaCapabilityMapping, JavaValueNode, sealed};
+use crate::{
+    ast::{JavaPrimitive, JavaType},
+    dialect::JavaDialect,
+    lower::i32_literal,
+};
+
+#[doc(hidden)]
+pub enum JavaI32ValuesInput {
+    Type,
+    Value(i32),
+}
 
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
@@ -16,8 +26,8 @@ impl JavaCapabilityMapping for JavaI32Values {}
 impl CapabilityMapping<JavaDialect> for JavaI32Values {
     type Capability = I32Values;
     type Context = ();
-    type Input = i32;
-    type Output = JavaExpr;
+    type Input = JavaI32ValuesInput;
+    type Output = JavaValueNode;
     type Error = Vec<Diagnostic>;
 
     fn lower(
@@ -25,6 +35,13 @@ impl CapabilityMapping<JavaDialect> for JavaI32Values {
         _context: &mut Self::Context,
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
-        Ok(i32_literal(input))
+        Ok(match input {
+            JavaI32ValuesInput::Type => {
+                JavaValueNode::Type(JavaType::primitive(JavaPrimitive::Int))
+            }
+            JavaI32ValuesInput::Value(value) => {
+                JavaValueNode::Expression(Box::new(i32_literal(value)))
+            }
+        })
     }
 }

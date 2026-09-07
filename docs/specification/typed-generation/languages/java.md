@@ -58,10 +58,41 @@ support implementation.
 The Java capability files and complete catalogue are governed by
 [the portable capability catalogue](../layers/00-capability-catalogue.md).
 
+Java uses the following strict mapping boundaries:
+
+| Capability family | Java mapping input | Mapping-owned result |
+| --- | --- | --- |
+| scalar and collection values | closed `Type` / value-constructor variants | exact `JavaType` or typed `JavaExpr` |
+| functions | declaration, parameter read, call, or return | `JavaMethod`, call expression, or return statement |
+| local/control bindings | exact `let`, `for_each`, pattern-read, conditional, or match inputs | typed statements/expression plans |
+| records and enums | nominal type, declaration, construction, projection/equality/branch variants | typed Java declarations, expressions, or switches |
+| interfaces | nominal type, declaration, complete conformance bundle, coercion, or exact call | sealed interface, heritage/method plan, or typed expression |
+| portable tests | function invocation, concrete-method invocation, expectation case, or harness | typed test expression, statements, or declaration |
+| each operation capability | one feature-specific enum containing only that family's operations | `JavaIntrinsicExpr` or short-circuit expression plan |
+
+`dispatch.rs` performs only exhaustive CoreIR classification into those exact
+inputs. It contains no Java operator, callable, member, helper, or rendering
+choice. Each capability file performs its own Java mapping. The shared
+orchestrator cannot construct an erased intrinsic input and cannot select an
+operation by a string.
+
+The dynamic compatibility path also routes payload-bearing enum declarations
+through `Enums::PayloadDeclaration`, which owns the sealed interface and
+variant-record representation. That mapping returns a typed declaration group;
+the orchestrator only resolves symbols and lowers its component/member inputs.
+This legacy input does not introduce tagged unions into the typed portable
+enum capability, whose variants remain payload-free.
+
 The dynamic `JavaCapabilityRegistry` derives feature presence and strategy
 from the same built plugin registration catalogue, then applies its existing
 shape-specific checks. It cannot advertise a feature whose mapping slot is
-missing.
+missing. Calls and fallible intrinsics additionally confirm the registered
+`ResultPropagation` slot during preflight. Payload-free enum construction is a
+native Java enum strategy; tagged emulation is reserved for legacy dynamic
+payload shapes outside the typed generic AST. The selected strategy is a
+preflight certificate checked against the exact CoreIR use set; executable
+lowering is owned by the registered mapping rather than a second strategy
+switch.
 
 ## 2. Capability strategies
 

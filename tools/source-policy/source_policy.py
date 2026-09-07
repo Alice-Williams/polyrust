@@ -197,6 +197,19 @@ def _test_module_spans(mask: str) -> list[tuple[int, int]]:
     return spans
 
 
+def _test_function_spans(mask: str) -> list[tuple[int, int]]:
+    pattern = re.compile(
+        r"#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]\s*fn\s+[A-Za-z_][A-Za-z0-9_]*\s*\("
+    )
+    spans = []
+    for match in pattern.finditer(mask):
+        opening = mask.find("{", match.end())
+        if opening < 0:
+            raise PolicyError("test-only function has no body")
+        spans.append(_brace_span(mask, opening))
+    return spans
+
+
 def _inside(index: int, spans: list[tuple[int, int]]) -> bool:
     return any(start <= index < end for start, end in spans)
 
@@ -218,7 +231,7 @@ def rust_template_offenders(relative: str, source: str) -> list[str]:
         span
         for span in _function_spans(mask, "render_imports")
         if _inside(span[0], renderer_impls)
-    ] + _test_module_spans(mask)
+    ] + _test_module_spans(mask) + _test_function_spans(mask)
     return [
         f"{relative}:{string.line}: dependency directive outside certified import rendering"
         for string in strings
@@ -269,6 +282,15 @@ const BODY: &str = "plain body";
 '''
     if rust_template_offenders("allowed.rs", allowed):
         raise AssertionError("renderer or unit-test spelling was rejected")
+    split_test = '#[cfg(test)] fn imports() { assert_eq!("import allowed", "import allowed"); }'
+    if rust_template_offenders("split-test.rs", split_test):
+        raise AssertionError("explicit test-only function was rejected")
+    trailing = split_test + '\nfn production() { let body = "import forbidden"; }'
+    if len(rust_template_offenders("trailing.rs", trailing)) != 1:
+        raise AssertionError("test-only function hid a production directive")
+    fake = '// #[cfg(test)]\nfn production() { let body = "import forbidden"; }'
+    if not rust_template_offenders("fake-test.rs", fake):
+        raise AssertionError("commented test attribute hid a production directive")
     typed = 'template(ExampleTemplateId::Import, "import {{path}};\\n", &["path"]);'
     if rust_template_offenders("typed.rs", typed):
         raise AssertionError("typed import template was rejected")

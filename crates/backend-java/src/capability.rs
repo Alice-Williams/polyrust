@@ -6,9 +6,9 @@ use portable_build::{
     FloatingPointArithmetic, FloatingPointInspection, Functions, I32Values, I64Values,
     IntegerBitwise, IntegerConversions, Interfaces, ListOperations, ListValues, LocalBindings,
     Loops, Modules, OptionOperations, OptionValues, Ordering, PatternMatching, PortableTests,
-    Records, ResultOperations, ResultValues, StringConcatenation, StringInspection,
-    StringTransformation, Supports, TextValues, TypeAliases, UnitValues, Utf8Conversions,
-    WrappingIntegerArithmetic,
+    Records, ResultOperations, ResultPropagation, ResultValues, StringConcatenation,
+    StringInspection, StringTransformation, Supports, TextValues, TypeAliases, UnitValues,
+    Utf8Conversions, WrappingIntegerArithmetic,
 };
 use portable_codegen::{
     CapabilityRegistry, ControlFeature, CoreFeature, DeclarationFeature, FeatureShape, FeatureUse,
@@ -207,8 +207,10 @@ impl JavaCapabilityRegistry {
                 OwnershipFeature::OnceLeftToRight | OwnershipFeature::OwnedImmutableValue,
             ) => {}
             CoreFeature::Operation(OperationFeature::Literal) => {}
-            CoreFeature::Operation(OperationFeature::Local | OperationFeature::Call) => {
-                self.registered::<Functions>()
+            CoreFeature::Operation(OperationFeature::Local) => self.registered::<Functions>(),
+            CoreFeature::Operation(OperationFeature::Call) => {
+                self.registered::<Functions>();
+                self.registered::<ResultPropagation>();
             }
             CoreFeature::Operation(OperationFeature::Constant) => self.registered::<Constants>(),
             CoreFeature::Operation(OperationFeature::SelfValue) => self.registered::<Interfaces>(),
@@ -217,11 +219,15 @@ impl JavaCapabilityRegistry {
             }
             CoreFeature::Operation(OperationFeature::ConstructEnum) => self.registered::<Enums>(),
             CoreFeature::Operation(OperationFeature::Field) => self.registered::<Records>(),
+            CoreFeature::Operation(OperationFeature::CoerceInterface) => {
+                self.registered::<Interfaces>()
+            }
             CoreFeature::Operation(
-                OperationFeature::CoerceInterface
-                | OperationFeature::StaticMethodCall
-                | OperationFeature::InterfaceCall,
-            ) => self.registered::<Interfaces>(),
+                OperationFeature::StaticMethodCall | OperationFeature::InterfaceCall,
+            ) => {
+                self.registered::<Interfaces>();
+                self.registered::<ResultPropagation>();
+            }
             CoreFeature::Operation(OperationFeature::ConstructList) => {
                 self.registered::<ListValues>()
             }
@@ -233,7 +239,10 @@ impl JavaCapabilityRegistry {
             ) => self.registered::<ResultValues>(),
             CoreFeature::Operation(OperationFeature::Unary(operation)) => match operation {
                 CoreUnaryIntrinsic::BoolNot => self.registered::<BooleanLogic>(),
-                CoreUnaryIntrinsic::IntNegChecked => self.registered::<CheckedIntegerArithmetic>(),
+                CoreUnaryIntrinsic::IntNegChecked => {
+                    self.registered::<CheckedIntegerArithmetic>();
+                    self.registered::<ResultPropagation>();
+                }
                 CoreUnaryIntrinsic::IntNegWrapping => {
                     self.registered::<WrappingIntegerArithmetic>()
                 }
@@ -243,9 +252,13 @@ impl JavaCapabilityRegistry {
                 | CoreUnaryIntrinsic::FloatIsNaN
                 | CoreUnaryIntrinsic::FloatIsNegativeZero
                 | CoreUnaryIntrinsic::FloatAbs => self.registered::<FloatingPointInspection>(),
-                CoreUnaryIntrinsic::StringScalarLength
-                | CoreUnaryIntrinsic::StringUtf16Length
-                | CoreUnaryIntrinsic::StringIsEmpty => self.registered::<StringInspection>(),
+                CoreUnaryIntrinsic::StringScalarLength => {
+                    self.registered::<StringInspection>();
+                    self.registered::<ResultPropagation>();
+                }
+                CoreUnaryIntrinsic::StringUtf16Length | CoreUnaryIntrinsic::StringIsEmpty => {
+                    self.registered::<StringInspection>()
+                }
                 CoreUnaryIntrinsic::BytesLength | CoreUnaryIntrinsic::BytesIsEmpty => {
                     self.registered::<BytesOperations>()
                 }
@@ -258,11 +271,15 @@ impl JavaCapabilityRegistry {
                 CoreUnaryIntrinsic::ResultIsOk | CoreUnaryIntrinsic::ResultIsErr => {
                     self.registered::<ResultOperations>()
                 }
-                CoreUnaryIntrinsic::WidenI32ToI64 | CoreUnaryIntrinsic::NarrowI64ToI32Checked => {
-                    self.registered::<IntegerConversions>()
+                CoreUnaryIntrinsic::WidenI32ToI64 => self.registered::<IntegerConversions>(),
+                CoreUnaryIntrinsic::NarrowI64ToI32Checked => {
+                    self.registered::<IntegerConversions>();
+                    self.registered::<ResultPropagation>();
                 }
-                CoreUnaryIntrinsic::StringToUtf8 | CoreUnaryIntrinsic::StringFromUtf8Checked => {
-                    self.registered::<Utf8Conversions>()
+                CoreUnaryIntrinsic::StringToUtf8 => self.registered::<Utf8Conversions>(),
+                CoreUnaryIntrinsic::StringFromUtf8Checked => {
+                    self.registered::<Utf8Conversions>();
+                    self.registered::<ResultPropagation>();
                 }
             },
             CoreFeature::Operation(OperationFeature::Binary(operation)) => match operation {
@@ -281,7 +298,8 @@ impl JavaCapabilityRegistry {
                 | CoreBinaryIntrinsic::IntMulChecked
                 | CoreBinaryIntrinsic::IntDivChecked
                 | CoreBinaryIntrinsic::IntRemChecked => {
-                    self.registered::<CheckedIntegerArithmetic>()
+                    self.registered::<CheckedIntegerArithmetic>();
+                    self.registered::<ResultPropagation>();
                 }
                 CoreBinaryIntrinsic::IntAddWrapping
                 | CoreBinaryIntrinsic::IntSubWrapping
@@ -301,7 +319,8 @@ impl JavaCapabilityRegistry {
                 | CoreBinaryIntrinsic::IntBitXor => self.registered::<IntegerBitwise>(),
                 CoreBinaryIntrinsic::IntShiftLeftChecked
                 | CoreBinaryIntrinsic::IntShiftRightChecked => {
-                    self.registered::<CheckedIntegerShifts>()
+                    self.registered::<CheckedIntegerShifts>();
+                    self.registered::<ResultPropagation>();
                 }
                 CoreBinaryIntrinsic::StringIndexOfLiteral
                 | CoreBinaryIntrinsic::StringContains
@@ -312,8 +331,11 @@ impl JavaCapabilityRegistry {
                 | CoreBinaryIntrinsic::StringTrimStart
                 | CoreBinaryIntrinsic::StringTrimEnd => self.registered::<StringTransformation>(),
                 CoreBinaryIntrinsic::BytesConcat => self.registered::<BytesOperations>(),
-                CoreBinaryIntrinsic::ListGetChecked
-                | CoreBinaryIntrinsic::ListAppend
+                CoreBinaryIntrinsic::ListGetChecked => {
+                    self.registered::<ListOperations>();
+                    self.registered::<ResultPropagation>();
+                }
+                CoreBinaryIntrinsic::ListAppend
                 | CoreBinaryIntrinsic::ListConcat
                 | CoreBinaryIntrinsic::ListContains
                 | CoreBinaryIntrinsic::ListIndexOf => self.registered::<ListOperations>(),
@@ -385,9 +407,8 @@ impl CapabilityRegistry for JavaCapabilityRegistry {
                 | TypeFeature::Bytes
                 | TypeFeature::List
                 | TypeFeature::Record => SupportDecision::Native(DirectValue),
-                TypeFeature::Option | TypeFeature::Result | TypeFeature::Enum => {
-                    SupportDecision::Emulated(TaggedValue)
-                }
+                TypeFeature::Option | TypeFeature::Result => SupportDecision::Emulated(TaggedValue),
+                TypeFeature::Enum => SupportDecision::Native(DirectValue),
                 TypeFeature::Interface => SupportDecision::Native(InterfaceDispatch),
             },
             CoreFeature::Control(feature) => match feature {
@@ -423,18 +444,23 @@ impl CapabilityRegistry for JavaCapabilityRegistry {
                 | OperationFeature::ConstructList
                 | OperationFeature::Field
                 | OperationFeature::Call
-                | OperationFeature::StaticMethodCall
                 | OperationFeature::If
                 | OperationFeature::Match
                 | OperationFeature::Block => SupportDecision::Native(DirectValue),
-                OperationFeature::ConstructEnum
-                | OperationFeature::ConstructSome
+                OperationFeature::ConstructEnum => match usage.shape() {
+                    FeatureShape::Aggregate { field_count: 0 } => {
+                        SupportDecision::Native(DirectValue)
+                    }
+                    FeatureShape::Aggregate { .. } => SupportDecision::Emulated(TaggedValue),
+                    _ => unreachable!("Java enum construction shape was validated above"),
+                },
+                OperationFeature::ConstructSome
                 | OperationFeature::ConstructNone
                 | OperationFeature::ConstructOk
                 | OperationFeature::ConstructErr => SupportDecision::Emulated(TaggedValue),
-                OperationFeature::CoerceInterface | OperationFeature::InterfaceCall => {
-                    SupportDecision::Native(InterfaceDispatch)
-                }
+                OperationFeature::CoerceInterface
+                | OperationFeature::StaticMethodCall
+                | OperationFeature::InterfaceCall => SupportDecision::Native(InterfaceDispatch),
                 OperationFeature::Unary(operation) => match operation {
                     CoreUnaryIntrinsic::BoolNot
                     | CoreUnaryIntrinsic::IntNegChecked
