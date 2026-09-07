@@ -1,3 +1,5 @@
+//! Support selection and target-specific checks before Java lowering.
+
 mod registration;
 mod shapes;
 

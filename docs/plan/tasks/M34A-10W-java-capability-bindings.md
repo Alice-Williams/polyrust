@@ -13,6 +13,8 @@ complete portable/CoreIR-to-Java-AST translation for capability `C`.
 
 - `crates/backend-java/src/capabilities/` has exactly one mapping file per
   supported capability and a registration-only `mod.rs`.
+- Support selection and admission checks live in `preflight.rs` / `preflight/`,
+  clearly distinguished from the executable mappings in `capabilities/`.
 - Structural and value mappings accept portable/CoreIR inputs and construct
   Java AST; identity mappings over `JavaExpr`, `JavaMethod`, or
   `JavaTypeDeclaration` are absent.

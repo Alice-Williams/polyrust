@@ -5,9 +5,9 @@
 
 pub mod ast;
 pub mod capabilities;
-mod capability;
 pub mod dialect;
 mod lower;
+mod preflight;
 mod render;
 mod runtime;
 
@@ -26,9 +26,9 @@ use portable_ir::v0::IrVersion;
 
 use crate::{
     capabilities::{JavaCapabilitySet, java_capabilities},
-    capability::JavaCapabilityRegistry,
     dialect::{JavaDialect, JavaHelperCapability, JavaRuntimeHelper},
     lower::JavaLowerer,
+    preflight::JavaCapabilityRegistry,
     render::JavaRenderer,
 };
 

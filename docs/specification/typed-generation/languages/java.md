@@ -58,6 +58,11 @@ support implementation.
 The Java capability files and complete catalogue are governed by
 [the portable capability catalogue](../layers/00-capability-catalogue.md).
 
+Module names distinguish the responsibilities: `capabilities/` contains the
+executable capability mappings; `preflight.rs` and `preflight/` contain support
+selection and target-specific admission checks. Do not introduce a separate
+singular `capability` module alongside `capabilities`.
+
 Java uses the following strict mapping boundaries:
 
 | Capability family | Java mapping input | Mapping-owned result |

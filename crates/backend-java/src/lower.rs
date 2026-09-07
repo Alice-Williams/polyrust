@@ -54,8 +54,8 @@ use crate::{
         JavaResultPropagationInput, JavaResultPropagationPlan, JavaTextValuesInput,
         JavaTypeAliasInput, JavaUnitValuesInput, JavaValueNode, classify_intrinsic,
     },
-    capability::JavaCapabilitySelection,
     dialect::*,
+    preflight::JavaCapabilitySelection,
 };
 
 #[derive(Clone, Copy, Debug)]
