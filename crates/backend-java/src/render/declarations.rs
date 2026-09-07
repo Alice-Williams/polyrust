@@ -1,6 +1,19 @@
 //! Structural rendering: declarations.
 
-use super::*;
+use super::expressions::render_expr;
+use super::names::{render_java_type, resolved_generated_member_name, resolved_name};
+use super::statements::render_block;
+use super::syntax::{
+    indent, modifiers, render_heritage, render_method_type_parameters, render_type_parameters,
+    visibility,
+};
+use crate::ast::{
+    JavaAnnotation, JavaConstructor, JavaDeclarationKind, JavaField, JavaMember, JavaMethod,
+    JavaMethodDeclaration, JavaParameter, JavaResolvedName, JavaTypeDeclaration,
+};
+use crate::dialect::JavaDialect;
+use portable_codegen::{GeneratedSymbolId, LinkedFile, TargetSymbolRef};
+use portable_diagnostics::Diagnostic;
 
 pub(super) fn render_type(
     value: &JavaTypeDeclaration,
@@ -114,14 +127,14 @@ pub(super) fn render_member(
     }
 }
 
-pub(super) fn render_enum_constant(
+fn render_enum_constant(
     value: &crate::ast::JavaEnumConstant,
     names: &std::collections::BTreeMap<TargetSymbolRef<JavaDialect>, JavaResolvedName>,
 ) -> Result<String, Vec<Diagnostic>> {
     resolved_generated_member_name(names, GeneratedSymbolId::Value(value.declared))
 }
 
-pub(super) fn render_field(
+fn render_field(
     value: &JavaField,
     names: &std::collections::BTreeMap<TargetSymbolRef<JavaDialect>, JavaResolvedName>,
     depth: usize,
@@ -146,7 +159,7 @@ pub(super) fn render_field(
     ))
 }
 
-pub(super) fn render_method(
+fn render_method(
     value: &JavaMethod,
     names: &std::collections::BTreeMap<TargetSymbolRef<JavaDialect>, JavaResolvedName>,
     depth: usize,
@@ -185,7 +198,7 @@ pub(super) fn render_method(
     }
 }
 
-pub(super) fn render_constructor(
+fn render_constructor(
     value: &JavaConstructor,
     names: &std::collections::BTreeMap<TargetSymbolRef<JavaDialect>, JavaResolvedName>,
     depth: usize,
@@ -201,7 +214,7 @@ pub(super) fn render_constructor(
     ))
 }
 
-pub(super) fn render_annotations(values: &[JavaAnnotation], depth: usize) -> String {
+fn render_annotations(values: &[JavaAnnotation], depth: usize) -> String {
     let mut output = String::new();
     let indent = indent(depth);
     for value in values {
@@ -214,7 +227,7 @@ pub(super) fn render_annotations(values: &[JavaAnnotation], depth: usize) -> Str
     output
 }
 
-pub(super) fn render_parameters(
+fn render_parameters(
     values: &[JavaParameter],
     names: &std::collections::BTreeMap<TargetSymbolRef<JavaDialect>, JavaResolvedName>,
 ) -> Result<String, Vec<Diagnostic>> {

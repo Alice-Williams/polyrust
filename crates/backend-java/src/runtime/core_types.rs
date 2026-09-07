@@ -1,6 +1,25 @@
 //! Typed runtime construction: core types.
+use super::declaration_builders::{component, generic, identifier, parameter, type_variable};
+use super::equality::record_with_equality;
+use super::member_builders::{
+    field_accessor, guarded_accessor, package_static_method, private_final_field,
+};
 
-use super::*;
+use super::call_builders::{known_generic_call, new_known, runtime_call};
+use super::dispatch::runtime_method;
+use super::equality::{equality_dispatch_method, runtime_tagged_equality_method};
+use super::expression_builders::{
+    binary, bool_literal, conditional, int_literal, local, null_literal, string_literal,
+    structural_field, this_value, unary,
+};
+use super::statement_builders::{assign_component, illegal_argument};
+use crate::ast::{
+    JavaBinaryOperator, JavaBlock, JavaConstructor, JavaDeclarationKind, JavaExpr, JavaExprKind,
+    JavaHeritage, JavaKnownType, JavaMember, JavaMethod, JavaMethodDeclaration, JavaModifier,
+    JavaPrecedence, JavaPrimitive, JavaRuntimeMember, JavaStmt, JavaType, JavaTypeDeclaration,
+    JavaUnaryOperator, JavaValueRef, JavaVisibility,
+};
+use crate::dialect::{JavaKnownCallable, JavaKnownConstructor, JavaRuntimeCallable};
 
 pub(super) fn core_members() -> Vec<JavaMember> {
     let t = type_variable("T");
@@ -36,7 +55,12 @@ pub(super) fn core_members() -> Vec<JavaMember> {
             })
             .collect(),
         }),
-        JavaMember::NestedType(record(JavaKnownType::RuntimeUnit, "Unit", vec![], vec![])),
+        JavaMember::NestedType(record_with_equality(
+            JavaKnownType::RuntimeUnit,
+            "Unit",
+            vec![],
+            vec![],
+        )),
         JavaMember::NestedType(scalar_type()),
         JavaMember::NestedType(validated_error_type()),
         JavaMember::NestedType(validated_result_type()),
@@ -99,7 +123,7 @@ pub(super) fn core_members() -> Vec<JavaMember> {
     .collect()
 }
 
-pub(super) fn scalar_type() -> JavaTypeDeclaration {
+fn scalar_type() -> JavaTypeDeclaration {
     let scalar = JavaType::known(JavaKnownType::RuntimeScalar);
     let int = JavaType::primitive(JavaPrimitive::Int);
     let boolean = JavaType::primitive(JavaPrimitive::Boolean);
@@ -186,7 +210,7 @@ pub(super) fn scalar_type() -> JavaTypeDeclaration {
     }
 }
 
-pub(super) fn validated_error_type() -> JavaTypeDeclaration {
+fn validated_error_type() -> JavaTypeDeclaration {
     let owner = JavaType::known(JavaKnownType::RuntimeError);
     let string = JavaType::known(JavaKnownType::String);
     JavaTypeDeclaration {

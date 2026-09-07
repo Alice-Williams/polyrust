@@ -1,6 +1,18 @@
 //! Structural rendering: expressions.
 
-use super::*;
+use super::names::{
+    render_java_type, resolved_generated_member_name, resolved_name, resolved_type_name,
+};
+use super::render_diagnostic;
+use super::statements::render_block;
+use super::syntax::{binary_operator, render_literal, unary_operator};
+use crate::ast::{
+    JavaCallableRef, JavaConstructorRef, JavaExpr, JavaExprKind, JavaFieldRef, JavaResolvedName,
+    JavaValueRef,
+};
+use crate::dialect::JavaDialect;
+use portable_codegen::{GeneratedSymbolId, LinkedFile, TargetSymbolRef};
+use portable_diagnostics::Diagnostic;
 
 pub(super) fn render_expr(
     value: &JavaExpr,

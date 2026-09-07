@@ -1,51 +1,19 @@
-//! Typed runtime construction: float list.
+//! Typed immutable-list runtime construction.
+use super::declaration_builders::{generic, identifier, parameter, type_variable};
+use super::member_builders::static_method;
 
-use super::*;
-
-pub(super) fn float_method(value: JavaRuntimeCallable) -> JavaMember {
-    let double = JavaType::primitive(JavaPrimitive::Double);
-    let boolean = JavaType::primitive(JavaPrimitive::Boolean);
-    let operand = local(double.clone(), "value");
-    let returned = match value {
-        JavaRuntimeCallable::FloatTrunc => conditional(
-            binary(
-                JavaBinaryOperator::Greater,
-                operand.clone(),
-                double_literal(0),
-                boolean.clone(),
-            ),
-            known_call(JavaKnownCallable::MathFloor, vec![operand.clone()]),
-            known_call(JavaKnownCallable::MathCeil, vec![operand.clone()]),
-            double.clone(),
-        ),
-        JavaRuntimeCallable::FloatIsNegativeZero => binary(
-            JavaBinaryOperator::Equal,
-            known_call(
-                JavaKnownCallable::DoubleToRawLongBits,
-                vec![operand.clone()],
-            ),
-            known_field(JavaKnownField::LongMinValue),
-            boolean.clone(),
-        ),
-        JavaRuntimeCallable::FloatAbs => known_call(
-            JavaKnownCallable::DoubleFromLongBits,
-            vec![binary(
-                JavaBinaryOperator::BitAnd,
-                known_call(JavaKnownCallable::DoubleToRawLongBits, vec![operand]),
-                known_field(JavaKnownField::LongMaxValue),
-                JavaType::primitive(JavaPrimitive::Long),
-            )],
-        ),
-        _ => unreachable!(),
-    };
-    static_method(
-        vec![],
-        returned.ty.clone(),
-        value.name(),
-        vec![parameter(double, "value")],
-        vec![JavaStmt::Return(Some(returned))],
-    )
-}
+use super::call_builders::{
+    JavaRuntimeFailure, known_call, known_generic_call, known_method_call, new_known, runtime_call,
+    runtime_fail, runtime_ok,
+};
+use super::expression_builders::{binary, bool_literal, bytes_values, cast, local, long_literal};
+use crate::ast::{
+    JavaArrayOwnership, JavaBinaryOperator, JavaBlock, JavaKnownType, JavaLocalFinality,
+    JavaMember, JavaPrimitive, JavaStmt, JavaType,
+};
+use crate::dialect::{
+    JavaKnownCallable, JavaKnownConstructor, JavaKnownMethod, JavaRuntimeCallable,
+};
 
 pub(super) fn list_method(value: JavaRuntimeCallable) -> JavaMember {
     let t = type_variable("T");

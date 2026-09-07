@@ -4,10 +4,13 @@ set -euo pipefail
 readonly runfiles="${RUNFILES_DIR:-$0.runfiles}"
 readonly root="${runfiles}/${TEST_WORKSPACE}"
 
-mapfile -d '' java_sources < <(
-  find -L "${root}/crates/backend-java/src" -type f -name '*.rs' \
-    ! -path '*/src/tests/*' -print0
-)
+readonly source_list="${TEST_TMPDIR}/java-production-sources.list"
+if ! find -L "${root}/crates/backend-java/src" -type f -name '*.rs' \
+  ! -path '*/src/tests/*' -print0 > "${source_list}"; then
+  echo "Java production source discovery failed" >&2
+  exit 1
+fi
+mapfile -d '' java_sources < "${source_list}"
 if (( ${#java_sources[@]} == 0 )); then
   echo "Java production sources are missing from policy runfiles" >&2
   exit 1

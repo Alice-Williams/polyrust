@@ -1,6 +1,14 @@
 //! Typed runtime construction: call builders.
+use super::declaration_builders::identifier;
 
-use super::*;
+use super::expression_builders::string_literal;
+use crate::ast::{
+    JavaCallableRef, JavaConstructorRef, JavaExpr, JavaExprKind, JavaMemberOrigin,
+    JavaMethodSignature, JavaPrecedence, JavaRuntimeMember, JavaType, JavaValueRef,
+};
+use crate::dialect::{
+    JavaKnownCallable, JavaKnownConstructor, JavaKnownField, JavaKnownMethod, JavaRuntimeCallable,
+};
 
 pub(super) fn known_call(callable: JavaKnownCallable, arguments: Vec<JavaExpr>) -> JavaExpr {
     let expected = callable.signature();

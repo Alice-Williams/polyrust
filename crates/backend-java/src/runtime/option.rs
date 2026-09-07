@@ -1,6 +1,19 @@
 //! Typed runtime construction: option.
+use super::declaration_builders::{generic, identifier, parameter, type_variable};
+use super::member_builders::{field_accessor, guarded_accessor, private_final_field};
 
-use super::*;
+use super::call_builders::known_generic_call;
+use super::equality::runtime_tagged_equality_method;
+use super::expression_builders::{
+    binary, conditional, local, null_literal, structural_field, this_value, unary,
+};
+use super::statement_builders::{assign_component, illegal_argument};
+use crate::ast::{
+    JavaBinaryOperator, JavaBlock, JavaConstructor, JavaDeclarationKind, JavaHeritage,
+    JavaKnownType, JavaMember, JavaModifier, JavaPrimitive, JavaRuntimeMember, JavaStmt, JavaType,
+    JavaTypeDeclaration, JavaUnaryOperator, JavaVisibility,
+};
+use crate::dialect::{JavaKnownCallable, JavaRuntimeCallable};
 
 pub(super) fn validated_option_type() -> JavaTypeDeclaration {
     let t = type_variable("T");

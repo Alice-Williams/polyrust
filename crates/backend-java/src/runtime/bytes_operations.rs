@@ -1,6 +1,16 @@
 //! Typed runtime construction: bytes operations.
+use super::declaration_builders::{generic, identifier, parameter};
+use super::member_builders::static_method;
 
-use super::*;
+use super::call_builders::{known_call, known_method_call, new_known, runtime_call};
+use super::expression_builders::{array_length, binary, bytes_values, cast, int_literal, local};
+use crate::ast::{
+    JavaArrayOwnership, JavaBinaryOperator, JavaBlock, JavaKnownType, JavaLocalFinality,
+    JavaMember, JavaPrimitive, JavaStmt, JavaType,
+};
+use crate::dialect::{
+    JavaKnownCallable, JavaKnownConstructor, JavaKnownMethod, JavaRuntimeCallable,
+};
 
 pub(super) fn bytes_method(value: JavaRuntimeCallable) -> JavaMember {
     let integer = JavaType::Boxed(JavaPrimitive::Int);

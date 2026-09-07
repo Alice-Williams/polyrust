@@ -1,6 +1,14 @@
 //! Typed runtime construction: string transform.
+use super::declaration_builders::{identifier, parameter};
+use super::member_builders::static_method;
 
-use super::*;
+use super::call_builders::{known_call, known_method_call};
+use super::expression_builders::{binary, cast, conditional, int_literal, local};
+use crate::ast::{
+    JavaBinaryOperator, JavaBlock, JavaKnownType, JavaLocalFinality, JavaMember, JavaPrimitive,
+    JavaStmt, JavaType,
+};
+use crate::dialect::{JavaKnownCallable, JavaKnownMethod, JavaRuntimeCallable};
 
 pub(super) fn string_truncate_method(value: JavaRuntimeCallable) -> JavaMember {
     let string = JavaType::known(JavaKnownType::String);

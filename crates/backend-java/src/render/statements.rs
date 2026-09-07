@@ -1,6 +1,12 @@
 //! Structural rendering: statements.
 
-use super::*;
+use super::expressions::render_expr;
+use super::names::{render_java_type, resolved_generated_member_name};
+use super::syntax::{indent, render_literal};
+use crate::ast::{JavaBlock, JavaLocalFinality, JavaPattern, JavaResolvedName, JavaStmt};
+use crate::dialect::JavaDialect;
+use portable_codegen::{GeneratedSymbolId, LinkedFile, TargetSymbolRef};
+use portable_diagnostics::Diagnostic;
 
 pub(super) fn render_block(
     value: &JavaBlock,
@@ -15,7 +21,7 @@ pub(super) fn render_block(
     Ok(statements)
 }
 
-pub(super) fn render_stmt(
+fn render_stmt(
     value: &JavaStmt,
     names: &std::collections::BTreeMap<TargetSymbolRef<JavaDialect>, JavaResolvedName>,
     depth: usize,

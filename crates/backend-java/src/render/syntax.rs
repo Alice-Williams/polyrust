@@ -1,6 +1,13 @@
 //! Structural rendering: syntax.
 
-use super::*;
+use super::names::render_java_type;
+use crate::ast::{
+    JavaBinaryOperator, JavaHeritage, JavaIdentifier, JavaLiteral, JavaModifier, JavaResolvedName,
+    JavaUnaryOperator, JavaVisibility,
+};
+use crate::dialect::JavaDialect;
+use portable_codegen::TargetSymbolRef;
+use portable_diagnostics::Diagnostic;
 
 pub(super) fn render_literal(value: &JavaLiteral) -> String {
     match value {
@@ -21,7 +28,7 @@ pub(super) fn render_literal(value: &JavaLiteral) -> String {
     }
 }
 
-pub(super) fn java_string(value: &str) -> String {
+fn java_string(value: &str) -> String {
     let mut result = String::from("\"");
     for ch in value.chars() {
         match ch {

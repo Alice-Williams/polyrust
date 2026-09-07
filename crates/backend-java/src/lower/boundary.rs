@@ -1,6 +1,19 @@
 //! Public API boundary normalization and tagged-value factories.
 
-use super::*;
+use super::call_builders::{known_generic_call, member_call, new_known, runtime_call};
+use super::declaration_builders::{identifier, length_prefixed_type, public_factory_method};
+use super::{ExprPlan, Lowering, diagnostic};
+use crate::ast::{
+    JavaBlock, JavaExpr, JavaKnownType, JavaLocalFinality, JavaMember, JavaMemberOrigin,
+    JavaParameter, JavaPrimitive, JavaStmt, JavaType, JavaTypeName,
+};
+use crate::capabilities::{JavaOptionInput, JavaResultInput};
+use crate::dialect::{
+    JavaKnownCallable, JavaKnownConstructor, JavaKnownMethod, JavaRuntimeCallable,
+};
+use portable_build::CapabilityMapping;
+use portable_core_ir::{CoreType, CoreTypeId};
+use portable_diagnostics::Diagnostic;
 
 #[cfg(test)]
 #[path = "../tests/boundary_mapping.rs"]

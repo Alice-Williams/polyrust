@@ -1,20 +1,17 @@
-use portable_codegen::{
-    CertifiedSourceFile, GeneratedSymbolId, LinkedFile, TargetSymbolRef, TotalSourceRenderer,
-};
+use crate::ast::{JavaFileItem, JavaFilePlacement};
+use crate::dialect::JavaDialect;
+use declarations::{render_member, render_type, render_type_with_extra};
+use portable_codegen::{CertifiedSourceFile, LinkedFile, TotalSourceRenderer};
 use portable_diagnostics::{Diagnostic, DiagnosticCode};
-
-use crate::{ast::*, dialect::*};
-
 mod declarations;
-use declarations::*;
+
 mod statements;
-use statements::*;
+
 mod expressions;
-use expressions::*;
+
 mod names;
-use names::*;
+
 mod syntax;
-use syntax::*;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JavaRenderer;

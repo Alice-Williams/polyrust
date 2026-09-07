@@ -63,6 +63,8 @@ executable capability mappings; `preflight.rs` and `preflight/` contain support
 selection and target-specific admission checks. Do not introduce a separate
 singular `capability` module alongside `capabilities`.
 
+The implementation follows the [module ownership contract](java/module-layout.md).
+
 Java uses the following strict mapping boundaries:
 
 | Capability family | Java mapping input | Mapping-owned result |

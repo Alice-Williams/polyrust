@@ -1,6 +1,13 @@
 //! Typed runtime construction: tagged values.
+use super::declaration_builders::{generic, identifier, parameter, type_variable};
+use super::member_builders::{package_static_method, static_method};
 
-use super::*;
+use super::call_builders::{member_call, new_known};
+use super::expression_builders::{bool_literal, local, null_literal};
+use super::option::validated_option_type;
+use super::value_result::validated_value_result_type;
+use crate::ast::{JavaKnownType, JavaMember, JavaPrimitive, JavaRuntimeMember, JavaStmt, JavaType};
+use crate::dialect::JavaKnownConstructor;
 
 pub(super) fn tagged_members() -> Vec<JavaMember> {
     let t = type_variable("T");

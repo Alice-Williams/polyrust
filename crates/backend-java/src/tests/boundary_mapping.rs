@@ -1,10 +1,14 @@
 //! Boundary-only ownership: no portable tagged constructors can mask bypasses.
 
-use super::*;
+use crate::ast::JavaExpr;
 use crate::capabilities::{
     java_capabilities, java_mapping_operation_counts, reset_java_mapping_invocations,
 };
+use crate::lower::{Lowering, identifier};
+use crate::preflight::JavaCapabilitySelection;
 use portable_build::{ModuleBuilder, Parameter, Type};
+use portable_core_ir::{CoreExprKind, CoreProgram, CoreType};
+use portable_ir::v0::Visibility;
 
 fn fixture() -> CoreProgram {
     let mut module = ModuleBuilder::new("boundary_ownership");

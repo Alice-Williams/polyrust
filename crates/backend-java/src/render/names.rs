@@ -1,6 +1,11 @@
 //! Structural rendering: names.
 
-use super::*;
+use crate::ast::{
+    JavaKnownType, JavaPrimitive, JavaResolvedName, JavaType, JavaTypeName, JavaWildcardBound,
+};
+use crate::dialect::JavaDialect;
+use portable_codegen::{GeneratedSymbolId, TargetSymbolRef};
+use portable_diagnostics::{Diagnostic, DiagnosticCode};
 
 pub(super) fn render_java_type(
     value: &JavaType,

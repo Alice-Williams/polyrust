@@ -1,5 +1,6 @@
-use super::*;
-
+use super::statements::render_switch_pattern;
+use super::syntax::{binary_operator, unary_operator};
+use crate::ast::{JavaBinaryOperator, JavaLiteral, JavaPattern, JavaUnaryOperator};
 #[test]
 fn structural_operator_spelling_is_closed() {
     assert_eq!(unary_operator(JavaUnaryOperator::Not), "!");

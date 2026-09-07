@@ -1,6 +1,16 @@
 //! Typed runtime construction: checked integer.
+use super::declaration_builders::{generic, identifier, parameter};
+use super::member_builders::static_method;
 
-use super::*;
+use super::call_builders::{
+    JavaRuntimeFailure, known_call, known_field, known_method_call, runtime_fail, runtime_ok,
+};
+use super::expression_builders::{binary, cast, int_literal, local, long_literal, unary};
+use crate::ast::{
+    JavaBinaryOperator, JavaBlock, JavaExpr, JavaKnownType, JavaLocalFinality, JavaMember,
+    JavaPrimitive, JavaStmt, JavaType, JavaUnaryOperator,
+};
+use crate::dialect::{JavaKnownCallable, JavaKnownField, JavaKnownMethod, JavaRuntimeCallable};
 
 pub(super) fn checked_integer_method(value: JavaRuntimeCallable) -> JavaMember {
     let int = JavaType::primitive(JavaPrimitive::Int);
@@ -292,7 +302,7 @@ pub(super) fn checked_integer_method(value: JavaRuntimeCallable) -> JavaMember {
     static_method(vec![], result, value.name(), parameters, statements)
 }
 
-pub(super) fn checked_bounds_statements(
+fn checked_bounds_statements(
     candidate: JavaExpr,
     result: JavaType,
     minimum: JavaKnownField,
@@ -338,7 +348,7 @@ pub(super) fn checked_bounds_statements(
     ]
 }
 
-pub(super) fn checked_bigint_statements(
+fn checked_bigint_statements(
     candidate: JavaExpr,
     result: JavaType,
     output: JavaType,

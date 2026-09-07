@@ -1,74 +1,14 @@
-//! Typed runtime construction: expression builders.
+//! Typed expression construction utilities.
+use super::declaration_builders::identifier;
 
-use super::*;
+use super::call_builders::{known_call, member_call};
+use crate::ast::{
+    JavaArrayOwnership, JavaArrayOwnershipTransition, JavaBinaryOperator, JavaExpr, JavaExprKind,
+    JavaFieldRef, JavaIdentifier, JavaKnownType, JavaLiteral, JavaNullPurpose, JavaPrecedence,
+    JavaPrimitive, JavaRuntimeMember, JavaType, JavaUnaryOperator, JavaValueRef,
+};
+use crate::dialect::JavaKnownCallable;
 
-pub(super) fn static_method(
-    type_parameters: Vec<JavaIdentifier>,
-    return_type: JavaType,
-    name: &str,
-    parameters: Vec<JavaParameter>,
-    statements: Vec<JavaStmt>,
-) -> JavaMember {
-    JavaMember::Method(JavaMethod {
-        declared: JavaMethodDeclaration::Structural,
-        annotations: vec![],
-        modifiers: vec![JavaModifier::Static],
-        type_parameters,
-        return_type,
-        name: identifier(name),
-        parameters,
-        body: Some(JavaBlock::new(statements)),
-    })
-}
-
-pub(super) fn package_static_method(
-    type_parameters: Vec<JavaIdentifier>,
-    return_type: JavaType,
-    name: &str,
-    parameters: Vec<JavaParameter>,
-    statements: Vec<JavaStmt>,
-) -> JavaMember {
-    JavaMember::Method(JavaMethod {
-        declared: JavaMethodDeclaration::Structural,
-        annotations: vec![],
-        modifiers: vec![JavaModifier::Static],
-        type_parameters,
-        return_type,
-        name: identifier(name),
-        parameters,
-        body: Some(JavaBlock::new(statements)),
-    })
-}
-
-pub(super) fn private_final_field(ty: JavaType, name: &str) -> JavaMember {
-    JavaMember::Field(JavaField {
-        declared: None,
-        modifiers: vec![JavaModifier::Private, JavaModifier::Final],
-        ty,
-        name: identifier(name),
-        initializer: None,
-    })
-}
-
-pub(super) fn field_accessor(
-    owner: JavaType,
-    name: &str,
-    ty: JavaType,
-    member: JavaRuntimeMember,
-) -> JavaMember {
-    JavaMember::Method(JavaMethod {
-        declared: JavaMethodDeclaration::Structural,
-        annotations: vec![],
-        modifiers: vec![JavaModifier::Public],
-        type_parameters: vec![],
-        return_type: ty.clone(),
-        name: identifier(member.name()),
-        parameters: vec![],
-        body: Some(JavaBlock::new(vec![JavaStmt::Return(Some(
-            structural_field(this_value(owner), name, ty),
-        ))])),
-    })
-}
 pub(super) fn local(ty: JavaType, name: &str) -> JavaExpr {
     JavaExpr::local(ty, identifier(name))
 }
@@ -210,56 +150,6 @@ pub(super) fn this_value(ty: JavaType) -> JavaExpr {
         precedence: JavaPrecedence::Primary,
         kind: JavaExprKind::Value(JavaValueRef::This),
     }
-}
-pub(super) fn assign_component(
-    owner: JavaType,
-    name: &str,
-    ty: JavaType,
-    value: JavaExpr,
-) -> JavaStmt {
-    JavaStmt::Assign {
-        target: structural_field(this_value(owner), name, ty),
-        value,
-    }
-}
-pub(super) fn illegal_argument(message: &str) -> JavaStmt {
-    JavaStmt::Throw(new_known(
-        JavaKnownConstructor::IllegalArgumentExceptionString,
-        JavaType::known(JavaKnownType::IllegalArgumentException),
-        vec![string_literal(message)],
-    ))
-}
-pub(super) fn illegal_state(message: &str) -> JavaStmt {
-    JavaStmt::Throw(new_known(
-        JavaKnownConstructor::IllegalStateExceptionString,
-        JavaType::known(JavaKnownType::IllegalStateException),
-        vec![string_literal(message)],
-    ))
-}
-pub(super) fn guarded_accessor(
-    owner: JavaType,
-    name: &str,
-    ty: JavaType,
-    invalid: JavaExpr,
-    message: &str,
-) -> JavaMember {
-    JavaMember::Method(JavaMethod {
-        declared: JavaMethodDeclaration::Structural,
-        annotations: vec![],
-        modifiers: vec![JavaModifier::Public],
-        type_parameters: vec![],
-        return_type: ty.clone(),
-        name: identifier(name),
-        parameters: vec![],
-        body: Some(JavaBlock::new(vec![
-            JavaStmt::If {
-                condition: invalid,
-                then_block: JavaBlock::new(vec![illegal_state(message)]),
-                else_block: None,
-            },
-            JavaStmt::Return(Some(structural_field(this_value(owner), name, ty))),
-        ])),
-    })
 }
 pub(super) fn bytes_values(receiver: JavaExpr, array_type: JavaType) -> JavaExpr {
     member_call(receiver, JavaRuntimeMember::BytesValues, vec![], array_type)

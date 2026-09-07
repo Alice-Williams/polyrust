@@ -1,7 +1,15 @@
 //! Exact checked conformance evidence retained by Java interface coercions.
 
-use super::*;
+use super::declaration_model::{
+    JavaDeclarationKind, JavaMember, JavaMethod, JavaMethodDeclaration,
+};
+use super::field_metadata::find_type_declaration;
+use super::invocations::generated_type_implements;
+use super::types::{JavaType, JavaTypeName};
+use crate::dialect::JavaDialect;
+use portable_codegen::{AstViolation, GeneratedTypeId, TargetAstContext};
 use portable_core_ir::{CoreImplementationId, CoreImplementationMethodId, CoreProgram};
+use portable_diagnostics::DiagnosticCode;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct JavaInterfaceWitness {

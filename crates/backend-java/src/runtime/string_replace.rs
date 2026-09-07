@@ -1,6 +1,14 @@
 //! Typed runtime construction: string replace.
+use super::declaration_builders::{generic, identifier, parameter};
+use super::member_builders::static_method;
 
-use super::*;
+use super::call_builders::{known_call, known_method_call};
+use super::expression_builders::{binary, bool_literal, int_literal, local, string_literal, unary};
+use crate::ast::{
+    JavaBinaryOperator, JavaBlock, JavaKnownType, JavaLocalFinality, JavaMember, JavaPrimitive,
+    JavaStmt, JavaType, JavaUnaryOperator,
+};
+use crate::dialect::{JavaKnownCallable, JavaKnownMethod, JavaRuntimeCallable};
 
 pub(super) fn string_replace_all_method(value: JavaRuntimeCallable) -> JavaMember {
     let string = JavaType::known(JavaKnownType::String);

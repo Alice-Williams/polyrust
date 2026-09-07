@@ -1,39 +1,53 @@
-use crate::{ast::*, dialect::*};
-
+use crate::ast::{
+    JavaBlock, JavaConstructor, JavaDeclarationKind, JavaFileItem, JavaHeritage, JavaMember,
+    JavaModifier, JavaPrimitive, JavaStmt, JavaType, JavaTypeDeclaration, JavaVisibility,
+};
+use crate::dialect::JavaRuntimeHelper;
+use bytes_storage::bytes_members;
+use core_types::core_members;
+use declaration_builders::identifier;
+use dispatch::runtime_methods;
+use expression_builders::bool_literal;
+use member_builders::static_method;
+use tagged_values::tagged_members;
 mod core_types;
-use core_types::*;
+
 mod equality;
-use equality::*;
+
 mod tagged_values;
-use tagged_values::*;
+
 mod option;
-use option::*;
+
 mod value_result;
-use value_result::*;
+
 mod bytes_storage;
-use bytes_storage::*;
+
 mod dispatch;
-use dispatch::*;
+
 mod string_replace;
-use string_replace::*;
+
 mod string_transform;
-use string_transform::*;
+
 mod unicode;
-use unicode::*;
+
 mod unicode_validation;
-use unicode_validation::*;
+
 mod checked_integer;
-use checked_integer::*;
-mod float_list;
-use float_list::*;
+
+mod float;
+
+mod immutable_lists;
+
+mod statement_builders;
+
 mod bytes_operations;
-use bytes_operations::*;
+
 mod declaration_builders;
-use declaration_builders::*;
+mod member_builders;
+
 mod expression_builders;
-use expression_builders::*;
+
 mod call_builders;
-use call_builders::*;
 
 pub(crate) fn shell_item() -> JavaFileItem {
     JavaFileItem::Type {

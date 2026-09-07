@@ -1,6 +1,14 @@
 //! Typed runtime construction: dispatch.
 
-use super::*;
+use super::bytes_operations::bytes_method;
+use super::checked_integer::checked_integer_method;
+use super::float::float_method;
+use super::immutable_lists::{bytes_to_list_method, list_method};
+use super::string_replace::{string_replace_all_method, string_replace_many_method};
+use super::string_transform::{string_trim_method, string_truncate_method};
+use super::unicode::unicode_method;
+use crate::ast::JavaMember;
+use crate::dialect::{JavaRuntimeCallable, JavaRuntimeHelper};
 
 pub(super) fn runtime_methods(helper: JavaRuntimeHelper) -> Vec<JavaMember> {
     JavaRuntimeCallable::ALL
@@ -77,7 +85,7 @@ pub(super) fn runtime_method(value: JavaRuntimeCallable) -> JavaMember {
     }
 }
 
-pub(super) fn string_method(value: JavaRuntimeCallable) -> JavaMember {
+fn string_method(value: JavaRuntimeCallable) -> JavaMember {
     match value {
         JavaRuntimeCallable::StringReplaceAll => string_replace_all_method(value),
         JavaRuntimeCallable::StringReplaceMany => string_replace_many_method(value),

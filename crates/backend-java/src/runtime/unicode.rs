@@ -1,6 +1,25 @@
 //! Typed runtime construction: unicode.
+use super::declaration_builders::{generic, identifier, parameter};
+use super::member_builders::static_method;
 
-use super::*;
+use super::call_builders::{
+    JavaRuntimeFailure, known_call, known_field, known_method_call, new_known, runtime_call,
+    runtime_fail, runtime_ok,
+};
+use super::expression_builders::{
+    binary, cast, conditional, fresh_copy_to_boundary, int_literal, local, long_literal,
+    string_literal, unary,
+};
+use super::unicode_validation::{
+    compare_scalar_strings_method, require_scalar_string_method, string_from_utf8_method,
+};
+use crate::ast::{
+    JavaArrayOwnership, JavaBinaryOperator, JavaBlock, JavaKnownType, JavaLocalFinality,
+    JavaMember, JavaPrimitive, JavaStmt, JavaType, JavaUnaryOperator,
+};
+use crate::dialect::{
+    JavaKnownCallable, JavaKnownConstructor, JavaKnownField, JavaKnownMethod, JavaRuntimeCallable,
+};
 
 pub(super) fn unicode_method(value: JavaRuntimeCallable) -> JavaMember {
     let string = JavaType::known(JavaKnownType::String);
