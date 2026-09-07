@@ -61,6 +61,14 @@ mark Java complete before hosted CI and the review have passed.
 
 ## Implementation and audit evidence
 
+- Final uncapped Sol Extra High review of the complete ownership/provenance
+  follow-up found no remaining actionable Java validity or identity defects.
+  This was a read-only full-tree review, not a replacement for executable proof.
+- Final local follow-up proof: all 308 tracked tests passed (432 rule targets),
+  all 245 release-gate tests passed, and deterministic conformance passed all
+  50 cases plus one portable test across the evaluator and eight targets.
+  Hosted CI for the final follow-up checkpoint remains required before closure.
+
 - The first typed `hashCode` function/field regression reproduced an invariant
   panic at Java preflight before the repair. It now generates, compiles, and
   runs through a separately compiled public Java consumer.
@@ -220,6 +228,13 @@ All were accepted; each repair has a regression:
     a static nested class or an implicitly static nominal. Tests cover all
     constructor/static/private combinations, same-nest positive baselines, and
     cross-nest member/field mutations within a single compilation unit.
+27. Owner-path resolution originally keyed only on ordinary synthesized
+    provenance, leaving runtime/expression origins and miscategorized special
+    synthesis reasons under the old guessed owner. Paths now cover every
+    noncanonical type/callable/value category; only independently authenticated
+    Generated-layout declarations retain their established compact spelling.
+    Native fixtures cover all runtime-origin variants, a real Core expression,
+    and entry/empty-interface reasons attached to callables and values.
 
 The naming-policy review also clarified two non-failure cases. Field suffixes
 now reserve requested interface method names before allocation. Enum member

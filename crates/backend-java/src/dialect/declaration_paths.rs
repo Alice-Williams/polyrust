@@ -1,4 +1,4 @@
-//! Synthetic symbols resolve through their actual typed declaration owners.
+//! Noncanonical symbols resolve through their actual typed declaration owners.
 
 use super::JavaDialect;
 use crate::ast::{
@@ -10,7 +10,7 @@ use portable_codegen::{
 };
 use portable_diagnostics::DiagnosticCode;
 
-pub(super) fn synthetic_path(
+pub(super) fn noncanonical_path(
     package: &TargetAstPackage<JavaDialect>,
     symbol: GeneratedSymbolId,
 ) -> Result<Option<JavaDeclaredPath>, AstViolation> {
@@ -20,8 +20,29 @@ pub(super) fn synthetic_path(
         GeneratedSymbolId::Value(id) => package.value(id).map(|value| &value.origin),
         GeneratedSymbolId::InterfaceMethod(_) => return Ok(None),
     };
-    if !matches!(origin, Some(GeneratedOrigin::Synthesized(reason)) if *reason != SynthesisReason::PackageEntryPoint && *reason != SynthesisReason::UninhabitedInterface)
-    {
+    let canonical = matches!(
+        (symbol, origin),
+        (
+            GeneratedSymbolId::Type(_),
+            Some(
+                GeneratedOrigin::CoreDeclaration(_)
+                    | GeneratedOrigin::Synthesized(
+                        SynthesisReason::PackageEntryPoint | SynthesisReason::UninhabitedInterface,
+                    ),
+            ),
+        ) | (
+            GeneratedSymbolId::Callable(_),
+            Some(GeneratedOrigin::CoreDeclaration(
+                portable_core_ir::CoreDeclaration::Function(_)
+            )),
+        ) | (
+            GeneratedSymbolId::Value(_),
+            Some(GeneratedOrigin::CoreDeclaration(
+                portable_core_ir::CoreDeclaration::Constant(_)
+            )),
+        )
+    );
+    if canonical {
         return Ok(None);
     }
     for file in package.files() {
@@ -39,7 +60,7 @@ pub(super) fn synthetic_path(
     }
     Err(AstViolation::new(
         DiagnosticCode::UnresolvedReference,
-        "synthetic Java symbol has no authenticated declaration path",
+        "Java symbol has no authenticated declaration path",
     ))
 }
 

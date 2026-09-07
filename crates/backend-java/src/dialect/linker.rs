@@ -186,7 +186,7 @@ impl LinkerDialect for JavaDialect {
         let mut names = BTreeMap::new();
         for symbol in item.symbols() {
             if let TargetSymbolRef::Generated(id) = symbol
-                && let Some(path) = super::declaration_paths::synthetic_path(package, id)?
+                && let Some(path) = super::declaration_paths::noncanonical_path(package, id)?
             {
                 names.insert(symbol, JavaResolvedName::DeclaredPath(path));
                 continue;
