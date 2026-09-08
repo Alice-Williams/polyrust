@@ -97,9 +97,7 @@ impl<'a> CStatements<'a> {
     }
 
     pub fn evaluate(&self, effect: CEffect) -> Result<CStatement, E> {
-        self.expressions
-            .registry
-            .check_function(effect.call().callable().contract_function())?;
+        self.expressions.check_callable(effect.call().callable())?;
         Ok(self.statement(CStatementKind::Evaluate(effect)))
     }
 

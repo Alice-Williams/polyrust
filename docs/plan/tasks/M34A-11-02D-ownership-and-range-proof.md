@@ -1,6 +1,6 @@
 # M34A-11-02D — C ownership, bounds and arithmetic proof
 
-- Status: planned
+- Status: in-progress
 - Depends on: M34A-11-02C
 
 ## Goal

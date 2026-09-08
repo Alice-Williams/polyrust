@@ -89,12 +89,15 @@ impl Recheck<'_> {
 
     fn call_parts(&self, call: &CCall) -> Result<(CCallable, Vec<CValue>), E> {
         let original = call.callable();
-        let function = original.contract_function().clone();
         let callable = match original.kind() {
-            CCallableKind::Direct => self.expressions.direct(function)?,
-            CCallableKind::Indirect(pointer) => {
-                self.expressions.indirect(self.value(pointer)?, function)?
-            }
+            CCallableKind::Direct(function) => self.expressions.direct((**function).clone())?,
+            CCallableKind::Indirect {
+                pointer,
+                contract_function,
+            } => self
+                .expressions
+                .indirect(self.value(pointer)?, (**contract_function).clone())?,
+            CCallableKind::Known(call) => self.expressions.known(*call),
         };
         if callable.brand != original.brand {
             return Err(E::StoredStructureMismatch);

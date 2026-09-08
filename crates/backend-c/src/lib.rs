@@ -5,6 +5,7 @@
 mod generator;
 
 pub mod ast;
+pub mod dialect;
 
 use std::collections::{BTreeMap, BTreeSet};
 

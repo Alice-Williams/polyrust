@@ -128,8 +128,13 @@ fn indirect_nonvoid_calls_preserve_alias_signature_pointer_and_ordered_arguments
     let ast = CExpressions::new(&registry);
     let pointer = ast.function_address(function.clone()).unwrap();
     let callable = ast.indirect(pointer.clone(), function.clone()).unwrap();
-    assert_eq!(callable.kind(), &CCallableKind::Indirect(Box::new(pointer)));
-    assert_eq!(callable.contract_function(), &function);
+    assert_eq!(
+        callable.kind(),
+        &CCallableKind::Indirect {
+            pointer: Box::new(pointer),
+            contract_function: Box::new(function)
+        }
+    );
     let arguments = [2, 9]
         .map(|value| {
             ast.literal(CLiteral::Signed(CSignedLiteral::I32(value)))

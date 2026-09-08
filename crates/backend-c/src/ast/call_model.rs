@@ -1,34 +1,52 @@
 //! Exact callable origins and distinct value/effect calls.
 
-use super::{CCallableContractRef, CFunctionRef, CFunctionType, CValue, registry::RegistryScope};
+use std::borrow::Cow;
+
+use super::{CFunctionRef, CFunctionType, CValue, registry::RegistryScope};
+use crate::dialect::{CKnownCall, CKnownOperands};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CCallable {
     pub(super) brand: RegistryScope,
     pub(super) kind: CCallableKind,
-    pub(super) function: CFunctionRef,
 }
 
 impl CCallable {
     pub const fn kind(&self) -> &CCallableKind {
         &self.kind
     }
-    pub fn signature(&self) -> &CFunctionType {
-        self.function.signature()
-    }
-    pub fn contract(&self) -> &CCallableContractRef {
-        self.function.contract()
-    }
-    pub const fn contract_function(&self) -> &CFunctionRef {
-        &self.function
+    pub fn signature(&self) -> Cow<'_, CFunctionType> {
+        match &self.kind {
+            CCallableKind::Direct(function)
+            | CCallableKind::Indirect {
+                contract_function: function,
+                ..
+            } => Cow::Borrowed(function.signature()),
+            CCallableKind::Known(call) => Cow::Owned(call.signature()),
+        }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CCallableKind {
-    Direct,
+    Direct(Box<CFunctionRef>),
     /// The verifier must prove this expression's actual callable provenance.
-    Indirect(Box<CValue>),
+    Indirect {
+        pointer: Box<CValue>,
+        contract_function: Box<CFunctionRef>,
+    },
+    Known(CKnownCall),
+}
+
+/// A body's generated contract and a standard contract are distinct categories.
+/// Neither this projection nor a matching signature proves a body's effects.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CCallContract<'a> {
+    Generated {
+        function: &'a CFunctionRef,
+        arguments: &'a [CValue],
+    },
+    Known(CKnownOperands<'a>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -43,6 +61,20 @@ impl CCall {
     }
     pub fn arguments(&self) -> &[CValue] {
         &self.arguments
+    }
+
+    pub fn contract(&self) -> CCallContract<'_> {
+        match self.callable.kind() {
+            CCallableKind::Direct(function)
+            | CCallableKind::Indirect {
+                contract_function: function,
+                ..
+            } => CCallContract::Generated {
+                function,
+                arguments: self.arguments(),
+            },
+            CCallableKind::Known(call) => CCallContract::Known(call.bind(self.arguments())),
+        }
     }
 }
 

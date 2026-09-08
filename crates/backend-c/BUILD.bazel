@@ -49,6 +49,41 @@ sh_test(
     data = ["test/abi_model_probe.c"],
 )
 
+C_KNOWN_CALL_COPTS = [
+    "-std=c17",
+    "-Wall",
+    "-Wextra",
+    "-Wpedantic",
+    "-Werror",
+    "-Wstrict-prototypes",
+    "-Wmissing-prototypes",
+    "-fno-fast-math",
+    "-ffp-contract=off",
+    "-fsigned-char",
+    "-fno-short-enums",
+]
+
+cc_test(
+    name = "c_known_calls_probe_test",
+    srcs = ["test/known_calls_probe.c"],
+    copts = C_KNOWN_CALL_COPTS + ["-O2"],
+    linkopts = ["-lm"],
+)
+
+cc_test(
+    name = "c_known_calls_unoptimized_probe_test",
+    srcs = ["test/known_calls_probe.c"],
+    copts = C_KNOWN_CALL_COPTS + ["-O0"],
+    linkopts = ["-lm"],
+)
+
+sh_test(
+    name = "c_gcc_known_calls_probe_test",
+    srcs = ["//tools/c:test_known_calls.sh"],
+    args = ["$(location test/known_calls_probe.c)"],
+    data = ["test/known_calls_probe.c"],
+)
+
 rust_library(
     name = "portable_backend_c",
     srcs = glob(

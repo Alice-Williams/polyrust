@@ -131,6 +131,8 @@ fn ordinary_statements_preserve_every_child_and_function_owner() {
         .unwrap();
     assert_eq!(
         statements.evaluate(effect),
-        Err(E::Registry(CRegistryError::CrossRegistry))
+        Err(E::Expression(CExpressionError::Registry(
+            CRegistryError::CrossRegistry
+        )))
     );
 }

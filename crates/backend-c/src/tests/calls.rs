@@ -38,8 +38,10 @@ fn direct_calls_check_high_arity_every_argument_and_value_effect_categories() {
         .unwrap();
     let arguments = vec![argument; 128];
     let callable = ast.direct(value.clone()).unwrap();
-    assert_eq!(callable.kind(), &CCallableKind::Direct);
-    assert_eq!(callable.contract_function(), &value);
+    assert_eq!(
+        callable.kind(),
+        &CCallableKind::Direct(Box::new(value.clone()))
+    );
     let call = ast.call_value(callable.clone(), arguments.clone()).unwrap();
     let CValueKind::Call(actual) = call.kind() else {
         panic!("call value")
@@ -64,7 +66,10 @@ fn direct_calls_check_high_arity_every_argument_and_value_effect_categories() {
         assert_eq!(ast.call_value(callable.clone(), bad), Err(E::TypeMismatch));
     }
     let callable = ast.direct(effect.clone()).unwrap();
-    assert_eq!(callable.contract_function(), &effect);
+    assert_eq!(
+        callable.kind(),
+        &CCallableKind::Direct(Box::new(effect.clone()))
+    );
     let actual = ast
         .call_effect(callable.clone(), arguments.clone())
         .unwrap();
@@ -107,11 +112,19 @@ fn indirect_function_addresses_and_bound_members_reject_same_prototype_wrong_con
         let callable = ast.indirect(value.clone(), first.clone()).unwrap();
         assert_eq!(
             callable.kind(),
-            &CCallableKind::Indirect(Box::new(value.clone()))
+            &CCallableKind::Indirect {
+                pointer: Box::new(value.clone()),
+                contract_function: Box::new(first.clone())
+            }
         );
-        assert_eq!(callable.contract_function(), &first);
-        assert_eq!(callable.contract(), first.contract());
         let effect = ast.call_effect(callable.clone(), vec![]).unwrap();
+        assert_eq!(
+            effect.call().contract(),
+            crate::ast::CCallContract::Generated {
+                function: &first,
+                arguments: &[]
+            }
+        );
         assert_eq!(effect.call().callable(), &callable);
         assert!(effect.call().arguments().is_empty());
         assert_eq!(

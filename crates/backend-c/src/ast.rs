@@ -146,7 +146,19 @@ mod contextual_return_paths;
 #[path = "tests/contextual_address_operands.rs"]
 mod contextual_address_operands;
 
-pub use call_model::{CCall, CCallable, CCallableKind, CEffect};
+#[cfg(test)]
+#[path = "tests/known_call_fixtures.rs"]
+mod known_call_fixtures;
+
+#[cfg(test)]
+#[path = "tests/known_calls.rs"]
+mod known_calls;
+
+#[cfg(test)]
+#[path = "tests/contextual_known_calls.rs"]
+mod contextual_known_calls;
+
+pub use call_model::{CCall, CCallContract, CCallable, CCallableKind, CEffect};
 pub use comments::{CAssertDiagnostic, CComment};
 pub use contextual::CContextError;
 pub use declaration_construction::CDeclarations;

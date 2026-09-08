@@ -5,14 +5,14 @@ use super::{
     CExpressions, CFunctionRef, CMemberBinding, CObjectTypeKind, CPlaceKind, CPointerTarget,
     CRegistryError, CReturnType, CValue, CValueKind,
 };
+use crate::dialect::CKnownCall;
 
 impl CExpressions<'_> {
     pub fn direct(&self, function: CFunctionRef) -> Result<CCallable, E> {
         self.registry.check_function(&function)?;
         Ok(CCallable {
             brand: self.registry.expression_brand(),
-            kind: CCallableKind::Direct,
-            function,
+            kind: CCallableKind::Direct(Box::new(function)),
         })
     }
 
@@ -40,16 +40,41 @@ impl CExpressions<'_> {
         }
         Ok(CCallable {
             brand: self.registry.expression_brand(),
-            kind: CCallableKind::Indirect(Box::new(pointer)),
-            function: contract_function,
+            kind: CCallableKind::Indirect {
+                pointer: Box::new(pointer),
+                contract_function: Box::new(contract_function),
+            },
         })
     }
 
-    fn call(&self, callable: CCallable, arguments: Vec<CValue>) -> Result<CCall, E> {
+    pub fn known(&self, call: CKnownCall) -> CCallable {
+        CCallable {
+            brand: self.registry.expression_brand(),
+            kind: CCallableKind::Known(call),
+        }
+    }
+
+    pub(super) fn check_callable(&self, callable: &CCallable) -> Result<(), E> {
         if callable.brand != self.registry.expression_brand() {
             return Err(CRegistryError::CrossRegistry.into());
         }
-        let parameters = callable.signature().parameters();
+        match callable.kind() {
+            CCallableKind::Direct(function) => self.registry.check_function(function)?,
+            CCallableKind::Indirect {
+                pointer,
+                contract_function,
+            } => {
+                self.indirect((**pointer).clone(), (**contract_function).clone())?;
+            }
+            CCallableKind::Known(_) => {}
+        }
+        Ok(())
+    }
+
+    fn call(&self, callable: CCallable, arguments: Vec<CValue>) -> Result<CCall, E> {
+        self.check_callable(&callable)?;
+        let signature = callable.signature();
+        let parameters = signature.parameters();
         if parameters.len() != arguments.len() {
             return Err(E::ArityMismatch {
                 expected: parameters.len(),
@@ -70,10 +95,11 @@ impl CExpressions<'_> {
 
     pub fn call_value(&self, callable: CCallable, arguments: Vec<CValue>) -> Result<CValue, E> {
         let call = self.call(callable, arguments)?;
-        let CReturnType::Value(result) = call.callable().signature().return_type() else {
-            return Err(E::ExpectedValueCall);
+        let result = match call.callable().signature().return_type() {
+            CReturnType::Value(result) => result.ty().clone(),
+            CReturnType::Void => return Err(E::ExpectedValueCall),
         };
-        Ok(self.value(result.ty().clone(), CValueKind::Call(call)))
+        Ok(self.value(result, CValueKind::Call(call)))
     }
 
     pub fn call_effect(&self, callable: CCallable, arguments: Vec<CValue>) -> Result<CEffect, E> {

@@ -104,8 +104,9 @@ pub(super) fn expression(visitor: &mut impl Visitor, value: &CValue) -> Result<(
 }
 
 pub(super) fn call(visitor: &mut impl Visitor, value: &CCall) -> Result<(), E> {
-    if let CCallableKind::Indirect(pointer) = value.callable().kind() {
-        expression(visitor, pointer)?;
+    match value.callable().kind() {
+        CCallableKind::Indirect { pointer, .. } => expression(visitor, pointer)?,
+        CCallableKind::Direct(_) | CCallableKind::Known(_) => {}
     }
     for argument in value.arguments() {
         expression(visitor, argument)?;

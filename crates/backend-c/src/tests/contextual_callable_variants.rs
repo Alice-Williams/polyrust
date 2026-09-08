@@ -110,8 +110,13 @@ fn labeled_effect_calls_recheck_arguments_contracts_and_callable_brands() {
                 function.clone(),
                 scope.clone(),
                 vec![
-                    ast.label(label.clone(), ast.evaluate(effect).unwrap())
-                        .unwrap(),
+                    // Corrupt children after the public construction boundary;
+                    // contextual reconstruction must independently reject them.
+                    ast.label(
+                        label.clone(),
+                        ast.statement(CStatementKind::Evaluate(effect)),
+                    )
+                    .unwrap(),
                 ],
             )
         };

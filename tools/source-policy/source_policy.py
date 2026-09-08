@@ -26,6 +26,7 @@ DIRECTIVE = re.compile(
 # test infrastructure, not generated body templates. Every exception is exact.
 FIXTURE_ALLOWLIST = {
     "crates/backend-c/test/abi_model_probe.c",
+    "crates/backend-c/test/known_calls_probe.c",
     "crates/backend-c/test/abi_shapes_test.c",
     "crates/backend-c/test/c_consumer_test.c",
     "crates/backend-c/test/runtime_ownership_test.c",
@@ -328,6 +329,13 @@ const BODY: &str = "plain body";
                      "crates/backend-c/src/abi_model_probe.c"]:
         if not target_template_offenders(adjacent, "#include <stdint.h>\n"):
             raise AssertionError("ABI oracle exception admitted an adjacent template")
+    calls_probe = "crates/backend-c/test/known_calls_probe.c"
+    if target_template_offenders(calls_probe, "#include <math.h>\n"):
+        raise AssertionError("independent known-call oracle includes were rejected")
+    for adjacent in [calls_probe + ".copy", "crates/backend-c/test/other_calls_probe.c",
+                     "crates/backend-c/src/known_calls_probe.c"]:
+        if not target_template_offenders(adjacent, "#include <math.h>\n"):
+            raise AssertionError("known-call oracle exception admitted an adjacent template")
     harness = "crates/backend-java/test/check_mapping_contract.py"
     if target_template_offenders(harness, "from pathlib import Path\n"):
         raise AssertionError("compiler-contract harness imports were rejected")
