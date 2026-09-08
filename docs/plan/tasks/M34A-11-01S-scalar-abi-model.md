@@ -1,6 +1,6 @@
 # M34A-11-01S — Encode the measured C scalar ABI
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-11-02A
 - Required by: M34A-11-02B
 
@@ -57,6 +57,34 @@ arithmetic pairs. The native oracle remains repository-only source.
 - Conformance 96b22e35-3a62-4c71-8386-ed52128bfac9: evaluator and eight targets
   agree on 50 cases / one portable test with byte-identical repeated manifests.
 
-Fresh immutable review and hosted confirmation remain open. Contextual C AST,
+At this implementation checkpoint, fresh review and hosted follow-up were pending. Contextual C AST,
 resource certification and capability mapping work have not been implemented
 by this scalar foundation.
+
+## Independent review
+
+Fresh Sol Extra High read-only review of 476d95b6d9264cccab0820633b4cbe9fed2d6500
+found no core defects in the exact scalar rules, independent matrices, native
+compiler wiring, source ownership or phase claims. Root accepts that result.
+The reviewer ran no builds or network checks.
+
+Two optional suggestions were evaluated separately:
+
+- An enum/ALL inventory-cardinality guard is future Stage 04 grammar-inventory
+  hardening; today's complete 13-item list and exhaustive production matches
+  are correct. It is not a missing current scalar case.
+- Making is_compatible_with const is API convenience, not a semantic or
+  certification defect. Retain ordinary derived enum equality without adding
+  a second comparison representation solely for const-call support.
+
+Hosted run 34246605876 is pending; no cancelled ancestor run is counted as
+successful hosted proof.
+
+## Completion scope
+
+The complete local gates and fresh independent review satisfy this bounded
+foundation's exit contract. In accordance with the user's local-container
+per-step instruction, the recorded pending hosted run is an integration
+follow-up, not a reason to stall contextual work after its separate design gate.
+Stage 09 still requires exact-final-commit hosted success; no pending/cancelled
+run is counted as passed. The C02B/00R prerequisites are otherwise unchanged.
