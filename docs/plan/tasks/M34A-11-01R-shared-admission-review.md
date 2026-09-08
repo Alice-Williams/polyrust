@@ -1,6 +1,6 @@
 # M34A-11-01R — Repair shared admission findings from the C design review
 
-- Status: in-progress (reopened by independent review of 4e04b5d)
+- Status: complete
 - Depends on: M34A-11-01
 
 ## Goal
@@ -86,6 +86,33 @@ Dynamic ListContains/ListIndexOf now enforce the same recursive exclusion as
 Equal/NotEqual. No existing valid interface storage/projection is removed.
 
 The complete C design review is recorded in M34A-11-00R. Java's distinct-NaN
-portable expectation mismatch remains explicitly open in M34A-10AB, not hidden
-by these green gates. The earlier C foundation 2e4c50b passed all eight hosted
+portable expectation mismatch was tracked separately in M34A-10AB and is now
+repaired/reviewed/CI-green. The earlier C foundation 2e4c50b passed all eight hosted
 jobs in run 34216745710.
+
+## Recursive traversal repair and fresh review
+
+The independent review of 4e04b5d exposed a real stack overflow; isolated
+pre-fix invocation 7e859b51-463e-40df-add0-e9a19bd65008 reproduced it.
+Commit c260c8bb92276668a8f7b1497c4b8bbe835ae493 replaces recursive descent
+with a finite normalized-type worklist and visited aggregate identities.
+The new tests cover all four equality/search operations across record, legacy
+payload-enum and aggregate-crossing alias cycles, with and without interface
+siblings, plus preservation of the pure-alias-cycle diagnostic.
+
+- Checker test invocation 0b4a8fa9-2447-48b2-b628-15ccb12e12d0 passes.
+- Full 436-rule/311-test gate 44aa8b53, 248-test release ca2bbefe and
+  eight-target conformance/determinism 4bcbbe96 pass with normal caches.
+- Linux Cargo checker compatibility passes 29 unit tests and one doctest.
+- Fresh uncapped Sol Extra High review of immutable c260c8b found no core
+  defect. Root agrees: each monomorphic aggregate expands once and queues
+  every outgoing field; every reachable interface therefore remains reachable.
+  Alias normalization retains its existing diagnostics.
+
+Optional mutual-cycle/diamond, reversed-sibling and extra diagnostic fixtures
+are deferred: the current tests reproduce the parent failure and exercise
+termination/rejection, while the finite-graph argument covers those topologies.
+No finding is being dismissed as a feature when it is a demonstrated error.
+Hosted run 34223412475 was superseded/cancelled by the descendant Java push;
+it is not claimed green. Descendant 74182bd includes this repair and its
+all eight integration jobs pass in run 34223622371, recorded under M34A-10AB.
