@@ -14,6 +14,7 @@ mod alias_expansion;
 mod identifiers;
 mod keywords;
 mod registry;
+mod scalar_abi;
 mod signatures;
 mod types;
 

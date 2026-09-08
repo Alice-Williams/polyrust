@@ -1,7 +1,7 @@
 # M34A-11-02B — C expressions, declarations and files
 
 - Status: planned
-- Depends on: M34A-11-02A, M34A-11-00R, M34A-10AB
+- Depends on: M34A-11-02A, M34A-11-01S, M34A-11-00R, M34A-10AB
 
 ## Goal
 
@@ -46,6 +46,11 @@ This slice starts only after 00R/02A review closure. Follow Java's division
 between structural models and constructors, not its Java-specific grammar.
 Keep each cohesive production module below the size policy; no numbered
 fragments or parallel string-producing path.
+
+The pure measured scalar ABI calculations are extracted into the independently
+reviewed [01S foundation](M34A-11-01S-scalar-abi-model.md). This slice consumes
+those rules for operator signatures and contextual expressions; the extraction
+does not waive its contract-review prerequisite or expose a certificate.
 
 | Order / module family | Implementation | Required controls |
 | --- | --- | --- |

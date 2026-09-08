@@ -1,6 +1,6 @@
 # C17 concrete ABI type model
 
-- Status: normative Linux x86_64 model; owner M34A-11-02B/03/04
+- Status: normative Linux x86_64 model; owner M34A-11-01S/02B/03/04
 - Evidence: independent test/abi_model_probe.c under both pinned compilers
 - Compiler-capacity budgets remain separate measured Stage 04 work
 
@@ -82,7 +82,9 @@ Invocation f398dd9f-042c-436b-927e-482f82105523 passes all three probes and the
 focused Rust/Clippy/Rustfmt/Buildifier gates. Runtime probes check endianness,
 double 1.0 bit layout and the INT64_MIN bit representation. This establishes
 the selected ABI facts, not a production C certificate or a complete resource
-budget. Stage 02B implements this type-compatibility/promotion model; Stage 04
+budget. Stage 01S encodes the scalar compatibility/promotion model and expands
+the two-compiler oracle to all 169 arithmetic pairs; Stage 02B consumes those
+rules in typed operator/expression construction. Stage 04
 mechanically compares its layout calculations with the native probes and
 emits typed platform assertions. Every model change needs both compiler probes
 and rejected configuration controls before certification.

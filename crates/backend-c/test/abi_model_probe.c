@@ -51,6 +51,36 @@ POLY_TYPE((uint32_t)0 + (int32_t)0, unsigned int);
 POLY_TYPE((uint32_t)0 + (int64_t)0, long);
 POLY_TYPE((uint64_t)0 + (int64_t)0, unsigned long);
 
+/* Independent compiler oracle for every pair in the 13-scalar AST inventory. */
+#define POLY_ARITHMETIC_ROW(left, small, u32, i64, u64, floating) \
+    POLY_TYPE((left)0 + (_Bool)0, small); \
+    POLY_TYPE((left)0 + (char)0, small); \
+    POLY_TYPE((left)0 + (int)0, small); \
+    POLY_TYPE((left)0 + (int8_t)0, small); \
+    POLY_TYPE((left)0 + (uint8_t)0, small); \
+    POLY_TYPE((left)0 + (int16_t)0, small); \
+    POLY_TYPE((left)0 + (uint16_t)0, small); \
+    POLY_TYPE((left)0 + (int32_t)0, small); \
+    POLY_TYPE((left)0 + (uint32_t)0, u32); \
+    POLY_TYPE((left)0 + (int64_t)0, i64); \
+    POLY_TYPE((left)0 + (uint64_t)0, u64); \
+    POLY_TYPE((left)0 + (size_t)0, u64); \
+    POLY_TYPE((left)0 + (double)0, floating)
+
+POLY_ARITHMETIC_ROW(_Bool, int, unsigned int, long, unsigned long, double);
+POLY_ARITHMETIC_ROW(char, int, unsigned int, long, unsigned long, double);
+POLY_ARITHMETIC_ROW(int, int, unsigned int, long, unsigned long, double);
+POLY_ARITHMETIC_ROW(int8_t, int, unsigned int, long, unsigned long, double);
+POLY_ARITHMETIC_ROW(uint8_t, int, unsigned int, long, unsigned long, double);
+POLY_ARITHMETIC_ROW(int16_t, int, unsigned int, long, unsigned long, double);
+POLY_ARITHMETIC_ROW(uint16_t, int, unsigned int, long, unsigned long, double);
+POLY_ARITHMETIC_ROW(int32_t, int, unsigned int, long, unsigned long, double);
+POLY_ARITHMETIC_ROW(uint32_t, unsigned int, unsigned int, long, unsigned long, double);
+POLY_ARITHMETIC_ROW(int64_t, long, long, long, unsigned long, double);
+POLY_ARITHMETIC_ROW(uint64_t, unsigned long, unsigned long, unsigned long, unsigned long, double);
+POLY_ARITHMETIC_ROW(size_t, unsigned long, unsigned long, unsigned long, unsigned long, double);
+POLY_ARITHMETIC_ROW(double, double, double, double, double, double);
+
 enum poly_positive { poly_zero = 0, poly_one = 1 };
 enum poly_signed { poly_negative = -1, poly_positive_max = INT_MAX };
 POLY_LAYOUT(enum poly_positive, 4, 4);
