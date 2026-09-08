@@ -1,6 +1,6 @@
 # Java interfaces with no portable implementations
 
-- Status: implemented locally in M34A-10X; integration and review pending
+- Status: implemented and integration-verified in M34A-10X; ready for user design review
 - Decision: zero implementations is valid in the generic `Interfaces` capability
 
 ## Representation

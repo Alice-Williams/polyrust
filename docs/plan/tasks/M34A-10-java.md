@@ -1,12 +1,14 @@
 # M34A-10 — Migrate Java 21 to typed generation
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-09
 
 The original implementation checkpoint was pushed as
 `f4d9e1d539064ed70eb3c012537b99535ed344a0`. Independent review found gaps in
-its claimed exit evidence. M34A-10 remains open until
-[M34A-10R](M34A-10R-java-review-remediation.md) completes.
+its claimed exit evidence. Those gaps and subsequent review findings are now
+resolved in [M34A-10R](M34A-10R-java-review-remediation.md).
+Java implementation is complete and ready for the user's design review; this
+does not record user approval or complete the other language migrations.
 
 ## Goal
 
@@ -58,24 +60,46 @@ shared typed-generation gates pass in the dev container.
 ### Latest repair checkpoint
 
 The current implementation is pushed as
-`4789036a2f4388ffdcb81e6b8a8ec23572d801cf`. Its local proof passes all 435
+`708c37bcda25c8e518eb241ee89bd13b19075226`. Its local proof passes all 435
 tracked rules / 310 test targets, all 247 release tests, deterministic
 evaluator/eight-target conformance (50 cases and one portable test), and Linux
-Cargo 1.98 compatibility (190 Java tests plus eight doctests). Normal action
+Cargo 1.98 compatibility (205 Java tests plus eight doctests), followed by a
+complete workspace/all-features/locked Cargo test and doctest replay. Normal action
 and test caches remain enabled. All Java production Rust files are below 500
-lines; the largest is 499.
+lines; the largest is 477.
 
 The target-resource follow-up now includes compiler-generated enum/record
 descriptors and synthetic enum-switch class names. Native evidence loads
 in-memory class files at exact encoding boundaries and requires an actual
 separately compiled enum-switch helper before comparing its class metrics.
-The exact red/green evidence and review dispositions are in
-[M34A-10AA](M34A-10AA-java-target-limits.md).
+The exact red/green resource evidence is in
+[M34A-10AA](M34A-10AA-java-target-limits.md). The final known-pattern,
+array-allocation/rendering, negative-proof, catalogue and value-boundary repairs are documented
+with full gate identifiers in [M34A-10R](M34A-10R-java-review-remediation.md).
 
 Hosted CI for this SHA is
-[run 34193733801](https://github.com/Alice-Williams/polyrust/actions/runs/34193733801).
-It and a fresh uncapped Sol Extra High review are still pending. Earlier
-checkpoint statuses below are historical and do not override that requirement.
+[run 34204771444](https://github.com/Alice-Williams/polyrust/actions/runs/34204771444).
+All eight jobs pass for this exact SHA. A fresh uncapped Sol Extra High review
+of the same immutable implementation reports no remaining demonstrated core
+correctness or specification errors. Root independently evaluated its report;
+the only organization suggestion is optional, with disposition in M34A-10R.
+This closes M34A-10 and its Java follow-ups. Earlier checkpoint statuses below
+are historical and do not override this completed integration record.
+
+Current exact proof:
+
+| Gate | Result | Invocation |
+| --- | --- | --- |
+| Focused Java and linters/docs | 205 Java tests; all five targets pass | `63102c96-0faa-4a6f-8332-ab854e0619e2` |
+| Complete tracked rule graph | 435 rules build; 310/310 tests pass | `c36492bb-cc90-4383-8139-bc7d68a0cbd4` |
+| Explicit release suite | 247/247 tests pass | `f9ed3814-fcdf-4b72-9ae8-7cb498fc1e7a` |
+| Deterministic conformance | Evaluator/eight-target agreement; byte-identical repeated manifests | `e5fa64ce-f017-4b2f-88b2-4f03dbba658a` |
+| Supplementary Cargo 1.98 | Whole workspace/all features/locked, all doctests pass | Linux development container |
+
+Only the untouched untracked stdlib-abs package is excluded. This does not
+change CI's full tracked-checkout graph. Capacity diagnostics retain the
+documented exact JVM limits and conservative pinned-javac budgets; this proof
+does not claim that finite tests establish a theorem for future compilers.
 
 ### Earlier integration checkpoint
 
@@ -140,9 +164,10 @@ defects and no additional demonstrated blocker. Its proposed void-return hole
 was withdrawn because expression verification already rejects void values.
 Standalone void calls, Object-to-array casts, and additional pattern-flow forms
 are conservative exclusions outside current lowering, not required extensions.
-Generalizing the deliberately-invalid test-node conversion classifier is also
-optional: production uses only its exact `int = String` negative fixture,
-independently checked by Java. These observations do not excuse any accepted
+Generalizing the deliberately-invalid test node remains optional. Its verifier
+now enforces the exact `int = String literal` negative shape: accepting other
+assignments merely because a narrower invocation relation rejects them was a
+core native-proof defect, fixed in M34A-10R. These observations do not excuse any accepted
 production AST that fails the promised native validity checks.
 
 The documentation audit also corrects historical naming/heritage claims:

@@ -1,8 +1,19 @@
 # M34A-10W — Make Java capability mappings authoritative
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-08V and M34A-10U
 - Blocks: completion of M34A-10R and M34A-11
+
+## Completion (2026-09-08)
+
+Implemented and integration-verified at
+`708c37bcda25c8e518eb241ee89bd13b19075226`. The complete local gates, all
+eight hosted CI jobs and fresh uncapped Sol Extra High review pass with no
+remaining demonstrated core error. See the current proof in
+[M34A-10](M34A-10-java.md) and the final review disposition in
+[M34A-10R](M34A-10R-java-review-remediation.md). Java is ready for user design
+review; user acceptance is not implied. Earlier checkpoint/open-status notes
+below are retained historical evidence, superseded by this completion record.
 
 ## Goal
 
@@ -72,7 +83,7 @@ complete portable/CoreIR-to-Java-AST translation for capability `C`.
   compiled/executed Java operation and concrete-method fixture targets.
 - [x] Move substantial Java entry-point tests and fixtures to focused files;
   record the source-size and Bazel action-boundary guidance.
-- [ ] Pass the full local/release gates, hosted CI, and a fresh blind review
+- [x] Pass the full local/release gates, hosted CI, and a fresh blind review
   with no accepted correctness or architecture findings.
 
 ## Third blind review: accepted follow-up work

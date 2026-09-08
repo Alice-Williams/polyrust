@@ -1,9 +1,9 @@
 # Typed generation specification
 
 - Status: normative design baseline for M34A
-- Implementation status: shared target proof boundary implemented; inferred
-  typed builder and Java capability migration in progress; remaining languages
-  pending
+- Implementation status: shared target proof boundary, inferred typed builder
+  and Java migration implemented and integration-verified; Java is ready for
+  user design review; remaining language migrations pending
 - Accepted by: ADR-0004 as amended by ADR-0005, ADR-0006, ADR-0007, and ADR-0008
 - Supersedes: the target-generation portions of ADR-0003 and
   `language-ir-architecture.md`

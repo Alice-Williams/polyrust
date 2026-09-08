@@ -52,17 +52,17 @@ Shared layers:
 
 Language migrations:
 
-16. [M34A-10 — Java](../tasks/M34A-10-java.md) — in progress
-    - [M34A-10R — blind-review remediation](../tasks/M34A-10R-java-review-remediation.md)
-    - [M34A-10V — intrinsic Java syntax validity](../tasks/M34A-10V-java-intrinsic-validity.md)
+16. [M34A-10 — Java](../tasks/M34A-10-java.md) — complete; ready for user design review
+    - [M34A-10R — blind-review remediation](../tasks/M34A-10R-java-review-remediation.md) — complete
+    - [M34A-10V — intrinsic Java syntax validity](../tasks/M34A-10V-java-intrinsic-validity.md) — complete
     - [M34A-10S — static portable-program generation](../tasks/M34A-10S-java-static-program.md)
     - [M34A-10T — inferred capability generation](../tasks/M34A-10T-java-inferred-capabilities.md)
     - [M34A-10U — executable Java plugin builder](../tasks/M34A-10U-java-plugin-builder.md) — complete; ready for user review
-    - [M34A-10W — authoritative Java capability bindings](../tasks/M34A-10W-java-capability-bindings.md)
-    - [M34A-10X — Java typed-shape totality](../tasks/M34A-10X-java-typed-totality.md) — in-progress; blocks Java completion
-    - [M34A-10Y — mapping-owned strategy certificates](../tasks/M34A-10Y-java-strategy-certificates.md) — in-progress; blocks Java completion
+    - [M34A-10W — authoritative Java capability bindings](../tasks/M34A-10W-java-capability-bindings.md) — complete
+    - [M34A-10X — Java typed-shape totality](../tasks/M34A-10X-java-typed-totality.md) — complete
+    - [M34A-10Y — mapping-owned strategy certificates](../tasks/M34A-10Y-java-strategy-certificates.md) — complete
     - [M34A-10Z — Java module decomposition](../tasks/M34A-10Z-java-module-decomposition.md) — complete; locally verified and independently reviewed
-    - [M34A-10AA — Java target-resource boundaries](../tasks/M34A-10AA-java-target-limits.md) — in-progress; blocks Java completion
+    - [M34A-10AA — Java target-resource boundaries](../tasks/M34A-10AA-java-target-limits.md) — complete
 17. [M34A-11 — C17](../tasks/M34A-11-c.md)
 18. [M34A-12 — Rust](../tasks/M34A-12-rust.md)
 19. [M34A-13 — TypeScript](../tasks/M34A-13-typescript.md)

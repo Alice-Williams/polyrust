@@ -1,8 +1,19 @@
 # M34A-10R — Java blind-review remediation
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-10 implementation checkpoint
 - Blocks: M34A-11
+
+## Completion (2026-09-08)
+
+Implemented and integration-verified at
+`708c37bcda25c8e518eb241ee89bd13b19075226`. The complete local gates, all
+eight hosted CI jobs and fresh uncapped Sol Extra High review pass with no
+remaining demonstrated core error. See the current proof in
+[M34A-10](M34A-10-java.md) and the final review disposition in
+[M34A-10R](M34A-10R-java-review-remediation.md). Java is ready for user design
+review; user acceptance is not implied. Earlier checkpoint/open-status notes
+below are retained historical evidence, superseded by this completion record.
 
 ## Goal
 
@@ -729,3 +740,54 @@ and excluded. The preceding 46cc4bd checkpoint has all eight hosted jobs green
 in [run 34199493728](https://github.com/Alice-Williams/polyrust/actions/runs/34199493728).
 The combined repair still requires its own pushed checkpoint, hosted CI and
 fresh immutable review before Java closure.
+
+After pushing the combined repair as
+`708c37bcda25c8e518eb241ee89bd13b19075226`, host Git confirms the remote main
+ref matches. The supplementary Linux Cargo 1.98 workspace/all-features/locked
+suite and all doctests also pass for this source. Hosted CI is
+[run 34204771444](https://github.com/Alice-Williams/polyrust/actions/runs/34204771444);
+the fresh Sol Extra High audit reviews this immutable SHA, not the earlier
+array-only repair. No production source changed during that review.
+
+Hosted run 34204771444 completed successfully in all eight jobs for 708c37b,
+including the cached release gate and cross-host deterministic manifests.
+The immutable review's final report remains the last implementation closure
+requirement; passing CI is not substituted for it.
+
+## Final 708c37b review and Java closure
+
+The fresh uncapped Sol Extra High reviewer completed its broad immutable audit
+of 708c37b and reported no remaining demonstrated core correctness or
+specification errors. Coverage includes all 42 executable mappings and their
+certificates, checked admission, target AST/flow/ownership/interfaces, runtime
+algorithms and catalogue signatures, linked imports/helpers/file inventory,
+structural rendering, exact/conservative resources, and native/mutation/build
+proof structure. Root accepts that conclusion against the independently run
+full local gates and exact-SHA eight-job hosted CI recorded above.
+
+The reviewer ran only two isolated pinned Java 21 strict-compiler probes: an
+Object upcast and escaped control-character literals. Both compiled. It did
+not run or claim root's Bazel, Cargo, workspace or CI suites. Its suspected
+lint counterexamples were ruled out rather than reported as defects.
+
+The optional test-oracle split is deferred: the module owns one coherent
+certified mutation/compiler corpus and remains below the 1,000-line hard
+threshold. Root's full-line count is 562 for this test file and 477 for the
+largest production file; every production module is below the 500-line aim.
+No unsupported extra Java syntax is added merely to expand the review scope.
+The conservative supported subset and finite-test/pinned-compiler limits
+remain explicit; this review is not a universal mathematical correctness proof.
+
+M34A-10, 10R, 10V, 10W, 10X, 10Y and 10AA are complete. Java's compliance row
+is Pass and the implementation is ready for the user's requested review.
+Overall M34A remains in progress for the other seven language migrations;
+this Java closure does not start C17 or the unrelated stdlib-abs port.
+
+The documentation-only closure replays all 435 rules/310 tests successfully
+(`a0517470-da64-45ff-b166-f866ccadd165`), all 247 release tests
+(`aa0eeb65-87c3-432e-9f29-dfbca0504692`), and deterministic evaluator/eight-target
+conformance (`13cc6b19-c2ce-40d7-9333-31b490eb2ac3`). Normal caching correctly
+reuses unchanged results: only three of the 310 tracked tests execute again.
+The closure changes no production source or test logic relative to the reviewed
+708c37b implementation. Its own hosted run is checked after push, rather than
+assuming the preceding green CI run covers changed documentation inputs.

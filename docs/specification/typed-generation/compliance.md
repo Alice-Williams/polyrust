@@ -2,7 +2,7 @@
 
 - Status: normative baseline for M34A
 - Baseline date: 2026-09-02
-- Last updated: 2026-09-04
+- Last updated: 2026-09-08
 - Supersedes for new work: `docs/language-ir-compliance.md`
 
 This ledger measures the stronger ADR-0004/ADR-0005/ADR-0006 contract. The M30 ledger remains
@@ -20,9 +20,51 @@ it is not evidence of typed executable syntax.
 | JavaScript | Missing | Independently paired source exists | Shares manual ECMA metadata | Checked-in/runtime paired text | Not solely compiler-derived | **Fail** |
 | Python | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | Go | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
-| Java | Exhaustive verified `CoreProgram` lowering, including the inferred typed-program bridge | Closed Java 21 AST and pre/post-link verification | Sealed executable mappings are registered by consuming typestate builder; capability preflight consults the same mapping set; imports remain linker-derived | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer | **Partial** pending requested review |
+| Java | Exhaustive verified `CoreProgram` lowering, including the inferred typed-program bridge | Closed Java 21 AST and pre/post-link verification | Sealed executable mappings are registered by consuming typestate builder; capability preflight consults the same mapping set; imports remain linker-derived | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer | **Pass**; ready for user design review |
 | C++20 | Missing | Missing: `CppCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 | C17 | Missing | Missing: `CCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
+
+## Current Java integration evidence
+
+The Java implementation checkpoint is
+`708c37bcda25c8e518eb241ee89bd13b19075226`. Full integration is locally green,
+and all eight hosted jobs pass in
+[run 34204771444](https://github.com/Alice-Williams/polyrust/actions/runs/34204771444).
+The fresh uncapped Sol Extra High review of that immutable commit found no
+remaining demonstrated core errors. Root independently evaluated its findings;
+the only organization suggestion is optional and explicitly deferred. Java's
+implementation is complete; user design approval is still separate. The exact
+finding dispositions and invocation IDs
+are in [M34A-10R](../../plan/tasks/M34A-10R-java-review-remediation.md).
+
+- All 42 inferred capabilities use executable registered mappings and checked,
+  capability-owned strategy plans. Structural orchestration does not pretend
+  to implement a second capability mapping.
+- Typed Java names, signatures, ownership, lexical flow, interfaces, linked
+  declarations, runtime composition and resource boundaries have permanent
+  positive/negative and mutation/compiler evidence. Zero-implementation
+  interfaces and typed name collisions have separate native consumers.
+- Runtime and ordinary declarations share the verified/link-certified path.
+  Imports and helper dependencies are reference-derived. Java has no remaining
+  raw executable runtime/template path or third-party production generator.
+- The complete tracked graph builds 435 rules and passes 310 tests; the release
+  suite passes 247. Strict Java 21 lint/compiler/public-consumer tests, Rustfmt,
+  Clippy, Buildifier, policy tests, snapshots and historical ports are included.
+- Deterministic conformance covers 50 cases and one portable test, with the
+  evaluator and all eight targets agreeing and repeat manifests byte-identical.
+- Supplementary Linux Cargo 1.98 workspace/all-features/locked tests and all
+  doctests pass, including 205 Java tests and eight Java doctests. Native
+  mutation-oracle execution is established by Bazel, not inferred from Cargo.
+- All Java production modules are below 500 lines (largest: 477), with focused
+  test modules excluded from the production Bazel source set.
+
+Normal Bazel action/test caching remains enabled. The unrelated untracked
+stdlib-abs work is not part of this checkpoint. Target capacity uses the
+documented exact limits and conservative pinned-compiler admission budgets;
+finite tests and review are not a formal theorem about arbitrary future javac.
+Other backend rows still describe their outstanding typed-AST migrations.
+The dated evidence and old Pass/Partial/Fail statements below are historical;
+they do not override the current audit table or imply user design approval.
 
 ## Evidence locations
 

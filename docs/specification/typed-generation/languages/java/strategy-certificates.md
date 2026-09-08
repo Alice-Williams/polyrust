@@ -1,6 +1,6 @@
 # Java admission and mapping certificates
 
-- Status: implemented for M34A-10Y; full integration proof and final review pending
+- Status: implemented and integration-verified in M34A-10Y; ready for user design review
 
 ## Stage 1: exact admission
 

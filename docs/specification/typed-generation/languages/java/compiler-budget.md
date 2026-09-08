@@ -96,7 +96,8 @@ occupies suffixes `$1` through `$9` with typed declarations, asserts that its
 synthetic `$10.class` actually exists, and inspects that helper's metrics.
 This prevents javac's same-compilation ordinal optimization from making the
 synthetic-helper coverage vacuous. Existing eight-target
-conformance and historical Java ports remain required. Until those checks and
-the independent review pass, this policy remains implementation work, not
-completed proof. Packing, extraction and class splitting are optional future
+conformance and historical Java ports remain required. M34A-10AA records their
+passing integration evidence and a clean independent review of the pinned
+compiler policy. These checks remain permanent regression gates, not a theorem
+about future compiler versions. Packing, extraction and class splitting are optional future
 ways to accept programs rejected by this conservative policy.

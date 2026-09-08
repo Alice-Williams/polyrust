@@ -1,7 +1,7 @@
 # Java target-resource boundary
 
 - Status: normative
-- Implementation: M34A-10AA, in progress
+- Implementation: M34A-10AA, complete with exact and conservative pinned-compiler evidence
 
 ## Contract
 

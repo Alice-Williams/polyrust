@@ -1,6 +1,6 @@
 # PolyRust
 
-PolyRust is a proposed Rust-authored, multi-target code generator. Authors define
+PolyRust is a Rust-authored, multi-target code generator. Authors define
 one program using PolyRust's typed, language-neutral programming model, including
 types, constants, functions, implementations, and tests. PolyRust then validates,
 evaluates, and emits that program as readable source code for several languages.
@@ -10,8 +10,15 @@ to Python or TypeScript to Go. The common program model is the source of truth a
 grows deliberately as portable functionality is specified and tested.
 
 The name is currently a working name and will not define the public API. The
-repository contains the feasibility research, implementation plan, and the
-first executable development-environment baseline.
+repository contains the implementation, executable examples, native conformance
+tests, design specifications, and the dependency-ordered engineering plan.
+
+Java is the first backend migrated to the new typed target-AST architecture.
+See the [Java specification](docs/specification/typed-generation/languages/java.md),
+[generated-code review guide](docs/generated-code-review.md), and
+[migration ledger](docs/specification/typed-generation/compliance.md).
+The other seven output languages work through their existing pipelines; their
+typed target-AST migrations remain separate planned work.
 
 ## Decision snapshot
 
