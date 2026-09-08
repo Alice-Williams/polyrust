@@ -94,6 +94,7 @@ pub use support::{
     JavaCapabilityMapping, JavaMappingOutput, JavaPluginBuilder, java_plugin_builder,
 };
 pub use text_values::JavaTextValues;
+pub(crate) use text_values::text_value;
 pub use type_aliases::JavaTypeAliases;
 pub use unit_values::JavaUnitValues;
 pub use utf8_conversions::JavaUtf8Conversions;

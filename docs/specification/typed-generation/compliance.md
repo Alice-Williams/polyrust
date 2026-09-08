@@ -343,5 +343,7 @@ derivation proves every executable JavaScript byte.
 ## Release rule
 
 M34A is complete only when the shared row and all eight language rows are
-**Pass**, the old M30 ledger is clearly historical, and uncached repository,
-release, and hosted CI gates are green.
+**Pass**, the old M30 ledger is clearly historical, and complete repository,
+release, and hosted CI gates are green. Bazel action/test caching remains
+enabled under M16A; historical uncached runs above are evidence, not a current
+cold-gate requirement.

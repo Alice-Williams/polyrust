@@ -312,10 +312,10 @@ option/result branch.
 - Structural methods which collide with inherited `Object` signatures obey
   exact public instance override rules; final/reserved inherited methods fail
   closed. These checks apply to every method provenance, including registered
-  interface, implementation, and callable methods. Portable `clone` is
-  conservatively rejected because the generic AST cannot express a certified
-  Java `Object.clone` implementation. A nested type cannot reuse the name of
-  any enclosing type.
+  interface, implementation, and callable methods. A target-AST method named
+  `clone` is conservatively rejected; a portable method with that name is
+  accepted and allocated a distinct Java spelling, not interpreted as an
+  `Object.clone` override. A nested type cannot reuse an enclosing type's name.
 
 ## 6. Interfaces, composition, and target heritage
 
@@ -399,11 +399,13 @@ package-wide namespace; interface-only parameter lists have their own namespace.
 Internal temporary prefixes remain disjoint from portable names. The target
 AST verifier still rejects illegal or forged raw Java names and signatures.
 
-`JavaHeritage` may express the shared target-only one-edge adapter policy. Its
-only certified class-extension form is a generated final leaf extending one
-external framework base and delegating behavior to a composed component. The
-verifier rejects generated bases, chains, inherited portable state, and reuse
-hierarchies.
+`JavaHeritage` currently contains only `None` and `Interfaces`; class extension
+is not representable. The shared target-only one-edge adapter policy is an
+optional future extension, not an implemented Java feature. If added, it MUST
+be a generated final leaf extending one external framework base and delegating
+to a composed component, with separate typed verification and compiler proof.
+Generated bases, chains, inherited portable state, and reuse hierarchies remain
+forbidden.
 
 ## 7. Symbols and imports
 
@@ -468,6 +470,14 @@ supplied beneath the declared package directory.
 Runtime member fragments are confined to the runtime file, which contains
 exactly one typed class shell; both rules are rejected before rendering.
 
+Deliberate compile-negative artifacts have an explicit `NegativeTest` role and
+placement and contain typed `JavaCompileFailField` nodes. Those nodes MUST NOT
+appear in production, runtime, native-test, or conformance files, including
+through nested declarations or composed runtime fragments. Negative fixtures
+are expected to fail Java compilation; they are not executable program output
+and are excluded from the successful-compilation claim. Their grammar and
+artifact-role constraints still pass through certification and total rendering.
+
 Method annotations are closed enum values with declaration-context checks.
 Annotations are unique. `@Override` is admitted only for an instance method
 with a verified generated-interface or runtime semantic-interface target.
@@ -475,6 +485,20 @@ with a verified generated-interface or runtime semantic-interface target.
 form.
 
 ## 10. Rendering
+
+Portable text lowering MUST split oversized literals at Unicode scalar
+boundaries using modified-UTF-8 byte accounting. A single literal is bounded
+to 65,534 encoded bytes for the pinned Java 21 compiler. NUL costs two bytes;
+supplementary scalars cost six. Larger values use a balanced typed tree of
+catalogued `String.concat` calls, never a constant `+` expression which javac
+could fold back into an oversized constant. The owning mapping plan checks
+every chunk and call; raw oversized literal nodes fail AST verification.
+The renderer does not split literals or choose this representation.
+Portable `StringConcatenation` likewise uses catalogued `String.concat`, even
+for short operands. This prevents Java constant folding from recombining large
+but individually legal literals or final-local constant values into an invalid
+constant-pool entry. The direct native-member mapping preserves receiver-before-
+argument evaluation and portable non-null scalar-string semantics.
 
 The Java post-link checker is the sole constructor of opaque
 `RenderReadyPackage<JavaDialect>`. It validates complete Java 21 compilation

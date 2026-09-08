@@ -49,6 +49,7 @@ mod invocations;
 mod lexical_blocks;
 mod lexical_expressions;
 mod lexical_scope;
+pub(crate) mod literal_limits;
 mod members;
 mod method_contracts;
 mod modifiers;

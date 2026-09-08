@@ -8,7 +8,7 @@
 ## Outcome
 
 Replace dependency-complete executable text fragments with the accepted
-ADR-0004 pipeline as amended by ADR-0005 and ADR-0006. Static Rust-authored
+ADR-0004 pipeline as amended by ADR-0005, ADR-0006, ADR-0007, and ADR-0008. Static Rust-authored
 programs use the valid-by-construction path:
 
 `TypedProgram<R> -> TargetProgram<P, R> where P: SupportsAll<R>
@@ -62,6 +62,7 @@ Language migrations:
     - [M34A-10X — Java typed-shape totality](../tasks/M34A-10X-java-typed-totality.md) — in-progress; blocks Java completion
     - [M34A-10Y — mapping-owned strategy certificates](../tasks/M34A-10Y-java-strategy-certificates.md) — in-progress; blocks Java completion
     - [M34A-10Z — Java module decomposition](../tasks/M34A-10Z-java-module-decomposition.md) — complete; locally verified and independently reviewed
+    - [M34A-10AA — Java target-resource boundaries](../tasks/M34A-10AA-java-target-limits.md) — in-progress; blocks Java completion
 17. [M34A-11 — C17](../tasks/M34A-11-c.md)
 18. [M34A-12 — Rust](../tasks/M34A-12-rust.md)
 19. [M34A-13 — TypeScript](../tasks/M34A-13-typescript.md)
@@ -101,8 +102,9 @@ the ADR-0004 compliance ledger in the same checkpoint.
 - All historical ports M17-M33 regenerate and pass evaluator, native, retained
   upstream oracle, and determinism tests through the new pipeline.
 - Buildifier, Rustfmt, Clippy, all language linters/static analyzers, native
-  compilers/tests, C/C++ sanitizers, uncached `//...`, and
-  `//:release_gate` pass in the dev container.
+  compilers/tests, C/C++ sanitizers, the complete tracked-rule graph, and
+  `//:release_gate` pass in the dev container. Action and test caches remain
+  enabled under M16A; hosted CI uses the tracked checkout's `//...` graph.
 - The final checkpoint is pushed and hosted CI is green before M34-03 resumes.
 
 ## Scope boundary

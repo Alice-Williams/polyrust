@@ -55,10 +55,7 @@ pub(crate) fn scalar_literal(value: char) -> JavaExpr {
 }
 
 pub(crate) fn string_literal(value: &str) -> JavaExpr {
-    JavaExpr::literal(
-        JavaType::known(JavaKnownType::String),
-        JavaLiteral::String(value.to_owned()),
-    )
+    crate::capabilities::text_value(value)
 }
 
 pub(crate) fn unary(operator: JavaUnaryOperator, operand: JavaExpr, ty: JavaType) -> JavaExpr {

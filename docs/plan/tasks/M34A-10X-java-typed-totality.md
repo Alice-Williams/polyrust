@@ -70,9 +70,10 @@ failure before Java compilation, not a generated-Java failure.
 
 The oracle now keeps the hermetic JDK under Bazel and selects an explicit Java
 21/JAVA_HOME installation outside it. Scratch directories are exclusive,
-process/nonce-scoped, and removed by their owning fixture. No native compilation
-is skipped. A release-gated shell regression clears all Bazel environment
-variables, checks that the selected Rust test exists, and compiles/runs its
+process/nonce-scoped, and removed by their owning fixture. These compatibility
+consumer checks do not skip native compilation; the separate structured AST
+mutation oracle remains Bazel-only. A release-gated shell regression clears all
+Bazel environment variables, checks that the selected Rust test exists, and compiles/runs its
 generated Java consumer with the pinned JDK.
 
 Fresh Sol Extra High read-only review found no actionable defect in this scoped

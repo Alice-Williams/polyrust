@@ -49,7 +49,7 @@ total dependency-free structural renderer.
   historical Java port tests.
 - Source-policy test proves no executable template, raw/token/source escape,
   wildcard renderer match, or string node dispatch exists.
-- `bazel test //crates/backend-java:all --nocache_test_results --test_output=errors`
+- `bazel test //crates/backend-java:all --test_output=errors`
 - Full tracked repository, release gate, fresh Cargo workspace, Rustfmt, Clippy,
   Buildifier, and documentation gates in the Linux development container.
 

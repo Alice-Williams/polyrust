@@ -6,8 +6,9 @@ use portable_build::StringConcatenation;
 
 use super::support::java_operation_mapping;
 use crate::{
-    ast::{JavaBinaryOperator, JavaExpr, JavaType},
-    lower::{JavaIntrinsicExpr, binary},
+    ast::{JavaExpr, JavaMemberOrigin, JavaType},
+    dialect::JavaKnownMethod,
+    lower::{JavaIntrinsicExpr, member_call},
 };
 
 #[doc(hidden)]
@@ -21,11 +22,12 @@ pub struct JavaStringConcatenationInput {
 fn lower_string_concatenation(
     input: JavaStringConcatenationInput,
 ) -> Result<JavaIntrinsicExpr, Vec<portable_diagnostics::Diagnostic>> {
-    Ok(JavaIntrinsicExpr::Infallible(binary(
-        JavaBinaryOperator::Add,
+    Ok(JavaIntrinsicExpr::Infallible(member_call(
         input.left,
-        input.right,
+        JavaKnownMethod::StringConcat.name().text(),
+        vec![input.right],
         input.result,
+        JavaMemberOrigin::Known(JavaKnownMethod::StringConcat),
     )))
 }
 

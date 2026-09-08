@@ -25,8 +25,9 @@ opaque-runtime/manual-import design.
   failures are verifier checked.
 - Flat interfaces, multiple conformance, first-class/nested interface values,
   dynamic dispatch, and explicit final-field delegation pass.
-- Optional target heritage accepts only a final one-edge external adapter and
-  rejects generated chains/reuse; no portable fixture requires it.
+- Portable inheritance and generated chains/reuse are absent. Java does not
+  currently expose an external-framework adapter; the shared one-edge exception
+  is optional and would require its own typed implementation and evidence.
 - The resolver derives every package/import/qualification/helper/file from
   typed references, including all former `Runtime.java` dependencies.
 - Runtime declarations are Java AST and render through the ADR-0005
@@ -37,7 +38,9 @@ opaque-runtime/manual-import design.
 
 ## Tests
 
-- `bazel test //crates/backend-java:all --nocache_test_results --test_output=errors`
+- `bazel test //crates/backend-java:all --test_output=errors`
+- Full tracked-rule and release gates retain Bazel action/test caching under
+  M16A. Query rule targets rather than relying on an ambiguous `:all` suite.
 - Java AST/verifier/catalogue/import/helper/certificate/total-renderer positive
   and negative matrices.
 - Hermetic Java 21 lint-as-error compile, native/conformance tests, separate
@@ -50,7 +53,87 @@ opaque-runtime/manual-import design.
 Commit and push `M34A-10: migrate Java to typed AST` only when all Java and
 shared typed-generation gates pass in the dev container.
 
-## Exit evidence
+## Current integration checkpoint (2026-09-08)
+
+Implementation and review repairs are pushed at
+`fb3803ee0ac4e224b0caf4000fe3f1dd9d5ad293`. Hosted CI
+[run 34178072602](https://github.com/Alice-Williams/polyrust/actions/runs/34178072602)
+passes all eight jobs for that exact checkpoint, and the remote main ref matches.
+The fresh review subsequently found missing Java literal and target-resource
+boundaries, tracked in [M34A-10AA](M34A-10AA-java-target-limits.md). Java remains
+open until their repairs, full proofs, and another fresh review complete. The
+older evidence below records its exact checkpoint, not the new working tree.
+
+### Architecture delivered
+
+- All 42 capabilities have executable typed Java mappings and capability-owned
+  plans. The builder automatically stores checked wrappers; plan selection,
+  actual mapping invocation, and owned-output verification cannot be bypassed
+  by a safe registered handler. Admission uses those same slots.
+- Typed naming handles target collisions by identity. Interfaces with no
+  implementations use the documented private uninhabited subtype; ordinary
+  interfaces, multiple conformance, dispatch, and composition remain covered.
+- AST, catalogue, lowering, runtime, and rendering have responsibility-focused
+  modules. `preflight/` is distinct from `capabilities/`; production imports
+  are explicit. Test fixtures are excluded from the production Bazel source set.
+- Typed references drive linking/imports/helpers. Runtime and user AST share
+  verification, linking, certification, and the total structural renderer;
+  there are no Java executable templates or new production dependencies.
+
+### Verified repair checkpoint proof
+
+All executions use the Linux development container and pinned toolchains, with
+normal Bazel action/test caching enabled:
+
+| Gate | Result | Invocation |
+| --- | --- | --- |
+| Focused Java, strict lint, and layout | 32/32 tests pass | `88e0739b-b709-41be-a764-2107ab0f2b4e` |
+| Complete tracked rule graph | 435 analyzed rules, 310/310 tests pass | `4255b202-5803-4725-b83f-5b414cd6ea5b` |
+| Explicit release suite | 247/247 tests pass | `40bed654-9d0f-4e89-ace1-2a161ed7275d` |
+| Deterministic conformance | 50 cases + one portable test; evaluator and eight targets agree | `e34767bc-e138-4da4-b7ee-3d3b9a01e194` |
+| Supplementary Cargo 1.98 compatibility | 159 Java unit tests + eight doctests pass | Linux, all features, locked dependencies |
+
+The tracked graph includes historical Java ports, strict Java 21 native/public
+consumer and negative compilation, mutation/compiler oracles, snapshots,
+Rustfmt, Clippy, Buildifier, and architecture policies. The only local graph
+exclusion is the untouched, user-owned untracked `examples/real-world/stdlib-abs/`
+package. The Bazel compiler oracle actually runs in the full gate; Cargo's
+159-test result alone is not claimed as execution of the Bazel-only mutation
+oracle. Its separate native consumer checks do run under Cargo.
+
+### Review and proof boundaries
+
+The integration review found and repaired 20 production wildcard imports and
+boxed-number casts that incorrectly permitted unboxing followed by narrowing.
+The cast matrix has 36 independently expected pairs; all 15 accepted pairs
+also pass certified generation and real Java 21 compilation. Native negative
+fixtures retain representative rejected casts. See
+[M34A-10R](M34A-10R-java-review-remediation.md) and
+[M34A-10Y](M34A-10Y-java-strategy-certificates.md) for finding dispositions.
+
+The uncapped immutable `edada37` review concluded with exactly those two core
+defects and no additional demonstrated blocker. Its proposed void-return hole
+was withdrawn because expression verification already rejects void values.
+Standalone void calls, Object-to-array casts, and additional pattern-flow forms
+are conservative exclusions outside current lowering, not required extensions.
+Generalizing the deliberately-invalid test-node conversion classifier is also
+optional: production uses only its exact `int = String` negative fixture,
+independently checked by Java. These observations do not excuse any accepted
+production AST that fails the promised native validity checks.
+
+The documentation audit also corrects historical naming/heritage claims:
+portable `clone` methods receive safe Java names, while raw target `clone`
+methods remain rejected; class-extension adapters are not implemented by the
+current `None`/`Interfaces` heritage enum. No extra language feature was added.
+
+Rust proves API/category/support constraints and prevents proof-wrapper
+forgery. Correct verifier, lowering, and renderer implementations remain trusted
+code backed by the permanent tests and review: neither finite compiler samples
+nor mapping-owned root certificates prove arbitrary functional equivalence.
+This migration is not an arbitrary-Java-program generator. Additional accepted
+Java syntax and external-framework adapters require separate typed extensions.
+
+## Historical exit evidence
 
 - Historical pre-ADR-0005 evidence: `crates/backend-java/src/ast.rs` owns the
   closed Java syntax, type-use, modifier, heritage, literal, operator, file,

@@ -29,7 +29,7 @@ public final class Generated {
     public org.polyrust.generated.Runtime.PolyResult<String> label(final String __polyrust_input_0) {
       final String prefix = org.polyrust.generated.Runtime.requireScalarString(__polyrust_input_0);
       final String __polyrust_intrinsicOperand_0 = this.text();
-      return org.polyrust.generated.Runtime.ok((prefix + __polyrust_intrinsicOperand_0));
+      return org.polyrust.generated.Runtime.ok(prefix.concat(__polyrust_intrinsicOperand_0));
     }
     @Override
     public org.polyrust.generated.Runtime.PolyResult<Long> measure() {

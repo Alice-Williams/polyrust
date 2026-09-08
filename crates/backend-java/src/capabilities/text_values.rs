@@ -1,6 +1,8 @@
 //! Java mapping for `TextValues`.
 
+mod lowering;
 mod mapping_plan;
+pub(crate) use lowering::text_value;
 
 use portable_build::{CapabilityMapping, TextValues};
 use portable_diagnostics::Diagnostic;
@@ -9,7 +11,6 @@ use super::support::{JavaCapabilityMapping, JavaValueNode, sealed};
 use crate::{
     ast::{JavaKnownType, JavaType},
     dialect::JavaDialect,
-    lower::string_literal,
 };
 
 #[doc(hidden)]
@@ -48,7 +49,7 @@ impl CapabilityMapping<JavaDialect> for JavaTextValues {
                 JavaValueNode::Type(JavaType::known(JavaKnownType::String))
             }
             JavaTextValuesInput::Value(value) => {
-                JavaValueNode::Expression(Box::new(string_literal(&value)))
+                JavaValueNode::Expression(Box::new(lowering::text_value(&value)))
             }
         })
     }

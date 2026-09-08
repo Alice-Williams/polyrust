@@ -13,7 +13,7 @@ use super::invocations::{
     java_cast_is_legal, java_instanceof_is_legal, java_type_is_reifiable, verify_call,
 };
 use super::operator_signatures::{
-    binary_signature_matches, invocation_types_match, literal_matches_type, unary_signature_matches,
+    binary_signature_matches, invocation_types_match, unary_signature_matches,
 };
 use super::types::{
     JavaArrayOwnership, JavaArrayOwnershipTransition, JavaPrimitive, JavaType, JavaTypeName,
@@ -197,15 +197,8 @@ impl JavaExpr {
         };
         let mut violations = self.ty.verify(expression_type_use);
         match &self.kind {
-            JavaExprKind::Literal(JavaLiteral::CharScalar(value))
-                if char::from_u32(*value).is_none() =>
-            {
-                violations.push(type_error("character literal is not a Unicode scalar"));
-            }
             JavaExprKind::Literal(literal) => {
-                if !literal_matches_type(literal, &self.ty) {
-                    violations.push(type_error("literal does not match its declared Java type"));
-                }
+                violations.extend(super::literal_limits::verify_literal(literal, &self.ty));
             }
             JavaExprKind::Value(value) => match value {
                 JavaValueRef::Generated(GeneratedSymbolId::Value(id)) => {

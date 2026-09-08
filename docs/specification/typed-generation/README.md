@@ -4,7 +4,7 @@
 - Implementation status: shared target proof boundary implemented; inferred
   typed builder and Java capability migration in progress; remaining languages
   pending
-- Accepted by: ADR-0004 as amended by ADR-0005, ADR-0006, and ADR-0007
+- Accepted by: ADR-0004 as amended by ADR-0005, ADR-0006, ADR-0007, and ADR-0008
 - Supersedes: the target-generation portions of ADR-0003 and
   `language-ir-architecture.md`
 

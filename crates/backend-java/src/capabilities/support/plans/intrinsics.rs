@@ -1,5 +1,6 @@
 //! Exact intrinsic roots; fallibility is independent of native/runtime spelling.
-use super::{JavaMappingPlan, JavaRepresentation, expressions::*, sealed};
+use super::expressions::{JavaCallOrigin, JavaExpressionNode, JavaExpressionSkeleton};
+use super::{JavaMappingPlan, JavaRepresentation, sealed};
 use crate::ast::{
     JavaBinaryOperator, JavaExpr, JavaKnownType, JavaLiteral, JavaMemberOrigin, JavaPrimitive,
     JavaRuntimeMember, JavaType, JavaUnaryOperator,

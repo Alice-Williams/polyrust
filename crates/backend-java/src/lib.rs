@@ -2,6 +2,7 @@
 //! symbol linker, opaque syntax certification, and total structural rendering.
 
 #![forbid(unsafe_code)]
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
 
 pub mod ast;
 pub mod capabilities;

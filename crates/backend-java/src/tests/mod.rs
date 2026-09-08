@@ -12,6 +12,7 @@ mod totality_interfaces;
 mod totality_names;
 mod totality_nominal_factories;
 mod totality_oracle;
+mod totality_text;
 mod typed_fixture;
 use capability_fixtures::{capability_coverage_fixture, portable_method_invocation_fixture};
 use portable_build::{
@@ -368,7 +369,7 @@ fn generated_expressions_are_evaluated_once_in_source_order() {
         .next()
         .expect("unwrap_once method body");
     assert_eq!(
-        unwrap.matches("\"a\" + \"b\"").count(),
+        unwrap.matches("\"a\".concat(\"b\")").count(),
         1,
         "the nontrivial left operand must be evaluated exactly once"
     );

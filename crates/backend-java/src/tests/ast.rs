@@ -257,6 +257,8 @@ mod interface_conformance;
 mod interface_signatures;
 #[path = "ast/lexical_flow.rs"]
 mod lexical_flow;
+#[path = "ast/literal_limits.rs"]
+mod literal_limits;
 #[path = "ast/member_catalogue.rs"]
 mod member_catalogue;
 #[path = "ast/modifiers.rs"]

@@ -5,6 +5,7 @@ mod declarations;
 mod intrinsics;
 mod owned_roots;
 mod review_regressions;
+mod text_values;
 mod uninhabited;
 mod wrapper;
 use super::support::{JavaCapabilityMapping, JavaMappingOutput, plans::JavaMappingPlan};

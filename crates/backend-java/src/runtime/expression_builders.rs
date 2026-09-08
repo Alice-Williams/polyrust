@@ -4,8 +4,8 @@ use super::declaration_builders::identifier;
 use super::call_builders::{known_call, member_call};
 use crate::ast::{
     JavaArrayOwnership, JavaArrayOwnershipTransition, JavaBinaryOperator, JavaExpr, JavaExprKind,
-    JavaFieldRef, JavaIdentifier, JavaKnownType, JavaLiteral, JavaNullPurpose, JavaPrecedence,
-    JavaPrimitive, JavaRuntimeMember, JavaType, JavaUnaryOperator, JavaValueRef,
+    JavaFieldRef, JavaIdentifier, JavaLiteral, JavaNullPurpose, JavaPrecedence, JavaPrimitive,
+    JavaRuntimeMember, JavaType, JavaUnaryOperator, JavaValueRef,
 };
 use crate::dialect::JavaKnownCallable;
 
@@ -179,10 +179,7 @@ pub(super) fn double_literal(bits: u64) -> JavaExpr {
     )
 }
 pub(super) fn string_literal(value: &str) -> JavaExpr {
-    JavaExpr::literal(
-        JavaType::known(JavaKnownType::String),
-        JavaLiteral::String(value.to_owned()),
-    )
+    crate::capabilities::text_value(value)
 }
 pub(super) fn null_literal(ty: JavaType) -> JavaExpr {
     JavaExpr::literal(

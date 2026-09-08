@@ -13,6 +13,7 @@ pub enum JavaKnownMethod {
     StringLength,
     StringIsEmpty,
     StringContains,
+    StringConcat,
     StringStartsWith,
     StringEndsWith,
     StringSubstringFrom,
@@ -52,11 +53,12 @@ pub enum JavaKnownMethod {
 }
 
 impl JavaKnownMethod {
-    pub const ALL: [Self; 40] = [
+    pub const ALL: [Self; 41] = [
         Self::ObjectEquals,
         Self::StringLength,
         Self::StringIsEmpty,
         Self::StringContains,
+        Self::StringConcat,
         Self::StringStartsWith,
         Self::StringEndsWith,
         Self::StringSubstringFrom,
@@ -101,6 +103,7 @@ impl JavaKnownMethod {
             Self::StringLength
             | Self::StringIsEmpty
             | Self::StringContains
+            | Self::StringConcat
             | Self::StringStartsWith
             | Self::StringEndsWith
             | Self::StringSubstringFrom
@@ -144,6 +147,7 @@ impl JavaKnownMethod {
             Self::StringLength => JavaMemberName::Length,
             Self::StringIsEmpty => JavaMemberName::IsEmpty,
             Self::StringContains => JavaMemberName::Contains,
+            Self::StringConcat => JavaMemberName::Concat,
             Self::StringStartsWith => JavaMemberName::StartsWith,
             Self::StringEndsWith => JavaMemberName::EndsWith,
             Self::StringSubstringFrom | Self::StringSubstringRange => JavaMemberName::Substring,
@@ -206,6 +210,7 @@ impl JavaKnownMethod {
             Self::ObjectEquals => signature(Some(object.clone()), vec![object], boolean),
             Self::StringLength => signature(Some(string), vec![], int),
             Self::StringIsEmpty => signature(Some(string), vec![], boolean),
+            Self::StringConcat => signature(Some(string.clone()), vec![string.clone()], string),
             Self::StringContains | Self::StringStartsWith | Self::StringEndsWith => {
                 signature(Some(string.clone()), vec![string], boolean)
             }
