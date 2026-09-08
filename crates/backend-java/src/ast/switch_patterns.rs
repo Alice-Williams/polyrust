@@ -10,7 +10,7 @@ use super::invocations::{
     java_type_is_reference, java_type_is_reifiable,
 };
 use super::statement_model::{JavaPattern, JavaSwitchArm};
-use super::type_context::erased_java_type;
+use super::type_context::{JavaErasedType, erased_java_type};
 use super::types::{JavaKnownType, JavaPrimitive, JavaType, JavaTypeName, type_error};
 use crate::dialect::JavaDialect;
 use portable_codegen::{AstViolation, TargetAstContext};
@@ -247,6 +247,14 @@ fn java_type_pattern_dominates(
     if *earlier == JavaType::known(JavaKnownType::Object) && java_type_is_reference(later) {
         return true;
     }
+    if let (
+        JavaErasedType::Reference(JavaTypeName::Known(parent)),
+        JavaErasedType::Reference(JavaTypeName::Known(child)),
+    ) = (erased_java_type(earlier), erased_java_type(later))
+        && known_pattern_supertype(parent, child)
+    {
+        return true;
+    }
     match (earlier, later) {
         (
             JavaType::Reference(JavaTypeName::Generated(expected)),
@@ -273,5 +281,49 @@ pub(super) fn iterable_element_type(ty: &JavaType) -> Option<&JavaType> {
             arguments,
         } if arguments.len() == 1 => arguments.first(),
         _ => None,
+    }
+}
+
+// Only admitted known types participate. Runtime conformance remains checked
+// against its structural declarations, not duplicated in this JDK relation.
+fn known_pattern_supertype(parent: JavaKnownType, child: JavaKnownType) -> bool {
+    match parent {
+        JavaKnownType::Object => true,
+        JavaKnownType::List => child == JavaKnownType::ArrayList,
+        JavaKnownType::Map => child == JavaKnownType::LinkedHashMap,
+        JavaKnownType::RuntimeException => {
+            super::exceptions::admitted_throwable_is_supertype_of(parent, child)
+        }
+        JavaKnownType::String
+        | JavaKnownType::Boolean
+        | JavaKnownType::Byte
+        | JavaKnownType::Character
+        | JavaKnownType::Integer
+        | JavaKnownType::Long
+        | JavaKnownType::Double
+        | JavaKnownType::Math
+        | JavaKnownType::AssertionError
+        | JavaKnownType::IllegalArgumentException
+        | JavaKnownType::IllegalStateException
+        | JavaKnownType::BigInteger
+        | JavaKnownType::ByteBuffer
+        | JavaKnownType::CharBuffer
+        | JavaKnownType::CharacterCodingException
+        | JavaKnownType::Charset
+        | JavaKnownType::CharsetDecoder
+        | JavaKnownType::CodingErrorAction
+        | JavaKnownType::StandardCharsets
+        | JavaKnownType::ArrayList
+        | JavaKnownType::Arrays
+        | JavaKnownType::LinkedHashMap
+        | JavaKnownType::Objects
+        | JavaKnownType::RuntimeUnit
+        | JavaKnownType::RuntimeError
+        | JavaKnownType::RuntimeResult
+        | JavaKnownType::RuntimeOption
+        | JavaKnownType::RuntimeValueResult
+        | JavaKnownType::RuntimeBytes
+        | JavaKnownType::RuntimeSemanticValue
+        | JavaKnownType::RuntimeScalar => false,
     }
 }

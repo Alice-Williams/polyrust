@@ -81,6 +81,7 @@ fn verify_single_file(
 
 #[test]
 fn closed_catalogues_have_unique_qualified_names() {
+    assert_eq!(known_type_spec(JavaKnownType::LinkedHashMap).arity, 2);
     let type_names = JavaKnownType::ALL
         .into_iter()
         .map(JavaKnownType::qualified_name)

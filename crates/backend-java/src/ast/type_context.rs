@@ -42,17 +42,6 @@ pub(super) fn erased_java_type(ty: &JavaType) -> JavaErasedType {
     }
 }
 
-fn known_generic_arity(known: JavaKnownType) -> usize {
-    match known {
-        JavaKnownType::ArrayList
-        | JavaKnownType::List
-        | JavaKnownType::RuntimeResult
-        | JavaKnownType::RuntimeOption => 1,
-        JavaKnownType::LinkedHashMap | JavaKnownType::Map | JavaKnownType::RuntimeValueResult => 2,
-        _ => 0,
-    }
-}
-
 pub(super) fn verify_contextual_type(
     ty: &JavaType,
     variables: &BTreeSet<JavaIdentifier>,
@@ -61,7 +50,7 @@ pub(super) fn verify_contextual_type(
     let mut violations = Vec::new();
     match ty {
         JavaType::Reference(JavaTypeName::Known(known)) => {
-            if known_generic_arity(*known) != 0 {
+            if known.generic_arity() != 0 {
                 violations.push(type_error(
                     "generic Java known type cannot be used as a raw reference",
                 ));
@@ -81,7 +70,7 @@ pub(super) fn verify_contextual_type(
         }
         JavaType::Generic { raw, arguments } => {
             let expected = match raw {
-                JavaTypeName::Known(known) => Some(known_generic_arity(*known)),
+                JavaTypeName::Known(known) => Some(usize::from(known.generic_arity())),
                 JavaTypeName::Generated(_) => find_type_declaration(ty, context)
                     .map(|declaration| declaration.type_parameters.len()),
             };

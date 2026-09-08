@@ -12,7 +12,6 @@ use super::lexical_blocks::verify_block_scope_in_context;
 use super::lexical_scope::JavaLexicalScope;
 use super::method_contracts::verify_method_annotations;
 use super::modifiers::{JavaModifierSite, verify_modifiers_for};
-use super::operator_signatures::invocation_types_match;
 use super::types::{JavaPrimitive, JavaType, JavaTypeName, JavaTypeUse, type_error};
 use crate::dialect::JavaDialect;
 use portable_codegen::{AstViolation, GeneratedSymbolId, TargetAstContext, TargetSymbolRef};
@@ -121,10 +120,20 @@ impl JavaMember {
                     verify_modifiers_for(&field.modifiers, JavaModifierSite::Field);
                 violations.extend(field.expected_type.verify(JavaTypeUse::Field));
                 violations.extend(field.initializer.verify(context));
-                if invocation_types_match(&field.expected_type, &field.initializer.ty) {
+                // A mismatch in our conservative invocation relation does not
+                // prove javac rejection: assignment also widens/narrows/boxes.
+                // Admit only the closed negative fixture emitted by lowering.
+                if field.expected_type != JavaType::primitive(JavaPrimitive::Int)
+                    || !matches!(
+                        &field.initializer.kind,
+                        super::expression_nodes::JavaExprKind::Literal(
+                            super::expression_model::JavaLiteral::String(_)
+                        )
+                    )
+                {
                     violations.push(AstViolation::new(
                         DiagnosticCode::InvalidStructure,
-                        "compile-fail field must contain a deliberate type mismatch",
+                        "compile-fail field requires an int target and String literal initializer",
                     ));
                 }
                 violations

@@ -231,6 +231,8 @@ fn fixture_core_implementation_method(
 
 #[path = "ast/access.rs"]
 mod access;
+#[path = "ast/array_creation.rs"]
+mod array_creation;
 #[path = "ast/array_ownership.rs"]
 mod array_ownership;
 #[path = "ast/binary_names.rs"]
@@ -279,6 +281,8 @@ mod qualifier_bindings;
 mod sealed_permits;
 #[path = "ast/statement_grammar.rs"]
 mod statement_grammar;
+#[path = "ast/switch_dominance.rs"]
+mod switch_dominance;
 #[path = "ast/synthetic_owner_fixtures.rs"]
 mod synthetic_owner_fixtures;
 #[path = "ast/type_and_operator_checks.rs"]

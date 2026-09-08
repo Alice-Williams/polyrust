@@ -37,6 +37,24 @@ execution of every portable test.
 - `gofmt`, `go vet`, and `go test` pass with the pinned SDK.
 - Generated code imports neither `unsafe` nor `reflect`.
 
+## Java
+
+- Start with the [curated v0 and interface packages](../examples/generated/java/README.md).
+  They contain actual generated source; Bazel regenerates and compares every byte.
+- Follow the [Java specification](specification/typed-generation/languages/java.md)
+  and [module map](specification/typed-generation/languages/java/module-layout.md):
+  inferred capabilities select executable mappings, which produce typed Java
+  AST. Linking derives imports and helpers; certification precedes structural
+  rendering. Runtime declarations follow the same path.
+- Review interface signatures, multiple conformance, concrete/interface dispatch
+  and explicit composition. Interfaces with no implementations remain valid;
+  their private uninhabited permitted subtype exposes no constructible value.
+- Require pinned Java 21 `-Xlint:all -Werror`, separately compiled consumers,
+  negative compilation, native behavior, snapshots and deterministic output.
+- Keep API typing and target capacity distinct. `JavaResourceError` reports
+  documented finite class-file/output limits; syntax or mapping defects are
+  not normal user validation errors. Native class-file evidence supplements,
+  but does not replace, the typed verifier and mapping contracts.
+
 The automated reference is the
 [`models-and-validation` native gate](../examples/models-and-validation/native_test.sh).
-

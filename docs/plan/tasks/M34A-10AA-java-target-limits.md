@@ -298,3 +298,12 @@ The full replay after that corpus strengthening passes:
 
 Linux Cargo 1.98 compatibility also passes all 191 Java tests and eight doctests.
 Fresh review and hosted CI remain required for closure.
+
+The fresh immutable 4789036 review completed with precisely the two dollar-name
+findings above; both are repaired in bd916a6. The bd916a6 reviewer confirmed the
+package-wide binary identity and conservative synthetic-suffix argument and
+found no further resource-budget defect. Its other Java validity findings and
+repairs are recorded in [M34A-10R](M34A-10R-java-review-remediation.md).
+Hosted bd916a6 CI passes all eight jobs in
+[run 34195505015](https://github.com/Alice-Williams/polyrust/actions/runs/34195505015).
+Final whole-Java closure remains governed by M34A-10R's fresh-checkpoint gate.

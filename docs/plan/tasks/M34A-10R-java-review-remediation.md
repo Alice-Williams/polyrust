@@ -535,3 +535,101 @@ descriptors, method code length, and aggregate class capacity. The accepted
 findings and verified text repair are tracked in
 [M34A-10AA](M34A-10AA-java-target-limits.md). Java remains open; prior green
 gates are checkpoint evidence, not evidence that those later findings are fixed.
+
+## Final Java 21 known-pattern dominance repair
+
+The fresh review of immutable `bd916a6ea77f5cdb741a3d21d0af21dc412394d5`
+found a concrete accepted-AST hole: switch pattern dominance omitted admitted
+JDK subtyping. `List<?>` before `ArrayList<?>`, `Map<?, ?>` before
+`LinkedHashMap<?, ?>`, and `RuntimeException` before either admitted
+illegal-argument/state exception reached certification but failed javac.
+This is accepted as core validity work, not a request for broader Java syntax.
+
+Red invocation `934b2824-a423-49ae-9793-fdf3f64adaa8` fails the expected AST
+rejection while the four paired native compiler-negative controls pass. The
+repair adds an exhaustive known-type dominance relation, reuses the existing
+throwable relation, and retains structural runtime/generated conformance.
+Cast and invocation acceptance are unchanged. Each reverse-order positive AST
+also enters the certified-renderer/compiler corpus and class-file budget check.
+
+Focused invocation `9a438fdb-bcac-4554-bff9-58d507cf792c` passes all 193 Java
+tests, Rustfmt, Clippy and Buildifier. The initial fixture build exposed a
+test-helper privacy mismatch; moving its native half beside the existing native
+fixtures fixed the test layout without widening helper visibility. Full gates,
+the immutable review's complete report and another fresh review remain required.
+
+The same immutable review found unchecked generic array creation. Red
+`421289ea-cabd-4547-b201-c70e8395b59e` admits the invalid `List<String>`
+allocation component while native controls reject generic creation. A root
+audit then reproduced a related renderer defect: certified nested arrays
+printed `new int[][3]` and `new int[][][3]`; javac rejects both in invocation
+`e028047f-f42f-467c-b38e-8496df8103d2`. Both findings are accepted.
+
+A focused private array-allocation checker now requires reifiable components
+and retains exact result/length/ownership checks. Primitive reifiability is
+correctly distinguished from reference-type eligibility; existing cast and
+instanceof reference constraints remain active. Structural rendering prints
+the sized dimension before trailing empty dimensions. Positive primitive,
+reference, unbounded-wildcard and nested-array allocations enter the certified
+native corpus; generic and type-variable allocation components, including
+nested forms, have negative regressions.
+
+The review's proposed Object-selector/String-literal dominance hole is rejected
+and was withdrawn: literal compatibility already rejects String constants
+unless the selector is exactly String. The alleged Object-selector AST never
+passes verification. No redundant guard or wider literal-switch feature was added.
+
+The first full dominance replay passed 309/310 tests but found that the new
+review-guide link's existing curated README was absent from documentation-test
+runfiles. The README is now explicitly exported and declared as test data.
+This was a documentation harness dependency, not a missing example artifact.
+
+Focused `8576e225-c940-4b65-966a-55d1e2949bdb` passes all 195 Java tests,
+Rustfmt, Clippy, Buildifier and documentation. Production modules remain below
+500 lines (largest: 489). Complete repair integration and fresh review remain
+required before closure.
+
+The combined dominance/array checkpoint passes all 310 tracked tests
+(`18b6044d-5964-42c5-8917-511f26090e6b`), 247 release tests
+(`3653a39a-3d79-4e1a-9d95-16a02441b39a`) and deterministic eight-target
+conformance (`ae13980c-a9e4-4b63-87d6-3007676a9296`).
+
+The same review then found a core negative-test proof defect: the invocation
+type relation rejected conversions that Java field assignment accepts. A
+NegativeTest with only `long x = 1`, `byte x = 1` or `Object x = "s"` could
+therefore verify despite compiling successfully. Red regression
+`e42b6f3a-a678-40fa-a67b-970e0cfccc2c` reproduces false admission and passes
+the independent native conversion controls. The special node now accepts only
+the existing closed `int`/String-literal negative shape. This does not expand
+ordinary assignment support. An initial test-helper naming error was corrected
+before this red proof; it is not counted as defect reproduction.
+
+Also accepted as catalogue correctness (not a demonstrated output failure):
+LinkedHashMap's catalogue arity was zero while contextual validation correctly
+required two. Both now use one exhaustive enum-owned arity definition, removing
+the duplicated source rather than patching two tables. Final full proof and
+fresh immutable review are still required.
+
+## Final disposition of the bd916a6 audit
+
+The uncapped Sol Extra High reviewer completed its immutable source audit with
+four core findings (known-pattern dominance, generic array creation, nested
+array rendering and negative-test proof) plus the dormant catalogue mismatch.
+All five are accepted and repaired above. It reported no additional demonstrated
+core defects. The literal-switch hypothesis is explicitly rejected above.
+The reviewer did not run tests; the following evidence is from the root's
+Linux development-container execution after all five repairs:
+
+- `0da06d20-ef6c-432e-b0d3-1f7995b69955`: all 435 tracked rules build and
+  all 310 tests pass, including 197 Java unit tests, Rustfmt, Clippy,
+  Buildifier, strict native Java, documentation, snapshots and historical ports.
+- `1e651c4e-ef53-4b24-81b7-ef4e00158572`: all 247 release tests pass.
+- `19935b90-be9e-435e-bc0d-a8d726be293e`: 50 cases and one portable test,
+  evaluator/eight-target agreement, and byte-identical repeated manifests.
+- Linux Cargo 1.98: 197 Java tests and eight doctests pass.
+
+Action/test caching remains enabled. The unrelated untracked stdlib-abs work
+is excluded. The prior pushed bd916a6 checkpoint has all eight hosted jobs green
+in [run 34195505015](https://github.com/Alice-Williams/polyrust/actions/runs/34195505015).
+This repair checkpoint requires its own push, CI and fresh immutable review;
+no prior green review or CI is substituted for those final requirements.

@@ -1,6 +1,7 @@
 use super::*;
 use std::collections::BTreeSet;
 
+mod array_creation_native;
 pub(crate) mod budget_oracle;
 pub(crate) mod capability_fixtures;
 mod classfile_metrics;
@@ -8,9 +9,11 @@ mod mapping_coverage;
 mod mapping_short_circuit;
 pub(crate) mod match_dispatch;
 mod name_identity_consumers;
+mod negative_fields_native;
 mod nested_payload_matches;
 mod resource_encoding_native;
 mod resources_native;
+mod switch_dominance_native;
 mod totality_empty_interfaces;
 mod totality_interfaces;
 mod totality_names;

@@ -10,6 +10,7 @@ sh_test(
         "//:documentation",
         "//examples/external-backend:Cargo.toml",
         "//examples/external-backend:src/lib.rs",
+        "//examples/generated/java:README.md",
         "//examples/models-and-validation:Cargo.toml",
         "//examples/models-and-validation:native_test.sh",
         "//examples/models-and-validation:src/lib.rs",

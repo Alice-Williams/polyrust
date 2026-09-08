@@ -203,7 +203,8 @@ pub(super) fn java_type_is_reifiable(ty: &JavaType) -> bool {
         JavaType::Generic { arguments, .. } => arguments
             .iter()
             .all(|argument| matches!(argument, JavaType::Wildcard { bound: None })),
-        JavaType::Primitive(_) | JavaType::Wildcard { .. } | JavaType::TypeVariable(_) => false,
+        JavaType::Primitive(value) => *value != JavaPrimitive::Void,
+        JavaType::Wildcard { .. } | JavaType::TypeVariable(_) => false,
     }
 }
 

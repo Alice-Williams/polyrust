@@ -70,6 +70,8 @@ pub struct JavaEnumConstant {
 
 /// A deliberately ill-typed field used only to prove the native compiler
 /// rejects mappings which the portable surface forbids.
+/// Verification admits only an int field initialized by a String literal;
+/// arbitrary unequal AST types do not prove Java assignment incompatibility.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct JavaCompileFailField {
     pub modifiers: Vec<JavaModifier>,

@@ -8,7 +8,7 @@ use super::statements::render_block;
 use super::syntax::{binary_operator, render_literal, unary_operator};
 use crate::ast::{
     JavaCallableRef, JavaConstructorRef, JavaExpr, JavaExprKind, JavaFieldRef, JavaResolvedName,
-    JavaValueRef,
+    JavaType, JavaValueRef,
 };
 use crate::dialect::JavaDialect;
 use portable_codegen::{GeneratedSymbolId, LinkedFile, TargetSymbolRef};
@@ -154,9 +154,18 @@ pub(super) fn render_expr(
             Ok(format!("new {target}({arguments})"))
         }
         JavaExprKind::NewArray { component, length } => {
-            let component = render_java_type(component, names)?;
+            let mut element = component;
+            let mut trailing_dimensions = 0;
+            while let JavaType::Array { component, .. } = element {
+                trailing_dimensions += 1;
+                element = component;
+            }
+            let element = render_java_type(element, names)?;
             let length = render_expr(length, names, file)?;
-            Ok(format!("new {component}[{length}]"))
+            Ok(format!(
+                "new {element}[{length}]{}",
+                "[]".repeat(trailing_dimensions)
+            ))
         }
         JavaExprKind::ArrayIndex { array, index } => {
             let array = render_expr(array, names, file)?;

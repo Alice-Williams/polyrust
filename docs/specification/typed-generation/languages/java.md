@@ -265,6 +265,12 @@ option/result branch.
   field initializer which refers to itself or to a later field in the same
   type.
 - Records/final classes validate and copy mutable inputs in typed constructors.
+- Array allocation requires a reifiable component: non-void primitives,
+  reference types, unbounded-wildcard parameterizations, and recursively
+  reifiable arrays. `new List<String>[n]` and `new T[n]` are rejected even
+  though their array value types may be legal. Nested allocation prints the
+  sized dimension first (`new int[n][]`), followed by the component's remaining
+  empty dimensions. This is structural syntax printing, not a lowering rewrite.
 - Record components reject Java's reserved `Object` member names. An explicit
   canonical constructor is never less accessible than its record, and an
   explicit component accessor is public, concrete, non-static, non-generic,
@@ -294,6 +300,12 @@ option/result branch.
   assigned blank final, or allow an unhandled checked exception.
 - Tagged matches lower to exhaustive verified switches or explicit tag
   switches according to the selected Java 21 strategy.
+- Type-pattern dominance includes the admitted JDK subtype relations, not only
+  equal erased types, Object, arrays and generated conformance. `List<?>`
+  dominates `ArrayList<?>`, `Map<?, ?>` dominates `LinkedHashMap<?, ?>`, and
+  `RuntimeException` dominates the admitted illegal-argument/state exceptions.
+  The reverse order remains valid. A new known type must explicitly participate
+  in the exhaustive dominance relation; renderer printing cannot repair it.
 - Explicit final temporaries preserve CoreIR receiver, operand, and argument
   order. Every nontrivial receiver/operand/argument is materialized exactly at
   its source evaluation point before a later child can execute; a composed
@@ -481,6 +493,11 @@ through nested declarations or composed runtime fragments. Negative fixtures
 are expected to fail Java compilation; they are not executable program output
 and are excluded from the successful-compilation claim. Their grammar and
 artifact-role constraints still pass through certification and total rendering.
+The compile-negative field shape is closed: an `int` target initialized by a
+String literal. A mismatch under a narrower invocation-type relation MUST NOT
+be treated as proof of assignment incompatibility. Known-type generic arity
+has one exhaustive enum-owned definition shared by contextual checking and
+catalogue metadata; `LinkedHashMap` has two type parameters.
 
 Method annotations are closed enum values with declaration-context checks.
 Annotations are unique. `@Override` is admitted only for an instance method

@@ -327,17 +327,7 @@ impl JavaExpr {
                 }
             }
             JavaExprKind::NewArray { component, length } => {
-                violations.extend(component.verify(JavaTypeUse::Value));
-                violations.extend(length.verify(context));
-                let expected = JavaType::Array {
-                    component: Box::new(component.clone()),
-                    ownership: JavaArrayOwnership::InternalMutable,
-                };
-                if self.ty != expected || length.ty != JavaType::Primitive(JavaPrimitive::Int) {
-                    violations.push(type_error(
-                        "new-array component, length, or result type mismatch",
-                    ));
-                }
+                violations.extend(super::array_creation::verify(&self.ty, component, length, context));
             }
             JavaExprKind::ArrayIndex { array, index } => {
                 violations.extend(array.verify(context));

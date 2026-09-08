@@ -103,14 +103,7 @@ pub(super) fn known_type_spec(value: JavaKnownType) -> KnownTypeSpec<JavaDialect
         alias_stem: value.simple_name().to_owned(),
         qualified_name,
         origin,
-        arity: match value {
-            JavaKnownType::ArrayList
-            | JavaKnownType::List
-            | JavaKnownType::RuntimeResult
-            | JavaKnownType::RuntimeOption => 1,
-            JavaKnownType::Map | JavaKnownType::RuntimeValueResult => 2,
-            _ => 0,
-        },
+        arity: value.generic_arity(),
         policy,
         dependency: None,
         source: symbol_source("type", value.qualified_name()),
