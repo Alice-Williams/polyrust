@@ -17,6 +17,9 @@ Connect the C post-link checker to the shared opaque certificate and total rende
 
 ## Tests and proof
 
+- Mechanically inventory every variant in the C closed grammar specification
+  against exhaustive Rust matches and constructor/mutation/native-oracle cases.
+
 - Compile-fail all wrong-phase/certificate construction/mutation paths.
 - Deterministic structured mutation corpus: every admitted package compiles with pinned C17 and strict diagnostics; independent native negatives genuinely fail.
 - Declarator precedence matrix, control/zero/hex literal escaping, header standalone/repeated/include-order and separately linked consumers.

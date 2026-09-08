@@ -1,12 +1,15 @@
 load("@rules_cc//cc:defs.bzl", "cc_test")
-load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_doc_test", "rust_library", "rust_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 exports_files(["Cargo.toml"])
 
 rust_library(
     name = "portable_backend_c",
-    srcs = glob(["src/**/*.rs"]),
+    srcs = glob(
+        ["src/**/*.rs"],
+        exclude = ["src/tests/**/*.rs"],
+    ),
     compile_data = [
         "src/runtime.c",
         "src/runtime.h",
@@ -23,12 +26,27 @@ rust_library(
 
 rust_test(
     name = "portable_backend_c_test",
+    srcs = glob(["src/**/*.rs"]),
     compile_data = [
+        "src/runtime.c",
+        "src/runtime.h",
         "test/abi-shapes.poly.json",
         "//crates/build:testdata/registration.poly.json",
     ],
-    crate = ":portable_backend_c",
+    crate_name = "portable_backend_c",
+    crate_root = "src/lib.rs",
+    edition = "2024",
     visibility = ["//visibility:public"],
+    deps = [
+        "//crates/check:portable_check",
+        "//crates/codegen:portable_codegen",
+        "//crates/ir:portable_ir",
+    ],
+)
+
+rust_doc_test(
+    name = "c_typed_compile_fail_test",
+    crate = ":portable_backend_c",
 )
 
 rust_binary(

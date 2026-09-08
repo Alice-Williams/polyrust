@@ -25,9 +25,11 @@ can still represent their other variants. No foreign vtable registration API
 is exposed by default.
 
 All admitted type positions support interface values, including nested lists,
-records, options and results. Copies preserve independent value ownership,
-and equality follows portable concrete-value semantics rather than context
-addresses. Table function prototypes are authenticated after monomorphization
+records, options and results. Copies preserve independent value ownership.
+Interface values are never directly or recursively equality-comparable:
+records, lists, options and results containing them cannot acquire equality
+support. Equality of other concrete values follows portable semantics, never
+context addresses. Table function prototypes are authenticated after monomorphization
 and linking; a wrong receiver/result/callback or missing lifecycle slot fails
 certification before rendering.
 

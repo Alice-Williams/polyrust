@@ -3,6 +3,9 @@
 - Status: normative for M34A-11
 - Language: C17; conservative closed subset, not every possible C program
 
+The [closed grammar inventory](grammar-inventory.md) enumerates the exact
+variant domain, payloads and contextual obligations for this contract.
+
 ## Type and reference categories
 
 The type model distinguishes object types, function signatures and void return
