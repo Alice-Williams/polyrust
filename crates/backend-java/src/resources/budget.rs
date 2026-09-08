@@ -172,13 +172,16 @@ pub(super) fn check(
 ) {
     for class in classes::report(declaration, members, type_count) {
         if matches!(class.kind, ClassFileKind::EnumSwitchHelper) {
-            // With no anonymous/local classes in the admitted AST, pinned
-            // javac names the single map class for this outer nest Owner$1.
+            // Each occupied numeric suffix requires a declared class. The
+            // single map class per outer nest therefore needs at most the
+            // digits of (package declaration count + 1), even with '$' names.
+            let suffix_bytes =
+                1usize.saturating_add(type_count.saturating_add(1).to_string().len());
             super::limit(
                 errors,
                 path,
                 "conservative enum-switch helper binary name bytes",
-                binary_name_length.saturating_add(2),
+                binary_name_length.saturating_add(suffix_bytes),
                 super::types::MAX_UTF8,
             );
         }

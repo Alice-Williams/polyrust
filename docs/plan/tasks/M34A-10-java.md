@@ -55,6 +55,30 @@ shared typed-generation gates pass in the dev container.
 
 ## Current integration checkpoint (2026-09-08)
 
+### Latest repair checkpoint
+
+The current implementation is pushed as
+`4789036a2f4388ffdcb81e6b8a8ec23572d801cf`. Its local proof passes all 435
+tracked rules / 310 test targets, all 247 release tests, deterministic
+evaluator/eight-target conformance (50 cases and one portable test), and Linux
+Cargo 1.98 compatibility (190 Java tests plus eight doctests). Normal action
+and test caches remain enabled. All Java production Rust files are below 500
+lines; the largest is 499.
+
+The target-resource follow-up now includes compiler-generated enum/record
+descriptors and synthetic enum-switch class names. Native evidence loads
+in-memory class files at exact encoding boundaries and requires an actual
+separately compiled enum-switch helper before comparing its class metrics.
+The exact red/green evidence and review dispositions are in
+[M34A-10AA](M34A-10AA-java-target-limits.md).
+
+Hosted CI for this SHA is
+[run 34193733801](https://github.com/Alice-Williams/polyrust/actions/runs/34193733801).
+It and a fresh uncapped Sol Extra High review are still pending. Earlier
+checkpoint statuses below are historical and do not override that requirement.
+
+### Earlier integration checkpoint
+
 Implementation and review repairs are pushed at
 `fb3803ee0ac4e224b0caf4000fe3f1dd9d5ad293`. Hosted CI
 [run 34178072602](https://github.com/Alice-Williams/polyrust/actions/runs/34178072602)

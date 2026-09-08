@@ -33,6 +33,7 @@ mod field_metadata;
 mod field_registration;
 mod file_model;
 pub use file_model::JavaFileItem;
+mod binary_names;
 mod file_symbols;
 mod file_verification;
 mod final_assignment;

@@ -69,9 +69,12 @@ selector's kind. Each switch reserves a map field; each arm reserves
 initialization code, constants and a catch entry. The helper's combined
 initializer is checked, rather than treating each switch as an isolated method.
 The typed class-budget kind distinguishes declared classes from synthetic map
-classes. A possible map also reserves the two-byte `$1` suffix on the final
-outer binary name. No anonymous/local classes or enum constant bodies are
-admitted, so pinned javac allocates one such map class per enclosing nest.
+classes. A possible map also reserves `$` plus the decimal digit count of
+`package_declared_type_count + 1` on the final outer binary name. Dollar-spelled
+declared classes can occupy `$1` through `$9` and force `$10`; no fixed
+two-byte suffix is assumed. Every skipped index requires a declared class.
+No anonymous/local classes or enum constant bodies are admitted, so pinned
+javac allocates one such map class per enclosing nest.
 Generated interface conformance has exact signatures and no generic heritage;
 covariant/generic bridges are not admitted. This invariant and lambda rejection
 must stay covered when the AST grows.
@@ -89,7 +92,8 @@ counterexamples, pair them with accepted smaller programs, and inspect actual
 class files for admitted fixtures. Actual code/pool/locals/stack/member and
 bootstrap counts must fit the calculated reservations. The enum oracle also
 recompiles a certified, rendered consumer against provider class files only,
-asserts that its `$1.class` actually exists, and inspects that helper's metrics.
+occupies suffixes `$1` through `$9` with typed declarations, asserts that its
+synthetic `$10.class` actually exists, and inspects that helper's metrics.
 This prevents javac's same-compilation ordinal optimization from making the
 synthetic-helper coverage vacuous. Existing eight-target
 conformance and historical Java ports remain required. Until those checks and

@@ -84,6 +84,13 @@ public final class Consumer {
             check("public final class Inner { public Inner(" + parameters(slots) + ") {} }", slots == 253, "many");
         }
         String prefix = "p.Fixture$";
+        check("public static final class Inner {}", true, "");
+        checkSource("package p; public final class Fixture { private Fixture() {} public static final class Inner {} } final class Fixture$Inner {}", false, "duplicate class");
+        for (int length : new int[] {65532, 65533}) {
+            String name = "H".repeat(length - "p.".length());
+            String occupied = java.util.stream.IntStream.rangeClosed(1, 9).mapToObj(i -> "final class " + name + "$" + i + " {}").collect(java.util.stream.Collectors.joining(" "));
+            checkSource("package p; public final class Fixture { private Fixture() {} } final class " + name + " { static int rank(Thread.State state) { return switch(state) { case NEW -> 1; default -> 0; }; } } " + occupied, length == 65532, "too long");
+        }
         for (int length : new int[] {65534, 65535, 65536}) {
             String firstComponent = "a".repeat(32000);
             String secondComponent = "b".repeat(length - 32001);

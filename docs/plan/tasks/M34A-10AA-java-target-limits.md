@@ -269,3 +269,32 @@ The preceding checkpoint `c584aeeaff0349a91462dbd7c0c6c791ea6cdab9` has
 all eight hosted jobs green in
 [run 34191179416](https://github.com/Alice-Williams/polyrust/actions/runs/34191179416).
 This repair still needs its own push, hosted CI and fresh review before closure.
+
+## Dollar-name final audit
+
+Checkpoint `4789036a2f4388ffdcb81e6b8a8ec23572d801cf` was pushed and matched
+against the remote main ref. A final root audit found two related naming gaps,
+also being evaluated by its fresh reviewer. Java identifiers admit `$`, so
+source names `Outer$Inner` and `Outer.Inner` can share a JVM binary name, and
+nine explicit `Owner$1` through `Owner$9` declarations force javac's synthetic
+helper to use `$10`. The previous fixed two-byte reservation was insufficient.
+
+Red invocation `3e50b1c8-cb23-4c4c-a265-a37893d938ab` reproduced both missed
+rejections while its native controls passed. Binary uniqueness is now checked
+package-wide, recursively including composed Runtime fragments. Helper suffix
+headroom is conservatively `$` plus the digits of declared-type count plus one;
+no portable-name restriction or blanket dollar-name ban is introduced.
+The native matrix accepts/rejects forced `$10` owners at 65,532/65,533 bytes.
+Focused invocation `9d1aaec4-c203-44b9-b749-bd0c2b3bf16f` passes all 191 Java
+tests and Rustfmt, Clippy and Buildifier. The typed compiler corpus additionally
+occupies `$1` through `$9` and requires an actual `$10.class`.
+
+The full replay after that corpus strengthening passes:
+
+- `0e76b291-8077-4f2c-aac2-c49fe49ca03f`: all 435 tracked rules / 310 tests.
+- `0c9d889d-4004-45e9-8fab-6489f4645d5d`: all 247 release tests.
+- `54a5ff87-25dc-4898-b6b8-f0161c5559f4`: 50 cases and one portable test,
+  evaluator/eight-target agreement, and byte-identical repeated manifests.
+
+Linux Cargo 1.98 compatibility also passes all 191 Java tests and eight doctests.
+Fresh review and hosted CI remain required for closure.

@@ -62,16 +62,26 @@ pub(super) fn add_consumer(
     declaration.kind = JavaDeclarationKind::FinalClass;
     declaration.visibility = JavaVisibility::Public;
     assert!(matches!(declaration.members[0], JavaMember::Method(_)));
+    let mut items = vec![JavaFileItem::Type {
+        conformances: JavaConformanceInventory::structural().into(),
+        declared: vec![],
+        declaration,
+    }];
+    for index in 1..=9 {
+        let mut occupied = super::fixture_declaration(vec![]);
+        occupied.name = JavaIdentifier::new(format!("OracleEnumConsumer${index}")).unwrap();
+        items.push(JavaFileItem::Type {
+            conformances: JavaConformanceInventory::structural().into(),
+            declared: vec![],
+            declaration: occupied,
+        });
+    }
     let file = builder.file(portable_codegen::TargetFile::new(
         portable_codegen::RelativeOutputPath::new(SOURCE).unwrap(),
         portable_codegen::SourceRole::PublicApi,
         JavaPackage::Generated,
         JavaFilePlacement::Main,
-        vec![JavaFileItem::Type {
-            conformances: JavaConformanceInventory::structural().into(),
-            declared: vec![],
-            declaration,
-        }],
+        items,
         JavaSourceFileKind::CompilationUnit,
         verifier_source("enum-consumer-file"),
     ));
@@ -98,7 +108,7 @@ pub(super) fn compile_separately(javac: &Path, root: &Path, classes: &Path) {
     );
     assert!(
         classes
-            .join("org/polyrust/generated/OracleEnumConsumer$1.class")
+            .join("org/polyrust/generated/OracleEnumConsumer$10.class")
             .is_file(),
         "native oracle must actually emit the synthetic enum-switch helper",
     );

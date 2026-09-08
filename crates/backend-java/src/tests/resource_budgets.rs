@@ -20,17 +20,22 @@ fn enum_switch_helper_reserves_its_synthetic_binary_name_suffix() {
     // Every switch conservatively reserves a potential helper, including the
     // default-only shape; the paired native fixture uses Thread.State.
     value.members.push(JavaMember::Method(switch));
-    for length in [65_533, 65_534] {
+    for (type_count, length, accepted) in [
+        (1, 65_533, true),
+        (1, 65_534, false),
+        (10, 65_532, true),
+        (10, 65_533, false),
+    ] {
         let mut errors = Vec::new();
         budget::check(
             &value,
             &value.members.iter().collect::<Vec<_>>(),
-            1,
+            type_count,
             length,
             "Fixture.java",
             &mut errors,
         );
-        assert_eq!(errors.is_empty(), length == 65_533, "{errors:?}");
+        assert_eq!(errors.is_empty(), accepted, "{errors:?}");
         assert!(
             errors
                 .iter()

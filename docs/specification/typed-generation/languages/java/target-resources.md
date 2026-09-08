@@ -61,6 +61,9 @@ defines the relevant class-file encodings in sections 4.1, 4.3.3, 4.4.7, and
   reserve 23. These dominate the other implicit owner-bearing descriptors.
   Record component-name recipes accept 65,535 encoded bytes: unlike source
   literals, pinned javac does not impose the stricter 65,534-byte threshold.
+  Source-level type names must also remain unique after JVM nesting separators
+  are applied: a top-level `Outer$Inner` cannot coexist with `Outer.Inner`.
+  This is an AST validity check, not a resource error or a ban on dollar names.
 - Array descriptors have at most 255 dimensions.
 - Class member counts include language/compiler-synthesized members, not
   just explicit AST members. Fields, methods, interfaces and constant-pool

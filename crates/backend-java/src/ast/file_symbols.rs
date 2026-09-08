@@ -84,7 +84,7 @@ pub(super) fn verify_unique_type_declarations(
     }
     let mut seen = BTreeSet::new();
     let mut top_level_names = BTreeSet::new();
-    let mut violations = Vec::new();
+    let mut violations = super::binary_names::verify(context);
     for file in context.files() {
         for item in file.items() {
             if let JavaFileItem::Type { declaration, .. } = item {
