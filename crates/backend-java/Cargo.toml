@@ -19,6 +19,9 @@ portable_diagnostics.workspace = true
 portable_ir.workspace = true
 portable_build.workspace = true
 
+[dev-dependencies]
+portable_eval.workspace = true
+
 [lints]
 workspace = true
 

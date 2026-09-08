@@ -126,6 +126,16 @@ impl CompiledPackage {
         }
     }
 
+    pub(super) fn run_harness(&self, name: &str) -> std::process::Output {
+        assert!(matches!(name, "GeneratedTest" | "ConformanceTest"));
+        Command::new(jdk_tool("java"))
+            .arg("-cp")
+            .arg(&self.classes)
+            .arg(format!("org.polyrust.generated.{name}"))
+            .output()
+            .expect("run independently compiled portable test harness")
+    }
+
     pub(super) fn rejects_consumer(&self, name: &str, source: &str, diagnostic: &str) {
         let output = self.compile_consumer(source, name);
         let stderr = String::from_utf8_lossy(&output.stderr);

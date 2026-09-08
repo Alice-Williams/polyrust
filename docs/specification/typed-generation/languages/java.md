@@ -342,9 +342,12 @@ option/result branch.
   behavior use known typed callables/helpers.
 - Language equality and conformance equality are distinct typed operations.
   Recursive `semanticEquals` follows IEEE language behavior; recursive
-  `deepEquals` compares F64 raw bits so expected-value tests distinguish signed
-  zero and retain NaN payloads. Generated and runtime value types implement
-  both methods explicitly.
+  `deepEquals` implements portable expectation equality: any NaN matches any
+  expected NaN, while non-NaN raw bits (including signed zero) remain exact.
+  A closed comparison-kind enum binds each dispatcher to its matching callable,
+  member and floating-point rule. Generated and runtime value types implement
+  both methods explicitly. Literal/FloatAbs payload preservation is audited
+  separately with exact raw-bit comparisons, never with expectation equality.
 - Empty-needle string replacement inserts only at Unicode scalar boundaries;
   it must not delegate to UTF-16 code-unit boundary behavior.
 - Structural methods which collide with inherited `Object` signatures obey
@@ -617,8 +620,9 @@ marker-shaped decoy cannot hide later production source.
 
 Both generated native and conformance entry points execute the same typed AST
 assertions for every portable test declaration. Each assertion identifies its
-source test name, compares values with raw-bit-aware deep equality, compares
-error payloads, and increments a completion counter checked against the exact
+source test name, compares values with NaN-class/non-NaN-bit-exact expectation
+equality, compares computational error-code strings exactly, and increments a
+completion counter checked against the exact
 generated inventory. An empty placeholder `main` is not conformance evidence.
 
 ## 13. Migration exit

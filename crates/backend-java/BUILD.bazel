@@ -133,6 +133,7 @@ rust_test(
         "//crates/codegen:portable_codegen",
         "//crates/core-ir:portable_core_ir",
         "//crates/diagnostics:portable_diagnostics",
+        "//crates/eval:portable_eval",
         "//crates/ir:portable_ir",
     ],
 )

@@ -13,6 +13,7 @@ pub(crate) mod match_dispatch;
 mod name_identity_consumers;
 mod negative_fields_native;
 mod nested_payload_matches;
+mod portable_expectation_nan;
 mod resource_encoding_native;
 mod resources_native;
 mod switch_dominance_native;

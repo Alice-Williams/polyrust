@@ -1,5 +1,6 @@
 //! Typed runtime construction: equality.
 use super::declaration_builders::{generic, identifier, parameter};
+use super::equality_kind::EqualityKind;
 use super::member_builders::static_method;
 
 use super::call_builders::{known_call, known_method_call, member_call, runtime_call};
@@ -74,11 +75,9 @@ pub(super) fn record_with_equality(
     }
 }
 
-pub(super) fn equality_dispatch_method(
-    callable: JavaRuntimeCallable,
-    value_member: JavaRuntimeMember,
-    bit_exact_float: bool,
-) -> JavaMember {
+pub(super) fn equality_dispatch_method(kind: EqualityKind) -> JavaMember {
+    let callable = kind.callable();
+    let value_member = kind.member();
     let object = JavaType::known(JavaKnownType::Object);
     let double = JavaType::Boxed(JavaPrimitive::Double);
     let boolean = JavaType::primitive(JavaPrimitive::Boolean);
@@ -95,33 +94,10 @@ pub(super) fn equality_dispatch_method(
         vec![],
         int.clone(),
     );
-    let float_equal = if bit_exact_float {
-        binary(
-            JavaBinaryOperator::Equal,
-            known_call(
-                JavaKnownCallable::DoubleToRawLongBits,
-                vec![local(double.clone(), "leftDouble")],
-            ),
-            known_call(
-                JavaKnownCallable::DoubleToRawLongBits,
-                vec![local(double.clone(), "rightDouble")],
-            ),
-            boolean.clone(),
-        )
-    } else {
-        binary(
-            JavaBinaryOperator::Equal,
-            cast(
-                JavaType::primitive(JavaPrimitive::Double),
-                local(double.clone(), "leftDouble"),
-            ),
-            cast(
-                JavaType::primitive(JavaPrimitive::Double),
-                local(double.clone(), "rightDouble"),
-            ),
-            boolean.clone(),
-        )
-    };
+    let float_equal = kind.float_comparison(
+        local(double.clone(), "leftDouble"),
+        local(double.clone(), "rightDouble"),
+    );
     static_method(
         vec![],
         boolean.clone(),

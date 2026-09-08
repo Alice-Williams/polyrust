@@ -209,6 +209,7 @@ dependencies = [
  "polyrust-codegen",
  "polyrust-core-ir",
  "polyrust-diagnostics",
+ "polyrust-eval",
  "polyrust-ir",
 ]
 

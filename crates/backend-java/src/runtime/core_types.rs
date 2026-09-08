@@ -1,6 +1,7 @@
 //! Typed runtime construction: core types.
 use super::declaration_builders::{component, generic, identifier, parameter, type_variable};
 use super::equality::record_with_equality;
+use super::equality_kind::EqualityKind;
 use super::member_builders::{
     field_accessor, guarded_accessor, package_static_method, private_final_field,
 };
@@ -104,16 +105,8 @@ pub(super) fn core_members() -> Vec<JavaMember> {
                 ],
             )))],
         ),
-        equality_dispatch_method(
-            JavaRuntimeCallable::SemanticEqual,
-            JavaRuntimeMember::SemanticEquals,
-            false,
-        ),
-        equality_dispatch_method(
-            JavaRuntimeCallable::DeepEqual,
-            JavaRuntimeMember::DeepEquals,
-            true,
-        ),
+        equality_dispatch_method(EqualityKind::Semantic),
+        equality_dispatch_method(EqualityKind::PortableExpectation),
     ]
     .into_iter()
     .chain([

@@ -13,6 +13,7 @@ use tagged_values::tagged_members;
 mod core_types;
 
 mod equality;
+mod equality_kind;
 
 mod tagged_values;
 

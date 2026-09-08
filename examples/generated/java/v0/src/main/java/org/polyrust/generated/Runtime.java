@@ -125,7 +125,7 @@ public final class Runtime {
   }
   static boolean deepEqual(final Object left, final Object right) {
     if (((left instanceof Double leftDouble) && (right instanceof Double rightDouble))) {
-      return (Double.doubleToRawLongBits(leftDouble) == Double.doubleToRawLongBits(rightDouble));
+      return ((Double.doubleToRawLongBits(leftDouble) == Double.doubleToRawLongBits(rightDouble)) || (Double.isNaN(leftDouble) && Double.isNaN(rightDouble)));
      }
     if (((left instanceof List<?> leftList) && (right instanceof List<?> rightList))) {
       if ((leftList.size() != rightList.size())) {
