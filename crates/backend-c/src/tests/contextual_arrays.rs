@@ -150,3 +150,84 @@ fn huge_array_bound_does_not_require_enumerating_storage() {
         .check_context(&[package(&registry, file, function, scope, body)])
         .unwrap();
 }
+
+#[test]
+fn all_integer_leaf_indices_retain_exact_element_coverage() {
+    // Every admitted literal category, plus a registered enumerator, denotes
+    // index zero. A write must cover that slot, but never its sibling.
+    let literals = [
+        CLiteral::Bool(false),
+        CLiteral::CharByte(0),
+        CLiteral::Signed(CSignedLiteral::PlainChar(0)),
+        CLiteral::Signed(CSignedLiteral::Int(0)),
+        CLiteral::Signed(CSignedLiteral::I8(0)),
+        CLiteral::Signed(CSignedLiteral::I16(0)),
+        CLiteral::Signed(CSignedLiteral::I32(0)),
+        CLiteral::Signed(CSignedLiteral::I64(0)),
+        CLiteral::Unsigned(CUnsignedLiteral::U8(0)),
+        CLiteral::Unsigned(CUnsignedLiteral::U16(0)),
+        CLiteral::Unsigned(CUnsignedLiteral::U32(0)),
+        CLiteral::Unsigned(CUnsignedLiteral::U64(0)),
+        CLiteral::Unsigned(CUnsignedLiteral::Size(0)),
+    ];
+    for literal in literals.into_iter().map(Some).chain([None]) {
+        for sibling in [false, true] {
+            let (mut registry, file, function, scope) = fixture();
+            let enumeration = registry.declare_enum(&file, key("Index")).unwrap();
+            let zero = registry
+                .register_enumerator(&enumeration, key("Zero"), 0)
+                .unwrap();
+            registry
+                .define_enum(&enumeration, vec![zero.clone()])
+                .unwrap();
+            let ty = CObjectType::array(
+                CObjectType::scalar(CScalarType::I32),
+                CArrayLength::new(2).unwrap(),
+            )
+            .unwrap();
+            let array = registry.register_local(&scope, key("array"), ty).unwrap();
+            let values = CExpressions::new(&registry);
+            let ast = CStatements::new(&registry, function.clone()).unwrap();
+            let index = match &literal {
+                Some(value) => values.literal(value.clone()).unwrap(),
+                None => values.enumerator(zero).unwrap(),
+            };
+            let slot = |index| {
+                values
+                    .index(
+                        CIndexBase::Array(Box::new(values.local(array.clone()).unwrap())),
+                        index,
+                    )
+                    .unwrap()
+            };
+            let read_index = if sibling {
+                values
+                    .literal(CLiteral::Unsigned(CUnsignedLiteral::Size(1)))
+                    .unwrap()
+            } else {
+                index.clone()
+            };
+            let statements = vec![
+                ast.declare(array.clone(), None).unwrap(),
+                ast.assign(slot(index), int(&values)).unwrap(),
+                ast.discard(values.read(slot(read_index)).unwrap()).unwrap(),
+            ];
+            let mut source = package(&registry, file.clone(), function, scope, statements);
+            source.items.insert(
+                0,
+                CFileItem::Declaration(
+                    CDeclarations::new(&registry, file)
+                        .unwrap()
+                        .enumeration(enumeration)
+                        .unwrap(),
+                ),
+            );
+            let result = registry.check_context(&[source]);
+            if sibling {
+                assert_eq!(result, Err(CContextError::UninitializedRead), "{literal:?}");
+            } else {
+                assert_eq!(result, Ok(()), "{literal:?}");
+            }
+        }
+    }
+}

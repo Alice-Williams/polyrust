@@ -65,6 +65,19 @@ initialization joins. Ownership, arithmetic, call effects and linked file
 ordering retain their separate mandatory checks. The final shared verifier
 composes these passes; none is a public render-ready shortcut.
 
+Complete-object checks cover registered allocation storage and actual object
+read/write/member/index uses, not only declared variables. Pointer indexing
+requires a complete element even when its address alone is requested. Plain
+pointers to incomplete tags and address cancellation remain admissible.
+Syntax/type/lexical walks always inspect every child; initialization's separate
+runtime-path traversal respects proven short-circuit and conditional selection.
+An unselected read does not require initialization, but cannot hide invalid
+syntax, references or types. Unknown conditions retain both possibilities.
+Exact local-array paths include every admitted integer literal category and
+authenticated enumerator value; recognizing those leaves is not an arithmetic,
+bounds or ownership proof. The [origin matrix](symbols-and-files.md) separately
+checks registration and actual definition ownership before linked-name checks.
+
 Local verification checks exact declarations/prototypes, scopes, duplicate
 definitions, initialization, qualifiers, callable/member ownership, expression
 types, returns, labels, switch case constants and complete types. Definition

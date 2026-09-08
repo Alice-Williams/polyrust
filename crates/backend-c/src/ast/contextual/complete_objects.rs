@@ -1,13 +1,13 @@
 //! Complete-by-value dependencies; pointer recursion is not a layout cycle.
 
 use super::super::{
-    CAggregateRef, CObjectType, CObjectTypeKind, CPointerTarget, CRegistry, CReturnType,
-    registry::CRegistered,
+    CAggregateRef, CObjectType, CObjectTypeKind, CPlace, CPlaceKind, CPointerTarget, CRegistry,
+    CReturnType, CSourceFile, registry::CRegistered,
 };
 use super::CContextError as E;
 use std::collections::BTreeSet;
 
-pub(super) fn check(registry: &CRegistry) -> Result<(), E> {
+pub(super) fn check(registry: &CRegistry, files: &[CSourceFile]) -> Result<(), E> {
     let mut checker = CompleteObjects {
         registry,
         active: BTreeSet::new(),
@@ -32,6 +32,7 @@ pub(super) fn check(registry: &CRegistry) -> Result<(), E> {
             CRegistered::Object(value) => checker.require(value.ty())?,
             CRegistered::Local(value) => checker.require(value.ty())?,
             CRegistered::Parameter(value) => checker.require(value.ty())?,
+            CRegistered::Allocation(value) => checker.require(value.object_type())?,
             CRegistered::Function(value) => {
                 if let CReturnType::Value(value) = value.signature().return_type() {
                     checker.require(value.declared_type())?;
@@ -50,13 +51,32 @@ pub(super) fn check(registry: &CRegistry) -> Result<(), E> {
             | CRegistered::Loop(_)
             | CRegistered::Switch(_)
             | CRegistered::CleanupExit(_)
-            | CRegistered::Allocation(_)
             | CRegistered::Witness(_)
             | CRegistered::Table(_)
             | CRegistered::Adapter(_) => {}
         }
     }
+    for file in files {
+        super::access_statements::file(&mut checker, file)?;
+    }
     Ok(())
+}
+
+impl super::access_walk::Visitor for CompleteObjects<'_> {
+    fn place(&mut self, place: &CPlace, access: super::access_walk::Access) -> Result<(), E> {
+        // Reading/writing an object needs its layout. Indexing always performs
+        // element-sized pointer arithmetic, even when only taking its address.
+        // A plain incomplete pointer and the cancellation &*p remain legal.
+        if access != super::access_walk::Access::Address
+            || matches!(place.kind(), CPlaceKind::Index { .. })
+        {
+            self.require(place.ty())?;
+        }
+        if let CPlaceKind::Member { base, .. } = place.kind() {
+            self.require(base.ty())?;
+        }
+        Ok(())
+    }
 }
 
 struct CompleteObjects<'a> {

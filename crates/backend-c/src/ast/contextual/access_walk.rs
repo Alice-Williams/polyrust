@@ -1,8 +1,8 @@
 //! Closed access traversal shared by lexical and initialization analyses.
 
 use super::super::{
-    CCall, CCallableKind, CIndexBase, CInitializer, CInitializerKind, CPlace, CPlaceKind,
-    CPointerTest, CValue, CValueKind,
+    CBinaryOperator, CCall, CCallableKind, CIndexBase, CInitializer, CInitializerKind, CPlace,
+    CPlaceKind, CPointerTest, CValue, CValueKind,
 };
 use super::CContextError as E;
 
@@ -14,10 +14,19 @@ pub(super) enum Access {
 }
 
 pub(super) trait Visitor {
+    fn evaluation(&self) -> Evaluation {
+        Evaluation::AllSyntax
+    }
     fn place(&mut self, place: &CPlace, access: Access) -> Result<(), E>;
     fn value(&mut self, _value: &CValue) -> Result<(), E> {
         Ok(())
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum Evaluation {
+    AllSyntax,
+    RuntimePaths,
 }
 
 pub(super) fn place(visitor: &mut impl Visitor, value: &CPlace, access: Access) -> Result<(), E> {
@@ -46,9 +55,20 @@ pub(super) fn expression(visitor: &mut impl Visitor, value: &CValue) -> Result<(
         CValueKind::Unary { operand, .. } | CValueKind::Convert { operand, .. } => {
             expression(visitor, operand)?
         }
-        CValueKind::Binary { left, right, .. } => {
+        CValueKind::Binary {
+            operator,
+            left,
+            right,
+        } => {
             expression(visitor, left)?;
-            expression(visitor, right)?;
+            let skipped = matches!(
+                (operator, super::constant_leaves::truth(left)),
+                (CBinaryOperator::LogicalAnd, Some(false))
+                    | (CBinaryOperator::LogicalOr, Some(true))
+            );
+            if visitor.evaluation() == Evaluation::AllSyntax || !skipped {
+                expression(visitor, right)?;
+            }
         }
         CValueKind::Conditional {
             condition,
@@ -56,8 +76,13 @@ pub(super) fn expression(visitor: &mut impl Visitor, value: &CValue) -> Result<(
             else_value,
         } => {
             expression(visitor, condition)?;
-            expression(visitor, then_value)?;
-            expression(visitor, else_value)?;
+            let selected = super::constant_leaves::truth(condition);
+            if visitor.evaluation() == Evaluation::AllSyntax || selected != Some(false) {
+                expression(visitor, then_value)?;
+            }
+            if visitor.evaluation() == Evaluation::AllSyntax || selected != Some(true) {
+                expression(visitor, else_value)?;
+            }
         }
         CValueKind::PointerTest(test) => match test {
             CPointerTest::IsNull(value) | CPointerTest::IsNonNull(value) => {

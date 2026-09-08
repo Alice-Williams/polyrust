@@ -92,6 +92,102 @@ constant operations, assertion truth and safe arithmetic.
 
 ## Contextual implementation checkpoint (review pending)
 
+### Review repair obligations
+
+The uncapped review of 82a77fb found five production issues and an incomplete
+required mutation matrix. All findings are accepted: allocation storage and
+actual read/write/index/member operations require complete object types;
+origin/file roles need structural definition-owner checks; initialization must
+respect conditional evaluation; exact array paths must include every admitted
+integer literal category and registered enumerator value. Scope/control/alias
+and child-reconstruction mutations must be broadened before closing this task.
+
+Completeness traverses all syntax, including unreachable branches. Ordinary
+incomplete pointers and address cancellation remain legal; array indexing needs
+complete elements even when only forming an address. SizeOf/AlignOf target
+completeness remains an explicit 02D obligation. Separate closed visitor modes
+keep lexical/type/completeness walks exhaustive while initialization prunes only
+proven-unselected short-circuit/conditional expression children. Unknown values
+retain both possibilities. Exact constant leaves do not evaluate unchecked
+arithmetic or assume numeric narrowing preserves nonzero; those are 02D facts.
+
+The origin matrix is specified in c/symbols-and-files.md. It checks registration
+ownership and actual definition/body placement, not files merely referencing a
+symbol. It does not authenticate caller-presented Core provenance or replace
+the later linked dependency and mapping-certificate obligations.
+
+The first new completeness controls reproduced acceptance of invalid inputs in
+f4b01237-07e5-474f-b299-59840ee359c3 (expected-red, not a passing gate).
+Focused container contextual tests passed after the first repairs in
+b7c8f545-f4ae-423a-a21c-39ad1d5f4c79 and after the origin/scope/conditional
+matrix additions in 82bf77f3-8e8d-4553-ae62-6e2409132484. Broader controls,
+full gates and a fresh independent repair review remain required.
+
+The first broad repair gate, 6edeabd5-30b5-4ac9-bbe4-664774f639f7, stopped
+on three Clippy cloned-reference-to-slice findings in new initializer/declaration
+tests. Replace those clones with borrowed one-element slices, without lint
+suppression. Its skipped tests and unrun release/conformance stages are not
+passing evidence; rerun the complete gate after repair.
+
+The repair proof matrix is split into test-only modules rather than expanding
+the verifier files. contextual_completeness covers allocation storage and
+incomplete dereference/index uses with complete/address-cancellation controls;
+contextual_conditional covers selected/skipped/unknown expression paths and
+ensures skipped evaluation cannot bypass lexical/type checking;
+contextual_arrays covers every integer literal category and enumerator index
+against an unwritten sibling. contextual_origins exercises every origin row
+and file role, private-header definition-family laundering and production
+references from tests with body-file propagation.
+
+contextual_scope_mutations checks sibling swaps, duplicate/missing/wrong-parent
+scopes, local placement, roots, foreign functions and parameter count/order/
+owner substitutions. contextual_control_mutations checks duplicate/deleted/
+crossed/reowned loops and switches plus nested-loop break/continue targets.
+contextual_aliases distinguishes mutual alias-hidden by-value cycles and
+incomplete storage from legal recursive pointers. contextual_transfer inspects
+an actual loop/Continue graph and seeds a previous-iteration initialization fact
+to prove declaration transfer kills it unless the declaration initializes anew;
+this narrow graph control is not a complete program/progress certificate.
+
+contextual_value_variants traverses every value/place kind under a valid parent,
+all operators, known constants and numeric conversions; it corrupts descendant
+value caches and place caches independently. contextual_callable_variants adds
+both adapter conversions and direct/indirect void-call argument/brand mutations
+under labels. contextual_initializer_variants mutates all five initializer
+categories and their stored types. contextual_declaration_variants checks all
+six declaration categories, enum projection deletion and file-object initializer/
+extern-linkage checking. These local reconstruction fixtures deliberately do not
+claim flow/ownership/ABI safety for their null or incomplete registration inputs.
+
+### Repair checkpoint evidence (fresh review in progress)
+
+All five reported production issues have dedicated repairs and controls. The
+expanded C unit binary reports 159 passing tests; the largest contextual
+production module remains 263 physical lines. No dependency or lint suppression
+was added, and all new mutation fixtures are excluded from library source globs.
+
+| Gate | Invocation | Result |
+| --- | --- | --- |
+| Every tracked Bazel rule, including Rust/Bazel linters and policies | a5f14d82-a462-40cb-b9cf-9cc666e200f1 | 439 rules; all 314 test targets pass, 48 executed |
+| Cached release | f695fa66-2234-46d8-a30a-38243372261f | All 251 test targets pass |
+| Eight-target conformance and deterministic manifests | 5135fa3a-0135-46a8-814a-7498f58fc7dc | 50 cases and one portable test; evaluator and all eight targets agree; repeated manifests byte-identical |
+
+The commands/container/cache policy are unchanged from the implementation
+checkpoint below. The user's untracked stdlib-abs example remains untouched.
+These existing native outputs are regression evidence, not proof of a migrated
+C renderer. The exact earlier implementation SHA 82a77fb also has successful
+hosted CI run 34272699543; that is not hosted evidence for this new repair.
+
+A fresh Sol Extra High reviewer is auditing the full contextual implementation
+and expanded matrix without a finding cap. An initial enum-placement concern
+was withdrawn after checking the composed entry point: local reconstruction
+requires enumeration's file to equal its canonical owner file, then verifies
+the declaration belongs to its containing source file. Either tamper form is
+rejected before the origin-role pass; unlike aggregate definitions, enum
+definitions cannot be relocated. No production workaround is needed. The review
+remains in progress and this task cannot close until its final findings are
+evaluated and any accepted repairs pass the required gates.
+
 The C-specific implementation follows the planned small-module split:
 local child-based reconstruction; authoritative typed registration views;
 complete-by-value object graphs; lexical visibility and cleanup checks;

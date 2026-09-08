@@ -74,6 +74,46 @@ mod contextual_loops;
 #[path = "tests/contextual_arrays.rs"]
 mod contextual_arrays;
 
+#[cfg(test)]
+#[path = "tests/contextual_completeness.rs"]
+mod contextual_completeness;
+
+#[cfg(test)]
+#[path = "tests/contextual_conditional.rs"]
+mod contextual_conditional;
+
+#[cfg(test)]
+#[path = "tests/contextual_scope_mutations.rs"]
+mod contextual_scope_mutations;
+
+#[cfg(test)]
+#[path = "tests/contextual_origins.rs"]
+mod contextual_origins;
+
+#[cfg(test)]
+#[path = "tests/contextual_control_mutations.rs"]
+mod contextual_control_mutations;
+
+#[cfg(test)]
+#[path = "tests/contextual_aliases.rs"]
+mod contextual_aliases;
+
+#[cfg(test)]
+#[path = "tests/contextual_value_variants.rs"]
+mod contextual_value_variants;
+
+#[cfg(test)]
+#[path = "tests/contextual_initializer_variants.rs"]
+mod contextual_initializer_variants;
+
+#[cfg(test)]
+#[path = "tests/contextual_callable_variants.rs"]
+mod contextual_callable_variants;
+
+#[cfg(test)]
+#[path = "tests/contextual_declaration_variants.rs"]
+mod contextual_declaration_variants;
+
 pub use call_model::{CCall, CCallable, CCallableKind, CEffect};
 pub use comments::{CAssertDiagnostic, CComment};
 pub use contextual::CContextError;

@@ -11,6 +11,10 @@ use super::{
 };
 use std::collections::VecDeque;
 
+#[cfg(test)]
+#[path = "../../tests/contextual_transfer.rs"]
+mod tests;
+
 pub(super) fn check(registry: &CRegistry, files: &[CSourceFile]) -> Result<(), E> {
     for file in files {
         for item in file.items() {
@@ -127,6 +131,9 @@ struct Reader<'a> {
     state: &'a State,
 }
 impl Visitor for Reader<'_> {
+    fn evaluation(&self) -> walk::Evaluation {
+        walk::Evaluation::RuntimePaths
+    }
     fn place(&mut self, place: &CPlace, access: Access) -> Result<(), E> {
         if access != Access::Read {
             return Ok(());

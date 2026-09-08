@@ -38,6 +38,34 @@ to Implementation, preserving the baseline Runtime-to-user dependency ban.
 The final file/type/member/prototype inventory is checked against registrations
 in both directions so mutually deleted evidence cannot hide a missing item.
 
+## Structural origin and file-role matrix
+
+02C checks this closed definition-owner matrix before name allocation. GP/GS
+are generated public header/source, RP/RS runtime public header/source, PH a
+private header and TS test source. A dash rejects the combination.
+
+| Origin | GP | GS | RP | RS | PH | TS |
+| --- | --- | --- | --- | --- | --- | --- |
+| CoreDeclaration except Test | yes | yes | - | - | yes | - |
+| CoreDeclaration Test | - | - | - | - | - | yes |
+| CoreExpression | - | yes | - | - | yes | yes |
+| Runtime synthesis | - | - | yes | yes | yes | - |
+| OwnershipAdapter / InterfaceAdapter synthesis | yes | yes | - | - | yes | yes |
+| EvaluationTemporary synthesis | - | yes | - | - | yes | yes |
+| TestHarness synthesis | - | - | - | - | - | yes |
+| PlatformAssertion synthesis | yes | yes | yes | yes | yes | yes |
+
+Check both the canonical registration owner and actual definition file.
+Nested parameters/scopes/locals/controls/allocation identities use the actual
+function body file, not its public prototype header. Aggregate members use
+the actual layout file. Merely referencing a symbol, including through a
+forward declaration or prototype, does not transfer its ownership to that file.
+Private headers may serve either family; test helpers may specialize adapters.
+This matrix checks structural consistency of the supplied origin, not its truth:
+exact Core IDs, test-expression provenance and legitimate specialization are
+authenticated by checked Core mappings. Stage 03 separately checks the linked
+Runtime-to-user dependency ban, test-only isolation and public/private leaks.
+
 The renderer prints already-resolved includes, guards, declarations and
 definitions. It does not discover complete-type order, helpers or ownership
 cleanup by scanning source. Exact import/placement/collision/cycle mutations

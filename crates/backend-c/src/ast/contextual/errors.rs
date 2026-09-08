@@ -17,6 +17,7 @@ pub enum CContextError {
     MissingRegistrationOccurrence,
     DuplicateOccurrence,
     LinkageMismatch,
+    OriginRoleMismatch,
     InvisibleBinding,
     WrongLexicalOwner,
     WrongControlTarget,
@@ -65,6 +66,9 @@ impl std::fmt::Display for CContextError {
                 f.write_str("C identity occurs more than once in its defining role")
             }
             Self::LinkageMismatch => f.write_str("C prototype and definition linkage disagree"),
+            Self::OriginRoleMismatch => {
+                f.write_str("C definition origin is incompatible with its owning file role")
+            }
             Self::InvisibleBinding => f.write_str("C binding is not visible at this use"),
             Self::WrongLexicalOwner => {
                 f.write_str("C binding or block has a different lexical owner")

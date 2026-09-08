@@ -1,9 +1,8 @@
 //! Finite initialized storage paths; no enumeration of huge array bounds.
 
 use super::super::{
-    CAggregateRef, CIndexBase, CLiteral, CLocalRef, CMemberRef, CObjectType, CObjectTypeKind,
-    CParameterRef, CPlace, CPlaceKind, CRegistry, CScopeRef, CSignedLiteral, CUnsignedLiteral,
-    CValue, CValueKind,
+    CAggregateRef, CIndexBase, CLocalRef, CMemberRef, CObjectType, CObjectTypeKind, CParameterRef,
+    CPlace, CPlaceKind, CRegistry, CScopeRef, CValue,
 };
 use super::CContextError as E;
 use std::collections::BTreeSet;
@@ -169,20 +168,5 @@ impl State {
 }
 
 fn index_literal(value: &CValue) -> Option<u64> {
-    match value.kind() {
-        CValueKind::Literal(CLiteral::Unsigned(value)) => Some(match value {
-            CUnsignedLiteral::U8(value) => u64::from(*value),
-            CUnsignedLiteral::U16(value) => u64::from(*value),
-            CUnsignedLiteral::U32(value) => u64::from(*value),
-            CUnsignedLiteral::U64(value) | CUnsignedLiteral::Size(value) => *value,
-        }),
-        CValueKind::Literal(CLiteral::Signed(value)) => u64::try_from(match value {
-            CSignedLiteral::PlainChar(value) | CSignedLiteral::I8(value) => i64::from(*value),
-            CSignedLiteral::I16(value) => i64::from(*value),
-            CSignedLiteral::Int(value) | CSignedLiteral::I32(value) => i64::from(*value),
-            CSignedLiteral::I64(value) => *value,
-        })
-        .ok(),
-        _ => None,
-    }
+    u64::try_from(super::constant_leaves::integer(value)?).ok()
 }

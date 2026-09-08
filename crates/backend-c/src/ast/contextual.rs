@@ -1,13 +1,16 @@
 //! Independent target-tree checking; successful local checks cannot render.
 
+mod access_statements;
 mod access_walk;
 mod case_constants;
 mod complete_objects;
+mod constant_leaves;
 mod errors;
 mod flow_graph;
 mod initialization;
 mod initialized_paths;
 mod lexical;
+mod origin_roles;
 mod package_inventory;
 mod rebuild_files;
 mod rebuild_initializers;
@@ -62,7 +65,7 @@ impl CRegistry {
     pub fn check_package_structure(&self, files: &[CSourceFile]) -> Result<(), CContextError> {
         self.check_local_structure(files)?;
         package_inventory::check(self, files)?;
-        complete_objects::check(self)
+        complete_objects::check(self, files)
     }
 
     /// Reconstruct all local type/shape relations from actual stored children.
