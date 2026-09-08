@@ -1,7 +1,8 @@
 //! Independent mapping-owned output checks.
-use super::*;
-use crate::ast::{JavaExprKind, JavaValueRef};
+use super::{JavaLoopsInput, JavaLoopsNode};
+use crate::ast::{JavaExprKind, JavaStmt, JavaValueRef};
 use crate::capabilities::support::{java_input_plan, plans::JavaRepresentation as R};
+use crate::lower::identifier;
 java_input_plan!(JavaLoopsInput, JavaLoopsNode);
 fn representation(input: &JavaLoopsInput) -> R {
     match input {

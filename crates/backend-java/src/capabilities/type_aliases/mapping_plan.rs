@@ -1,6 +1,7 @@
 //! Independent mapping-owned output checks.
-use super::*;
+use super::{JavaErasedTypeAlias, JavaTypeAliasInput};
 use crate::capabilities::support::{java_input_plan, plans::JavaRepresentation as R};
+use crate::lower::identifier;
 java_input_plan!(JavaTypeAliasInput, JavaErasedTypeAlias);
 fn representation(_: &JavaTypeAliasInput) -> R {
     R::Erased

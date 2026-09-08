@@ -1,6 +1,14 @@
 //! Java-specific legality checks for the dynamic compatibility boundary.
 
-use super::*;
+use portable_codegen::{
+    ControlFeature, CoreFeature, DeclarationFeature, FeatureShape, InterfaceFeature,
+    OperationFeature, OwnershipFeature, TypeFeature,
+};
+use portable_core_ir::{
+    CoreBinaryIntrinsic, CoreConstantExpr, CoreConstantExprKind, CoreIntrinsicExpr, CoreProgram,
+    CoreTernaryIntrinsic, CoreUnaryIntrinsic, CoreVariadicIntrinsic,
+};
+use portable_diagnostics::{Diagnostic, DiagnosticCode};
 
 pub(super) fn valid_shape(feature: CoreFeature, shape: &FeatureShape) -> bool {
     match feature {

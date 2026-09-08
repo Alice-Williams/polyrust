@@ -1,5 +1,11 @@
 //! Exact checked match prerequisites, independently mutated before lowering.
-use super::*;
+use super::{
+    JavaCapabilityRegistry,
+    admission::{JavaFeatureOwner, JavaStructuralAdmission},
+};
+use crate::capabilities::java_capabilities;
+use portable_build::CapabilityId;
+use portable_codegen::{ControlFeature, CoreFeature, OperationFeature};
 use portable_core_ir::lower_checked;
 
 #[test]

@@ -1,6 +1,11 @@
 //! Exact roots and bindings introduced by each pattern variant.
-use super::super::*;
-use crate::ast::{JavaCallableRef, JavaValueRef};
+use super::super::{JavaLoweredPattern, JavaPatternInput};
+use crate::ast::{
+    JavaBinaryOperator, JavaCallableRef, JavaExpr, JavaExprKind, JavaLocalFinality,
+    JavaMemberOrigin, JavaPrimitive, JavaStmt, JavaType, JavaUnaryOperator, JavaValueRef,
+};
+use crate::dialect::JavaRuntimeCallable;
+use crate::lower::{bool_literal, identifier};
 pub(super) fn verify(input: &JavaPatternInput, output: &JavaLoweredPattern) -> bool {
     if output.condition.ty != JavaType::primitive(JavaPrimitive::Boolean) {
         return false;

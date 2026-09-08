@@ -1,6 +1,30 @@
 //! Registered capability ownership for exact checked feature uses.
 
-use super::*;
+#[cfg(test)]
+use super::preflight_ownership_tests;
+use super::{
+    JavaCapabilityRegistry,
+    admission::{JavaFeatureAdmission, JavaFeatureOwner, JavaStructuralAdmission},
+};
+use crate::capabilities::JavaCapabilitySet;
+use portable_build::{
+    BoolValues, BooleanLogic, BytesOperations, BytesValues, CapabilityId, CharValues,
+    CheckedIntegerArithmetic, CheckedIntegerShifts, Conditionals, Constants, Enums, Equality,
+    F64Values, FloatingPointArithmetic, FloatingPointInspection, Functions, I32Values, I64Values,
+    IntegerBitwise, IntegerConversions, Interfaces, ListOperations, ListValues, LocalBindings,
+    Loops, Modules, OptionOperations, OptionValues, Ordering, PatternMatching, PortableTests,
+    Records, ResultOperations, ResultPropagation, ResultValues, StringConcatenation,
+    StringInspection, StringTransformation, Supports, TextValues, TypeAliases, UnitValues,
+    Utf8Conversions, WrappingIntegerArithmetic,
+};
+use portable_codegen::{
+    ControlFeature, CoreFeature, DeclarationFeature, EqualityOperandShape, FeatureShape,
+    FeatureUse, InterfaceFeature, OperationFeature, OwnershipFeature, TypeFeature,
+};
+use portable_core_ir::{
+    CoreBinaryIntrinsic, CoreLocalKind, CoreTernaryIntrinsic, CoreUnaryIntrinsic,
+    CoreVariadicIntrinsic,
+};
 
 impl JavaCapabilityRegistry {
     pub(crate) fn new(features: JavaCapabilitySet) -> Self {

@@ -1,7 +1,12 @@
 //! Native enum and payload representation certificates.
-use super::*;
-use crate::ast::{JavaConstructorRef, JavaKnownType, JavaModifier, JavaPrimitive};
+use super::{JavaEnumEqualityOperator, JavaEnumShape, JavaEnumsInput, JavaEnumsNode, enum_type};
+use crate::ast::{
+    JavaBinaryOperator, JavaConstructorRef, JavaDeclarationKind, JavaExprKind, JavaHeritage,
+    JavaKnownType, JavaMember, JavaModifier, JavaPattern, JavaPrimitive, JavaStmt, JavaType,
+    JavaValueRef,
+};
 use crate::capabilities::support::{java_input_plan, plans::JavaRepresentation as R};
+use crate::lower::{identifier, java_visibility, string_literal};
 java_input_plan!(JavaEnumsInput, JavaEnumsNode);
 
 fn representation(input: &JavaEnumsInput) -> R {

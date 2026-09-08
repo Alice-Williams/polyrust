@@ -1,7 +1,11 @@
 //! Mapping-owned structural output certificate.
-use super::*;
-use crate::ast::{JavaExprKind, JavaValueRef};
+use super::{JavaBooleanLogicInput, JavaBooleanLogicPlan};
+use crate::ast::{
+    JavaBinaryOperator, JavaExprKind, JavaIdentifier, JavaLocalFinality, JavaStmt, JavaType,
+    JavaUnaryOperator, JavaValueRef,
+};
 use crate::capabilities::support::{java_input_plan, plans::JavaRepresentation as R};
+use crate::lower::bool_literal;
 java_input_plan!(JavaBooleanLogicInput, JavaBooleanLogicPlan);
 fn representation(input: &JavaBooleanLogicInput) -> R {
     match input {

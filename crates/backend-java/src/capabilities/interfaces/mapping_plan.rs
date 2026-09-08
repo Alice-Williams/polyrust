@@ -1,8 +1,13 @@
 //! Interface declaration, conformance, and dispatch certificates.
-use super::*;
-use crate::ast::{JavaConstructorRef, JavaStmt, JavaTypeName, JavaValueRef, JavaVisibility};
+use super::{JavaInterfaceMethodInput, JavaInterfacesInput, JavaInterfacesNode};
+use crate::ast::{
+    JavaAnnotation, JavaCallableRef, JavaConstructorRef, JavaDeclarationKind, JavaExprKind,
+    JavaHeritage, JavaMember, JavaMemberOrigin, JavaMethodDeclaration, JavaModifier, JavaStmt,
+    JavaType, JavaTypeName, JavaValueRef, JavaVisibility,
+};
 use crate::capabilities::support::{java_input_plan, plans::JavaRepresentation as R};
 use crate::dialect::JavaKnownConstructor;
+use crate::lower::{identifier, java_visibility};
 use portable_codegen::{GeneratedOrigin, SynthesisReason};
 java_input_plan!(JavaInterfacesInput, JavaInterfacesNode);
 

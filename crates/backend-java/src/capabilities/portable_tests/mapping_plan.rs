@@ -1,7 +1,13 @@
 //! Native portable-test service certificates.
 mod cases;
-use super::*;
+use super::{JavaPortableTestHarnessInput, JavaPortableTestsInput, JavaPortableTestsNode};
+use crate::ast::{
+    JavaArrayOwnership, JavaCallableRef, JavaDeclarationKind, JavaExpr, JavaExprKind, JavaHeritage,
+    JavaKnownType, JavaLocalFinality, JavaMember, JavaMemberOrigin, JavaMethodDeclaration,
+    JavaModifier, JavaPrimitive, JavaStmt, JavaType, JavaTypeDeclaration, JavaVisibility,
+};
 use crate::capabilities::support::{java_input_plan, plans::JavaRepresentation as R};
+use crate::lower::{i32_literal, identifier};
 java_input_plan!(JavaPortableTestsInput, JavaPortableTestsNode);
 fn representation(input: &JavaPortableTestsInput) -> R {
     match input {

@@ -221,6 +221,11 @@ escape portable value boundaries.
 An explicit cast must be non-redundant and warning-free under
 `javac -Xlint:all -Werror`. A parameterized cast whose target is not reifiable
 is rejected rather than emitted as an unchecked conversion.
+Boxed-to-primitive casts permit unboxing followed only by identity or widening
+conversion within the admitted primitive set. For example, `Integer` to `long`
+is valid, but `Long` to `int`, `Integer` to `byte`, and `Byte` to `char` are not.
+This is a distinct relation from numeric primitive-to-primitive explicit casts,
+which may narrow. Boolean remains Boolean-only, and Void is never unboxed.
 Wildcard bounds are reference types. Known member signatures distinguish
 receiver, parameter, result, and nested type-argument positions: invocation
 boxing is legal only where Java permits it, while the receiver and emitted

@@ -1,7 +1,9 @@
 //! Pattern and match-plan certificates.
 mod patterns;
-use super::*;
+use super::{JavaPatternInput, JavaPatternMatchingInput, JavaPatternMatchingNode};
+use crate::ast::{JavaExpr, JavaLocalFinality, JavaStmt};
 use crate::capabilities::support::{java_input_plan, plans::JavaRepresentation as R};
+use crate::lower::{identifier, string_literal};
 java_input_plan!(JavaPatternMatchingInput, JavaPatternMatchingNode);
 fn representation(input: &JavaPatternMatchingInput) -> R {
     match input {

@@ -1,7 +1,8 @@
 //! Independent mapping-owned output checks.
-use super::*;
-use crate::ast::{JavaExprKind, JavaValueRef};
+use super::{JavaLocalBindingsInput, JavaLocalBindingsNode};
+use crate::ast::{JavaExprKind, JavaLocalFinality, JavaStmt, JavaValueRef};
 use crate::capabilities::support::{java_input_plan, plans::JavaRepresentation as R};
+use crate::lower::identifier;
 java_input_plan!(JavaLocalBindingsInput, JavaLocalBindingsNode);
 fn representation(input: &JavaLocalBindingsInput) -> R {
     match input {

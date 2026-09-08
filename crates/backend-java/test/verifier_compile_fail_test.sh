@@ -35,6 +35,7 @@ readonly expected_diagnostics=(
   "redundant cast to int"
   "return type int is not compatible with Object"
   "does not override abstract method hidden()"
+  "Long cannot be converted to int"
 )
 if [[ "${#sources[@]}" -ne "${#expected_diagnostics[@]}" ]]; then
   echo "each invalid source must have one expected javac diagnostic" >&2

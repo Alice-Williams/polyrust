@@ -1,5 +1,6 @@
 //! Independent mapping-owned output checks.
-use super::*;
+use super::{JavaConditionalsInput, JavaConditionalsNode};
+use crate::ast::{JavaExpr, JavaLocalFinality, JavaStmt};
 use crate::capabilities::support::{java_input_plan, plans::JavaRepresentation as R};
 java_input_plan!(JavaConditionalsInput, JavaConditionalsNode);
 fn representation(input: &JavaConditionalsInput) -> R {

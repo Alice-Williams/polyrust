@@ -1,7 +1,13 @@
 //! Mapping-owned structural output certificate.
-use super::*;
-use crate::ast::JavaModifier;
+use super::JavaModuleInput;
+use crate::ast::{
+    JavaDeclarationKind, JavaFileItem, JavaFilePlacement, JavaHeritage, JavaMember, JavaModifier,
+    JavaPackage, JavaSourceFileKind, JavaVisibility,
+};
 use crate::capabilities::support::{java_input_plan, plans::JavaRepresentation as R};
+use crate::dialect::JavaDialect;
+use crate::lower::{identifier, path, source};
+use portable_codegen::{SourceRole, TargetFile};
 java_input_plan!(JavaModuleInput, TargetFile<JavaDialect>);
 fn representation(_: &JavaModuleInput) -> R {
     R::Declaration

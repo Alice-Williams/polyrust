@@ -1,7 +1,11 @@
 //! Mapping-owned structural output certificate.
-use super::*;
-use crate::ast::{JavaCallableRef, JavaExprKind, JavaUnaryOperator};
+use super::{JavaResultPropagationInput, JavaResultPropagationPlan};
+use crate::ast::{
+    JavaCallableRef, JavaExpr, JavaExprKind, JavaKnownType, JavaLocalFinality, JavaMemberOrigin,
+    JavaPrimitive, JavaRuntimeMember, JavaStmt, JavaType, JavaUnaryOperator,
+};
 use crate::capabilities::support::{java_input_plan, plans::JavaRepresentation as R};
+use crate::dialect::JavaRuntimeCallable;
 java_input_plan!(JavaResultPropagationInput, JavaResultPropagationPlan);
 fn representation(_: &JavaResultPropagationInput) -> R {
     R::StructuredControl

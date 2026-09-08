@@ -7,7 +7,10 @@ use portable_codegen::{
 };
 use portable_core_ir::lower_checked;
 
-use super::*;
+use super::{JavaCapabilityRegistry, JavaCapabilitySelection, admission::JavaFeatureOwner};
+use crate::capabilities::java_capabilities;
+use portable_build::CapabilityId;
+use portable_diagnostics::Diagnostic;
 
 fn preflight_diagnostics(checked: &portable_check::v0::CheckedProgram) -> Vec<Diagnostic> {
     match crate::JavaBackend::compiler()

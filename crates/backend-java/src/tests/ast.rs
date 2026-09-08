@@ -233,6 +233,8 @@ fn fixture_core_implementation_method(
 mod access;
 #[path = "ast/array_ownership.rs"]
 mod array_ownership;
+#[path = "ast/boxed_casts.rs"]
+mod boxed_casts;
 #[path = "ast/catch_order.rs"]
 mod catch_order;
 #[path = "ast/compiler_oracle.rs"]

@@ -1,7 +1,11 @@
 //! Independent mapping-owned output checks.
-use super::*;
-use crate::ast::JavaCallableRef;
+use super::{JavaRecordsInput, JavaRecordsNode};
+use crate::ast::{
+    JavaCallableRef, JavaConstructorRef, JavaDeclarationKind, JavaExprKind, JavaModifier, JavaType,
+    JavaTypeName,
+};
 use crate::capabilities::support::{java_input_plan, plans::JavaRepresentation as R};
+use crate::lower::{identifier, java_visibility};
 java_input_plan!(JavaRecordsInput, JavaRecordsNode);
 fn representation(input: &JavaRecordsInput) -> R {
     match input {

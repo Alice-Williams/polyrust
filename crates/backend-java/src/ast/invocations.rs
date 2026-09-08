@@ -102,8 +102,7 @@ pub(super) fn java_cast_is_legal(
             java_numeric_primitive(*target) && java_numeric_primitive(*source)
         }
         (JavaType::Primitive(target), JavaType::Boxed(source)) => {
-            (*target == *source && *target != JavaPrimitive::Void)
-                || (java_numeric_primitive(*target) && java_numeric_primitive(*source))
+            unboxing_cast_is_legal(*source, *target)
         }
         (JavaType::Boxed(target), JavaType::Primitive(source)) => {
             target == source && *target != JavaPrimitive::Void
@@ -205,6 +204,28 @@ pub(super) fn java_type_is_reifiable(ty: &JavaType) -> bool {
             .iter()
             .all(|argument| matches!(argument, JavaType::Wildcard { bound: None })),
         JavaType::Primitive(_) | JavaType::Wildcard { .. } | JavaType::TypeVariable(_) => false,
+    }
+}
+
+// A wrapper can unbox and then widen, but cannot unbox and narrow in one cast.
+fn unboxing_cast_is_legal(source: JavaPrimitive, target: JavaPrimitive) -> bool {
+    match source {
+        JavaPrimitive::Byte => matches!(
+            target,
+            JavaPrimitive::Byte | JavaPrimitive::Int | JavaPrimitive::Long | JavaPrimitive::Double
+        ),
+        JavaPrimitive::Char => matches!(
+            target,
+            JavaPrimitive::Char | JavaPrimitive::Int | JavaPrimitive::Long | JavaPrimitive::Double
+        ),
+        JavaPrimitive::Int => matches!(
+            target,
+            JavaPrimitive::Int | JavaPrimitive::Long | JavaPrimitive::Double
+        ),
+        JavaPrimitive::Long => matches!(target, JavaPrimitive::Long | JavaPrimitive::Double),
+        JavaPrimitive::Double => target == JavaPrimitive::Double,
+        JavaPrimitive::Boolean => target == JavaPrimitive::Boolean,
+        JavaPrimitive::Void => false,
     }
 }
 

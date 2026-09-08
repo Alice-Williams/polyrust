@@ -1,6 +1,9 @@
 //! Backend service prerequisites exist even without semantic feature uses.
-use super::*;
+use super::JavaCapabilityRegistry;
+use crate::capabilities::java_capabilities;
+use portable_build::{CapabilityId, Modules, PortableTests};
 use portable_build::{ModuleBuilder, portable_name, typed_program};
+use portable_codegen::collect_core_features;
 use portable_codegen::{Backend, BackendOptions};
 use portable_core_ir::lower_checked;
 

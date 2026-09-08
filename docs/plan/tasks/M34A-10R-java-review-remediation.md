@@ -94,6 +94,11 @@ source parsing, and unrelated renderer conveniences do not block completion.
 
 ## Review and gate record
 
+The following chronological entries retain the evidence available at each old
+checkpoint. The current integration disposition is recorded at the end; old
+pending statements are not a fresh audit of the current tree. Caches remain
+enabled under the subsequently accepted M16A policy.
+
 - Blind review round 1: all nine core findings above were accepted and
   remediated. The suggestion to require an external Java formatter was rejected
   as an optional enhancement because the normative Java specification makes it
@@ -501,3 +506,27 @@ source parsing, and unrelated renderer conveniences do not block completion.
   `cargo test --workspace --all-features --locked`, including every doctest.
   Checkpoint push, hosted CI, and another fresh exhaustive review remain
   pending.
+
+## M34A-10Y integration review follow-up
+
+The fresh uncapped Sol Extra High audit of pushed `edada37` accepted two repairs:
+explicit imports in 16 plan and four preflight modules, and a real fail-open in
+boxed-to-primitive casts. The latter now permits only unboxing plus identity or
+widening. Its independent 36-pair AST matrix failed before the repair; all 15
+admitted pairs also pass the actual certified renderer/Java 21 compiler oracle.
+Native counterexamples reject Long-to-int, Integer-to-byte, and Byte-to-char.
+The exact gate evidence is in [M34A-10Y](M34A-10Y-java-strategy-certificates.md).
+
+One proposed finding was withdrawn and independently rejected by the root:
+although return-flow matching alone equates two Void types, JavaExpr::verify
+first checks every expression as Value (or GenericArgument), never Return.
+JavaType rejects Void in those positions, and the existing type-position test
+asserts that guard. Therefore `return voidCall()` is already rejected before
+certification, in methods and constructors. No redundant return-flow patch or
+new standalone-void-call capability was added. Conservative rejection of legal
+Java forms outside the produced subset is not an accepted-AST syntax defect.
+
+Full repaired local gates pass: 310 tracked tests, 247 release tests,
+deterministic evaluator/eight-target conformance, and 159 Java Cargo unit tests
+plus eight doctests. The current broad review and the fresh pushed-repair review
+remain open; none of this marks Java complete prematurely.

@@ -1,5 +1,6 @@
 //! Registration admission has no target representation strategy.
-use super::*;
+use portable_build::CapabilityId;
+use portable_codegen::FeatureUse;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct JavaFeatureAdmission {

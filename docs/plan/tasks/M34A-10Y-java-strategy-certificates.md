@@ -170,3 +170,35 @@ following independent executions establish the final local proof:
 
 Caches remain enabled per the current CI/local policy. Hosted CI and the final
 fresh immutable-checkpoint review remain required before closing this task.
+
+## Immutable-checkpoint integration cleanup
+
+Checkpoint `edada37a1ae11a03cfbb227c6fd80e7d4d2bce3f` was committed, pushed,
+and matched against the remote main ref. The root integration audit and fresh
+review identified a module-layout regression: 16 new plan modules and four
+preflight modules used parent wildcard imports. The unqualified explicit-import
+rule applies to them too; no exemption was introduced. All 20 production sites
+now name their real dependencies, the preflight root no longer aggregates
+child-only imports, and affected preflight tests import their own dependencies.
+The focused Java/Rustfmt/Clippy/Buildifier/layout gate passes 32/32 after this
+cleanup. The complete import-only checkpoint replay also passes 310/310 tracked
+tests, 247/247 release tests, and 50+1 deterministic evaluator/eight-target cases.
+
+The same fresh review demonstrated a separate existing target-verifier hole:
+numeric wrapper casts incorrectly admitted unboxing followed by narrowing. A
+new independent 36-pair AST matrix first failed on `Byte -> Char` against the
+unrepaired implementation. The production relation is now exhaustive by boxed
+primitive; all 15 admitted pairs also enter the real certified renderer/Java 21
+compiler oracle. A native negative fixture retains `Long -> int`, `Integer ->
+byte`, and `Byte -> char` counterexamples. This finding is accepted as a core
+target-validity defect, not an optional feature.
+
+Final local repair proof: 435 analyzed rules / 310 tests pass (invocation
+`4255b202-5803-4725-b83f-5b414cd6ea5b`), release 247/247 passes
+(`40bed654-9d0f-4e89-ace1-2a161ed7275d`), and deterministic conformance passes
+50 cases plus one portable test across the evaluator and all eight targets
+(`e34767bc-e138-4da4-b7ee-3d3b9a01e194`). Linux Cargo 1.98 passes 159 Java unit
+tests and eight doctests. Hosted run `34176018075` is green in all eight jobs
+for the preceding `edada37` checkpoint, not yet for these follow-up repairs.
+The current review's final conclusion and a fresh repaired-checkpoint review
+remain required; this task is still in-progress.

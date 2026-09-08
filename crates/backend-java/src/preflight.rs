@@ -5,29 +5,16 @@ mod matches;
 mod registration;
 mod shapes;
 
-use admission::{JavaFeatureAdmission, JavaFeatureOwner, JavaStructuralAdmission};
+use admission::JavaFeatureAdmission;
 pub(crate) use matches::{JavaMatchDispatch, match_dispatch, payload_free_enum};
 use shapes::{fallible_constant_diagnostics, valid_shape};
 
-use portable_build::{
-    BoolValues, BooleanLogic, BytesOperations, BytesValues, CapabilityId, CharValues,
-    CheckedIntegerArithmetic, CheckedIntegerShifts, Conditionals, Constants, Enums, Equality,
-    F64Values, FloatingPointArithmetic, FloatingPointInspection, Functions, I32Values, I64Values,
-    IntegerBitwise, IntegerConversions, Interfaces, ListOperations, ListValues, LocalBindings,
-    Loops, Modules, OptionOperations, OptionValues, Ordering, PatternMatching, PortableTests,
-    Records, ResultOperations, ResultPropagation, ResultValues, StringConcatenation,
-    StringInspection, StringTransformation, Supports, TextValues, TypeAliases, UnitValues,
-    Utf8Conversions, WrappingIntegerArithmetic,
-};
+use portable_build::{CapabilityId, Modules, PortableTests};
 use portable_codegen::{
-    ControlFeature, CoreFeature, DeclarationFeature, EqualityOperandShape, FeatureShape,
-    FeatureUse, InterfaceFeature, OperationFeature, OwnershipFeature, TargetCapabilityRegistry,
-    TargetId, TypeFeature, VerifiedCore, collect_core_features,
+    CoreFeature, DeclarationFeature, FeatureShape, FeatureUse, TargetCapabilityRegistry, TargetId,
+    VerifiedCore, collect_core_features,
 };
-use portable_core_ir::{
-    CoreBinaryIntrinsic, CoreConstantExpr, CoreConstantExprKind, CoreIntrinsicExpr, CoreLocalKind,
-    CoreProgram, CoreTernaryIntrinsic, CoreUnaryIntrinsic, CoreVariadicIntrinsic,
-};
+use portable_core_ir::CoreProgram;
 use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef, sort_diagnostics};
 
 use crate::capabilities::{JavaCapabilitySet, java_capabilities};

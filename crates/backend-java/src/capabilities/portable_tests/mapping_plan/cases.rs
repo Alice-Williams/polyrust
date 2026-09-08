@@ -1,5 +1,11 @@
 //! Check the owned native assertions without replaying the test lowerer.
-use super::super::*;
+use super::super::{JavaPortableTestCaseInput, JavaPortableTestExpectation};
+use crate::ast::{
+    JavaCallableRef, JavaExpr, JavaExprKind, JavaKnownType, JavaLocalFinality, JavaMemberOrigin,
+    JavaPrimitive, JavaRuntimeMember, JavaStmt, JavaType, JavaUnaryOperator,
+};
+use crate::dialect::JavaRuntimeCallable;
+use crate::lower::{identifier, string_literal};
 pub(super) fn asserted<'a>(
     statement: &'a JavaStmt,
     failure_when_true: bool,

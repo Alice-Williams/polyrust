@@ -1,6 +1,9 @@
 //! Independent mapping-owned output checks.
-use super::*;
+use super::{JavaConstantsInput, JavaConstantsNode};
+use crate::ast::{JavaExprKind, JavaModifier, JavaValueRef};
 use crate::capabilities::support::{java_input_plan, plans::JavaRepresentation as R};
+use crate::lower::{identifier, visibility_modifier};
+use portable_codegen::GeneratedSymbolId;
 java_input_plan!(JavaConstantsInput, JavaConstantsNode);
 fn representation(input: &JavaConstantsInput) -> R {
     match input {

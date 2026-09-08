@@ -1,7 +1,8 @@
 //! Independent mapping-owned output checks.
-use super::*;
-use crate::ast::{JavaExprKind, JavaValueRef};
+use super::{JavaFunctionsInput, JavaFunctionsNode};
+use crate::ast::{JavaExprKind, JavaModifier, JavaStmt, JavaValueRef};
 use crate::capabilities::support::{java_input_plan, plans::JavaRepresentation as R};
+use crate::lower::{identifier, visibility_modifier};
 java_input_plan!(JavaFunctionsInput, JavaFunctionsNode);
 
 fn representation(input: &JavaFunctionsInput) -> R {

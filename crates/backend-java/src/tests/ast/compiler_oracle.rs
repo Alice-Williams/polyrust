@@ -324,7 +324,7 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
             arguments: vec![],
         },
     };
-    let structured_class =
+    let mut structured_class =
         JavaTypeDeclaration {
             declared: None,
             kind: JavaDeclarationKind::FinalClass,
@@ -434,6 +434,9 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
                 ),
             ],
         };
+    structured_class
+        .members
+        .extend(super::boxed_casts::legal_methods());
     let owner_fixtures = super::synthetic_owner_fixtures::items(&mut builder);
     let file = builder.file(portable_codegen::TargetFile::new(
         portable_codegen::RelativeOutputPath::new(

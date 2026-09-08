@@ -5,7 +5,15 @@ use std::{any::type_name, cell::RefCell, collections::BTreeSet};
 use portable_build::{Bool, portable_name, typed_list, typed_program, variant};
 use portable_core_ir::lower_checked;
 
-use super::*;
+use super::{JavaCapabilityRegistry, admission::JavaFeatureOwner};
+use portable_build::{
+    CapabilityId, Enums, Functions, LocalBindings, Loops, Modules, PatternMatching,
+};
+use portable_codegen::{
+    CoreFeature, EqualityOperandShape, FeatureShape, FeatureUse, OperationFeature,
+    collect_core_features,
+};
+use portable_core_ir::{CoreBinaryIntrinsic, CoreLocalKind};
 
 thread_local! {
     static CONFIRMED: RefCell<Vec<&'static str>> = const { RefCell::new(Vec::new()) };

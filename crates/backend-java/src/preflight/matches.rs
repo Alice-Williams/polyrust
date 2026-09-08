@@ -1,6 +1,10 @@
 //! Checked match-shape dispatch shared by admission and executable lowering.
-use super::*;
-use portable_core_ir::{CoreEnumId, CoreExprId, CoreExprKind, CoreMatchArm, CorePattern, CoreType};
+use super::{JavaCapabilityRegistry, admission::JavaFeatureAdmission};
+use portable_build::{CapabilityId, Enums, PatternMatching};
+use portable_codegen::{ControlFeature, CoreFeature, FeatureShape, OperationFeature};
+use portable_core_ir::{
+    CoreEnumId, CoreExprId, CoreExprKind, CoreMatchArm, CorePattern, CoreProgram, CoreType,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum JavaMatchDispatch {

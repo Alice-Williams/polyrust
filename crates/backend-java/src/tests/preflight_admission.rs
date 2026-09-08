@@ -1,6 +1,12 @@
 //! Admission regressions independent of invocation strategy certificates.
-use super::*;
+use super::{
+    JavaCapabilityRegistry,
+    admission::{JavaFeatureOwner, JavaStructuralAdmission},
+};
+use crate::capabilities::java_capabilities;
+use portable_build::CapabilityId;
 use portable_build::{ModuleBuilder, Visibility};
+use portable_codegen::{ControlFeature, CoreFeature, OperationFeature, OwnershipFeature};
 use portable_core_ir::lower_checked;
 
 #[test]
