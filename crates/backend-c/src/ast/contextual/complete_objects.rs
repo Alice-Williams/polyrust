@@ -63,6 +63,12 @@ pub(super) fn check(registry: &CRegistry, files: &[CSourceFile]) -> Result<(), E
 }
 
 impl super::access_walk::Visitor for CompleteObjects<'_> {
+    fn value(&mut self, value: &super::super::CValue) -> Result<(), E> {
+        // Expression-only casts/null pointers can introduce a type which no
+        // registration stores. Check its form even in unreachable syntax.
+        self.form(value.ty())
+    }
+
     fn place(&mut self, place: &CPlace, access: super::access_walk::Access) -> Result<(), E> {
         // Reading/writing an object needs its layout. Indexing always performs
         // element-sized pointer arithmetic, even when only taking its address.

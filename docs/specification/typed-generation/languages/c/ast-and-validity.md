@@ -69,6 +69,10 @@ Complete-object checks cover registered allocation storage and actual object
 read/write/member/index uses, not only declared variables. Pointer indexing
 requires a complete element even when its address alone is requested. Plain
 pointers to incomplete tags and address cancellation remain admissible.
+Every expression's type form is checked too: an expression-only pointer to an
+array cannot hide an incomplete array element. A function-pointer prototype may
+name incomplete by-value aggregate parameters/returns; actual function
+definitions still require complete parameter/return objects.
 Syntax/type/lexical walks always inspect every child; initialization's separate
 runtime-path traversal respects proven short-circuit and conditional selection.
 An unselected read does not require initialization, but cannot hide invalid
@@ -77,6 +81,12 @@ Exact local-array paths include every admitted integer literal category and
 authenticated enumerator value; recognizing those leaves is not an arithmetic,
 bounds or ownership proof. The [origin matrix](symbols-and-files.md) separately
 checks registration and actual definition ownership before linked-name checks.
+Joins retain common containing-object initialization implied by different union
+member writes, without inventing struct siblings or unwritten array elements.
+Active-union-member safety remains a separate mandatory ownership proof.
+Movable tags, functions and objects require an actual declaration in their
+registered owner file; a definition in another file does not discharge that
+obligation. A same-file definition may serve as its own declaration.
 
 Local verification checks exact declarations/prototypes, scopes, duplicate
 definitions, initialization, qualifiers, callable/member ownership, expression

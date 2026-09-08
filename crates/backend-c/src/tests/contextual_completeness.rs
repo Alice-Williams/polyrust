@@ -68,6 +68,106 @@ enum Use {
 }
 
 #[test]
+fn nested_function_prototypes_allow_incomplete_by_value_parameter_and_return_types() {
+    let (mut registry, file, function, scope) = fixture();
+    let record = registry.declare_struct(&file, key("Opaque")).unwrap();
+    let ty = CObjectType::structure(record.clone());
+    let signature = CFunctionType::new(
+        CReturnType::Value(CReturnValue::new(ty.clone()).unwrap()),
+        vec![CParameterType::new(ty).unwrap()],
+    );
+    let pointer = CObjectType::pointer(CPointerTarget::Function(Box::new(signature)));
+    let alias = registry
+        .register_typedef(&file, key("Callback"), pointer.clone())
+        .unwrap();
+    let values = CExpressions::new(&registry);
+    let null = values
+        .literal(CLiteral::NullPointer(CNullPointer::new(pointer).unwrap()))
+        .unwrap();
+    let statements = CStatements::new(&registry, function.clone()).unwrap();
+    let mut source = package(
+        &registry,
+        file.clone(),
+        function,
+        scope,
+        vec![statements.discard(null).unwrap()],
+    );
+    let declarations = CDeclarations::new(&registry, file).unwrap();
+    source.items.insert(
+        0,
+        CFileItem::Declaration(
+            declarations
+                .forward_tag(CAggregateRef::Struct(record))
+                .unwrap(),
+        ),
+    );
+    source.items.insert(
+        1,
+        CFileItem::Declaration(declarations.typedef(alias).unwrap()),
+    );
+    registry.check_context(&[source]).unwrap();
+}
+
+#[test]
+fn expression_only_pointer_array_types_require_complete_elements_in_all_syntax() {
+    for complete in [false, true] {
+        for array in [false, true] {
+            for skipped in [false, true] {
+                let (mut registry, file, function, scope) = fixture();
+                let record = registry.declare_struct(&file, key("Opaque")).unwrap();
+                let owner = CAggregateRef::Struct(record.clone());
+                if complete {
+                    let member = registry
+                        .register_member(
+                            &owner,
+                            key("field"),
+                            CObjectType::scalar(CScalarType::I32),
+                        )
+                        .unwrap();
+                    registry.define_aggregate(&owner, vec![member]).unwrap();
+                }
+                let element = CObjectType::structure(record);
+                let target = if array {
+                    CObjectType::array(element, CArrayLength::new(1).unwrap()).unwrap()
+                } else {
+                    element
+                };
+                let pointer = CObjectType::pointer(CPointerTarget::Object(Box::new(target)));
+                let values = CExpressions::new(&registry);
+                let null = values
+                    .literal(CLiteral::NullPointer(CNullPointer::new(pointer).unwrap()))
+                    .unwrap();
+                let statements = CStatements::new(&registry, function.clone()).unwrap();
+                let mut body = Vec::new();
+                if skipped {
+                    body.push(statements.return_statement(None).unwrap());
+                }
+                body.push(statements.discard(null).unwrap());
+                let mut source = package(&registry, file.clone(), function, scope, body);
+                let declarations = CDeclarations::new(&registry, file).unwrap();
+                source.items.insert(
+                    0,
+                    CFileItem::Declaration(if complete {
+                        declarations.aggregate(owner).unwrap()
+                    } else {
+                        declarations.forward_tag(owner).unwrap()
+                    }),
+                );
+                assert_eq!(
+                    registry.check_context(&[source]),
+                    if array && !complete {
+                        Err(CContextError::IncompleteObject)
+                    } else {
+                        Ok(())
+                    },
+                    "complete={complete}, array={array}, skipped={skipped}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn actual_incomplete_reads_and_pointer_indices_fail_but_address_cancellation_is_legal() {
     for complete in [false, true] {
         for usage in [Use::Read, Use::Index, Use::AddressOfDereference] {

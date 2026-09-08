@@ -95,10 +95,23 @@ impl State {
             .retain(|path| !matches!(&path.root, Root::Local(value) if value.scope() == scope));
     }
     pub(super) fn intersect(&self, other: &Self, registry: &CRegistry) -> Result<Self, E> {
-        let mut result = Self::default();
+        let mut candidates = BTreeSet::new();
         for path in self.0.union(&other.0) {
-            if self.covers(path, registry)? && other.covers(path, registry)? {
-                result.mark(path.clone());
+            let mut ancestor = path.clone();
+            loop {
+                candidates.insert(ancestor.clone());
+                if ancestor.selectors.pop().is_none() {
+                    break;
+                }
+            }
+        }
+        let mut result = Self::default();
+        // Different initialized union members can imply the same initialized
+        // containing object. Preserve derived common ancestors, but only when
+        // both predecessors independently cover every required subobject.
+        for path in candidates {
+            if self.covers(&path, registry)? && other.covers(&path, registry)? {
+                result.mark(path);
             }
         }
         Ok(result)

@@ -244,6 +244,50 @@ explicitly justified before this task closes and 02D implementation begins.
 
 ## Commit gate
 
+### Second contextual repair review
+
+The uncapped review of 66ef4554 accepted three further defects: joins lost the
+common initialized union object when branches wrote different members; moved
+definitions could hide missing declarations in their registered owner files;
+and expression-only pointer-to-array types escaped element completeness checks.
+All three have dedicated repairs before closing 02C. The first two reproduced in
+b7bbda02-0402-4d50-93fc-cf4655cd674f and passed the full C unit target after repair
+in b32f691d-0dc8-40e1-a45f-5daa430ccbda. The last reproduced in
+d377ea29-c68f-49e4-bf26-dd926b536681. These expected-red runs are not passing gates.
+An earlier test-fixture build, dc088869-807b-469f-91a9-2811fdb5f76b, had two
+incorrect constructor calls; those were corrected before the red reproduction.
+
+contextual_union_joins exercises an unknown input branch, union/struct/array
+shapes and missing-branch/unwritten-sibling controls. The join derives finite
+ancestor candidates and retains only coverage independently established by both
+predecessors. contextual_owner_files tests functions, objects, complete structs,
+complete unions and incomplete tags, with missing/present owner declarations.
+Definitions remain independently required where the registry promises them.
+contextual_completeness now tests expression-only pointer-to-array types with
+plain-pointer, complete-element and unreachable-syntax controls.
+
+The incomplete function-pointer parameter finding is rejected and withdrawn:
+C permits incomplete aggregate types in mere prototypes, while actual function
+definitions require complete parameters. See WG14's
+[C draft, 6.7.6.3](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1547.pdf).
+The composed checker already requires complete actual definition parameters;
+indirect calls cannot substitute an unproved prototype for a registered callable
+contract. A positive AST regression and the existing two-compiler native ABI
+probe now retain an incomplete by-value parameter/return prototype explicitly.
+No production restriction was added for this withdrawn finding.
+
+Hosted CI 34280162332 completed successfully for exact
+66ef4554f959f93d70ae1298efb3266dd5a25602. It is not evidence for the new repairs.
+The repaired C unit binary has 163 passing tests. Its native incomplete-prototype
+control passes the existing ABI probes under both pinned compilers at O0/O2.
+Fresh review of the repaired source is still required; 02C remains open.
+
+| Gate | Invocation | Result |
+| --- | --- | --- |
+| Every tracked Bazel rule, including Rust/Bazel linters and native ABI probes | 8402f2a3-a95b-418e-b43b-880236918589 | 439 rules; all 314 test targets pass, 49 executed |
+| Cached release | a5c9aba1-1ab3-4a23-b3bc-77eb89084257 | All 251 test targets pass |
+| Eight-target conformance and deterministic manifests | 046b75a5-22ae-41e0-ab5e-1014fd22af61 | 50 cases and one portable test; all eight targets agree; repeated manifests byte-identical |
+
 Record exact commands, invocation IDs and outcomes. Commit and push this slice
 with M34A-11-02C; keep its parent M34A-11-02 and overall C compliance open
 until their remaining obligations pass. Use focused modules below the source

@@ -114,6 +114,14 @@ mod contextual_callable_variants;
 #[path = "tests/contextual_declaration_variants.rs"]
 mod contextual_declaration_variants;
 
+#[cfg(test)]
+#[path = "tests/contextual_union_joins.rs"]
+mod contextual_union_joins;
+
+#[cfg(test)]
+#[path = "tests/contextual_owner_files.rs"]
+mod contextual_owner_files;
+
 pub use call_model::{CCall, CCallable, CCallableKind, CEffect};
 pub use comments::{CAssertDiagnostic, CComment};
 pub use contextual::CContextError;

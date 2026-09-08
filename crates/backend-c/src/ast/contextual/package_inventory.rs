@@ -1,8 +1,8 @@
 //! Compare actual defining occurrences with every authoritative registration.
 
 use super::super::{
-    CAggregateRef, CBlock, CDeclarationKind, CDefinitionKind, CFileItem, CLinkage, CRegistry,
-    CSourceFile, CStatement, CStatementKind, registry::CRegistered,
+    CAggregateRef, CBlock, CDeclarationKind, CDefinitionKind, CFileItem, CFileRef, CLinkage,
+    CRegistry, CSourceFile, CStatement, CStatementKind, registry::CRegistered,
 };
 use super::CContextError as E;
 use std::collections::{BTreeMap, BTreeSet};
@@ -38,7 +38,17 @@ pub(super) fn check(registry: &CRegistry, files: &[CSourceFile]) -> Result<(), E
             | CRegistered::Adapter(_) => continue,
             _ => true,
         };
-        if !seen.declared.contains(&node) || (requires_definition && !seen.defined.contains(&node))
+        if !seen.observed.contains(&node) || (requires_definition && !seen.defined.contains(&node))
+        {
+            return Err(E::MissingRegistrationOccurrence);
+        }
+        if matches!(
+            node,
+            CRegistered::Struct(_)
+                | CRegistered::Union(_)
+                | CRegistered::Function(_)
+                | CRegistered::Object(_)
+        ) && !seen.declared_at_owner.contains(&node)
         {
             return Err(E::MissingRegistrationOccurrence);
         }
@@ -48,18 +58,34 @@ pub(super) fn check(registry: &CRegistry, files: &[CSourceFile]) -> Result<(), E
 
 #[derive(Default)]
 struct Occurrences<'a> {
-    declared: BTreeSet<CRegistered<'a>>,
+    observed: BTreeSet<CRegistered<'a>>,
+    declared_at_owner: BTreeSet<CRegistered<'a>>,
     defined: BTreeSet<CRegistered<'a>>,
     linkage: BTreeMap<CRegistered<'a>, CLinkage>,
 }
 
 impl<'a> Occurrences<'a> {
     fn define(&mut self, node: CRegistered<'a>) -> Result<(), E> {
-        self.declared.insert(node);
+        self.observed.insert(node);
         if !self.defined.insert(node) {
             return Err(E::DuplicateOccurrence);
         }
         Ok(())
+    }
+
+    fn owner_declaration(&mut self, node: CRegistered<'a>, file: &CFileRef) {
+        let owner = match node {
+            CRegistered::Struct(value) => value.file(),
+            CRegistered::Union(value) => value.file(),
+            CRegistered::Function(value) => value.file(),
+            CRegistered::Object(value) => value.file(),
+            _ => return,
+        };
+        // A moved implementation is not its public/private header declaration.
+        // Same-file definitions may declare their own source-local symbol.
+        if owner == file {
+            self.declared_at_owner.insert(node);
+        }
     }
 
     fn linkage(&mut self, node: CRegistered<'a>, linkage: CLinkage) -> Result<(), E> {
@@ -84,11 +110,13 @@ impl<'a> Occurrences<'a> {
         match item {
             CFileItem::Declaration(value) => match value.kind() {
                 CDeclarationKind::ForwardTag(owner) => {
-                    self.declared.insert(Self::aggregate(owner));
+                    self.observed.insert(Self::aggregate(owner));
+                    self.owner_declaration(Self::aggregate(owner), value.file());
                 }
                 CDeclarationKind::Typedef(value) => self.define(CRegistered::Typedef(value))?,
                 CDeclarationKind::Aggregate { owner, members } => {
                     self.define(Self::aggregate(owner))?;
+                    self.owner_declaration(Self::aggregate(owner), value.file());
                     for member in members {
                         self.define(CRegistered::Member(member))?;
                     }
@@ -100,12 +128,14 @@ impl<'a> Occurrences<'a> {
                     }
                 }
                 CDeclarationKind::FunctionPrototype { function, linkage } => {
-                    self.declared.insert(CRegistered::Function(function));
+                    self.observed.insert(CRegistered::Function(function));
+                    self.owner_declaration(CRegistered::Function(function), value.file());
                     self.linkage(CRegistered::Function(function), *linkage)?;
                 }
-                CDeclarationKind::ObjectDeclaration(value) => {
-                    self.declared.insert(CRegistered::Object(value));
-                    self.linkage(CRegistered::Object(value), CLinkage::External)?;
+                CDeclarationKind::ObjectDeclaration(object) => {
+                    self.observed.insert(CRegistered::Object(object));
+                    self.owner_declaration(CRegistered::Object(object), value.file());
+                    self.linkage(CRegistered::Object(object), CLinkage::External)?;
                 }
             },
             CFileItem::Definition(value) => match value.kind() {
@@ -116,6 +146,7 @@ impl<'a> Occurrences<'a> {
                     body,
                 } => {
                     self.define(CRegistered::Function(function))?;
+                    self.owner_declaration(CRegistered::Function(function), value.file());
                     self.linkage(CRegistered::Function(function), *linkage)?;
                     for parameter in parameters {
                         self.define(CRegistered::Parameter(parameter))?;
@@ -126,6 +157,7 @@ impl<'a> Occurrences<'a> {
                     object, linkage, ..
                 } => {
                     self.define(CRegistered::Object(object))?;
+                    self.owner_declaration(CRegistered::Object(object), value.file());
                     self.linkage(CRegistered::Object(object), *linkage)?;
                 }
             },

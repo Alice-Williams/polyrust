@@ -33,6 +33,11 @@ POLY_LAYOUT(void *, 8, 8);
 POLY_LAYOUT(int *, 8, 8);
 typedef void (*poly_callback)(void);
 POLY_LAYOUT(poly_callback, 8, 8);
+/* C17 6.7.6.3: incomplete by-value types are legal in a mere prototype.
+ * This intentionally has no definition or invocation using incomplete storage. */
+struct poly_incomplete;
+typedef struct poly_incomplete (*poly_incomplete_callback)(struct poly_incomplete);
+POLY_LAYOUT(poly_incomplete_callback, 8, 8);
 POLY_LAYOUT(max_align_t, 32, 16);
 
 POLY_TYPE((int8_t)0, signed char);
