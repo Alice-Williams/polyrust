@@ -1,6 +1,6 @@
 # M34A-10AB — Reconcile Java portable expectation comparison
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-11-01R
 
 ## Goal
@@ -70,5 +70,22 @@ immutable hosted results. Commit and push separately under M34A-10AB.
 - Supplementary Linux pinned Cargo compatibility passes: Java 208 unit tests
   and doctests; checker 29 unit tests and one doctest. Bazel remains authoritative.
 
-Fresh immutable review and hosted CI closure remain required; this evidence
-does not yet restore Java's compliance status.
+## Independent review and hosted closure
+
+A fresh uncapped Sol Extra High read-only review of immutable
+`74182bd44127eb84f3ca9e57cc53f0f2ee7a3456` found no remaining core correctness
+or specification defects. Root independently checked its reasoning: the three
+comparison contracts remain distinct, all recursive expectation paths use the
+correct comparator, both native harnesses enforce their inventory, and the
+evaluator dependency is test-only. The optional suggestion to replace paired
+internal record/tagged-helper parameters with EqualityKind is deferred: every
+trusted call is consistently paired, the dispatcher already binds the enum,
+and no failing construction or behavior was demonstrated. This is additional
+hardening, not an unresolved defect.
+
+All eight hosted jobs pass for that exact commit in
+[run 34223622371](https://github.com/Alice-Williams/polyrust/actions/runs/34223622371),
+including the cached release gate. This descendant also verifies the shared
+recursive-equality repair `c260c8b`; its superseded run is not claimed green.
+The fresh shared-repair review independently found no core defects. Together
+with the local evidence above, this restores Java compliance and closes AB.

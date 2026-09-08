@@ -98,7 +98,7 @@ contract as every other target.
 - [M26 — Dependency-bearing flat language IR](milestones/M26-flat-language-ir.md) — complete
 - [M30 — Compositional target-language IR](milestones/M30-compositional-language-ir.md) — complete
 - [M34A — Typed target-AST architecture migration](milestones/M34A-typed-target-ast.md) — in progress
-  - [M34A-10 — Java typed generation](tasks/M34A-10-java.md) — reopened for the M34A-10AB portable-expectation regression
+  - [M34A-10 — Java typed generation](tasks/M34A-10-java.md) — complete, including the reviewed/CI-green M34A-10AB portable-expectation repair
   - [M34A-11 — C17 typed generation](tasks/M34A-11-c.md) — in progress; Java structure adapted to C-specific proof/ownership rules
 
 ### Phase 6 continuation — Real-world compatibility

@@ -1,6 +1,6 @@
 # M34A-10 — Migrate Java 21 to typed generation
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-09
 
 The original implementation checkpoint was pushed as
@@ -8,9 +8,11 @@ The original implementation checkpoint was pushed as
 its claimed exit evidence. Those gaps and subsequent review findings are now
 resolved in [M34A-10R](M34A-10R-java-review-remediation.md).
 The subsequent C design audit found a portable-test NaN-comparison mismatch,
-reopening semantic compliance under [M34A-10AB](M34A-10AB-java-portable-expectations.md).
-The prior structural/native/CI evidence remains valid historical evidence;
-the new regression must be repaired and reviewed before completion is restored.
+now repaired and closed under [M34A-10AB](M34A-10AB-java-portable-expectations.md).
+Commit `74182bd44127eb84f3ca9e57cc53f0f2ee7a3456` passes all eight hosted
+jobs, the full local gates and a fresh uncapped Sol Extra High review. AB
+records the exact red/green regression proof and restores completion. The
+earlier integration record below remains historical evidence.
 
 ## Goal
 

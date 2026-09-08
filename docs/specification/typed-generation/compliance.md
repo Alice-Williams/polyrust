@@ -20,7 +20,7 @@ it is not evidence of typed executable syntax.
 | JavaScript | Missing | Independently paired source exists | Shares manual ECMA metadata | Checked-in/runtime paired text | Not solely compiler-derived | **Fail** |
 | Python | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | Go | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
-| Java | Exhaustive verified `CoreProgram` lowering, including the inferred typed-program bridge | Closed Java 21 AST and pre/post-link verification | Sealed executable mappings are registered by consuming typestate builder; capability preflight consults the same mapping set; imports remain linker-derived | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer | **Fail**; portable expectation comparator follow-up M34A-10AB |
+| Java | Exhaustive verified `CoreProgram` lowering, including the inferred typed-program bridge | Closed Java 21 AST and pre/post-link verification | Sealed executable mappings are registered by consuming typestate builder; capability preflight consults the same mapping set; imports remain linker-derived | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer | **Pass**; M34A-10AB regression repaired, reviewed and hosted-CI green |
 | C++20 | Missing | Missing: `CppCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 | C17 | Missing | Missing: `CCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 
@@ -33,24 +33,35 @@ the C row stays Fail until actual typed cutover, complete native/sanitizer
 proof and a clean fresh review. The existing registry ID is org.polyrust.c.
 Foundation checkpoints do not advertise unimplemented support or certify
 legacy text. The subsequent C design audit found a shared record-equatability
-hole and a Java portable-expectation NaN mismatch. The former is being repaired
-under M34A-11-01R; the latter reopens Java semantic compliance under
+hole and a Java portable-expectation NaN mismatch. Both are now repaired and
+independently reviewed under M34A-11-01R and
 [M34A-10AB](../../plan/tasks/M34A-10AB-java-portable-expectations.md).
-Prior Java structural/CI evidence remains historical evidence, not dismissal
-of the newly demonstrated comparator issue.
+The regression fixtures and fresh hosted evidence close those defects;
+prior Java structural/CI evidence remains historical evidence.
 
 ## Current Java integration evidence
 
-The Java implementation checkpoint is
+The latest Java implementation is `74182bd44127eb84f3ca9e57cc53f0f2ee7a3456`.
+All eight jobs pass in
+[run 34223622371](https://github.com/Alice-Williams/polyrust/actions/runs/34223622371).
+The local graph passes 436 rules / 311 tests and 248 release tests, plus
+deterministic evaluator/eight-target conformance. Supplementary Linux Cargo
+passes 208 Java unit tests and doctests. Fresh uncapped Sol Extra High reviews
+of both the Java repair and shared recursive-equality repair find no core
+defects; root dispositions and exact red/green invocations are recorded in
+M34A-10AB and M34A-11-01R. User design approval remains separate.
+
+### Historical integration evidence before AB
+
+The prior Java implementation checkpoint is
 `708c37bcda25c8e518eb241ee89bd13b19075226`. Full integration is locally green,
 and all eight hosted jobs pass in
 [run 34204771444](https://github.com/Alice-Williams/polyrust/actions/runs/34204771444).
 The fresh uncapped Sol Extra High review of that immutable commit found no
 remaining demonstrated core errors. Root independently evaluated its findings;
 the only organization suggestion is optional and explicitly deferred. Java's
-implementation passed that review; the later M34A-10AB follow-up above must
-close before current compliance is restored. User design approval remains
-separate. The exact
+implementation passed that review; the later M34A-10AB follow-up is now closed
+by the current evidence above. The exact
 finding dispositions and invocation IDs
 are in [M34A-10R](../../plan/tasks/M34A-10R-java-review-remediation.md).
 
