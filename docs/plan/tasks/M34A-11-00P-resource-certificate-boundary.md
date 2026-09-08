@@ -1,6 +1,6 @@
 # M34A-11-00P — Seal resource admission into render readiness
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-10AB
 - Required by: M34A-11-00R before contextual C implementation
 
@@ -67,5 +67,29 @@ resource call. Tests remain outside production Bazel source sets.
 - Conformance 10a6446a-6a30-4811-805b-33ce17bc7ddc: evaluator plus eight targets
   agree on 50 cases and one portable test; repeated manifests are byte-identical.
 
-Fresh immutable code review and hosted confirmation remain open. C has no new
+At this implementation checkpoint, fresh review and hosted follow-up were pending. C has no new
 certified renderer yet; this shared repair must not be reported as C cutover.
+
+## Independent review
+
+A fresh Sol Extra High read-only review of ba37300454535972241998be1b410b492a85b638
+found no substantiated core defects. It checked the sole private constructor,
+both public paths, compiler stage/error ordering, Java renderer boundaries,
+shared result matrix, real Java slot-boundary regression and production/test
+source separation. Root accepts the clean result after its own diff review.
+The reviewer ran no builds; the executed evidence above remains root-owned.
+
+Hosted runs for ba37300 and the documentation-only descendant 633b22c were
+superseded by normal branch concurrency after later checkpoints were pushed.
+They are cancelled, not successful evidence. Run 34246605876 on descendant
+476d95b includes this unchanged shared repair and is still pending.
+
+## Completion scope
+
+All definition-of-done local and independent-review obligations are satisfied.
+Per the user's instruction, passing local container gates are the per-step
+requirement; hosted tracking is nonblocking between checkpoints. The pending
+hosted follow-up belongs to the overall M34A-11 integration record, with exact
+final-SHA success still required by Stage 09. A pending/cancelled run is not
+claimed as passed, and a subsequently reported failure remains actionable.
+This closes the shared code repair, not C certification or final CI proof.
