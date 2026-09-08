@@ -2,6 +2,7 @@
 
 use std::num::NonZeroU64;
 
+use super::CKnownObject;
 use super::registry::{CEnumRef, CStructRef, CTypedefRef, CUnionRef};
 use super::signatures::CFunctionType;
 
@@ -78,6 +79,7 @@ pub enum CPointerTarget {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CObjectTypeKind {
     Scalar(CScalarType),
+    Known(CKnownObject),
     Struct(CStructRef),
     Union(CUnionRef),
     Enum(CEnumRef),
@@ -120,6 +122,13 @@ pub struct CObjectType {
 }
 
 impl CObjectType {
+    pub const fn known(value: CKnownObject) -> Self {
+        Self {
+            kind: CObjectTypeKind::Known(value),
+            constness: CConstness::Unqualified,
+        }
+    }
+
     pub fn structure(value: CStructRef) -> Self {
         Self {
             kind: CObjectTypeKind::Struct(value),
@@ -162,14 +171,15 @@ impl CObjectType {
         }
     }
 
-    pub fn array(element: Self, length: CArrayLength) -> Self {
-        Self {
+    pub fn array(element: Self, length: CArrayLength) -> Result<Self, CTypeError> {
+        element.require_storable()?;
+        Ok(Self {
             kind: CObjectTypeKind::Array {
                 element: Box::new(element),
                 length,
             },
             constness: CConstness::Unqualified,
-        }
+        })
     }
 
     pub fn with_constness(mut self, constness: CConstness) -> Result<Self, CTypeError> {
@@ -204,6 +214,8 @@ impl CObjectType {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CTypeError {
+    ExpectedPointer,
+    KnownObjectRequiresPointer(CKnownObject),
     ZeroArrayLength,
     ArrayQualifierMustApplyToElement,
     ArrayParameterRequiresPointer,
@@ -214,6 +226,10 @@ pub enum CTypeError {
 impl std::fmt::Display for CTypeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::ExpectedPointer => f.write_str("C null literal requires an exact pointer type"),
+            Self::KnownObjectRequiresPointer(value) => {
+                write!(f, "library-owned {value:?} requires a borrowed pointer")
+            }
             Self::ZeroArrayLength => f.write_str("C17 fixed arrays require a nonzero bound"),
             Self::ArrayQualifierMustApplyToElement => {
                 f.write_str("C17 array qualification belongs to its element type")

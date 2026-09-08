@@ -7,7 +7,7 @@ use crate::ast::{
 };
 use portable_core_ir::{CoreDeclaration, CoreProgram};
 
-fn core() -> CoreProgram {
+pub(super) fn core() -> CoreProgram {
     let checked = portable_check::v0::check_program(
         portable_ir::v0::from_json(include_bytes!(
             "../../../build/testdata/registration.poly.json"

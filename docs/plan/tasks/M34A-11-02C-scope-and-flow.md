@@ -11,6 +11,9 @@ or advertising capabilities before their mappings exist.
 ## Definition of done
 
 - Verify namespace/linkage/file-role legality, complete object requirements, prototype/definition agreement, exact member/call types and return coverage.
+- Independently rederive file-initializer and static-assertion constant-expression
+  categories from their actual trees. Forward complete-object obligations for
+  SizeOf/AlignOf and constant arithmetic/assertion truth to the 02D proof stage.
 - Verify initialization on all reachable paths, duplicate switch constants after promotion, exhaustive non-fallthrough arms, bounded loop targets, labels and forward cleanup exits.
 - Keep verifier evidence private and derived from actual registrations and AST. Unknown target input is fallible; target verification cannot certify legacy source.
 

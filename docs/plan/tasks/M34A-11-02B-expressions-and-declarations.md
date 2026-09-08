@@ -1,6 +1,6 @@
 # M34A-11-02B — C expressions, declarations and files
 
-- Status: planned
+- Status: in-progress
 - Depends on: M34A-11-02A, M34A-11-01S, M34A-11-00R, M34A-10AB
 
 ## Goal
@@ -76,6 +76,49 @@ resolution, actual file ordering and shared dialect binding belong to 03.
 No constructor here yields a verified or render-ready package. The closed known
 reference categories must not be simulated with generated names while their
 catalogue owner is pending.
+
+## Construction checkpoint (review pending)
+
+The implementation now has separate model/construction modules for expressions,
+places, calls, initializers, ordinary/control statements, declarations and files.
+Library objects/constants, scalar/operator rules, comments and constant-expression
+categories are separate cohesive modules. Heavy conversion/loop payloads are boxed;
+lint allowances do not hide oversized enum variants. No new dependency was added.
+
+Local constructors retain actual registry origins, children, scopes, parameters,
+callable identities and initializer inventories. Source files are unresolved:
+there is no public include/guard/raw-source input, verifier certificate or renderer.
+02C/02D must independently rederive cached types and verify contextual facts,
+including assertion truth, constant arithmetic safety and actual indirect-call
+provenance. A successful shape constructor is not evidence that those stages ran.
+
+Focused container Bazel C unit/rustdoc invocations passed through
+874545c2-991d-4efb-94c2-80161681007b. The first full tracked gate
+4a856908-a835-4eec-82e5-84b64549efd0 found Clippy enum-size/style findings;
+its skipped tests are not passing evidence. Full checkpoint and independent
+review evidence must be recorded before completion.
+
+The subsequent full local construction checkpoint is green:
+
+| Gate | Invocation | Result |
+| --- | --- | --- |
+| Every rule in tracked Bazel packages, including Rust Clippy/rustfmt, Buildifier and policy checks | 0aee23f8-6ff8-44e8-a82b-cb54a55b0094 | 439 rules; 314 test targets passed (48 executed, remaining results cached) |
+| Cached release gate | 24d460cd-f9f3-42d3-b2ac-8c8959e9929f | 251 test targets passed |
+| Eight-target conformance and deterministic manifests | 52ca8f57-ee98-4f34-8c42-d690c0f08fda | 50 cases and one portable test; evaluator and all eight targets agree; repeated manifests byte-identical |
+
+Commands ran in polyrust-dev-step0 at /workspace through
+`bazelisk --output_user_root=/tmp/polyrust-m34a10w-bazel --batch`.
+The tracked gate queries `kind(rule, set(...))` from host `git ls-files '*BUILD.bazel'`
+and passes every returned label to `test --test_output=errors --noshow_progress`.
+Release uses `test //:release_gate`; conformance uses
+`run //crates/conformance:polyrust-conformance -- --all-targets --determinism`.
+The user's untracked stdlib-abs example is excluded and untouched. C's unit
+binary reports 91 passing tests; rustdoc controls also pass. The AST module
+size audit has a maximum of 251 lines, with no new lint suppression.
+
+These are construction and existing-output regression results, not native
+proof of the new C renderer (which is still a later stage). Independent review
+remains required before this task is complete or 02C implementation begins.
 
 ## Commit gate
 

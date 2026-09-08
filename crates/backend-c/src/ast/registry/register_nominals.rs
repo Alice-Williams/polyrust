@@ -91,6 +91,8 @@ impl CRegistry {
     ) -> Result<CMemberRef, CRegistryError> {
         self.check_aggregate(owner)?;
         self.check_type(&ty)?;
+        ty.require_storable()
+            .map_err(CRegistryError::InvalidObjectType)?;
         if self.members(owner)?.is_some() {
             return Err(CRegistryError::AlreadyDefined);
         }
@@ -193,6 +195,16 @@ impl CRegistry {
         };
         self.enumerators.insert(value.clone());
         Ok(value)
+    }
+
+    pub fn check_enumerator(&self, value: &CEnumeratorRef) -> Result<(), CRegistryError> {
+        self.check_enum(value.owner())?;
+        self.check_scope(&value.identity.scope)?;
+        if self.enumerators.contains(value) {
+            Ok(())
+        } else {
+            Err(CRegistryError::UnregisteredReference)
+        }
     }
 
     pub fn define_enum(

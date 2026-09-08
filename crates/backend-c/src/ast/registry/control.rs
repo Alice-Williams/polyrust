@@ -107,6 +107,9 @@ impl CRegistry {
     ) -> Result<CAllocationRef, CRegistryError> {
         self.check_lexical_scope(scope)?;
         self.check_type(&object_type)?;
+        object_type
+            .require_storable()
+            .map_err(CRegistryError::InvalidObjectType)?;
         match &allocator {
             CAllocatorSource::Default => {}
             CAllocatorSource::Parameter(value) => self.check_parameter(scope.function(), value)?,

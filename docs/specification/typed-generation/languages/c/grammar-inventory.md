@@ -91,6 +91,13 @@ an out-of-range signed intermediate. These are fixed literal spellings, not
 permission to discover helpers/includes or lower operations while rendering.
 KnownConstant entries retain header, actual type and constant-expression
 eligibility (including platform properties such as CHAR_BIT/DBL_MANT_DIG).
+The initial closed entries are CharBit, IntMin/IntMax, I32Min/I32Max, U32Max,
+I64Min/I64Max, U64Max, SizeMax, FloatRadix, DoubleMantissaDigits,
+DoubleMinExponent/DoubleMaxExponent, FloatEvaluationMethod, EndOfFile and
+StandardInput/StandardOutput/StandardError. Limits retain the pinned macro's
+actual arithmetic type; stream references are borrowed File pointers and are
+not integer constant expressions. This list is independent of the complete
+header macro reservation set; reserving a name does not expose an AST operation.
 Enumerator values retain their ordinary-namespace registration and actual C
 int type; portable fixed-width tags require explicit conversion. Neither
 category can be forged as a literal or treated as an object place.

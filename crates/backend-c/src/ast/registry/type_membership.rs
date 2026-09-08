@@ -21,7 +21,7 @@ impl CRegistry {
         let mut aliases = BTreeSet::new();
         while let Some(ty) = pending.pop() {
             match ty.kind() {
-                CObjectTypeKind::Scalar(_) => {}
+                CObjectTypeKind::Scalar(_) | CObjectTypeKind::Known(_) => {}
                 CObjectTypeKind::Struct(value) => {
                     self.check_aggregate(&CAggregateRef::Struct(value.clone()))?
                 }

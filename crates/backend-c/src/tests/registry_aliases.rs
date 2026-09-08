@@ -19,7 +19,8 @@ fn nested_alias_arrays_cannot_be_parameters_returns_or_top_qualified() {
     let array = CObjectType::array(
         scalar().with_constness(CConstness::Const).unwrap(),
         CArrayLength::new(4).unwrap(),
-    );
+    )
+    .unwrap();
     let first = registry
         .register_typedef(&file, key("Array"), array.clone())
         .unwrap();

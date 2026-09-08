@@ -67,6 +67,8 @@ impl CRegistry {
     ) -> Result<CObjectRef, CRegistryError> {
         self.check_file(file)?;
         self.check_type(&ty)?;
+        ty.require_storable()
+            .map_err(CRegistryError::InvalidObjectType)?;
         if self.objects.iter().any(|old| old.key() == &key) {
             return Err(CRegistryError::DuplicateRegistration);
         }
@@ -186,6 +188,8 @@ impl CRegistry {
     ) -> Result<CLocalRef, CRegistryError> {
         self.check_lexical_scope(scope)?;
         self.check_type(&ty)?;
+        ty.require_storable()
+            .map_err(CRegistryError::InvalidObjectType)?;
         if self
             .locals
             .iter()

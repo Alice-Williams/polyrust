@@ -11,6 +11,7 @@ pub struct CParameterType {
 
 impl CParameterType {
     pub fn new(ty: CObjectType) -> Result<Self, CTypeError> {
+        ty.require_storable()?;
         let declared = ty.without_top_level_const();
         let ty = declared.canonical();
         if ty.is_array() {
@@ -41,7 +42,7 @@ impl CParameterType {
 /// ```compile_fail
 /// use portable_backend_c::ast::{CArrayLength, CObjectType, CReturnType, CScalarType};
 /// let array = CObjectType::array(CObjectType::scalar(CScalarType::I32),
-///                                CArrayLength::new(3).unwrap());
+///                                CArrayLength::new(3).unwrap()).unwrap();
 /// let invalid = CReturnType::Value(array);
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -52,6 +53,7 @@ pub struct CReturnValue {
 
 impl CReturnValue {
     pub fn new(ty: CObjectType) -> Result<Self, CTypeError> {
+        ty.require_storable()?;
         let declared = ty;
         let ty = declared.canonical();
         if ty.is_array() {

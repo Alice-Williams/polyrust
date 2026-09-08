@@ -16,10 +16,12 @@ impl CObjectType {
         }
         let value = match root.kind() {
             CObjectTypeKind::Scalar(value) => Self::scalar(*value),
+            CObjectTypeKind::Known(value) => Self::known(*value),
             CObjectTypeKind::Struct(value) => Self::structure(value.clone()),
             CObjectTypeKind::Union(value) => Self::union(value.clone()),
             CObjectTypeKind::Enum(value) => Self::enumeration(value.clone()),
-            CObjectTypeKind::Array { element, length } => Self::array(element.canonical(), *length),
+            CObjectTypeKind::Array { element, length } => Self::array(element.canonical(), *length)
+                .expect("array construction excludes opaque library-owned elements"),
             CObjectTypeKind::Pointer(target) => Self::pointer(match target {
                 CPointerTarget::Void(qualifier) => CPointerTarget::Void(*qualifier),
                 CPointerTarget::Object(value) => {

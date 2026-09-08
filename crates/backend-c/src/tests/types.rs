@@ -41,7 +41,7 @@ fn fixed_array_bounds_are_nonzero_without_a_hidden_portable_arity_cap() {
 
 #[test]
 fn arrays_cannot_be_prototype_parameters_or_return_values() {
-    let array = CObjectType::array(i32_type(), CArrayLength::new(3).unwrap());
+    let array = CObjectType::array(i32_type(), CArrayLength::new(3).unwrap()).unwrap();
     assert_eq!(
         CParameterType::new(array.clone()),
         Err(CTypeError::ArrayParameterRequiresPointer)
@@ -56,7 +56,7 @@ fn arrays_cannot_be_prototype_parameters_or_return_values() {
 
 #[test]
 fn array_qualification_is_applied_to_elements() {
-    let array = CObjectType::array(i32_type(), CArrayLength::new(2).unwrap());
+    let array = CObjectType::array(i32_type(), CArrayLength::new(2).unwrap()).unwrap();
     assert_eq!(
         array.clone().with_constness(CConstness::Const),
         Err(CTypeError::ArrayQualifierMustApplyToElement)
@@ -68,7 +68,8 @@ fn array_qualification_is_applied_to_elements() {
     let qualified = CObjectType::array(
         i32_type().with_constness(CConstness::Const).unwrap(),
         CArrayLength::new(2).unwrap(),
-    );
+    )
+    .unwrap();
     assert_ne!(array, qualified);
     assert_eq!(qualified.constness(), CConstness::Unqualified);
     let CObjectTypeKind::Array { element, .. } = qualified.kind() else {
@@ -80,8 +81,8 @@ fn array_qualification_is_applied_to_elements() {
 #[test]
 fn pointer_to_array_and_array_of_pointers_have_distinct_structures() {
     let bound = CArrayLength::new(4).unwrap();
-    let pointer_to_array = pointer(CObjectType::array(i32_type(), bound));
-    let array_of_pointers = CObjectType::array(pointer(i32_type()), bound);
+    let pointer_to_array = pointer(CObjectType::array(i32_type(), bound).unwrap());
+    let array_of_pointers = CObjectType::array(pointer(i32_type()), bound).unwrap();
     assert_ne!(pointer_to_array, array_of_pointers);
     assert!(!pointer_to_array.is_array());
     assert!(array_of_pointers.is_array());
@@ -100,7 +101,8 @@ fn function_pointers_retain_their_full_prototype() {
     );
     let function_pointer =
         CObjectType::pointer(CPointerTarget::Function(Box::new(function.clone())));
-    let pointers = CObjectType::array(function_pointer.clone(), CArrayLength::new(3).unwrap());
+    let pointers =
+        CObjectType::array(function_pointer.clone(), CArrayLength::new(3).unwrap()).unwrap();
     assert!(pointers.is_array());
     let CObjectTypeKind::Pointer(CPointerTarget::Function(actual)) = function_pointer.kind() else {
         panic!("expected typed function pointer");

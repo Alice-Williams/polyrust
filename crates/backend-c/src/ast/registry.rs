@@ -43,10 +43,11 @@ pub use nominals::{
 };
 pub use symbols::{CFunctionRef, CLocalRef, CObjectRef, CParameterRef, CScopeRef};
 
-use identity::RegistryScope;
+pub(super) use identity::RegistryScope;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CRegistryError {
+    InvalidObjectType(super::CTypeError),
     CrossRegistry,
     UnregisteredReference,
     DuplicateRegistration,
@@ -61,7 +62,11 @@ pub enum CRegistryError {
 
 impl std::fmt::Display for CRegistryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Self::InvalidObjectType(error) = self {
+            return error.fmt(f);
+        }
         f.write_str(match self {
+            Self::InvalidObjectType(_) => unreachable!("handled above"),
             Self::CrossRegistry => "C reference belongs to a different registry",
             Self::UnregisteredReference => "C reference has no matching registration",
             Self::DuplicateRegistration => "C declaration is already registered",
@@ -116,6 +121,10 @@ impl Default for CRegistry {
 }
 
 impl CRegistry {
+    pub(super) fn expression_brand(&self) -> RegistryScope {
+        self.scope.clone()
+    }
+
     pub fn new() -> Self {
         Self {
             scope: RegistryScope::new(),
@@ -165,7 +174,7 @@ impl CRegistry {
         }
     }
 
-    fn check_file(&self, value: &CFileRef) -> Result<(), CRegistryError> {
+    pub fn check_file(&self, value: &CFileRef) -> Result<(), CRegistryError> {
         self.check_scope(&value.scope)?;
         if self.files.contains(value) {
             Ok(())

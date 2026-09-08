@@ -29,6 +29,9 @@ or advertising capabilities before their mappings exist.
   call-free operands/conditions, full-expression call roots, and branch-local
   short-circuit/conditional prefixes. No caller-supplied purity exemption.
 - Reject unsafe signed arithmetic/conversions, zero division, invalid shifts, premature pointer formation, inactive union reads and inconsistent branch/loop cleanup.
+- Evaluate file constant initializers and static assertions with the same exact
+  arithmetic model. Reject undefined/invalid constant operations and false
+  assertions; a 02B integer-constant-expression shape is not a truth certificate.
 - Expose only the private verified C AST state required by the later linker; rendering/capacity certification remains stage 04.
 
 ## Tests and proof

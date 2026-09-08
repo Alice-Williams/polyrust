@@ -28,7 +28,7 @@ pub enum CSynthesisReason {
 /// symbols. Within one registry all brands compare equal; canonical inventories
 /// explicitly project only stable declaration keys.
 #[derive(Clone)]
-pub(super) struct RegistryScope(Arc<()>);
+pub(in crate::ast) struct RegistryScope(Arc<()>);
 
 impl RegistryScope {
     pub(super) fn new() -> Self {
