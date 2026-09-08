@@ -15,6 +15,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+mod contextual_inventory;
 mod contracts;
 mod control;
 mod files;
@@ -43,6 +44,7 @@ pub use nominals::{
 };
 pub use symbols::{CFunctionRef, CLocalRef, CObjectRef, CParameterRef, CScopeRef};
 
+pub(super) use contextual_inventory::CRegistered;
 pub(super) use identity::RegistryScope;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

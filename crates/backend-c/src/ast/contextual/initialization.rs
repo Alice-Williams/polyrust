@@ -1,0 +1,153 @@
+//! Forward must-analysis, checking reads only after the fixed point converges.
+
+use super::super::{
+    CDefinitionKind, CFileItem, CIndexBase, CPlace, CPlaceKind, CRegistry, CReturnType, CSourceFile,
+};
+use super::{
+    CContextError as E,
+    access_walk::{self as walk, Access, Visitor},
+    flow_graph::{Action, Graph},
+    initialized_paths::{Path, State},
+};
+use std::collections::VecDeque;
+
+pub(super) fn check(registry: &CRegistry, files: &[CSourceFile]) -> Result<(), E> {
+    for file in files {
+        for item in file.items() {
+            if let CFileItem::Definition(value) = item
+                && let CDefinitionKind::Function {
+                    function,
+                    parameters,
+                    body,
+                    ..
+                } = value.kind()
+            {
+                let graph = Graph::build(body)?;
+                let mut entry = State::default();
+                for parameter in parameters {
+                    entry.mark(Path::parameter(parameter));
+                }
+                analyze(
+                    registry,
+                    &graph,
+                    entry,
+                    matches!(function.signature().return_type(), CReturnType::Void),
+                )?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn transfer(action: &Action<'_>, state: &mut State) {
+    match action {
+        Action::Declare(value) => {
+            state.kill_local(value.local());
+            if value.initializer().is_some() {
+                state.mark(Path::local(value.local()));
+            }
+        }
+        Action::Assign(place, _) => {
+            if let Some(path) = Path::place(place) {
+                state.mark(path);
+            }
+        }
+        Action::ScopeExit(scope) => state.leave_scope(scope),
+        _ => {}
+    }
+}
+
+fn analyze(registry: &CRegistry, graph: &Graph<'_>, entry: State, void: bool) -> Result<(), E> {
+    let mut incoming = vec![None; graph.nodes.len()];
+    incoming[graph.entry.0] = Some(entry);
+    let mut pending = VecDeque::from([graph.entry]);
+    while let Some(point) = pending.pop_front() {
+        let node = &graph.nodes[point.0];
+        let mut state = incoming[point.0]
+            .clone()
+            .expect("queued only after a reachable input");
+        transfer(&node.action, &mut state);
+        for next in &node.successors {
+            let joined = match &incoming[next.0] {
+                None => state.clone(),
+                Some(old) => old.intersect(&state, registry)?,
+            };
+            if incoming[next.0].as_ref() != Some(&joined) {
+                incoming[next.0] = Some(joined);
+                pending.push_back(*next);
+            }
+        }
+    }
+    for (node, state) in graph.nodes.iter().zip(incoming) {
+        let Some(mut state) = state else { continue };
+        // Scope is retained on every actual point for 02D's lifetime/edge
+        // checks, including transfers that skip ordinary ScopeExit nodes.
+        if node.scope.function() != graph.nodes[graph.entry.0].scope.function() {
+            return Err(E::WrongLexicalOwner);
+        }
+        if node
+            .origin
+            .is_some_and(|statement| statement.function() != node.scope.function())
+        {
+            return Err(E::WrongLexicalOwner);
+        }
+        if let Action::Declare(value) = &node.action {
+            state.kill_local(value.local());
+        }
+        let mut reader = Reader {
+            registry,
+            state: &state,
+        };
+        match &node.action {
+            Action::Declare(value) => {
+                if let Some(value) = value.initializer() {
+                    walk::initializer(&mut reader, value)?;
+                }
+            }
+            Action::Assign(place, value) => {
+                walk::expression(&mut reader, value)?;
+                walk::place(&mut reader, place, Access::Write)?;
+            }
+            Action::Evaluate(value) => walk::call(&mut reader, value.call())?,
+            Action::Read(value) => walk::expression(&mut reader, value)?,
+            Action::Return(Some(value)) => walk::expression(&mut reader, value)?,
+            Action::FunctionEnd if !void => return Err(E::MissingReturn),
+            Action::CaseEnd => return Err(E::SwitchFallthrough),
+            Action::Label(identity) if identity.scope() != node.scope => {
+                return Err(E::WrongLexicalOwner);
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+struct Reader<'a> {
+    registry: &'a CRegistry,
+    state: &'a State,
+}
+impl Visitor for Reader<'_> {
+    fn place(&mut self, place: &CPlace, access: Access) -> Result<(), E> {
+        if access != Access::Read {
+            return Ok(());
+        }
+        if let Some(path) = Path::place(place) {
+            if !self.state.covers(&path, self.registry)? {
+                return Err(E::UninitializedRead);
+            }
+        } else if let CPlaceKind::Member { base, .. } = place.kind() {
+            // A member behind a nonconstant local array index still reads
+            // local storage. Do not lose that obligation with the exact path.
+            self.place(base, Access::Read)?;
+        } else if let CPlaceKind::Index {
+            base: CIndexBase::Array(base),
+            ..
+        } = place.kind()
+        {
+            // A variable index may read any element. Whole-array coverage is
+            // sufficient; partial heap/prefix/range proofs belong to 02D.
+            self.place(base, Access::Read)?;
+        }
+        Ok(())
+    }
+}

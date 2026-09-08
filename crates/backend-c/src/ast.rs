@@ -15,6 +15,7 @@ mod call_construction;
 mod call_model;
 mod comments;
 mod constant_expressions;
+mod contextual;
 mod control_construction;
 mod declaration_construction;
 mod declaration_model;
@@ -45,8 +46,37 @@ mod statement_placement;
 mod type_compatibility;
 mod types;
 
+#[cfg(test)]
+#[path = "tests/contextual_reconstruction.rs"]
+mod contextual_reconstruction;
+
+#[cfg(test)]
+#[path = "tests/contextual_package.rs"]
+mod contextual_package;
+
+#[cfg(test)]
+#[path = "tests/contextual_lexical.rs"]
+mod contextual_lexical;
+
+#[cfg(test)]
+#[path = "tests/contextual_initialization.rs"]
+mod contextual_initialization;
+
+#[cfg(test)]
+#[path = "tests/contextual_cases.rs"]
+mod contextual_cases;
+
+#[cfg(test)]
+#[path = "tests/contextual_loops.rs"]
+mod contextual_loops;
+
+#[cfg(test)]
+#[path = "tests/contextual_arrays.rs"]
+mod contextual_arrays;
+
 pub use call_model::{CCall, CCallable, CCallableKind, CEffect};
 pub use comments::{CAssertDiagnostic, CComment};
+pub use contextual::CContextError;
 pub use declaration_construction::CDeclarations;
 pub use declaration_model::{
     CDeclaration, CDeclarationKind, CDefinition, CDefinitionKind, CLinkage, CStorage,

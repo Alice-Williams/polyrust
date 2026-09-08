@@ -50,6 +50,21 @@ Adding any excluded construct requires an explicit AST variant and proof.
 
 ## Verification and certificate
 
+The contextual checker independently walks stored children and authenticated
+declaration references. It reconstructs local relations using the same closed
+constructor/scalar rules, then compares the reconstructed structure with the
+input. A cached type, copied brand, or caller-supplied inventory is not evidence.
+The diagnostic-only local-structure entry point proves only those local
+relations; it cannot render or manufacture a contextual certificate.
+
+Subsequent passes compare the actual declaration/control occurrences against
+the authoritative registry, derive lexical visibility and a private control-flow
+graph, and intersect definite-initialization facts over reachable predecessors.
+They inspect unreachable syntax too, but exited branches do not enter later
+initialization joins. Ownership, arithmetic, call effects and linked file
+ordering retain their separate mandatory checks. The final shared verifier
+composes these passes; none is a public render-ready shortcut.
+
 Local verification checks exact declarations/prototypes, scopes, duplicate
 definitions, initialization, qualifiers, callable/member ownership, expression
 types, returns, labels, switch case constants and complete types. Definition
