@@ -27,9 +27,10 @@ resource constraints; syntax certification must not overclaim compiler capacity.
    share the bounded construction helper.
 3. Resolve explicit Java target limits: method parameter slots, encoded names
    and descriptors, and oversized method/class resources. A new generic arity
-   cap is not permitted. The choice between checked target-resource errors and
-   a larger argument-packing ABI transformation has been put to the user; do
-   not silently introduce the latter while fixing literals.
+   cap is not permitted. Follow the shared specification's checked-resource
+   policy; argument packing is a separate optional ABI extension, not part of
+   this repair. The concrete boundary and phased proof obligations are in
+   [Java target resources](../../specification/typed-generation/languages/java/target-resources.md).
 
 ## Definition of done
 
@@ -94,3 +95,50 @@ not production library dependencies.
 
 This closes the reproduced portable-text construction and concatenation holes,
 not the four open JVM resource families. Java remains in progress.
+
+## Fresh text-checkpoint review
+
+The immutable `1c0793e` Sol Extra High review confirmed portable chunking,
+mapping certificates, imports and helper routing, but found two raw-AST holes:
+string `Add` still allowed compiler constant folding, and switch-label literals
+bypassed scalar/encoding payload checks. Both are accepted core findings.
+Invocation `5c275178-cedf-40fe-b8f2-e7330c5a59d4` reproduces both verifier
+failures with permanent regressions. The repair limits target `Add` to numeric
+operands, constructs native `concat` calls in runtime helpers too, and shares
+literal payload validation with switch labels. Java remains open pending gates.
+
+## Exact resource-boundary implementation checkpoint
+
+The shared compiler now invokes target capacity checking after certification in
+`TargetResourceValidation`. Java returns only typed resource errors from that
+phase and shared output-size errors from `Rendering`; other failures remain
+invariants. This prevents capacity checks from hiding an invalid target AST.
+
+Separate declaration, executable and encoding modules check slots, nested
+binary names, descriptors/generic signatures, record recipes, array dimensions,
+local bindings and referenced types. Enum/enclosing-instance constructor
+parameters are included. Linked Runtime fragments share one class traversal.
+Native controls confirm 255 static int slots, 254 instance int slots, 127 long
+parameters, boxed widths, record limits, 65,535-byte names, and case literals.
+
+Invocation `dd03d410-8118-4c01-b4a0-f42fcd3de965` passes Java and shared compiler
+tests, Rustfmt, Clippy and documentation checks. The full checkpoint gate is
+still required. Compiler-generated method/class budgets remain open; these
+exact checks alone do not close M34A-10AA or Java.
+
+An architecture review caught the initial early-phase ordering, missing body
+walk and hidden constructor parameters; these were corrected before checkpoint
+completion. Its test-wiring concern was withdrawn: resource tests deliberately
+use an owner-local `#[path = "tests/resources.rs"]` module, and are excluded
+from the production Bazel source set while included in the Rust test target.
+
+The final linked-name repair is verified by focused invocation
+`c8ff521f-8155-4506-a7d9-f061d524f519`. The exact-tree replay then passes:
+
+- `80e4266f-9302-44e2-8f61-69795e15051e`: 435 tracked rules, 310 tests.
+- `6c73aa08-a741-4f59-af80-6a500e807081`: all 247 release tests.
+- `73a29a26-6b95-4a64-a268-9fc440a99b6b`: 50 cases and one portable test,
+  evaluator plus eight targets agree, with byte-identical repeated manifests.
+
+Normal Bazel caching was enabled. This checkpoint closes the exact structural
+limits and raw-literal review findings, not the remaining method/class budgets.

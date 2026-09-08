@@ -24,6 +24,7 @@ pub enum DiagnosticCode {
     RecursiveCall,
     UnsupportedCapability,
     UnsafeOutputPath,
+    TargetResourceLimit,
 }
 
 /// Short and long explanation for one registered code.
@@ -35,7 +36,7 @@ pub struct Explanation {
 }
 
 impl DiagnosticCode {
-    pub const ALL: [Self; 19] = [
+    pub const ALL: [Self; 20] = [
         Self::UnsupportedIrMajor,
         Self::InvalidStructure,
         Self::ExcessiveComplexity,
@@ -55,6 +56,7 @@ impl DiagnosticCode {
         Self::RecursiveCall,
         Self::UnsupportedCapability,
         Self::UnsafeOutputPath,
+        Self::TargetResourceLimit,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -78,6 +80,7 @@ impl DiagnosticCode {
             Self::RecursiveCall => "P0302",
             Self::UnsupportedCapability => "P0404",
             Self::UnsafeOutputPath => "P0502",
+            Self::TargetResourceLimit => "P0503",
         }
     }
 }
@@ -99,6 +102,11 @@ impl Serialize for DiagnosticCode {
 
 pub fn explain(code: DiagnosticCode) -> Explanation {
     match code {
+        DiagnosticCode::TargetResourceLimit => Explanation {
+            code,
+            short: "target resource limit exceeded",
+            long: "The program is well typed but its target representation exceeds an explicit compiler or runtime format capacity.",
+        },
         DiagnosticCode::UnsupportedIrMajor => Explanation {
             code,
             short: "unsupported IR major version",

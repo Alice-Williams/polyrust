@@ -25,18 +25,22 @@ The typed path has no user-caused Java syntax or capability diagnostic after
 construction. The current `CheckedProgram` entry point remains the explicitly
 dynamic compatibility path until existing examples are migrated.
 
-The concrete entry point is total at its public typed boundary:
+The concrete entry point has no syntax-validation failure at its typed boundary;
+finite target capacity is an explicit checked result:
 
 ```rust
-fn generate_typed<R>(&self, program: &TypedProgram<R>) -> OutputManifest
+fn generate_typed<R>(&self, program: &TypedProgram<R>)
+    -> Result<OutputManifest, JavaResourceError>
 where
     R: Requirements,
     JavaPlugin: SupportsAll<R>;
 ```
 
 It delegates to the same verified CoreIR-to-Java compiler as the dynamic path.
-Any rejection is converted to an invariant panic identifying a PolyRust defect;
-it is not returned as a user validation branch. Java has no manual or empty
+Only structured target-resource diagnostics may produce `JavaResourceError`, as
+specified in [Java target resources](java/target-resources.md). Other
+rejections become invariant panics identifying a PolyRust defect, not user
+validation branches. Java has no manual or empty
 `Supports<C>` implementations. No profile, wildcard, or default
 implementation can make an unregistered feature admissible.
 

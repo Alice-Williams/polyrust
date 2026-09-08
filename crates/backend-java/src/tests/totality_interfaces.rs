@@ -107,7 +107,9 @@ fn typed_interface_methods_do_not_merge_with_record_accessors_or_each_other() {
             },
         )
     });
-    let manifest = JavaBackend.generate_typed(&program);
+    let manifest = JavaBackend
+        .generate_typed(&program)
+        .expect("Java resource capacity");
     CompiledPackage::new(&manifest, "typed-interface-names").consumer(r#"
 package org.polyrust.consumer;
 import org.polyrust.generated.Generated;
@@ -187,7 +189,9 @@ fn typed_generic_erasure_preserves_different_parameter_and_result_types() {
             )
         })
     });
-    let manifest = JavaBackend.generate_typed(&program);
+    let manifest = JavaBackend
+        .generate_typed(&program)
+        .expect("Java resource capacity");
     CompiledPackage::new(&manifest, "typed-erased-signatures").consumer(
         r#"
 package org.polyrust.consumer;

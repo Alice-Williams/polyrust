@@ -60,6 +60,12 @@ pub(super) fn verify_literal(literal: &JavaLiteral, ty: &JavaType) -> Vec<AstVio
             "literal does not match its declared Java type",
         ));
     }
+    violations.extend(verify_payload(literal));
+    violations
+}
+
+pub(super) fn verify_payload(literal: &JavaLiteral) -> Vec<AstViolation> {
+    let mut violations = Vec::new();
     if matches!(literal, JavaLiteral::CharScalar(value) if char::from_u32(*value).is_none()) {
         violations.push(AstViolation::new(
             DiagnosticCode::TypeMismatch,

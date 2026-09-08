@@ -301,7 +301,9 @@ fn main() {
         )
     });
 
-    let manifest = JavaBackend.generate_typed(&program);
+    let manifest = JavaBackend
+        .generate_typed(&program)
+        .expect("Java resource capacity");
     for file in manifest.files() {
         let path = output.join(file.path());
         std::fs::create_dir_all(path.parent().expect("parent")).expect("create parent");

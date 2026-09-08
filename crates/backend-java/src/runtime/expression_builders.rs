@@ -1,13 +1,13 @@
 //! Typed expression construction utilities.
 use super::declaration_builders::identifier;
 
-use super::call_builders::{known_call, member_call};
+use super::call_builders::{known_call, known_method_call, member_call};
 use crate::ast::{
     JavaArrayOwnership, JavaArrayOwnershipTransition, JavaBinaryOperator, JavaExpr, JavaExprKind,
     JavaFieldRef, JavaIdentifier, JavaLiteral, JavaNullPurpose, JavaPrecedence, JavaPrimitive,
     JavaRuntimeMember, JavaType, JavaUnaryOperator, JavaValueRef,
 };
-use crate::dialect::JavaKnownCallable;
+use crate::dialect::{JavaKnownCallable, JavaKnownMethod};
 
 pub(super) fn local(ty: JavaType, name: &str) -> JavaExpr {
     JavaExpr::local(ty, identifier(name))
@@ -28,6 +28,13 @@ pub(super) fn binary(
     right: JavaExpr,
     ty: JavaType,
 ) -> JavaExpr {
+    // Canonical target construction prevents constant folding across string
+    // operands. This happens before verification, never in the renderer.
+    if operator == JavaBinaryOperator::Add
+        && ty == JavaType::known(crate::ast::JavaKnownType::String)
+    {
+        return known_method_call(JavaKnownMethod::StringConcat, left, vec![right], ty);
+    }
     JavaExpr {
         ty,
         precedence: match operator {

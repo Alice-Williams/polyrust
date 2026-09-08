@@ -24,7 +24,9 @@ fn accessor_suffixes_respect_requested_interface_method_names() {
             },
         )
     });
-    let manifest = JavaBackend.generate_typed(&program);
+    let manifest = JavaBackend
+        .generate_typed(&program)
+        .expect("Java resource capacity");
     CompiledPackage::new(&manifest, "accessor-suffix-reservation").consumer(
         r#"
 package org.polyrust.consumer;
@@ -64,7 +66,9 @@ fn known_static_call_qualifiers_survive_field_and_parameter_names() {
             )
         })
     });
-    let manifest = JavaBackend.generate_typed(&program);
+    let manifest = JavaBackend
+        .generate_typed(&program)
+        .expect("Java resource capacity");
     CompiledPackage::new(&manifest, "known-static-qualifier-collisions").consumer(
         r#"
 package org.polyrust.consumer;
@@ -110,7 +114,9 @@ fn expression_qualifiers_cannot_be_shadowed_by_portable_value_names() {
             })
         })
     });
-    let manifest = JavaBackend.generate_typed(&program);
+    let manifest = JavaBackend
+        .generate_typed(&program)
+        .expect("Java resource capacity");
     CompiledPackage::new(&manifest, "expression-qualifier-collisions").consumer(
         r#"
 package org.polyrust.consumer;
@@ -136,7 +142,9 @@ fn annotation_names_are_reserved_from_the_typed_annotation_catalogue() {
             )
         })
     });
-    let manifest = JavaBackend.generate_typed(&program);
+    let manifest = JavaBackend
+        .generate_typed(&program)
+        .expect("Java resource capacity");
     CompiledPackage::new(&manifest, "annotation-name-collisions").consumer(
         r#"
 package org.polyrust.consumer;
@@ -184,10 +192,15 @@ fn typed_object_names_preserve_function_field_and_projection_identity() {
             },
         )
     });
-    let manifest = JavaBackend.generate_typed(&program);
+    let manifest = JavaBackend
+        .generate_typed(&program)
+        .expect("Java resource capacity");
     assert_eq!(
         manifest.canonical_json(),
-        JavaBackend.generate_typed(&program).canonical_json()
+        JavaBackend
+            .generate_typed(&program)
+            .expect("Java resource capacity")
+            .canonical_json()
     );
     CompiledPackage::new(&manifest, "typed-object-names").consumer(
         r#"
@@ -274,7 +287,9 @@ fn typed_generated_names_and_contextual_keywords_keep_distinct_identities() {
             },
         )
     });
-    let manifest = JavaBackend.generate_typed(&program);
+    let manifest = JavaBackend
+        .generate_typed(&program)
+        .expect("Java resource capacity");
     CompiledPackage::new(&manifest, "typed-all-name-spaces").consumer(
         r#"
 package org.polyrust.consumer;

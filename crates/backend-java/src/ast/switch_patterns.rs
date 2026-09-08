@@ -127,6 +127,7 @@ pub(super) fn verify_switch_patterns(
             JavaPattern::Default => {}
             JavaPattern::EnumVariant { .. } => unreachable!("enum switch returned above"),
             JavaPattern::Literal(literal) => {
+                violations.extend(super::literal_limits::verify_payload(literal));
                 if !java_switch_literal_is_compatible(literal, &selector.ty) {
                     violations.push(type_error(
                         "Java switch literal is not compatible with its selector type",

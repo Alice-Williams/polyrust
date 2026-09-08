@@ -123,7 +123,7 @@ fn literal_and_operator_signatures_reject_false_type_claims() {
         &long,
         &long
     ));
-    assert!(binary_signature_matches(
+    assert!(!binary_signature_matches(
         JavaBinaryOperator::Add,
         &string,
         &string,

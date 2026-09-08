@@ -7,6 +7,7 @@ mod mapping_short_circuit;
 pub(crate) mod match_dispatch;
 mod name_identity_consumers;
 mod nested_payload_matches;
+mod resources_native;
 mod totality_empty_interfaces;
 mod totality_interfaces;
 mod totality_names;

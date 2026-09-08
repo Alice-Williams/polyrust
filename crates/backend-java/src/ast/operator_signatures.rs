@@ -58,12 +58,6 @@ pub(super) fn binary_signature_matches(
             is_numeric_primitive(left) && left == right && result == &boolean
         }
         JavaBinaryOperator::Add
-            if left == &JavaType::known(JavaKnownType::String)
-                && right == &JavaType::known(JavaKnownType::String) =>
-        {
-            result == left
-        }
-        JavaBinaryOperator::Add
         | JavaBinaryOperator::Subtract
         | JavaBinaryOperator::Multiply
         | JavaBinaryOperator::Divide

@@ -114,6 +114,14 @@ Rendering a certified package is infallible with respect to grammar. Resource
 limits and manifest/path validation remain typed failures in their owning later
 phase rather than syntax diagnostics.
 
+The shared compiler invokes `TargetDialect::verify_resources` in the explicit
+`TargetResourceValidation` phase after language certification and before
+rendering. Target-specific capacity errors and later shared output-size limits
+use `TargetResourceLimit`; grammar, encoding and manifest-identity defects keep
+their own codes. A typed entry point may expose resource errors without
+reopening a user syntax-validation branch. No resource failure may mask an
+earlier failed language certificate.
+
 ## Required proof
 
 - Compile-fail cases for every earlier-package-to-renderer boundary.

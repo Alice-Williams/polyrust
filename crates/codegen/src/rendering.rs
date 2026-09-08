@@ -261,6 +261,25 @@ pub enum CertifiedRenderError {
     UnsupportedArtifact,
 }
 
+impl CertifiedRenderError {
+    const fn diagnostic_code(self) -> DiagnosticCode {
+        match self {
+            Self::FileTooLarge | Self::PackageTooLarge => DiagnosticCode::TargetResourceLimit,
+            Self::DuplicateTemplate
+            | Self::MissingTemplate
+            | Self::InvalidTemplate
+            | Self::MissingPartial
+            | Self::ForbiddenHelper
+            | Self::MissingField
+            | Self::ExtraField
+            | Self::Serialization
+            | Self::Rendering
+            | Self::InvalidEncoding
+            | Self::UnsupportedArtifact => DiagnosticCode::InvalidStructure,
+        }
+    }
+}
+
 pub struct CertifiedTemplateEngine<I: CertifiedTemplateId> {
     registry: Handlebars<'static>,
     templates: BTreeMap<I, RegisteredTemplate>,
@@ -705,7 +724,7 @@ fn valid_field(field: &str) -> bool {
 
 fn registry_error(kind: CertifiedRenderError, message: &str, source: SourceRef) -> Diagnostic {
     Diagnostic::error(
-        DiagnosticCode::InvalidStructure,
+        kind.diagnostic_code(),
         format!("certified renderer {kind:?}: {message}"),
         source,
     )
@@ -720,7 +739,7 @@ fn render_error<D: LinkerDialect>(
     source: SourceRef,
 ) -> Diagnostic {
     Diagnostic::error(
-        DiagnosticCode::InvalidStructure,
+        kind.diagnostic_code(),
         format!(
             "certified renderer {kind:?}; target={target:?}; template={template:?}; role={:?}; path={:?}: {message}",
             file.role(),
@@ -737,7 +756,7 @@ fn structural_render_error<D: LinkerDialect>(
     message: &str,
 ) -> Diagnostic {
     Diagnostic::error(
-        DiagnosticCode::InvalidStructure,
+        kind.diagnostic_code(),
         format!(
             "structural renderer {kind:?}; target={target:?}; role={:?}; path={:?}: {message}",
             file.role(),
@@ -754,7 +773,7 @@ fn artifact_error(
     message: &str,
 ) -> Diagnostic {
     Diagnostic::error(
-        DiagnosticCode::InvalidStructure,
+        kind.diagnostic_code(),
         format!(
             "certified renderer {kind:?}; target={target:?}; artifact_role={:?}; path={:?}: {message}",
             artifact.group_role(),
@@ -767,6 +786,26 @@ fn artifact_error(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn size_errors_are_not_misclassified_as_grammar_failures() {
+        assert_eq!(
+            CertifiedRenderError::FileTooLarge.diagnostic_code(),
+            DiagnosticCode::TargetResourceLimit
+        );
+        assert_eq!(
+            CertifiedRenderError::PackageTooLarge.diagnostic_code(),
+            DiagnosticCode::TargetResourceLimit
+        );
+        assert_eq!(
+            CertifiedRenderError::InvalidEncoding.diagnostic_code(),
+            DiagnosticCode::InvalidStructure
+        );
+        assert_eq!(
+            CertifiedRenderError::MissingField.diagnostic_code(),
+            DiagnosticCode::InvalidStructure
+        );
+    }
 
     #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
     enum TemplateId {

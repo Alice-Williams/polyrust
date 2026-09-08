@@ -10,7 +10,9 @@ pub mod dialect;
 mod lower;
 mod preflight;
 mod render;
+mod resources;
 mod runtime;
+pub use resources::JavaResourceError;
 
 use std::collections::BTreeMap;
 
@@ -53,8 +55,9 @@ impl JavaBackend {
     /// Generates Java from a valid-by-construction typed portable program.
     ///
     /// The `SupportsAll<R>` bound proves at the call site that Java implements
-    /// every feature inferred from this particular program. A failure below
-    /// this boundary is a PolyRust implementation defect, not a user diagnostic.
+    /// every feature inferred from this particular program. Target capacity
+    /// failures are returned explicitly; syntax or mapping failures below this
+    /// boundary remain PolyRust implementation defects.
     ///
     /// An ordinary dynamically checked program cannot call this API:
     ///
@@ -75,13 +78,17 @@ impl JavaBackend {
     ///     let _ = JavaBackend.generate_typed(program);
     /// }
     /// ```
-    pub fn generate_typed<R>(&self, program: &TypedProgram<R>) -> OutputManifest
+    pub fn generate_typed<R>(
+        &self,
+        program: &TypedProgram<R>,
+    ) -> Result<OutputManifest, JavaResourceError>
     where
         R: Requirements,
         JavaPlugin: SupportsAll<R>,
     {
-        self.generate(program.checked_program(), &BackendOptions::default())
-            .unwrap_or_else(|error| panic!("TypedProgram Java invariant failure: {error:#?}"))
+        Self::compiler()
+            .compile_checked(program.checked_program(), &BackendOptions::default())
+            .map_err(JavaResourceError::from_typed_failure)
     }
 }
 

@@ -54,7 +54,9 @@ macro_rules! nominal_factory_test {
                     })
                 })
             });
-            let manifest = JavaBackend.generate_typed(&program);
+            let manifest = JavaBackend
+                .generate_typed(&program)
+                .expect("Java resource capacity");
             CompiledPackage::new(&manifest, stringify!($test)).consumer(
                 r#"
 package org.polyrust.consumer;
@@ -92,7 +94,9 @@ fn synthetic_interface_name_is_allocated_before_ast_verification() {
             },
         )
     });
-    let manifest = JavaBackend.generate_typed(&program);
+    let manifest = JavaBackend
+        .generate_typed(&program)
+        .expect("Java resource capacity");
     CompiledPackage::new(&manifest, "synthetic-nominal-collision").consumer(
         r#"
 package org.polyrust.consumer;
@@ -127,7 +131,9 @@ fn synthetic_suffixes_do_not_steal_other_synthetic_preferred_names() {
             },
         )
     });
-    let manifest = JavaBackend.generate_typed(&program);
+    let manifest = JavaBackend
+        .generate_typed(&program)
+        .expect("Java resource capacity");
     CompiledPackage::new(&manifest, "synthetic-suffix-reservation").consumer(r#"
 package org.polyrust.consumer;
 import org.polyrust.generated.Generated;

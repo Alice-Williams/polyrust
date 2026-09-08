@@ -118,8 +118,14 @@ pub(super) fn typed_fixture_manifests() -> [OutputManifest; 3] {
         )
     });
     [
-        JavaBackend.generate_typed(&program),
-        JavaBackend.generate_typed(&program),
-        JavaBackend.generate_typed(&program),
+        JavaBackend
+            .generate_typed(&program)
+            .expect("Java resource capacity"),
+        JavaBackend
+            .generate_typed(&program)
+            .expect("Java resource capacity"),
+        JavaBackend
+            .generate_typed(&program)
+            .expect("Java resource capacity"),
     ]
 }

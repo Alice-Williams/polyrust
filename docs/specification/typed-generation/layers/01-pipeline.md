@@ -107,6 +107,12 @@ dependencies, parse source, or invoke an executable template.
 
 ## Manifest contract
 
+After language certification, the shared adapter invokes target-specific
+resource validation before rendering. This is a separate
+`TargetResourceValidation` phase, not another syntax check. Shared output-size
+limits remain resource failures in the rendering/assembly boundary. A failed
+syntax certificate always stops the pipeline before resource checking.
+
 The shared assembler accepts only `RenderedPackage`. It validates relative
 paths, duplicate paths, roles, declared dependencies, helper reports, size
 limits, and deterministic ordering before constructing `OutputManifest`.
@@ -156,6 +162,8 @@ target-ast <- language plugin
      +-> linker <-+
            |
   post-link checker -> opaque render-ready package
+           |
+    target resource checks
            |
        total renderer
            |

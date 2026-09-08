@@ -13,6 +13,7 @@ They are not places to accumulate unrelated helpers and fixtures.
 | `ast/` | Java node models, structural checks, member identity, lexical flow, and conformance | CoreIR lowering or text generation |
 | `dialect/` | Closed Java catalogues, invocation signatures, target registration and linker integration | Portable program interpretation |
 | `runtime/` | Typed runtime AST construction by runtime family | Static import strings or rendering |
+| `resources/` | Post-certification target capacities, descriptor accounting and compiler-admission budgets | Syntax admission, rendering or portable arity caps |
 | `render/` | Structural printing of certified declarations, statements, expressions, names and syntax | New checks, lowering decisions or runtime semantics |
 | `tests/` | Focused fixtures, mutations and compiler-oracle tests | Production library sources |
 

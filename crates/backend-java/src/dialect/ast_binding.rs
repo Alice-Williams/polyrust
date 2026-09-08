@@ -31,6 +31,10 @@ impl TargetDialect for JavaDialect {
     fn verify_resolved(&self, ast: &Self::Resolved) -> Result<(), Vec<Diagnostic>> {
         verify_linked_package(ast)
     }
+
+    fn verify_resources(&self, ast: &Self::Resolved) -> Result<(), Vec<Diagnostic>> {
+        crate::resources::resolved(ast)
+    }
 }
 
 impl TypedAstDialect for JavaDialect {

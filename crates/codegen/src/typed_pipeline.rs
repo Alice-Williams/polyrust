@@ -24,6 +24,7 @@ pub enum TypedPipelineStage {
     UnresolvedVerification,
     Resolution,
     RenderReadinessCertification,
+    TargetResourceValidation,
     Rendering,
     ManifestAssembly,
 }
@@ -136,6 +137,12 @@ pub trait TargetDialect: Send + Sync + 'static {
 
     fn verify_unresolved(&self, ast: &Self::Unresolved) -> Result<(), Vec<Diagnostic>>;
     fn verify_resolved(&self, ast: &Self::Resolved) -> Result<(), Vec<Diagnostic>>;
+
+    /// Compiler/format capacity is checked only after syntax certification.
+    /// Dialects without additional target budgets retain shared output limits.
+    fn verify_resources(&self, _ast: &Self::Resolved) -> Result<(), Vec<Diagnostic>> {
+        Ok(())
+    }
 }
 
 pub trait TargetLowerer<C, D: TargetDialect>: Send + Sync + 'static {
@@ -622,6 +629,14 @@ where
             )
         })?;
 
+        dialect
+            .verify_resources(render_ready.ast())
+            .map_err(|diagnostics| {
+                TypedGenerationError::phase(
+                    TypedPipelineStage::TargetResourceValidation,
+                    diagnostics,
+                )
+            })?;
         let renderer = self.plugin.renderer();
         let rendered = renderer.render(&render_ready).map_err(|diagnostics| {
             TypedGenerationError::phase(TypedPipelineStage::Rendering, diagnostics)
@@ -843,6 +858,13 @@ pub(crate) mod tests {
                 .then_some(())
                 .ok_or_else(|| vec![diagnostic("resolved.verify")])
         }
+
+        fn verify_resources(&self, ast: &Self::Resolved) -> Result<(), Vec<Diagnostic>> {
+            self.0.lock().unwrap().push("resources.verify");
+            (ast != "resolved:fail-resources")
+                .then_some(())
+                .ok_or_else(|| vec![diagnostic("resources.verify")])
+        }
     }
 
     #[derive(Clone)]
@@ -1050,6 +1072,7 @@ pub(crate) mod tests {
                 "unresolved.verify",
                 "resolve",
                 "resolved.verify",
+                "resources.verify",
                 "render",
             ]
         );
@@ -1166,6 +1189,21 @@ pub(crate) mod tests {
                 ],
             },
             Case {
+                input: "fail-resources",
+                program: "typed_pipeline",
+                stage: TypedPipelineStage::TargetResourceValidation,
+                trace: &[
+                    "core.lower",
+                    "core.verify",
+                    "capabilities.preflight",
+                    "target.lower",
+                    "unresolved.verify",
+                    "resolve",
+                    "resolved.verify",
+                    "resources.verify",
+                ],
+            },
+            Case {
                 input: "fail-rendering",
                 program: "typed_pipeline",
                 stage: TypedPipelineStage::Rendering,
@@ -1177,6 +1215,7 @@ pub(crate) mod tests {
                     "unresolved.verify",
                     "resolve",
                     "resolved.verify",
+                    "resources.verify",
                     "render",
                 ],
             },

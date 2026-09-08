@@ -41,6 +41,8 @@ fn genuinely_empty_program_certifies_every_unconditional_java_service() {
     // generic semantic requirement for a program containing no user tests.
     let typed = typed_program(portable_name!("empty_typed"), |builder| builder);
     crate::capabilities::reset_java_mapping_invocations();
-    crate::JavaBackend.generate_typed(&typed);
+    crate::JavaBackend
+        .generate_typed(&typed)
+        .expect("Java resource capacity");
     assert_eq!(crate::capabilities::java_mapping_invocations(), expected);
 }

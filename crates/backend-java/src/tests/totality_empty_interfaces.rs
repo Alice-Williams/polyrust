@@ -49,10 +49,15 @@ fn typed_empty_interfaces_compile_without_exposing_inhabitants() {
             )
         })
     });
-    let manifest = JavaBackend.generate_typed(&program);
+    let manifest = JavaBackend
+        .generate_typed(&program)
+        .expect("Java resource capacity");
     assert_eq!(
         manifest.canonical_json(),
-        JavaBackend.generate_typed(&program).canonical_json()
+        JavaBackend
+            .generate_typed(&program)
+            .expect("Java resource capacity")
+            .canonical_json()
     );
     let compiled = CompiledPackage::new(&manifest, "typed-empty-interfaces");
     compiled.consumer(r#"
@@ -136,7 +141,9 @@ fn unimplemented_interfaces_avoid_inherited_and_implicit_enum_methods() {
             |builder, _| builder,
         )
     });
-    let manifest = JavaBackend.generate_typed(&program);
+    let manifest = JavaBackend
+        .generate_typed(&program)
+        .expect("Java resource capacity");
     CompiledPackage::new(&manifest, "enum-method-collisions").consumer(
         r#"
 package org.polyrust.consumer;

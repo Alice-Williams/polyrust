@@ -34,7 +34,9 @@ fn oversized_portable_text_compiles_and_preserves_contents() {
                 )
                 .builder
         });
-        let manifest = JavaBackend.generate_typed(&program);
+        let manifest = JavaBackend
+            .generate_typed(&program)
+            .expect("Java resource capacity");
         let consumer = format!(
             r#"
 package org.polyrust.consumer;
@@ -85,7 +87,13 @@ fn concatenation_does_not_fold_valid_chunks_into_an_oversized_constant() {
             )
             .builder
     });
-    CompiledPackage::new(&JavaBackend.generate_typed(&program), "large-concatenation").consumer(
+    CompiledPackage::new(
+        &JavaBackend
+            .generate_typed(&program)
+            .expect("Java resource capacity"),
+        "large-concatenation",
+    )
+    .consumer(
         r#"
 package org.polyrust.consumer;
 import org.polyrust.generated.Generated;
