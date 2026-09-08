@@ -2,9 +2,9 @@
 
 use super::registry_nominals::{key, registry};
 use crate::ast::{
-    CAggregateRef, CExpressionError as E, CExpressions, CFunctionType, CLiteral, CObjectType,
-    CParameterType, CRegistryError, CReturnType, CReturnValue, CScalarType as T, CSignedLiteral,
-    CValueKind,
+    CAggregateRef, CCallableKind, CExpressionError as E, CExpressions, CFunctionType, CLiteral,
+    CObjectType, CParameterType, CRegistryError, CReturnType, CReturnValue, CScalarType as T,
+    CSignedLiteral, CValueKind,
 };
 
 fn scalar() -> CObjectType {
@@ -37,12 +37,15 @@ fn direct_calls_check_high_arity_every_argument_and_value_effect_categories() {
         .literal(CLiteral::Signed(CSignedLiteral::Int(1)))
         .unwrap();
     let arguments = vec![argument; 128];
-    let callable = ast.direct(value).unwrap();
+    let callable = ast.direct(value.clone()).unwrap();
+    assert_eq!(callable.kind(), &CCallableKind::Direct);
+    assert_eq!(callable.contract_function(), &value);
     let call = ast.call_value(callable.clone(), arguments.clone()).unwrap();
     let CValueKind::Call(actual) = call.kind() else {
         panic!("call value")
     };
     assert_eq!(actual.arguments(), arguments);
+    assert_eq!(actual.callable(), &callable);
     assert_eq!(call.ty(), &scalar());
     assert_eq!(
         ast.call_value(callable.clone(), arguments[..127].to_vec()),
@@ -60,8 +63,13 @@ fn direct_calls_check_high_arity_every_argument_and_value_effect_categories() {
         bad[index] = ast.literal(CLiteral::Bool(true)).unwrap();
         assert_eq!(ast.call_value(callable.clone(), bad), Err(E::TypeMismatch));
     }
-    let callable = ast.direct(effect).unwrap();
-    assert!(ast.call_effect(callable.clone(), arguments.clone()).is_ok());
+    let callable = ast.direct(effect.clone()).unwrap();
+    assert_eq!(callable.contract_function(), &effect);
+    let actual = ast
+        .call_effect(callable.clone(), arguments.clone())
+        .unwrap();
+    assert_eq!(actual.call().callable(), &callable);
+    assert_eq!(actual.call().arguments(), arguments);
     assert_eq!(
         ast.call_value(callable, arguments),
         Err(E::ExpectedValueCall)
@@ -97,8 +105,15 @@ fn indirect_function_addresses_and_bound_members_reject_same_prototype_wrong_con
     ];
     for value in values {
         let callable = ast.indirect(value.clone(), first.clone()).unwrap();
+        assert_eq!(
+            callable.kind(),
+            &CCallableKind::Indirect(Box::new(value.clone()))
+        );
+        assert_eq!(callable.contract_function(), &first);
         assert_eq!(callable.contract(), first.contract());
-        assert!(ast.call_effect(callable, vec![]).is_ok());
+        let effect = ast.call_effect(callable.clone(), vec![]).unwrap();
+        assert_eq!(effect.call().callable(), &callable);
+        assert!(effect.call().arguments().is_empty());
         assert_eq!(
             ast.indirect(value, second.clone()),
             Err(E::Registry(CRegistryError::CallableContractMismatch))

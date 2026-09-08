@@ -2,9 +2,9 @@
 
 use super::registry_nominals::{key, registry};
 use crate::ast::{
-    CAllocatorSource, CConstness as Q, CExpressionError as E, CExpressions, CFunctionType,
-    CInterfaceAdapterRef, CLiteral, CNullPointer, CObjectType, CPointerTarget, CRegistry,
-    CRegistryError, CReturnType, CScalarType, CWitnessMethod,
+    CAllocatorSource, CConstness as Q, CConversion, CExpressionError as E, CExpressions,
+    CFunctionType, CInterfaceAdapterRef, CLiteral, CNullPointer, CObjectType, CPointerTarget,
+    CRegistry, CRegistryError, CReturnType, CScalarType, CValueKind, CWitnessMethod,
 };
 use portable_core_ir::CoreDeclaration;
 
@@ -81,11 +81,26 @@ fn adapter_conversions_derive_exact_record_and_preserve_qualifiers() {
         let record = CObjectType::structure(adapter.witness().record().clone())
             .with_constness(qualifier)
             .unwrap();
-        let erased = ast
-            .adapter_erase(adapter.clone(), null(&ast, pointer(record.clone())))
-            .unwrap();
+        let operand = null(&ast, pointer(record.clone()));
+        let erased = ast.adapter_erase(adapter.clone(), operand.clone()).unwrap();
+        assert_eq!(
+            erased.kind(),
+            &CValueKind::Convert {
+                conversion: CConversion::AdapterErase(Box::new(adapter.clone())),
+                operand: Box::new(operand),
+            }
+        );
         assert_eq!(erased.ty(), &void(qualifier));
-        let restored = ast.adapter_restore(adapter.clone(), erased).unwrap();
+        let restored = ast
+            .adapter_restore(adapter.clone(), erased.clone())
+            .unwrap();
+        assert_eq!(
+            restored.kind(),
+            &CValueKind::Convert {
+                conversion: CConversion::AdapterRestore(Box::new(adapter.clone())),
+                operand: Box::new(erased),
+            }
+        );
         assert_eq!(restored.ty(), &pointer(record));
     }
     let other = CObjectType::structure(adapter.witness().interface().clone());
@@ -128,9 +143,17 @@ fn allocation_restore_derives_target_from_registration_without_inventing_live_st
         )
         .unwrap();
     let ast = CExpressions::new(&registry);
+    let operand = null(&ast, void(Q::Unqualified));
     let value = ast
-        .allocation_restore(allocation.clone(), null(&ast, void(Q::Unqualified)))
+        .allocation_restore(allocation.clone(), operand.clone())
         .unwrap();
+    assert_eq!(
+        value.kind(),
+        &CValueKind::Convert {
+            conversion: CConversion::AllocationRestore(Box::new(allocation.clone())),
+            operand: Box::new(operand),
+        }
+    );
     assert_eq!(value.ty(), &pointer(target.clone()));
     assert_eq!(
         ast.allocation_restore(allocation.clone(), null(&ast, void(Q::Const))),

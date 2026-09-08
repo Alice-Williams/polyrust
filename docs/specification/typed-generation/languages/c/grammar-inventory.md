@@ -134,6 +134,10 @@ SameSlot additionally requires both the intermediate slot object and its
 effective object/void target to be unqualified: const T** and const void**
 are borrowed-pointer slots, not owning slots. Array element constness cannot
 hide a borrow inside this category.
+The direct object target must also be storable. KnownObject::File is borrowed
+only, so FILE** cannot be an owning slot even without const. FILE*** is a
+different category: its owned object may be allocated FILE* storage, while
+the contained FILE pointer remains a borrow. Aliases cannot erase this rule.
 Exact call/initializer typing does not hide these conversions implicitly.
 
 ## Initializers, statements and control flow

@@ -68,7 +68,15 @@ fn counted_loop_retains_exact_counter_bound_condition_and_explicit_update() {
             body.clone(),
         )
         .unwrap();
+    assert_eq!(
+        statements
+            .continue_statement(identity.clone())
+            .unwrap()
+            .kind(),
+        &CStatementKind::Continue(identity.clone())
+    );
     let CStatementKind::BoundedLoop {
+        identity: actual_identity,
         progress,
         condition: actual,
         body: actual_body,
@@ -78,6 +86,7 @@ fn counted_loop_retains_exact_counter_bound_condition_and_explicit_update() {
         panic!("counted loop")
     };
     assert_eq!(progress.counter(), &counter);
+    assert_eq!(actual_identity, &identity);
     assert_eq!(progress.bound(), &bound);
     assert_eq!(progress.step(), CCountedStep::One);
     assert_eq!(actual, &condition);

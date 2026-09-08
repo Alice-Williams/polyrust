@@ -32,6 +32,13 @@ fn cases_cover_unsigned_and_authenticated_enumerator_branches() {
         .unwrap();
     let ast = CExpressions::new(&registry);
     let statements = CStatements::new(&registry, function).unwrap();
+    assert_eq!(
+        statements
+            .break_statement(CBreakTarget::Switch(identity.clone()))
+            .unwrap()
+            .kind(),
+        &K::Break(CBreakTarget::Switch(identity.clone()))
+    );
     let body = statements.block(child, vec![statements.empty()]).unwrap();
     let cases = vec![
         CCaseConstant::Unsigned(CUnsignedLiteral::U64(3)),

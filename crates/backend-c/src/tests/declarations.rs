@@ -26,11 +26,13 @@ fn nominal_declarations_derive_the_complete_inventory_and_owning_file() {
     let source = source_file(&mut registry, "src/generated.c", CFileRole::GeneratedSource);
     let record = registry.declare_struct(&header, key("Record")).unwrap();
     let owner = CAggregateRef::Struct(record.clone());
-    assert!(
+    assert_eq!(
         CDeclarations::new(&registry, source.clone())
             .unwrap()
             .forward_tag(owner.clone())
-            .is_ok()
+            .unwrap()
+            .kind(),
+        &CDeclarationKind::ForwardTag(owner.clone())
     );
     assert_eq!(
         CDeclarations::new(&registry, header.clone())

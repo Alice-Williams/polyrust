@@ -2,12 +2,58 @@
 
 use super::registry_nominals::{key, registry};
 use crate::ast::{
-    CAggregateRef, CArrayLength, CConstness, CExpressions, CInitializerError as E, CLiteral,
-    CObjectType, CRegistryError, CScalarType as T, CSignedLiteral,
+    CAggregateRef, CArrayLength, CConstness, CExpressions, CInitializerError as E,
+    CInitializerKind as K, CLiteral, CObjectType, CRegistryError, CScalarType as T, CSignedLiteral,
 };
 
 fn scalar() -> CObjectType {
     CObjectType::scalar(T::I32)
+}
+
+#[test]
+fn initializer_alias_payloads_and_expression_brands_are_not_erased() {
+    let (mut owner, file) = registry();
+    let scalar_alias = owner
+        .register_typedef(&file, key("Number"), scalar())
+        .unwrap();
+    let array_alias = owner
+        .register_typedef(
+            &file,
+            key("Pair"),
+            CObjectType::array(scalar(), CArrayLength::new(2).unwrap()).unwrap(),
+        )
+        .unwrap();
+    let ast = CExpressions::new(&owner);
+    let declared_zero = CObjectType::typedef(scalar_alias);
+    let zero = ast.zero_initializer(declared_zero.clone()).unwrap();
+    assert_eq!(zero.kind(), &K::Zero(declared_zero));
+    let declared_array = CObjectType::typedef(array_alias);
+    let elements = vec![zero.clone(), zero];
+    assert_eq!(
+        ast.array_initializer(declared_array.clone(), elements.clone())
+            .unwrap()
+            .kind(),
+        &K::Array {
+            declared_type: declared_array,
+            elements
+        }
+    );
+    let (foreign, _) = registry();
+    let foreign_value = CExpressions::new(&foreign)
+        .literal(CLiteral::Bool(true))
+        .unwrap();
+    assert_eq!(
+        ast.expression_initializer(foreign_value),
+        Err(E::Expression(crate::ast::CExpressionError::Registry(
+            CRegistryError::CrossRegistry
+        )))
+    );
+    assert_eq!(
+        ast.zero_initializer(CObjectType::known(crate::ast::CKnownObject::File)),
+        Err(E::Type(crate::ast::CTypeError::KnownObjectRequiresPointer(
+            crate::ast::CKnownObject::File
+        )))
+    );
 }
 
 #[test]
@@ -21,6 +67,14 @@ fn expression_zero_and_array_initializers_require_exact_shape_and_brand() {
         )
         .unwrap();
     let zero = ast.zero_initializer(scalar()).unwrap();
+    assert_eq!(zero.kind(), &K::Zero(scalar()));
+    assert_eq!(
+        one.kind(),
+        &K::Expression(
+            ast.literal(CLiteral::Signed(CSignedLiteral::I32(1)))
+                .unwrap()
+        )
+    );
     assert_eq!(one.ty(), &scalar());
     assert_eq!(zero.ty(), &scalar());
     let array = CObjectType::array(
@@ -28,9 +82,15 @@ fn expression_zero_and_array_initializers_require_exact_shape_and_brand() {
         CArrayLength::new(2).unwrap(),
     )
     .unwrap();
-    assert!(
-        ast.array_initializer(array.clone(), vec![one.clone(), zero.clone()])
-            .is_ok()
+    let elements = vec![one.clone(), zero.clone()];
+    assert_eq!(
+        ast.array_initializer(array.clone(), elements.clone())
+            .unwrap()
+            .kind(),
+        &K::Array {
+            declared_type: array.clone(),
+            elements
+        }
     );
     assert_eq!(
         ast.array_initializer(array.clone(), vec![one.clone()]),
@@ -89,15 +149,18 @@ fn struct_initializers_reject_missing_duplicate_wrong_owner_and_reordered_member
         .unwrap();
     let ast = CExpressions::new(&registry);
     let value = ast.zero_initializer(scalar()).unwrap();
-    assert!(
-        ast.struct_initializer(
-            record.clone(),
-            vec![
-                (first.clone(), value.clone()),
-                (second.clone(), value.clone())
-            ]
-        )
-        .is_ok()
+    let members = vec![
+        (first.clone(), value.clone()),
+        (second.clone(), value.clone()),
+    ];
+    assert_eq!(
+        ast.struct_initializer(record.clone(), members.clone())
+            .unwrap()
+            .kind(),
+        &K::Struct {
+            owner: record.clone(),
+            members
+        }
     );
     for fields in [
         vec![],
@@ -148,9 +211,15 @@ fn union_initializers_select_one_exact_registered_member_and_type() {
         .unwrap();
     let ast = CExpressions::new(&registry);
     let value = ast.zero_initializer(scalar()).unwrap();
-    assert!(
-        ast.union_initializer(union.clone(), number, value.clone())
-            .is_ok()
+    assert_eq!(
+        ast.union_initializer(union.clone(), number.clone(), value.clone())
+            .unwrap()
+            .kind(),
+        &K::Union {
+            owner: union.clone(),
+            member: number,
+            value: Box::new(value.clone())
+        }
     );
     assert_eq!(
         ast.union_initializer(union.clone(), flag, value.clone()),

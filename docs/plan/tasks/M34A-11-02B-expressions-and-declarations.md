@@ -166,6 +166,43 @@ lint suppression was introduced. A fresh independent review remains required
 before 02B closes. Hosted CI run 34257746538 completed successfully for the
 earlier construction SHA 2a21a14; that is not hosted proof of this repair delta.
 
+## Second independent construction review
+
+A fresh Sol Extra High reviewer audited immutable
+d58484c6078c44cbff8f0e308eb6abb3e3b3dfe8, the repair delta and all affected
+constructors/registry/contracts. It reported four findings, all accepted:
+
+| Finding | Disposition |
+| --- | --- |
+| P1: matching FILE** still admitted as owning slots | The main agent raised this edge case and the reviewer independently confirmed it. Require the direct effective object target to be storable; reject direct/typedef FILE**, retain FILE*** storage-of-borrow positive |
+| P2: intermediate-const slot guard lacked an independent control | Add equal matching T* const* operands, so type mismatch cannot mask removal of the qualifier guard |
+| P2: declaration/file branch coverage missing | Add Union forward/complete declarations, incomplete/wrong-file enums, wrong-file prototypes/object declarations, exact declaration payloads and Definition file-grouping positives/negatives |
+| P2: retained-child/call/static-initializer evidence incomplete | Assert actual place origins/path children, all literal categories, value/conditional/layout/pointer/conversion children, callable/effect/indirect nonvoid payloads, initializer aliases/elements/members, ordinary statement/file payloads; add arithmetic/address/nested static-initializer positives and dynamic/contaminated-child negatives |
+
+The FILE regression was run before the fix:
+9bf85711-0825-4b2e-9051-1cc9a6d5d7bf failed the single selected test because
+SameSlot returned Ok for matching FILE**. This is expected reproduction evidence,
+not a passing gate. After the storage-category fix and first evidence expansion,
+ed7dbcfa-75b2-41e0-85b2-7736dd8b27ef passed C unit and rustdoc/compile-fail tests.
+Additional exact absent-initializer/void-return/switch-break and alias controls
+were then added. The complete second repair checkpoint passed:
+
+| Gate | Invocation | Result |
+| --- | --- | --- |
+| All tracked rules including Rust/Bazel lint and policies | ff10016c-044c-4b7d-84f3-2f233d872348 | 439 rules; 314 test targets pass, 47 executed |
+| Cached release | 0e281b3e-24aa-469d-86fa-cbc4da1c3918 | 251 test targets pass |
+| Eight-target conformance/determinism | 3c0a7d3e-3a7a-4bfa-a127-9ea06c00d017 | 50 cases and one portable test; evaluator/eight targets agree; repeated manifests byte-identical |
+
+The C unit binary reports 109 passing tests. The same documented container,
+Bazel output root and normal caches were used. Hosted CI run 34261776669 passed
+all eight jobs on the preceding d58484c repair; it is not hosted proof of this
+new delta. A fresh independent review remains required before 02B completion.
+
+The reviewer found no other production defect and confirmed the corrected
+AddConst and aggregate-placement relations. No finding was rejected or
+reclassified as an optional feature. No 02C/02D/03/04 obligation is being
+represented as construction proof, and no new language feature was added.
+
 ## Commit gate
 
 Record exact commands, invocation IDs and outcomes. Commit and push this slice

@@ -78,12 +78,9 @@ fn files_accept_only_items_owned_by_the_exact_registered_group() {
         .unwrap();
     let declarations = CDeclarations::new(&registry, header.clone()).unwrap();
     let item = CFileItem::Declaration(declarations.typedef(alias).unwrap());
-    let file = declarations
-        .source_file(vec![
-            CFileItem::Comment(CComment::new("Generated")),
-            item.clone(),
-        ])
-        .unwrap();
+    let items = vec![CFileItem::Comment(CComment::new("Generated")), item.clone()];
+    let file = declarations.source_file(items.clone()).unwrap();
+    assert_eq!(file.items(), items);
     assert_eq!(file.identity(), &header);
     assert_eq!(file.items().len(), 2);
     let assertion = declarations

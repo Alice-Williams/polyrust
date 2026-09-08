@@ -2,13 +2,15 @@
 
 use super::registry_nominals::{key, registry};
 use crate::ast::{
-    CArrayLength, CConstness, CFunctionType, CKnownObject, CLiteral, CNullPointer, CObjectType,
-    CPointerTarget, CRegistryError, CReturnType, CScalarType, CSignedLiteral, CTypeError,
-    CUnsignedLiteral,
+    CArrayLength, CConstness, CExpressions, CFunctionType, CKnownObject, CLiteral, CNullPointer,
+    CObjectType, CPointerTarget, CRegistryError, CReturnType, CScalarType, CSignedLiteral,
+    CTypeError, CUnsignedLiteral, CValueKind,
 };
 
 #[test]
 fn every_signed_width_preserves_identity_at_its_extremes() {
+    let (registry, _) = registry();
+    let ast = CExpressions::new(&registry);
     use CSignedLiteral as S;
     let cases = [
         (
@@ -25,6 +27,10 @@ fn every_signed_width_preserves_identity_at_its_extremes() {
     for (min, max, scalar) in cases {
         for value in [min, max] {
             assert_eq!(CLiteral::Signed(value).ty(), CObjectType::scalar(scalar));
+            assert_eq!(
+                ast.literal(CLiteral::Signed(value)).unwrap().kind(),
+                &CValueKind::Literal(CLiteral::Signed(value))
+            );
         }
         assert_ne!(min, max);
     }
@@ -36,6 +42,8 @@ fn every_signed_width_preserves_identity_at_its_extremes() {
 
 #[test]
 fn every_unsigned_width_preserves_identity_and_size_progress_literals() {
+    let (registry, _) = registry();
+    let ast = CExpressions::new(&registry);
     use CUnsignedLiteral as U;
     let cases = [
         (U::U8(0), U::U8(u8::MAX), CScalarType::U8),
@@ -47,6 +55,10 @@ fn every_unsigned_width_preserves_identity_and_size_progress_literals() {
     for (min, max, scalar) in cases {
         for value in [min, max] {
             assert_eq!(CLiteral::Unsigned(value).ty(), CObjectType::scalar(scalar));
+            assert_eq!(
+                ast.literal(CLiteral::Unsigned(value)).unwrap().kind(),
+                &CValueKind::Literal(CLiteral::Unsigned(value))
+            );
         }
         assert_ne!(min, max);
     }
@@ -62,11 +74,19 @@ fn every_unsigned_width_preserves_identity_and_size_progress_literals() {
     }
     for value in [false, true] {
         assert_eq!(
+            ast.literal(CLiteral::Bool(value)).unwrap().kind(),
+            &CValueKind::Literal(CLiteral::Bool(value))
+        );
+        assert_eq!(
             CLiteral::Bool(value).ty(),
             CObjectType::scalar(CScalarType::Bool)
         );
     }
     for value in [0, 127, 128, 255] {
+        assert_eq!(
+            ast.literal(CLiteral::CharByte(value)).unwrap().kind(),
+            &CValueKind::Literal(CLiteral::CharByte(value))
+        );
         assert_eq!(
             CLiteral::CharByte(value).ty(),
             CObjectType::scalar(CScalarType::U8)
@@ -76,6 +96,8 @@ fn every_unsigned_width_preserves_identity_and_size_progress_literals() {
 
 #[test]
 fn null_accepts_all_pointer_categories_but_not_scalar_array_or_known_objects() {
+    let (registry, _) = registry();
+    let ast = CExpressions::new(&registry);
     let object = CObjectType::scalar(CScalarType::I32);
     let targets = [
         CPointerTarget::Void(CConstness::Unqualified),
@@ -91,6 +113,12 @@ fn null_accepts_all_pointer_categories_but_not_scalar_array_or_known_objects() {
         let qualified = ty.clone().with_constness(CConstness::Const).unwrap();
         let null = CNullPointer::new(qualified.clone()).unwrap();
         assert_eq!(null.declared_type(), &qualified);
+        assert_eq!(
+            ast.literal(CLiteral::NullPointer(null.clone()))
+                .unwrap()
+                .kind(),
+            &CValueKind::Literal(CLiteral::NullPointer(null.clone()))
+        );
         assert_eq!(CLiteral::NullPointer(null).ty(), ty);
     }
     for ty in CScalarType::ALL

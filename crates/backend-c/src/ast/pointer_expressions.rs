@@ -106,6 +106,7 @@ fn is_slot_type(ty: &CObjectType) -> bool {
         && match slot.kind() {
             CObjectTypeKind::Pointer(CPointerTarget::Object(target)) => {
                 pointee_constness(target) == CConstness::Unqualified
+                    && target.require_storable().is_ok()
             }
             CObjectTypeKind::Pointer(CPointerTarget::Void(qualifier)) => {
                 *qualifier == CConstness::Unqualified

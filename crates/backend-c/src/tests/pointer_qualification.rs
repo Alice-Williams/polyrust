@@ -1,4 +1,37 @@
 //! Exact immediate-pointee transitions and owning-slot categories.
+#[test]
+fn borrowed_file_slots_are_not_owning_slots() {
+    use crate::ast::CKnownObject;
+    let (mut registry, file) = registry();
+    let stream = CObjectType::known(CKnownObject::File);
+    let alias = registry
+        .register_typedef(
+            &file,
+            super::registry_nominals::key("Stream"),
+            stream.clone(),
+        )
+        .unwrap();
+    let ast = CExpressions::new(&registry);
+    for target in [stream, CObjectType::typedef(alias)] {
+        let borrowed_slot = null(&ast, pointer(pointer(target.clone())));
+        assert_eq!(
+            ast.pointer_test(CPointerTest::SameSlot {
+                left: Box::new(borrowed_slot.clone()),
+                right: Box::new(borrowed_slot),
+            }),
+            Err(E::ExpectedOwningSlotPointer)
+        );
+        // Owning allocated storage containing FILE* is a distinct, storable case.
+        let storage_slot = null(&ast, pointer(pointer(pointer(target))));
+        assert!(
+            ast.pointer_test(CPointerTest::SameSlot {
+                left: Box::new(storage_slot.clone()),
+                right: Box::new(storage_slot),
+            })
+            .is_ok()
+        );
+    }
+}
 use super::registry_nominals::registry;
 use crate::ast::{
     CArrayLength, CConstness as Q, CConversion, CExpressionError as E, CExpressions, CLiteral,
@@ -92,6 +125,10 @@ fn same_slot_rejects_borrowed_slots_even_when_both_types_match() {
     let scalar = CObjectType::scalar(CScalarType::I32);
     let qualified = scalar.clone().with_constness(Q::Const).unwrap();
     for (target, accepted) in [
+        (
+            pointer(scalar.clone()).with_constness(Q::Const).unwrap(),
+            false,
+        ),
         (pointer(scalar.clone()), true),
         (pointer(array(scalar, 2)), true),
         (
