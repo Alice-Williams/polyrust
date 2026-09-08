@@ -34,8 +34,11 @@ phase evidence. Ephemeral registry authentication never names an output symbol.
 
 Stage 02A admits generated registrations only. Stage 02B introduces distinct
 closed known-object/constant identities and their actual AST type categories;
-stage 03 completes the authoritative header/completeness/layout metadata and
-callable signatures/contracts, with shared binding and dependency resolution.
+02D-00 adds the authoritative standard-call signatures/obligations and header
+identities required by safety checking. Stage 03 consumes that same catalogue
+for shared binding and dependency resolution; it does not duplicate signatures.
+The [safety analysis](safety-analysis.md) specifies the internal proof boundaries,
+and [known-call contracts](known-call-contracts.md) fixes the initial inventory.
 Known references cannot be fabricated by assigning library spellings to
 generated keys or by attaching caller-supplied type/effect flags.
 

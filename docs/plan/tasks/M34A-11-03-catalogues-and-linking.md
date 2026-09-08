@@ -9,7 +9,9 @@ Resolve every dependency, name and declaration placement from typed references.
 
 ## Definition of done
 
-- Implement CDialect shared AST binding, exact standard/runtime signatures, typed known constants and source-file roles.
+- Implement CDialect shared AST binding using the standard-call foundation from
+  02D-00, and complete structural runtime signatures, constants and file metadata.
+  Reuse its authoritative catalogue; do not duplicate types/effects for linking.
 - Register every exact factory/observer/view/tag family in c/public-value-abi.md;
   retain actual C types for macros, enum constants and integer predicates.
 - Register the complete public allocator protocol aggregate and its exact

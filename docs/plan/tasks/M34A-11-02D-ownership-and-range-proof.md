@@ -8,7 +8,29 @@
 Implement this bounded part of M34A-11-02 without introducing a raw-source path
 or advertising capabilities before their mappings exist.
 
-## Definition of done
+## Ordered implementation slices
+
+The safety work uses the specification in
+[safety-analysis](../../specification/typed-generation/languages/c/safety-analysis.md).
+Implementation begins only after 02C's fresh review closes. These are bounded
+checkpoints, not separate alternatives to the complete verifier:
+
+1. [02D-00: closed library contracts](M34A-11-02D-00-known-call-contracts.md)
+2. [02D-01: constants and layouts](M34A-11-02D-01-constant-and-layout-proof.md)
+3. [02D-02: sequencing and control facts](M34A-11-02D-02-sequencing-and-control-facts.md)
+4. [02D-03: ranges and counted loops](M34A-11-02D-03-ranges-and-counted-loops.md)
+5. [02D-04: ownership and borrows](M34A-11-02D-04-ownership-and-borrows.md)
+6. [02D-05: callable and traversal summaries](M34A-11-02D-05-callable-and-traversal-summaries.md)
+7. [02D-06: composition and fresh review](M34A-11-02D-06-safety-integration.md)
+
+The known-call prerequisite previously grouped with 03 moves to 02D-00 because
+02D must interpret exact library contracts. Stage 03 still owns shared binding,
+headers, native dependencies and linking. There is one catalogue, not temporary
+generated functions masquerading as standard calls. Every slice retains its own
+tests/definition of done; 02D closes only when all seven and the checklist below
+pass. Planning does not count as implementation evidence.
+
+## Complete-stage definition of done
 
 - Derive Empty/Live/Moved/Dropped ownership state, allocator provenance, initialized prefixes, read-only borrow lifetimes and cleanup obligations.
 - Authenticate invocation allocator forwarding across every nested call/helper;

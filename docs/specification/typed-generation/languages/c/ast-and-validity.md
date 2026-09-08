@@ -100,6 +100,9 @@ independently demonstrated invalid shape and cannot join production files.
 Signed arithmetic, shifts, casts, indexing, division and memory operations
 also require the explicit safety rules in the ownership/ABI specification.
 Native compilation alone does not prove absence of undefined behavior.
+The [safety-analysis layers](safety-analysis.md) define how those checks compose;
+the [known-call catalogue](known-call-contracts.md) supplies obligations, never
+caller-authored proof flags.
 
 Only the shared verify/link/certify sequence constructs
 `RenderReadyPackage<CDialect>`. No public or crate-visible source bypass,
