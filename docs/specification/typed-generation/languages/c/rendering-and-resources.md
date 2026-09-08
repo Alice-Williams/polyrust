@@ -2,6 +2,10 @@
 
 - Status: normative for M34A-11
 
+The [platform/resource proof inventory](platform-and-proof.md) specifies
+translation-phase escaping, supported floating-point environment, accounting
+categories and mandatory measured-boundary evidence before certification.
+
 ## Certified formatting
 
 The renderer accepts only certified linked C files through the shared sealed

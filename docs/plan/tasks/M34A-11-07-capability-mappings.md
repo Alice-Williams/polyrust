@@ -17,6 +17,10 @@ Make the consuming builder and exact mapping certificates authoritative for all 
 
 ## Tests and proof
 
+- Add c_capability_plan_test and compare all 42 rows and every closed input
+  variant in c/capability-inventory.md against the executable registry. Missing
+  invocation, mutation or native evidence prevents registering that row.
+
 - Compile-fail missing/duplicate/wrong-capability/wrong-dialect/erased-output/forged-plan contracts.
 - Every closed input variant has an invocation and independently compiled/executed operation fixture.
 - Mutation of selected strategy, operation, signature, ownership/effect or helper evidence fails certification.

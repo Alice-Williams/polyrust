@@ -1,6 +1,6 @@
 # M34A-11-00R — Close the C design-review contract inventory
 
-- Status: planned
+- Status: in-progress
 - Depends on: M34A-11-01R
 
 ## Goal
@@ -73,3 +73,25 @@ optional extensions rather than blockers.
 
 Record amended specifications, actual gate results and every remaining proof
 obligation. Commit and push M34A-11-00R separately; C remains Fail until cutover.
+
+## Amended contract checkpoint (2026-09-08)
+
+callable-abi.md selects opaque records, fixed-width enum/status values, exact
+callable/allocator/lifecycle families, immutable observations, fresh constant
+getters and flat table callbacks. capability-inventory.md enumerates all 42
+capabilities with closed inputs, output categories and proof obligations.
+platform-and-proof.md fixes platform/FP assumptions, preprocessing, native
+dependencies, namespace/ABI mapping, target inventories and non-vacuous native
+proof. The grammar and implementation tasks now refer to these contracts;
+stage 02 is split into four bounded independently tested slices.
+
+- `d0acaa2e-8249-4421-9b56-bc3a6b920b76`: docs and Buildifier pass.
+- `ee4c792a-68c1-4900-ba3d-4090981ad54d`: all 436 tracked rules and 311 tests pass.
+- `7f9ce9dc-3358-409e-b2b6-125e99b4224c`: all 248 release tests pass.
+- `ba2b3ac2-ba50-4393-8036-9b21f9401a5d`: evaluator/eight-target agreement
+  for 50 cases and one portable test; repeated manifests agree.
+
+These green tests validate the existing regression baseline and documentation,
+not implementation of the new C design. In particular, measured numeric
+resource budgets, new native targets and all 42 C mappings remain mandatory
+work at their owning stages. Fresh immutable design review is still pending.

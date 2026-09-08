@@ -17,6 +17,11 @@ Cover the complete portable value algebra and polymorphism with verified ownersh
 
 ## Tests and proof
 
+- Add c_ownership_fault_test and c_public_abi_test against the exact
+  c/callable-abi.md contract, with allocation-site inventory and both optimizer/
+  sanitizer matrices from c/platform-and-proof.md. Include interface values
+  in legacy payload-enum fields and zero-implementation interface nesting.
+
 - Native separate consumers for aggregate construction/projection/equality, each tag, nested ownership and independent clones.
 - Distinct-NaN-payload and signed-zero matrices through every aggregate;
   representation-preservation audits separately require exact raw bits.

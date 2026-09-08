@@ -2,6 +2,9 @@
 
 - Status: normative; reuses the completed Java contract, not Java mappings
 
+The [exhaustive strategy inventory](capability-inventory.md) defines every
+capability's closed input family, output category and C-specific obligations.
+
 The shared catalogue's 42 capabilities and all closed input variants define
 the migration inventory. `CPluginBuilder.support(mapping)` consumes a Missing
 slot and stores the exact checked executable handler. Missing/unsupported

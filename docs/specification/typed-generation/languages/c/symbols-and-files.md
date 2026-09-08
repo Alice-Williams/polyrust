@@ -2,6 +2,10 @@
 
 - Status: normative for M34A-11
 
+The [platform and namespace contract](platform-and-proof.md) fixes macro
+reservations, visible ABI name allocation, system-link requirements and
+non-executable metadata ownership.
+
 Closed known-type/function/constant enums own authoritative identifiers,
 header origins, exact prototypes, qualifier and ownership contracts, allocation
 effects and required platform properties. Generated references own their

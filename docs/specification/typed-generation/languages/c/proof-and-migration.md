@@ -2,6 +2,10 @@
 
 - Status: normative for M34A-11
 
+The [exact platform/command/target inventory](platform-and-proof.md) specifies
+the admitted build environment, isolated negative shape, no-vacuity controls
+and historical membership. Planned target names are not passing evidence.
+
 ## Gates
 
 1. Rust compile-fail: wrong AST category, invalid fixed signature, missing/

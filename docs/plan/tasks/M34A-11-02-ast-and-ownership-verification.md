@@ -7,6 +7,16 @@
 
 Make local grammar, symbol and safety obligations explicit before a C package can become verified.
 
+## Implementation slices
+
+This milestone is intentionally split into independently tested checkpoints;
+it closes only when all four do. Each new source module remains focused.
+
+1. [02A — Registries and nominal identities](M34A-11-02A-registries-and-nominals.md)
+2. [02B — Expressions, declarations and files](M34A-11-02B-expressions-and-declarations.md)
+3. [02C — Contextual scope and control flow](M34A-11-02C-scope-and-flow.md)
+4. [02D — Ownership, bounds and arithmetic proof](M34A-11-02D-ownership-and-range-proof.md)
+
 ## Definition of done
 
 - Add typed expressions, places, statements, initializers, declarations/definitions, nominal/member/function registrations and file-role nodes.

@@ -17,6 +17,10 @@ Resolve every dependency, name and declaration placement from typed references.
 
 ## Tests and proof
 
+- Enforce the macro/name/typed Math dependency and public ABI identity-map
+  contracts in c/platform-and-proof.md, including negative link and collision
+  controls. Test-only stdio/fenv dependencies cannot leak into scalar packages.
+
 - Exact include/placement matrices, idempotent duplicate references and unused-dependency elimination.
 - Pointer-cycle positive / by-value-cycle negative; typedef/tag versus ordinary namespace collisions; same-signature wrong-owner references.
 - Missing/extra/moved file and declaration inventory fault injection; repeated linking/dumps deterministic.

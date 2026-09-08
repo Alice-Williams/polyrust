@@ -65,7 +65,7 @@ the exact erased/restored record, interface, witness and function table.
 | Category | Closed variants and payloads |
 | --- | --- |
 | Initializer | Expression(value), Zero(object type), Array(ordered complete element initializers), Struct(exact registered member initializers), Union(one registered member, initializer) |
-| Statement | Empty, Block(ordered statements), Declare(local declaration), Assign(place, value), Evaluate(void/effect expression), If(condition, then block, else block), BoundedLoop(loop registration, body), Switch(value, arms, default block), Break(enclosing loop/switch identity), Continue(enclosing loop identity), Return(optional value), CleanupJump(exit identity), Label(exit identity, statement) |
+| Statement | Empty, Block(ordered statements), Declare(local declaration), Assign(place, value), Evaluate(void/effect expression), Discard(value), If(condition, then block, else block), BoundedLoop(loop registration, body), Switch(value, arms, default block), Break(enclosing loop/switch identity), Continue(enclosing loop identity), Return(optional value), CleanupJump(exit identity), Label(exit identity, statement) |
 | Case constant | Exact integer or registered payload-free enumerator, converted to the switch's promoted type before duplicate checking |
 | Switch arm | Nonempty list of case constants plus a block; implicit fallthrough is prohibited |
 | Loop registration | Counter/bound/step identities with checked initialization, bound, progress and overflow obligations |
@@ -90,7 +90,7 @@ bare declaration, bypass initialization or skip destruction.
 | Linkage | External, Internal, None; only legal declaration/context combinations |
 | Storage | Automatic, Static, Extern; reject incompatible linkage, file role or initializer combinations |
 | File role | GeneratedPublicHeader, GeneratedSource, RuntimePublicHeader, RuntimeSource, PrivateHeader, TestSource, NegativeTestSource |
-| File item | Declaration, Definition, StaticAssert(checked constant expression, escaped diagnostic), IncludeGuard(derived file identity), ResolvedInclude(known header or registered local header) |
+| File item | Declaration, Definition, Comment(normalized non-executable documentation), StaticAssert(checked constant expression, escaped diagnostic), IncludeGuard(derived file identity), ResolvedInclude(known header or registered local header) |
 
 No anonymous aggregate, tentative public object definition, inline/restrict/
 thread-local declaration, executable preprocessor macro or arbitrary directive
@@ -98,6 +98,12 @@ is initially admitted. Enumerators fit C int and share the ordinary namespace.
 Include/guard items are linker-owned, not attached by portable lowering.
 External symbols are unique package-wide; internal symbols cannot appear in
 public API references. Test roles cannot supply production definitions.
+Discard renders a void conversion without allowing void as an ordinary value.
+Comment normalization follows platform-and-proof.md; user text never owns
+delimiters. Known library typedefs (including opaque FILE in test-only stdio
+calls) use registered typedef origins and completeness information, not raw
+type spellings. The initial public ABI supports C consumers, not C++ linkage
+wrappers; no unmodelled extern-language directive is emitted.
 Deliberate compiler-negative tests use a closed isolated wrong-type fixture
 outside production certificates; negative role alone authorizes no invalid AST.
 

@@ -5,13 +5,13 @@
 One portable interface produces a concrete opaque owning handle and a private
 flat function-table type. Each table method has an exact prototype, typed
 receiver context, immutable arguments, result/ABI transport contract and
-lifecycle operations. A table identity includes the interface, implementation
+lifecycle operations from the [exact ABI](callable-abi.md). A table identity includes the interface, implementation
 witness and concrete record type. The context pointer may be erased only by a
 closed, verified adapter which restores that exact record; a matching C cast
 alone is not conformance evidence.
 
 The Interfaces mapping owns declaration, method prototypes, each complete
-implementation bundle, table construction, clone/move/drop, conversion through
+implementation bundle, table construction, clone/drop callbacks, handle move, conversion through
 the exact witness, concrete dispatch and interface dispatch. Multiple
 conformance uses distinct typed tables; method names and positions are not
 global string keys. Composition forwards through named concrete fields, with
@@ -25,7 +25,7 @@ can still represent their other variants. No foreign vtable registration API
 is exposed by default.
 
 All admitted type positions support interface values, including nested lists,
-records, options and results. Copies preserve independent value ownership.
+records, options, results and legacy payload-enum fields. Copies preserve independent value ownership.
 Interface values are never directly or recursively equality-comparable:
 records, lists, options and results containing them cannot acquire equality
 support. Equality of other concrete values follows portable semantics, never

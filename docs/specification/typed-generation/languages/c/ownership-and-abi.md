@@ -3,6 +3,9 @@
 - Status: normative for M34A-11
 - Replaces the historical M22B layout, not the portable value semantics
 
+The [deterministic callable/lifecycle ABI](callable-abi.md) fixes all public
+representations, pass modes, statuses, allocator callbacks and alias rules.
+
 ## Public values and compatibility
 
 Preserve target ID `org.polyrust.c` and package entry paths
@@ -11,7 +14,7 @@ and native test entry points. The dialect/version is C17. The former
 `org.polyrust.c17` specification spelling was not the registered target ID.
 
 Scalars use exact fixed-width values, validated Unicode scalars and binary64.
-Owning text, bytes, lists, records with owned data, options/results and interface
+Owning text, bytes, lists, all records, options/results and interface
 values use opaque handles with concrete monomorphized identities. Public headers
 do not reveal mutable backing storage, union payloads, allocator fields or
 vtable construction. Public operations expose checked factories, immutable
@@ -21,8 +24,8 @@ length, are read-only and are valid only while the owner remains alive.
 This intentionally changes the old public mutable-layout ABI. Update separate
 consumer fixtures and ABI documentation at cutover with equivalent observations;
 do not silently preserve a mutable escape to keep an old text snapshot passing.
-Scalar-only value structs may remain by-value when all fields preserve the
-specified immutable semantic boundary. The implementation owns their constructors.
+Scalar-only records are opaque too; layout optimization does not silently
+change their public ABI. The implementation owns their constructors.
 
 C cannot stop an arbitrary foreign caller from copying raw pointers, forging
 addresses, casting away const or violating a documented borrow lifetime.
@@ -50,7 +53,8 @@ element-size and growth additions are checked before allocation.
 
 Portable computation failures remain generated result values with the exact
 portable error code/payload. A separate closed ABI transport status reports
-allocation failure or invalid foreign input; it is not a new portable error,
+allocation failure, runtime capacity, invalid state or invalid foreign input;
+it is not a new portable error,
 an errno channel, a null option or process termination. An empty/moved handle
 is a lifecycle state, not a constructed portable value.
 

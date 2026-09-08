@@ -14,11 +14,14 @@ discipline, not C syntax or ownership implementation.
 - [Module ownership and Bazel boundaries](c/module-layout.md)
 - [AST, declarators and validity](c/ast-and-validity.md)
 - [Ownership, sequencing, safety and ABI](c/ownership-and-abi.md)
+- [Exact callable, allocator and lifecycle ABI](c/callable-abi.md)
 - [Interfaces and composition](c/interfaces.md)
 - [Capability admission and mapping certificates](c/mapping-certificates.md)
+- [All 42 capability strategies](c/capability-inventory.md)
 - [Catalogues, linking, includes and files](c/symbols-and-files.md)
 - [Structural rendering and target resources](c/rendering-and-resources.md)
 - [Proof and migration protocol](c/proof-and-migration.md)
+- [Platform, namespace, resource and exact proof inventory](c/platform-and-proof.md)
 
 ## Inferred typed-program admission
 
@@ -31,7 +34,9 @@ emulation does not justify an empty, wildcard, or default support claim.
 ## 1. Scope and package
 
 The plugin emits self-contained public headers, implementation/runtime C files,
-native/conformance tests, negative compilation fixtures, and build metadata. A
+native/conformance tests, isolated negative compilation fixtures, and typed
+non-executable dependency/ABI metadata. No executable BUILD or shell source is
+generated; the external harness consumes the manifest's typed requirements. A
 separate translation unit MUST consume the public header without include-order
 assumptions. The generated package has no undeclared third-party dependency.
 
@@ -66,7 +71,7 @@ declaration/declarator escape and no executable C source string.
 
 | CoreIR type | C17 representation |
 | --- | --- |
-| Unit | generated one-byte/empty-semantic value struct |
+| Unit | uint8_t with the single valid value zero |
 | Bool | `bool` from `<stdbool.h>` |
 | I32 / I64 | `int32_t` / `int64_t` plus checked helpers |
 | F64 | `double` with `memcpy`-based exact raw-bit helpers |
@@ -76,8 +81,8 @@ declaration/declarator escape and no executable C source string.
 | List<T> | generated monomorphized immutable owned list struct |
 | Option<T> | generated monomorphized tag/payload struct |
 | Result<T,E> | generated monomorphized tag/payload struct |
-| Record | generated value/owned struct with lifecycle functions as required |
-| Enum | payload-free named enum; legacy payload enums use a separate checked tag/payload compatibility plan |
+| Record | opaque owned handle for every record, including scalar-only records |
+| Enum | nominal uint32_t ABI plus validated named constant tags; legacy payload enums use a separate opaque tag/payload compatibility plan |
 | Interface | generated owning context plus flat typed function table |
 
 Public owning representations are opaque, with private concrete layouts as
@@ -88,15 +93,16 @@ unbounded pointers, sentinel-null options, or implicit borrowed lifetimes.
 
 ## 5. Declarations and control
 
-- Constants use C constant expressions only when exact; other immutable values
-  use deterministic initialization APIs with typed state.
+- Constants have allocator-parameterized fresh-value getters; exact private
+  backing data may be static const, never a mutable owning singleton.
 - Generic CoreIR aggregates are monomorphized with stable collision-safe names.
 - Tagged matches lower to exhaustive `switch` statements with guarded union
   access.
 - Explicit temporaries sequence every receiver/argument because C operand and
   argument evaluation order cannot be assumed.
-- Normal portable failure is returned as generated `Result`, never `errno`,
-  `abort`, or an unchecked null.
+- Normal portable failure is returned as a computational outcome, distinct
+  from ordinary portable Result<T,E> and ABI transport status; never errno,
+  abort or an unchecked null.
 - Arithmetic and shifts avoid signed overflow/invalid shift UB; float raw bits
   use `memcpy`; text and size conversions are checked.
 
@@ -104,8 +110,8 @@ unbounded pointers, sentinel-null options, or implicit borrowed lifetimes.
 
 Each portable interface lowers to an owning immutable handle containing a
 private context pointer and a pointer to a flat typed function table. The table
-contains every interface method plus typed clone/move/drop operations required
-by the ownership strategy. Constructors pair a concrete generated value with
+contains every interface method plus typed clone/drop callbacks. Move transfers
+the owning handle without a callback. Constructors pair a concrete generated value with
 the exact table; calls use typed nodes and never member-name strings.
 
 The context address and table are not observable portable identity. Interface
@@ -122,7 +128,10 @@ and macro-generated polymorphism are forbidden.
 
 Closed catalogues include exact admitted types/macros/functions from
 `stdint.h`, `stdbool.h`, `stddef.h`, `limits.h`, `float.h`, `stdlib.h`,
-`string.h`, `math.h`, and generated runtime declarations. A macro is catalogued
+`string.h`, `math.h`, and generated runtime declarations. Test-only native
+oracles additionally admit catalogued stdio.h/fenv.h entries, including fputs
+and floating-environment observations; no variadic printf shortcut is admitted.
+A macro is catalogued
 only as a typed constant/property, never as an opaque executable fragment.
 
 Each callable records header, linkage, identifier, function-pointer/direct call
@@ -146,10 +155,11 @@ admitted operation. Cleanup paths are generated structurally and verified.
 ## 9. File and package policy
 
 Typed file roles select public header, private/runtime header, implementation,
-runtime implementation, tests, and build files. The resolver owns include
-guards, C++ linkage compatibility guards where policy requires, declarations
+runtime implementation and tests; manifest metadata is non-executable. The resolver owns include
+guards, declarations
 versus definitions, static/internal linkage, initialization order, and
-deterministic symbol/file ordering. Public headers are self-contained.
+deterministic symbol/file ordering. Public headers are self-contained. The
+initial C17 ABI promises C consumers; C++ linkage wrappers are not emitted.
 
 ## 10. Rendering
 
