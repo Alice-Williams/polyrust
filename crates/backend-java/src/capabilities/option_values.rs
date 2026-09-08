@@ -1,5 +1,7 @@
 //! Java mapping for `OptionValues`.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, OptionValues};
 use portable_diagnostics::Diagnostic;
 
@@ -11,6 +13,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaOptionInput {
     Type {
         inner: JavaType,
@@ -29,7 +32,12 @@ pub enum JavaOptionInput {
 pub struct JavaOptionValues;
 
 impl sealed::JavaCapabilityMapping for JavaOptionValues {}
-impl JavaCapabilityMapping for JavaOptionValues {}
+impl JavaCapabilityMapping for JavaOptionValues {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaOptionValues {
     type Capability = OptionValues;

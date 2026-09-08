@@ -1,5 +1,7 @@
 //! Java mapping for the complete `PatternMatching` capability.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, PatternMatching};
 use portable_core_ir::CoreFieldId;
 use portable_diagnostics::Diagnostic;
@@ -15,6 +17,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaPatternFieldBindingInput {
     pub(crate) binding_name: String,
     pub(crate) binding_type: JavaType,
@@ -24,6 +27,7 @@ pub struct JavaPatternFieldBindingInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaPatternInput {
     Wildcard,
     Bool {
@@ -57,18 +61,21 @@ pub enum JavaPatternInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaLoweredPattern {
     pub(crate) condition: JavaExpr,
     pub(crate) bindings: Vec<JavaStmt>,
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaMatchArmInput {
     pub(crate) pattern: JavaLoweredPattern,
     pub(crate) body: JavaBlock,
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaMatchInput {
     pub(crate) prefix: Vec<JavaStmt>,
     pub(crate) matched: JavaExpr,
@@ -79,12 +86,14 @@ pub struct JavaMatchInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaPatternMatchPlan {
     pub(crate) statements: Vec<JavaStmt>,
     pub(crate) value: JavaExpr,
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaPatternMatchingInput {
     Pattern(Box<JavaPatternInput>),
     Match(Box<JavaMatchInput>),
@@ -95,6 +104,7 @@ pub enum JavaPatternMatchingInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaPatternMatchingNode {
     Pattern(Box<JavaLoweredPattern>),
     Match(Box<JavaPatternMatchPlan>),
@@ -109,7 +119,12 @@ impl super::support::JavaMappingOutput for JavaPatternMatchingNode {}
 pub struct JavaPatternMatching;
 
 impl sealed::JavaCapabilityMapping for JavaPatternMatching {}
-impl JavaCapabilityMapping for JavaPatternMatching {}
+impl JavaCapabilityMapping for JavaPatternMatching {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaPatternMatching {
     type Capability = PatternMatching;

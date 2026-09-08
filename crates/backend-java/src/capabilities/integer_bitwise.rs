@@ -1,5 +1,7 @@
 //! Java mapping for `IntegerBitwise`.
 
+mod mapping_plan;
+
 use portable_build::IntegerBitwise;
 
 use super::support::java_operation_mapping;
@@ -9,6 +11,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaIntegerBitwiseInput {
     Not {
         operand: JavaExpr,
@@ -34,7 +37,7 @@ pub enum JavaIntegerBitwiseInput {
 fn lower_integer_bitwise(
     input: JavaIntegerBitwiseInput,
 ) -> Result<JavaIntrinsicExpr, Vec<portable_diagnostics::Diagnostic>> {
-    Ok(JavaIntrinsicExpr::Direct(match input {
+    Ok(JavaIntrinsicExpr::Infallible(match input {
         JavaIntegerBitwiseInput::Not { operand, result } => {
             unary(JavaUnaryOperator::BitNot, operand, result)
         }

@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 
 pub(crate) mod capability_fixtures;
 mod mapping_coverage;
+mod mapping_short_circuit;
 pub(crate) mod match_dispatch;
 mod name_identity_consumers;
 mod nested_payload_matches;

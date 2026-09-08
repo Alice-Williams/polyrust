@@ -1,5 +1,7 @@
 //! Java mapping for the complete `Modules` capability.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, Modules};
 use portable_codegen::{GeneratedSymbolId, GeneratedTypeId, SourceRole, TargetFile};
 use portable_diagnostics::Diagnostic;
@@ -15,6 +17,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaModuleInput {
     pub(crate) conformances: crate::ast::JavaConformanceInventory,
     pub(crate) entry: GeneratedTypeId,
@@ -27,7 +30,12 @@ pub struct JavaModuleInput {
 pub struct JavaModules;
 
 impl sealed::JavaCapabilityMapping for JavaModules {}
-impl JavaCapabilityMapping for JavaModules {}
+impl JavaCapabilityMapping for JavaModules {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaModules {
     type Capability = Modules;

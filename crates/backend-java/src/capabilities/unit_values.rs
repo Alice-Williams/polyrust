@@ -1,5 +1,7 @@
 //! Java mapping for the complete `UnitValues` capability.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, UnitValues};
 use portable_diagnostics::Diagnostic;
 
@@ -12,6 +14,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaUnitValuesInput {
     Type,
     Value,
@@ -22,7 +25,12 @@ pub enum JavaUnitValuesInput {
 pub struct JavaUnitValues;
 
 impl sealed::JavaCapabilityMapping for JavaUnitValues {}
-impl JavaCapabilityMapping for JavaUnitValues {}
+impl JavaCapabilityMapping for JavaUnitValues {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaUnitValues {
     type Capability = UnitValues;

@@ -10,6 +10,10 @@ use portable_build::{
     LanguagePluginBuilder, MarkUnsupported, ReplaceMissing, language_plugin,
 };
 use portable_codegen::TargetFile;
+use portable_diagnostics::Diagnostic;
+
+pub mod plans;
+use plans::JavaMappingPlan;
 
 pub(crate) mod sealed {
     pub trait JavaCapabilityMapping {}
@@ -53,32 +57,24 @@ impl JavaMappingOutput for TargetFile<JavaDialect> {}
 ///     mapping.lower(&mut (), true).unwrap();
 /// ```
 pub trait JavaCapabilityMapping:
-    sealed::JavaCapabilityMapping + CapabilityMapping<JavaDialect> + Copy + Send + Sync
+    sealed::JavaCapabilityMapping
+    + CapabilityMapping<JavaDialect, Error = Vec<Diagnostic>>
+    + Copy
+    + Send
+    + Sync
 where
     Self::Output: JavaMappingOutput,
 {
+    type Plan: JavaMappingPlan<Output = Self::Output>;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>>;
 }
 
-/// Transparent registration wrapper used to prove that every Java plugin slot
-/// is actually invoked. Its recorder is compiled only into this crate's tests.
+/// Automatically registered mapping: select first, lower, then authenticate output.
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
-pub struct ObservedJavaMapping<M>(M);
+pub struct CheckedJavaMapping<M>(M);
 
-pub const fn observed<M>(mapping: M) -> ObservedJavaMapping<M> {
-    ObservedJavaMapping(mapping)
-}
-
-impl<M: JavaCapabilityMapping> sealed::JavaCapabilityMapping for ObservedJavaMapping<M> where
-    M::Output: JavaMappingOutput
-{
-}
-impl<M: JavaCapabilityMapping> JavaCapabilityMapping for ObservedJavaMapping<M> where
-    M::Output: JavaMappingOutput
-{
-}
-
-impl<M> CapabilityMapping<JavaDialect> for ObservedJavaMapping<M>
+impl<M> CapabilityMapping<JavaDialect> for CheckedJavaMapping<M>
 where
     M: JavaCapabilityMapping,
     M::Output: JavaMappingOutput,
@@ -95,7 +91,16 @@ where
         input: Self::Input,
     ) -> Result<Self::Output, Self::Error> {
         record_java_mapping_invocation::<M::Capability, M::Input>(&input);
-        self.0.lower(context, input)
+        let plan = self.0.select_plan(&input)?;
+        let output = self.0.lower(context, input)?;
+        if !plan.verify_output(&output) {
+            return Err(vec![crate::lower::diagnostic(&format!(
+                "Java {:?} mapping violated its {:?} output plan",
+                M::Capability::ID,
+                plan.representation(),
+            ))]);
+        }
+        Ok(output)
     }
 }
 
@@ -178,13 +183,23 @@ pub(crate) fn java_mapping_operation_counts() -> std::collections::BTreeMap<&'st
 /// fn accepts_java_output<T: JavaMappingOutput>() {}
 /// accepts_java_output::<String>();
 /// ```
+///
+/// A checked mapping cannot be registered a second time as a raw handler:
+///
+/// ```compile_fail
+/// use portable_backend_java::capabilities::{java_plugin_builder, JavaBoolValues};
+/// use portable_build::BoolValues;
+/// let plugin = java_plugin_builder().support(JavaBoolValues).build();
+/// let checked = *plugin.mapping_for::<BoolValues>();
+/// let _ = java_plugin_builder().support(checked);
+/// ```
 pub struct JavaPluginBuilder<Slots = EmptyCapabilitySlots> {
     inner: LanguagePluginBuilder<JavaDialect, Slots>,
 }
 
 type JavaRegisteredSlots<Slots, M> = <Slots as ReplaceMissing<
     <<M as CapabilityMapping<JavaDialect>>::Capability as Capability>::Index,
-    M,
+    CheckedJavaMapping<M>,
 >>::Output;
 
 type JavaUnsupportedSlots<Slots, C> =
@@ -201,10 +216,10 @@ impl<Slots> JavaPluginBuilder<Slots> {
     where
         M: JavaCapabilityMapping,
         M::Output: JavaMappingOutput,
-        Slots: ReplaceMissing<<M::Capability as Capability>::Index, M>,
+        Slots: ReplaceMissing<<M::Capability as Capability>::Index, CheckedJavaMapping<M>>,
     {
         JavaPluginBuilder {
-            inner: self.inner.support(mapping),
+            inner: self.inner.support(CheckedJavaMapping(mapping)),
         }
     }
 
@@ -230,7 +245,15 @@ macro_rules! java_operation_mapping {
         pub struct $mapping;
 
         impl crate::capabilities::support::sealed::JavaCapabilityMapping for $mapping {}
-        impl crate::capabilities::support::JavaCapabilityMapping for $mapping {}
+        impl crate::capabilities::support::JavaCapabilityMapping for $mapping {
+            type Plan = mapping_plan::Plan;
+            fn select_plan(
+                &self,
+                input: &Self::Input,
+            ) -> Result<Self::Plan, Vec<portable_diagnostics::Diagnostic>> {
+                mapping_plan::select(input)
+            }
+        }
 
         impl portable_build::CapabilityMapping<crate::dialect::JavaDialect> for $mapping {
             type Capability = $capability;
@@ -251,3 +274,29 @@ macro_rules! java_operation_mapping {
 }
 
 pub(crate) use java_operation_mapping;
+
+macro_rules! java_input_plan {
+    ($input:ty, $output:ty) => {
+        pub struct Plan {
+            input: $input,
+        }
+        pub(super) fn select(
+            input: &$input,
+        ) -> Result<Plan, Vec<portable_diagnostics::Diagnostic>> {
+            Ok(Plan {
+                input: input.clone(),
+            })
+        }
+        impl crate::capabilities::support::plans::sealed::JavaMappingPlan for Plan {}
+        impl crate::capabilities::support::plans::JavaMappingPlan for Plan {
+            type Output = $output;
+            fn representation(&self) -> crate::capabilities::support::plans::JavaRepresentation {
+                representation(&self.input)
+            }
+            fn verify_output(&self, output: &Self::Output) -> bool {
+                verify(&self.input, output)
+            }
+        }
+    };
+}
+pub(crate) use java_input_plan;

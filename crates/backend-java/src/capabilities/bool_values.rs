@@ -1,5 +1,7 @@
 //! Java mapping for `BoolValues`.
 
+mod mapping_plan;
+
 use portable_build::{BoolValues, CapabilityMapping};
 use portable_diagnostics::Diagnostic;
 
@@ -11,6 +13,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaBoolValuesInput {
     Type,
     Value(bool),
@@ -21,7 +24,12 @@ pub enum JavaBoolValuesInput {
 pub struct JavaBoolValues;
 
 impl sealed::JavaCapabilityMapping for JavaBoolValues {}
-impl JavaCapabilityMapping for JavaBoolValues {}
+impl JavaCapabilityMapping for JavaBoolValues {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaBoolValues {
     type Capability = BoolValues;

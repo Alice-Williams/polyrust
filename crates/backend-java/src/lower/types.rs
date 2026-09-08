@@ -2,6 +2,7 @@
 
 use super::{Lowering, diagnostic};
 use crate::ast::{JavaKnownType, JavaType};
+use crate::capabilities::JavaEnumShape;
 use crate::capabilities::{
     JavaBoolValuesInput, JavaBytesInput, JavaCharValuesInput, JavaEnumsInput, JavaEnumsNode,
     JavaF64ValuesInput, JavaI32ValuesInput, JavaI64ValuesInput, JavaInterfacesInput,
@@ -122,6 +123,11 @@ impl Lowering<'_> {
                 &mut (),
                 JavaEnumsInput::Type {
                     enumeration: self.enums[id],
+                    shape: if self.enum_is_payload_free(*id) {
+                        JavaEnumShape::Native
+                    } else {
+                        JavaEnumShape::Payload
+                    },
                 },
             )? {
                 JavaEnumsNode::Type(ty) => Ok(ty),

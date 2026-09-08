@@ -1,5 +1,7 @@
 //! Java mapping for `CharValues`.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, CharValues};
 use portable_diagnostics::Diagnostic;
 
@@ -11,6 +13,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaCharValuesInput {
     Type,
     Value(char),
@@ -21,7 +24,12 @@ pub enum JavaCharValuesInput {
 pub struct JavaCharValues;
 
 impl sealed::JavaCapabilityMapping for JavaCharValues {}
-impl JavaCapabilityMapping for JavaCharValues {}
+impl JavaCapabilityMapping for JavaCharValues {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaCharValues {
     type Capability = CharValues;

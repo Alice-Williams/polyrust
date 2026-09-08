@@ -1,5 +1,7 @@
 //! Java mapping for `BytesOperations`.
 
+mod mapping_plan;
+
 use portable_build::BytesOperations;
 
 use super::support::java_operation_mapping;
@@ -10,6 +12,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaBytesOperationsInput {
     Length {
         bytes: JavaExpr,
@@ -58,7 +61,7 @@ fn lower_bytes_operations(
             result,
         ),
     };
-    Ok(JavaIntrinsicExpr::Direct(runtime_call(
+    Ok(JavaIntrinsicExpr::Infallible(runtime_call(
         callable, arguments, result,
     )))
 }

@@ -1,5 +1,7 @@
 //! Java mapping for the complete payload-free `Enums` capability.
 
+mod mapping_plan;
+
 use std::collections::BTreeSet;
 
 use portable_build::{CapabilityMapping, Enums};
@@ -19,12 +21,14 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaEnumVariantInput {
     pub(crate) declared: GeneratedValueId,
     pub(crate) name: String,
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaEnumPayloadVariantInput {
     pub(crate) declared: GeneratedTypeId,
     pub(crate) name: String,
@@ -33,6 +37,7 @@ pub struct JavaEnumPayloadVariantInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaEnumBranchInput {
     pub(crate) variant: GeneratedValueId,
     pub(crate) body: JavaBlock,
@@ -46,6 +51,14 @@ pub enum JavaEnumEqualityOperator {
 }
 
 #[doc(hidden)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum JavaEnumShape {
+    Native,
+    Payload,
+}
+
+#[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaEnumsInput {
     PayloadDeclaration {
         declared: GeneratedTypeId,
@@ -55,6 +68,7 @@ pub enum JavaEnumsInput {
     },
     Type {
         enumeration: GeneratedTypeId,
+        shape: JavaEnumShape,
     },
     Declaration {
         declared: GeneratedTypeId,
@@ -86,6 +100,7 @@ pub enum JavaEnumsInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaEnumsNode {
     Type(JavaType),
     Declaration(Vec<JavaTypeDeclaration>),
@@ -101,7 +116,12 @@ impl super::support::JavaMappingOutput for JavaEnumsNode {}
 pub struct JavaEnums;
 
 impl sealed::JavaCapabilityMapping for JavaEnums {}
-impl JavaCapabilityMapping for JavaEnums {}
+impl JavaCapabilityMapping for JavaEnums {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaEnums {
     type Capability = Enums;
@@ -155,7 +175,9 @@ impl CapabilityMapping<JavaDialect> for JavaEnums {
                 }));
                 Ok(JavaEnumsNode::Declaration(declarations))
             }
-            JavaEnumsInput::Type { enumeration } => Ok(JavaEnumsNode::Type(enum_type(enumeration))),
+            JavaEnumsInput::Type { enumeration, .. } => {
+                Ok(JavaEnumsNode::Type(enum_type(enumeration)))
+            }
             JavaEnumsInput::Declaration {
                 declared,
                 visibility,

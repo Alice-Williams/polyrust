@@ -54,7 +54,7 @@ impl Lowering<'_> {
                     "Java Enums mapping returned a non-expression for equality",
                 )]);
             };
-            return Ok(JavaIntrinsicExpr::Direct(*equal));
+            return Ok(JavaIntrinsicExpr::Infallible(*equal));
         }
         let mut context = ();
         match classify_intrinsic(value, result)? {

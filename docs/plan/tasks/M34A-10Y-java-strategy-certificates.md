@@ -83,7 +83,8 @@ verification, not a fictitious preflight native/emulated decision.
 
 ## Stage 1 implementation and review
 
-Exact admission is implemented; checked invocation plans remain open.
+Exact admission was implemented in the first checkpoint; the next section records
+the subsequent checked-invocation implementation.
 JavaLoweringStrategy and the central Native/Emulated strategy switch are gone.
 The single shared capability catalogue now supplies enum-valued CapabilityId
 identities alongside compile-time slot indices. Admission records exact checked
@@ -117,3 +118,55 @@ program-level service inventory. The focused Java/strict-lint gate passes all
 the explicit release gate passes 246/246, and deterministic conformance passes
 50 cases plus one portable test across the evaluator and all eight targets.
 None of this closes stage 2 or the overall Java integration milestone.
+
+## Stage 2 implementation and working-tree review
+
+All 42 registered capability mappings now require an associated output-typed
+plan and a no-default selector. The builder automatically stores the checked
+wrapper, selects before lowering on the same supplied instance, and rejects
+actual-output mismatches with diagnostics. Every capability owns a small plan
+module; shared helpers are closed skeletons, not a central strategy classifier.
+Intrinsic `Direct` was renamed `Infallible` to avoid mislabelling runtime calls.
+
+The broad Sol Extra High working-tree review found eight accepted core contract
+gaps, all repaired with independent mutations:
+
+1. Preserve native/payload enum type shape in the plan input.
+2. Reject non-orderable Java representations instead of a native fallback.
+3. Authenticate structured Boolean owned-node types.
+4. Authenticate portable-test helper result types.
+5. Authenticate uninhabited-interface throw construction and typed message.
+6. Authenticate shared known-constructor owner/signature/argument consistency.
+7. Authenticate generated assertion message contents, not only string type.
+8. Authenticate generated file source attribution alongside its other root fields.
+
+The compiler proof uses the actual production trait declarations and requires a
+positive control before accepting E0046/E0271 negative cases. The reviewer
+confirmed this proves the scoped required-plan contract, not arbitrary lowering
+correctness; a more syntax-aware test extractor was optional, not a core error.
+The last two metadata/literal findings complete the owned-root contract but were
+not claims that the earlier output failed Java compilation. Operand subtrees
+remain deliberate holes, with final Java verification independent of certificates.
+
+The final broad working-tree re-review found no remaining actionable stage-2
+core errors. All eight findings have focused mutations, including content-only
+assertion and source-only file changes. The reviewer did not run tests; the
+following independent executions establish the final local proof:
+
+- Full tracked graph: 435 analyzed rule targets, 310/310 tests pass (invocation
+  `e8ead380-528f-42ff-bd5a-6de986860e02`). Only the untouched user-owned untracked
+  `examples/real-world/stdlib-abs/` package is excluded.
+- Explicit release gate: 247/247 pass (invocation
+  `2dfb357e-5004-44a2-8c32-75836ed5fe6b`). Rustfmt, strict Clippy, Buildifier,
+  source policies, snapshots, native Java and all historical ports are included.
+- Deterministic conformance: 50 cases and one portable test agree between the
+  evaluator and all eight targets; repeated manifests are byte-identical
+  (invocation `23a5ff76-dc8c-4178-8ab9-5d2880a20f31`).
+- Linux Cargo 1.98 compatibility: 158 Java unit tests and eight doctests pass,
+  including actual Java 21 consumer compilation outside Bazel's test environment.
+- The complete gate initially identified the handwritten Python compiler driver
+  as a generated template. A path-exact infrastructure exception fixes that
+  classification; permanent injections still reject adjacent/copied templates.
+
+Caches remain enabled per the current CI/local policy. Hosted CI and the final
+fresh immutable-checkpoint review remain required before closing this task.

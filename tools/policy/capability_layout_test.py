@@ -97,6 +97,10 @@ def verify_shared(root: Path) -> int:
 def verify_java(root: Path) -> tuple[int, set[str]]:
     source = (root / "mod.rs").read_text(encoding="utf-8")
     ignored = {"dispatch", "support"}
+    ignored.update(re.findall(
+        r'(?m)^#\[cfg\(test\)\]\n#\[path = "\.\./tests/[^"]+"\]\nmod ([a-z_]+);$',
+        source,
+    ))
     modules = [name for name in MODULE.findall(source) if name not in ignored]
     files = sorted(
         path.stem
@@ -107,7 +111,7 @@ def verify_java(root: Path) -> tuple[int, set[str]]:
         fail(f"Java module/file mismatch: modules={sorted(modules)!r}, files={files!r}")
 
     registrations = re.findall(
-        r"(?m)^\s*\.support\(observed\((Java[A-Za-z0-9]+)\)\)$", source
+        r"(?m)^\s*\.support\((Java[A-Za-z0-9]+)\)$", source
     )
     if len(registrations) != len(set(registrations)):
         fail("Java registration contains duplicate mappings")

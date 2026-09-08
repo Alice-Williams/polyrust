@@ -1,5 +1,7 @@
 //! Java mapping for `FloatingPointInspection`.
 
+mod mapping_plan;
+
 use portable_build::FloatingPointInspection;
 
 use super::support::java_operation_mapping;
@@ -10,6 +12,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaFloatingPointInspectionInput {
     Truncate { operand: JavaExpr, result: JavaType },
     IsNan { operand: JavaExpr, result: JavaType },
@@ -20,7 +23,7 @@ pub enum JavaFloatingPointInspectionInput {
 fn lower_floating_point_inspection(
     input: JavaFloatingPointInspectionInput,
 ) -> Result<JavaIntrinsicExpr, Vec<portable_diagnostics::Diagnostic>> {
-    Ok(JavaIntrinsicExpr::Direct(match input {
+    Ok(JavaIntrinsicExpr::Infallible(match input {
         JavaFloatingPointInspectionInput::Truncate { operand, result } => {
             runtime_call(JavaRuntimeCallable::FloatTrunc, vec![operand], result)
         }

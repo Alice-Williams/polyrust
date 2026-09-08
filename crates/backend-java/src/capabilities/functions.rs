@@ -1,5 +1,7 @@
 //! Java mapping for the complete `Functions` capability.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, Functions};
 use portable_diagnostics::Diagnostic;
 use portable_ir::v0::Visibility;
@@ -15,6 +17,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaFunctionDeclarationInput {
     pub(crate) declared: JavaMethodDeclaration,
     pub(crate) visibility: Visibility,
@@ -25,6 +28,7 @@ pub struct JavaFunctionDeclarationInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaFunctionsInput {
     Declaration(Box<JavaFunctionDeclarationInput>),
     ParameterRead {
@@ -42,6 +46,7 @@ pub enum JavaFunctionsInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaFunctionsNode {
     Declaration(JavaMethod),
     Expression(JavaExpr),
@@ -56,7 +61,12 @@ impl super::support::JavaMappingOutput for JavaFunctionsNode {}
 pub struct JavaFunctions;
 
 impl sealed::JavaCapabilityMapping for JavaFunctions {}
-impl JavaCapabilityMapping for JavaFunctions {}
+impl JavaCapabilityMapping for JavaFunctions {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaFunctions {
     type Capability = Functions;

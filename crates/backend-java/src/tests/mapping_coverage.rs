@@ -24,6 +24,10 @@ fn every_registered_java_capability_mapping_is_invoked() {
         )
         .expect("portable method invocation fixture generates");
     let _ = typed_fixture_manifests();
+    let empty_interface = typed_program(portable_name!("empty_interface_coverage"), |builder| {
+        builder.interface(portable_name!("Empty"), typed_list![], |builder, _| builder)
+    });
+    let _ = JavaBackend.generate_typed(&empty_interface);
 
     let counts = crate::capabilities::java_mapping_operation_counts()
         .into_iter()
@@ -68,7 +72,7 @@ fn every_registered_java_capability_mapping_is_invoked() {
         ("Utf8Conversions", 2),
         ("Functions", 4),
         ("Records", 4),
-        ("Interfaces", 7),
+        ("Interfaces", 8),
         ("Enums", 7),
         ("Loops", 2),
         ("PortableTests", 4),

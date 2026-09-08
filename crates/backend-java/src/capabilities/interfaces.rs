@@ -1,5 +1,7 @@
 //! Java mapping for the complete `Interfaces` capability.
 
+mod mapping_plan;
+
 mod sealing;
 pub(crate) use sealing::JavaUninhabitedInterfaceInput;
 
@@ -31,6 +33,7 @@ pub struct JavaInterfaceMethodInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaInterfaceDeclarationInput {
     pub(crate) declared: GeneratedTypeId,
     pub(crate) visibility: Visibility,
@@ -41,6 +44,7 @@ pub struct JavaInterfaceDeclarationInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaInterfaceImplementationInput {
     pub(crate) method: CoreImplementationMethodId,
     pub(crate) witness: crate::ast::JavaImplementationWitness,
@@ -52,18 +56,21 @@ pub struct JavaInterfaceImplementationInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaInterfaceConformanceInput {
     pub(crate) interfaces: Vec<GeneratedTypeId>,
     pub(crate) methods: Vec<JavaInterfaceImplementationInput>,
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaInterfaceConformancePlan {
     pub(crate) heritage: JavaHeritage,
     pub(crate) members: Vec<JavaMember>,
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaInterfaceCallInput {
     pub(crate) receiver: JavaExpr,
     pub(crate) arguments: Vec<JavaExpr>,
@@ -73,6 +80,7 @@ pub struct JavaInterfaceCallInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaConcreteInterfaceCallInput {
     pub(crate) receiver: JavaExpr,
     pub(crate) interface_method_name: String,
@@ -82,6 +90,7 @@ pub struct JavaConcreteInterfaceCallInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaInterfacesInput {
     UninhabitedType {
         interface: GeneratedTypeId,
@@ -106,6 +115,7 @@ pub enum JavaInterfacesInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaInterfacesNode {
     UninhabitedType(Box<portable_codegen::GeneratedType<JavaDialect>>),
     Type(JavaType),
@@ -122,7 +132,12 @@ impl super::support::JavaMappingOutput for JavaInterfacesNode {}
 pub struct JavaInterfaces;
 
 impl sealed::JavaCapabilityMapping for JavaInterfaces {}
-impl JavaCapabilityMapping for JavaInterfaces {}
+impl JavaCapabilityMapping for JavaInterfaces {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaInterfaces {
     type Capability = Interfaces;

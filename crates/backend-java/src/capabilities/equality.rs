@@ -1,5 +1,7 @@
 //! Java mapping for `Equality`.
 
+mod mapping_plan;
+
 use portable_build::Equality;
 
 use super::support::java_operation_mapping;
@@ -10,6 +12,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaEqualityInput {
     Equal {
         left: JavaExpr,
@@ -43,7 +46,7 @@ fn lower_equality(
         vec![left, right],
         result.clone(),
     );
-    Ok(JavaIntrinsicExpr::Direct(if negate {
+    Ok(JavaIntrinsicExpr::Infallible(if negate {
         unary(JavaUnaryOperator::Not, equal, result)
     } else {
         equal

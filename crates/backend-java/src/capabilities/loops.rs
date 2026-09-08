@@ -1,5 +1,7 @@
 //! Java mapping for the complete `Loops` capability.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, Loops};
 use portable_diagnostics::Diagnostic;
 
@@ -11,6 +13,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaLoopsInput {
     ForEach {
         binding_type: JavaType,
@@ -25,6 +28,7 @@ pub enum JavaLoopsInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaLoopsNode {
     Statement(Box<JavaStmt>),
     Expression(Box<JavaExpr>),
@@ -38,7 +42,12 @@ impl super::support::JavaMappingOutput for JavaLoopsNode {}
 pub struct JavaLoops;
 
 impl sealed::JavaCapabilityMapping for JavaLoops {}
-impl JavaCapabilityMapping for JavaLoops {}
+impl JavaCapabilityMapping for JavaLoops {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaLoops {
     type Capability = Loops;

@@ -1,18 +1,21 @@
 //! Java mapping for `Ordering`.
 
+mod domain;
+mod mapping_plan;
+
 use portable_build::Ordering;
 
 use super::support::java_operation_mapping;
 use crate::{
     ast::{
-        JavaBinaryOperator, JavaExpr, JavaKnownType, JavaMemberOrigin, JavaPrimitive,
-        JavaRuntimeMember, JavaType,
+        JavaBinaryOperator, JavaExpr, JavaMemberOrigin, JavaPrimitive, JavaRuntimeMember, JavaType,
     },
     dialect::JavaRuntimeCallable,
     lower::{JavaIntrinsicExpr, binary, i32_literal, member_call, runtime_call},
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaOrderingInput {
     Less {
         left: JavaExpr,
@@ -61,9 +64,9 @@ fn lower_ordering(
             result,
         } => (JavaBinaryOperator::GreaterEqual, left, right, result),
     };
-    Ok(JavaIntrinsicExpr::Direct(
-        if left.ty == JavaType::known(JavaKnownType::String) {
-            binary(
+    Ok(JavaIntrinsicExpr::Infallible(
+        match domain::select(&left.ty)? {
+            domain::JavaOrderingDomain::String => binary(
                 operator,
                 runtime_call(
                     JavaRuntimeCallable::CompareScalarStrings,
@@ -72,9 +75,8 @@ fn lower_ordering(
                 ),
                 i32_literal(0),
                 result,
-            )
-        } else if left.ty == JavaType::known(JavaKnownType::RuntimeScalar) {
-            binary(
+            ),
+            domain::JavaOrderingDomain::Scalar => binary(
                 operator,
                 member_call(
                     left,
@@ -91,9 +93,8 @@ fn lower_ordering(
                     JavaMemberOrigin::Runtime(JavaRuntimeMember::ScalarValue),
                 ),
                 result,
-            )
-        } else {
-            binary(operator, left, right, result)
+            ),
+            domain::JavaOrderingDomain::Numeric => binary(operator, left, right, result),
         },
     ))
 }

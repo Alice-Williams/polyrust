@@ -1,5 +1,7 @@
 //! Java mapping for the complete `TypeAliases` capability.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, TypeAliases};
 use portable_diagnostics::Diagnostic;
 
@@ -11,6 +13,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaTypeAliasInput {
     pub(crate) name: String,
     pub(crate) target: JavaType,
@@ -18,6 +21,7 @@ pub struct JavaTypeAliasInput {
 
 /// Java erases portable transparent aliases after validating their name and target.
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaErasedTypeAlias {
     pub(crate) _name: JavaIdentifier,
     pub(crate) _target: JavaType,
@@ -31,7 +35,12 @@ impl super::support::JavaMappingOutput for JavaErasedTypeAlias {}
 pub struct JavaTypeAliases;
 
 impl sealed::JavaCapabilityMapping for JavaTypeAliases {}
-impl JavaCapabilityMapping for JavaTypeAliases {}
+impl JavaCapabilityMapping for JavaTypeAliases {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaTypeAliases {
     type Capability = TypeAliases;

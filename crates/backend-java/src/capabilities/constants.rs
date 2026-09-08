@@ -1,5 +1,7 @@
 //! Java mapping for the complete `Constants` capability.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, Constants};
 use portable_codegen::{GeneratedSymbolId, GeneratedValueId};
 use portable_diagnostics::Diagnostic;
@@ -15,6 +17,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaConstantsInput {
     Declaration {
         declared: GeneratedValueId,
@@ -30,6 +33,7 @@ pub enum JavaConstantsInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaConstantsNode {
     Declaration(JavaField),
     Expression(JavaExpr),
@@ -43,7 +47,12 @@ impl super::support::JavaMappingOutput for JavaConstantsNode {}
 pub struct JavaConstants;
 
 impl sealed::JavaCapabilityMapping for JavaConstants {}
-impl JavaCapabilityMapping for JavaConstants {}
+impl JavaCapabilityMapping for JavaConstants {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaConstants {
     type Capability = Constants;

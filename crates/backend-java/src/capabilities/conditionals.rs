@@ -1,5 +1,7 @@
 //! Java mapping for the complete `Conditionals` capability.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, Conditionals};
 use portable_diagnostics::Diagnostic;
 
@@ -10,6 +12,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaConditionalValueInput {
     pub(crate) prefix: Vec<JavaStmt>,
     pub(crate) condition: JavaExpr,
@@ -20,11 +23,13 @@ pub struct JavaConditionalValueInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaConditionalsInput {
     Value(Box<JavaConditionalValueInput>),
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaConditionalsNode {
     Value {
         statements: Vec<JavaStmt>,
@@ -40,7 +45,12 @@ impl super::support::JavaMappingOutput for JavaConditionalsNode {}
 pub struct JavaConditionals;
 
 impl sealed::JavaCapabilityMapping for JavaConditionals {}
-impl JavaCapabilityMapping for JavaConditionals {}
+impl JavaCapabilityMapping for JavaConditionals {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaConditionals {
     type Capability = Conditionals;

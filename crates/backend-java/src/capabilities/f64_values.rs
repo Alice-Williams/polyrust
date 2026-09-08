@@ -1,5 +1,7 @@
 //! Java mapping for `F64Values`.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, F64Values};
 use portable_diagnostics::Diagnostic;
 
@@ -11,6 +13,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaF64ValuesInput {
     Type,
     Value(u64),
@@ -21,7 +24,12 @@ pub enum JavaF64ValuesInput {
 pub struct JavaF64Values;
 
 impl sealed::JavaCapabilityMapping for JavaF64Values {}
-impl JavaCapabilityMapping for JavaF64Values {}
+impl JavaCapabilityMapping for JavaF64Values {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaF64Values {
     type Capability = F64Values;

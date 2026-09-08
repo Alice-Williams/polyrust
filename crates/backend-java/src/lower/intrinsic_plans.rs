@@ -110,7 +110,7 @@ impl Lowering<'_> {
             }
         };
         match self.intrinsic_java(mapped, self.ty(result)?)? {
-            JavaIntrinsicExpr::Direct(value) => Ok(ExprPlan { statements, value }),
+            JavaIntrinsicExpr::Infallible(value) => Ok(ExprPlan { statements, value }),
             JavaIntrinsicExpr::Fallible { call, value_type } => {
                 self.propagate_call(statements, call, value_type, callable_return)
             }
@@ -219,7 +219,7 @@ impl Lowering<'_> {
             };
         }
         match self.intrinsic_java(mapped, java_result)? {
-            JavaIntrinsicExpr::Direct(value) => Ok(value),
+            JavaIntrinsicExpr::Infallible(value) => Ok(value),
             JavaIntrinsicExpr::Fallible { .. } => Err(vec![Diagnostic::error(
                 DiagnosticCode::UnsupportedCapability,
                 "Java constants cannot contain a fallible intrinsic",

@@ -1,5 +1,7 @@
 //! Java mapping for `ListOperations`.
 
+mod mapping_plan;
+
 use portable_build::ListOperations;
 
 use super::support::java_operation_mapping;
@@ -10,6 +12,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaListOperationsInput {
     Length {
         list: JavaExpr,
@@ -50,10 +53,10 @@ fn lower_list_operations(
     input: JavaListOperationsInput,
 ) -> Result<JavaIntrinsicExpr, Vec<portable_diagnostics::Diagnostic>> {
     Ok(match input {
-        JavaListOperationsInput::Length { list, result } => JavaIntrinsicExpr::Direct(
+        JavaListOperationsInput::Length { list, result } => JavaIntrinsicExpr::Infallible(
             runtime_call(JavaRuntimeCallable::ListLength, vec![list], result),
         ),
-        JavaListOperationsInput::IsEmpty { list, result } => JavaIntrinsicExpr::Direct(
+        JavaListOperationsInput::IsEmpty { list, result } => JavaIntrinsicExpr::Infallible(
             runtime_call(JavaRuntimeCallable::ListIsEmpty, vec![list], result),
         ),
         JavaListOperationsInput::GetChecked {
@@ -65,7 +68,7 @@ fn lower_list_operations(
             list,
             value,
             result,
-        } => JavaIntrinsicExpr::Direct(runtime_call(
+        } => JavaIntrinsicExpr::Infallible(runtime_call(
             JavaRuntimeCallable::ListAppend,
             vec![list, value],
             result,
@@ -74,7 +77,7 @@ fn lower_list_operations(
             left,
             right,
             result,
-        } => JavaIntrinsicExpr::Direct(runtime_call(
+        } => JavaIntrinsicExpr::Infallible(runtime_call(
             JavaRuntimeCallable::ListConcat,
             vec![left, right],
             result,
@@ -83,7 +86,7 @@ fn lower_list_operations(
             list,
             value,
             result,
-        } => JavaIntrinsicExpr::Direct(runtime_call(
+        } => JavaIntrinsicExpr::Infallible(runtime_call(
             JavaRuntimeCallable::ListContains,
             vec![list, value],
             result,
@@ -92,7 +95,7 @@ fn lower_list_operations(
             list,
             value,
             result,
-        } => JavaIntrinsicExpr::Direct(runtime_call(
+        } => JavaIntrinsicExpr::Infallible(runtime_call(
             JavaRuntimeCallable::ListIndexOf,
             vec![list, value],
             result,

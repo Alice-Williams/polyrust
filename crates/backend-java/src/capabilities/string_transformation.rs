@@ -1,5 +1,7 @@
 //! Java mapping for `StringTransformation`.
 
+mod mapping_plan;
+
 use portable_build::StringTransformation;
 
 use super::support::java_operation_mapping;
@@ -10,6 +12,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaStringTransformationInput {
     StripPrefix {
         source: JavaExpr,
@@ -53,7 +56,7 @@ pub enum JavaStringTransformationInput {
 fn lower_string_transformation(
     input: JavaStringTransformationInput,
 ) -> Result<JavaIntrinsicExpr, Vec<portable_diagnostics::Diagnostic>> {
-    Ok(JavaIntrinsicExpr::Direct(match input {
+    Ok(JavaIntrinsicExpr::Infallible(match input {
         JavaStringTransformationInput::StripPrefix {
             source,
             prefix,

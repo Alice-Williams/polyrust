@@ -1,5 +1,7 @@
 //! Java mapping for `FloatingPointArithmetic`.
 
+mod mapping_plan;
+
 use portable_build::FloatingPointArithmetic;
 
 use super::support::java_operation_mapping;
@@ -9,6 +11,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaFloatingPointArithmeticInput {
     Neg {
         operand: JavaExpr,
@@ -44,7 +47,7 @@ pub enum JavaFloatingPointArithmeticInput {
 fn lower_floating_point_arithmetic(
     input: JavaFloatingPointArithmeticInput,
 ) -> Result<JavaIntrinsicExpr, Vec<portable_diagnostics::Diagnostic>> {
-    Ok(JavaIntrinsicExpr::Direct(match input {
+    Ok(JavaIntrinsicExpr::Infallible(match input {
         JavaFloatingPointArithmeticInput::Neg { operand, result } => {
             unary(JavaUnaryOperator::Negate, operand, result)
         }

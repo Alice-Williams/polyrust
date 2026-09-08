@@ -226,7 +226,7 @@ impl ExprPlan {
 
 #[doc(hidden)]
 pub enum JavaIntrinsicExpr {
-    Direct(JavaExpr),
+    Infallible(JavaExpr),
     Fallible {
         call: JavaExpr,
         value_type: JavaType,

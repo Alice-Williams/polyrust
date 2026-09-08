@@ -1,5 +1,7 @@
 //! Java mapping for the complete `LocalBindings` capability.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, LocalBindings};
 use portable_diagnostics::Diagnostic;
 
@@ -11,6 +13,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaLocalBindingsInput {
     Bind {
         name: String,
@@ -24,6 +27,7 @@ pub enum JavaLocalBindingsInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaLocalBindingsNode {
     Statement(Box<JavaStmt>),
     Expression(Box<JavaExpr>),
@@ -37,7 +41,12 @@ impl super::support::JavaMappingOutput for JavaLocalBindingsNode {}
 pub struct JavaLocalBindings;
 
 impl sealed::JavaCapabilityMapping for JavaLocalBindings {}
-impl JavaCapabilityMapping for JavaLocalBindings {}
+impl JavaCapabilityMapping for JavaLocalBindings {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaLocalBindings {
     type Capability = LocalBindings;

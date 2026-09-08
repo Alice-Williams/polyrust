@@ -38,6 +38,8 @@
 //! admit(&plugin, &program);
 //! ```
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, ResultPropagation};
 use portable_diagnostics::Diagnostic;
 
@@ -52,6 +54,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaResultPropagationInput {
     pub(crate) prefix: Vec<JavaStmt>,
     pub(crate) call: JavaExpr,
@@ -61,6 +64,7 @@ pub struct JavaResultPropagationInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaResultPropagationPlan {
     pub(crate) statements: Vec<JavaStmt>,
     pub(crate) value: JavaExpr,
@@ -74,7 +78,12 @@ impl super::support::JavaMappingOutput for JavaResultPropagationPlan {}
 pub struct JavaResultPropagation;
 
 impl sealed::JavaCapabilityMapping for JavaResultPropagation {}
-impl JavaCapabilityMapping for JavaResultPropagation {}
+impl JavaCapabilityMapping for JavaResultPropagation {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaResultPropagation {
     type Capability = ResultPropagation;

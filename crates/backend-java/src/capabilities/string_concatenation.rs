@@ -1,5 +1,7 @@
 //! Java mapping for `StringConcatenation`.
 
+mod mapping_plan;
+
 use portable_build::StringConcatenation;
 
 use super::support::java_operation_mapping;
@@ -9,6 +11,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaStringConcatenationInput {
     pub(crate) left: JavaExpr,
     pub(crate) right: JavaExpr,
@@ -18,7 +21,7 @@ pub struct JavaStringConcatenationInput {
 fn lower_string_concatenation(
     input: JavaStringConcatenationInput,
 ) -> Result<JavaIntrinsicExpr, Vec<portable_diagnostics::Diagnostic>> {
-    Ok(JavaIntrinsicExpr::Direct(binary(
+    Ok(JavaIntrinsicExpr::Infallible(binary(
         JavaBinaryOperator::Add,
         input.left,
         input.right,

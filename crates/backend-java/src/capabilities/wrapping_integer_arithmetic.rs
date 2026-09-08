@@ -1,5 +1,7 @@
 //! Java mapping for `WrappingIntegerArithmetic`.
 
+mod mapping_plan;
+
 use portable_build::WrappingIntegerArithmetic;
 
 use super::support::java_operation_mapping;
@@ -9,6 +11,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaWrappingIntegerArithmeticInput {
     Neg {
         operand: JavaExpr,
@@ -34,7 +37,7 @@ pub enum JavaWrappingIntegerArithmeticInput {
 fn lower_wrapping_integer_arithmetic(
     input: JavaWrappingIntegerArithmeticInput,
 ) -> Result<JavaIntrinsicExpr, Vec<portable_diagnostics::Diagnostic>> {
-    Ok(JavaIntrinsicExpr::Direct(match input {
+    Ok(JavaIntrinsicExpr::Infallible(match input {
         JavaWrappingIntegerArithmeticInput::Neg { operand, result } => {
             unary(JavaUnaryOperator::Negate, operand, result)
         }

@@ -1,5 +1,7 @@
 //! Java mapping for the complete `Records` capability.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, Records};
 use portable_codegen::GeneratedTypeId;
 use portable_diagnostics::Diagnostic;
@@ -17,6 +19,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaRecordDeclarationInput {
     pub(crate) declared: GeneratedTypeId,
     pub(crate) visibility: Visibility,
@@ -27,6 +30,7 @@ pub struct JavaRecordDeclarationInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaRecordsInput {
     Type {
         record: GeneratedTypeId,
@@ -46,6 +50,7 @@ pub enum JavaRecordsInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaRecordsNode {
     Type(JavaType),
     Declaration(JavaTypeDeclaration),
@@ -60,7 +65,12 @@ impl super::support::JavaMappingOutput for JavaRecordsNode {}
 pub struct JavaRecords;
 
 impl sealed::JavaCapabilityMapping for JavaRecords {}
-impl JavaCapabilityMapping for JavaRecords {}
+impl JavaCapabilityMapping for JavaRecords {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaRecords {
     type Capability = Records;

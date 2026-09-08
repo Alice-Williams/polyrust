@@ -1,5 +1,7 @@
 //! Java mapping for `BytesValues`.
 
+mod mapping_plan;
+
 use portable_build::{BytesValues, CapabilityMapping};
 use portable_diagnostics::Diagnostic;
 
@@ -11,6 +13,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaBytesInput {
     Type,
     Value { values: Vec<u8>, result: JavaType },
@@ -21,7 +24,12 @@ pub enum JavaBytesInput {
 pub struct JavaBytesValues;
 
 impl sealed::JavaCapabilityMapping for JavaBytesValues {}
-impl JavaCapabilityMapping for JavaBytesValues {}
+impl JavaCapabilityMapping for JavaBytesValues {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaBytesValues {
     type Capability = BytesValues;

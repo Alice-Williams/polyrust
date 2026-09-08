@@ -1,5 +1,7 @@
 //! Java mapping for `I32Values`.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, I32Values};
 use portable_diagnostics::Diagnostic;
 
@@ -11,6 +13,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaI32ValuesInput {
     Type,
     Value(i32),
@@ -21,7 +24,12 @@ pub enum JavaI32ValuesInput {
 pub struct JavaI32Values;
 
 impl sealed::JavaCapabilityMapping for JavaI32Values {}
-impl JavaCapabilityMapping for JavaI32Values {}
+impl JavaCapabilityMapping for JavaI32Values {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaI32Values {
     type Capability = I32Values;

@@ -1,5 +1,7 @@
 //! Java mapping for `StringInspection`.
 
+mod mapping_plan;
+
 use portable_build::StringInspection;
 
 use super::support::java_operation_mapping;
@@ -10,6 +12,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaStringInspectionInput {
     ScalarLength {
         source: JavaExpr,
@@ -60,7 +63,7 @@ fn lower_string_inspection(
                 JavaType::primitive(JavaPrimitive::Int),
                 JavaMemberOrigin::Known(JavaKnownMethod::StringLength),
             );
-            JavaIntrinsicExpr::Direct(JavaExpr {
+            JavaIntrinsicExpr::Infallible(JavaExpr {
                 ty: result.clone(),
                 precedence: JavaPrecedence::Unary,
                 kind: JavaExprKind::Cast {
@@ -70,7 +73,7 @@ fn lower_string_inspection(
             })
         }
         JavaStringInspectionInput::IsEmpty { source, result } => {
-            JavaIntrinsicExpr::Direct(member_call(
+            JavaIntrinsicExpr::Infallible(member_call(
                 source,
                 "isEmpty",
                 vec![],
@@ -82,7 +85,7 @@ fn lower_string_inspection(
             source,
             needle,
             result,
-        } => JavaIntrinsicExpr::Direct(runtime_call(
+        } => JavaIntrinsicExpr::Infallible(runtime_call(
             JavaRuntimeCallable::StringIndexOfLiteral,
             vec![source, needle],
             result,
@@ -91,7 +94,7 @@ fn lower_string_inspection(
             source,
             needle,
             result,
-        } => JavaIntrinsicExpr::Direct(member_call(
+        } => JavaIntrinsicExpr::Infallible(member_call(
             source,
             "contains",
             vec![needle],
@@ -102,7 +105,7 @@ fn lower_string_inspection(
             source,
             prefix,
             result,
-        } => JavaIntrinsicExpr::Direct(member_call(
+        } => JavaIntrinsicExpr::Infallible(member_call(
             source,
             "startsWith",
             vec![prefix],
@@ -113,7 +116,7 @@ fn lower_string_inspection(
             source,
             suffix,
             result,
-        } => JavaIntrinsicExpr::Direct(member_call(
+        } => JavaIntrinsicExpr::Infallible(member_call(
             source,
             "endsWith",
             vec![suffix],

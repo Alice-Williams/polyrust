@@ -1,5 +1,7 @@
 //! Java mapping for `CheckedIntegerArithmetic`.
 
+mod mapping_plan;
+
 use portable_build::CheckedIntegerArithmetic;
 
 use super::support::java_operation_mapping;
@@ -10,6 +12,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaCheckedIntegerArithmeticInput {
     Neg {
         operand: JavaExpr,

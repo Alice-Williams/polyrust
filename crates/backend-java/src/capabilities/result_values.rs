@@ -1,5 +1,7 @@
 //! Java mapping for `ResultValues`.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, ResultValues};
 use portable_diagnostics::Diagnostic;
 
@@ -11,6 +13,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaResultInput {
     Type { ok: JavaType, error: JavaType },
     Ok { value: JavaExpr, result: JavaType },
@@ -22,7 +25,12 @@ pub enum JavaResultInput {
 pub struct JavaResultValues;
 
 impl sealed::JavaCapabilityMapping for JavaResultValues {}
-impl JavaCapabilityMapping for JavaResultValues {}
+impl JavaCapabilityMapping for JavaResultValues {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaResultValues {
     type Capability = ResultValues;

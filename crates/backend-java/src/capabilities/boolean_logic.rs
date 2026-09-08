@@ -1,5 +1,7 @@
 //! Java mapping for `BooleanLogic`.
 
+mod mapping_plan;
+
 use portable_build::BooleanLogic;
 
 use super::support::{JavaMappingOutput, java_operation_mapping, sealed};
@@ -12,6 +14,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaBooleanLogicPlan {
     pub(crate) statements: Vec<JavaStmt>,
     pub(crate) value: JavaExpr,
@@ -21,6 +24,7 @@ impl sealed::JavaMappingOutput for JavaBooleanLogicPlan {}
 impl JavaMappingOutput for JavaBooleanLogicPlan {}
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaBooleanLogicInput {
     Not {
         operand: JavaBooleanLogicPlan,

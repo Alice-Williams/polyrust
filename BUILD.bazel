@@ -224,6 +224,7 @@ test_suite(
         "//crates/backend-java:java_verifier_array_cast_aliasing_test",
         "//crates/backend-java:java_verifier_compile_fail_test",
         "//crates/backend-java:java_verifier_infinite_method_test",
+        "//crates/backend-java:mapping_contract_compile_fail_test",
         "//crates/benchmark:generation_benchmark_test",
         "//crates/build:typed_program_compile_fail_test",
         "//crates/conformance:all_targets_test",

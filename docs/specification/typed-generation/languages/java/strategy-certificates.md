@@ -1,6 +1,6 @@
 # Java admission and mapping certificates
 
-- Status: normative for M34A-10Y; implementation in progress
+- Status: implemented for M34A-10Y; full integration proof and final review pending
 
 ## Stage 1: exact admission
 
@@ -67,6 +67,15 @@ file, and erased-alias categories. Every closed mapping input variant MUST
 select a plan and every output category MUST verify one. No blanket defaults,
 text scanning, string IDs, or global recursive strategy classifiers are allowed.
 
+Owned literal leaves include their type and value. Owned constructors include
+their catalogue identity, owner, signature, and argument shape. Generated file
+roots include source attribution. These are not opaque operand holes. Final
+AST/linker verification still owns catalogue-wide signature and scope validity;
+the invocation plan is not a replacement Java type checker. Ordering MUST reject
+types outside its closed numeric, string, and scalar domains, rather than using
+a native operator as a catch-all. Enum type inputs retain Native/Payload shape
+even when both lower to a generated Java type reference.
+
 Required examples:
 
 - Boolean Not is direct unary Not even around a runtime operand. And/Or are
@@ -91,3 +100,22 @@ mutation tests. Table-driven mapping tests MUST use builder-fetched wrappers.
 Final AST/linker verification, native Java 21 compilation and behavior tests,
 cross-target conformance, and fresh review remain required. These certificates
 do not prove arbitrary Core-to-AST functional equivalence.
+
+## Implementation and compiler proof
+
+Each of the 42 capability modules owns a `mapping_plan.rs`. Small shared closed
+expression/intrinsic/value skeletons live under `capabilities/support/plans/`;
+declarations and control-flow plans use their capability-specific closed input
+enums. The builder stores `CheckedJavaMapping<M>` in every registered slot. The
+infallible intrinsic category is named `Infallible`, not `Direct`: runtime helper
+calls can also be infallible.
+
+Rust enforces the required selector, associated output equality, sealed output
+categories, and automatic wrapper boundary. Bazel's pinned-compiler contract
+test compiles the verbatim production mapping/plan trait declarations, with a
+positive control and precise missing-method/wrong-output negative diagnostics.
+Unrelated prerequisite traits are stubbed only to isolate that contract; it is
+not a proof that Rust can establish a verifier implementation's correctness.
+Production rustdoc separately rejects registering an already checked wrapper.
+Independent output mutations and native compiler/execution oracles establish
+the implementation evidence beyond these compile-time API constraints.

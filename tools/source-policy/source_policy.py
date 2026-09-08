@@ -22,8 +22,8 @@ DIRECTIVE = re.compile(
     r")"
 )
 
-# Native consumer fixtures are handwritten inputs to target compilers, not
-# generated body templates. Every exception is path-exact and reviewed here.
+# Native consumer fixtures and the compiler-contract driver are handwritten
+# test infrastructure, not generated body templates. Every exception is exact.
 FIXTURE_ALLOWLIST = {
     "crates/backend-c/test/abi_shapes_test.c",
     "crates/backend-c/test/c_consumer_test.c",
@@ -32,6 +32,7 @@ FIXTURE_ALLOWLIST = {
     "crates/backend-cpp/test/cpp_consumer_test.cc",
     "crates/backend-java/test/JavaConsumerTest.java",
     "crates/backend-java/test/JavaInterfaceConsumerTest.java",
+    "crates/backend-java/test/check_mapping_contract.py",
 }
 
 
@@ -319,6 +320,13 @@ const BODY: &str = "plain body";
         raise AssertionError("path-exact native fixture exception was rejected")
     if not target_template_offenders(fixture + ".copy", '#include "generated.h"\n'):
         raise AssertionError("fixture exception was not path-exact")
+    harness = "crates/backend-java/test/check_mapping_contract.py"
+    if target_template_offenders(harness, "from pathlib import Path\n"):
+        raise AssertionError("compiler-contract harness imports were rejected")
+    for adjacent in [harness + ".copy", "crates/backend-java/test/other.py",
+                     "crates/backend-java/src/check_mapping_contract.py"]:
+        if not target_template_offenders(adjacent, "import forbidden\n"):
+            raise AssertionError("harness exception admitted an adjacent template")
 
 
 def main() -> int:

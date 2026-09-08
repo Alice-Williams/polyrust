@@ -1,5 +1,7 @@
 //! Java mapping for `I64Values`.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, I64Values};
 use portable_diagnostics::Diagnostic;
 
@@ -11,6 +13,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaI64ValuesInput {
     Type,
     Value(i64),
@@ -21,7 +24,12 @@ pub enum JavaI64ValuesInput {
 pub struct JavaI64Values;
 
 impl sealed::JavaCapabilityMapping for JavaI64Values {}
-impl JavaCapabilityMapping for JavaI64Values {}
+impl JavaCapabilityMapping for JavaI64Values {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaI64Values {
     type Capability = I64Values;

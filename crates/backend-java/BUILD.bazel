@@ -1,8 +1,28 @@
 load("@rules_java//java:defs.bzl", "java_library", "java_test")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_doc_test", "rust_library", "rust_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load(":test/rust_compiler_files.bzl", "rust_compiler_files")
 
 exports_files(["Cargo.toml"])
+
+rust_compiler_files(name = "mapping_contract_compiler")
+
+sh_test(
+    name = "mapping_contract_compile_fail_test",
+    srcs = ["test/mapping_contract_test.sh"],
+    args = [
+        "$(location test/check_mapping_contract.py)",
+        "$(location src/capabilities/support.rs)",
+        "$(location src/capabilities/support/plans.rs)",
+    ],
+    data = [
+        "src/capabilities/support.rs",
+        "src/capabilities/support/plans.rs",
+        "test/check_mapping_contract.py",
+        ":mapping_contract_compiler",
+    ],
+    visibility = ["//visibility:public"],
+)
 
 rust_binary(
     name = "generate_capability_fixture",

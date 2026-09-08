@@ -1,5 +1,7 @@
 //! Java mapping for `OptionOperations`.
 
+mod mapping_plan;
+
 use portable_build::OptionOperations;
 
 use super::support::java_operation_mapping;
@@ -10,6 +12,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaOptionOperationsInput {
     IsSome {
         operand: JavaExpr,
@@ -29,7 +32,7 @@ pub enum JavaOptionOperationsInput {
 fn lower_option_operations(
     input: JavaOptionOperationsInput,
 ) -> Result<JavaIntrinsicExpr, Vec<portable_diagnostics::Diagnostic>> {
-    Ok(JavaIntrinsicExpr::Direct(match input {
+    Ok(JavaIntrinsicExpr::Infallible(match input {
         JavaOptionOperationsInput::IsSome { operand, result } => {
             runtime_call(JavaRuntimeCallable::OptionIsSome, vec![operand], result)
         }

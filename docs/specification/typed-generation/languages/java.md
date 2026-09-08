@@ -125,13 +125,12 @@ nested class requires static membership; records/enums/interfaces retain Java's
 implicit-static rules. These checks supplement signature/identity verification
 and do not claim arbitrary Core-to-AST functional equivalence.
 
-Implementation status: the totality and exact-strategy contracts above are
-requirements, not yet fully established guarantees. M34A-10X now implements
-identity-keyed name allocation and the target-only uninhabited interface
-representation, with typed/native/mutation regressions; its integration and
-fresh review are still required. The two-stage admission/strategy contract is
-being implemented; the checked-wrapper requirement is not yet a completed
-guarantee. These completion gates are tracked in
+Implementation status: M34A-10X implements identity-keyed name allocation and
+the target-only uninhabited interface representation. M34A-10Y implements exact
+admission and mandatory mapping-owned checked invocation plans for all 42
+capabilities. Typed/native/mutation/compiler-contract and full local integration
+gates pass; final immutable-checkpoint review and hosted CI remain required.
+These completion gates are tracked in
 [M34A-10X](../../../plan/tasks/M34A-10X-java-typed-totality.md) and
 [M34A-10Y](../../../plan/tasks/M34A-10Y-java-strategy-certificates.md).
 

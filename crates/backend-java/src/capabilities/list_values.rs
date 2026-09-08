@@ -1,5 +1,7 @@
 //! Java mapping for `ListValues`.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, ListValues};
 use portable_diagnostics::Diagnostic;
 
@@ -11,6 +13,7 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaListInput {
     Type {
         element: JavaType,
@@ -26,7 +29,12 @@ pub enum JavaListInput {
 pub struct JavaListValues;
 
 impl sealed::JavaCapabilityMapping for JavaListValues {}
-impl JavaCapabilityMapping for JavaListValues {}
+impl JavaCapabilityMapping for JavaListValues {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaListValues {
     type Capability = ListValues;

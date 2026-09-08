@@ -1,5 +1,7 @@
 //! Java mapping for the complete `PortableTests` capability.
 
+mod mapping_plan;
+
 use portable_build::{CapabilityMapping, PortableTests};
 use portable_codegen::GeneratedCallableId;
 use portable_core_ir::CoreImplementationMethodId;
@@ -22,12 +24,14 @@ use crate::{
 };
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaPortableTestExpectation {
     Value(JavaExpr),
     Error(JavaExpr),
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaPortableTestCaseInput {
     pub(crate) index: usize,
     pub(crate) name: String,
@@ -36,6 +40,7 @@ pub struct JavaPortableTestCaseInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaPortableTestHarnessInput {
     pub(crate) class_name: String,
     pub(crate) cases: Vec<Vec<JavaStmt>>,
@@ -43,6 +48,7 @@ pub struct JavaPortableTestHarnessInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaPortableFunctionInvocationInput {
     pub(crate) symbol: GeneratedCallableId,
     pub(crate) signature: JavaMethodSignature,
@@ -50,6 +56,7 @@ pub struct JavaPortableFunctionInvocationInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct JavaPortableMethodInvocationInput {
     pub(crate) method: CoreImplementationMethodId,
     pub(crate) method_name: String,
@@ -59,6 +66,7 @@ pub struct JavaPortableMethodInvocationInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaPortableTestsInput {
     FunctionInvocation(JavaPortableFunctionInvocationInput),
     MethodInvocation(JavaPortableMethodInvocationInput),
@@ -67,6 +75,7 @@ pub enum JavaPortableTestsInput {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub enum JavaPortableTestsNode {
     Expression(JavaExpr),
     Case(Vec<JavaStmt>),
@@ -81,7 +90,12 @@ impl super::support::JavaMappingOutput for JavaPortableTestsNode {}
 pub struct JavaPortableTests;
 
 impl sealed::JavaCapabilityMapping for JavaPortableTests {}
-impl JavaCapabilityMapping for JavaPortableTests {}
+impl JavaCapabilityMapping for JavaPortableTests {
+    type Plan = mapping_plan::Plan;
+    fn select_plan(&self, input: &Self::Input) -> Result<Self::Plan, Vec<Diagnostic>> {
+        mapping_plan::select(input)
+    }
+}
 
 impl CapabilityMapping<JavaDialect> for JavaPortableTests {
     type Capability = PortableTests;
