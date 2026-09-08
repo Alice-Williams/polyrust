@@ -23,8 +23,11 @@ No native compiler process or third-party dependency enters production code.
 ## Ownership
 
 Resource checks inspect the language-owned AST, after target name allocation.
-They run in `TargetResourceValidation` after syntax certification over linked
-files, including the fully composed Runtime class. Invalid target ASTs fail
+They run in `TargetResourceValidation` after language checking over linked
+files, including the fully composed Runtime class, and before constructing
+RenderReadyPackage. Both direct shared certification functions and the compiler
+adapter use this same sealed path; resources are not a compiler-only gate.
+Invalid target ASTs fail
 first, so capacity errors cannot mask an accompanying syntax/mapping defect.
 The checks must not sum independent classes as one class or miss members
 injected as helper fragments. No renderer performs

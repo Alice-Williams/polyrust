@@ -35,7 +35,7 @@ but it MUST preserve these properties:
 
 - `RenderReadyPackage<D>` has private fields and no public constructor;
 - only shared certification code can construct it after the language checker
-  succeeds;
+  and target resource admission both succeed, in that order;
 - it cannot be deserialized or safely mutated;
 - it contains or privately owns the exact linked value which was checked;
 - no renderer overload accepts an unresolved, verified, or merely linked
@@ -110,17 +110,23 @@ Certification failures include the target, closed violation category, source
 file role/path, closest AST provenance, and stable relevant symbol IDs. They do
 not produce a render-ready value.
 
-Rendering a certified package is infallible with respect to grammar. Resource
-limits and manifest/path validation remain typed failures in their owning later
-phase rather than syntax diagnostics.
+Rendering a certified package is infallible with respect to grammar. Target
+resource admission is a distinct typed failure after language checking but
+before constructing RenderReadyPackage. Manifest/path and shared output-size
+validation remain later assembly failures rather than syntax diagnostics.
 
-The shared compiler invokes `TargetDialect::verify_resources` in the explicit
-`TargetResourceValidation` phase after language certification and before
-rendering. Target-specific capacity errors and later shared output-size limits
+Every shared certification entry point invokes `TargetDialect::verify_resources`
+after successful language checking and before private RenderReadyPackage
+construction. The compiler preserves its explicit TargetResourceValidation
+diagnostic stage through that same path; it cannot be a pipeline-only check
+which direct safe certification callers bypass. Target-specific capacity errors and later shared output-size limits
 use `TargetResourceLimit`; grammar, encoding and manifest-identity defects keep
 their own codes. A typed entry point may expose resource errors without
 reopening a user syntax-validation branch. No resource failure may mask an
 earlier failed language certificate.
+No syntax-only public intermediate can be passed to a renderer. Tests call
+both direct certification entry points as well as the convenience compiler,
+and prove a one-over resource package cannot acquire the render-ready type.
 
 ## Required proof
 

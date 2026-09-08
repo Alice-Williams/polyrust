@@ -17,6 +17,10 @@ mod declaration_tests;
 #[path = "tests/resource_budgets.rs"]
 mod budget_tests;
 
+#[cfg(test)]
+#[path = "tests/resource_certification.rs"]
+mod certification_tests;
+
 use crate::ast::{JavaFileItem, JavaMember, JavaPackage, JavaResolvedName, JavaTypeDeclaration};
 use crate::dialect::JavaDialect;
 use portable_codegen::{

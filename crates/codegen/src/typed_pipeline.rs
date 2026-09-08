@@ -138,7 +138,8 @@ pub trait TargetDialect: Send + Sync + 'static {
     fn verify_unresolved(&self, ast: &Self::Unresolved) -> Result<(), Vec<Diagnostic>>;
     fn verify_resolved(&self, ast: &Self::Resolved) -> Result<(), Vec<Diagnostic>>;
 
-    /// Compiler/format capacity is checked only after syntax certification.
+    /// Compiler/format capacity is checked after language validation and before
+    /// a render-ready capability is constructed, including direct certifiers.
     /// Dialects without additional target budgets retain shared output limits.
     fn verify_resources(&self, _ast: &Self::Resolved) -> Result<(), Vec<Diagnostic>> {
         Ok(())
@@ -317,64 +318,8 @@ impl<D: TargetDialect> LinkedPackage<D> {
     }
 }
 
-/// An opaque capability proving that the language-owned post-link checker
-/// accepted the exact package presented to rendering.
-///
-/// It deliberately implements neither `Deserialize` nor mutable AST access:
-///
-/// ~~~compile_fail
-/// use portable_codegen::{RenderReadyPackage, TargetDialect};
-///
-/// fn cannot_deserialize<D: TargetDialect>(json: &str) -> RenderReadyPackage<D> {
-///     serde_json::from_str(json).unwrap()
-/// }
-/// ~~~
-///
-/// ~~~compile_fail
-/// use portable_codegen::{RenderReadyPackage, TargetDialect};
-///
-/// fn cannot_mutate<D: TargetDialect>(
-///     package: &mut RenderReadyPackage<D>,
-///     replacement: D::Resolved,
-/// ) {
-///     *package.ast() = replacement;
-/// }
-/// ~~~
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RenderReadyPackage<D: TargetDialect> {
-    ast: D::Resolved,
-    dialect: PhantomData<fn() -> D>,
-}
-
-impl<D: TargetDialect> RenderReadyPackage<D> {
-    pub fn ast(&self) -> &D::Resolved {
-        &self.ast
-    }
-
-    fn new(ast: D::Resolved) -> Self {
-        Self {
-            ast,
-            dialect: PhantomData,
-        }
-    }
-}
-
-pub fn certify_linked_package<D: TargetDialect>(
-    dialect: &D,
-    package: LinkedPackage<D>,
-) -> Result<RenderReadyPackage<D>, Vec<Diagnostic>> {
-    dialect.verify_resolved(package.ast())?;
-    Ok(RenderReadyPackage::new(package.into_ast()))
-}
-
-/// Runs the language-owned post-link checker and returns the only public path
-/// from a raw resolved value to the opaque rendering capability.
-pub fn certify_resolved_package<D: TargetDialect>(
-    dialect: &D,
-    ast: D::Resolved,
-) -> Result<RenderReadyPackage<D>, Vec<Diagnostic>> {
-    certify_linked_package(dialect, LinkedPackage::new(ast))
-}
+mod certification;
+pub use certification::{RenderReadyPackage, certify_linked_package, certify_resolved_package};
 
 /// Rendering cannot accept an unresolved package:
 ///
@@ -622,21 +567,8 @@ where
                 TypedGenerationError::phase(TypedPipelineStage::Resolution, diagnostics)
             })?;
         let linked = LinkedPackage::new(resolved);
-        let render_ready = certify_linked_package(&dialect, linked).map_err(|diagnostics| {
-            TypedGenerationError::phase(
-                TypedPipelineStage::RenderReadinessCertification,
-                diagnostics,
-            )
-        })?;
-
-        dialect
-            .verify_resources(render_ready.ast())
-            .map_err(|diagnostics| {
-                TypedGenerationError::phase(
-                    TypedPipelineStage::TargetResourceValidation,
-                    diagnostics,
-                )
-            })?;
+        let render_ready = certification::certify_with_stage(&dialect, linked)
+            .map_err(certification::CertificationFailure::into_generation_error)?;
         let renderer = self.plugin.renderer();
         let rendered = renderer.render(&render_ready).map_err(|diagnostics| {
             TypedGenerationError::phase(TypedPipelineStage::Rendering, diagnostics)

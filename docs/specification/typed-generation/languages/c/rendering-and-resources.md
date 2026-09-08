@@ -38,7 +38,8 @@ Strict native diagnostics and parser/compiler mutation evidence remain required.
 
 `CResourceError` is a privately constructed target-capacity diagnostic result,
 separate from invalid AST/unsupported capability defects and runtime allocation
-failure. Resource checks run after syntax certification. Generic parameter and
+failure. Resource checks run after language checking but before constructing
+RenderReadyPackage, through the same shared direct-certification path. Generic parameter and
 field lists remain uncapped; target limits cannot be disguised as typing errors.
 
 Pin and test the admitted platform properties: CHAR_BIT, exact integer widths,
