@@ -3,6 +3,73 @@ use super::contextual_reconstruction::{fixture, int, key};
 use super::*;
 
 #[test]
+fn file_initializer_rederives_constancy_after_a_same_typed_child_replacement() {
+    for array in [false, true] {
+        let (mut registry, file, function, scope) = fixture();
+        let scalar = CObjectType::scalar(CScalarType::I32);
+        let input = registry
+            .register_object(&file, key("input"), scalar.clone())
+            .unwrap();
+        let ty = if array {
+            CObjectType::array(scalar, CArrayLength::new(1).unwrap()).unwrap()
+        } else {
+            scalar
+        };
+        let output = registry
+            .register_object(&file, key("output"), ty.clone())
+            .unwrap();
+        let values = CExpressions::new(&registry);
+        let leaf = values.expression_initializer(int(&values)).unwrap();
+        let initializer = if array {
+            values.array_initializer(ty, vec![leaf]).unwrap()
+        } else {
+            leaf
+        };
+        let replacement = values.read(values.global(input.clone()).unwrap()).unwrap();
+        let declarations = CDeclarations::new(&registry, file.clone()).unwrap();
+        let mut source =
+            super::contextual_reconstruction::package(&registry, file, function, scope, vec![]);
+        source.items.push(CFileItem::Definition(
+            declarations
+                .object_definition(
+                    input,
+                    CLinkage::External,
+                    values.expression_initializer(int(&values)).unwrap(),
+                )
+                .unwrap(),
+        ));
+        source.items.push(CFileItem::Definition(
+            declarations
+                .object_definition(output, CLinkage::External, initializer)
+                .unwrap(),
+        ));
+        registry
+            .check_context(std::slice::from_ref(&source))
+            .unwrap();
+        let CFileItem::Definition(definition) = source.items.last_mut().unwrap() else {
+            unreachable!()
+        };
+        let CDefinitionKind::Object { initializer, .. } = &mut definition.kind else {
+            unreachable!()
+        };
+        let leaf = if let CInitializerKind::Array { elements, .. } = &mut initializer.kind {
+            &mut elements[0]
+        } else {
+            initializer
+        };
+        let CInitializerKind::Expression(value) = &mut leaf.kind else {
+            unreachable!()
+        };
+        assert_eq!(value.ty(), replacement.ty());
+        *value = replacement;
+        assert_eq!(
+            registry.check_context(&[source]),
+            Err(CContextError::File(CFileError::ExpectedStaticInitializer))
+        );
+    }
+}
+
+#[test]
 fn every_declaration_kind_rechecks_its_actual_file_and_nominal_projection() {
     let (mut registry, file, function, _) = fixture();
     let structure = registry.declare_struct(&file, key("Record")).unwrap();

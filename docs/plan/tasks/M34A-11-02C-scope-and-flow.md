@@ -242,9 +242,7 @@ A fresh Sol Extra High reviewer is auditing the complete contextual delta,
 without a numerical finding cap. Findings must be evaluated and repaired or
 explicitly justified before this task closes and 02D implementation begins.
 
-## Commit gate
-
-### Second contextual repair review
+## Second contextual repair review
 
 The uncapped review of 66ef4554 accepted three further defects: joins lost the
 common initialized union object when branches wrote different members; moved
@@ -287,6 +285,64 @@ Fresh review of the repaired source is still required; 02C remains open.
 | Every tracked Bazel rule, including Rust/Bazel linters and native ABI probes | 8402f2a3-a95b-418e-b43b-880236918589 | 439 rules; all 314 test targets pass, 49 executed |
 | Cached release | a5c9aba1-1ab3-4a23-b3bc-77eb89084257 | All 251 test targets pass |
 | Eight-target conformance and deterministic manifests | 046b75a5-22ae-41e0-ab5e-1014fd22af61 | 50 cases and one portable test; all eight targets agree; repeated manifests byte-identical |
+
+## Final production review and proof-matrix closure
+
+A fresh uncapped Sol Extra High review of cf807c92342c034ea49f8ca384c1ef49c752025a
+found no production acceptance/rejection defect, certificate bypass or raw-source
+path. It identified six required proof groups, accepted as test gaps rather than
+reasons to change working production checks:
+
+1. Same-typed nonconstant file initializer replacement after construction.
+2. Explicit forwarding of SizeOf/AlignOf operand completeness, constant arithmetic
+   safety and assertion truth from diagnostic 02C to mandatory 02D.
+3. Global/function-definition completeness and actual Object/Aggregate origins.
+4. Reads of address-forming pointer/index operands and unproved call effects.
+5. Promoted duplicates across switch arms and fallthrough in the default arm.
+6. Nonvoid branch/loop return paths and exact cleanup-label occurrence.
+
+contextual_declaration_variants now replaces scalar and nested array initializer
+leaves with same-typed global reads and requires ExpectedStaticInitializer.
+contextual_safety_boundary explicitly demonstrates that incomplete SizeOf/AlignOf,
+a false assertion and an unsafe but category-valid constant operation are not
+rejected by 02C; those test values must never receive a final certificate.
+contextual_definition_completeness checks global definitions and actual function
+parameter/return types with complete/incomplete and alias controls.
+contextual_definition_origins checks Object/Struct/Union and member ownership in
+both generated/runtime directions, and same-registry typedef relocation.
+contextual_address_operands covers pointer/index operand initialization and
+address-passing to a call without a proved initialization effect.
+contextual_control_edges covers cross-arm promoted duplicates, default fallthrough
+and deleted/duplicated cleanup labels. contextual_return_paths checks an unknown
+Boolean input's two branches and a loop's zero-iteration function exit, each with
+a matching positive return control.
+
+Do not add artificial production restrictions for unreachable isolated cases.
+Typedef/Enum relocation is rejected by canonical owner and source-file
+reconstruction before the origin pass. An incomplete aggregate assignment is
+already rejected by CStatements::assign's mutability construction; its negative
+control asserts IncompleteAggregate there and its complete control passes the
+full contextual entry point. Likewise an incomplete Member owner cannot carry
+the required actual complete member inventory. Existing earlier rejection is
+valid evidence; a redundant later guard need not become a new public escape.
+
+The first expanded unit run 99661c97-d790-4fda-a0aa-b02cf2acf781 failed because
+the write fixture incorrectly unwrapped that existing constructor rejection;
+this was a test assumption error, not a newly discovered production hole.
+After correcting the expected boundary and completing the matrix, all 173 C unit
+tests passed in 43c888b5-5bcd-45a6-ad25-52db8c2e95d7. The complete gates below
+also pass. A fresh final review of the proof additions remains required before
+closing 02C. Production verifier logic is unchanged from reviewed cf807c9;
+new fixtures stay test-only and every contextual production file is at most
+263 physical lines.
+
+| Gate | Invocation | Result |
+| --- | --- | --- |
+| Every tracked Bazel rule, Rust/Bazel linters and policies | 7c76f622-e723-448e-8cb4-b5aaffb784c6 | 439 rules; all 314 test targets pass, 5 executed |
+| Cached release | a3dc4b77-0302-40d1-ab3c-d83ef5692abf | All 251 test targets pass |
+| Eight-target conformance and deterministic manifests | 9b4d50e5-10a5-44a3-9d59-ffdc400844c7 | 50 cases and one portable test; all eight targets agree; repeated manifests byte-identical |
+
+## Commit gate
 
 Record exact commands, invocation IDs and outcomes. Commit and push this slice
 with M34A-11-02C; keep its parent M34A-11-02 and overall C compliance open

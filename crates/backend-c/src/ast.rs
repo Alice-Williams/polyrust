@@ -122,6 +122,30 @@ mod contextual_union_joins;
 #[path = "tests/contextual_owner_files.rs"]
 mod contextual_owner_files;
 
+#[cfg(test)]
+#[path = "tests/contextual_definition_completeness.rs"]
+mod contextual_definition_completeness;
+
+#[cfg(test)]
+#[path = "tests/contextual_definition_origins.rs"]
+mod contextual_definition_origins;
+
+#[cfg(test)]
+#[path = "tests/contextual_safety_boundary.rs"]
+mod contextual_safety_boundary;
+
+#[cfg(test)]
+#[path = "tests/contextual_control_edges.rs"]
+mod contextual_control_edges;
+
+#[cfg(test)]
+#[path = "tests/contextual_return_paths.rs"]
+mod contextual_return_paths;
+
+#[cfg(test)]
+#[path = "tests/contextual_address_operands.rs"]
+mod contextual_address_operands;
+
 pub use call_model::{CCall, CCallable, CCallableKind, CEffect};
 pub use comments::{CAssertDiagnostic, CComment};
 pub use contextual::CContextError;
