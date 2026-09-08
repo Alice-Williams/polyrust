@@ -1,8 +1,11 @@
 //! Test-only C migration and retained legacy fixtures.
 
+mod aggregate_placement;
 mod calls;
 mod control;
+mod control_categories;
 mod declarations;
+mod definition_placement;
 mod expressions;
 mod files;
 mod identifiers;
@@ -11,10 +14,13 @@ mod known_constants;
 mod known_objects;
 mod legacy;
 mod literals;
+mod operator_construction;
 mod operator_signatures;
 mod ownership_conversions;
+mod place_mutation;
 mod places;
 mod pointer_expressions;
+mod pointer_qualification;
 mod registry_aliases;
 mod registry_interfaces;
 mod registry_inventory;

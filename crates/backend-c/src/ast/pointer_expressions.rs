@@ -30,14 +30,12 @@ impl CExpressions<'_> {
                 CObjectTypeKind::Pointer(CPointerTarget::Object(from)),
                 CObjectTypeKind::Pointer(CPointerTarget::Object(to)),
             ) => {
-                to.constness() == CConstness::Const
-                    && self.registry.types_match(
-                        &(**from).clone().without_top_level_const(),
-                        &(**to).clone().without_top_level_const(),
-                    )?
+                pointee_constness(from) == CConstness::Unqualified
+                    && pointee_constness(to) == CConstness::Const
+                    && same_unqualified_pointee(self.registry, from, to)?
             }
             (
-                CObjectTypeKind::Pointer(CPointerTarget::Void(_)),
+                CObjectTypeKind::Pointer(CPointerTarget::Void(CConstness::Unqualified)),
                 CObjectTypeKind::Pointer(CPointerTarget::Void(CConstness::Const)),
             ) => true,
             _ => false,
@@ -105,10 +103,45 @@ fn is_slot_type(ty: &CObjectType) -> bool {
         return false;
     };
     slot.constness() == CConstness::Unqualified
-        && matches!(
-            slot.kind(),
-            CObjectTypeKind::Pointer(CPointerTarget::Object(_) | CPointerTarget::Void(_))
-        )
+        && match slot.kind() {
+            CObjectTypeKind::Pointer(CPointerTarget::Object(target)) => {
+                pointee_constness(target) == CConstness::Unqualified
+            }
+            CObjectTypeKind::Pointer(CPointerTarget::Void(qualifier)) => {
+                *qualifier == CConstness::Unqualified
+            }
+            _ => false,
+        }
+}
+
+// Array qualification lives on its element, but a nested pointer's pointee
+// qualification is a different level and must remain unchanged.
+fn same_unqualified_pointee(
+    registry: &super::CRegistry,
+    mut left: &CObjectType,
+    mut right: &CObjectType,
+) -> Result<bool, super::CRegistryError> {
+    while let (
+        CObjectTypeKind::Array {
+            element: a,
+            length: x,
+        },
+        CObjectTypeKind::Array {
+            element: b,
+            length: y,
+        },
+    ) = (left.kind(), right.kind())
+    {
+        if x != y {
+            return Ok(false);
+        }
+        left = a;
+        right = b;
+    }
+    registry.types_match(
+        &left.clone().without_top_level_const(),
+        &right.clone().without_top_level_const(),
+    )
 }
 
 fn pointee_constness(mut ty: &CObjectType) -> CConstness {

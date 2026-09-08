@@ -76,8 +76,11 @@ fn nominal_declarations_derive_the_complete_inventory_and_owning_file() {
         }
     );
     assert!(declarations.typedef(alias.clone()).is_ok());
-    let declarations = CDeclarations::new(&registry, source).unwrap();
-    assert_eq!(declarations.aggregate(owner), Err(E::WrongFile));
+    let declarations = CDeclarations::new(&registry, source.clone()).unwrap();
+    let private_definition = declarations.aggregate(owner.clone()).unwrap();
+    assert_eq!(private_definition.file(), &source);
+    assert!(matches!(private_definition.kind(),
+        CDeclarationKind::Aggregate { owner: actual, .. } if actual == &owner));
     assert_eq!(declarations.typedef(alias), Err(E::WrongFile));
     let (foreign, _) = super::registry_nominals::registry();
     assert!(matches!(

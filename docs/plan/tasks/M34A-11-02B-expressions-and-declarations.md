@@ -120,6 +120,52 @@ These are construction and existing-output regression results, not native
 proof of the new C renderer (which is still a later stage). Independent review
 remains required before this task is complete or 02C implementation begins.
 
+## Independent construction review and repair
+
+A fresh Sol Extra High reviewer audited the complete immutable construction
+checkpoint 2a21a145a5e1ad0d1dd5964393ebc7c00673dc47 against e47bcd9,
+including every changed production module, surrounding type/registry foundations,
+focused tests and the normative C contracts. The review was read-only, uncapped,
+and did not treat deferred 02C/02D/03/04 work as already implemented.
+
+All three findings were independently evaluated and accepted:
+
+| Finding | Disposition and regression evidence |
+| --- | --- |
+| P1: SameSlot accepted const object/void pointees as owning slots | Require unqualified slot and effective pointee; pointer_qualification tests equal-type borrowed slots, qualified nested arrays, and mutable object/void/array controls |
+| P2: AddConst accepted no-ops and rejected immediate array qualification | Require exactly Unqualified to Const through array layers, retaining bounds and deeper pointer qualification; tests cover scalar, void, pointer, nested-array transitions, no-ops, reversal, wrong bounds/types and unsafe nested-pointer changes |
+| P2: promised constructor matrix incomplete | Add exhaustive operator construction/payload checks, unsigned/enumerator cases and foreign enum rejection, loop break and nested-block owner checks, every mutable place's exact assignment/const/type controls, and every definition origin/placement/linkage combination |
+
+The main-agent handoff check found an additional implementation mismatch with
+03's existing opaque-layout contract: aggregate completion incorrectly required
+the declaration owner's file. Completion now retains the original nominal owner
+while allowing public-header to corresponding implementation/private-header and
+private-header to implementation placement. A full six-role matrix rejects
+unrelated same-role files, direct generated/runtime crossover and test-owned
+production completion. Same-file tag completion remains legal. Actual dependency
+direction, public layout leakage and linked ordering remain independent 03 checks.
+
+No finding was rejected. The review's optional alias-spelling surface expansion
+is not required by the closed grammar: canonical element-qualified arrays remain
+constructible and no certificate or renderer is exposed here. This does not waive
+future lowering evidence if such a spelling-preserving alias becomes necessary.
+
+Focused container Bazel invocation 1c5222de-d650-4f2a-9ece-0982abc3c30e
+passed the C unit and rustdoc/compile-fail targets after these repairs.
+The full repair checkpoint passed all local gates:
+
+| Gate | Invocation | Result |
+| --- | --- | --- |
+| All tracked Bazel rules, Rust Clippy/rustfmt, Buildifier and policies | f607e314-8839-4643-bdd2-366ef24cda30 | 439 rules; all 314 test targets pass, 46 executed |
+| Cached release | 1c086fd6-6e44-4f94-8e35-f617912d3815 | All 251 test targets pass |
+| Eight-target conformance/determinism | fa62e696-9f98-4727-9fb8-98aea4775b3d | 50 cases and one portable test; evaluator and eight outputs agree; repeated manifests byte-identical |
+
+The C unit binary now has 100 passing tests. These commands use the same
+container, Bazel root and normal caches documented above. No new dependency or
+lint suppression was introduced. A fresh independent review remains required
+before 02B closes. Hosted CI run 34257746538 completed successfully for the
+earlier construction SHA 2a21a14; that is not hosted proof of this repair delta.
+
 ## Commit gate
 
 Record exact commands, invocation IDs and outcomes. Commit and push this slice

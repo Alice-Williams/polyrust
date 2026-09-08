@@ -126,6 +126,14 @@ initialized-member/prefix facts; a complete owner becomes Live only after all
 required initialization commits. Restore cannot authenticate an arbitrary
 void pointer. AddConst changes
 only the immediate pointee qualification and cannot admit T** to const T**.
+The transition is exactly Unqualified to Const, not an already-const no-op.
+For a pointed-to array, effective qualification is its element qualification
+through all array layers; bounds and the otherwise dequalified object type
+remain identical. A nested pointer's target qualifiers are not stripped.
+SameSlot additionally requires both the intermediate slot object and its
+effective object/void target to be unqualified: const T** and const void**
+are borrowed-pointer slots, not owning slots. Array element constness cannot
+hide a borrow inside this category.
 Exact call/initializer typing does not hide these conversions implicitly.
 
 ## Initializers, statements and control flow

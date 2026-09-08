@@ -57,10 +57,13 @@ impl<'a> CDeclarations<'a> {
             .members(&owner)?
             .ok_or(E::IncompleteDefinition)?
             .to_vec();
-        self.same_file(match &owner {
-            CAggregateRef::Struct(value) => value.file(),
-            CAggregateRef::Union(value) => value.file(),
-        })?;
+        aggregate_definition_file(
+            match &owner {
+                CAggregateRef::Struct(value) => value.file(),
+                CAggregateRef::Union(value) => value.file(),
+            },
+            &self.file,
+        )?;
         Ok(self.declaration(D::Aggregate { owner, members }))
     }
 
@@ -171,4 +174,19 @@ fn definition_file(origin: &CFileRef, target: &CFileRef) -> Result<(), E> {
         }
     };
     if valid { Ok(()) } else { Err(E::WrongFileRole) }
+}
+
+// A tag's authoritative declaration origin is not its complete layout's placement.
+// Dependency direction and actual file ordering are independently checked at link.
+fn aggregate_definition_file(origin: &CFileRef, target: &CFileRef) -> Result<(), E> {
+    if origin == target {
+        return Ok(());
+    }
+    match (origin.key().role, target.key().role) {
+        (
+            CFileRole::GeneratedPublicHeader | CFileRole::RuntimePublicHeader,
+            CFileRole::PrivateHeader,
+        ) => Ok(()),
+        _ => definition_file(origin, target),
+    }
 }
