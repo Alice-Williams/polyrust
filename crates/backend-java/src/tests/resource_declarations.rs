@@ -9,6 +9,92 @@ use crate::ast::{
 };
 
 #[test]
+fn implicit_inner_constructor_descriptor_includes_outer_class_name() {
+    let prefix = crate::ast::JavaPackage::Generated.name().len() + 1;
+    for outer_length in [65_530, 65_531] {
+        let mut child = declaration(vec![]);
+        child.name = JavaIdentifier::new("A").unwrap();
+        let mut outer = declaration(vec![JavaMember::NestedType(child)]);
+        outer.name = JavaIdentifier::new("A".repeat(outer_length - prefix)).unwrap();
+        let mut errors = Vec::new();
+        let names = super::Names::new();
+        super::declarations::Checker::new(&names, "Inner.java", &mut errors).declaration(
+            &outer,
+            &outer.members.iter().collect::<Vec<_>>(),
+            prefix,
+            None,
+        );
+        assert_eq!(errors.is_empty(), outer_length == 65_530, "{errors:?}");
+        if outer_length == 65_531 {
+            assert!(
+                errors
+                    .iter()
+                    .any(|error| error.message.contains("method descriptor bytes"))
+            );
+        }
+    }
+}
+
+#[test]
+fn nongeneric_heritage_does_not_allocate_a_combined_signature_constant() {
+    let mut builder = portable_codegen::TargetAstBuilder::new(crate::dialect::JavaDialect);
+    let mut names = super::Names::new();
+    let mut interfaces = Vec::new();
+    for index in 0..2 {
+        let id = builder.generated_type(portable_codegen::GeneratedType {
+            name: format!("Interface{index}"),
+            kind: JavaDeclarationKind::Interface,
+            visibility: crate::ast::JavaVisibility::Public,
+            origin: portable_codegen::GeneratedOrigin::Synthesized(
+                portable_codegen::SynthesisReason::TestHarness,
+            ),
+            source: portable_diagnostics::SourceRef::logical(["resource-signature"]),
+        });
+        names.insert(id, 40_000);
+        interfaces.push(JavaType::Reference(crate::ast::JavaTypeName::Generated(id)));
+    }
+    let mut value = declaration(vec![]);
+    value.heritage = crate::ast::JavaHeritage::Interfaces(interfaces);
+    for generic in [false, true] {
+        if generic {
+            value
+                .type_parameters
+                .push(JavaIdentifier::new("T").unwrap());
+        }
+        let mut errors = Vec::new();
+        super::declarations::Checker::new(&names, "Heritage.java", &mut errors).declaration(
+            &value,
+            &[],
+            23,
+            None,
+        );
+        assert_eq!(errors.is_empty(), !generic, "{errors:?}");
+        if generic {
+            assert!(
+                errors
+                    .iter()
+                    .any(|error| error.message.contains("class generic signature bytes"))
+            );
+        }
+    }
+}
+
+#[test]
+fn generated_member_binary_names_include_the_package_prefix() {
+    let owner = crate::dialect::JavaGeneratedContainer::PublicApi;
+    let member = JavaIdentifier::new("A".repeat(65_527)).unwrap();
+    assert_eq!(
+        super::generated_member_length(owner, &member),
+        crate::ast::JavaPackage::Generated.name().len()
+            + 1
+            + owner.text().len()
+            + 1
+            + member.as_str().len()
+    );
+    assert!(super::generated_member_length(owner, &member) > 65_535);
+}
+
+#[test]
 fn canonical_record_constructor_slots_are_checked_without_explicit_members() {
     for count in [127, 128] {
         let mut record = declaration(vec![]);

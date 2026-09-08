@@ -46,10 +46,14 @@ defines the relevant class-file encodings in sections 4.1, 4.3.3, 4.4.7, and
   Record canonical constructors and enum constructor synthetic parameters
   must be accounted for even when absent from the source member list.
   Non-static nested ordinary classes additionally capture an enclosing
-  instance; static nested classes, records, enums and interfaces do not.
+  instance, including implicit default constructors; static nested classes,
+  records, enums and interfaces do not.
 - Encoded names and signatures respect the unsigned-16-bit modified-UTF-8
   limit. Account for package, enclosing-class separators, generated suffixes,
   erased descriptors and generic signatures, rather than only simple names.
+  Generated-member binary names include the package prefix. A combined class
+  Signature is checked only when javac actually emits that attribute; raw
+  non-generic interface names remain separate constant-pool entries.
   The walk covers executable-local types/names and reference signatures, not
   only declaration headers. Instantiated varargs lists are not JVM descriptors.
 - Array descriptors have at most 255 dimensions.
@@ -75,8 +79,9 @@ Any conservative admission budget must have an explicit coverage argument for
 every admitted construct and compiler-generated contribution, use saturating
 accounting, identify itself as a conservative budget in diagnostics, and retain
 native positive/negative boundary tests. Do not call an unproved heuristic an
-exact JVM capacity guarantee. This portion remains open in M34A-10AA until its
-budget or transformation and independent evidence are implemented.
+exact JVM capacity guarantee. The implemented reservations and native class-file
+evidence follow the [compiler admission budget](compiler-budget.md). M34A-10AA
+remains open until the full checkpoint and independent review pass.
 
 Argument packing, class splitting and helper-method extraction are separate
 optional representational extensions, not prerequisites to supporting ordinary
@@ -91,4 +96,7 @@ and post-link runtime composition. Exercise the typed API with resource errors
 and preserve its Rust compile-fail capability/unchecked-input tests. Existing
 real-world, native-consumer, strict-lint, snapshot and determinism gates remain
 mandatory. Success evidence is scoped to the implemented checks; it is not a
-formal proof about arbitrary future compiler versions.
+formal proof about arbitrary future compiler versions. The encoding oracle
+uses an in-memory Java file manager, so filesystem filename limits do not mask
+class-file UTF8 boundaries. It also loads the emitted classes: javac alone can
+accept an enum constructor whose synthetic parameters violate JVM slot limits.

@@ -142,3 +142,72 @@ The final linked-name repair is verified by focused invocation
 
 Normal Bazel caching was enabled. This checkpoint closes the exact structural
 limits and raw-literal review findings, not the remaining method/class budgets.
+
+## Compiler-capacity implementation and fresh exact-boundary review
+
+Checkpoint `c77249a12ee594942cf98d1585d8fb725f6e42f9` was pushed and the
+remote main ref verified. Its fresh uncapped Sol Extra High review found three
+accepted accounting defects and one accepted proof gap: a missing package
+prefix for cross-file generated types, unchecked implicit inner constructors,
+an artificial Signature limit for nongeneric heritage, and missing native
+encoding/synthesis controls. All four are addressed in the next working tree;
+the two suggested optional classifier/literal matrices are not core defects.
+
+The separate `resources/budget/` expression, statement and class modules now
+implement the documented conservative pinned-javac admission policy. It covers
+individual method code, pool/member capacity, initializers, records, enums,
+enclosing captures and combined enum-switch helper initialization. Every switch
+reserves possible helper metadata, because a default-only enum switch still
+creates a javac map. The shared generic AST remains uncapped.
+
+Permanent tests include a typed 20,000-byte-array resource failure, native
+oversized-method and aggregate-class counterexamples, independent class
+reservations, and a dependency-free class-file reader. The reader compares the
+same certified/rendered AST's calculated pool, member, code, locals, stack,
+exception, frame and bootstrap reservations against native output from the
+mutation corpus and full capability/runtime/interface packages. Per-method
+native comparisons use named-method envelopes (shared only by overloads);
+production admission checks every reserved method individually.
+
+The new in-memory compiler matrix covers 255/256 array dimensions, inner and
+enum hidden slots, nested binary names, implicit constructor descriptors,
+ordinary descriptor aggregation, and present/absent generic Signatures. It
+avoids filesystem filename limits. The first run revealed that javac accepts
+the over-slot enum constructor; requiring actual JVM class loading catches it.
+The corrected focused matrix passes invocation
+`936fa26f-5563-4e12-bebc-866821246333`.
+
+The earlier combined gate `c7d16f40-fd3f-457e-aaba-aad563dc0aba` passed 186 of
+187 Java tests plus Rustfmt, Clippy, Buildifier and documentation; its one
+failure was the compiler-only oracle assumption just described. This is not
+recorded as a fully green checkpoint. Full final gates and a fresh review of
+the new compiler-admission policy remain required before Java completion.
+
+The first full replay (`1ad1826f-ee23-42fc-b901-1059df58acd6`) exposed
+over-rejection of two historical test harnesses, not a native compiler defect.
+Instruction-specific reservations now distinguish literal/load operations,
+simple statements and control flow. Capacity maxima are unchanged. Invocation
+`8d8d302f-0eac-4e30-b6b6-574d18b492db` passes all 187 Java unit/native tests,
+both historical model regressions, Rustfmt and Clippy. The class-file audit also
+compiles the generated native/conformance harnesses and matches method names,
+so an unrelated large method cannot hide an underestimated implicit member.
+
+Hosted CI for the preceding `c77249a` checkpoint completed successfully in
+[run 34188422621](https://github.com/Alice-Williams/polyrust/actions/runs/34188422621),
+with all eight jobs green. The compiler-budget working tree still needs its
+own complete gates, commit, push and immutable review.
+
+## Verified compiler-budget checkpoint
+
+- `86c88fd2-4514-43b6-8ed0-e8f06fd71e76`: all 435 tracked rules build and
+  all 310 test targets pass, including historical ports and Rust/Bazel linters.
+- `6a7bb6f5-f021-4b00-b37a-278574b0b58d`: all 247 release tests pass.
+- `c16f6ec6-ae13-4cd2-9bb9-9cec02c34506`: 50 cases and one portable test
+  agree across the evaluator and eight targets; repeated manifests are identical.
+- Linux Cargo 1.98.0 compatibility passes 187 Java unit/native tests and eight
+  doctests. The mutation/compiler corpus remains specifically Bazel-owned;
+  Cargo runs its other native consumer and in-memory encoding controls.
+
+These gates retain normal Bazel action/test caching. Compiler admission is now
+implemented and locally integrated; Java completion still awaits independent
+evaluation of the budget review and the pushed checkpoint's hosted CI.

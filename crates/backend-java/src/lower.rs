@@ -54,6 +54,10 @@ mod support_files;
 mod types;
 mod values;
 
+#[cfg(test)]
+#[path = "tests/native_budget_packages.rs"]
+mod native_budget_packages;
+
 #[derive(Clone, Copy, Debug)]
 pub struct JavaLowerer {
     features: JavaCapabilitySet,

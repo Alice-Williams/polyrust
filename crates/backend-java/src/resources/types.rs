@@ -25,6 +25,14 @@ pub(super) fn slots(ty: &JavaType) -> usize {
     }
 }
 
+pub(super) fn has_signature(ty: &JavaType) -> bool {
+    match ty {
+        JavaType::Generic { .. } | JavaType::TypeVariable(_) | JavaType::Wildcard { .. } => true,
+        JavaType::Array { component, .. } => has_signature(component),
+        JavaType::Primitive(_) | JavaType::Boxed(_) | JavaType::Reference(_) => false,
+    }
+}
+
 pub(super) fn parameters(
     values: &[JavaIdentifier],
     path: &str,

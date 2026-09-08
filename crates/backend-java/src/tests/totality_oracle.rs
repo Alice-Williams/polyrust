@@ -103,6 +103,29 @@ impl CompiledPackage {
         );
     }
 
+    pub(super) fn verify_budgets(&self, budgets: &[crate::resources::budget::ClassBudget]) {
+        super::budget_oracle::verify(&self.classes, budgets);
+    }
+
+    pub(super) fn compile_harnesses(&self, manifest: &OutputManifest) {
+        for name in ["GeneratedTest.java", "ConformanceTest.java"] {
+            let file = manifest
+                .file(&format!("src/test/java/org/polyrust/generated/{name}"))
+                .expect("generated harness");
+            let OutputContents::Text(source) = file.contents() else {
+                panic!("text harness");
+            };
+            let path = self.root.join(name);
+            std::fs::write(&path, source).expect("write native budget harness");
+            let output = compile_against(&self.classes, &self.classes, &path);
+            assert!(
+                output.status.success(),
+                "native budget harness failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    }
+
     pub(super) fn rejects_consumer(&self, name: &str, source: &str, diagnostic: &str) {
         let output = self.compile_consumer(source, name);
         let stderr = String::from_utf8_lossy(&output.stderr);

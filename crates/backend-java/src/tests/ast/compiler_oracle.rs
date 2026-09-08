@@ -26,6 +26,7 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
     let classes = output_root.join("classes");
     std::fs::create_dir_all(&classes).expect("create javac output directory");
     let mut sources = Vec::new();
+    let mut budgets = Vec::new();
     let mut rejected = 0usize;
 
     for index in 0..128 {
@@ -176,6 +177,7 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
             .expect("every verified mutation must link");
         let certified = portable_codegen::certify_resolved_package(&JavaDialect, linked)
             .expect("every linked mutation must become render-ready");
+        budgets.extend(crate::tests::budget_oracle::collect(certified.ast()));
         let rendered =
             portable_codegen::render_certified_package(&crate::render::JavaRenderer, &certified)
                 .expect("every render-ready mutation must render");
@@ -503,6 +505,7 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
         .expect("structured Java mutation package must link");
     let certified = portable_codegen::certify_resolved_package(&JavaDialect, linked)
         .expect("structured Java mutation package must become render-ready");
+    budgets.extend(crate::tests::budget_oracle::collect(certified.ast()));
     let rendered =
         portable_codegen::render_certified_package(&crate::render::JavaRenderer, &certified)
             .expect("structured render-ready Java mutation package must render");
@@ -544,4 +547,5 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
         "verified Java AST mutation failed javac:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    crate::tests::budget_oracle::verify(&classes, &budgets);
 }

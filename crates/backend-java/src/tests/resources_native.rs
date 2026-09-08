@@ -54,3 +54,24 @@ fn java21_parameter_name_and_literal_capacity_controls() {
     package.rejects_generated_member(&format!("public static int label(String value) {{ return switch(value) {{ case \"{}\" -> 1; default -> 0; }}; }}", "a".repeat(65_535)), "constant string too long");
     package.rejects_generated_member("public static int label(int value) { return switch(value) { case 4294967295 -> 1; default -> 0; }; }", "integer number too large");
 }
+
+#[test]
+fn java21_rejects_oversized_method_and_class_controls() {
+    let program = typed_program(portable_name!("class_capacity"), |builder| builder);
+    let manifest = crate::JavaBackend
+        .generate_typed(&program)
+        .expect("small package");
+    let package = CompiledPackage::new(&manifest, "class-capacity");
+    package.consumer(&format!("package org.polyrust.consumer; public final class Consumer {{ private Consumer() {{}} public static void main(String[] args) {{ if (bytes().length != 100) throw new AssertionError(); }} public static byte[] bytes() {{ return new byte[] {{{}}}; }} }}", vec!["0"; 100].join(",")));
+    package.rejects_generated_member(
+        &format!(
+            "public static byte[] tooLarge() {{ return new byte[] {{{}}}; }}",
+            vec!["0"; 20_000].join(",")
+        ),
+        "code too large",
+    );
+    let members = (0..65_535)
+        .map(|index| format!("public static void m{index}() {{}}\n"))
+        .collect::<String>();
+    package.rejects_generated_member(&members, "too many");
+}

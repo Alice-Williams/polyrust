@@ -1,5 +1,6 @@
 //! Target capacity is a checked boundary, not a portable typing failure.
 
+pub(crate) mod budget;
 mod declarations;
 mod executables;
 mod types;
@@ -11,6 +12,10 @@ mod tests;
 #[cfg(test)]
 #[path = "tests/resource_declarations.rs"]
 mod declaration_tests;
+
+#[cfg(test)]
+#[path = "tests/resource_budgets.rs"]
+mod budget_tests;
 
 use crate::ast::{JavaFileItem, JavaMember, JavaPackage, JavaResolvedName, JavaTypeDeclaration};
 use crate::dialect::JavaDialect;
@@ -83,16 +88,9 @@ pub(crate) fn resolved(package: &LinkedTargetPackage<JavaDialect>) -> Result<(),
                                 .saturating_add(path.member.as_str().len()),
                         ),
                     ),
-                    JavaResolvedName::GeneratedMember { owner, member } => (
-                        Some(member),
-                        Some(
-                            owner
-                                .text()
-                                .len()
-                                .saturating_add(1)
-                                .saturating_add(member.as_str().len()),
-                        ),
-                    ),
+                    JavaResolvedName::GeneratedMember { owner, member } => {
+                        (Some(member), Some(generated_member_length(*owner, member)))
+                    }
                     JavaResolvedName::Qualified(_) | JavaResolvedName::Member { .. } => {
                         (None, None)
                     }
@@ -166,6 +164,26 @@ fn check_with_names(
             }
         }
     }
+    let type_count = files
+        .iter()
+        .flat_map(|(_, items)| items)
+        .fold(0usize, |total, item| {
+            total.saturating_add(match item {
+                JavaFileItem::Type { declaration, .. } => budget::declaration_count(declaration),
+                JavaFileItem::RuntimeMembers { members, .. } => {
+                    members.iter().fold(0usize, |sum, member| {
+                        sum.saturating_add(match member {
+                            JavaMember::NestedType(child) => budget::declaration_count(child),
+                            JavaMember::Field(_)
+                            | JavaMember::CompileFailField(_)
+                            | JavaMember::EnumConstant(_)
+                            | JavaMember::Method(_)
+                            | JavaMember::Constructor(_) => 0,
+                        })
+                    })
+                }
+            })
+        });
     for (path, items) in files {
         for item in &items {
             if let JavaFileItem::Type { declaration, .. } = item {
@@ -181,6 +199,7 @@ fn check_with_names(
                 }
                 let mut checker = declarations::Checker::new(&names, path, &mut errors);
                 checker.declaration(declaration, &members, prefix, None);
+                budget::check(declaration, &members, type_count, path, &mut errors);
             }
         }
     }
@@ -192,6 +211,19 @@ fn check_with_names(
 }
 
 type Names = BTreeMap<portable_codegen::GeneratedTypeId, usize>;
+
+fn generated_member_length(
+    owner: crate::dialect::JavaGeneratedContainer,
+    member: &crate::ast::JavaIdentifier,
+) -> usize {
+    JavaPackage::Generated
+        .name()
+        .len()
+        .saturating_add(1)
+        .saturating_add(owner.text().len())
+        .saturating_add(1)
+        .saturating_add(member.as_str().len())
+}
 
 fn collect_names(
     value: &JavaTypeDeclaration,

@@ -68,6 +68,11 @@ impl<'a> Checker<'a> {
             types::MAX_UTF8,
         );
         let generic = types::parameters(&value.type_parameters, self.path, self.errors);
+        let mut has_signature = generic != 0
+            || matches!(
+                value.kind,
+                JavaDeclarationKind::Enum | JavaDeclarationKind::UninhabitedEnum(_)
+            );
         let mut signature = generic.saturating_add(match value.kind {
             JavaDeclarationKind::Enum | JavaDeclarationKind::UninhabitedEnum(_) => {
                 "Ljava/lang/Enum<>;"
@@ -89,16 +94,19 @@ impl<'a> Checker<'a> {
                 65_535,
             );
             for ty in interfaces {
+                has_signature |= types::has_signature(ty);
                 signature = signature.saturating_add(self.ty(ty).signature);
             }
         }
-        limit(
-            self.errors,
-            self.path,
-            "class generic signature bytes",
-            signature,
-            types::MAX_UTF8,
-        );
+        if has_signature {
+            limit(
+                self.errors,
+                self.path,
+                "class generic signature bytes",
+                signature,
+                types::MAX_UTF8,
+            );
+        }
         limit(
             self.errors,
             self.path,
@@ -136,6 +144,23 @@ impl<'a> Checker<'a> {
                 "record component-name recipe bytes",
                 recipe,
                 types::MAX_UTF8,
+            );
+        }
+        if value.kind == JavaDeclarationKind::FinalClass
+            && !members
+                .iter()
+                .any(|member| matches!(member, JavaMember::Constructor(_)))
+        {
+            let receiver = if value.modifiers.contains(&JavaModifier::Static) {
+                ReceiverLayout::Instance
+            } else {
+                enclosing.map_or(ReceiverLayout::Instance, ReceiverLayout::Inner)
+            };
+            self.callable(
+                &[],
+                &JavaType::Primitive(JavaPrimitive::Void),
+                &[],
+                receiver,
             );
         }
         for member in members {
