@@ -1,5 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+mod equality;
+
 use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef};
 use portable_ir::v0::{
     AliasDeclaration, Block, ConstantDeclaration, ConstantExpression, Declaration, Document,
@@ -2037,45 +2039,6 @@ impl Checker<'_> {
             false
         } else {
             true
-        }
-    }
-
-    fn type_contains_interface(&mut self, ty: &TypeRef, node: &NodeMeta) -> bool {
-        let mut stack = Vec::new();
-        let Some(ty) = self.normalize_type(ty, node, TypePosition::General, &mut stack) else {
-            return false;
-        };
-        match ty {
-            TypeRef::Interface(_) => true,
-            TypeRef::List(inner) | TypeRef::Option(inner) => {
-                self.type_contains_interface(&inner, node)
-            }
-            TypeRef::Result { ok, error } => {
-                self.type_contains_interface(&ok, node)
-                    || self.type_contains_interface(&error, node)
-            }
-            TypeRef::Named(id) => match self.index.declaration(id) {
-                Some(Declaration::Record(record)) => record
-                    .fields
-                    .iter()
-                    .any(|field| self.type_contains_interface(&field.ty, &field.header.node)),
-                Some(Declaration::Enum(enumeration)) => {
-                    enumeration.variants.iter().any(|variant| {
-                        variant.fields.iter().any(|field| {
-                            self.type_contains_interface(&field.ty, &field.header.node)
-                        })
-                    })
-                }
-                _ => false,
-            },
-            TypeRef::Unit
-            | TypeRef::Bool
-            | TypeRef::I32
-            | TypeRef::I64
-            | TypeRef::F64
-            | TypeRef::Char
-            | TypeRef::String
-            | TypeRef::Bytes => false,
         }
     }
 

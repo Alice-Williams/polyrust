@@ -5,6 +5,8 @@ use portable_ir::v0::*;
 
 use super::*;
 
+mod recursive_equality;
+
 const EVERY_NODE_PATH: &str = "crates/ir/src/v0/testdata/every-node.poly.json";
 
 struct Factory {

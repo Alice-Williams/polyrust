@@ -1,6 +1,6 @@
 # M34A-11-01R — Repair shared admission findings from the C design review
 
-- Status: complete
+- Status: in-progress (reopened by independent review of 4e04b5d)
 - Depends on: M34A-11-01
 
 ## Goal
@@ -34,6 +34,14 @@ Keep these repairs distinct from advertising C capabilities or C certification.
   change; this task cannot claim that an untested Java repair is completed.
 
 ## Review disposition
+
+The fresh Sol Extra High review of 4e04b5d found that dynamic interface
+containment follows recursive aggregates without visited-state. Accepted:
+record/list cycles, legacy payload-enum cycles and aliases crossing aggregates
+must terminate. Test all four equality/search operations, both interface-free
+cycles and cycles preceding an interface-bearing sibling. Pure alias cycles
+must retain their existing AliasCycle diagnostic. This is a checker repair,
+not a new promise that every backend supports recursive layouts.
 
 The immutable dc55311 review identified unconditional `RecordValue:
 TypedEquatable` although the checker rejects recursive interface equality.
