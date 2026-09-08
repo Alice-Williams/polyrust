@@ -63,7 +63,7 @@ Language migrations:
     - [M34A-10Y — mapping-owned strategy certificates](../tasks/M34A-10Y-java-strategy-certificates.md) — complete
     - [M34A-10Z — Java module decomposition](../tasks/M34A-10Z-java-module-decomposition.md) — complete; locally verified and independently reviewed
     - [M34A-10AA — Java target-resource boundaries](../tasks/M34A-10AA-java-target-limits.md) — complete
-17. [M34A-11 — C17](../tasks/M34A-11-c.md)
+17. [M34A-11 — C17](../tasks/M34A-11-c.md) — in progress; per-layer specifications and ten checkpoint tasks
 18. [M34A-12 — Rust](../tasks/M34A-12-rust.md)
 19. [M34A-13 — TypeScript](../tasks/M34A-13-typescript.md)
 20. [M34A-14 — compiler-derived JavaScript](../tasks/M34A-14-javascript.md)

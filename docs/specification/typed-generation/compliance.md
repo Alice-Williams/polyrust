@@ -24,6 +24,16 @@ it is not evidence of typed executable syntax.
 | C++20 | Missing | Missing: `CppCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 | C17 | Missing | Missing: `CCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 
+## Current C17 migration
+
+C17 migration is active under [M34A-11](../../plan/tasks/M34A-11-c.md), using
+the [detailed C layer specifications](languages/c.md). The baseline remains
+the legacy fragment generator with raw runtime files and partial capabilities;
+the C row stays Fail until actual typed cutover, complete native/sanitizer
+proof and a clean fresh review. The existing registry ID is org.polyrust.c.
+Foundation checkpoints do not advertise unimplemented support or certify
+legacy text. Java remains complete and is not being reopened by this migration.
+
 ## Current Java integration evidence
 
 The Java implementation checkpoint is

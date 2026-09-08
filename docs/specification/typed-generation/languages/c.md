@@ -1,9 +1,24 @@
 # C17 typed-generation specification
 
 - Status: normative for M34A
-- Target ID: `org.polyrust.c17`
+- Target ID: `org.polyrust.c` (existing registry identity; dialect C17)
 - Language/toolchain: C17 through the hermetic Zig SDK, with GCC 14.2.0
   sanitizer verification
+
+## Detailed layer specifications
+
+The C-specific contracts below refine every shared layer and supersede the
+historical mutable-layout ABI. Java supplies the organization and proof
+discipline, not C syntax or ownership implementation.
+
+- [Module ownership and Bazel boundaries](c/module-layout.md)
+- [AST, declarators and validity](c/ast-and-validity.md)
+- [Ownership, sequencing, safety and ABI](c/ownership-and-abi.md)
+- [Interfaces and composition](c/interfaces.md)
+- [Capability admission and mapping certificates](c/mapping-certificates.md)
+- [Catalogues, linking, includes and files](c/symbols-and-files.md)
+- [Structural rendering and target resources](c/rendering-and-resources.md)
+- [Proof and migration protocol](c/proof-and-migration.md)
 
 ## Inferred typed-program admission
 
@@ -62,10 +77,12 @@ declaration/declarator escape and no executable C source string.
 | Option<T> | generated monomorphized tag/payload struct |
 | Result<T,E> | generated monomorphized tag/payload struct |
 | Record | generated value/owned struct with lifecycle functions as required |
-| Tagged enum | generated explicit tag plus union/payload struct |
+| Enum | payload-free named enum; legacy payload enums use a separate checked tag/payload compatibility plan |
 | Interface | generated owning context plus flat typed function table |
 
-Every owning type has explicit initialization, clone/move policy, and drop
+Public owning representations are opaque, with private concrete layouts as
+specified in the ABI contract; a private struct in this table is not permission
+to expose mutable backing fields. Every owning type has explicit initialization, clone/move policy, and drop
 operations. Portable public APIs MUST NOT expose mutable backing storage,
 unbounded pointers, sentinel-null options, or implicit borrowed lifetimes.
 
