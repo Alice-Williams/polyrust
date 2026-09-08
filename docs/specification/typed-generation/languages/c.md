@@ -15,6 +15,8 @@ discipline, not C syntax or ownership implementation.
 - [AST, declarators and validity](c/ast-and-validity.md)
 - [Concrete ABI types, promotions and layout](c/abi-type-model.md)
 - [Ownership, sequencing, safety and ABI](c/ownership-and-abi.md)
+- [Depth-independent runtime traversal](c/runtime-traversal.md)
+- [Native call-stack admission](c/call-stack-resources.md)
 - [Exact callable, allocator and lifecycle ABI](c/callable-abi.md)
 - [Exact public value factories and observations](c/public-value-abi.md)
 - [Interfaces and composition](c/interfaces.md)
@@ -53,7 +55,11 @@ values, immutable collection handles, and owning function-table interfaces.
 
 Undefined behavior, implementation-sized integers, pointer identity, macros
 with semantic behavior, and process termination MUST NOT approximate portable
-semantics. Unsupported shapes produce a typed diagnostic before C AST exists.
+semantics. Missing capability slots and invalid dynamic input produce typed
+diagnostics before C AST exists. Once Supports<C> is registered, every shape
+admitted by that capability must map, including recursive nominal/interface
+graphs; no backend-specific shape-rejection escape weakens typed admission.
+Measured target resource limits remain the separate certification contract.
 
 ## 3. C AST
 
@@ -133,8 +139,9 @@ and macro-generated polymorphism are forbidden.
 Closed catalogues include exact admitted types/macros/functions from
 `stdint.h`, `stddef.h`, `limits.h`, `float.h`, `stdlib.h`,
 `string.h`, `math.h`, and generated runtime declarations. Test-only native
-oracles additionally admit catalogued stdio.h/fenv.h entries, including fputs
-and floating-environment observations; no variadic printf shortcut is admitted.
+oracles additionally use stdio.h/fenv.h. Generated native tests admit
+catalogued stdio.h entries, including fputs; no variadic printf shortcut is
+admitted. Whole-environment FP probes stay in the repository-owned oracle.
 A macro is catalogued
 only as a typed constant/property, never as an opaque executable fragment.
 

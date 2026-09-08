@@ -32,9 +32,12 @@ view survives verification. Ordinary Rust equality authenticates references;
 address-free canonical inventory projections determine stable ordering and
 phase evidence. Ephemeral registry authentication never names an output symbol.
 
-Stage 02A admits generated registrations only. Known library references and
-contracts are a distinct closed catalogue category introduced in stage 03;
-they cannot be fabricated by assigning a library spelling to a generated key.
+Stage 02A admits generated registrations only. Stage 02B introduces distinct
+closed known-object/constant identities and their actual AST type categories;
+stage 03 completes the authoritative header/completeness/layout metadata and
+callable signatures/contracts, with shared binding and dependency resolution.
+Known references cannot be fabricated by assigning library spellings to
+generated keys or by attaching caller-supplied type/effect flags.
 
 ## Size and build policy
 

@@ -18,6 +18,13 @@ or advertising capabilities before their mappings exist.
 
 - Positive/rejected mutation for every contextual rule, including crossed scopes and aliases, missing/mutually deleted registration evidence and duplicate promoted switch values.
 - Control-flow tests for branch initialization joins, unreachable exits, wrong break/continue targets and labels bypassing declarations.
+- Every Switch carries its exact registration. Reject duplicate statement
+  occurrences, wrong function/scope, crossed switch IDs and Break naming an
+  outer loop/switch. Continue targets the innermost loop across nested switches.
+- Block/root scope identities match actual lexical parent/function ownership
+  with exactly one occurrence. Reject swapped siblings, duplicated/absent scopes,
+  wrong parents and local declarations in another scope; accept dominating
+  ancestor reads and legal distinct shadow bindings.
 - Full Rust/lint/compile-fail and cached tracked/release/eight-target gates.
 
 ## Commit gate

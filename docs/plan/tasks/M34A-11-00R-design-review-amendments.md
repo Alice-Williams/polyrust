@@ -1,7 +1,7 @@
 # M34A-11-00R — Close the C design-review contract inventory
 
 - Status: in-progress
-- Depends on: M34A-11-01R
+- Depends on: M34A-11-01R, M34A-11-00P
 
 ## Goal
 
@@ -164,3 +164,56 @@ full run found only the missing exact native-oracle source-policy exemption;
 the repair includes adjacent-path negative controls. Exact full IDs and C
 foundation counts are recorded in 02A. This is not evidence that C00R alone
 implements the concurrent registry work or certifies any generated C AST.
+
+## Fourth immutable review: accepted recursive-graph repair
+
+The fresh Sol Extra High read-only review of 5f5ba1ac identified a real conflict
+between supported generic recursive interface shapes and blanket helper-cycle
+rejection. Root accepts it: I plus R(child: Option<I>) implementing I admits
+R(None), but clone/drop/table callbacks form a legal callable cycle.
+
+Layer 7 and the C contracts now distinguish impossible complete-layout
+prerequisites from legal callable components. Finite specialization identities
+and prototypes are registered before bodies. Program-specific lifecycle/table
+specializations belong to Implementation, preserving the baseline Runtime-to-user
+dependency prohibition. No supported-shape rejection escape remains. Stages
+03/06 own exact linking and R(None)/finite Some chain native clone/drop/fault/
+sanitizer controls. This is a contract repair, not implemented recursive C AST
+certification. The full review and fresh repaired-commit review remain open.
+
+Further confirmed findings and root dispositions in this same review:
+
+| Finding | Accepted repair |
+| --- | --- |
+| 2: combined invalid-input precedence | One short-circuit ABI ladder for every public family, including safe extent checks before traversal and pairwise combined-failure/output-preservation controls. Initially nonempty rejected outputs remain unchanged, not magically empty. |
+| 3: missing switch identity | Switch carries its exact registration; a single structural occurrence, actual innermost Break target and innermost-loop Continue target are verified. |
+| 4: no legal pointer-null guard | Closed internal PointerTest nullness variants and SameSlot for exact owning-slot self-move guards; ordinary binary/portable equality cannot compare live handle identity. |
+| 5: missing known-object grammar | Distinct closed KnownObject identities for borrowed opaque FILE and complete MaxAlign; no generated-name substitution. Clarify 02B grammar versus 03 complete metadata/linking ownership. |
+| 6: recursive runtime stack exhaustion | Depth-independent iterative lifecycle and comparison engines, allocation-free drop/rollback, checked temporary work and node counts; explicit transport effects and deep/fault/sanitizer evidence in runtime-traversal.md and Stage 06. |
+| 7: missing block scope identity | Block carries its exact registered scope; function roots, actual child/parent ownership and one-to-one structural occurrence are verified, with sibling/parent/deletion/shadow matrices. |
+| 8: resource check after certificate construction | Confirmed in shared source, affecting Java too. Separate [00P repair](M34A-11-00P-resource-certificate-boundary.md) checks syntax then resources before creating RenderReadyPackage; direct safe API and stage-order regressions required. |
+| 9: public allocator aggregate omitted | Clarify that there are two view structs plus the separate complete three-member allocator protocol aggregate; exact public-header construction and catalogue proof at 03. |
+| 10: finite native stack exhaustion | Explicit entry/callback preconditions and conservative linked native-call-path/frame admission in call-stack-resources.md; measured compiler/optimizer/sanitizer rules and boundary/one-over proof required at 04. Iterative value traversal remains a separate obligation. |
+| 11: nested allocator substitution | One validated effective invocation descriptor must flow through all direct/interface/runtime/work allocations; source provenance governs only existing storage. Exact context/default substitutions and nested fault controls at 02D/06. |
+
+Root independently checked the self-move requirement while evaluating finding
+4: nullness alone would not implement the existing ABI, hence the narrow
+SameSlot companion rather than arbitrary pointer equality. An initial reviewer
+question about ordinary recursive user-call summaries was withdrawn after
+checking v0's explicit recursion rejection; only synthesized lifecycle/helper
+components are in scope. These are explicit dispositions, not extra features.
+
+The completed round-4 report contains exactly these 11 findings, all accepted.
+Finding 6 also changes the exact private lifecycle slot prototypes to take
+distinct clone/drop work-engine pointers; unchanged public callbacks cannot
+silently recreate recursion or rely on TLS. Engine identity, queued destination
+lifetime and outer-driver commit are explicit proof obligations. The new stack
+policy numbers are selected limits awaiting Stage 04 measurement, not proven
+native bounds. A fresh repaired-commit review remains required before closure.
+
+The amended documents pass documentation validation in
+ef0f2da2-9ced-45ea-b34f-7ba132621e6f. The combined worktree also passed all
+439 tracked rules / 314 tests (7bb71a7b), 251 release tests (c2c52272), and
+deterministic eight-target conformance (10a6446a); the full IDs and shared
+resource-code changes are recorded separately in M34A-11-00P. These baseline
+results do not implement the new C contracts or measure the planned stack limits.

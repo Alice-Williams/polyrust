@@ -14,7 +14,8 @@ There is no `Other`, raw source, unchecked token, arbitrary macro or string opco
 | Category | Closed variants and payloads |
 | --- | --- |
 | Scalar | Bool, PlainChar, Int, I8, U8, I16, U16, I32, U32, I64, U64, Size, F64 |
-| Object kind | Scalar(scalar), Pointer(target), Array(element, nonzero constant bound), Struct(registration), Union(registration), Enum(registration), Typedef(registration) |
+| Object kind | Scalar(scalar), KnownObject(closed catalogue identity), Pointer(target), Array(element, nonzero constant bound), Struct(registration), Union(registration), Enum(registration), Typedef(registration) |
+| Known object identity | File (opaque library object; borrowed pointers only), MaxAlign (complete allocator-alignment carrier) |
 | Object qualifier | Unqualified, Const; array qualification belongs to its element |
 | Pointer target | Void(qualifier), Object(object type), Function(exact signature) |
 | Return | Void, Value(non-array unqualified object) |
@@ -53,19 +54,30 @@ a verified effect summary and cannot manufacture proof transitions.
 | Category | Closed variants and payloads |
 | --- | --- |
 | Literal | Bool(bool), signed/unsigned exact-width integer(value), CharByte(u8), NullPointer(exact pointer type) |
-| Value | Literal, Read(place), KnownConstant(closed catalogue entry), Enumerator(registered constant), FunctionAddress(function reference), Call(nonvoid callable, ordered arguments), Unary(operator, operand), Binary(operator, left, right), Conditional(condition, then, else), Convert(conversion, operand), SizeOf(complete object type), AlignOf(complete object type), AddressOf(place) |
+| Value | Literal, Read(place), KnownConstant(closed catalogue entry), Enumerator(registered constant), FunctionAddress(function reference), Call(nonvoid callable, ordered arguments), Unary(operator, operand), Binary(operator, left, right), PointerTest(closed test), Conditional(condition, then, else), Convert(conversion, operand), SizeOf(complete object type), AlignOf(complete object type), AddressOf(place) |
 | Effect | Call(void callable, ordered arguments); exact direct/indirect signature, never a value |
 | Callable | Direct(function reference with sealed contract identity), Indirect(call-free function-pointer expression, exact prototype and authenticated callable contract) |
 | Place | Local(local reference), Parameter(parameter reference), Global(object reference), Member(base place, member reference), Dereference(pointer), Index(base, index) |
 | Unary operator | LogicalNot, BitNot, Negate |
 | Binary operator | Add, Subtract, Multiply, Divide, Remainder, ShiftLeft, ShiftRight, BitAnd, BitOr, BitXor, Equal, NotEqual, Less, LessEqual, Greater, GreaterEqual, LogicalAnd, LogicalOr |
+| Internal pointer test | IsNull(pointer value), IsNonNull(pointer value), SameSlot(left owning-slot pointer, right owning-slot pointer of the exact same type) |
 | Conversion | Numeric(exact destination scalar), AddConst(exact destination pointer), ObjectToVoid(exact destination qualified void pointer), AllocationRestore(allocation registration, exact object pointer), AdapterErase(adapter registration), AdapterRestore(same adapter registration) |
 
 Expressions distinguish void call effects from values; void cannot be an
 operand, initializer or argument. Operator signatures use the actual C integer
 promotions/usual arithmetic conversions, with explicit conversion nodes when
 the portable result differs. Boolean conditions are exact Bool, not arbitrary
-truthy pointers or integers. Comparison excludes interface/owned identity.
+truthy pointers or integers. Ordinary Binary comparisons are arithmetic only
+and exclude pointer/interface/owned identity. Internal PointerTest is separate:
+IsNull/IsNonNull accept an authenticated object, void or function pointer and
+compare against null of its exact type. SameSlot accepts exact same-type
+owning-slot addresses (T**), never two live T* values; it implements the required
+self-move guard. Tests produce actual C int, followed by explicit Numeric(Bool)
+before use as a condition. These nodes are internal boundary/allocation/lifecycle
+operations, not portable Equality operations. Mapping/body certificates check
+their actual null-validation or move-guard context; an operation label is not
+proof. Pointer ordering and general pointer-versus-pointer identity remain
+excluded. Null literals may initialize empty slots without becoming owned values.
 Bool renders as native _Bool, not a type macro. Bool literals render an
 explicit _Bool conversion of 0/1. C logical/comparison operators and known
 integer predicates have their actual int result; an explicit Numeric(Bool)
@@ -113,7 +125,7 @@ Exact call/initializer typing does not hide these conversions implicitly.
 | --- | --- |
 | Initializer | Expression(value), Zero(object type), Array(ordered complete element initializers), Struct(exact registered member initializers), Union(one registered member, initializer) |
 | Local declaration | Registered local reference plus optional exact initializer; Automatic storage only |
-| Statement | Empty, Block(ordered statements), Declare(local declaration), Assign(place, value), Evaluate(effect), Discard(value), If(condition, then block, else block), BoundedLoop(loop registration, body), Switch(value, arms, default block), Break(enclosing loop/switch identity), Continue(enclosing loop identity), Return(optional value), CleanupJump(exit identity), Label(exit identity, statement) |
+| Statement | Empty, Block(scope registration, ordered statements), Declare(local declaration), Assign(place, value), Evaluate(effect), Discard(value), If(condition, then block, else block), BoundedLoop(loop registration, body), Switch(switch registration, value, arms, default block), Break(innermost loop/switch identity), Continue(innermost loop identity), Return(optional value), CleanupJump(exit identity), Label(exit identity, statement) |
 | Case constant | Exact integer or registered payload-free enumerator, converted to the switch's promoted type before duplicate checking |
 | Switch arm | Nonempty list of case constants plus a block; implicit fallthrough is prohibited |
 | Loop registration | Counter/bound/step identities with checked initialization, bound, progress and overflow obligations |
@@ -140,7 +152,23 @@ Assignment requires a mutable initialized/initializable place and cannot act
 as an owning clone. Assignment expressions, comma expressions and increments
 are excluded. CleanupJump is not unrestricted goto. Labels cannot precede a
 bare declaration, bypass initialization or skip destruction.
+Each loop/switch registration binds exactly one structural statement occurrence
+in its registered function/scope. Break must name the actual innermost enclosing
+loop or switch; naming an outer construct is rejected because C break is not
+labelled. Continue must name the innermost loop, ignoring intervening switches.
+The verifier derives these stacks from the AST and rejects reused, crossed or
+unbound control registrations; no caller-supplied enclosing-target fact suffices.
 The Local declaration's reference supplies its exact type and lexical owner.
+Every structural block binds a registered scope exactly once. A function body
+binds its own root scope (no parent); each nested block binds a child whose
+registered parent is the actual containing block scope and whose function
+owner matches. Every registered scope has one corresponding block occurrence.
+Declarations belong to their exact scope; references may read that scope or a
+legal descendant only after declaration/initialization dominance. Sibling
+scope identity cannot be inferred from statement order or matching spellings.
+Swapped siblings, duplicated/absent scope occurrences and wrong parents fail
+verification; legal nested reads and independently named shadow bindings remain
+possible under namespace/name allocation rules.
 No initializer means Uninitialized, never an implicit zero value. Const locals
 require an initializer. A typed initializer establishes precisely its covered
 object/member/prefix state; Zero for an owner establishes Empty, not Live.
@@ -170,9 +198,17 @@ External symbols are unique package-wide; internal symbols cannot appear in
 public API references. Test roles cannot supply production definitions.
 Discard renders a void conversion without allowing void as an ordinary value.
 Comment normalization follows platform-and-proof.md; user text never owns
-delimiters. Known library typedefs (including opaque FILE in test-only stdio
-calls) use registered typedef origins and completeness information, not raw
-type spellings. The initial public ABI supports C consumers, not C++ linkage
+delimiters. KnownObject identities are distinct from generated Typedef
+registrations. The closed identity fixes FILE versus max_align_t;
+catalogue-owned metadata supplies the header, completeness and measured ABI
+facts, never caller flags. FILE is admitted only behind a borrowed pointer,
+never by value, as an array element, in SizeOf/AlignOf or as constructed
+storage. MaxAlign is a complete known object with the measured model's layout
+and alignment. A generated type with the same name cannot substitute for
+either catalogue identity. Stage 02B owns the identity-bearing grammar and
+actual constant types; stage 03 completes authoritative catalogue metadata,
+callable signatures/effects and dependency resolution.
+The initial public ABI supports C consumers, not C++ linkage
 wrappers; no unmodelled extern-language directive is emitted.
 Deliberate compiler-negative tests use a closed repository-native-oracle fixture,
 outside plugin packages, manifests and certificates. There is no invalid-source

@@ -23,6 +23,8 @@ constructors require writable output storage but no initial value; they write
 only on Success and preserve every output byte on failure. ObserveOut is not
 an owning slot and receives no transfer. Null required output addresses return
 InvalidInput. Output storage must not overlap an input or its reachable storage.
+All simultaneous detectable failures follow the callable ABI's ordered
+validation ladder; the individual failure clauses below do not override it.
 
 Raw input arrays may be null only when their length is zero; then no pointer
 arithmetic, dereference or C library memory call is performed on the null
@@ -41,10 +43,16 @@ InvalidInput/Capacity/AllocationFailure with that portable error.
 
 ## Closed view types
 
-Two public non-owning structs are admitted:
+Two public non-owning view structs are admitted:
 
     poly_byte_view { const uint8_t *data; size_t length; }
     poly_utf8_view { const uint8_t *data; size_t length; }
+
+The other public non-owning aggregate is the allocator protocol descriptor,
+poly_allocator, with exactly context, allocate and release members and the
+callback signatures in callable-abi.md. It is a distinct registered runtime
+type, complete in the public runtime header so a foreign consumer can initialize
+it. It is not a portable value, view, owning handle or freely extensible record.
 
 The latter's length is UTF-8 bytes, not Unicode scalar or UTF-16 units. Both
 have exactly these fields and no destructor. Empty views use null data and zero
@@ -102,15 +110,18 @@ views are valid UTF-8. No public take or mutable payload accessor is emitted.
 
 ## Proof obligations
 
-Stage 03 registers these exact signatures, named tags, public view members and
+Stage 03 registers these exact signatures, named tags, public view and allocator members and
 reference-derived declarations; stage 06 implements their structural bodies.
 Every family has a separate public-header consumer and native round trip,
 including zero length, embedded zero, malformed scalar/UTF-8/enum inputs,
 nested owned projections, wrong branch/index, and output-preservation controls.
+Add pairwise simultaneous-failure cases across the applicable validation phases,
+including null input plus nonempty output, malformed allocator plus nonempty
+output, malformed UTF-8 plus nonempty output, and inactive branch plus null
+observer output. Assert the exact status, untouched outputs and no later calls.
 Tests copy borrowed inputs, prove clone independence, then drop every owner.
 Each allocating factory/coercion/clone is fault-injected at every reached
 allocation and checked for rollback, unchanged inputs and zero leaked blocks.
 Borrow lifetime and no-overlap facts are verified for generated consumers;
 foreign violation of those preconditions is not a promised runtime diagnostic.
 All implementation files remain under the source-size policy.
-

@@ -30,7 +30,12 @@ leak into a public prototype. A typedef name is never confused with its tag.
 Public opaque layouts and private vtables live in implementation/private files.
 Public header/source/runtime/test roles are enums, not tests on filenames.
 Helpers expand to structural declarations/definitions and their typed dependency
-DAG; final file/type/member/prototype inventory is checked against registrations
+graph. Complete-layout prerequisites must be acyclic; callable references may
+form strongly connected components resolved through registered prototypes.
+Specialization identity registration precedes body construction, using finite
+visited-identity traversal. Program-specific lifecycle/vtable helpers belong
+to Implementation, preserving the baseline Runtime-to-user dependency ban.
+The final file/type/member/prototype inventory is checked against registrations
 in both directions so mutually deleted evidence cannot hide a missing item.
 
 The renderer prints already-resolved includes, guards, declarations and

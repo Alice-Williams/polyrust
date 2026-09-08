@@ -30,6 +30,12 @@ adversarial environment probes. Generated calls do not change FP control modes
 (rounding, trap masks, FTZ/DAZ). Arithmetic may raise sticky exception status
 flags; those flags are outside portable observation and are not preserved.
 There is no implied production save/restore of the whole floating environment.
+Adversarial whole-environment save/restore belongs to the repository-owned
+native oracle, outside plugin packages. It may use fenv_t there; generated AST
+does not acquire an uncatalogued object type from that handwritten fixture.
+Initial KnownObject membership remains File/MaxAlign. Any later generated
+use of another library object requires an explicit grammar/catalogue entry,
+actual completeness/layout policy and matching native inventory before use.
 FLT_EVAL_METHOD must be zero. No fast-math, reassociation or implicit fused
 multiply-add is allowed; compile with -fno-fast-math -ffp-contract=off.
 Separate operation nodes are rounded separately. Probes include signed zero,
@@ -90,6 +96,11 @@ Discard(value) is a separate typed statement rendered as a void conversion;
 it supports unused values/parameters without widening the value type domain.
 
 ## Resource accounting and admission budgets
+
+[Native call-stack admission](call-stack-resources.md) defines entry headroom,
+callback preconditions and conservative linked call-path/frame accounting.
+Finite acyclic portable calls are not inherently bounded by the host stack.
+Its policy limits require new Stage 04 evidence, not the scalar ABI probe alone.
 
 Generation capacity is not a generic AST arity/type error or runtime allocator
 failure. CResourceError identifies the exact resource category, source owner,

@@ -38,3 +38,14 @@ by one record with overlapping names; distinct implementation witnesses;
 empty interfaces; concrete/dynamic dispatch; nesting; explicit delegation;
 native alias tests; move/clone/drop; all allocation-failure points; and
 ASan/UBSan execution. A sizeof or vtable-layout text comparison is insufficient.
+
+Recursive admitted nominal/interface graphs are required. For example, an
+interface I and record R containing Option<I>, with R implementing I, have a
+finite inhabitant R(None). Their clone/drop/table helper call graph is cyclic
+even though opaque ownership gives legal finite C layouts. Pre-register the
+complete finite specialization set, declare all prototypes, then construct and
+link bodies. Never reject this shape as unsupported or recursively duplicate
+helper definitions. Proof includes R(None) and a finite nested Some chain,
+independent cloning/drop through the depth-independent work engine, every allocation-failure prefix, deterministic helper
+inventory and ASan/leak/UBSan controls. Equality remains unavailable for these
+interface-containing values.

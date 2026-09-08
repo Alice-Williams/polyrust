@@ -40,13 +40,24 @@ It rejects:
 
 - missing helpers;
 - duplicate definitions;
-- cycles;
+- impossible definition/layout prerequisite cycles (not legal callable cycles);
 - conflicting placement;
 - illegal public helper exposure; and
 - helper declarations containing opaque code.
 
 Each selected helper is emitted once. Every unselected helper and its exclusive
 external dependencies must be absent.
+
+Helper reachability is a finite graph traversal with visited typed identities,
+not recursive textual expansion. Distinguish declaration/layout prerequisites
+from callable-reference edges. A dialect may require complete definitions for
+by-value layout edges while allowing mutually recursive callable bodies after
+their declarations/prototypes exist. Register all specialization identities
+before constructing those bodies; condense legal callable strongly connected
+components for deterministic placement. Do not reject a generic-admitted
+nominal/interface shape merely because its lifecycle call graph has a cycle.
+Impossible by-value layouts still fail; no cyclic runtime value or unrestricted
+source recursion is thereby added to the generic frontend.
 
 ## Runtime representation
 
@@ -143,6 +154,12 @@ Cross-file references create typed file-graph edges. The resolver validates:
 - runtime-to-user dependency prohibition; and
 - test-only dependency isolation.
 
+The runtime-to-user prohibition applies to program-independent runtime support.
+Program-specific lifecycle/table specializations that reference generated
+nominals belong to the Implementation group; they may depend on the baseline
+Runtime group, not the reverse. A helper's dependency class is typed metadata,
+not a filename convention or a blanket ban on specialized callable cycles.
+
 ## JavaScript derivation
 
 JavaScript executable source is produced only by compiling the resolved and
@@ -154,7 +171,8 @@ outputs, but cannot rewrite executable JavaScript or add semantic helpers.
 
 ## Required proof
 
-- Missing/duplicate/cyclic helper tests.
+- Missing/duplicate helper tests, rejected impossible prerequisite cycles and
+  accepted legal recursive callable components.
 - One-feature-at-a-time helper presence/absence matrices.
 - Runtime AST source-policy tests.
 - File role compile-fail tests.

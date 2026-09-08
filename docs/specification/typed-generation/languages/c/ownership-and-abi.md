@@ -35,6 +35,11 @@ malformed views/tags/null arguments without dereferencing invalid storage.
 
 ## Ownership proof state
 
+The [runtime traversal contract](runtime-traversal.md) requires explicit
+depth-independent work engines, allocation-free destruction/rollback, and
+checked temporary comparison storage. Recursive semantic structure must not
+become unbounded native C call depth.
+
 Each owned allocation/handle has a typed identity, allocator provenance,
 concrete element type and initialization state. The verifier tracks
 `Empty`, `Live`, `Moved` and `Dropped` states and joins branch states.

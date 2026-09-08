@@ -14,6 +14,11 @@ Cover the complete portable value algebra and polymorphism with verified ownersh
 - Implement the entire owning Interfaces bundle, private flat vtables, exact implementation witnesses and explicit field delegation.
 - Allow zero-implementation interfaces without fabricated values or foreign vtable registration; support every nested admitted type position.
 - Preserve value semantics across independent conformances and allocations; expose no mutable public backing layout.
+- Implement c/runtime-traversal.md: iterative clone/construction/comparison,
+  allocation-free intrusive destruction/rollback, exact work tags/ownership,
+  checked node counts and no recursive interface callback re-entry.
+- Use the exact private clone/drop work-parameter lifecycle slots; authenticate
+  one-step enqueue semantics, persistent destinations and outer-driver commit.
 
 ## Tests and proof
 
@@ -26,10 +31,24 @@ Cover the complete portable value algebra and polymorphism with verified ownersh
 - Distinct-NaN-payload and signed-zero matrices through every aggregate;
   representation-preservation audits separately require exact raw bits.
 - Multiple/empty interfaces, overlapping method names, exact concrete/dynamic dispatch, interface returns and nested lists/options/results.
+- Recursive I / R(child: Option<I>) with R implementing I: R(None) and finite
+  nested Some values, clone/drop/dispatch, every allocation-failure prefix,
+  ASan/leak/UBSan and finite deterministic specialization inventories. Legal
+  callable cycles must not be rejected or expanded indefinitely.
 - Adversarial wrong-table/signature/receiver/tag/cast mutations; allocation failure at every prefix/clone/dispatch step.
+- Swapped/missing work-engine types, different engine identity, expired queued
+  destination slots and premature callback-to-public commit are rejected.
+- Every nested direct/interface/helper/work allocation is charged to the one
+  effective invocation allocator. Fault controls detect default substitution,
+  changed callback context and allocator A clone of allocator B source storage.
 - Empty-source/double/self move, null slot addresses and nonempty destinations
   use the exact status precedence and unchanged-slot controls in callable-abi.md.
+- Pairwise combined detectable failures follow the global ABI validation
+  ladder; preserve sentinel outputs and prove no later callbacks/reads occur.
 - ASan/leak/UBSan, deterministic package layout and full tracked/release gates.
+- Deep API-created recursive record/interface values, small-stack native runs,
+  equality/list-search/NaN-class expectation checks, temporary work allocation
+  faults, count boundary/one-over mutations and allocation-disabled drop.
 
 Test targets required by this slice must be added before it closes; proposed
 future targets are not evidence of an existing implementation. All builds and

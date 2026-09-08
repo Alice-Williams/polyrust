@@ -38,10 +38,14 @@ output type.
 All rows inherit inferred requirements of their concrete child types/bodies.
 The last column names additional semantic constraints/prerequisites, not
 manual includes or a second runtime support registry. Allocation (A) means
-new owned storage; portable failure (P) means the established computational
+new owned or temporary work storage; portable failure (P) means the established computational
 error channel. All public callable wrappers additionally have ABI transport
 failure, including outcome allocation, per [callable ABI](callable-abi.md).
 Pure scalar AST operations do not themselves allocate.
+Aggregate traversals follow runtime-traversal.md: explicit work allocation can
+fail with ABI AllocationFailure/Capacity even when the portable operation is
+infallible. Such failure is propagated, never turned into false/not-found or a
+portable computation error. Destruction/rollback never allocates work storage.
 
 ## Exhaustive catalogue
 
@@ -55,7 +59,7 @@ Pure scalar AST operations do not themselves allocate.
 | F64Values | Type, Value(u64 bits) | Type/Value; binary64 bit-transfer helper, never decimal approximation | Verified memcpy bit representation |
 | TextValues | Type, Value(UTF-8 bytes) | Type/Value; validated immutable UTF-8 owner | A; length, scalar validity and embedded zero |
 | BooleanLogic | Not, And, Or | Value; Bool operators, RHS prefix remains conditional | BoolValues; no eager RHS |
-| Equality | Equal, NotEqual | Value; recursive IEEE comparator except top-level enums | Recursively equatable types only; no interface/address equality; Enums owns enum equality |
+| Equality | Equal, NotEqual | Value; iterative structural IEEE comparator except top-level enums | A aggregate work storage; recursively equatable types only; no interface/address equality; Enums owns enum equality |
 | Ordering | Less, LessEqual, Greater, GreaterEqual | Value; checked scalar or Unicode-scalar lexical ordering | Exact admitted operand category; no pointer comparison |
 | CheckedIntegerArithmetic | Neg, Add, Subtract, Multiply, Divide, Remainder | Value; signed range guards before native operation | P; zero and minimum/-1; ResultPropagation |
 | WrappingIntegerArithmetic | Neg, Add, Subtract, Multiply | Value; unsigned-width arithmetic and proved signed reconstruction | I32/I64 width; no implementation-defined overflow shortcut |
@@ -72,7 +76,7 @@ Pure scalar AST operations do not themselves allocate.
 | StringInspection | ScalarLength, Utf16Length, IsEmpty, IndexOfLiteral, Contains, StartsWith, EndsWith | Value; length-aware UTF-8/scalar scans and exact index units | TextValues; P where portable size conversion is checked |
 | StringTransformation | StripPrefix, TruncateUtf8Bytes, TrimStart, TrimEnd, SliceScalars, ReplaceAll, ReplaceMany | Value; scalar-boundary typed loops and fresh immutable output | A; exact ordered replacement/empty-needle behavior |
 | BytesOperations | Length, IsEmpty, Concat, ReplaceAll | Value; byte-indexed bounded loops | BytesValues; A for new owner |
-| ListOperations | Length, IsEmpty, GetChecked, Append, Concat, Contains, IndexOf | Value; monomorphic loops, clone on owned extraction | A for owned output; P bounds; searches require recursive equality |
+| ListOperations | Length, IsEmpty, GetChecked, Append, Concat, Contains, IndexOf | Value; monomorphic loops, clone on owned extraction | A owned output and aggregate comparison work; P bounds; searches require recursive equality and propagate comparator transport failure |
 | OptionOperations | IsSome, IsNone, UnwrapOr | Value; tag observations, correctly sequenced fallback selection | OptionValues; clone/transfer selected owned value |
 | ResultOperations | IsOk, IsErr | Value; ordinary Result tag observations | ResultValues; no computation-error conflation |
 | IntegerConversions | WidenI32ToI64, NarrowI64ToI32Checked | Value; exact widening or pre-cast range guard | P narrowing; ResultPropagation |
@@ -80,9 +84,9 @@ Pure scalar AST operations do not themselves allocate.
 | Modules | Declaration(inventory) | Package; registered public/private files and exact declaration inventory | Actual registrations in both directions; not structural orchestration |
 | Constants | Declaration, Reference | Decl/Value; allocator-parameterized fresh-value getter | A owning results; checked dependency DAG; immutable backing only |
 | TypeAliases | Declaration(name, exact target), TypeReference | Decl/Type; registered typedef, transparent semantic target | Alias cycle check and nominal ownership retained |
-| Enums | Type, Declaration, Variant, Equality, Branch, PayloadDeclaration, PayloadConstruction, PayloadPattern, PayloadBindingRead, PayloadBranch | Type/Decl/Value/Control; fixed-width validated tags; opaque legacy payload plan | Owns all top-level enum equality/matching, including aliases and C legacy compatibility; A legacy payload; exact tag/member dominance |
+| Enums | Type, Declaration, Variant, Equality, Branch, PayloadDeclaration, PayloadConstruction, PayloadPattern, PayloadBindingRead, PayloadBranch | Type/Decl/Value/Control; fixed-width validated tags; opaque legacy payload plan | Owns all top-level enum equality/matching, including aliases and C legacy compatibility; A legacy payload and aggregate comparison work; exact tag/member dominance |
 | Interfaces | Type, UninhabitedType, Declaration, ImplementationBundle, SelfValue, Coerce, ConcreteCall, InterfaceCall | Type/Decl/Value; exact flat table/context adapter and lifecycle bundle | A clone/coercion; exact witness; empty implementation set valid |
-| PortableTests | FunctionInvocation, MethodInvocation, Case, Harness | Test; outcome/status assertions and exact completion inventory | NaN-class expectation comparator; string error codes; no vacuous main |
+| PortableTests | FunctionInvocation, MethodInvocation, Case, Harness | Test; outcome/status assertions and exact completion inventory | A aggregate expectation work; transport failure fails harness; NaN-class comparator; string error codes; no vacuous main |
 | LocalBindings | Bind, Read | Control/Value; scoped registration, immutable read or explicit owned clone | Exact binding identity and lifetime |
 | Conditionals | Value(condition, then, else) | Control/Value; branch-local prefixes and joined output ownership | BoolValues; both reachable exits satisfy result type/state |
 | Loops | ForEach, BindingRead | Control/Value; bounded iteration and scoped element binding | ListValues; count/index bounds, loop-carried ownership joins |
@@ -94,8 +98,12 @@ C runtime implementation subroutines (allocation, clone/drop, UTF-8 scanning)
 are structural dependencies of these mappings, not new public capabilities.
 A mapping cannot require its own support by recursively consulting an empty
 slot: concrete type/lifecycle specializations are registered once and linked
-as a dependency graph. Unsupported recursive layout/specialization shapes
-need explicit diagnostics and specification, never an infinite expansion.
+as a finite dependency graph. Every generic-admitted recursive nominal/interface
+shape must have a mapping. Register specialization identities and prototypes
+before bodies, and retain legal recursive lifecycle callable components rather
+than expanding them infinitely or rejecting them as unsupported. Only impossible
+by-value target layout cycles are diagnostics; opaque handles/pointers break
+layout dependencies without erasing callable-reference cycles.
 
 Typed payload-free enum equality and exhaustive branching belong to Enums
 alone, as required by the shared catalogue; they do not infer Equality or
