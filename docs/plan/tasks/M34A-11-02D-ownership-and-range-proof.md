@@ -14,6 +14,9 @@ or advertising capabilities before their mappings exist.
 - Authenticate invocation allocator forwarding across every nested call/helper;
   selecting a compatible but different descriptor cannot satisfy this proof.
 - Derive range/bounds/tag facts from dominating AST tests and verified operations; never trust a caller-supplied safe flag or nominal proof ID.
+- Prove the exact counted-while form from its real initialization/condition/
+  update AST: immutable bound, no counter alias/mutation, one step on every
+  continuing path and checked update range, including nested Continue paths.
 - Derive generated callable summaries from bodies and validate the sealed
   known contracts. Authenticate indirect function/member provenance before
   applying ownership, aliasing, failure or allocator transitions.
@@ -34,6 +37,9 @@ or advertising capabilities before their mappings exist.
 - Reject nested null/default/source-allocator or different-context substitution;
   clone A from B uses A for new storage while move/drop retain old provenance.
 - Signed extrema, checked allocation products, bound-before-pointer and active-tag dominance tests, with mutations that retain labels but invalidate their underlying evidence.
+- Complete c/counted-loops.md positive/mutation matrix: zero/one bounds, changed
+  direction/initialization/condition, missing/double/wrong steps, counter escapes,
+  nested-loop substitutions and direct SIZE_MAX-1/SIZE_MAX arithmetic controls.
 - Allocation restore preserves Uninitialized/Prefix(n): initialization writes
   are legal, reads before initialized dominance are rejected, and Live requires
   complete construction. Test absent/partial/zero initialization separately.

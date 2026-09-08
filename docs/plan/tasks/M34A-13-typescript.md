@@ -24,8 +24,9 @@ and derived JavaScript packages.
   pass without `extends`, mixins, declaration merging, or prototype mutation.
 - Imports/exports, type-only edges, module paths, helpers, declaration shims,
   and file roles are resolver-derived.
-- The TypeScript post-link checker alone constructs the opaque render-ready
-  package; runtime declarations are TypeScript AST and a total structural
+- Shared certification constructs the opaque render-ready package only after
+  TypeScript post-link language checking and target resource admission succeed;
+  runtime declarations are TypeScript AST and a total structural
   renderer accepts only that certificate.
 - Executable templates, raw/token/source escapes, and string/wildcard grammar
   dispatch are absent; every checker-accepted corpus case passes strict `tsc`.

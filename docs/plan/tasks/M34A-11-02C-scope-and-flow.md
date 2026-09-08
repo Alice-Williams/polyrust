@@ -18,6 +18,8 @@ or advertising capabilities before their mappings exist.
 
 - Positive/rejected mutation for every contextual rule, including crossed scopes and aliases, missing/mutually deleted registration evidence and duplicate promoted switch values.
 - Control-flow tests for branch initialization joins, unreachable exits, wrong break/continue targets and labels bypassing declarations.
+- Exact counted-loop containing/body scopes and counter/bound declaration
+  dominance, including Continue across nested switches; follow c/counted-loops.md.
 - Every Switch carries its exact registration. Reject duplicate statement
   occurrences, wrong function/scope, crossed switch IDs and Break naming an
   outer loop/switch. Continue targets the innermost loop across nested switches.

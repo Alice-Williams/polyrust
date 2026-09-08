@@ -26,7 +26,8 @@ header/source resolution, and composition-based type erasure.
   rejects generated/multiple/virtual/reuse chains.
 - Includes, forward declarations, namespaces, declarations/definitions,
   helpers, and files are resolver-derived.
-- The C++20 post-link checker alone constructs the opaque render-ready package;
+- Shared certification constructs the opaque render-ready package only after
+  C++20 post-link language checking and target resource admission both succeed;
   runtime declarations/definitions are C++ AST and a total structural renderer
   accepts only that certificate.
 - Executable source templates, raw/token/source escapes, and string/wildcard

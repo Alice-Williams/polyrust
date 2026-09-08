@@ -217,3 +217,27 @@ ef0f2da2-9ced-45ea-b34f-7ba132621e6f. The combined worktree also passed all
 deterministic eight-target conformance (10a6446a); the full IDs and shared
 resource-code changes are recorded separately in M34A-11-00P. These baseline
 results do not implement the new C contracts or measure the planned stack limits.
+
+## Fifth immutable review: shared contract alignment and exact loops
+
+Fresh Sol Extra High read-only review of 633b22ce7415d83d8d2ac324fc44504d90d76ff3
+covered the complete C document/task inventory and relevant shared Layers 0–9.
+It found three core contract defects; root independently accepts all three:
+
+| Finding | Repair |
+| --- | --- |
+| 1: Layer 1 retained the old resource order | Align its prose, phase diagram and proof matrix with repaired shared certification. Root's adjacent-text audit also updates Java module ownership and future language tasks, and explicitly annotates the superseded historical 10AA checkpoint. |
+| 2: Layer 5 still rejected every helper cycle | Distinguish impossible layout/definition prerequisites from legal finite callable components, preserving runtime direction rules and exact positive/negative closure tests. |
+| 3: incomplete BoundedLoop payload | counted-loops.md selects one exact Size counted-while form with explicit condition/body and counter/bound/Step::One references. Real declarations and assignments establish initialization and one update per backedge; renderer adds nothing. 02B/02C/02D/04 own construction, control, range/progress and native proof respectively. |
+
+The root also identified the missing loop payload during next-slice preparation.
+The reviewer confirmed the fixed visit-counter form supports the admitted C
+algorithms, including reverse/variable-width indexing and iterative work engines.
+Actual step occurrences are rederived from all counter writes and verifier-owned
+structural program points, not trusted caller IDs. This is a contract repair,
+not a newly implemented or already certified loop node.
+
+The review found no further substantiated core contradiction and ran no builds.
+These amendments still require documentation validation and a fresh immutable
+repair review before 00R is complete; existing full baseline proof is unchanged
+because this checkpoint modifies documentation only.

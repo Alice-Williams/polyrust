@@ -31,6 +31,8 @@ Connect the C post-link checker to the shared opaque certificate and total rende
 - Compile-fail all wrong-phase/certificate construction/mutation paths.
 - Deterministic structured mutation corpus: every admitted package compiles with pinned C17 and strict diagnostics; independent native negatives genuinely fail.
 - Declarator precedence matrix, control/zero/hex literal escaping, header standalone/repeated/include-order and separately linked consumers.
+- Counted-while exact-count/Continue/nested-switch compiler cases from
+  c/counted-loops.md; formatting cannot insert absent initialization or updates.
 - Platform assertions and positive/negative resource-boundary probes; rendering/source policies; tracked/release gates.
 - Long finite call DAGs, large automatic frames, worst closed dispatch targets,
   exact stack budget/one-over controls and missing-edge/underestimated-frame

@@ -24,8 +24,9 @@ resolver-derived imports.
   pass with no mixins, inherited implementation, monkey patching, or promotion.
 - Module/from/relative/type-only imports, aliases, exports, helpers, files, and
   package initializers are resolver-derived.
-- The Python post-link checker alone constructs the opaque render-ready
-  package; runtime declarations are Python AST and a total structural renderer
+- Shared certification constructs the opaque render-ready package only after
+  Python post-link language checking and target resource admission succeed;
+  runtime declarations are Python AST and a total structural renderer
   accepts only that certificate.
 - Executable templates, raw/token/source escapes, and string/wildcard grammar
   dispatch are absent; every checker-accepted corpus case parses and compiles.

@@ -18,6 +18,9 @@ or advertising capabilities before their mappings exist.
 - Every Block carries its exact registered scope; Switch carries its exact
   registered control identity. Function body roots are explicit, not inferred
   from local spellings or statement positions.
+- Implement the complete counted-loop payload in c/counted-loops.md: identity,
+  counter/bound/Step::One references, explicit condition and body. No implicit
+  initialization/update expansion and no claim that progress metadata is proof.
 
 ## Tests and proof
 

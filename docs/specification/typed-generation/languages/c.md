@@ -13,6 +13,7 @@ discipline, not C syntax or ownership implementation.
 
 - [Module ownership and Bazel boundaries](c/module-layout.md)
 - [AST, declarators and validity](c/ast-and-validity.md)
+- [Exact counted-while grammar](c/counted-loops.md)
 - [Concrete ABI types, promotions and layout](c/abi-type-model.md)
 - [Ownership, sequencing, safety and ABI](c/ownership-and-abi.md)
 - [Depth-independent runtime traversal](c/runtime-traversal.md)

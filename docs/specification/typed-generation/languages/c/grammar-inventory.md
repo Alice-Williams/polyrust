@@ -125,11 +125,17 @@ Exact call/initializer typing does not hide these conversions implicitly.
 | --- | --- |
 | Initializer | Expression(value), Zero(object type), Array(ordered complete element initializers), Struct(exact registered member initializers), Union(one registered member, initializer) |
 | Local declaration | Registered local reference plus optional exact initializer; Automatic storage only |
-| Statement | Empty, Block(scope registration, ordered statements), Declare(local declaration), Assign(place, value), Evaluate(effect), Discard(value), If(condition, then block, else block), BoundedLoop(loop registration, body), Switch(switch registration, value, arms, default block), Break(innermost loop/switch identity), Continue(innermost loop identity), Return(optional value), CleanupJump(exit identity), Label(exit identity, statement) |
+| Statement | Empty, Block(scope registration, ordered statements), Declare(local declaration), Assign(place, value), Evaluate(effect), Discard(value), If(condition, then block, else block), BoundedLoop(loop registration, counted progress, explicit condition, body), Switch(switch registration, value, arms, default block), Break(innermost loop/switch identity), Continue(innermost loop identity), Return(optional value), CleanupJump(exit identity), Label(exit identity, statement) |
 | Case constant | Exact integer or registered payload-free enumerator, converted to the switch's promoted type before duplicate checking |
 | Switch arm | Nonempty list of case constants plus a block; implicit fallthrough is prohibited |
-| Loop registration | Counter/bound/step identities with checked initialization, bound, progress and overflow obligations |
+| Loop registration | Existing function/scope-owned identity, bound to exactly one BoundedLoop occurrence |
+| Counted progress | Exact counter and bound local references plus closed Step::One; actual initialization/condition/update AST is independently checked, not manufactured by this metadata |
 | Cleanup exit | Registered forward-only cleanup block with an exact incoming ownership state and destination return/outer exit |
+
+The exact initial counted-while form, complete AST payload and ownership of
+initialization/condition/update evidence are normative in
+[counted loops](counted-loops.md). There is no implicit for-loop expansion or
+renderer-supplied step, direction, bound test or Continue fixup.
 
 Array/aggregate initializers must cover the required shape exactly; Zero is
 type checked, including lifecycle-empty versus inhabited values. Union reads

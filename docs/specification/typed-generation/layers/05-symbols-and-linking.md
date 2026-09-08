@@ -157,13 +157,21 @@ resolver:
 
 1. collects roots from AST helper references;
 2. resolves the deterministic transitive closure;
-3. rejects missing helpers and cycles;
+3. rejects missing helpers and impossible definition/layout prerequisite cycles,
+   while preserving legal callable reachability components under Layer 7;
 4. adds structural helper declarations;
 5. repeats reference collection over selected helper AST;
 6. places each helper once; and
 7. derives all resulting imports and dependencies.
 
 Helper names never determine closure.
+
+Dependency edge categories are explicit. Register the finite specialization
+identities/prototypes before expanding callable bodies; a visited-identity
+closure terminates legal callable cycles and emits each helper once. Complete
+by-value layout prerequisites still require an acyclic order. Baseline runtime
+helpers retain their direction rules: program-specific lifecycle/table
+specializations are Implementation items, not runtime-to-user dependency escapes.
 
 ## Resolved references
 
@@ -203,7 +211,8 @@ The verifier proves:
 - Exact one-symbol import/include presence and absence tests.
 - Import-free prelude symbol tests.
 - External package derivation and version-conflict tests.
-- Missing, duplicate, and cyclic helper diagnostics.
+- Missing/duplicate and impossible prerequisite-cycle diagnostics; accepted
+  finite callable components with deterministic once-only declaration placement.
 - Nested helper dependency tests.
 - Forged resolved package rejection.
 - Three identical link results from identical unresolved ASTs.

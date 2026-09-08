@@ -91,10 +91,12 @@ change portable behavior.
 
 ## Render-readiness contract
 
-A mandatory language-owned post-link checker consumes `LinkedPackage<D>` and
-alone constructs `RenderReadyPackage<D>`. It validates the final compilation
-units after helper composition, imports/includes, qualification, and file
-placement. The wrapper is opaque outside shared certification code, cannot be
+A mandatory language-owned post-link checker validates `LinkedPackage<D>` after
+helper composition, imports/includes, qualification and file placement. Shared
+certification then runs target resource admission on that same immutable linked
+payload. Only after both succeed, in that order, does the shared private
+constructor produce `RenderReadyPackage<D>`. Both direct certification entry
+points and the convenience compiler use this single path. The wrapper is opaque outside shared certification code, cannot be
 deserialized or safely mutated, and exposes only immutable observations.
 
 ## Rendering contract
@@ -107,11 +109,12 @@ dependencies, parse source, or invoke an executable template.
 
 ## Manifest contract
 
-After language certification, the shared adapter invokes target-specific
-resource validation before rendering. This is a separate
-`TargetResourceValidation` phase, not another syntax check. Shared output-size
-limits remain resource failures in the rendering/assembly boundary. A failed
-syntax certificate always stops the pipeline before resource checking.
+Target resource admission already succeeded before the render-ready certificate
+was constructed. The compiler reports its failures in the distinct
+`TargetResourceValidation` stage, not as syntax errors. Shared output-size
+limits remain resource failures at the rendering/assembly boundary. Language
+failure short-circuits resource checking; neither failure can produce a
+render-ready value, even through a direct public certifier.
 
 The shared assembler accepts only `RenderedPackage`. It validates relative
 paths, duplicate paths, roles, declared dependencies, helper reports, size
@@ -161,9 +164,11 @@ target-ast <- language plugin
      |            |
      +-> linker <-+
            |
-  post-link checker -> opaque render-ready package
+    post-link language checker
            |
     target resource checks
+           |
+    opaque render-ready package
            |
        total renderer
            |
@@ -179,6 +184,9 @@ edges.
 - Compile-fail tests reject each wrong phase input, especially unresolved,
   verified, and merely linked packages passed to rendering.
 - Private-constructor tests prove later states cannot be forged.
+- Direct linked/resolved certifier and compiler matrices prove syntax-before-
+  resources ordering, exactly-once checks and one-over resource rejection before
+  render readiness, with distinct compiler diagnostic stages.
 - A fault-injection plugin cannot bypass linking or rendering.
 - Failure injection at every phase emits no manifest and writes no file.
 - Identical input/options produce identical phase dumps and manifest bytes.

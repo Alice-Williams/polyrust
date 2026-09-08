@@ -120,6 +120,12 @@ literal payload validation with switch labels. Java remains open pending gates.
 
 ## Exact resource-boundary implementation checkpoint
 
+Historical note: the ordering described in this checkpoint is superseded by
+[M34A-11-00P](M34A-11-00P-resource-certificate-boundary.md). Language validation
+now runs before resources and both run before render-ready construction, through
+the same shared path for direct certifiers and the compiler. The recorded
+boundary probes below remain relevant; a compiler-only gate is no longer valid.
+
 The shared compiler now invokes target capacity checking after certification in
 `TargetResourceValidation`. Java returns only typed resource errors from that
 phase and shared output-size errors from `Rendering`; other failures remain

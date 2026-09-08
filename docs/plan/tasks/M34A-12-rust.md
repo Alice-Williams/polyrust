@@ -22,7 +22,8 @@ structural helpers, while preserving strict Rust lint and safety guarantees.
   dispatch, and explicit delegation pass with no supertraits or promotion.
 - Resolver-derived `use` items, modules, helper closure, visibility, and files
   are exact under collision fixtures.
-- The Rust post-link checker alone constructs the opaque render-ready package;
+- Shared certification constructs the opaque render-ready package only after
+  Rust post-link language checking and target resource admission both succeed;
   runtime items are Rust AST and a total structural renderer accepts only that
   certificate.
 - Executable templates, raw/token/source escapes, and string/wildcard grammar
