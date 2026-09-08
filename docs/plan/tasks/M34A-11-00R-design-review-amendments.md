@@ -1,6 +1,6 @@
 # M34A-11-00R — Close the C design-review contract inventory
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-11-01R, M34A-11-00P
 
 ## Goal
@@ -258,3 +258,25 @@ The reviewer found no further substantive contradiction in the bounded repair
 scope. Its optional M34A-05 historical annotation is accepted as clarity only,
 not counted as another core defect. It ran no builds or edits. The final small
 repair set still needs documentation validation and a new immutable review.
+
+## Completion (2026-09-08)
+
+The final repair set passes documentation/Buildifier in
+ad31fc0c-7e3d-4021-8f5b-8227725299af. A fresh independent Sol Extra High read-only
+review of 04acdee..86602e34592e2fa8c5341f56c0d91743f1141a26 is clean: it confirms
+all seven language rendering sections and ADR-0005 use the shared language-
+then-resources certificate path, historical supersession is accurate, and
+all integer literal identities/counting-loop nodes are explicit and coherent.
+Root accepts this after its own complete changed-contract audit.
+
+The full-language audit at 633b22c, independent repair review at 64111b1 and
+clean final delta review together close every accepted design finding. No
+optional feature was promoted to a core blocker. The reviewers ran no builds;
+all actual local evidence is recorded above and in the separate 00P/01S tasks.
+Those code prerequisites are complete after full local gates and clean reviews.
+
+This closes the design contract only. The contextual C AST, linker, resource
+adapter, runtime, 42 mappings and legacy cutover remain their explicit later
+stages. Normal per-step local/review gates apply; final exact-SHA hosted success
+is still required by Stage 09. The currently pending hosted run is not Pass
+evidence. C remains legacy/Fail until the complete migration finishes.
