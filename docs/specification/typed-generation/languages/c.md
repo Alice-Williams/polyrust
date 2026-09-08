@@ -175,8 +175,10 @@ initial C17 ABI promises C consumers; C++ linkage wrappers are not emitted.
 
 ## 10. Rendering
 
-The C post-link checker certifies complete translation units as an opaque
-`RenderReadyPackage<CDialect>`. It validates C17 declaration/declarator shape,
+Shared certification constructs `RenderReadyPackage<CDialect>` only after C17
+post-link language checking and target resource admission both succeed, in that
+order, on the same immutable linked package. Direct certifiers and the compiler
+use this same path. The language checker validates C17 declaration/declarator shape,
 tag and ordinary identifier namespaces, linkage, complete types, labels and
 jumps, constant-expression positions, initialization, and ownership/cleanup
 placement after include and helper resolution.

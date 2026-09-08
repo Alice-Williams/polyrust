@@ -136,8 +136,10 @@ not leak private helpers.
 
 ## 10. Rendering
 
-The C++ post-link checker certifies complete C++20 translation units as an
-opaque `RenderReadyPackage<CppDialect>`. It validates declaration/declarator
+Shared certification constructs `RenderReadyPackage<CppDialect>` only after
+C++20 post-link language checking and target resource admission both succeed,
+in that order, on the same immutable linked package. Direct certifiers and the
+compiler use this same path. The language checker validates declaration/declarator
 shape, scopes, overload/call forms, templates used by the supported subset,
 access, initialization, lifetime-bearing placement, and the optional one-edge
 adapter heritage restriction after includes and helpers are resolved.

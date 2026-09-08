@@ -53,7 +53,9 @@ a verified effect summary and cannot manufacture proof transitions.
 
 | Category | Closed variants and payloads |
 | --- | --- |
-| Literal | Bool(bool), signed/unsigned exact-width integer(value), CharByte(u8), NullPointer(exact pointer type) |
+| Literal | Bool(bool), Signed(signed payload), Unsigned(unsigned payload), CharByte(u8), NullPointer(exact pointer type) |
+| Signed literal payload | PlainChar(i8), Int(i32), I8(i8), I16(i16), I32(i32), I64(i64) |
+| Unsigned literal payload | U8(u8), U16(u16), U32(u32), U64(u64), Size(u64) |
 | Value | Literal, Read(place), KnownConstant(closed catalogue entry), Enumerator(registered constant), FunctionAddress(function reference), Call(nonvoid callable, ordered arguments), Unary(operator, operand), Binary(operator, left, right), PointerTest(closed test), Conditional(condition, then, else), Convert(conversion, operand), SizeOf(complete object type), AlignOf(complete object type), AddressOf(place) |
 | Effect | Call(void callable, ordered arguments); exact direct/indirect signature, never a value |
 | Callable | Direct(function reference with sealed contract identity), Indirect(call-free function-pointer expression, exact prototype and authenticated callable contract) |

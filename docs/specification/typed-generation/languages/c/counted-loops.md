@@ -12,14 +12,14 @@ instruct the renderer to add missing expressions or statements.
 
 The only initially admitted form counts upward from zero with a Size counter
 and an immutable Size bound snapshot. The ordinary enclosing AST declares the
-counter initialized by the exact Size zero literal and the const bound with its
+counter initialized by Literal(Unsigned(Size(0))) and the const bound with its
 actual initializer, both dominating entry. The counter has no intervening
 mutation before first entry. Their registered lexical owners are the loop's
 containing scope. The loop body has its own registered child scope.
 
 The condition is the actual tree Numeric(Bool,
 Less(Read(counter), Read(bound))). The body contains ordinary assignment AST
-counter = Add(Read(counter), Size(1)) exactly once on each reachable backedge,
+counter = Add(Read(counter), Literal(Unsigned(Size(1)))) exactly once on each reachable backedge,
 including every Continue targeting this loop. There is no extra update in the
 renderer or a loop epilogue skipped by Continue. Early Break, Return or legal
 cleanup exits leave the loop and need no update. They retain all cleanup rules.

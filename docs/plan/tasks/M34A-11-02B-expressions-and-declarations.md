@@ -25,6 +25,10 @@ or advertising capabilities before their mappings exist.
 ## Tests and proof
 
 - Every constructor/category has a positive unit test and an invalid shape/category rejection; no untested Other variant.
+- All closed signed/unsigned literal payloads retain their exact AST scalar
+  identity, including Int/I32 and U64/Size despite ABI compatibility. Rust-width
+  payloads reject out-of-range construction; zero/one Size literals compose the
+  exact counted-loop form without an unmodelled token or implicit conversion.
 - Declarator/call argument, initializer shape, qualification, value/effect and place-mutation matrices.
 - Explicit void versus nonvoid direct/indirect calls; alias-expanded signature
   checks; nonempty aggregate definitions; known constant/enumerator references.

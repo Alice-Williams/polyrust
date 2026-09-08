@@ -3,6 +3,13 @@
 - Status: complete
 - Depends on: M34A-04
 
+Historical-contract note: the helper-cycle and certificate-owner descriptions
+below record the then-supported subset. Current shared Layers 5/7 distinguish
+impossible prerequisite cycles from legal callable components; C Stage 03 owns
+their integration. M34A-11-00P and Layer 8 require language checks then resources
+before shared render-ready construction. Earlier evidence/commands are retained
+as history, not a requirement to disable the current normal Bazel caches.
+
 ## Goal
 
 Derive every target dependency, helper edge, name, and reference spelling from

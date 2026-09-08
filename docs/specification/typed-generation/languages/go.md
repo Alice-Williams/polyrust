@@ -129,8 +129,10 @@ before rendering.
 
 ## 10. Rendering
 
-The Go post-link checker certifies complete Go source files as an opaque
-`RenderReadyPackage<GoDialect>`. It validates package/file agreement, import
+Shared certification constructs `RenderReadyPackage<GoDialect>` only after Go
+post-link language checking and target resource admission both succeed, in that
+order, on the same immutable linked package. Direct certifiers and the compiler
+use this same path. The language checker validates package/file agreement, import
 use, declaration and short-declaration scopes, addressability, interface method
 sets, composite literals, statement context, labels, and return/termination
 rules for the supported pinned Go version.

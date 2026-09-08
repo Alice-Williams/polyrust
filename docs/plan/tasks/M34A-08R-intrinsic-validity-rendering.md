@@ -5,6 +5,11 @@
 - Supersedes: the executable-source portion of M34A-08
 - Blocks: M34A-10V and every remaining language migration
 
+The historical certificate-owner/order clauses below are superseded by
+[M34A-11-00P](M34A-11-00P-resource-certificate-boundary.md): shared certification
+runs post-link language checking, then target resources, then privately creates
+RenderReadyPackage. Both direct certifiers and the compiler share this path.
+
 ## Goal
 
 Implement ADR-0005's shared proof-carrying phase boundary so safe code can

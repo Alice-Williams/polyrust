@@ -241,3 +241,20 @@ The review found no further substantiated core contradiction and ran no builds.
 These amendments still require documentation validation and a fresh immutable
 repair review before 00R is complete; existing full baseline proof is unchanged
 because this checkpoint modifies documentation only.
+
+## Fresh bounded repair review of 64111b1
+
+An independent Sol Extra High review rechecked the three repairs and their
+affected contracts, including reverse/variable-width algorithms, iterative work
+bounds, nested Continue paths and helper/resource phase ownership. It found two
+remaining core documentation defects, both independently accepted by root:
+
+| Finding | Repair |
+| --- | --- |
+| 1: normative language-page copies retained old certificate ownership | All seven independent target rendering sections now require the same shared language-then-resources path before Ready construction. Historical 08R/10V receive explicit supersession notes; root's governing-document audit also updates ADR-0005 itself. |
+| 2: counted Size literals were not explicit in the closed inventory | Enumerate signed/unsigned Rust-width payload variants, including distinct Unsigned(Size(u64)); exact loop initialization/update trees use those literal nodes. 02B tests retain Size/U64 and Int/I32 structural distinctions despite ABI compatibility. |
+
+The reviewer found no further substantive contradiction in the bounded repair
+scope. Its optional M34A-05 historical annotation is accepted as clarity only,
+not counted as another core defect. It ran no builds or edits. The final small
+repair set still needs documentation validation and a new immutable review.

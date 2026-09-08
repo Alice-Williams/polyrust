@@ -546,8 +546,11 @@ but individually legal literals or final-local constant values into an invalid
 constant-pool entry. The direct native-member mapping preserves receiver-before-
 argument evaluation and portable non-null scalar-string semantics.
 
-The Java post-link checker is the sole constructor of opaque
-`RenderReadyPackage<JavaDialect>`. It validates complete Java 21 compilation
+Shared certification is the sole constructor of `RenderReadyPackage<JavaDialect>`.
+It runs Java post-link language checking, then target resource admission, on the
+same immutable linked package, and creates the opaque value only after both
+succeed. Direct certifiers and the compiler use this same path. The language
+checker validates complete Java 21 compilation
 units after runtime-fragment composition and import/name resolution. Its closed
 rules include lexical names and protected keywords; package/import/type order;
 public-type filename identity; modifiers, annotations, members, heritage and

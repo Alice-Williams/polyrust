@@ -130,8 +130,10 @@ re-export only symbols selected structurally by the package policy.
 
 ## 10. Rendering
 
-The Python post-link checker certifies complete modules as an opaque
-`RenderReadyPackage<PythonDialect>`. It validates indentation-bearing suite
+Shared certification constructs `RenderReadyPackage<PythonDialect>` only after
+Python post-link language checking and target resource admission both succeed,
+in that order, on the same immutable linked package. Direct certifiers and the
+compiler use this same path. The language checker validates indentation-bearing suite
 shape, scope directives and bindings, decorator/Protocol placement, parameter
 ordering, assignment targets, loop/exception context, match patterns, returns,
 imports, and annotation forms for the pinned Python grammar.

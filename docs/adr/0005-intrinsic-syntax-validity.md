@@ -5,6 +5,7 @@
 - Date: 2026-09-03
 - Amends: ADR-0004 rendering and phase-boundary decisions
 - Amended by: ADR-0006 for static portable-program construction and support
+- Resource-order amendment: [M34A-11-00P](../plan/tasks/M34A-11-00P-resource-certificate-boundary.md)
 
 ## Context
 
@@ -42,7 +43,11 @@ CoreProgram
   `LinkedPackage<D>`.
 - A mandatory language-owned post-link checker validates whole-file grammar,
   names, declarations, symbol uses, target type rules required for syntax, and
-  contextual restrictions. It alone constructs `RenderReadyPackage<D>`.
+  contextual restrictions. Shared certification then runs target resource
+  admission on that same immutable linked payload and privately constructs
+  `RenderReadyPackage<D>` only after both checks succeed, in that order. Direct
+  certifiers and the compiler share this one path; a language checker alone
+  cannot create a renderer capability.
 - All proof-carrying wrappers have private fields, no public constructors, no
   deserialization implementation, and expose immutable observations only.
 - Verification and linking consume their input. There is no safe mutation path
@@ -72,6 +77,11 @@ documented syntactic and contextual invariant for the supported grammar
 subset, and that the total formatter preserves those invariants. It does not
 mean Rust's type system contains a formalization of an entire external language
 standard.
+
+The final render-ready wrapper also carries successful target resource
+admission. Later manifest/path/shared output-size limits remain distinct
+assembly failures; they are not permission to defer target admission until
+after a rendering capability exists.
 
 Each language compiler/parser therefore remains an independent, pinned test
 oracle. A deterministic generated corpus MUST establish the implication
@@ -110,6 +120,8 @@ claim made solely by the syntax-validity certificate.
 - compile-fail tests prove earlier phase values cannot enter the renderer;
 - external compile-fail tests prove clients cannot construct or mutate
   `RenderReadyPackage<D>`;
+- direct-certifier/adapter tests prove language-before-resources ordering and
+  resource rejection before certificate construction;
 - source policy rejects executable templates, raw/token escape nodes, wildcard
   renderer matches, and string node dispatch;
 - checker mutation tests cover every admitted grammar/context rule;

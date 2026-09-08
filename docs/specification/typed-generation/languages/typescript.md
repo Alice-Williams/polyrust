@@ -137,8 +137,10 @@ diagnostics. JavaScript output locations are reserved for compiler derivation.
 
 ## 10. Rendering
 
-The TypeScript post-link checker certifies complete modules as an opaque
-`RenderReadyPackage<TypeScriptDialect>`. It validates module/import/export
+Shared certification constructs `RenderReadyPackage<TypeScriptDialect>` only
+after TypeScript post-link language checking and target resource admission both
+succeed, in that order, on the same immutable linked package. Direct certifiers
+and the compiler use this same path. The language checker validates module/import/export
 placement, value/type namespaces, declaration and binding scopes, interface and
 class member shape, generic uses, narrowing/pattern forms, assignment targets,
 statement context, and return coverage for the pinned TypeScript grammar.

@@ -4,6 +4,12 @@
 - Depends on: M34A-08R and the pushed M34A-10R round-14 baseline
 - Blocks: resumption of M34A-10R blind review and M34A-11
 
+The historical certificate-owner/resource-order clauses below are superseded
+by [M34A-11-00P](M34A-11-00P-resource-certificate-boundary.md). Shared certification
+runs Java language checks then resources before privately creating RenderReady;
+target resources are not a later renderer phase. Shared path/manifest/output
+limits remain later assembly checks. The historical native evidence is retained.
+
 ## Completion (2026-09-08)
 
 Implemented and integration-verified at

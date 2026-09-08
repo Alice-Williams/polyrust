@@ -146,8 +146,10 @@ symbols are rejected before rendering.
 
 ## 10. Rendering
 
-The Rust post-link checker certifies complete modules as an opaque
-`RenderReadyPackage<RustDialect>`. It validates item/module placement,
+Shared certification constructs `RenderReadyPackage<RustDialect>` only after
+Rust post-link language checking and target resource admission both succeed,
+in that order, on the same immutable linked package. Direct certifiers and the
+compiler use this same path. The language checker validates item/module placement,
 namespaces, visibility, attributes, generic and trait/impl shape, pattern and
 binding scopes, ownership-sensitive expression forms admitted by the dialect,
 control-flow context, and return/termination rules for the pinned edition.
