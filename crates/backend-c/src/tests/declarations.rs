@@ -2,9 +2,10 @@
 
 use super::registry_nominals::{key, registry};
 use crate::ast::{
-    CAggregateRef, CConstness, CDeclarationKind, CDeclarations, CExpressions, CFileError as E,
-    CFileKey, CFileRef, CFileRole, CFunctionType, CLinkage, CObjectType, CParameterType, CRegistry,
-    CRegistryError, CReturnType, CReturnValue, CScalarType, CStatements, CStorage,
+    CAggregateRef, CConstness, CDeclarationKind, CDeclarations, CDefinitionKind, CExpressions,
+    CFileError as E, CFileKey, CFileRef, CFileRole, CFunctionType, CLinkage, CObjectType,
+    CParameterType, CRegistry, CRegistryError, CReturnType, CReturnValue, CScalarType, CStatements,
+    CStorage,
 };
 use portable_codegen::RelativeOutputPath;
 
@@ -160,6 +161,15 @@ fn function_definitions_require_exact_parameters_root_scope_and_source_role() {
         )
         .unwrap();
     assert_eq!(definition.storage(), None);
+    assert_eq!(
+        definition.kind(),
+        &CDefinitionKind::Function {
+            function: function.clone(),
+            linkage: CLinkage::External,
+            parameters: parameters.clone(),
+            body: Box::new(body.clone()),
+        }
+    );
     for bad in [
         vec![],
         vec![parameters[1].clone(), parameters[0].clone()],

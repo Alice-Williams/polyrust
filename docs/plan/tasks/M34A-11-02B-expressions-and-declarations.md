@@ -203,6 +203,26 @@ AddConst and aggregate-placement relations. No finding was rejected or
 reclassified as an optional feature. No 02C/02D/03/04 obligation is being
 represented as construction proof, and no new language feature was added.
 
+## Third independent construction review
+
+A fresh Sol Extra High reviewer audited immutable 9485acc633d17bf0eeaeb599694b63a261521bf6
+and found one remaining evidence gap: the nonempty function-definition test
+checked storage but not the retained parameter vector. Accepted: the test now
+compares the entire Function payload, including both distinct registered
+parameters in order, exact function, linkage and body. No production code
+changed. The reviewer found no other substantive issue in its bounded pass.
+
+The repair passed the same container commands and normal caches:
+
+| Gate | Invocation | Result |
+| --- | --- | --- |
+| All tracked rules and Rust/Bazel lint | e04aa53d-b380-4553-a004-8a6232f2992a | 439 rules; all 314 test targets pass, four executed |
+| Cached release | 29b1ead0-3bb4-48a3-aa3e-04854a726c6f | All 251 test targets pass |
+| Eight-target conformance/determinism | 4f2f51f6-6685-40c9-a8d7-31cdb75aa9f2 | 50 cases and one portable test; all eight targets agree; repeated manifests byte-identical |
+
+A fresh independent repair review is still required for closure. No finding
+was rejected and the scope of later contextual/proof stages is unchanged.
+
 ## Commit gate
 
 Record exact commands, invocation IDs and outcomes. Commit and push this slice
