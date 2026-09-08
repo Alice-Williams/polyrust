@@ -1975,13 +1975,15 @@ impl Checker<'_> {
                 if arguments.len() == 2
                     && matches!(&arguments[0], TypeRef::List(element) if **element == arguments[1]) =>
             {
-                Some(TypeRef::Bool)
+                self.verify_equality_operand(&arguments[1], node)
+                    .then_some(TypeRef::Bool)
             }
             ListIndexOf
                 if arguments.len() == 2
                     && matches!(&arguments[0], TypeRef::List(element) if **element == arguments[1]) =>
             {
-                Some(TypeRef::Option(Box::new(TypeRef::I64)))
+                self.verify_equality_operand(&arguments[1], node)
+                    .then(|| TypeRef::Option(Box::new(TypeRef::I64)))
             }
             OptionIsSome | OptionIsNone if matches!(arguments, [TypeRef::Option(_)]) => {
                 Some(TypeRef::Bool)
@@ -2023,6 +2025,19 @@ impl Checker<'_> {
             self.require(node.id, Capability::WrappingIntegerArithmetic);
         }
         result
+    }
+
+    fn verify_equality_operand(&mut self, ty: &TypeRef, node: &NodeMeta) -> bool {
+        if self.type_contains_interface(ty, node) {
+            self.error(
+                DiagnosticCode::InvalidInterfacePosition,
+                "interface values cannot be compared for equality, including list search",
+                node.source.clone(),
+            );
+            false
+        } else {
+            true
+        }
     }
 
     fn type_contains_interface(&mut self, ty: &TypeRef, node: &NodeMeta) -> bool {

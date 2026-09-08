@@ -70,6 +70,18 @@ No union punning or incompatible function-pointer casts implement interfaces
 or F64: use matching active-member evidence and typed memcpy bit transfer.
 No fast-math or host-sized integer approximation is permitted.
 
+## Three comparison obligations
+
+The Equality mapping implements recursive portable IEEE equality: NaN differs
+from itself, signed zeros compare equal, and no interface-containing type is
+comparable. List search uses the same relation, never handle addresses.
+PortableTests instead compares non-NaN F64 bits exactly and treats every NaN
+payload/sign as the expected NaN class, recursively through records, lists,
+options, results and legacy payload enums. A third, test-only representation
+audit requires exact raw bits for literal round trips and FloatAbs, including
+NaN payload/sign preservation. These relations must not share an ambiguous
+Boolean mode or silently substitute for one another.
+
 Proof metadata must be derived/revalidated from actual AST/control flow.
 Caller-supplied `safe: true`, unchecked range IDs or a catalogue label without
 a matching implementation cannot establish ownership or arithmetic safety.

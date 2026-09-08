@@ -10,7 +10,7 @@ Cover the complete portable value algebra and polymorphism with verified ownersh
 ## Definition of done
 
 - Monomorphize immutable list, option/result, record, payload-free enum and legacy payload-enum compatibility representations by typed identity.
-- Implement exact construction, observation, recursive semantic equality, clone/move/drop and initialized-prefix cleanup.
+- Implement exact construction, observation, recursive semantic equality, separate portable-expectation comparison, clone/move/drop and initialized-prefix cleanup.
 - Implement the entire owning Interfaces bundle, private flat vtables, exact implementation witnesses and explicit field delegation.
 - Allow zero-implementation interfaces without fabricated values or foreign vtable registration; support every nested admitted type position.
 - Preserve value semantics across independent conformances and allocations; expose no mutable public backing layout.
@@ -18,6 +18,8 @@ Cover the complete portable value algebra and polymorphism with verified ownersh
 ## Tests and proof
 
 - Native separate consumers for aggregate construction/projection/equality, each tag, nested ownership and independent clones.
+- Distinct-NaN-payload and signed-zero matrices through every aggregate;
+  representation-preservation audits separately require exact raw bits.
 - Multiple/empty interfaces, overlapping method names, exact concrete/dynamic dispatch, interface returns and nested lists/options/results.
 - Adversarial wrong-table/signature/receiver/tag/cast mutations; allocation failure at every prefix/clone/dispatch step.
 - ASan/leak/UBSan, deterministic package layout and full tracked/release gates.

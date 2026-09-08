@@ -20,7 +20,7 @@ it is not evidence of typed executable syntax.
 | JavaScript | Missing | Independently paired source exists | Shares manual ECMA metadata | Checked-in/runtime paired text | Not solely compiler-derived | **Fail** |
 | Python | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
 | Go | Missing | Missing: generated source fragments | Manually attached fragment metadata | Raw runtime source | Documents are directly rendered | **Fail** |
-| Java | Exhaustive verified `CoreProgram` lowering, including the inferred typed-program bridge | Closed Java 21 AST and pre/post-link verification | Sealed executable mappings are registered by consuming typestate builder; capability preflight consults the same mapping set; imports remain linker-derived | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer | **Pass**; ready for user design review |
+| Java | Exhaustive verified `CoreProgram` lowering, including the inferred typed-program bridge | Closed Java 21 AST and pre/post-link verification | Sealed executable mappings are registered by consuming typestate builder; capability preflight consults the same mapping set; imports remain linker-derived | Structural helpers recomposed and rechecked with user declarations | Opaque render-ready certificate and direct total structural renderer | **Fail**; portable expectation comparator follow-up M34A-10AB |
 | C++20 | Missing | Missing: `CppCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 | C17 | Missing | Missing: `CCode`/raw documents | Manually attached fragment metadata | Included/sectioned runtime source | Documents are directly rendered | **Fail** |
 
@@ -32,7 +32,12 @@ the legacy fragment generator with raw runtime files and partial capabilities;
 the C row stays Fail until actual typed cutover, complete native/sanitizer
 proof and a clean fresh review. The existing registry ID is org.polyrust.c.
 Foundation checkpoints do not advertise unimplemented support or certify
-legacy text. Java remains complete and is not being reopened by this migration.
+legacy text. The subsequent C design audit found a shared record-equatability
+hole and a Java portable-expectation NaN mismatch. The former is being repaired
+under M34A-11-01R; the latter reopens Java semantic compliance under
+[M34A-10AB](../../plan/tasks/M34A-10AB-java-portable-expectations.md).
+Prior Java structural/CI evidence remains historical evidence, not dismissal
+of the newly demonstrated comparator issue.
 
 ## Current Java integration evidence
 
@@ -43,7 +48,9 @@ and all eight hosted jobs pass in
 The fresh uncapped Sol Extra High review of that immutable commit found no
 remaining demonstrated core errors. Root independently evaluated its findings;
 the only organization suggestion is optional and explicitly deferred. Java's
-implementation is complete; user design approval is still separate. The exact
+implementation passed that review; the later M34A-10AB follow-up above must
+close before current compliance is restored. User design approval remains
+separate. The exact
 finding dispositions and invocation IDs
 are in [M34A-10R](../../plan/tasks/M34A-10R-java-review-remediation.md).
 

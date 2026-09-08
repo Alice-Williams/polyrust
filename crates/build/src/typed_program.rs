@@ -746,6 +746,9 @@ use crate::{
     Type, TypedValue, Value, Visibility,
 };
 
+mod record_equality;
+pub use record_equality::EquatableFields;
+
 mod sealed {
     pub trait Parameters {}
     pub trait Arguments {}
@@ -1048,7 +1051,7 @@ macro_rules! equatable {
     )+};
 }
 
-equatable!(Bool, I32, I64, F64, Text, Char, Bytes);
+equatable!(Unit, Bool, I32, I64, F64, Text, Char, Bytes);
 impl<T: TypedEquatable> sealed::Equatable for List<T> {}
 impl<T: TypedEquatable> TypedEquatable for List<T> {
     type EqualityCapability = Equality;
@@ -1076,11 +1079,13 @@ impl TypedInteger for I32 {}
 impl sealed::Integer for I64 {}
 impl TypedInteger for I64 {}
 
-/// A record value branded with its module and exact declaration.
-pub struct RecordValue<'module, 'record>(PhantomData<(Cell<&'module ()>, Cell<&'record ()>)>);
+/// A record retains its exact field types as well as its declaration brand.
+pub struct RecordValue<'module, 'record, Types>(
+    PhantomData<InvariantRecordBrand<'module, 'record, Types>>,
+);
 
-impl sealed::Equatable for RecordValue<'_, '_> {}
-impl TypedEquatable for RecordValue<'_, '_> {
+impl<Types: EquatableFields> sealed::Equatable for RecordValue<'_, '_, Types> {}
+impl<Types: EquatableFields> TypedEquatable for RecordValue<'_, '_, Types> {
     type EqualityCapability = Equality;
 }
 
@@ -1571,12 +1576,14 @@ pub struct TypedMethodBinding<
     Output,
     BodyR: Requirements,
     Build,
+    RecordTypes,
 > {
     name: PortableName,
     interface_method: InterfaceMethodId,
     parameters: Vec<(String, Type)>,
     result: Type,
     build: Build,
+    record_types: PhantomData<fn(RecordTypes) -> RecordTypes>,
     marker: PhantomData<
         InvariantMethodBindingBrand<
             'module,
@@ -1590,8 +1597,8 @@ pub struct TypedMethodBinding<
     >,
 }
 
-type InterfaceSelfExpr<'module, 'body, 'record> =
-    TypedExpr<'module, 'body, RecordValue<'module, 'record>, Requires<Interfaces>>;
+type InterfaceSelfExpr<'module, 'body, 'record, RecordTypes> =
+    TypedExpr<'module, 'body, RecordValue<'module, 'record, RecordTypes>, Requires<Interfaces>>;
 
 pub fn method_binding<
     'module,
@@ -1609,13 +1616,23 @@ pub fn method_binding<
     method: &TypedInterfaceMethod<'module, 'interface, Position, Parameters, Output>,
     name: PortableName,
     build: Build,
-) -> TypedMethodBinding<'module, 'interface, 'record, Position, Parameters, Output, BodyR, Build>
+) -> TypedMethodBinding<
+    'module,
+    'interface,
+    'record,
+    Position,
+    Parameters,
+    Output,
+    BodyR,
+    Build,
+    RecordTypes,
+>
 where
     Parameters: ParameterList,
     BodyR: Requirements,
     Build: for<'body> FnOnce(
         &mut TypedBody<'module, 'body>,
-        InterfaceSelfExpr<'module, 'body, 'record>,
+        InterfaceSelfExpr<'module, 'body, 'record, RecordTypes>,
         Parameters::Locals<'module, 'body>,
     ) -> TypedExpr<'module, 'body, Output, BodyR>,
 {
@@ -1625,12 +1642,13 @@ where
         parameters: method.parameters.clone(),
         result: method.result.clone(),
         build,
+        record_types: PhantomData,
         marker: PhantomData,
     }
 }
 
 /// Recursive exact implementation-binding list.
-pub trait ImplementationBindingList<'module, 'interface, 'record>:
+pub trait ImplementationBindingList<'module, 'interface, 'record, RecordTypes>:
     sealed::ImplementationBindings
 {
     type MethodHandles;
@@ -1645,7 +1663,9 @@ pub trait ImplementationBindingList<'module, 'interface, 'record>:
 }
 
 impl sealed::ImplementationBindings for Nil {}
-impl<'module, 'interface, 'record> ImplementationBindingList<'module, 'interface, 'record> for Nil {
+impl<'module, 'interface, 'record, RecordTypes>
+    ImplementationBindingList<'module, 'interface, 'record, RecordTypes> for Nil
+{
     type MethodHandles = Nil;
     type Requirements = NoneRequired;
     type Handles<'implementation> = Nil;
@@ -1693,23 +1713,25 @@ type InvariantImplementationBrand<'module, 'implementation, 'interface, 'record,
 );
 
 /// An exact conformance witness between one record and one interface.
-pub struct TypedImplementation<'module, 'implementation, 'interface, 'record, Methods> {
+pub struct TypedImplementation<'module, 'implementation, 'interface, 'record, Methods, RecordTypes>
+{
     raw: ImplementationId,
     methods: Methods,
+    record_types: PhantomData<fn(RecordTypes) -> RecordTypes>,
     marker: PhantomData<
         InvariantImplementationBrand<'module, 'implementation, 'interface, 'record, Methods>,
     >,
 }
 
-impl<'module, 'implementation, 'interface, 'record, Methods>
-    TypedImplementation<'module, 'implementation, 'interface, 'record, Methods>
+impl<'module, 'implementation, 'interface, 'record, Methods, RecordTypes>
+    TypedImplementation<'module, 'implementation, 'interface, 'record, Methods, RecordTypes>
 {
     pub const fn methods(&self) -> &Methods {
         &self.methods
     }
 }
 
-impl<'module, 'interface, 'record, Position, Parameters, Output, BodyR, Build, Tail>
+impl<'module, 'interface, 'record, Position, Parameters, Output, BodyR, Build, Tail, RecordTypes>
     sealed::ImplementationBindings
     for Cons<
         TypedMethodBinding<
@@ -1721,6 +1743,7 @@ impl<'module, 'interface, 'record, Position, Parameters, Output, BodyR, Build, T
             Output,
             BodyR,
             Build,
+            RecordTypes,
         >,
         Tail,
     >
@@ -1729,15 +1752,15 @@ where
     BodyR: Requirements,
     Build: for<'body> FnOnce(
         &mut TypedBody<'module, 'body>,
-        InterfaceSelfExpr<'module, 'body, 'record>,
+        InterfaceSelfExpr<'module, 'body, 'record, RecordTypes>,
         Parameters::Locals<'module, 'body>,
     ) -> TypedExpr<'module, 'body, Output, BodyR>,
-    Tail: ImplementationBindingList<'module, 'interface, 'record>,
+    Tail: ImplementationBindingList<'module, 'interface, 'record, RecordTypes>,
 {
 }
 
-impl<'module, 'interface, 'record, Position, Parameters, Output, BodyR, Build, Tail>
-    ImplementationBindingList<'module, 'interface, 'record>
+impl<'module, 'interface, 'record, Position, Parameters, Output, BodyR, Build, Tail, RecordTypes>
+    ImplementationBindingList<'module, 'interface, 'record, RecordTypes>
     for Cons<
         TypedMethodBinding<
             'module,
@@ -1748,6 +1771,7 @@ impl<'module, 'interface, 'record, Position, Parameters, Output, BodyR, Build, T
             Output,
             BodyR,
             Build,
+            RecordTypes,
         >,
         Tail,
     >
@@ -1756,10 +1780,10 @@ where
     BodyR: Requirements,
     Build: for<'body> FnOnce(
         &mut TypedBody<'module, 'body>,
-        InterfaceSelfExpr<'module, 'body, 'record>,
+        InterfaceSelfExpr<'module, 'body, 'record, RecordTypes>,
         Parameters::Locals<'module, 'body>,
     ) -> TypedExpr<'module, 'body, Output, BodyR>,
-    Tail: ImplementationBindingList<'module, 'interface, 'record>,
+    Tail: ImplementationBindingList<'module, 'interface, 'record, RecordTypes>,
 {
     type MethodHandles = Cons<
         TypedInterfaceMethod<'module, 'interface, Position, Parameters, Output>,
@@ -1767,7 +1791,7 @@ where
     >;
     type Requirements = All<
         All<Requires<Interfaces>, BodyR>,
-        <Tail as ImplementationBindingList<'module, 'interface, 'record>>::Requirements,
+        <Tail as ImplementationBindingList<'module, 'interface, 'record, RecordTypes>>::Requirements,
     >;
     type Handles<'implementation> = Cons<
         TypedImplementationMethod<'module, 'implementation, Position, Parameters, Output>,
@@ -2099,7 +2123,7 @@ impl<'module> TypedTestBuilder<'module> {
         values: Values,
     ) -> TypedTestValue<
         'module,
-        RecordValue<'module, 'record>,
+        RecordValue<'module, 'record, Types>,
         All<Requires<Records>, Values::Requirements>,
     >
     where
@@ -2176,6 +2200,7 @@ impl<'module> TypedTestBuilder<'module> {
         Output,
         ReceiverR,
         Arguments,
+        RecordTypes,
     >(
         &mut self,
         implementation: &TypedImplementation<
@@ -2184,9 +2209,10 @@ impl<'module> TypedTestBuilder<'module> {
             'interface,
             'record,
             Methods,
+            RecordTypes,
         >,
         method: TypedImplementationMethod<'module, 'implementation, Position, Parameters, Output>,
-        receiver: TypedTestValue<'module, RecordValue<'module, 'record>, ReceiverR>,
+        receiver: TypedTestValue<'module, RecordValue<'module, 'record, RecordTypes>, ReceiverR>,
         arguments: Arguments,
     ) -> TypedTestInvocation<Output, All<ReceiverR, Arguments::Requirements>>
     where
@@ -2705,7 +2731,7 @@ pub struct TypedRecord<'module, 'record, Types, Handles> {
 }
 
 impl<'module, 'record, Types, Handles> TypedRecord<'module, 'record, Types, Handles> {
-    pub fn ty(&self) -> TypedType<RecordValue<'module, 'record>, Requires<Records>> {
+    pub fn ty(&self) -> TypedType<RecordValue<'module, 'record, Types>, Requires<Records>> {
         TypedType {
             ir: Type::named(self.raw),
             marker: PhantomData,
@@ -2886,6 +2912,7 @@ impl<'module, Existing: Requirements> ProgramBuilder<'module, Existing> {
                 'interface,
                 'record,
                 Bindings::Handles<'implementation>,
+                RecordTypes,
             >,
         ) -> ProgramBuilder<'module, OutputRequirements>,
     ) -> ProgramBuilder<'module, OutputRequirements>
@@ -2894,6 +2921,7 @@ impl<'module, Existing: Requirements> ProgramBuilder<'module, Existing> {
                 'module,
                 'interface,
                 'record,
+                RecordTypes,
                 MethodHandles = InterfaceHandles,
             >,
         OutputRequirements: Requirements,
@@ -2916,6 +2944,7 @@ impl<'module, Existing: Requirements> ProgramBuilder<'module, Existing> {
             TypedImplementation {
                 raw,
                 methods,
+                record_types: PhantomData,
                 marker: PhantomData,
             },
         )
@@ -3561,7 +3590,7 @@ impl<'module, 'body> TypedBody<'module, 'body> {
     ) -> TypedExpr<
         'module,
         'body,
-        RecordValue<'module, 'record>,
+        RecordValue<'module, 'record, Types>,
         With<Records, Arguments::Requirements>,
     >
     where
@@ -3607,9 +3636,9 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         })
     }
 
-    pub fn field<'record, T, BaseRequirements>(
+    pub fn field<'record, T, BaseRequirements, Types>(
         &mut self,
-        base: TypedExpr<'module, 'body, RecordValue<'module, 'record>, BaseRequirements>,
+        base: TypedExpr<'module, 'body, RecordValue<'module, 'record, Types>, BaseRequirements>,
         field: TypedField<'module, 'record, T>,
     ) -> TypedExpr<'module, 'body, T, With<Records, BaseRequirements>>
     where
@@ -3635,7 +3664,14 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         })
     }
 
-    pub fn interface_value<'implementation, 'interface, 'record, Methods, ValueRequirements>(
+    pub fn interface_value<
+        'implementation,
+        'interface,
+        'record,
+        Methods,
+        ValueRequirements,
+        RecordTypes,
+    >(
         &mut self,
         implementation: &TypedImplementation<
             'module,
@@ -3643,8 +3679,14 @@ impl<'module, 'body> TypedBody<'module, 'body> {
             'interface,
             'record,
             Methods,
+            RecordTypes,
         >,
-        value: TypedExpr<'module, 'body, RecordValue<'module, 'record>, ValueRequirements>,
+        value: TypedExpr<
+            'module,
+            'body,
+            RecordValue<'module, 'record, RecordTypes>,
+            ValueRequirements,
+        >,
     ) -> TypedExpr<
         'module,
         'body,
@@ -3670,6 +3712,7 @@ impl<'module, 'body> TypedBody<'module, 'body> {
         Output,
         ReceiverRequirements,
         Arguments,
+        RecordTypes,
     >(
         &mut self,
         implementation: &TypedImplementation<
@@ -3678,9 +3721,15 @@ impl<'module, 'body> TypedBody<'module, 'body> {
             'interface,
             'record,
             Methods,
+            RecordTypes,
         >,
         method: TypedImplementationMethod<'module, 'implementation, Position, Parameters, Output>,
-        receiver: TypedExpr<'module, 'body, RecordValue<'module, 'record>, ReceiverRequirements>,
+        receiver: TypedExpr<
+            'module,
+            'body,
+            RecordValue<'module, 'record, RecordTypes>,
+            ReceiverRequirements,
+        >,
         arguments: Arguments,
     ) -> TypedExpr<
         'module,

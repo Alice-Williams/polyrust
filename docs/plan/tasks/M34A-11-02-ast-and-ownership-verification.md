@@ -1,7 +1,7 @@
 # M34A-11-02 — Implement C AST, scope and ownership verification
 
 - Status: planned
-- Depends on: M34A-11-01
+- Depends on: M34A-11-01R, M34A-11-00R, M34A-10AB
 
 ## Goal
 

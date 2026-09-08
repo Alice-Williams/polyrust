@@ -1,14 +1,16 @@
 # M34A-10 — Migrate Java 21 to typed generation
 
-- Status: complete
+- Status: in-progress
 - Depends on: M34A-09
 
 The original implementation checkpoint was pushed as
 `f4d9e1d539064ed70eb3c012537b99535ed344a0`. Independent review found gaps in
 its claimed exit evidence. Those gaps and subsequent review findings are now
 resolved in [M34A-10R](M34A-10R-java-review-remediation.md).
-Java implementation is complete and ready for the user's design review; this
-does not record user approval or complete the other language migrations.
+The subsequent C design audit found a portable-test NaN-comparison mismatch,
+reopening semantic compliance under [M34A-10AB](M34A-10AB-java-portable-expectations.md).
+The prior structural/native/CI evidence remains valid historical evidence;
+the new regression must be repaired and reviewed before completion is restored.
 
 ## Goal
 

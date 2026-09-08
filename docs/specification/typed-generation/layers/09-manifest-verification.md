@@ -79,8 +79,13 @@ Every portable vector passes:
 - generated native tests in every requested target; and
 - cross-target canonical result comparison.
 
-Binary64 values use exact raw bits. Strings use scalar-aware encodings. Owned
-values use deep structural comparisons.
+Binary64 representation audits use exact raw bits, including NaN payload/sign.
+Portable test expectations retain the checker-v0/M27 contract: compare non-NaN
+bits exactly (including signed zero), but accept any NaN as an expected NaN
+class. This comparison recurses through owned aggregates and is distinct from
+ordinary IEEE program equality. Strings use scalar-aware encodings; owned
+values use deep structural comparisons. A portable expectation is not sufficient
+evidence for a literal or FloatAbs payload-preservation claim.
 
 ### Real-world differential proof
 
@@ -131,10 +136,10 @@ records:
 
 ## Required repository gates
 
-The final task runs uncached:
+The final task retains normal Bazel action and test-result caching:
 
-- `bazel test //... --nocache_test_results --test_output=errors`;
-- `bazel test //:release_gate --nocache_test_results --test_output=errors`;
+- `bazel test <every tracked rule target> --test_output=errors`;
+- `bazel test //:release_gate --test_output=errors`;
 - Buildifier;
 - Rustfmt;
 - Clippy with warnings denied;
@@ -146,6 +151,12 @@ The final task runs uncached:
 
 The exact test counts are evidence recorded at execution time, not normative
 constants.
+
+Enumerate rule targets from tracked BUILD files so an accidental package `all`
+suite cannot hide tests. Exclude unrelated untracked work explicitly. No cold
+gate or forced cache bypass is required; changes invalidate their declared
+inputs normally. Undeclared dependencies are defects in test wiring, not a
+reason to disable caching globally.
 
 ## Release rule
 
