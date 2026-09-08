@@ -1,6 +1,6 @@
 # M34A-11-02A — C registries and nominal identities
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-11-01, M34A-11-01R
 
 ## Goal
@@ -82,5 +82,46 @@ Full tracked/release/eight-target and fresh immutable review remain required.
   is below 300. Production Bazel sources still exclude the test modules.
 
 These are registration/type-foundation results, not generated C AST/native
-certification. This checkpoint remains in-progress pending its fresh immutable
-review and hosted evidence; the rest of M34A-11 remains open.
+certification. Fresh review and hosted closure are recorded below; the rest
+of M34A-11 remains open.
+
+## Fresh immutable review
+
+An uncapped Sol Extra High read-only audit of 8b4842ac021900f15534628a135b02887246c874
+found no core 02A correctness or API defects. It independently checked private
+registry authentication, declared-versus-canonical aliases, exact definition
+inventories, callable contracts, consuming freeze and interface bundle chains.
+The reviewer ran no builds; execution evidence above belongs to root.
+
+Root agrees with the clean result after independently reading the same paths.
+Two optional coverage suggestions are retained, not misreported as fixes:
+
+- Extend cross-registry/order canonical-inventory comparisons to all 18 kinds,
+  beyond the present nominal/function/local example. Stage 03 already owns the
+  full bidirectional projection/deletion matrix and will cover these branches;
+  the current omission is not a demonstrated incorrect projection or bypass.
+- Add a parameter-owner assertion for canonical scalar aliases. Existing tests
+  reject foreign alias signatures before parameter registration, and a parameter
+  retains its immutable owner function/signature. The extra assertion can join
+  Stage 02B's complete call/parameter type matrix; no provenance is being lost.
+
+Unbound function-pointer fields are intentionally registrable as object fields,
+but check_callable_member rejects them as callable contracts. Definition-local
+parameter constness is intentionally separate from prototype compatibility.
+Neither is a defect or an unrecorded deviation from the design.
+
+## Hosted checkpoint
+
+[Run 34236639184](https://github.com/Alice-Williams/polyrust/actions/runs/34236639184)
+for 8b4842ac passes seven jobs, including both Linux determinism hosts and
+cross-host comparison. The release job's first attempt failed before tests:
+the pinned Bazelisk download returned HTTP 500. Root reran only that failed
+job; it passed. The run now concludes Success with all eight jobs green.
+The first infrastructure failure remains recorded separately, not rewritten
+as a test pass or a C code defect.
+
+The clean immutable review, full local tracked/release/eight-target gates and
+hosted success complete 02A. Documentation/Buildifier validation for the closure
+passes in 46d85e62-5130-4e0c-87ee-ba0f3b085f61; subsequent closure status/hosted
+wording is validated again before commit. No 02B expression, 02C/02D verifier,
+03 linking or 04 rendering implementation is claimed by this completion.
