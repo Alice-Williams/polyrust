@@ -445,6 +445,9 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
     structured_class
         .members
         .extend(super::array_creation::legal_methods());
+    structured_class
+        .members
+        .extend(super::instanceof_patterns::legal_methods());
     let owner_fixtures = super::synthetic_owner_fixtures::items(&mut builder);
     super::enum_budget_oracle::add_consumer(&mut builder, oracle_enum, oracle_first, oracle_second);
     let file = builder.file(portable_codegen::TargetFile::new(

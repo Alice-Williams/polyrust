@@ -197,6 +197,16 @@ An ordinary Java cast preserves `JavaArrayOwnership` exactly at every array
 layer. It cannot convert a boundary array to `InternalMutable`, recover an
 owned array from `Object` or a type variable, or substitute for
 `FreshCopyToBoundary`.
+Casts and value-producing `instanceof`/switch pattern bindings MUST NOT erase
+internal array ownership by widening to `Object`, including through generic or
+wildcard wrappers. A source or target containing `InternalMutable` permits only
+an identical-type transfer; it cannot hide or manufacture internal ownership.
+Boundary-only values have already met the defensive-copy contract and may
+widen, as required by runtime equality over copied Bytes accessors.
+A binder-free type test does
+not transfer a reference and may test an array against Object. Unconditional
+reference patterns are valid Java 21; they are not rejected merely because the
+operand is already a subtype. Binding admission still enforces ownership.
 
 ## 4. Type mapping
 
@@ -222,6 +232,18 @@ rendering. Registered callable signatures retain the complete constructed
 ownership marker, and type variable; a coarse "generic" category is not a
 legal signature identity. Arrays and mutable collection references MUST NOT
 escape portable value boundaries.
+The closed boundary-hazard inventory recursively rejects concrete mutable JDK
+`ArrayList` and `LinkedHashMap` types in fields, parameters and results, also
+inside arrays, generic arguments and wildcard bounds. They remain valid local
+builder types. The same inventory governs casts and bound patterns: a value
+with an internal array or mutable-collection hazard may transfer only without
+changing its full type. Widening to Object cannot hide that hazard. Narrowing
+Object to a mutable collection for local use remains valid: recognizing its
+mutability is not manufacturing an internal-array ownership certificate, and
+boundary export or subsequent erasure still fails. Known
+normalization operations such as `List.copyOf` construct a separate safe value;
+a cast is not a substitute for normalization. The known-type classification is
+exhaustive so adding a JDK type requires an explicit boundary decision.
 An explicit cast must be non-redundant and warning-free under
 `javac -Xlint:all -Werror`. A parameterized cast whose target is not reifiable
 is rejected rather than emitted as an unchecked conversion.

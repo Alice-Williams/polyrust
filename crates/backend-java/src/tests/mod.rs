@@ -2,9 +2,11 @@ use super::*;
 use std::collections::BTreeSet;
 
 mod array_creation_native;
+mod array_erasure_native;
 pub(crate) mod budget_oracle;
 pub(crate) mod capability_fixtures;
 mod classfile_metrics;
+mod collection_boundaries_native;
 mod mapping_coverage;
 mod mapping_short_circuit;
 pub(crate) mod match_dispatch;

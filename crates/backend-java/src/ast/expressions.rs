@@ -9,9 +9,7 @@ use super::generated_members::{
     generated_enum_variant_matches, generated_field_matches, generated_static_value_matches,
 };
 use super::identifiers::JavaIdentifier;
-use super::invocations::{
-    java_cast_is_legal, java_instanceof_is_legal, java_type_is_reifiable, verify_call,
-};
+use super::invocations::{java_cast_is_legal, verify_call};
 use super::operator_signatures::{
     binary_signature_matches, invocation_types_match, unary_signature_matches,
 };
@@ -458,21 +456,10 @@ impl JavaExpr {
                     violations.push(type_error("invalid Java array ownership transition"));
                 }
             }
-            JavaExprKind::InstanceOf { value, target, .. } => {
-                violations.extend(value.verify(context));
-                violations.extend(target.verify(JavaTypeUse::Value));
-                if self.ty != JavaType::Primitive(JavaPrimitive::Boolean) {
-                    violations.push(type_error("instanceof result must be boolean"));
-                }
-                if !java_type_is_reifiable(target) {
-                    violations.push(type_error("Java instanceof target must be reifiable"));
-                }
-                if !java_instanceof_is_legal(&value.ty, target, context) {
-                    violations.push(type_error(&format!(
-                        "Java instanceof is not legal from {:?} to {target:?}",
-                        value.ty
-                    )));
-                }
+            JavaExprKind::InstanceOf { value, target, binding } => {
+                violations.extend(super::instanceof::verify(
+                    &self.ty, value, target, binding.is_some(), context,
+                ));
             }
             JavaExprKind::Lambda { parameters, body } => {
                 for parameter in parameters {

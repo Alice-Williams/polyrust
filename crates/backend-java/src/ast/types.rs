@@ -339,34 +339,11 @@ impl JavaType {
         if matches!(
             usage,
             JavaTypeUse::Parameter | JavaTypeUse::Return | JavaTypeUse::Field
-        ) && contains_internal_mutable_array(self)
+        ) && let Some(hazard) = super::value_boundaries::hazard(self)
         {
-            violations.push(type_error("mutable Java array escapes a value boundary"));
+            violations.push(type_error(hazard.message()));
         }
         violations
-    }
-}
-
-fn contains_internal_mutable_array(ty: &JavaType) -> bool {
-    match ty {
-        JavaType::Array {
-            component,
-            ownership,
-        } => {
-            *ownership == JavaArrayOwnership::InternalMutable
-                || contains_internal_mutable_array(component)
-        }
-        JavaType::Generic { arguments, .. } => {
-            arguments.iter().any(contains_internal_mutable_array)
-        }
-        JavaType::Wildcard {
-            bound: Some((_, bound)),
-        } => contains_internal_mutable_array(bound),
-        JavaType::Primitive(_)
-        | JavaType::Boxed(_)
-        | JavaType::Reference(_)
-        | JavaType::Wildcard { bound: None }
-        | JavaType::TypeVariable(_) => false,
     }
 }
 

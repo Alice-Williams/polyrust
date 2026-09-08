@@ -241,6 +241,8 @@ mod binary_names;
 mod boxed_casts;
 #[path = "ast/catch_order.rs"]
 mod catch_order;
+#[path = "ast/collection_boundaries.rs"]
+mod collection_boundaries;
 #[path = "ast/compiler_oracle.rs"]
 mod compiler_oracle;
 #[path = "ast/constructor_assignment.rs"]
@@ -257,6 +259,8 @@ mod field_context;
 mod foreach_and_erasure;
 #[path = "ast/initializers_and_exceptions.rs"]
 mod initializers_and_exceptions;
+#[path = "ast/instanceof_patterns.rs"]
+mod instanceof_patterns;
 #[path = "ast/interface_conformance.rs"]
 mod interface_conformance;
 #[path = "ast/interface_signatures.rs"]

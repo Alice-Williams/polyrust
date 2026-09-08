@@ -47,6 +47,7 @@ pub use implementation_witness::JavaImplementationWitness;
 mod interface_conformance;
 mod interface_witness;
 pub use interface_witness::JavaInterfaceWitness;
+mod instanceof;
 mod invocations;
 mod known_type_arity;
 mod lexical_blocks;
@@ -77,6 +78,7 @@ mod switch_patterns;
 mod type_context;
 mod types;
 pub(crate) mod uninhabited;
+mod value_boundaries;
 pub use types::{
     JavaArrayOwnership, JavaArrayOwnershipTransition, JavaKnownType, JavaPrimitive, JavaType,
     JavaTypeName, JavaTypeUse, JavaWildcardBound,

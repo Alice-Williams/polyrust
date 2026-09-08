@@ -94,6 +94,9 @@ pub(super) fn java_cast_is_legal(
     source: &JavaType,
     context: &TargetAstContext<'_, JavaDialect>,
 ) -> bool {
+    if !value_transfer_preserves_isolation(source, target) {
+        return false;
+    }
     if target == source {
         return !matches!(target, JavaType::Primitive(JavaPrimitive::Void));
     }
@@ -182,7 +185,17 @@ pub(super) fn java_instanceof_is_legal(
 ) -> bool {
     java_type_is_reference(source)
         && java_type_is_reference(target)
-        && java_cast_is_legal(target, source, context)
+        && (*target == JavaType::known(JavaKnownType::Object)
+            || java_cast_is_legal(target, source, context))
+}
+
+// Hazardous values cannot erase their type. Array ownership cannot be recovered
+// from Object, but a mutable-collection pattern only recognizes a local Java
+// type, not an ownership certificate. Boundary checks still prohibit its export.
+pub(super) fn value_transfer_preserves_isolation(source: &JavaType, target: &JavaType) -> bool {
+    source == target
+        || (super::value_boundaries::hazard(source).is_none()
+            && !super::value_boundaries::requires_internal_ownership(target))
 }
 
 pub(super) fn java_type_is_reference(ty: &JavaType) -> bool {

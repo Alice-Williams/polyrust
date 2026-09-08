@@ -633,3 +633,99 @@ is excluded. The prior pushed bd916a6 checkpoint has all eight hosted jobs green
 in [run 34195505015](https://github.com/Alice-Williams/polyrust/actions/runs/34195505015).
 This repair checkpoint requires its own push, CI and fresh immutable review;
 no prior green review or CI is substituted for those final requirements.
+
+## 46cc4bd ownership-erasure audit
+
+The fresh immutable review found that `InternalMutable` arrays could be cast to
+Object and returned through an otherwise valid public signature. Accepted as
+a core ownership defect: Java compilation alone cannot prove value isolation.
+Red `77d4d47a-899e-4e4d-a23c-d11e12b61413` reproduces AST admission and passes
+the native aliasing witness. Expanded red
+`414bb4f4-bc33-487a-b090-997fcd392de3` independently admits both the cast and
+an Object pattern binding, each returning the erased reference.
+
+The repair reuses the recursive internal-array inventory for casts and bound
+instanceof/switch patterns. If either type contains InternalMutable at any
+depth, only the identical type may be transferred. Erasing or manufacturing
+internal ownership fails. Boundary-only values retain their existing defensive
+copy contract and may widen. An initial blanket array-erasure ban correctly
+rejected the regressions but failed four integration fixtures: runtime Bytes
+equality intentionally widens already copied accessor arrays. The refined
+rule preserves that safe path and also covers generic/wildcard wrappers.
+Binder-free Object type tests do not produce a reference and remain
+valid; the explicit fresh-copy transition is unchanged. Instanceof checks are
+split into a focused private module, keeping production files small.
+
+The review also proposed that unconditional instanceof bindings were illegal
+Java. Root rejects that finding: pinned Java 21 compiles the exact alleged
+counterexample with `-Xlint:all -Werror`, so the attempted native-negative test
+fails in `d1e589d3-d776-4b6b-a48f-c8aaa1ca72dc`. Java 21
+[JLS 15.20.2](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html#jls-15.20.2)
+does not contain the older subtype prohibition. The reviewer withdrew the
+syntax claim. Valid conditional/unconditional patterns are retained as positive
+AST/compiler controls; mutable-array pattern erasure remains an accepted
+ownership defect, not a syntax error. An initial fixture used the wrong Rust
+literal variant; that setup error is not counted as defect reproduction.
+
+Full post-repair gates and the remaining uncapped review are still required.
+
+The array-only repair passed focused `0b42a3d6-7914-437f-a437-fbb9f9a9e2d3`
+(202 Java tests and all Rust/Bazel/documentation gates), the complete tracked
+gate `77723f30-355c-456c-bfa1-f45403508bbc` (435 rules/310 tests), release
+`eedc70e5-1049-4dbb-a43c-b4c93cfdec17` (247 tests), and deterministic
+eight-target conformance `df3307bb-c77a-4648-ab93-44d4671bdd28`. Linux Cargo
+1.98 also passed 202 Java tests and eight doctests. These are intermediate
+evidence, not proof for the additional collection repair below.
+
+The same review confirmed missing concrete mutable-collection boundary checks.
+ArrayList and LinkedHashMap are legitimate local builders, but their direct
+field/parameter/return exposure and Object erasure violate the specified value
+boundary. Red `4299f243-defa-4ec6-a792-1b239a3ab70e` reproduces direct type-use
+admission and a complete public Object-returning AST with an ArrayList cast.
+The initial fixture delimiter typo was fixed before that red proof.
+
+The focused `value_boundaries` module now owns a closed hazard enum for internal
+arrays and concrete mutable collections, recursively traversing the complete
+type. Boundary checking and cast/pattern transfers consume that same inventory.
+Known JDK classification is exhaustive. Local builder use and explicit
+normalization remain valid; no new portable collection feature is introduced.
+Native aliasing witnesses cover ArrayList Object casts/patterns and direct
+LinkedHashMap exposure. Full combined gates and review remain required.
+
+The initial collection guard passed 203/205 Java tests but over-restricted the
+existing legal Object-to-ArrayList/LinkedHashMap local pattern controls. A
+mutable collection type states a mutability fact, not internal-array ownership.
+The refined transfer rule preserves those local narrowing operations; hazardous
+source erasure still fails and internal-array ownership cannot be recovered.
+Both all-hazard and internal-ownership queries share one typed filtered traversal.
+
+## Final disposition of the 46cc4bd audit
+
+The uncapped Sol Extra High review completed with two demonstrated core errors:
+internal-array erasure and concrete mutable-collection boundary exposure. Both
+are accepted and repaired above. The unconditional-pattern syntax claim is
+rejected with pinned compiler and normative evidence above and was withdrawn
+by the reviewer. Its remaining broad audit found no additional demonstrated
+core errors; optional syntax expansion is not a completion requirement.
+The reviewer inspected immutable source only and did not run these tests.
+
+Root's combined-repair Linux development-container evidence:
+
+- `63102c96-0faa-4a6f-8332-ab854e0619e2`: 205 Java tests, Rustfmt,
+  Clippy, Buildifier and documentation pass.
+- `c36492bb-cc90-4383-8139-bc7d68a0cbd4`: all 435 tracked rules build;
+  all 310 tests pass, including strict native Java/compiler mutation oracles,
+  snapshots, architecture policies and every historical port.
+- `f9ed3814-fcdf-4b72-9ae8-7cb498fc1e7a`: all 247 release tests pass.
+- `e5fa64ce-f017-4b2f-88b2-4f03dbba658a`: 50 cases and one portable test,
+  evaluator/eight-target agreement and byte-identical repeated manifests.
+- Linux Cargo 1.98, all features and locked dependencies: all 205 Java tests
+  and eight doctests pass. This supplements, not substitutes for, the Bazel-only
+  compiler mutation oracle in the full gate.
+
+All production Java modules remain below 500 lines (largest: 477). Normal
+action/test caching stays enabled; unrelated untracked stdlib-abs is untouched
+and excluded. The preceding 46cc4bd checkpoint has all eight hosted jobs green
+in [run 34199493728](https://github.com/Alice-Williams/polyrust/actions/runs/34199493728).
+The combined repair still requires its own pushed checkpoint, hosted CI and
+fresh immutable review before Java closure.

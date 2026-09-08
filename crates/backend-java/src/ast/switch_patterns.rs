@@ -7,7 +7,7 @@ use super::field_metadata::find_type_declaration;
 use super::generated_members::generated_enum_variant_matches;
 use super::invocations::{
     generated_and_known_interface_related, generated_type_implements, java_instanceof_is_legal,
-    java_type_is_reference, java_type_is_reifiable,
+    java_type_is_reference, java_type_is_reifiable, value_transfer_preserves_isolation,
 };
 use super::statement_model::{JavaPattern, JavaSwitchArm};
 use super::type_context::{JavaErasedType, erased_java_type};
@@ -157,6 +157,7 @@ pub(super) fn verify_switch_patterns(
             JavaPattern::Type { ty, .. } => {
                 if !java_type_is_reifiable(ty)
                     || !java_instanceof_is_legal(&selector.ty, ty, context)
+                    || !value_transfer_preserves_isolation(&selector.ty, ty)
                 {
                     violations.push(type_error(
                         "Java switch type pattern is not reifiable or selector-compatible",
