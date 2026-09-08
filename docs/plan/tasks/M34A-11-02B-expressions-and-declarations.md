@@ -1,6 +1,6 @@
 # M34A-11-02B — C expressions, declarations and files
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-11-02A, M34A-11-01S, M34A-11-00R, M34A-10AB
 
 ## Goal
@@ -220,8 +220,16 @@ The repair passed the same container commands and normal caches:
 | Cached release | 29b1ead0-3bb4-48a3-aa3e-04854a726c6f | All 251 test targets pass |
 | Eight-target conformance/determinism | 4f2f51f6-6685-40c9-a8d7-31cdb75aa9f2 | 50 cases and one portable test; all eight targets agree; repeated manifests byte-identical |
 
-A fresh independent repair review is still required for closure. No finding
+A fresh Sol Extra High reviewer audited the final immutable repair
+98bac7e7d993a3093d696bc99afdb924a722fc15 and returned PASS with no substantive
+findings. It confirmed the two separately registered parameter identities,
+indices, owner/type equality and independent expected vector make the assertion
+non-vacuous; dropping, reordering or duplicating parameters fails. No finding
 was rejected and the scope of later contextual/proof stages is unchanged.
+Final documentation/Buildifier invocation 233a81a3-b202-46a2-b734-92cd7560a478
+passed. An earlier invocation 738c1189-0870-4c25-a269-5f21aa638ecf used a
+nonexistent tools package and ran no tests; it is not passing evidence.
+02B is complete. This closes construction only, not C migration or certification.
 
 ## Commit gate
 
