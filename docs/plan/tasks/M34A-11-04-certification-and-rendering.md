@@ -17,7 +17,7 @@ Connect the C post-link checker to the shared opaque certificate and total rende
 
 ## Tests and proof
 
-- Add c_grammar_inventory_test, c_ast_compiler_oracle_test and
+- Add c_structural_format_test, c_grammar_inventory_test, c_ast_compiler_oracle_test and
   c_resource_probe_test with the exact command/negative-shape contracts in
   c/platform-and-proof.md. Record measured numeric policy limits and both
   compiler boundary probes before exposing the capacity adapter.

@@ -22,7 +22,10 @@ third-party generator libraries.
 Callers must retain round-to-nearest/ties-to-even, masked FP traps and gradual
 underflow (no flush-to-zero/denormals-are-zero mode) during generated calls.
 The native harness verifies this default environment and restores it after
-adversarial environment probes. Generation does not mutate process FP state.
+adversarial environment probes. Generated calls do not change FP control modes
+(rounding, trap masks, FTZ/DAZ). Arithmetic may raise sticky exception status
+flags; those flags are outside portable observation and are not preserved.
+There is no implied production save/restore of the whole floating environment.
 FLT_EVAL_METHOD must be zero. No fast-math, reassociation or implicit fused
 multiply-add is allowed; compile with -fno-fast-math -ffp-contract=off.
 Separate operation nodes are rounded separately. Probes include signed zero,
@@ -142,6 +145,7 @@ labels are planned and must actually be added before their owning stage closes.
 | portable_backend_c_test | Existing; all stages | Focused structural, registry, verifier and plan tests |
 | c_typed_compile_fail_test | Existing; all stages | Invalid Rust construction/mapping/proof boundary rejects |
 | c_grammar_inventory_test | 04 | Every closed AST variant has positive, mutation and native coverage |
+| c_structural_format_test | 04 | Canonical formatting fixtures, repeated-render no-diff and hostile translation-phase text |
 | c_ast_compiler_oracle_test | 04 | Certified ASTs compile; rejected contextual mutations cannot certify |
 | c_resource_probe_test | 04 | Recorded numeric boundaries, both compilers, checked capacity errors |
 | c_fp_environment_test | 05 | Platform properties, noncontraction and float edge/raw-bit matrix |

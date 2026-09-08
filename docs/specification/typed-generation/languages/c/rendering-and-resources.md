@@ -25,7 +25,13 @@ F64 bits are selected structurally before rendering.
 Output is deterministic UTF-8/LF with a final newline. Header guards and
 preprocessor assertions are typed directive nodes, never executable macros
 which hide operations. Formatting is a no-diff oracle, not a syntax-repair
-step. The existing whitespace gate is not claimed as a full C formatter.
+step. C's format contract is structural canonical formatting plus the whitespace
+gate, not equivalence to an external full C formatter. Run
+`bazel test //crates/backend-c:generated_v0_style_test`; historical package
+`c_style_test` targets use the same tools/c/test_style.sh. Stage 04 additionally
+adds `//crates/backend-c:c_structural_format_test`: exact AST formatting
+fixtures, three-render no-diff checks and translation-phase hostile text cases.
+No third-party C formatter dependency is required or claimed.
 Strict native diagnostics and parser/compiler mutation evidence remain required.
 
 ## Capacity and platform contract

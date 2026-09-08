@@ -12,7 +12,7 @@ opaque. A public handle typedef names its incomplete struct; inputs use a
 pointer to const, owned output slots use a pointer to pointer to mutable
 incomplete struct. The implementation alone defines layouts.
 
-Unit is uint8_t with the single valid value zero. Bool is bool; I32/I64 use
+Unit is uint8_t with the single valid value zero. Bool is _Bool; I32/I64 use
 int32_t/int64_t; F64 is double; Char is uint32_t restricted to Unicode scalars.
 Each payload-free enum has a distinct typedef to uint32_t and a closed set of
 zero-based tags allocated by canonical variant identity order. Its nominal
@@ -20,6 +20,10 @@ identity is retained in Rust registrations despite C typedef compatibility.
 Native C enum storage is never the portable ABI representation. Named C enum
 declarations may supply integer constant names; generated enum constants fit
 C int. More variants are a generation-capacity error, not silent truncation.
+An empty portable enum has the fixed-width typedef but no named native enum
+declaration and no valid tag; all foreign tag constructions fail InvalidInput.
+Similarly, a zero-field portable record remains an opaque live owner with
+private allocator/bookkeeping fields; it never emits an empty C aggregate.
 Every foreign enum/Char/Unit input is validated before use. Option/Result and
 legacy payload-enum discriminants are private uint32_t tags; active-member
 facts dominate every payload read.
@@ -46,6 +50,11 @@ expose the branch and borrowed immutable value/error views; extracting an
 owned value requires clone. There is no public take operation in this ABI.
 The initial ABI allocates an outcome even for scalar returns; allocation-free
 specializations are a later explicit ABI/design change, not a hidden heuristic.
+
+The exact factory, projection, tag and view signatures are specified in
+[public value ABI](public-value-abi.md); observers are not implementation-chosen
+overloads. Public value factories return transport status plus the value's
+owning slot, not a computational outcome.
 
 poly_status has uint32_t ABI and closed values Success(0),
 AllocationFailure(1), Capacity(2), InvalidInput(3), InvalidState(4). Capacity

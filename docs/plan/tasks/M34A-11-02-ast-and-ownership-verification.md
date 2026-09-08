@@ -11,6 +11,8 @@ Make local grammar, symbol and safety obligations explicit before a C package ca
 
 This milestone is intentionally split into independently tested checkpoints;
 it closes only when all four do. Each new source module remains focused.
+The registry-only 02A foundation can overlap design review and hosted CI;
+02B and subsequent contextual verification retain the prerequisites above.
 
 1. [02A — Registries and nominal identities](M34A-11-02A-registries-and-nominals.md)
 2. [02B — Expressions, declarations and files](M34A-11-02B-expressions-and-declarations.md)

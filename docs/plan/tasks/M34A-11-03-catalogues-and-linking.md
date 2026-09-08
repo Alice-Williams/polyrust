@@ -10,6 +10,8 @@ Resolve every dependency, name and declaration placement from typed references.
 ## Definition of done
 
 - Implement CDialect shared AST binding, exact standard/runtime signatures, typed known constants and source-file roles.
+- Register every exact factory/observer/view/tag family in c/public-value-abi.md;
+  retain actual C types for macros, enum constants and integer predicates.
 - Derive includes, guards, forward declarations and complete-definition order from a typed dependency graph, including runtime helpers.
 - Allocate names with ordinary/tag/label/member namespaces, protected standard symbols and stable generated identities.
 - Authenticate complete file/prototype/member/definition inventory in both directions after helper composition.

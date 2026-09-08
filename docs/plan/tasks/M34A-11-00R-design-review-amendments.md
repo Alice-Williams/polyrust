@@ -95,3 +95,36 @@ These green tests validate the existing regression baseline and documentation,
 not implementation of the new C design. In particular, measured numeric
 resource budgets, new native targets and all 42 C mappings remain mandatory
 work at their owning stages. Fresh immutable design review is still pending.
+
+## Second immutable design review and disposition
+
+A fresh uncapped Sol Extra High read-only review of 684a0db examined every C
+layer and the Stage 02 split. It found 13 contract defects, not 13 failures of
+an implemented typed backend. Root independently evaluated all findings and
+accepts the following repairs; none is dismissed as an optional feature.
+
+| Finding | Accepted repair |
+| --- | --- |
+| 1: enum capability overlap | Enums owns typed top-level equality/branching exclusively; C explicitly assigns legacy payload cases there too. The latter is a C choice, not a shared mandate. Recursive aggregate helpers are dependencies, not second capability mappings. |
+| 2: unspecified public ABI families | public-value-abi.md fixes every factory, observer, view, tag, borrowed output, lifetime, failure and outcome signature. Factories use status plus owning slot; observers never allocate/transfer. |
+| 3: typedef-hidden categories/const | Expand actual registered aliases before signature/category proof; no array decay or pointee/element qualifier loss. |
+| 4: no void-call grammar | Effect Call is separate from nonvoid Value Call and is consumed by Evaluate. |
+| 5: allocator pointer conversions | ObjectToVoid and AllocationRestore retain qualifier/extent/provenance; interface adapters cannot substitute. |
+| 6: unrepresentable constants | KnownConstant and Enumerator values retain catalogue/registration and actual constant-expression types. |
+| 7: incomplete registry inventory | 02A owns enumerators, adapters/witnesses/tables, allocation and function-owned control identities. |
+| 8: implicit array decay | Reject Read(array); use checked first-element address, with a separate empty-buffer path. |
+| 9: nonliteral final literal nodes | ByteArray/F64Bits are mapping inputs expanded into typed storage/effects before final AST certification. |
+| 10: empty C aggregates | Require nonempty definitions; portable empty records use private bookkeeping; incomplete forward tags remain valid. |
+| 11: Bool/macro/int mismatch | Native _Bool, explicit 0/1 conversions, actual int logical/comparison results followed by explicit Bool conversion. |
+| 12: FP status mutation | Preserve control modes; sticky exception flags may be raised and are outside portable observation. No implied whole-fenv save/restore. |
+| 13: unspecified formatter | Explicit structural canonical format/no-diff target plus existing whitespace gate; no external full C formatter claim/dependency. Native compilers remain independent syntax oracles. |
+
+Stage 02/03/04/06 tasks name the corresponding construction, mutation, compiler
+and public-consumer obligations. Numeric resource budgets remain measured work
+for Stage 04. All currently implemented C output still uses the legacy path;
+these specification amendments do not turn that path into a certificate.
+
+Documentation and Buildifier pass in invocation
+920c6d1e-983d-4683-86c7-28a87d14e338. The earlier full baseline remains applicable:
+only Markdown changed. A fresh review of the repaired immutable contract is
+required before closing M34A-11-00R.

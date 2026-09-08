@@ -15,6 +15,7 @@ discipline, not C syntax or ownership implementation.
 - [AST, declarators and validity](c/ast-and-validity.md)
 - [Ownership, sequencing, safety and ABI](c/ownership-and-abi.md)
 - [Exact callable, allocator and lifecycle ABI](c/callable-abi.md)
+- [Exact public value factories and observations](c/public-value-abi.md)
 - [Interfaces and composition](c/interfaces.md)
 - [Capability admission and mapping certificates](c/mapping-certificates.md)
 - [All 42 capability strategies](c/capability-inventory.md)
@@ -72,7 +73,7 @@ declaration/declarator escape and no executable C source string.
 | CoreIR type | C17 representation |
 | --- | --- |
 | Unit | uint8_t with the single valid value zero |
-| Bool | `bool` from `<stdbool.h>` |
+| Bool | native `_Bool`; no stdbool type macro |
 | I32 / I64 | `int32_t` / `int64_t` plus checked helpers |
 | F64 | `double` with `memcpy`-based exact raw-bit helpers |
 | Char | validated Unicode scalar stored as `uint32_t` |
@@ -127,7 +128,7 @@ and macro-generated polymorphism are forbidden.
 ## 7. Symbols and includes
 
 Closed catalogues include exact admitted types/macros/functions from
-`stdint.h`, `stdbool.h`, `stddef.h`, `limits.h`, `float.h`, `stdlib.h`,
+`stdint.h`, `stddef.h`, `limits.h`, `float.h`, `stdlib.h`,
 `string.h`, `math.h`, and generated runtime declarations. Test-only native
 oracles additionally admit catalogued stdio.h/fenv.h entries, including fputs
 and floating-environment observations; no variadic printf shortcut is admitted.
@@ -176,8 +177,10 @@ and exhaustively matches the closed C AST. There is no executable Handlebars
 template, token/source escape hatch, or renderer-side ownership, include,
 monomorphizing, cleanup, or feature decision.
 
-A pinned formatter/compiler is an independent no-diff/acceptance oracle and not
-a syntax or semantic repair.
+Formatting evidence is the deterministic structural renderer and the named
+whitespace/no-diff tests in c/rendering-and-resources.md, not a third-party full
+C formatter. Pinned compilers independently test syntax acceptance; neither
+formatting nor compilation is a source-repair step.
 
 ## 11. Validation
 

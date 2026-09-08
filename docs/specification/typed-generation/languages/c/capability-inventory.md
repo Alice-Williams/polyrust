@@ -55,7 +55,7 @@ Pure scalar AST operations do not themselves allocate.
 | F64Values | Type, Value(u64 bits) | Type/Value; binary64 bit-transfer helper, never decimal approximation | Verified memcpy bit representation |
 | TextValues | Type, Value(UTF-8 bytes) | Type/Value; validated immutable UTF-8 owner | A; length, scalar validity and embedded zero |
 | BooleanLogic | Not, And, Or | Value; Bool operators, RHS prefix remains conditional | BoolValues; no eager RHS |
-| Equality | Equal, NotEqual | Value; recursive IEEE comparator | Recursively equatable types only; no interface/address equality |
+| Equality | Equal, NotEqual | Value; recursive IEEE comparator except top-level enums | Recursively equatable types only; no interface/address equality; Enums owns enum equality |
 | Ordering | Less, LessEqual, Greater, GreaterEqual | Value; checked scalar or Unicode-scalar lexical ordering | Exact admitted operand category; no pointer comparison |
 | CheckedIntegerArithmetic | Neg, Add, Subtract, Multiply, Divide, Remainder | Value; signed range guards before native operation | P; zero and minimum/-1; ResultPropagation |
 | WrappingIntegerArithmetic | Neg, Add, Subtract, Multiply | Value; unsigned-width arithmetic and proved signed reconstruction | I32/I64 width; no implementation-defined overflow shortcut |
@@ -80,13 +80,13 @@ Pure scalar AST operations do not themselves allocate.
 | Modules | Declaration(inventory) | Package; registered public/private files and exact declaration inventory | Actual registrations in both directions; not structural orchestration |
 | Constants | Declaration, Reference | Decl/Value; allocator-parameterized fresh-value getter | A owning results; checked dependency DAG; immutable backing only |
 | TypeAliases | Declaration(name, exact target), TypeReference | Decl/Type; registered typedef, transparent semantic target | Alias cycle check and nominal ownership retained |
-| Enums | Type, Declaration, Variant, Equality, Branch, PayloadDeclaration, PayloadConstruction | Type/Decl/Value/Control; fixed-width validated tags; opaque legacy payload plan | Payload-free typed enums; A legacy payload; exact tag/member dominance |
+| Enums | Type, Declaration, Variant, Equality, Branch, PayloadDeclaration, PayloadConstruction, PayloadPattern, PayloadBindingRead, PayloadBranch | Type/Decl/Value/Control; fixed-width validated tags; opaque legacy payload plan | Owns all top-level enum equality/matching, including aliases and C legacy compatibility; A legacy payload; exact tag/member dominance |
 | Interfaces | Type, UninhabitedType, Declaration, ImplementationBundle, SelfValue, Coerce, ConcreteCall, InterfaceCall | Type/Decl/Value; exact flat table/context adapter and lifecycle bundle | A clone/coercion; exact witness; empty implementation set valid |
 | PortableTests | FunctionInvocation, MethodInvocation, Case, Harness | Test; outcome/status assertions and exact completion inventory | NaN-class expectation comparator; string error codes; no vacuous main |
 | LocalBindings | Bind, Read | Control/Value; scoped registration, immutable read or explicit owned clone | Exact binding identity and lifetime |
 | Conditionals | Value(condition, then, else) | Control/Value; branch-local prefixes and joined output ownership | BoolValues; both reachable exits satisfy result type/state |
 | Loops | ForEach, BindingRead | Control/Value; bounded iteration and scoped element binding | ListValues; count/index bounds, loop-carried ownership joins |
-| PatternMatching | Pattern, Match, BindingRead | Control/Value; exhaustive tag/Bool switch, dominated projections | Closed patterns Wildcard/Bool/EnumVariant/None/Some/Ok/Err; no fallthrough |
+| PatternMatching | Pattern, Match, BindingRead | Control/Value; exhaustive non-enum tag/Bool switch, dominated projections | Closed patterns Wildcard/Bool/None/Some/Ok/Err; no top-level enum matches; no fallthrough |
 | ResultPropagation | Propagate(call outcome) | Control/Value; separate transport and portable-error exits | Cleanup all live temporaries, retain ordinary Result values |
 | UnitValues | Type, Value | Type/Value; uint8_t zero | Foreign input domain check |
 
@@ -96,6 +96,18 @@ A mapping cannot require its own support by recursively consulting an empty
 slot: concrete type/lifecycle specializations are registered once and linked
 as a dependency graph. Unsupported recursive layout/specialization shapes
 need explicit diagnostics and specification, never an infinite expansion.
+
+Typed payload-free enum equality and exhaustive branching belong to Enums
+alone, as required by the shared catalogue; they do not infer Equality or
+PatternMatching. C also deliberately assigns its legacy payload-enum equality,
+matching and payload binding operations to Enums. That compatibility choice is
+C-specific, not a claim that the shared typed frontend exposes tagged unions.
+Transparent aliases preserve this dispatch category. Recursive comparison of
+enum fields within another aggregate uses the registered structural comparator
+dependency; it does not invoke a second unregistered capability mapping.
+PortableTests owns its separate expectation comparator. Tests must prove an
+Enums-only typed program needs neither Equality nor PatternMatching, and that
+legacy enum/wildcard/binding paths select exactly one authenticated owner.
 
 ## Required evidence per variant
 

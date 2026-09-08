@@ -1,18 +1,27 @@
 # M34A-11-02A — C registries and nominal identities
 
-- Status: planned
-- Depends on: M34A-11-00R, M34A-11-01R, M34A-10AB
+- Status: in-progress
+- Depends on: M34A-11-01, M34A-11-01R
 
 ## Goal
 
 Implement this bounded part of M34A-11-02 without introducing a raw-source path
 or advertising capabilities before their mappings exist.
 
+This registry-only foundation may proceed while the amended C ABI is reviewed
+and Java's hosted CI finishes. It introduces no context-verified AST package,
+ABI lowering or certificate. Those boundaries remain gated on M34A-11-00R and
+M34A-10AB at the next slice; review findings still apply before integration.
+
 ## Definition of done
 
-- Add private registry-scoped, kind-specific identities for struct, union, typedef, enum, function, object, member, parameter, local and file registrations. References retain origin, owner and complete structural type/signature.
+- Add private registry-scoped, kind-specific identities for struct, union, typedef, enum, enumerator, function, object, member, parameter, local and file registrations. References retain origin, owner and complete structural type/signature.
+- Register exact interface adapter/witness/table identities and function-owned loop, switch, cleanup-exit and allocation identities for later AST/proof nodes. Later slices cannot replace them with untyped integers or manufacture proof facts.
 - Extend the existing CObjectType foundation with the closed nominal categories. Separate known-library origins from generated origins; reject crossed registry/kind/owner references.
 - Keep canonical identity/name ordering independent of transient allocation counters. No public source/certificate constructor or string-based symbol lookup.
+- Typedefs cannot hide array parameter/return categories or effective const
+  qualification. Derive expanded shape from actual registered targets and test
+  nested aliases; do not weaken the existing private signature wrappers.
 
 ## Tests and proof
 

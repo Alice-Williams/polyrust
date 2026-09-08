@@ -18,7 +18,7 @@ Cover the complete portable value algebra and polymorphism with verified ownersh
 ## Tests and proof
 
 - Add c_ownership_fault_test and c_public_abi_test against the exact
-  c/callable-abi.md contract, with allocation-site inventory and both optimizer/
+  c/callable-abi.md and c/public-value-abi.md contracts, with allocation-site inventory and both optimizer/
   sanitizer matrices from c/platform-and-proof.md. Include interface values
   in legacy payload-enum fields and zero-implementation interface nesting.
 

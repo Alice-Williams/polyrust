@@ -1,7 +1,7 @@
 # M34A-11-02B — C expressions, declarations and files
 
 - Status: planned
-- Depends on: M34A-11-02A
+- Depends on: M34A-11-02A, M34A-11-00R, M34A-10AB
 
 ## Goal
 
@@ -18,6 +18,12 @@ or advertising capabilities before their mappings exist.
 
 - Every constructor/category has a positive unit test and an invalid shape/category rejection; no untested Other variant.
 - Declarator/call argument, initializer shape, qualification, value/effect and place-mutation matrices.
+- Explicit void versus nonvoid direct/indirect calls; alias-expanded signature
+  checks; nonempty aggregate definitions; known constant/enumerator references.
+- Actual C int comparison/logical results versus explicit _Bool conversion;
+  array Read rejection and first-element address bounds; qualifier/provenance
+  preserving object/void allocation conversions. ByteArray/F64Bits are expanded
+  mapping inputs, never final renderer literals.
 - Compile-fail public API controls and full cached tracked/release/eight-target gates.
 
 ## Commit gate

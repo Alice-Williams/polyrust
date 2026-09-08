@@ -28,6 +28,14 @@ are distinct identities even when their spellings coincide. Qualifier loss,
 object/function-pointer conversion and implicit prototype adjustment are not
 admitted. Declarator parentheses are derived from this tree, never supplied.
 
+Typedef targets are registered object types, never bare functions. Expand the
+actual registered alias chain before checking parameter/return category and
+effective top-level constness. Array aliases still require explicit pointer
+adjustment for parameters and cannot be returned. Const hidden by aliases
+cannot be stripped from a return or from pointer targets. Prototype-only
+top-level normalization preserves pointee/element constness. Alias cycles are
+rejected; nominal pointer recursion is a separate completeness obligation.
+
 ## References, expressions and places
 
 All generated references carry an authoritative registry identity, declaration
@@ -36,36 +44,58 @@ catalogue variants. A spelling or matching signature alone authenticates neither
 
 | Category | Closed variants and payloads |
 | --- | --- |
-| Literal | Bool(bool), signed/unsigned exact-width integer(value), CharByte(u8), F64Bits(u64), ByteArray(bytes), NullPointer(exact pointer type) |
-| Value | Literal, Read(place), FunctionAddress(function reference), Call(callable, ordered arguments), Unary(operator, operand), Binary(operator, left, right), Conditional(condition, then, else), Convert(conversion, operand), SizeOf(complete object type), AlignOf(complete object type), AddressOf(place) |
+| Literal | Bool(bool), signed/unsigned exact-width integer(value), CharByte(u8), NullPointer(exact pointer type) |
+| Value | Literal, Read(place), KnownConstant(closed catalogue entry), Enumerator(registered constant), FunctionAddress(function reference), Call(nonvoid callable, ordered arguments), Unary(operator, operand), Binary(operator, left, right), Conditional(condition, then, else), Convert(conversion, operand), SizeOf(complete object type), AlignOf(complete object type), AddressOf(place) |
+| Effect | Call(void callable, ordered arguments); exact direct/indirect signature, never a value |
 | Callable | Direct(function reference), Indirect(function-pointer expression with exact prototype) |
 | Place | Local(local reference), Parameter(parameter reference), Global(object reference), Member(base place, member reference), Dereference(pointer), Index(base, index) |
 | Unary operator | LogicalNot, BitNot, Negate |
 | Binary operator | Add, Subtract, Multiply, Divide, Remainder, ShiftLeft, ShiftRight, BitAnd, BitOr, BitXor, Equal, NotEqual, Less, LessEqual, Greater, GreaterEqual, LogicalAnd, LogicalOr |
-| Conversion | Numeric(exact destination scalar), AddConst(exact destination pointer), AdapterErase(adapter registration), AdapterRestore(same adapter registration) |
+| Conversion | Numeric(exact destination scalar), AddConst(exact destination pointer), ObjectToVoid(exact destination qualified void pointer), AllocationRestore(allocation registration, exact object pointer), AdapterErase(adapter registration), AdapterRestore(same adapter registration) |
 
 Expressions distinguish void call effects from values; void cannot be an
 operand, initializer or argument. Operator signatures use the actual C integer
 promotions/usual arithmetic conversions, with explicit conversion nodes when
 the portable result differs. Boolean conditions are exact Bool, not arbitrary
 truthy pointers or integers. Comparison excludes interface/owned identity.
+Bool renders as native _Bool, not a type macro. Bool literals render an
+explicit _Bool conversion of 0/1. C logical/comparison operators and known
+integer predicates have their actual int result; an explicit Numeric(Bool)
+node converts them before an exact-Bool condition or portable Bool result.
+KnownConstant entries retain header, actual type and constant-expression
+eligibility (including platform properties such as CHAR_BIT/DBL_MANT_DIG).
+Enumerator values retain their ordinary-namespace registration and actual C
+int type; portable fixed-width tags require explicit conversion. Neither
+category can be forged as a literal or treated as an object place.
 Null is admitted only for lifecycle/foreign validation, not as an owned value.
 No address of a register object or bitfield exists in this subset.
 
-ByteArray is immutable storage with a length, not a NUL-terminated string
-assumption. F64Bits lowers to typed bit-transfer storage/operations before the
-renderer; it is not permission to invent a target expression during printing.
+ByteArray and F64Bits are mapping inputs, not final C literal variants.
+ByteArray lowers to immutable nonempty array storage/element initializers and
+an explicit AddressOf(Index(array place, zero)); empty bytes take the no-buffer
+path. Read(array place) is rejected: no implicit value-level array decay is
+admitted. Address formation retains the array's nonzero bound and provenance.
+F64Bits lowers to U64 storage, a double temporary and typed memcpy operations,
+leaving Read(double temporary) as the value. All those declarations/effects
+exist before certification; rendering never performs semantic expansion.
+Byte storage has an explicit length, not a NUL-terminated string assumption.
 Arithmetic, numeric conversions, pointer formation, dereferences and indexing
 must carry verifier-derived range, extent, initialized-state and provenance
 facts. AST inputs cannot manufacture those facts. An adapter registration owns
 the exact erased/restored record, interface, witness and function table.
+ObjectToVoid preserves constness, extent and provenance for object pointers;
+it is not a function-pointer conversion. AllocationRestore authenticates the
+allocator result, required object alignment/extent and initialized state before
+dereference; it cannot restore an arbitrary void pointer. AddConst changes
+only the immediate pointee qualification and cannot admit T** to const T**.
+Exact call/initializer typing does not hide these conversions implicitly.
 
 ## Initializers, statements and control flow
 
 | Category | Closed variants and payloads |
 | --- | --- |
 | Initializer | Expression(value), Zero(object type), Array(ordered complete element initializers), Struct(exact registered member initializers), Union(one registered member, initializer) |
-| Statement | Empty, Block(ordered statements), Declare(local declaration), Assign(place, value), Evaluate(void/effect expression), Discard(value), If(condition, then block, else block), BoundedLoop(loop registration, body), Switch(value, arms, default block), Break(enclosing loop/switch identity), Continue(enclosing loop identity), Return(optional value), CleanupJump(exit identity), Label(exit identity, statement) |
+| Statement | Empty, Block(ordered statements), Declare(local declaration), Assign(place, value), Evaluate(effect), Discard(value), If(condition, then block, else block), BoundedLoop(loop registration, body), Switch(value, arms, default block), Break(enclosing loop/switch identity), Continue(enclosing loop identity), Return(optional value), CleanupJump(exit identity), Label(exit identity, statement) |
 | Case constant | Exact integer or registered payload-free enumerator, converted to the switch's promoted type before duplicate checking |
 | Switch arm | Nonempty list of case constants plus a block; implicit fallthrough is prohibited |
 | Loop registration | Counter/bound/step identities with checked initialization, bound, progress and overflow obligations |
@@ -85,7 +115,7 @@ bare declaration, bypass initialization or skip destruction.
 
 | Category | Closed variants and payloads |
 | --- | --- |
-| Declaration | ForwardTag(struct/union identity), Typedef(identity, aliased type), Aggregate(struct/union identity, ordered members), Enum(identity, nonempty ordered constants), FunctionPrototype(function identity), ObjectDeclaration(object identity) |
+| Declaration | ForwardTag(struct/union identity), Typedef(identity, aliased object type), Aggregate(struct/union identity, nonempty ordered members), Enum(identity, nonempty ordered constants), FunctionPrototype(function identity), ObjectDeclaration(object identity) |
 | Definition | Function(identity, exact parameter bindings, body), Object(identity, checked initializer) |
 | Linkage | External, Internal, None; only legal declaration/context combinations |
 | Storage | Automatic, Static, Extern; reject incompatible linkage, file role or initializer combinations |
@@ -96,6 +126,10 @@ No anonymous aggregate, tentative public object definition, inline/restrict/
 thread-local declaration, executable preprocessor macro or arbitrary directive
 is initially admitted. Enumerators fit C int and share the ordinary namespace.
 Include/guard items are linker-owned, not attached by portable lowering.
+An aggregate definition has at least one registered member. Forward tags may
+remain incomplete; they are not empty definitions. Portable empty records use
+nonempty private bookkeeping layouts. Constructor, mutation and strict native
+controls reject empty struct/union definitions while accepting forward tags.
 External symbols are unique package-wide; internal symbols cannot appear in
 public API references. Test roles cannot supply production definitions.
 Discard renders a void conversion without allowing void as an ordinary value.
