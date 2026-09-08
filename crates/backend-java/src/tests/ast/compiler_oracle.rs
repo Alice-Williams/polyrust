@@ -440,6 +440,7 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
         .members
         .extend(super::boxed_casts::legal_methods());
     let owner_fixtures = super::synthetic_owner_fixtures::items(&mut builder);
+    super::enum_budget_oracle::add_consumer(&mut builder, oracle_enum, oracle_first, oracle_second);
     let file = builder.file(portable_codegen::TargetFile::new(
         portable_codegen::RelativeOutputPath::new(
             "src/main/java/org/polyrust/generated/OracleStructured.java",
@@ -536,7 +537,7 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
                 .filter(|candidate| candidate.is_file())
         })
         .expect("hermetic Java 21 javac is present in runfiles");
-    let output = std::process::Command::new(javac)
+    let output = std::process::Command::new(&javac)
         .args(["--release", "21", "-Werror", "-Xlint:all", "-d"])
         .arg(&classes)
         .args(&sources)
@@ -547,5 +548,6 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
         "verified Java AST mutation failed javac:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    super::enum_budget_oracle::compile_separately(&javac, &output_root, &classes);
     crate::tests::budget_oracle::verify(&classes, &budgets);
 }

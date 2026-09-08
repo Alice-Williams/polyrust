@@ -68,6 +68,25 @@ impl<'a> Checker<'a> {
             types::MAX_UTF8,
         );
         let generic = types::parameters(&value.type_parameters, self.path, self.errors);
+        match value.kind {
+            JavaDeclarationKind::Enum | JavaDeclarationKind::UninhabitedEnum(_) => limit(
+                self.errors,
+                self.path,
+                "implicit enum valueOf descriptor bytes",
+                binary_name.saturating_add("(Ljava/lang/String;)L;".len()),
+                types::MAX_UTF8,
+            ),
+            JavaDeclarationKind::Record => limit(
+                self.errors,
+                self.path,
+                "record equals bootstrap descriptor bytes",
+                binary_name.saturating_add("(L;Ljava/lang/Object;)Z".len()),
+                types::MAX_UTF8,
+            ),
+            JavaDeclarationKind::FinalClass
+            | JavaDeclarationKind::Interface
+            | JavaDeclarationKind::SealedInterface => {}
+        }
         let mut has_signature = generic != 0
             || matches!(
                 value.kind,

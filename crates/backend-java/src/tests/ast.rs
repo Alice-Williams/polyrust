@@ -243,6 +243,8 @@ mod compiler_oracle;
 mod constructor_assignment;
 #[path = "ast/declaration_grammar.rs"]
 mod declaration_grammar;
+#[path = "ast/enum_budget_oracle.rs"]
+mod enum_budget_oracle;
 #[path = "ast/enums.rs"]
 mod enums;
 #[path = "ast/field_context.rs"]

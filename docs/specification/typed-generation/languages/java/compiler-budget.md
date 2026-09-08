@@ -68,6 +68,10 @@ map, including default-only enum switches: labels alone do not establish the
 selector's kind. Each switch reserves a map field; each arm reserves
 initialization code, constants and a catch entry. The helper's combined
 initializer is checked, rather than treating each switch as an isolated method.
+The typed class-budget kind distinguishes declared classes from synthetic map
+classes. A possible map also reserves the two-byte `$1` suffix on the final
+outer binary name. No anonymous/local classes or enum constant bodies are
+admitted, so pinned javac allocates one such map class per enclosing nest.
 Generated interface conformance has exact signatures and no generic heritage;
 covariant/generic bridges are not admitted. This invariant and lambda rejection
 must stay covered when the AST grows.
@@ -83,7 +87,11 @@ same source. Exact slot/name/descriptor checks remain separate.
 Native tests must reproduce oversized byte-array method and aggregate member
 counterexamples, pair them with accepted smaller programs, and inspect actual
 class files for admitted fixtures. Actual code/pool/locals/stack/member and
-bootstrap counts must fit the calculated reservations. Existing eight-target
+bootstrap counts must fit the calculated reservations. The enum oracle also
+recompiles a certified, rendered consumer against provider class files only,
+asserts that its `$1.class` actually exists, and inspects that helper's metrics.
+This prevents javac's same-compilation ordinal optimization from making the
+synthetic-helper coverage vacuous. Existing eight-target
 conformance and historical Java ports remain required. Until those checks and
 the independent review pass, this policy remains implementation work, not
 completed proof. Packing, extraction and class splitting are optional future

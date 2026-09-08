@@ -9,6 +9,72 @@ use crate::ast::{
 };
 
 #[test]
+fn implicit_enum_value_of_descriptor_is_stricter_than_its_class_signature() {
+    use portable_codegen::{
+        GeneratedOrigin, GeneratedType, GeneratedValue, SynthesisReason, TargetAstBuilder,
+        TargetTypeRef,
+    };
+    use portable_diagnostics::SourceRef;
+    let prefix = crate::ast::JavaPackage::Generated.name().len() + 1;
+    for length in [65_513, 65_514] {
+        let mut builder = TargetAstBuilder::new(crate::dialect::JavaDialect);
+        let name = "E".repeat(length - prefix);
+        let origin = GeneratedOrigin::Synthesized(SynthesisReason::TestHarness);
+        let owner = builder.generated_type(GeneratedType {
+            name: name.clone(),
+            kind: JavaDeclarationKind::Enum,
+            visibility: crate::ast::JavaVisibility::Public,
+            origin: origin.clone(),
+            source: SourceRef::logical(["enum-resource"]),
+        });
+        let variant = builder.value(GeneratedValue {
+            name: "VALUE".to_owned(),
+            ty: TargetTypeRef::Generated(owner),
+            visibility: crate::ast::JavaVisibility::Public,
+            origin,
+            source: SourceRef::logical(["enum-resource-value"]),
+        });
+        let mut value = declaration(vec![JavaMember::EnumConstant(
+            crate::ast::JavaEnumConstant {
+                declared: variant,
+                name: JavaIdentifier::new("VALUE").unwrap(),
+            },
+        )]);
+        value.kind = JavaDeclarationKind::Enum;
+        value.declared = Some(owner);
+        value.name = JavaIdentifier::new(name).unwrap();
+        let names = super::Names::from([(owner, length)]);
+        let mut errors = Vec::new();
+        super::declarations::Checker::new(&names, "Enum.java", &mut errors).declaration(
+            &value,
+            &value.members.iter().collect::<Vec<_>>(),
+            prefix,
+            None,
+        );
+        assert_eq!(errors.is_empty(), length == 65_513, "{errors:?}");
+    }
+}
+
+#[test]
+fn record_object_methods_callsite_descriptor_contains_the_owner() {
+    let prefix = crate::ast::JavaPackage::Generated.name().len() + 1;
+    for length in [65_512, 65_513] {
+        let mut value = declaration(vec![]);
+        value.kind = JavaDeclarationKind::Record;
+        value.name = JavaIdentifier::new("R".repeat(length - prefix)).unwrap();
+        let names = super::Names::new();
+        let mut errors = Vec::new();
+        super::declarations::Checker::new(&names, "Record.java", &mut errors).declaration(
+            &value,
+            &[],
+            prefix,
+            None,
+        );
+        assert_eq!(errors.is_empty(), length == 65_512, "{errors:?}");
+    }
+}
+
+#[test]
 fn implicit_inner_constructor_descriptor_includes_outer_class_name() {
     let prefix = crate::ast::JavaPackage::Generated.name().len() + 1;
     for outer_length in [65_530, 65_531] {

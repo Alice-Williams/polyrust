@@ -56,6 +56,11 @@ defines the relevant class-file encodings in sections 4.1, 4.3.3, 4.4.7, and
   non-generic interface names remain separate constant-pool entries.
   The walk covers executable-local types/names and reference signatures, not
   only declaration headers. Instantiated varargs lists are not JVM descriptors.
+  Implicit enum `valueOf(String)` descriptors reserve 22 bytes beyond the
+  enum's binary name; record `equals` ObjectMethods call-site descriptors
+  reserve 23. These dominate the other implicit owner-bearing descriptors.
+  Record component-name recipes accept 65,535 encoded bytes: unlike source
+  literals, pinned javac does not impose the stricter 65,534-byte threshold.
 - Array descriptors have at most 255 dimensions.
 - Class member counts include language/compiler-synthesized members, not
   just explicit AST members. Fields, methods, interfaces and constant-pool

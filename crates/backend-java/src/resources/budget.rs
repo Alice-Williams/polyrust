@@ -79,7 +79,14 @@ fn type_pool(ty: &JavaType) -> usize {
 }
 
 #[derive(Debug)]
+pub(crate) enum ClassFileKind {
+    Declared,
+    EnumSwitchHelper,
+}
+
+#[derive(Debug)]
 pub(crate) struct ClassBudget {
+    pub kind: ClassFileKind,
     pub name: String,
     pub pool: usize,
     pub fields: usize,
@@ -159,10 +166,22 @@ pub(super) fn check(
     declaration: &JavaTypeDeclaration,
     members: &[&JavaMember],
     type_count: usize,
+    binary_name_length: usize,
     path: &str,
     errors: &mut Vec<Diagnostic>,
 ) {
     for class in classes::report(declaration, members, type_count) {
+        if matches!(class.kind, ClassFileKind::EnumSwitchHelper) {
+            // With no anonymous/local classes in the admitted AST, pinned
+            // javac names the single map class for this outer nest Owner$1.
+            super::limit(
+                errors,
+                path,
+                "conservative enum-switch helper binary name bytes",
+                binary_name_length.saturating_add(2),
+                super::types::MAX_UTF8,
+            );
+        }
         class.validate(path, errors);
     }
 }

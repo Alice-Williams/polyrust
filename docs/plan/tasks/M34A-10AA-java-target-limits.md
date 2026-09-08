@@ -211,3 +211,61 @@ own complete gates, commit, push and immutable review.
 These gates retain normal Bazel action/test caching. Compiler admission is now
 implemented and locally integrated; Java completion still awaits independent
 evaluation of the budget review and the pushed checkpoint's hosted CI.
+
+## Final synthesis-boundary review repairs
+
+The fresh full review and an independent root audit found two owner-bearing
+implicit descriptors not covered by the class Signature limit: enum
+`valueOf(String)` needs binary-name length plus 22, and record ObjectMethods
+`equals` needs length plus 23. Red invocation
+`3c8dfbf6-7142-42cf-ace4-236d25e61309` reproduced both missed rejections while
+the paired in-memory native controls passed. Both exact checks are repaired.
+The root audit also proved javac's synthetic enum-map class needs the outer
+binary name plus `$1`; a typed class-budget kind now checks that reservation.
+
+Permanent native pairs accept/reject enum names at 65,513/65,514 bytes,
+record names at 65,512/65,513, and helper owners at 65,533/65,534. The oracle
+compiles in memory and loads emitted classes, avoiding filesystem limits.
+The suggested record-recipe off-by-one is explicitly rejected as a finding:
+the native matrix accepts both 65,534 and 65,535 recipe bytes and rejects
+65,536. Source literal limits must not be incorrectly applied to synthesized
+metadata.
+
+The earlier review's claim that the native corpus lacked enums was withdrawn:
+the corpus already had a structural enum and switch. That alone did not prove
+helper emission, because javac can optimize same-compilation enum switches.
+The strengthened oracle separately recompiles a typed consumer against emitted
+provider classes, requires its synthetic `$1.class`, and compares its actual
+metrics with the same AST budget. The new fixture initially failed our verifier
+for missing variant coverage; completing the fixture fixed that test setup,
+without weakening enum verification.
+
+Invocation `68b8d282-90af-42d6-95c7-e629a34f45d9` passes all 190 Java tests,
+including the actual helper class-file check and synthesis boundary matrix.
+Full gates and fresh immutable-checkpoint review remain required.
+
+The final full review of immutable `c584aee` reports exactly these three core
+synthesis defects and the helper-emission proof gap; all four are accepted and
+addressed above. It found no other concrete error across the 42 mappings,
+registration/certificates, AST/linker/renderer, interfaces, budgets, dependency
+hygiene, module layout, snapshots or CI wiring. Its recipe and pattern-switch
+descriptor hypotheses were investigated and rejected with native/compiler
+evidence, not deferred as unresolved findings. The separate focused budget
+review found no additional core defect. A fresh review of the repaired
+checkpoint is still required.
+
+Final local proof for this repair:
+
+- `e3e27b4e-806e-480c-861e-f9fba4828890`: 435 tracked rules and all 310 tests
+  pass, including strict Java, Rust/Bazel linters and historical ports.
+- `c07929b0-7620-4ca0-ba2b-837fdda5f8ee`: all 247 release tests pass.
+- `0ec22c1f-3294-4e50-86b1-9223ba828bdc`: 50 cases and one portable test
+  agree across evaluator/eight targets, with deterministic repeated manifests.
+- Linux Cargo 1.98 passes 190 Java tests and eight doctests; the mutation
+  compiler corpus is Bazel-owned, with other native consumers also run in Cargo.
+- Every Java production Rust source is now below 500 lines (largest: 499).
+
+The preceding checkpoint `c584aeeaff0349a91462dbd7c0c6c791ea6cdab9` has
+all eight hosted jobs green in
+[run 34191179416](https://github.com/Alice-Williams/polyrust/actions/runs/34191179416).
+This repair still needs its own push, hosted CI and fresh review before closure.

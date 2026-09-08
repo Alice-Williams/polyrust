@@ -199,7 +199,18 @@ fn check_with_names(
                 }
                 let mut checker = declarations::Checker::new(&names, path, &mut errors);
                 checker.declaration(declaration, &members, prefix, None);
-                budget::check(declaration, &members, type_count, path, &mut errors);
+                let binary_name_length = declaration
+                    .declared
+                    .and_then(|id| names.get(&id).copied())
+                    .unwrap_or_else(|| prefix.saturating_add(declaration.name.as_str().len()));
+                budget::check(
+                    declaration,
+                    &members,
+                    type_count,
+                    binary_name_length,
+                    path,
+                    &mut errors,
+                );
             }
         }
     }

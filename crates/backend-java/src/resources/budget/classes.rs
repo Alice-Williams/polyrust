@@ -1,6 +1,8 @@
 //! Per-class aggregation and implicit javac members.
 
-use super::{ClassBudget, Code, Helper, expressions::expression, statements::block, type_pool};
+use super::{
+    ClassBudget, ClassFileKind, Code, Helper, expressions::expression, statements::block, type_pool,
+};
 use crate::ast::{
     JavaDeclarationKind, JavaHeritage, JavaMember, JavaModifier, JavaTypeDeclaration,
 };
@@ -19,6 +21,7 @@ pub(crate) fn report(
             type_count,
         );
         class.fields = helper.switches;
+        class.kind = ClassFileKind::EnumSwitchHelper;
         let code = Code {
             bytes: helper
                 .switches
@@ -43,6 +46,7 @@ pub(crate) fn report(
 
 fn baseline(name: String, type_count: usize) -> ClassBudget {
     ClassBudget {
+        kind: ClassFileKind::Declared,
         name,
         pool: 512usize.saturating_add(type_count.saturating_mul(16)),
         fields: 0,

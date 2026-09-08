@@ -25,6 +25,9 @@ public final class Consumer {
         @Override public CharSequence getCharContent(boolean ignore) { return source; }
     }
     private static void check(String body, boolean expected, String diagnostic) throws java.io.IOException {
+        checkSource("package p; public final class Fixture { private Fixture() {} " + body + " }", expected, diagnostic);
+    }
+    private static void checkSource(String source, boolean expected, String diagnostic) throws java.io.IOException {
         javax.tools.JavaCompiler compiler = javax.tools.ToolProvider.getSystemJavaCompiler();
         javax.tools.DiagnosticCollector<javax.tools.JavaFileObject> diagnostics = new javax.tools.DiagnosticCollector<>();
         java.util.Map<String, byte[]> outputs = new java.util.LinkedHashMap<>();
@@ -40,7 +43,6 @@ public final class Consumer {
                      };
                  }
              }) {
-            String source = "package p; public final class Fixture { private Fixture() {} " + body + " }";
             boolean accepted = compiler.getTask(null, memory, diagnostics, java.util.List.of("--release", "21", "-Xlint:all", "-Werror"), null, java.util.List.of(new Source(source))).call();
             String messages = diagnostics.getDiagnostics().stream().map(d -> d.getMessage(java.util.Locale.ROOT)).collect(java.util.stream.Collectors.joining("\n"));
             if (accepted) {
@@ -82,6 +84,23 @@ public final class Consumer {
             check("public final class Inner { public Inner(" + parameters(slots) + ") {} }", slots == 253, "many");
         }
         String prefix = "p.Fixture$";
+        for (int length : new int[] {65534, 65535, 65536}) {
+            String firstComponent = "a".repeat(32000);
+            String secondComponent = "b".repeat(length - 32001);
+            check("public record Recipe(int " + firstComponent + ", int " + secondComponent + ") {}", length <= 65535, "too long");
+        }
+        for (int length : new int[] {65513, 65514}) {
+            String name = "E".repeat(length - prefix.length());
+            check("public enum " + name + " { VALUE }", length == 65513, "too long");
+        }
+        for (int length : new int[] {65512, 65513}) {
+            String name = "R".repeat(length - prefix.length());
+            check("public record " + name + "() {}", length == 65512, "too long");
+        }
+        for (int length : new int[] {65533, 65534}) {
+            String name = "H".repeat(length - "p.".length());
+            checkSource("package p; public final class Fixture { private Fixture() {} } final class " + name + " { static int rank(Thread.State state) { return switch(state) { case NEW -> 1; default -> 0; }; } }", length == 65533, "too long");
+        }
         for (int length : new int[] {65535, 65536}) {
             String name = "A".repeat(length - prefix.length());
             check("public static final class " + name + " {}", length == 65535, "too long");

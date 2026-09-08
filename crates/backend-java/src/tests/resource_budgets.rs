@@ -7,6 +7,39 @@ use crate::ast::{
 };
 
 #[test]
+fn enum_switch_helper_reserves_its_synthetic_binary_name_suffix() {
+    let mut value = declaration(vec![]);
+    let JavaMember::Method(mut switch) = method(JavaType::primitive(JavaPrimitive::Int), 0, false)
+    else {
+        unreachable!()
+    };
+    switch.body = Some(JavaBlock::new(vec![JavaStmt::Switch {
+        value: JavaExpr::literal(JavaType::primitive(JavaPrimitive::Int), JavaLiteral::I32(0)),
+        arms: vec![],
+    }]));
+    // Every switch conservatively reserves a potential helper, including the
+    // default-only shape; the paired native fixture uses Thread.State.
+    value.members.push(JavaMember::Method(switch));
+    for length in [65_533, 65_534] {
+        let mut errors = Vec::new();
+        budget::check(
+            &value,
+            &value.members.iter().collect::<Vec<_>>(),
+            1,
+            length,
+            "Fixture.java",
+            &mut errors,
+        );
+        assert_eq!(errors.is_empty(), length == 65_533, "{errors:?}");
+        assert!(
+            errors
+                .iter()
+                .all(|error| error.message.contains("helper binary name"))
+        );
+    }
+}
+
+#[test]
 fn oversized_method_and_aggregate_class_are_rejected_as_resources() {
     for count in [10, 20_000] {
         let JavaMember::Method(mut value) =
