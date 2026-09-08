@@ -4,20 +4,33 @@ use super::types::{CConstness, CObjectType, CTypeError};
 
 /// A prototype parameter after C's top-level qualifier normalization.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct CParameterType(CObjectType);
+pub struct CParameterType {
+    declared: CObjectType,
+    canonical: CObjectType,
+}
 
 impl CParameterType {
     pub fn new(ty: CObjectType) -> Result<Self, CTypeError> {
+        let declared = ty.without_top_level_const();
+        let ty = declared.canonical();
         if ty.is_array() {
             return Err(CTypeError::ArrayParameterRequiresPointer);
         }
         // A definition's local parameter constness is separate from its
         // prototype type. Pointee qualifiers remain part of this exact type.
-        Ok(Self(ty.without_top_level_const()))
+        Ok(Self {
+            declared,
+            canonical: ty.without_top_level_const(),
+        })
     }
 
     pub const fn ty(&self) -> &CObjectType {
-        &self.0
+        &self.canonical
+    }
+
+    /// Retain alias provenance even when prototype compatibility erases it.
+    pub const fn declared_type(&self) -> &CObjectType {
+        &self.declared
     }
 }
 
@@ -32,21 +45,33 @@ impl CParameterType {
 /// let invalid = CReturnType::Value(array);
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct CReturnValue(CObjectType);
+pub struct CReturnValue {
+    declared: CObjectType,
+    canonical: CObjectType,
+}
 
 impl CReturnValue {
     pub fn new(ty: CObjectType) -> Result<Self, CTypeError> {
+        let declared = ty;
+        let ty = declared.canonical();
         if ty.is_array() {
             return Err(CTypeError::ArrayReturn);
         }
         if ty.constness() != CConstness::Unqualified {
             return Err(CTypeError::QualifiedReturn);
         }
-        Ok(Self(ty))
+        Ok(Self {
+            declared,
+            canonical: ty,
+        })
     }
 
     pub const fn ty(&self) -> &CObjectType {
-        &self.0
+        &self.canonical
+    }
+
+    pub const fn declared_type(&self) -> &CObjectType {
+        &self.declared
     }
 }
 

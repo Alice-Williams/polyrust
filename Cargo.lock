@@ -178,6 +178,7 @@ dependencies = [
  "polyrust-build",
  "polyrust-check",
  "polyrust-codegen",
+ "polyrust-core-ir",
  "polyrust-ir",
 ]
 

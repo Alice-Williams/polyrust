@@ -10,13 +10,24 @@
 //! assert!(!pointer.is_array());
 //! ```
 
+mod alias_expansion;
 mod identifiers;
 mod keywords;
+mod registry;
 mod signatures;
 mod types;
 
 pub use identifiers::{CIdentifier, CNameError, CReservedMacro};
 pub use keywords::CKeyword;
+pub use registry::{
+    CAggregateRef, CAllocationRef, CAllocatorSource, CCallableContractOrigin, CCallableContractRef,
+    CCleanupExitRef, CDeclarationKey, CEnumRef, CEnumeratorRef, CFileKey, CFileRef, CFileRole,
+    CFrozenRegistry, CFunctionRef, CGeneratedOrigin, CInterfaceAdapterRef, CInterfaceTableRef,
+    CInterfaceWitnessRef, CLocalRef, CLoopRef, CMemberBinding, CMemberRef, CObjectRef,
+    CParameterRef, CRegistrationKind, CRegistrationOwner, CRegistrationSummary, CRegistry,
+    CRegistryError, CScopeRef, CStructRef, CSwitchRef, CSynthesisReason, CTypedefRef, CUnionRef,
+    CWitnessMethod,
+};
 pub use signatures::{CFunctionType, CParameterType, CReturnType, CReturnValue};
 pub use types::{
     CArrayLength, CConstness, CObjectType, CObjectTypeKind, CPointerTarget, CScalarType, CTypeError,

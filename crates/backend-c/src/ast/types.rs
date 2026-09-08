@@ -2,6 +2,7 @@
 
 use std::num::NonZeroU64;
 
+use super::registry::{CEnumRef, CStructRef, CTypedefRef, CUnionRef};
 use super::signatures::CFunctionType;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -77,6 +78,10 @@ pub enum CPointerTarget {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CObjectTypeKind {
     Scalar(CScalarType),
+    Struct(CStructRef),
+    Union(CUnionRef),
+    Enum(CEnumRef),
+    Typedef(CTypedefRef),
     Pointer(CPointerTarget),
     Array {
         element: Box<CObjectType>,
@@ -115,6 +120,34 @@ pub struct CObjectType {
 }
 
 impl CObjectType {
+    pub fn structure(value: CStructRef) -> Self {
+        Self {
+            kind: CObjectTypeKind::Struct(value),
+            constness: CConstness::Unqualified,
+        }
+    }
+
+    pub fn union(value: CUnionRef) -> Self {
+        Self {
+            kind: CObjectTypeKind::Union(value),
+            constness: CConstness::Unqualified,
+        }
+    }
+
+    pub fn enumeration(value: CEnumRef) -> Self {
+        Self {
+            kind: CObjectTypeKind::Enum(value),
+            constness: CConstness::Unqualified,
+        }
+    }
+
+    pub fn typedef(value: CTypedefRef) -> Self {
+        Self {
+            kind: CObjectTypeKind::Typedef(value),
+            constness: CConstness::Unqualified,
+        }
+    }
+
     pub const fn scalar(value: CScalarType) -> Self {
         Self {
             kind: CObjectTypeKind::Scalar(value),
@@ -155,8 +188,12 @@ impl CObjectType {
         self.constness
     }
 
-    pub const fn is_array(&self) -> bool {
-        matches!(self.kind, CObjectTypeKind::Array { .. })
+    pub fn is_array(&self) -> bool {
+        let mut root = self;
+        while let CObjectTypeKind::Typedef(alias) = root.kind() {
+            root = alias.target();
+        }
+        matches!(root.kind, CObjectTypeKind::Array { .. })
     }
 
     pub(super) fn without_top_level_const(mut self) -> Self {
