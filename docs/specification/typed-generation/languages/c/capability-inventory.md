@@ -68,7 +68,7 @@ Pure scalar AST operations do not themselves allocate.
 | ResultValues | Type(ok,error), Ok(value), Err(value) | Type/Value; ordinary opaque tagged value | A; distinct from computational outcome |
 | IntegerBitwise | Not, And, Or, Xor | Value; exact unsigned-width bit operations/reconstruction | I32/I64; promotion checked |
 | CheckedIntegerShifts | Left, Right | Value; checked count and portable signed-shift algorithm | P; no invalid shift evaluated; ResultPropagation |
-| FloatingPointInspection | Truncate, IsNan, IsNegativeZero, Absolute | Value; trunc/isnan or raw-bit masks as appropriate | F64Values; exact FloatAbs payload audit |
+| FloatingPointInspection | Truncate, IsNan, IsNegativeZero, Absolute | Value; trunc for truncation; raw-bit masks for NaN/sign/absolute | F64Values; exact FloatAbs payload audit; no function-like isnan macro |
 | StringInspection | ScalarLength, Utf16Length, IsEmpty, IndexOfLiteral, Contains, StartsWith, EndsWith | Value; length-aware UTF-8/scalar scans and exact index units | TextValues; P where portable size conversion is checked |
 | StringTransformation | StripPrefix, TruncateUtf8Bytes, TrimStart, TrimEnd, SliceScalars, ReplaceAll, ReplaceMany | Value; scalar-boundary typed loops and fresh immutable output | A; exact ordered replacement/empty-needle behavior |
 | BytesOperations | Length, IsEmpty, Concat, ReplaceAll | Value; byte-indexed bounded loops | BytesValues; A for new owner |

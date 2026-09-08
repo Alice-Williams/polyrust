@@ -5,6 +5,10 @@
 
 ## Supported platform and floating-point environment
 
+The exact scalar/typedef/rank/layout table and independent measured probes are
+in [ABI type model](abi-type-model.md). Those facts are not implicit host
+compiler discoveries or deferred resource-budget guesses.
+
 The initial certified native platform is Linux x86_64, little-endian, with
 8-bit bytes, exact 32/64-bit integers, 64-bit size_t and pointers, and IEC 60559
 binary64 double (radix 2, mantissa 53, maximum exponent 1024, minimum exponent
@@ -117,6 +121,7 @@ common arguments for generated and consumer translation units:
     -std=c17 -Wall -Wextra -Wpedantic -Werror
     -Wstrict-prototypes -Wmissing-prototypes
     -fno-fast-math -ffp-contract=off
+    -fsigned-char -fno-short-enums
 
 Include directories and source paths come from typed file roles. Math adds
 -lm at link time only when declared. Run normal native binaries at -O0 and -O2.
@@ -133,7 +138,9 @@ otherwise share a valid main(void), declarations and compiler flags. The
 negative must fail for the incompatible initializer, not an unrelated missing
 prototype/include/link symbol; the positive must compile and return success.
 Only a closed test-fixture renderer may construct this invalid source. It
-cannot produce a production certificate or be selected by a file-role string.
+cannot produce a production certificate, enter a plugin OutputManifest or be
+selected by a file-role string. The fixture is repository/native-oracle-only;
+both its positive and negative controls run outside the generated package.
 
 ## Required target inventory
 
@@ -144,6 +151,8 @@ labels are planned and must actually be added before their owning stage closes.
 | --- | --- | --- |
 | portable_backend_c_test | Existing; all stages | Focused structural, registry, verifier and plan tests |
 | c_typed_compile_fail_test | Existing; all stages | Invalid Rust construction/mapping/proof boundary rejects |
+| c_abi_model_probe_test / c_abi_model_unoptimized_probe_test | Existing since 00R; 02B/04 | Exact ABI typedef/promotion/layout probes under Zig at O2/O0 |
+| c_gcc_abi_model_probe_test | Existing since 00R; 02B/04 | Same ABI probes under GCC 14.2 at O0/O2; unsigned-char negative control |
 | c_grammar_inventory_test | 04 | Every closed AST variant has positive, mutation and native coverage |
 | c_structural_format_test | 04 | Canonical formatting fixtures, repeated-render no-diff and hostile translation-phase text |
 | c_ast_compiler_oracle_test | 04 | Certified ASTs compile; rejected contextual mutations cannot certify |

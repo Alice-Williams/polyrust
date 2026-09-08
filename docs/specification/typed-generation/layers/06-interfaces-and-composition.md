@@ -210,8 +210,10 @@ reject legacy spellings.
 
 The IR 0.2 checker admits every first-class position listed above. During the
 backend migration, a legacy backend that has not implemented interface values
-must declare `FirstClassInterfaceValues` unsupported and reject the program
-with an attributed capability diagnostic before translation. Its language task
+must leave the complete `Interfaces` bundle unsupported, or reject the
+unsupported shape during that mapping's preflight, with an attributed
+capability diagnostic before translation. There is no separate
+FirstClassInterfaceValues marker in the 42-capability catalogue. Its language task
 removes that rejection only after its native ownership and composite-value
 tests pass.
 

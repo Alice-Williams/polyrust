@@ -12,7 +12,9 @@ or advertising capabilities before their mappings exist.
 
 - Implement the closed expression/place/initializer/statement/declaration/file categories from grammar-inventory.md in focused modules.
 - Keep void call effects separate from values, exact direct/indirect signatures, explicit pointer/numeric conversions, and registered member/parameter/local origins.
-- Represent comments, Discard and isolated negative-test categories without raw executable text. Do not expose verified/render-ready packages yet.
+- Represent comments and Discard without raw executable text. Deliberately invalid native fixtures stay outside production ASTs and manifests. Do not expose verified/render-ready packages yet.
+- Define automatic local declarations with registered type/owner and optional
+  initializer; reject local static storage and const-without-initializer.
 
 ## Tests and proof
 

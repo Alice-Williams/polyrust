@@ -13,6 +13,7 @@ discipline, not C syntax or ownership implementation.
 
 - [Module ownership and Bazel boundaries](c/module-layout.md)
 - [AST, declarators and validity](c/ast-and-validity.md)
+- [Concrete ABI types, promotions and layout](c/abi-type-model.md)
 - [Ownership, sequencing, safety and ABI](c/ownership-and-abi.md)
 - [Exact callable, allocator and lifecycle ABI](c/callable-abi.md)
 - [Exact public value factories and observations](c/public-value-abi.md)
@@ -35,11 +36,13 @@ emulation does not justify an empty, wildcard, or default support claim.
 ## 1. Scope and package
 
 The plugin emits self-contained public headers, implementation/runtime C files,
-native/conformance tests, isolated negative compilation fixtures, and typed
+native/conformance tests and typed
 non-executable dependency/ABI metadata. No executable BUILD or shell source is
 generated; the external harness consumes the manifest's typed requirements. A
 separate translation unit MUST consume the public header without include-order
 assumptions. The generated package has no undeclared third-party dependency.
+Deliberately invalid compilation fixtures belong only to the repository's
+native oracle harness; they never enter a plugin OutputManifest or certificate.
 
 ## 2. Capability strategies
 

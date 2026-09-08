@@ -128,3 +128,39 @@ Documentation and Buildifier pass in invocation
 920c6d1e-983d-4683-86c7-28a87d14e338. The earlier full baseline remains applicable:
 only Markdown changed. A fresh review of the repaired immutable contract is
 required before closing M34A-11-00R.
+
+## Third immutable review and measured ABI closure
+
+A fresh uncapped Sol Extra High read-only review of bd096ee found nine further
+contract defects. Root independently accepts each and records the repair:
+
+| Finding | Repair and owner |
+| --- | --- |
+| 1: undefined local declaration | Exact automatic local reference/optional initializer, const and initialization-state rules; 02B/02C |
+| 2: isnan violates closed macro policy | Raw-bit NaN classification, not a function-like macro extension |
+| 3: missing sequencing verifier | Conservative full-expression call roots and call-free operands/conditions; 02D, with mapping-level source-order/conditional-prefix mutations |
+| 4: allocation restore cannot initialize | Preserve Uninitialized/Prefix(n), allow initialization writes, require initialized dominance for reads and complete commit for Live |
+| 5: nonexistent interface marker | Shared Layer 6 now refers to the complete Interfaces capability, not a 43rd marker |
+| 6: unstated native ABI facts | Exact abi-type-model.md table plus both pinned compilers at O0/O2 and an unsigned-char rejected configuration |
+| 7: invalid source cannot be certified | Negative fixtures remain repository/native-oracle-only, outside plugin manifests; no production NegativeTestSource role |
+| 8: prototype is not a callable contract | Private contract identity on function/callable-member references; generated body summaries derived at02D, known contracts catalogue-owned; wrong-contract substitution tests |
+| 9: empty-source move unspecified | Null addresses InvalidInput first; empty/moved source, nonempty out and self-move InvalidState unchanged |
+
+Native probe invocation f398dd9f-042c-436b-927e-482f82105523 passes under the
+hermetic Zig compiler and GCC 14.2.0 at both optimization levels; the GCC
+unsigned-char negative fails at the exact intended assertion. The ABI probes
+are permanent tracked/release targets, not informal host compiler discovery.
+They establish the type/layout model but do not implement the resource adapter.
+
+The bd096ee checkpoint's hosted
+[run 34229263594](https://github.com/Alice-Williams/polyrust/actions/runs/34229263594)
+passes. Final amended contract review is still required; registry-only 02A work
+may proceed without exposing verification, rendering or Supports claims.
+
+The combined integration worktree (including concurrent 02A registry work)
+passes all 439 tracked rules / 314 tests in d9b876b0, all 251 release tests in
+71a46a7b, and deterministic eight-target conformance in 6e6b26af. The first
+full run found only the missing exact native-oracle source-policy exemption;
+the repair includes adjacent-path negative controls. Exact full IDs and C
+foundation counts are recorded in 02A. This is not evidence that C00R alone
+implements the concurrent registry work or certifies any generated C AST.

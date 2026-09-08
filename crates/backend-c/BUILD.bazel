@@ -4,6 +4,51 @@ load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 exports_files(["Cargo.toml"])
 
+cc_test(
+    name = "c_abi_model_probe_test",
+    srcs = ["test/abi_model_probe.c"],
+    copts = [
+        "-std=c17",
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        "-Werror",
+        "-Wstrict-prototypes",
+        "-Wmissing-prototypes",
+        "-fno-fast-math",
+        "-ffp-contract=off",
+        "-fsigned-char",
+        "-fno-short-enums",
+        "-O2",
+    ],
+)
+
+cc_test(
+    name = "c_abi_model_unoptimized_probe_test",
+    srcs = ["test/abi_model_probe.c"],
+    copts = [
+        "-std=c17",
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        "-Werror",
+        "-Wstrict-prototypes",
+        "-Wmissing-prototypes",
+        "-fno-fast-math",
+        "-ffp-contract=off",
+        "-fsigned-char",
+        "-fno-short-enums",
+        "-O0",
+    ],
+)
+
+sh_test(
+    name = "c_gcc_abi_model_probe_test",
+    srcs = ["//tools/c:test_abi_model.sh"],
+    args = ["$(location test/abi_model_probe.c)"],
+    data = ["test/abi_model_probe.c"],
+)
+
 rust_library(
     name = "portable_backend_c",
     srcs = glob(

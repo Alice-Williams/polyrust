@@ -27,6 +27,8 @@ Cover the complete portable value algebra and polymorphism with verified ownersh
   representation-preservation audits separately require exact raw bits.
 - Multiple/empty interfaces, overlapping method names, exact concrete/dynamic dispatch, interface returns and nested lists/options/results.
 - Adversarial wrong-table/signature/receiver/tag/cast mutations; allocation failure at every prefix/clone/dispatch step.
+- Empty-source/double/self move, null slot addresses and nonempty destinations
+  use the exact status precedence and unchanged-slot controls in callable-abi.md.
 - ASan/leak/UBSan, deterministic package layout and full tracked/release gates.
 
 Test targets required by this slice must be added before it closes; proposed

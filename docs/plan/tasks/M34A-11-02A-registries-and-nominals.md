@@ -17,6 +17,9 @@ M34A-10AB at the next slice; review findings still apply before integration.
 
 - Add private registry-scoped, kind-specific identities for struct, union, typedef, enum, enumerator, function, object, member, parameter, local and file registrations. References retain origin, owner and complete structural type/signature.
 - Register exact interface adapter/witness/table identities and function-owned loop, switch, cleanup-exit and allocation identities for later AST/proof nodes. Later slices cannot replace them with untyped integers or manufacture proof facts.
+- Generated functions and callable members carry a private exact contract
+  identity in addition to their prototype. These are body-proof obligations,
+  not trusted effect flags; known contracts are catalogue-owned at stage 03.
 - Extend the existing CObjectType foundation with the closed nominal categories. Separate known-library origins from generated origins; reject crossed registry/kind/owner references.
 - Keep canonical identity/name ordering independent of transient allocation counters. No public source/certificate constructor or string-based symbol lookup.
 - Typedefs cannot hide array parameter/return categories or effective const

@@ -25,6 +25,7 @@ DIRECTIVE = re.compile(
 # Native consumer fixtures and the compiler-contract driver are handwritten
 # test infrastructure, not generated body templates. Every exception is exact.
 FIXTURE_ALLOWLIST = {
+    "crates/backend-c/test/abi_model_probe.c",
     "crates/backend-c/test/abi_shapes_test.c",
     "crates/backend-c/test/c_consumer_test.c",
     "crates/backend-c/test/runtime_ownership_test.c",
@@ -320,6 +321,13 @@ const BODY: &str = "plain body";
         raise AssertionError("path-exact native fixture exception was rejected")
     if not target_template_offenders(fixture + ".copy", '#include "generated.h"\n'):
         raise AssertionError("fixture exception was not path-exact")
+    abi_probe = "crates/backend-c/test/abi_model_probe.c"
+    if target_template_offenders(abi_probe, "#include <stdint.h>\n"):
+        raise AssertionError("independent ABI oracle includes were rejected")
+    for adjacent in [abi_probe + ".copy", "crates/backend-c/test/other_probe.c",
+                     "crates/backend-c/src/abi_model_probe.c"]:
+        if not target_template_offenders(adjacent, "#include <stdint.h>\n"):
+            raise AssertionError("ABI oracle exception admitted an adjacent template")
     harness = "crates/backend-java/test/check_mapping_contract.py"
     if target_template_offenders(harness, "from pathlib import Path\n"):
         raise AssertionError("compiler-contract harness imports were rejected")

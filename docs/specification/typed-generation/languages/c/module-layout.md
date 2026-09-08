@@ -23,6 +23,19 @@ classes, inheritance, exceptions, packages, JVM limits or JDK catalogue types
 through copying. Shared phase machinery is reused; C grammar is independently
 modelled with closed enums and private invariant-bearing wrappers.
 
+The C declaration registry is authoritative and frozen only after its complete
+declaration/helper inventory is known. The later CDialect/shared unresolved
+package owns that immutable payload; shared GeneratedType/Callable/Value/File
+registrations are a checked projection, with bidirectional identity bindings,
+not a second independently authored source of signatures. No mutable registry
+view survives verification. Ordinary Rust equality authenticates references;
+address-free canonical inventory projections determine stable ordering and
+phase evidence. Ephemeral registry authentication never names an output symbol.
+
+Stage 02A admits generated registrations only. Known library references and
+contracts are a distinct closed catalogue category introduced in stage 03;
+they cannot be fabricated by assigning a library spelling to a generated key.
+
 ## Size and build policy
 
 Aim below 500 lines and split before 1,000. No numbered fragments or wildcard

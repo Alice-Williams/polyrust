@@ -99,6 +99,10 @@ For each owned T:
   is live, out is empty, and the slots must be distinct. On success it
   transfers the handle and nulls source without allocating. Exact self-move
   returns InvalidState without modification.
+- move with a null slot address is InvalidInput. Otherwise self-move,
+  a nonempty destination or an empty/moved source is InvalidState, with both
+  slots unchanged. Address validation precedes slot-state checks, so combined
+  invalid cases have deterministic precedence. Double move is not a no-op.
 - drop(T **slot) returns poly_status; a valid empty slot is a successful no-op;
   a live slot is freed recursively and set to null. Repeated drop is safe.
   A null slot address is InvalidInput.

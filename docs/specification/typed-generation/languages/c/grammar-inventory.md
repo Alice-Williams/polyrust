@@ -41,13 +41,21 @@ rejected; nominal pointer recursion is a separate completeness obligation.
 All generated references carry an authoritative registry identity, declaration
 kind, origin, owner and structural type. Known library references use closed
 catalogue variants. A spelling or matching signature alone authenticates neither.
+Functions and callable members retain a private callable-contract identity in
+addition to the C prototype. Generated contracts identify the body whose
+ownership/aliasing/failure/evaluation summary must be derived and checked;
+known contracts come only from the authoritative closed library catalogue.
+An indirect-call proof authenticates the actual function/address/member
+provenance against that contract. A same-prototype different function or an
+unbound function-pointer field cannot substitute. Contract registration is not
+a verified effect summary and cannot manufacture proof transitions.
 
 | Category | Closed variants and payloads |
 | --- | --- |
 | Literal | Bool(bool), signed/unsigned exact-width integer(value), CharByte(u8), NullPointer(exact pointer type) |
 | Value | Literal, Read(place), KnownConstant(closed catalogue entry), Enumerator(registered constant), FunctionAddress(function reference), Call(nonvoid callable, ordered arguments), Unary(operator, operand), Binary(operator, left, right), Conditional(condition, then, else), Convert(conversion, operand), SizeOf(complete object type), AlignOf(complete object type), AddressOf(place) |
 | Effect | Call(void callable, ordered arguments); exact direct/indirect signature, never a value |
-| Callable | Direct(function reference), Indirect(function-pointer expression with exact prototype) |
+| Callable | Direct(function reference with sealed contract identity), Indirect(call-free function-pointer expression, exact prototype and authenticated callable contract) |
 | Place | Local(local reference), Parameter(parameter reference), Global(object reference), Member(base place, member reference), Dereference(pointer), Index(base, index) |
 | Unary operator | LogicalNot, BitNot, Negate |
 | Binary operator | Add, Subtract, Multiply, Divide, Remainder, ShiftLeft, ShiftRight, BitAnd, BitOr, BitXor, Equal, NotEqual, Less, LessEqual, Greater, GreaterEqual, LogicalAnd, LogicalOr |
@@ -62,6 +70,11 @@ Bool renders as native _Bool, not a type macro. Bool literals render an
 explicit _Bool conversion of 0/1. C logical/comparison operators and known
 integer predicates have their actual int result; an explicit Numeric(Bool)
 node converts them before an exact-Bool condition or portable Bool result.
+CharByte means an unsigned storage byte with actual U8 type, not a C character
+constant. Typed integer/byte literals use explicit exact-type conversions or
+suffixes so their C type cannot depend on magnitude; signed minima never spell
+an out-of-range signed intermediate. These are fixed literal spellings, not
+permission to discover helpers/includes or lower operations while rendering.
 KnownConstant entries retain header, actual type and constant-expression
 eligibility (including platform properties such as CHAR_BIT/DBL_MANT_DIG).
 Enumerator values retain their ordinary-namespace registration and actual C
@@ -85,8 +98,12 @@ facts. AST inputs cannot manufacture those facts. An adapter registration owns
 the exact erased/restored record, interface, witness and function table.
 ObjectToVoid preserves constness, extent and provenance for object pointers;
 it is not a function-pointer conversion. AllocationRestore authenticates the
-allocator result, required object alignment/extent and initialized state before
-dereference; it cannot restore an arbitrary void pointer. AddConst changes
+allocator result and required object alignment/extent, retaining its exact
+Uninitialized or Prefix(n) state rather than inventing a live value. A typed
+place may then be used for initialization writes. Reads require dominating
+initialized-member/prefix facts; a complete owner becomes Live only after all
+required initialization commits. Restore cannot authenticate an arbitrary
+void pointer. AddConst changes
 only the immediate pointee qualification and cannot admit T** to const T**.
 Exact call/initializer typing does not hide these conversions implicitly.
 
@@ -95,6 +112,7 @@ Exact call/initializer typing does not hide these conversions implicitly.
 | Category | Closed variants and payloads |
 | --- | --- |
 | Initializer | Expression(value), Zero(object type), Array(ordered complete element initializers), Struct(exact registered member initializers), Union(one registered member, initializer) |
+| Local declaration | Registered local reference plus optional exact initializer; Automatic storage only |
 | Statement | Empty, Block(ordered statements), Declare(local declaration), Assign(place, value), Evaluate(effect), Discard(value), If(condition, then block, else block), BoundedLoop(loop registration, body), Switch(value, arms, default block), Break(enclosing loop/switch identity), Continue(enclosing loop identity), Return(optional value), CleanupJump(exit identity), Label(exit identity, statement) |
 | Case constant | Exact integer or registered payload-free enumerator, converted to the switch's promoted type before duplicate checking |
 | Switch arm | Nonempty list of case constants plus a block; implicit fallthrough is prohibited |
@@ -106,10 +124,28 @@ type checked, including lifecycle-empty versus inhabited values. Union reads
 require the selected member to match the dominating initialization/tag fact.
 Calls and other effectful children are sequenced once left-to-right in lowering;
 LogicalAnd/LogicalOr and Conditional retain conditional evaluation.
+Every call is conservatively sequencing-required, including known calls; there
+is no caller-supplied purity flag. A call may occur only as a full-expression
+root in a standalone automatic local's Expression initializer, an assignment
+to a direct Local place, Return, Discard or Evaluate, with call-free operands.
+Calls are forbidden inside aggregate/array initializers and inside indexed,
+member or dereferenced assignment places/RHS pairs; materialize their result
+in a local first. Other expressions, places and conditions are call-free. Lowering
+materializes child calls into ordered statements; short-circuit/conditional
+prefixes stay inside the selected branch rather than being eagerly hoisted.
+Stage 02D rejects nested/sibling argument calls or any hidden call in an
+operand/condition. Mapping certificates separately authenticate the original
+child/prefix order; target validity alone cannot know source evaluation order.
 Assignment requires a mutable initialized/initializable place and cannot act
 as an owning clone. Assignment expressions, comma expressions and increments
 are excluded. CleanupJump is not unrestricted goto. Labels cannot precede a
 bare declaration, bypass initialization or skip destruction.
+The Local declaration's reference supplies its exact type and lexical owner.
+No initializer means Uninitialized, never an implicit zero value. Const locals
+require an initializer. A typed initializer establishes precisely its covered
+object/member/prefix state; Zero for an owner establishes Empty, not Live.
+Local static storage is excluded; Static/Extern apply only to their legal
+file-level object/function contexts. There is no hidden local static singleton.
 
 ## Declarations, files and directives
 
@@ -119,7 +155,7 @@ bare declaration, bypass initialization or skip destruction.
 | Definition | Function(identity, exact parameter bindings, body), Object(identity, checked initializer) |
 | Linkage | External, Internal, None; only legal declaration/context combinations |
 | Storage | Automatic, Static, Extern; reject incompatible linkage, file role or initializer combinations |
-| File role | GeneratedPublicHeader, GeneratedSource, RuntimePublicHeader, RuntimeSource, PrivateHeader, TestSource, NegativeTestSource |
+| File role | GeneratedPublicHeader, GeneratedSource, RuntimePublicHeader, RuntimeSource, PrivateHeader, TestSource |
 | File item | Declaration, Definition, Comment(normalized non-executable documentation), StaticAssert(checked constant expression, escaped diagnostic), IncludeGuard(derived file identity), ResolvedInclude(known header or registered local header) |
 
 No anonymous aggregate, tentative public object definition, inline/restrict/
@@ -138,8 +174,10 @@ delimiters. Known library typedefs (including opaque FILE in test-only stdio
 calls) use registered typedef origins and completeness information, not raw
 type spellings. The initial public ABI supports C consumers, not C++ linkage
 wrappers; no unmodelled extern-language directive is emitted.
-Deliberate compiler-negative tests use a closed isolated wrong-type fixture
-outside production certificates; negative role alone authorizes no invalid AST.
+Deliberate compiler-negative tests use a closed repository-native-oracle fixture,
+outside plugin packages, manifests and certificates. There is no invalid-source
+file role in the production C AST. The test-only fixture renderer cannot be
+called by a backend adapter or produce an OutputManifest.
 
 ## Proof inventory
 
