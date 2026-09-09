@@ -3,13 +3,13 @@ mod comparisons;
 mod floating;
 
 use super::state::NaNPolarity;
-use super::{E, Engine, NumericDomain, State, storage::Key};
+use super::{E, Engine, NumericDomain, State};
 use crate::ast::{
     CBinaryOperator as B, CConversion, CScalarType, CUnaryOperator, CValue, CValueKind as V,
 };
 
-impl<'a> Engine<'a> {
-    pub(super) fn refine(
+impl<'a> Engine<'a, '_> {
+    pub(in crate::ownership) fn refine(
         &mut self,
         state: &State<'a>,
         value: &'a CValue,
@@ -137,7 +137,7 @@ impl<'a> Engine<'a> {
             return Ok(false);
         }
         if let V::Read(place) = value.kind()
-            && let Some(key) = Key::place(place, &mut self.layouts)
+            && let Some(key) = self.exact_place(place, state)?
         {
             let mut number = state.number(&key, domain.ty())?;
             number.domain = number.domain.intersect(&domain)?;

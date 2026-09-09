@@ -10,7 +10,7 @@ use crate::ownership::{
     numeric_flow::state::NaNPolarity,
 };
 
-impl<'a> Engine<'a> {
+impl<'a> Engine<'a, '_> {
     pub(super) fn expression(
         &mut self,
         value: &'a CValue,
@@ -22,7 +22,7 @@ impl<'a> Engine<'a> {
                 let Some(ty) = storage::scalar(self.registry, value.ty())? else {
                     return Ok(None);
                 };
-                let key = storage::Key::place(place, &mut self.layouts);
+                let key = self.exact_place(place, state)?;
                 if let Some(key) = key {
                     state.number(&key, ty)?
                 } else {
@@ -126,7 +126,10 @@ impl<'a> Engine<'a> {
                         self.expression(right, state)?;
                     }
                 }
-                boolean(None)?
+                boolean(match self.resolver {
+                    Some(resolver) => resolver.truth(value, state)?,
+                    None => None,
+                })?
             }
             V::Literal(_)
             | V::KnownConstant(_)

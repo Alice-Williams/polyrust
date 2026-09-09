@@ -107,6 +107,34 @@ impl Key {
     pub(in crate::ownership) fn whole_root(&self) -> bool {
         self.selectors.is_empty()
     }
+    pub(in crate::ownership) fn exact(&self) -> bool {
+        self.selectors.iter().all(|selector| {
+            !matches!(selector,
+            Selector::Index { first, last } if first != last)
+        })
+    }
+    pub(in crate::ownership) fn overlaps(&self, other: &Self) -> bool {
+        if self.root != other.root {
+            return false;
+        }
+        let mut parent = Self::from_root(self.root.clone());
+        for (left, right) in self.selectors.iter().zip(&other.selectors) {
+            if left != right {
+                return match (left, right) {
+                    (
+                        Selector::Index { first: a, last: b },
+                        Selector::Index { first: c, last: d },
+                    ) => a <= d && c <= b,
+                    (Selector::Member(_), Selector::Member(_)) => {
+                        matches!(parent.ty().kind(), CObjectTypeKind::Union(_))
+                    }
+                    _ => true,
+                };
+            }
+            parent.selectors.push(left.clone());
+        }
+        true
+    }
     pub(in crate::ownership) fn place(place: &CPlace, layouts: &mut Layouts<'_>) -> Option<Self> {
         match place.kind() {
             CPlaceKind::Local(_) | CPlaceKind::Parameter(_) | CPlaceKind::Global(_) => Some(Self {

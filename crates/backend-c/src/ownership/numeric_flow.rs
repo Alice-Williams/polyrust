@@ -6,6 +6,7 @@ mod facts;
 mod provenance;
 mod refine;
 mod relations;
+mod resolved;
 mod sites;
 mod solve;
 mod state;
@@ -21,22 +22,22 @@ use super::{
 use crate::ast::{
     CCall, CFunctionRef, CPlace, CRegistry, CSourceFile, CValue, contextual::flow_graph::Point,
 };
-pub(super) use facts::Cursor;
 pub(super) use facts::NumericFacts;
 pub(super) use facts::{AllocationOrigin, AllocationRequest};
-use state::{Number, State};
+pub(super) use resolved::{Places, progress};
+pub(super) use state::{Number, State};
 use std::collections::BTreeSet;
 use storage::Root;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Mode<'a> {
+pub(super) enum Mode<'a> {
     Solve,
     Derive,
     Verify(Site<'a>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-struct Site<'a> {
+pub(super) struct Site<'a> {
     function: &'a CFunctionRef,
     point: Point,
 }
@@ -69,15 +70,20 @@ enum Obligation<'a> {
     },
 }
 
-struct Engine<'a> {
+pub(super) struct Engine<'a, 'resolver> {
     registry: &'a CRegistry,
     layouts: Layouts<'a>,
     addresses: BTreeSet<Root>,
     mode: Mode<'a>,
     obligations: Vec<LocatedObligation<'a>>,
+    resolver: Option<&'resolver dyn Places<'a>>,
 }
-impl<'a> Engine<'a> {
-    fn numeric(&mut self, value: &'a CValue, state: &mut State<'a>) -> Result<Number<'a>, E> {
+impl<'a> Engine<'a, '_> {
+    pub(super) fn numeric(
+        &mut self,
+        value: &'a CValue,
+        state: &mut State<'a>,
+    ) -> Result<Number<'a>, E> {
         self.expression(value, state)?
             .ok_or(E::ExpectedNumericValue)
     }
@@ -95,9 +101,13 @@ impl<'a> Engine<'a> {
                 }
                 number
             }
-            Err(_) if self.mode == Mode::Solve => Number::domain(NumericDomain::full(
-                storage::scalar(self.registry, value.ty())?.ok_or(E::ExpectedNumericValue)?,
-            )?),
+            Err(_) if self.mode == Mode::Solve => {
+                let mut number = Number::domain(NumericDomain::full(
+                    storage::scalar(self.registry, value.ty())?.ok_or(E::ExpectedNumericValue)?,
+                )?);
+                number.losses.push(provenance::Origin::Arithmetic(value));
+                number
+            }
             Err(error) => return Err(error),
         };
         for child in children {

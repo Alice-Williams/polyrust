@@ -321,6 +321,24 @@ mod heap_scalars;
 #[path = "tests/heap_types.rs"]
 mod heap_types;
 #[cfg(test)]
+#[path = "tests/numeric_memory_aggregates.rs"]
+mod numeric_memory_aggregates;
+#[cfg(test)]
+#[path = "tests/numeric_memory_fixture.rs"]
+mod numeric_memory_fixture;
+#[cfg(test)]
+#[path = "tests/numeric_memory_kernel.rs"]
+mod numeric_memory_kernel;
+#[cfg(test)]
+#[path = "tests/numeric_memory_lifetimes.rs"]
+mod numeric_memory_lifetimes;
+#[cfg(test)]
+#[path = "tests/numeric_memory_loops.rs"]
+mod numeric_memory_loops;
+#[cfg(test)]
+#[path = "tests/numeric_memory_scalars.rs"]
+mod numeric_memory_scalars;
+#[cfg(test)]
 #[path = "tests/storage_type_identity.rs"]
 mod storage_type_identity;
 pub use comments::{CAssertDiagnostic, CComment};

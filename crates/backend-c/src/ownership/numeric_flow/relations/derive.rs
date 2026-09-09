@@ -1,13 +1,14 @@
 //! Recognize only value-preserving size terms and guards over their current values.
 use super::{Arithmetic, B, E, Engine, Relation, State, Term, unsigned_size};
 use crate::ast::{CConversion, CValue, CValueKind as V};
-use crate::ownership::{
-    constants,
-    numeric_flow::storage::{self, Key},
-};
+use crate::ownership::{constants, numeric_flow::storage};
 
-impl<'a> Engine<'a> {
-    pub(super) fn size_term(&mut self, value: &CValue) -> Result<Option<Term>, E> {
+impl<'a> Engine<'a, '_> {
+    pub(super) fn size_term(
+        &mut self,
+        value: &'a CValue,
+        state: &State<'a>,
+    ) -> Result<Option<Term>, E> {
         if !storage::scalar(self.registry, value.ty())?.is_some_and(unsigned_size) {
             return Ok(None);
         }
@@ -18,13 +19,13 @@ impl<'a> Engine<'a> {
             return Ok(Some(Term::Constant(value)));
         }
         match value.kind() {
-            V::Read(place) => {
-                Ok(Key::place(place, &mut self.layouts).map(|key| Term::Read(Box::new(key))))
-            }
+            V::Read(place) => Ok(self
+                .exact_place(place, state)?
+                .map(|key| Term::Read(Box::new(key)))),
             V::Convert {
                 conversion: CConversion::Numeric(_),
                 operand,
-            } => self.size_term(operand),
+            } => self.size_term(operand, state),
             _ => Ok(None),
         }
     }
@@ -56,10 +57,12 @@ impl<'a> Engine<'a> {
                 B::Divide => Arithmetic::Multiply,
                 _ => continue,
             };
-            if self.size_term(maximum)? != Some(Term::Constant(u64::MAX)) {
+            if self.size_term(maximum, state)? != Some(Term::Constant(u64::MAX)) {
                 continue;
             }
-            let (Some(left), Some(right)) = (self.size_term(left)?, self.size_term(bound)?) else {
+            let (Some(left), Some(right)) =
+                (self.size_term(left, state)?, self.size_term(bound, state)?)
+            else {
                 continue;
             };
             if operation == Arithmetic::Multiply

@@ -8,7 +8,7 @@ use crate::{
     dialect::CKnownCall,
 };
 
-impl Engine<'_> {
+impl Engine<'_, '_> {
     pub(in crate::ownership::numeric_flow) fn check_obligations(&self) -> Result<(), E> {
         for obligation in &self.obligations {
             match &obligation.kind {

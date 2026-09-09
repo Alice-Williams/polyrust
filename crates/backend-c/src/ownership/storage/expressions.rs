@@ -159,10 +159,17 @@ impl<'facts, 'ast> Engine<'facts, 'ast> {
         if let Some(known) = self.pointer_truth(value, state)? {
             return Ok((known == truth).then(|| self.clone()));
         }
-        if let Some(cursor) = &self.cursor {
-            Ok(cursor.branch(value, truth)?.map(|cursor| Self {
-                facts: self.facts,
-                cursor: Some(cursor),
+        if let Some(numeric) = &self.numeric {
+            let resolver = super::numeric::Resolver {
+                engine: self,
+                memory: state,
+            };
+            let mut checker =
+                crate::ownership::numeric_flow::Engine::composed(self.context, &resolver, false)?;
+            Ok(checker.refine(numeric, value, truth)?.map(|numeric| Self {
+                context: self.context,
+                site: self.site,
+                numeric: Some(numeric),
             }))
         } else {
             let known = constants::evaluate(&mut Layouts::new(self.registry()), value)
@@ -172,7 +179,11 @@ impl<'facts, 'ast> Engine<'facts, 'ast> {
         }
     }
 
-    fn pointer_truth(&self, value: &'ast CValue, state: &State) -> Result<Option<bool>, E> {
+    pub(super) fn pointer_truth(
+        &self,
+        value: &'ast CValue,
+        state: &State,
+    ) -> Result<Option<bool>, E> {
         match value.kind() {
             V::Convert {
                 conversion: CConversion::Numeric(crate::ast::CScalarType::Bool),

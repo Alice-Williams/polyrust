@@ -7,10 +7,10 @@ use crate::ownership::{CSafetyError as E, ranges::NumericDomain};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Debug, PartialEq)]
-pub(super) struct Number<'a> {
-    pub domain: NumericDomain,
-    pub losses: Vec<Origin<'a>>,
-    pub predicate: Option<Predicate<'a>>,
+pub(in crate::ownership) struct Number<'a> {
+    pub(super) domain: NumericDomain,
+    pub(super) losses: Vec<Origin<'a>>,
+    pub(super) predicate: Option<Predicate<'a>>,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct Predicate<'a> {
@@ -25,21 +25,38 @@ pub(super) enum NaNPolarity {
 }
 
 impl<'a> Number<'a> {
-    pub(super) fn domain(domain: NumericDomain) -> Self {
+    pub(in crate::ownership) fn extent_bounds(&self) -> Result<(u64, u64), E> {
+        if !self.losses.is_empty() {
+            return Err(E::UnprovedSizeArithmetic);
+        }
+        let (first, last) = self
+            .domain
+            .integer_bounds()
+            .ok_or(E::ExpectedNumericValue)?;
+        Ok((
+            u64::try_from(first).map_err(|_| E::IndexOutOfBounds)?,
+            u64::try_from(last).map_err(|_| E::IndexOutOfBounds)?,
+        ))
+    }
+    pub(in crate::ownership) fn domain(domain: NumericDomain) -> Self {
         Self {
             domain,
             losses: vec![],
             predicate: None,
         }
     }
-    pub(super) fn inherit_losses(&mut self, other: &Self) {
+    pub(in crate::ownership) fn inherit_losses(&mut self, other: &Self) {
         merge(&mut self.losses, &other.losses);
     }
     fn join(&self, other: &Self, widen: bool) -> Result<Self, E> {
+        let converted = other.domain.convert(self.domain.ty())?;
+        if converted.loss != crate::ownership::ranges::NumericLoss::None {
+            return Err(E::ExpectedNumericValue);
+        }
         let domain = if widen {
-            self.domain.widen(&other.domain)?
+            self.domain.widen(&converted.domain)?
         } else {
-            self.domain.join(&other.domain)?
+            self.domain.join(&converted.domain)?
         };
         let mut joined = Self::domain(domain);
         joined.inherit_losses(self);
@@ -52,18 +69,45 @@ impl<'a> Number<'a> {
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub(super) struct State<'a> {
+pub(in crate::ownership) struct State<'a> {
     cells: BTreeMap<Key, Number<'a>>,
     fallback: BTreeMap<Root, Vec<Origin<'a>>>,
     pub(super) relations: super::relations::Relations<'a>,
 }
 impl<'a> State<'a> {
-    pub(super) fn read(&self, key: &Key) -> Option<&Number<'a>> {
+    pub(in crate::ownership::numeric_flow) fn roots(&self) -> impl Iterator<Item = Root> + '_ {
+        self.cells
+            .keys()
+            .map(|key| key.root().clone())
+            .chain(self.fallback.keys().cloned())
+    }
+    pub(in crate::ownership) fn retain_memory(&mut self, live: &BTreeSet<Root>) {
+        let removed: BTreeSet<_> = self.roots().filter(|root| !live.contains(root)).collect();
+        for root in removed {
+            self.fresh(&root);
+        }
+    }
+    pub(in crate::ownership) fn forget(&mut self, roots: impl Iterator<Item = Root>) {
+        for root in roots {
+            self.poison(&root, Origin::Incomplete);
+        }
+        self.relations = super::relations::Relations::default();
+    }
+    pub(in crate::ownership) fn read(&self, key: &Key) -> Option<&Number<'a>> {
         self.cells.get(key)
     }
-    pub(super) fn number(&self, key: &Key, ty: CScalarType) -> Result<Number<'a>, E> {
+    pub(in crate::ownership) fn number(&self, key: &Key, ty: CScalarType) -> Result<Number<'a>, E> {
         if let Some(value) = self.read(key) {
-            return Ok(value.clone());
+            let mut value = value.clone();
+            if value.domain.ty() != ty {
+                let converted = value.domain.convert(ty)?;
+                if converted.loss != crate::ownership::ranges::NumericLoss::None {
+                    return Err(E::UnprovedSizeArithmetic);
+                }
+                value.domain = converted.domain;
+                value.predicate = None;
+            }
+            return Ok(value);
         }
         let mut value = Number::domain(NumericDomain::full(ty)?);
         if let Root::Global(object) = key.root() {
@@ -74,7 +118,7 @@ impl<'a> State<'a> {
         }
         Ok(value)
     }
-    pub(super) fn set(&mut self, key: Key, mut value: Number<'a>) {
+    pub(in crate::ownership) fn set(&mut self, key: Key, mut value: Number<'a>) {
         if value
             .predicate
             .as_ref()
@@ -84,7 +128,7 @@ impl<'a> State<'a> {
         }
         self.cells.insert(key, value);
     }
-    pub(super) fn kill(&mut self, root: &Root) {
+    pub(in crate::ownership) fn kill(&mut self, root: &Root) {
         self.relations.invalidate(|candidate| candidate == root);
         for (key, value) in &mut self.cells {
             if key.root() == root {
@@ -127,7 +171,7 @@ impl<'a> State<'a> {
             }
         }
     }
-    pub(super) fn leave(&mut self, scope: &CScopeRef) {
+    pub(in crate::ownership) fn leave(&mut self, scope: &CScopeRef) {
         self.relations.invalidate(|root| root.leaves(scope));
         self.cells.retain(|key, _| !key.root().leaves(scope));
         self.fallback.retain(|root, _| !root.leaves(scope));
@@ -141,7 +185,7 @@ impl<'a> State<'a> {
             }
         }
     }
-    pub(super) fn join(&self, other: &Self, widen: bool) -> Result<Self, E> {
+    pub(in crate::ownership) fn join(&self, other: &Self, widen: bool) -> Result<Self, E> {
         let mut result = Self {
             relations: self.relations.join(&other.relations),
             fallback: self.fallback.clone(),

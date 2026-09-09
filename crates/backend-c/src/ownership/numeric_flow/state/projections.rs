@@ -2,6 +2,18 @@
 use super::{Key, Origin, Root, State, merge};
 
 impl<'a> State<'a> {
+    pub(in crate::ownership::numeric_flow) fn write_key(&mut self, destination: &Key) {
+        let before = self.cells.clone();
+        self.kill(destination.root());
+        for (key, old) in before {
+            if key.root() == destination.root()
+                && !key.overlaps(destination)
+                && let Some(value) = self.cells.get_mut(&key)
+            {
+                value.domain = old.domain;
+            }
+        }
+    }
     pub(in crate::ownership::numeric_flow) fn fallback_origin(
         &mut self,
         root: &Root,

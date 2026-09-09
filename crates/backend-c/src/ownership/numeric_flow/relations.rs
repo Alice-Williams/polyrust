@@ -70,11 +70,11 @@ impl<'a> Relations<'a> {
     }
 }
 
-impl<'a> Engine<'a> {
+impl<'a> Engine<'a, '_> {
     pub(super) fn bounded_binary(
         &mut self,
         operator: B,
-        operands: [(&CValue, &Number<'a>); 2],
+        operands: [(&'a CValue, &Number<'a>); 2],
         state: &State<'a>,
     ) -> Result<DomainTransfer, E> {
         let [(left, lhs), (right, rhs)] = operands;
@@ -84,7 +84,9 @@ impl<'a> Engine<'a> {
             B::Multiply => Arithmetic::Multiply,
             _ => return Ok(result),
         };
-        let (Some(left), Some(right)) = (self.size_term(left)?, self.size_term(right)?) else {
+        let (Some(left), Some(right)) =
+            (self.size_term(left, state)?, self.size_term(right, state)?)
+        else {
             return Ok(result);
         };
         if !state

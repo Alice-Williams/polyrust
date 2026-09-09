@@ -5,8 +5,8 @@ use crate::ast::{
 };
 use crate::ownership::numeric_flow::{E, Engine, NumericDomain, State};
 
-impl<'a> Engine<'a> {
-    pub(in crate::ownership::numeric_flow) fn edge(
+impl<'a> Engine<'a, '_> {
+    pub(in crate::ownership) fn edge(
         &mut self,
         state: &State<'a>,
         node: &Node<'a>,

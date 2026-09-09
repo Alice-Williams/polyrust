@@ -1,7 +1,7 @@
 //! Worklist convergence precedes the strict safety pass; no timeout is success.
 mod edges;
 mod obligations;
-mod progress;
+pub(super) mod progress;
 
 use super::{Analysis, E, Engine, FunctionFacts, Mode, Site, State, storage};
 use crate::ast::contextual::flow_graph::{Destination, EdgeMeaning, Graph};
@@ -16,6 +16,7 @@ pub(super) fn check<'a>(context: &ContextFacts<'a>) -> Result<Analysis<'a>, E> {
         addresses: storage::addresses(context)?,
         mode: Mode::Solve,
         obligations: vec![],
+        resolver: None,
     };
     let mut functions = Vec::new();
     for graph in context.functions() {
@@ -47,7 +48,7 @@ pub(super) fn check<'a>(context: &ContextFacts<'a>) -> Result<Analysis<'a>, E> {
 }
 
 fn fixed_point<'a>(
-    engine: &mut Engine<'a>,
+    engine: &mut Engine<'a, '_>,
     graph: &Graph<'a>,
     loops: &[loops::LoopEvidence<'a>],
 ) -> Result<Vec<Option<State<'a>>>, E> {

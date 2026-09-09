@@ -13,8 +13,12 @@ use crate::ownership::{
     ranges::NumericLoss,
 };
 
-impl<'a> Engine<'a> {
-    pub(super) fn action(&mut self, action: &Action<'a>, state: &mut State<'a>) -> Result<(), E> {
+impl<'a> Engine<'a, '_> {
+    pub(in crate::ownership) fn action(
+        &mut self,
+        action: &Action<'a>,
+        state: &mut State<'a>,
+    ) -> Result<(), E> {
         match action {
             Action::Declare(declaration) => {
                 let key = Key::local(declaration.local());
@@ -27,8 +31,17 @@ impl<'a> Engine<'a> {
                 let number = self.expression(value, state)?;
                 self.place(place, state)?;
                 let before = number.is_none().then(|| state.clone());
-                let key = Key::place(place, &mut self.layouts);
-                if let Some(root) = Root::place(place) {
+                let mut key = self.resolve(place, state)?;
+                if self.resolver.is_some() {
+                    if let Some(destination) = &key {
+                        if destination.exact() {
+                            state.write_key(destination);
+                        } else {
+                            state.poison(destination.root(), Origin::Write(place));
+                            key = None;
+                        }
+                    }
+                } else if let Some(root) = Root::place(place) {
                     state.kill(&root);
                     if key.is_none() {
                         state.poison(&root, Origin::Write(place));
@@ -78,6 +91,7 @@ impl<'a> Engine<'a> {
             Err(_) if self.mode == Mode::Solve => {
                 number.domain = NumericDomain::full(ty)?;
                 number.predicate = None;
+                number.losses.push(Origin::Arithmetic(value));
                 return Ok(number);
             }
             Err(error) => return Err(error),

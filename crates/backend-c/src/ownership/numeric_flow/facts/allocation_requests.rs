@@ -2,6 +2,7 @@
 #[cfg(test)]
 #[path = "../../../tests/allocation_request_sites.rs"]
 mod tests;
+#[cfg(test)]
 use super::NumericFacts;
 use crate::ast::{
     CCall, CCallableKind, CFunctionRef, CKnownObject, CObjectType, CScopeRef,
@@ -24,6 +25,65 @@ pub(in crate::ownership) struct AllocationRequest {
     alignment: u64,
 }
 impl AllocationRequest {
+    pub(in crate::ownership) fn join(&self, other: &Self) -> Option<Self> {
+        if self.origin != other.origin
+            || self.scope != other.scope
+            || self.alignment != other.alignment
+        {
+            return None;
+        }
+        let mut result = self.clone();
+        result.bytes = (
+            self.bytes.0.min(other.bytes.0),
+            self.bytes.1.max(other.bytes.1),
+        );
+        result.validate().ok()?;
+        Some(result)
+    }
+    pub(in crate::ownership::numeric_flow) fn actual(
+        context: &crate::ownership::context_facts::ContextFacts<'_>,
+        graph: &crate::ast::contextual::flow_graph::Graph<'_>,
+        point: Point,
+        call: &CCall,
+        bytes: &crate::ownership::numeric_flow::Number<'_>,
+    ) -> Result<Self, E> {
+        if !context
+            .functions()
+            .iter()
+            .any(|actual| std::ptr::eq(actual, graph))
+            || point.index() >= graph.nodes().len()
+        {
+            return Err(E::InvalidNumericSite);
+        }
+        if call.callable().kind() != &CCallableKind::Known(CKnownCall::Allocate) {
+            return Err(E::UnprovedAllocation);
+        }
+        crate::ownership::numeric_flow::sites::check(
+            graph.node(point).action(),
+            &Obligation::Call {
+                call,
+                arguments: vec![],
+                byte_product: None,
+            },
+        )?;
+        let bounds = bytes.extent_bounds().map_err(|error| match error {
+            E::IndexOutOfBounds => E::UnprovedAllocationSize,
+            error => error,
+        })?;
+        let request = Self {
+            origin: AllocationOrigin {
+                function: graph.function().clone(),
+                point,
+            },
+            scope: graph.node(point).scope().clone(),
+            bytes: bounds,
+            alignment: Layouts::new(context.registry())
+                .object(&CObjectType::known(CKnownObject::MaxAlign))?
+                .alignment(),
+        };
+        request.validate()?;
+        Ok(request)
+    }
     pub(in crate::ownership) fn admits_object(
         &self,
         allocation: &crate::ast::CAllocationRef,
@@ -54,6 +114,7 @@ impl AllocationRequest {
         Ok(())
     }
 }
+#[cfg(test)]
 impl<'ast> NumericFacts<'ast> {
     pub(in crate::ownership) fn allocation_request(
         &self,

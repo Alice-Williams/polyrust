@@ -146,3 +146,68 @@ fn byte_extent_is_captured_at_the_producing_call_not_a_later_write() {
         .unwrap();
     assert_eq!(facts.allocation_request(actual).unwrap().bytes, (32, 32));
 }
+
+#[test]
+fn composed_requests_reject_cloned_calls_wrong_points_and_foreign_graphs() {
+    use crate::ast::contextual::flow_graph::Action;
+    let f = Fixture::new(&[]);
+    let call = f
+        .values()
+        .call_value(f.values().known(CKnownCall::Allocate), vec![f.size(8)])
+        .unwrap();
+    let files = [f.source(vec![f.discard(call)])];
+    let facts = NumericFacts::check(&f.registry, &files).unwrap();
+    let entry = facts
+        .analysis
+        .obligations
+        .iter()
+        .find(|e| matches!(e.kind, Obligation::Call { .. }))
+        .unwrap();
+    let Obligation::Call {
+        call, arguments, ..
+    } = &entry.kind
+    else {
+        panic!("call");
+    };
+    let bytes = arguments[0].as_ref().unwrap();
+    let graph = &facts.context.functions()[0];
+    let expected = facts.allocation_request(call).unwrap();
+    assert_eq!(
+        AllocationRequest::actual(&facts.context, graph, entry.site.point, call, bytes),
+        Ok(expected.clone())
+    );
+    assert_eq!(
+        AllocationRequest::actual(
+            &facts.context,
+            graph,
+            entry.site.point,
+            &(*call).clone(),
+            bytes
+        ),
+        Err(E::InvalidNumericSite)
+    );
+    let wrong = graph
+        .points()
+        .find(|p| matches!(graph.node(*p).action(), Action::FunctionEnd))
+        .unwrap();
+    assert_eq!(
+        AllocationRequest::actual(&facts.context, graph, wrong, call, bytes),
+        Err(E::InvalidNumericSite)
+    );
+    let second = crate::ownership::context_facts::ContextFacts::check(&f.registry, &files).unwrap();
+    assert_eq!(
+        AllocationRequest::actual(
+            &facts.context,
+            &second.functions()[0],
+            entry.site.point,
+            call,
+            bytes
+        ),
+        Err(E::InvalidNumericSite)
+    );
+    let mut other = expected.clone();
+    other.bytes = (4, 16);
+    assert_eq!(expected.join(&other).unwrap().bytes, (4, 16));
+    other.alignment = 8;
+    assert_eq!(expected.join(&other), None);
+}

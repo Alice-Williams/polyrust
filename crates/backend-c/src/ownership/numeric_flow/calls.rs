@@ -6,7 +6,7 @@ use crate::ast::{CCall, CCallableKind, CReturnType, CScalarType};
 use crate::dialect::CKnownCall;
 use crate::ownership::constants::{CInteger, CNumber};
 
-impl<'a> Engine<'a> {
+impl<'a> Engine<'a, '_> {
     pub(super) fn call(
         &mut self,
         call: &'a CCall,
@@ -41,15 +41,19 @@ impl<'a> Engine<'a> {
         });
         // These exact closed operations cannot write generated object storage.
         // All other calls stay opaque until authenticated storage/call summaries.
-        if !matches!(
-            known,
-            Some(
-                CKnownCall::IsNan
-                    | CKnownCall::SignBit
-                    | CKnownCall::FloatRemainder
-                    | CKnownCall::FloatTruncate
+        let closed_memory = self.resolver.is_some()
+            && matches!(known, Some(CKnownCall::Allocate | CKnownCall::Release));
+        if !closed_memory
+            && !matches!(
+                known,
+                Some(
+                    CKnownCall::IsNan
+                        | CKnownCall::SignBit
+                        | CKnownCall::FloatRemainder
+                        | CKnownCall::FloatTruncate
+                )
             )
-        ) {
+        {
             state.opaque(&self.addresses, Origin::Call(call));
         }
         let signature = call.callable().signature();
@@ -83,7 +87,16 @@ impl<'a> Engine<'a> {
                 }
                 number.predicate = Some(Predicate {
                     operand: &call.arguments()[0],
-                    dependencies: storage::dependencies(&call.arguments()[0])?,
+                    dependencies: if let Some(resolver) = self.resolver {
+                        state
+                            .roots()
+                            .chain(resolver.roots())
+                            .chain(self.addresses.iter().cloned())
+                            .chain(storage::dependencies(&call.arguments()[0])?)
+                            .collect()
+                    } else {
+                        storage::dependencies(&call.arguments()[0])?
+                    },
                     polarity: NaNPolarity::Nonzero,
                 });
             }

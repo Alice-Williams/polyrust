@@ -11,7 +11,7 @@ use crate::ownership::{
     ranges::NumericDomain,
 };
 
-pub(super) fn refine<'a>(
+pub(in crate::ownership::numeric_flow) fn refine<'a>(
     state: &mut State<'a>,
     graph: &Graph<'a>,
     point: Point,

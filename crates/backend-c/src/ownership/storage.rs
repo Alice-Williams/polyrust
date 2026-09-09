@@ -7,24 +7,30 @@ mod expressions;
 mod flow;
 mod heap;
 mod index_extents;
+mod numeric;
 mod places;
 mod state;
 mod values;
 
 use super::{
     CSafetyError,
-    numeric_flow::{Cursor, NumericFacts},
+    context_facts::ContextFacts,
+    numeric_flow::{NumericFacts, State as NumericState},
 };
 use crate::ast::{CRegistry, CSourceFile};
 
 #[derive(Clone)]
 struct Engine<'facts, 'ast> {
-    facts: &'facts NumericFacts<'ast>,
-    cursor: Option<Cursor<'ast>>,
+    context: &'facts ContextFacts<'ast>,
+    site: Option<(
+        &'facts crate::ast::contextual::flow_graph::Graph<'ast>,
+        crate::ast::contextual::flow_graph::Point,
+    )>,
+    numeric: Option<NumericState<'ast>>,
 }
 impl Engine<'_, '_> {
     fn registry(&self) -> &CRegistry {
-        self.facts.context().registry()
+        self.context.registry()
     }
 }
 
@@ -48,9 +54,15 @@ impl CRegistry {
     /// use portable_backend_c::ownership::storage::heap::Binding;
     /// fn forge() -> Binding { Binding::Unbound }
     /// ```
+    ///
+    /// ```compile_fail
+    /// use portable_backend_c::ownership::numeric_flow::Places;
+    /// struct FakeResolver;
+    /// impl<'ast> Places<'ast> for FakeResolver {}
+    /// ```
     pub fn check_storage_paths(&self, files: &[CSourceFile]) -> Result<(), CSafetyError> {
-        let numeric = NumericFacts::check(self, files)?;
-        flow::check(&numeric)
+        let context = ContextFacts::check(self, files)?;
+        flow::check(&context)
     }
 
     /// Checks numeric safety and actual fixed-array index extents.

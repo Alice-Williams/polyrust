@@ -19,7 +19,7 @@ impl<'ast> Engine<'_, 'ast> {
             }
             CPlaceKind::Index { base, index } => {
                 self.expression(index, state)?;
-                let (first, last) = self.facts.index_bounds(place)?;
+                let (first, last) = self.number(index, state)?.extent_bounds()?;
                 match base {
                     CIndexBase::Array(base) => {
                         let base = self.place(base, state)?;

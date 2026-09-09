@@ -3,7 +3,7 @@ use super::{B, E, Engine, NumericDomain, State, negate, reverse};
 use crate::ast::{CScalarType, CValue};
 use crate::ownership::ranges::NumericLoss;
 
-impl<'a> Engine<'a> {
+impl<'a> Engine<'a, '_> {
     pub(super) fn compare_refine(
         &mut self,
         mut state: State<'a>,

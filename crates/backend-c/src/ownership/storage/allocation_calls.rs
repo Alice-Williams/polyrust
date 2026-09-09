@@ -26,7 +26,7 @@ impl<'ast> Engine<'_, 'ast> {
         for argument in call.arguments() {
             self.expression(argument, state)?;
         }
-        let request = self.facts.allocation_request(call)?;
+        let request = self.allocation_request(call, state)?;
         let origin = state.allocations.start(request)?;
         state.expire_allocation(&origin);
         Ok(Cell::Pointer(Pointer::Allocation(Box::new(origin))))

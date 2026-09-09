@@ -78,7 +78,9 @@ including its arithmetic/call/global history. Proving initialization does not
 justify clearing an indirect Read loss: a wrapped size stored through a pointer
 and read back is still wrapped. The composed analysis must use the existing
 numeric transfer rules and actual reaching memory facts before accepting such
-values as allocation sizes or bounds. Until then these uses remain rejected.
+values as allocation sizes or bounds. The completed 02B diagnostic composition
+is specified in [numeric-memory evidence](numeric-memory-proof.md); unsupported
+memory observations remain rejected, and this is not a rendering certificate.
 
 ## Ownership is separate from initialized representation
 

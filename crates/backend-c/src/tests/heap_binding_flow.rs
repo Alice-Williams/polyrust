@@ -141,7 +141,11 @@ fn heap_initialization_cannot_launder_numeric_allocation_history() {
                 release(&f, f.read(&next)),
                 release(&f, f.read(&raw)),
             ],
-            Err(CSafetyError::UnprovedSizeArithmetic),
+            if wrapped {
+                Err(CSafetyError::UnprovedSizeArithmetic)
+            } else {
+                Ok(())
+            },
         );
     }
 }

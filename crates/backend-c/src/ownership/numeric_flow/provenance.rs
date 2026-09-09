@@ -3,6 +3,7 @@ use crate::ast::{CCall, CObjectRef, CPlace, CValue};
 
 #[derive(Clone, Debug)]
 pub(super) enum Origin<'a> {
+    Incomplete,
     Arithmetic(&'a CValue),
     Aggregate(&'a CValue),
     Read(&'a CPlace),
@@ -13,6 +14,7 @@ pub(super) enum Origin<'a> {
 impl PartialEq for Origin<'_> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            (Self::Incomplete, Self::Incomplete) => true,
             (Self::Arithmetic(a), Self::Arithmetic(b))
             | (Self::Aggregate(a), Self::Aggregate(b)) => std::ptr::eq(*a, *b),
             (Self::Read(a), Self::Read(b)) | (Self::Write(a), Self::Write(b)) => {

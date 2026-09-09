@@ -30,6 +30,7 @@ pub(super) fn check<'a>(context: &ContextFacts<'a>) -> Result<Vec<Observation<'a
         addresses: BTreeSet::new(),
         mode: Mode::Derive,
         obligations: vec![],
+        resolver: None,
     };
     let mut observations = vec![];
     for location in locations(context)? {

@@ -145,7 +145,8 @@ impl Allocations {
                 .entry(origin.clone())
                 .and_modify(|old| {
                     old.binding = old.binding.join(&value.binding);
-                    old.status = if old.request == value.request {
+                    old.status = if let Some(request) = old.request.join(&value.request) {
+                        old.request = request;
                         old.status.join(value.status)
                     } else {
                         Status::Unproved

@@ -10,8 +10,8 @@ and fixed or dynamic element extents.
 
 ## Ordered checkpoints
 
-1. [02A: fixed typed heap objects](M34A-11-02D-04C-02A-fixed-heap.md).
-2. [02B: coupled numeric memory](M34A-11-02D-04C-02B-numeric-memory.md).
+1. [02A: fixed typed heap objects](M34A-11-02D-04C-02A-fixed-heap.md) — complete.
+2. [02B: coupled numeric memory](M34A-11-02D-04C-02B-numeric-memory.md) — complete.
 3. [02C: dynamic extents and initialized prefixes](M34A-11-02D-04C-02C-dynamic-heap.md).
 
 Each checkpoint requires its own full cached gates, uncapped independent review

@@ -1,16 +1,15 @@
-//! Finite must-flow over authenticated points; strict checks follow convergence.
+//! One numeric/memory fixed point followed by strict replay, never staged guesses.
 mod audit;
+mod product;
+mod solve;
 use super::{Engine, state::State, values::Cell};
-use crate::ast::{
-    CDefinitionKind, CFileItem,
-    contextual::flow_graph::{Destination, EdgeMeaning, Graph, Polarity},
-};
-use crate::ownership::{CSafetyError as E, numeric_flow::NumericFacts, paths::Root};
-use std::collections::VecDeque;
+use crate::ast::{CDefinitionKind, CFileItem};
+use crate::ownership::{CSafetyError as E, context_facts::ContextFacts, loops, paths::Root};
 
-pub(super) fn check<'ast>(facts: &NumericFacts<'ast>) -> Result<(), E> {
+pub(super) fn check<'ast>(context: &ContextFacts<'ast>) -> Result<(), E> {
+    let loops = loops::check(context)?;
     let mut globals = State::default();
-    for file in facts.context().files() {
+    for file in context.files() {
         for item in file.items() {
             if let CFileItem::Definition(definition) = item
                 && let CDefinitionKind::Object { object, .. } = definition.kind()
@@ -22,10 +21,11 @@ pub(super) fn check<'ast>(facts: &NumericFacts<'ast>) -> Result<(), E> {
         }
     }
     let mut static_engine = Engine {
-        facts,
-        cursor: None,
+        context,
+        site: None,
+        numeric: None,
     };
-    for file in facts.context().files() {
+    for file in context.files() {
         for item in file.items() {
             if let CFileItem::Definition(definition) = item
                 && let CDefinitionKind::Object {
@@ -35,18 +35,18 @@ pub(super) fn check<'ast>(facts: &NumericFacts<'ast>) -> Result<(), E> {
                 } = definition.kind()
             {
                 let cell = static_engine.initializer(initializer, &globals)?;
-                cell.complete(object.ty(), facts.context().registry())?;
+                cell.complete(object.ty(), context.registry())?;
                 globals.roots.insert(Root::Global(object.clone()), cell);
             }
         }
     }
-    // Entry into an arbitrary generated function is not program startup.
+    // Arbitrary function entry is not program startup.
     for cell in globals.roots.values_mut() {
         *cell = Cell::Initialized;
     }
-    for graph in facts.context().functions() {
+    for graph in context.functions() {
         let mut entry = globals.clone();
-        for file in facts.context().files() {
+        for file in context.files() {
             for item in file.items() {
                 if let CFileItem::Definition(definition) = item
                     && let CDefinitionKind::Function {
@@ -64,74 +64,8 @@ pub(super) fn check<'ast>(facts: &NumericFacts<'ast>) -> Result<(), E> {
                 }
             }
         }
-        function(facts, graph, entry)?;
+        let incoming = solve::function(context, graph, entry, &loops)?;
+        audit::check(context, graph, &incoming, &loops)?;
     }
     Ok(())
-}
-
-fn function<'ast>(facts: &NumericFacts<'ast>, graph: &Graph<'ast>, entry: State) -> Result<(), E> {
-    let mut incoming = vec![None; graph.nodes().len()];
-    incoming[graph.entry().index()] = Some(entry);
-    let mut pending = VecDeque::from([graph.entry()]);
-    while let Some(point) = pending.pop_front() {
-        if !facts.reachable(graph, point) {
-            continue;
-        }
-        let mut state = incoming[point.index()].clone().ok_or(E::UnprovedStorage)?;
-        let mut engine = Engine {
-            facts,
-            cursor: Some(facts.cursor(graph, point)?),
-        };
-        if engine
-            .action(graph.node(point).action(), &mut state)
-            .is_err()
-        {
-            // Solve failures carry no proof. They are checked again strictly
-            // from converged inputs; a provisional failure is never success.
-            state.forget_values();
-        }
-        for edge in graph.node(point).successors() {
-            let Destination::Point(next) = edge.destination() else {
-                continue;
-            };
-            if !facts.reachable(graph, next) {
-                continue;
-            }
-            if let EdgeMeaning::Predicate {
-                condition,
-                polarity,
-                ..
-            } = edge.meaning()
-                && engine
-                    .branch(condition, polarity == Polarity::True, &state)
-                    .is_ok_and(|branch| branch.is_none())
-            {
-                continue;
-            }
-            let mut outgoing = state.clone();
-            if let EdgeMeaning::Predicate {
-                condition,
-                polarity,
-                ..
-            } = edge.meaning()
-                && !engine
-                    .refine_allocations(condition, polarity == Polarity::True, &mut outgoing)
-                    .unwrap_or(true)
-            {
-                continue;
-            }
-            for scope in edge.exited_scopes() {
-                outgoing.leave(scope);
-            }
-            let joined = match &incoming[next.index()] {
-                Some(old) => old.join(&outgoing, facts.context().registry())?,
-                None => outgoing,
-            };
-            if incoming[next.index()].as_ref() != Some(&joined) {
-                incoming[next.index()] = Some(joined);
-                pending.push_back(next);
-            }
-        }
-    }
-    audit::check(facts, graph, &incoming)
 }

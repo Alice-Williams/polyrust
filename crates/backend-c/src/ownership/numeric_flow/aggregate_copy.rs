@@ -6,7 +6,7 @@ use super::{
 };
 use crate::ast::{CObjectType, CObjectTypeKind, CValue, CValueKind};
 
-impl<'a> Engine<'a> {
+impl<'a> Engine<'a, '_> {
     pub(super) fn aggregate_copy(
         &mut self,
         value: &'a CValue,
@@ -22,7 +22,7 @@ impl<'a> Engine<'a> {
             return Ok(());
         }
         if let CValueKind::Read(place) = value.kind()
-            && let Some(source) = Key::place(place, &mut self.layouts)
+            && let Some(source) = self.exact_place(place, before)?
         {
             state.copy(before, &source, destination);
             // Unmaterialized mutable global fields are interprocedural inputs,
