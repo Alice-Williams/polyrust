@@ -15,6 +15,11 @@ use crate::ast::{CDefinitionKind, CFileItem};
 use crate::ownership::{CSafetyError as E, context_facts::ContextFacts, loops, paths::Root};
 
 pub(super) fn check<'ast>(context: &ContextFacts<'ast>) -> Result<(), E> {
+    // Requested child roles are obligations, never evidence. The finite graph
+    // stage must replace this rejection with actual child transition analysis.
+    if context.registry().member_ownerships().next().is_some() {
+        return Err(E::UnprovedOwnership);
+    }
     let loops = loops::check(context)?;
     let mut globals = State::default();
     for file in context.files() {

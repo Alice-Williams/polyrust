@@ -25,6 +25,7 @@ mod frozen;
 mod identity;
 mod interfaces;
 mod inventory;
+mod member_ownership;
 mod nominals;
 mod owner_slots;
 mod register_interfaces;
@@ -44,6 +45,7 @@ pub use interfaces::{
     CInterfaceAdapterRef, CInterfaceTableRef, CInterfaceWitnessRef, CWitnessMethod,
 };
 pub use inventory::{CRegistrationKind, CRegistrationOwner, CRegistrationSummary};
+pub use member_ownership::{CMemberOwnership, CMemberOwnershipRef};
 pub use nominals::{
     CAggregateRef, CEnumRef, CEnumeratorRef, CMemberRef, CStructRef, CTypedefRef, CUnionRef,
 };
@@ -68,6 +70,7 @@ pub enum CRegistryError {
     CallableContractMismatch,
     InvalidBufferCount,
     InvalidOwnerSlot,
+    InvalidMemberOwnership,
 }
 
 impl std::fmt::Display for CRegistryError {
@@ -85,6 +88,9 @@ impl std::fmt::Display for CRegistryError {
             Self::ParameterIndex => "C parameter index is outside the registered exact signature",
             Self::InvalidBufferCount => "C buffer count requires an immutable size_t local",
             Self::InvalidOwnerSlot => "C owner role requires a mutable local object-pointer slot",
+            Self::InvalidMemberOwnership => {
+                "C member ownership role has an invalid pointer category"
+            }
             Self::CallableContractMismatch => {
                 "C callable member does not bind this function contract"
             }
@@ -118,6 +124,7 @@ pub struct CRegistry {
     scopes: BTreeSet<CScopeRef>,
     locals: BTreeSet<CLocalRef>,
     owner_slots: BTreeSet<COwnerSlotRef>,
+    member_ownership: BTreeMap<CMemberRef, CMemberOwnershipRef>,
     loops: BTreeSet<CLoopRef>,
     switches: BTreeSet<CSwitchRef>,
     cleanup_exits: BTreeSet<CCleanupExitRef>,
@@ -154,6 +161,7 @@ impl CRegistry {
             scopes: BTreeSet::new(),
             locals: BTreeSet::new(),
             owner_slots: BTreeSet::new(),
+            member_ownership: BTreeMap::new(),
             loops: BTreeSet::new(),
             switches: BTreeSet::new(),
             cleanup_exits: BTreeSet::new(),

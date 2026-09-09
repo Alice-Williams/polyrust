@@ -3,7 +3,7 @@
 #[path = "../../tests/owner_contract_reconstruction.rs"]
 mod tests;
 use super::{CFunctionRef, CLocalRef, CRegistry, CRegistryError};
-use crate::ast::{CConstness, CObjectTypeKind, CPointerTarget};
+use crate::ast::{CConstness, CObjectType, CObjectTypeKind, CPointerTarget};
 
 /// An ownership obligation over an existing authenticated local declaration.
 /// This is not a live value, allocation, transfer or rendering certificate.
@@ -64,23 +64,27 @@ impl CRegistry {
     fn validate_owner_local(&self, local: &CLocalRef) -> Result<(), CRegistryError> {
         self.check_local(local.scope().function(), local)?;
         self.check_type(local.ty())?;
-        let ty = local.ty().canonical();
-        if ty.constness() != CConstness::Unqualified {
-            return Err(CRegistryError::InvalidOwnerSlot);
-        }
-        let CObjectTypeKind::Pointer(CPointerTarget::Object(target)) = ty.kind() else {
-            return Err(CRegistryError::InvalidOwnerSlot);
-        };
-        if target.require_storable().is_err() {
-            return Err(CRegistryError::InvalidOwnerSlot);
-        }
-        let mut target = target.as_ref();
-        while let CObjectTypeKind::Array { element, .. } = target.kind() {
-            target = element;
-        }
-        if target.constness() != CConstness::Unqualified {
+        if !owning_pointer(local.ty()) {
             return Err(CRegistryError::InvalidOwnerSlot);
         }
         Ok(())
     }
+}
+
+pub(super) fn owning_pointer(ty: &CObjectType) -> bool {
+    let ty = ty.canonical();
+    if ty.constness() != CConstness::Unqualified {
+        return false;
+    }
+    let CObjectTypeKind::Pointer(CPointerTarget::Object(target)) = ty.kind() else {
+        return false;
+    };
+    if target.require_storable().is_err() {
+        return false;
+    }
+    let mut target = target.as_ref();
+    while let CObjectTypeKind::Array { element, .. } = target.kind() {
+        target = element;
+    }
+    target.constness() == CConstness::Unqualified
 }

@@ -99,6 +99,7 @@ impl PackageConstants<'_> {
                 CRegistered::Parameter(value) => self.object(value.ty())?,
                 CRegistered::Local(value) => self.object(value.ty())?,
                 CRegistered::OwnerSlot(value) => self.object(value.local().ty())?,
+                CRegistered::MemberOwnership(_, value) => self.object(value.member().ty())?,
                 CRegistered::Allocation(value) => self.object(value.object_type())?,
                 CRegistered::Function(value) => {
                     if let CReturnType::Value(result) = value.signature().return_type() {

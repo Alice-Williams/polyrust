@@ -106,6 +106,15 @@ pub(super) fn check(registry: &CRegistry, files: &[CSourceFile]) -> Result<(), E
                     .role,
             ),
             R::Enumerator(v) => (v.key(), v.owner().file().key().role),
+            R::MemberOwnership(_, v) => (
+                v.member().key(),
+                aggregates
+                    .get(v.member().owner())
+                    .copied()
+                    .unwrap_or(aggregate_file(v.member().owner()))
+                    .key()
+                    .role,
+            ),
             R::Parameter(v) => (v.key(), body_file(v.function())),
             R::Scope(v) => (v.key(), body_file(v.function())),
             R::Local(v) => (v.key(), body_file(v.scope().function())),

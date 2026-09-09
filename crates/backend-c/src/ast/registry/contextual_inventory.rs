@@ -3,8 +3,8 @@
 use super::{
     CAllocationRef, CCleanupExitRef, CEnumRef, CEnumeratorRef, CFileRef, CFunctionRef,
     CInterfaceAdapterRef, CInterfaceTableRef, CInterfaceWitnessRef, CLocalRef, CLoopRef,
-    CMemberRef, CObjectRef, COwnerSlotRef, CParameterRef, CRegistry, CScopeRef, CStructRef,
-    CSwitchRef, CTypedefRef, CUnionRef,
+    CMemberOwnershipRef, CMemberRef, CObjectRef, COwnerSlotRef, CParameterRef, CRegistry,
+    CScopeRef, CStructRef, CSwitchRef, CTypedefRef, CUnionRef,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -21,6 +21,7 @@ pub(crate) enum CRegistered<'a> {
     Scope(&'a CScopeRef),
     Local(&'a CLocalRef),
     OwnerSlot(&'a COwnerSlotRef),
+    MemberOwnership(&'a CMemberRef, &'a CMemberOwnershipRef),
     Loop(&'a CLoopRef),
     Switch(&'a CSwitchRef),
     CleanupExit(&'a CCleanupExitRef),
@@ -51,6 +52,11 @@ impl CRegistry {
         values.extend(self.scopes.iter().map(CRegistered::Scope));
         values.extend(self.locals.iter().map(CRegistered::Local));
         values.extend(self.owner_slots.iter().map(CRegistered::OwnerSlot));
+        values.extend(
+            self.member_ownership
+                .iter()
+                .map(|(member, role)| CRegistered::MemberOwnership(member, role)),
+        );
         values.extend(self.loops.iter().map(CRegistered::Loop));
         values.extend(self.switches.iter().map(CRegistered::Switch));
         values.extend(self.cleanup_exits.iter().map(CRegistered::CleanupExit));

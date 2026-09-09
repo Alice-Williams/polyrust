@@ -1,7 +1,8 @@
 //! Address-free canonical declaration inventory; never a parallel symbol table.
 
 use super::{
-    CAggregateRef, CDeclarationKey, CFileKey, CFileRef, CFunctionRef, CRegistry, CScopeRef,
+    CAggregateRef, CDeclarationKey, CFileKey, CFileRef, CFunctionRef, CMemberOwnership, CRegistry,
+    CScopeRef,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -18,6 +19,9 @@ pub enum CRegistrationKind {
     Scope,
     Local,
     OwnerSlot,
+    RequiredChild,
+    OptionalChild,
+    BorrowedMetadata,
     Loop,
     Switch,
     CleanupExit,
@@ -132,6 +136,26 @@ impl CRegistry {
                     value.owner().file(),
                     value.owner().key(),
                 ),
+            );
+        }
+        for value in self.member_ownership.values() {
+            let member = value.member();
+            let owner = match member.owner() {
+                CAggregateRef::Struct(owner) => {
+                    declaration(CRegistrationKind::Struct, owner.file(), owner.key())
+                }
+                CAggregateRef::Union(owner) => {
+                    declaration(CRegistrationKind::Union, owner.file(), owner.key())
+                }
+            };
+            add(
+                match value.role() {
+                    CMemberOwnership::Required => CRegistrationKind::RequiredChild,
+                    CMemberOwnership::Optional => CRegistrationKind::OptionalChild,
+                    CMemberOwnership::BorrowedMetadata => CRegistrationKind::BorrowedMetadata,
+                },
+                member.key(),
+                owner,
             );
         }
         for value in &self.functions {

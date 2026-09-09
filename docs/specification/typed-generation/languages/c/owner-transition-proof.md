@@ -83,6 +83,9 @@ physical allocation has already been retired; no other action may intervene.
 
 ## Nested construction and rollback
 
+The [finite child-ownership contract](child-ownership-proof.md) fixes exact
+member role categories, actual graph transitions and staged integration.
+
 Define typed child roles using authenticated nominal/member/element paths,
 separating required or optional owned children from borrowed allocator/table
 metadata. No field-name convention grants ownership. Active union/variant state

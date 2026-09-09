@@ -436,6 +436,12 @@ mod numeric_memory_scalars;
 #[path = "tests/storage_type_identity.rs"]
 mod storage_type_identity;
 pub use comments::{CAssertDiagnostic, CComment};
+#[cfg(test)]
+#[path = "tests/member_role_contracts.rs"]
+mod member_role_contracts;
+#[cfg(test)]
+#[path = "tests/member_role_shapes.rs"]
+mod member_role_shapes;
 pub use contextual::CContextError;
 pub use declaration_construction::CDeclarations;
 pub use declaration_model::{
@@ -460,9 +466,10 @@ pub use registry::{
     CCallableContractOrigin, CCallableContractRef, CCleanupExitRef, CDeclarationKey, CEnumRef,
     CEnumeratorRef, CFileKey, CFileRef, CFileRole, CFrozenRegistry, CFunctionRef, CGeneratedOrigin,
     CInterfaceAdapterRef, CInterfaceTableRef, CInterfaceWitnessRef, CLocalRef, CLoopRef,
-    CMemberBinding, CMemberRef, CObjectRef, COwnerSlotRef, CParameterRef, CRegistrationKind,
-    CRegistrationOwner, CRegistrationSummary, CRegistry, CRegistryError, CScopeRef, CStructRef,
-    CSwitchRef, CSynthesisReason, CTypedefRef, CUnionRef, CWitnessMethod,
+    CMemberBinding, CMemberOwnership, CMemberOwnershipRef, CMemberRef, CObjectRef, COwnerSlotRef,
+    CParameterRef, CRegistrationKind, CRegistrationOwner, CRegistrationSummary, CRegistry,
+    CRegistryError, CScopeRef, CStructRef, CSwitchRef, CSynthesisReason, CTypedefRef, CUnionRef,
+    CWitnessMethod,
 };
 pub use scalar_representation::{CIntegerWidth, CScalarRepresentation};
 pub use signatures::{CFunctionType, CParameterType, CReturnType, CReturnValue};

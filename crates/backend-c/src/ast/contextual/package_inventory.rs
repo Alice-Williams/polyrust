@@ -24,6 +24,18 @@ pub(super) fn check(registry: &CRegistry, files: &[CSourceFile]) -> Result<(), E
     }
     for node in registry.contextual_inventory() {
         let requires_definition = match node {
+            CRegistered::MemberOwnership(member, value) => {
+                if member != value.member() {
+                    return Err(E::Registry(
+                        crate::ast::CRegistryError::UnregisteredReference,
+                    ));
+                }
+                registry.check_member_ownership(value.member().owner(), value)?;
+                if !seen.defined.contains(&CRegistered::Member(value.member())) {
+                    return Err(E::MissingRegistrationOccurrence);
+                }
+                continue;
+            }
             CRegistered::OwnerSlot(value) => {
                 registry.check_owner_slot(value.local().scope().function(), value)?;
                 if !seen.defined.contains(&CRegistered::Local(value.local())) {
