@@ -44,6 +44,8 @@ impl CRegistry {
     /// element storage and complete counted prefixes are checked. Owner transfer
     /// and other call effects remain unresolved. Success is not a full ownership
     /// or rendering certificate; prefix numeric history stays conservative.
+    /// Registered owner roles currently reject until lifecycle composition is
+    /// implemented; they cannot silently bypass this diagnostic boundary.
     ///
     /// ```compile_fail
     /// use portable_backend_c::ownership::storage::state::State;

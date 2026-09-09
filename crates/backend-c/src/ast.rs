@@ -53,6 +53,10 @@ mod types;
 mod contextual_reconstruction;
 
 #[cfg(test)]
+#[path = "tests/owner_contracts.rs"]
+mod owner_contracts;
+
+#[cfg(test)]
 #[path = "tests/contextual_package.rs"]
 mod contextual_package;
 
@@ -438,9 +442,9 @@ pub use registry::{
     CCallableContractOrigin, CCallableContractRef, CCleanupExitRef, CDeclarationKey, CEnumRef,
     CEnumeratorRef, CFileKey, CFileRef, CFileRole, CFrozenRegistry, CFunctionRef, CGeneratedOrigin,
     CInterfaceAdapterRef, CInterfaceTableRef, CInterfaceWitnessRef, CLocalRef, CLoopRef,
-    CMemberBinding, CMemberRef, CObjectRef, CParameterRef, CRegistrationKind, CRegistrationOwner,
-    CRegistrationSummary, CRegistry, CRegistryError, CScopeRef, CStructRef, CSwitchRef,
-    CSynthesisReason, CTypedefRef, CUnionRef, CWitnessMethod,
+    CMemberBinding, CMemberRef, CObjectRef, COwnerSlotRef, CParameterRef, CRegistrationKind,
+    CRegistrationOwner, CRegistrationSummary, CRegistry, CRegistryError, CScopeRef, CStructRef,
+    CSwitchRef, CSynthesisReason, CTypedefRef, CUnionRef, CWitnessMethod,
 };
 pub use scalar_representation::{CIntegerWidth, CScalarRepresentation};
 pub use signatures::{CFunctionType, CParameterType, CReturnType, CReturnValue};

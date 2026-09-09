@@ -109,6 +109,7 @@ pub(super) fn check(registry: &CRegistry, files: &[CSourceFile]) -> Result<(), E
             R::Parameter(v) => (v.key(), body_file(v.function())),
             R::Scope(v) => (v.key(), body_file(v.function())),
             R::Local(v) => (v.key(), body_file(v.scope().function())),
+            R::OwnerSlot(v) => (v.local().key(), body_file(v.local().scope().function())),
             R::Loop(v) => (v.key(), body_file(v.scope().function())),
             R::Switch(v) => (v.key(), body_file(v.scope().function())),
             R::CleanupExit(v) => (v.key(), body_file(v.scope().function())),

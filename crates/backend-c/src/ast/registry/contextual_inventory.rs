@@ -3,8 +3,8 @@
 use super::{
     CAllocationRef, CCleanupExitRef, CEnumRef, CEnumeratorRef, CFileRef, CFunctionRef,
     CInterfaceAdapterRef, CInterfaceTableRef, CInterfaceWitnessRef, CLocalRef, CLoopRef,
-    CMemberRef, CObjectRef, CParameterRef, CRegistry, CScopeRef, CStructRef, CSwitchRef,
-    CTypedefRef, CUnionRef,
+    CMemberRef, CObjectRef, COwnerSlotRef, CParameterRef, CRegistry, CScopeRef, CStructRef,
+    CSwitchRef, CTypedefRef, CUnionRef,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -20,6 +20,7 @@ pub(crate) enum CRegistered<'a> {
     Parameter(&'a CParameterRef),
     Scope(&'a CScopeRef),
     Local(&'a CLocalRef),
+    OwnerSlot(&'a COwnerSlotRef),
     Loop(&'a CLoopRef),
     Switch(&'a CSwitchRef),
     CleanupExit(&'a CCleanupExitRef),
@@ -49,6 +50,7 @@ impl CRegistry {
         values.extend(self.parameters.iter().map(CRegistered::Parameter));
         values.extend(self.scopes.iter().map(CRegistered::Scope));
         values.extend(self.locals.iter().map(CRegistered::Local));
+        values.extend(self.owner_slots.iter().map(CRegistered::OwnerSlot));
         values.extend(self.loops.iter().map(CRegistered::Loop));
         values.extend(self.switches.iter().map(CRegistered::Switch));
         values.extend(self.cleanup_exits.iter().map(CRegistered::CleanupExit));

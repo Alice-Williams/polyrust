@@ -31,6 +31,7 @@ pub(super) fn check(registry: &CRegistry, files: &[CSourceFile]) -> Result<(), E
             CRegistered::Member(value) => checker.require(value.ty())?,
             CRegistered::Object(value) => checker.require(value.ty())?,
             CRegistered::Local(value) => checker.require(value.ty())?,
+            CRegistered::OwnerSlot(value) => checker.require(value.local().ty())?,
             CRegistered::Parameter(value) => checker.require(value.ty())?,
             CRegistered::Allocation(value) => checker.require(value.object_type())?,
             CRegistered::Function(value) => {

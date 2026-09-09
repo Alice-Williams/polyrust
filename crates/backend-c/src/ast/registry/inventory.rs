@@ -17,6 +17,7 @@ pub enum CRegistrationKind {
     Parameter,
     Scope,
     Local,
+    OwnerSlot,
     Loop,
     Switch,
     CleanupExit,
@@ -165,6 +166,14 @@ impl CRegistry {
         }
         for value in &self.locals {
             add(CRegistrationKind::Local, value.key(), scope(value.scope()));
+        }
+        for value in &self.owner_slots {
+            let local = value.local();
+            add(
+                CRegistrationKind::OwnerSlot,
+                local.key(),
+                scope(local.scope()),
+            );
         }
         for value in &self.loops {
             add(CRegistrationKind::Loop, value.key(), scope(value.scope()));

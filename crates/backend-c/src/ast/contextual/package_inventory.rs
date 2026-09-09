@@ -24,6 +24,15 @@ pub(super) fn check(registry: &CRegistry, files: &[CSourceFile]) -> Result<(), E
     }
     for node in registry.contextual_inventory() {
         let requires_definition = match node {
+            CRegistered::OwnerSlot(value) => {
+                registry.check_owner_slot(value.local().scope().function(), value)?;
+                if !seen.defined.contains(&CRegistered::Local(value.local())) {
+                    return Err(E::MissingRegistrationOccurrence);
+                }
+                // A role refers to the existing local definition, not a second
+                // source declaration or proof-authored occurrence.
+                continue;
+            }
             CRegistered::Struct(value) => registry
                 .members(&CAggregateRef::Struct(value.clone()))?
                 .is_some(),

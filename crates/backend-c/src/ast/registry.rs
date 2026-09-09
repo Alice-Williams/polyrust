@@ -26,6 +26,7 @@ mod identity;
 mod interfaces;
 mod inventory;
 mod nominals;
+mod owner_slots;
 mod register_interfaces;
 mod register_nominals;
 mod register_symbols;
@@ -46,6 +47,7 @@ pub use inventory::{CRegistrationKind, CRegistrationOwner, CRegistrationSummary}
 pub use nominals::{
     CAggregateRef, CEnumRef, CEnumeratorRef, CMemberRef, CStructRef, CTypedefRef, CUnionRef,
 };
+pub use owner_slots::COwnerSlotRef;
 pub use symbols::{CFunctionRef, CLocalRef, CObjectRef, CParameterRef, CScopeRef};
 
 pub(crate) use contextual_inventory::CRegistered;
@@ -65,6 +67,7 @@ pub enum CRegistryError {
     InterfaceTableType,
     CallableContractMismatch,
     InvalidBufferCount,
+    InvalidOwnerSlot,
 }
 
 impl std::fmt::Display for CRegistryError {
@@ -81,6 +84,7 @@ impl std::fmt::Display for CRegistryError {
             Self::WrongOwner => "C reference belongs to a different declaration owner",
             Self::ParameterIndex => "C parameter index is outside the registered exact signature",
             Self::InvalidBufferCount => "C buffer count requires an immutable size_t local",
+            Self::InvalidOwnerSlot => "C owner role requires a mutable local object-pointer slot",
             Self::CallableContractMismatch => {
                 "C callable member does not bind this function contract"
             }
@@ -113,6 +117,7 @@ pub struct CRegistry {
     parameters: BTreeSet<CParameterRef>,
     scopes: BTreeSet<CScopeRef>,
     locals: BTreeSet<CLocalRef>,
+    owner_slots: BTreeSet<COwnerSlotRef>,
     loops: BTreeSet<CLoopRef>,
     switches: BTreeSet<CSwitchRef>,
     cleanup_exits: BTreeSet<CCleanupExitRef>,
@@ -148,6 +153,7 @@ impl CRegistry {
             parameters: BTreeSet::new(),
             scopes: BTreeSet::new(),
             locals: BTreeSet::new(),
+            owner_slots: BTreeSet::new(),
             loops: BTreeSet::new(),
             switches: BTreeSet::new(),
             cleanup_exits: BTreeSet::new(),

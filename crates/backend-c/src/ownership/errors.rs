@@ -63,6 +63,7 @@ pub enum CSafetyError {
     UnprovedAllocationSize,
     UnreleasedAllocation,
     InvalidAllocationRelease,
+    UnprovedOwnership,
 }
 
 impl From<CContextError> for CSafetyError {
@@ -83,6 +84,9 @@ impl From<COperatorError> for CSafetyError {
 impl std::fmt::Display for CSafetyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::UnprovedOwnership => {
+                f.write_str("C owner obligations require actual lifecycle evidence")
+            }
             Self::UnprovedAllocationSize => {
                 f.write_str("C allocation needs positive checked bytes")
             }

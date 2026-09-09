@@ -1,11 +1,28 @@
 # M34A-11-02D-04C-03 — Construction, transfer and cleanup transitions
 
-- Status: planned
+- Status: in-progress
 - Depends on: M34A-11-02D-04C-02
 
 ## Goal
 
 Complete 04C's owner lifecycle proof independently of storage initialization.
+
+## Ordered checkpoints
+
+The [owner-transition specification](../../specification/typed-generation/languages/c/owner-transition-proof.md)
+defines the contract/evidence boundary. Implement in this order:
+
+1. [03A: typed owner-slot contracts](M34A-11-02D-04C-03A-owner-contracts.md).
+2. [03B: local construction, move and drop](M34A-11-02D-04C-03B-local-owners.md).
+3. [03C: owned children and rollback](M34A-11-02D-04C-03C-owned-children.md).
+4. [03D: dynamic owner families](M34A-11-02D-04C-03D-owner-families.md).
+5. [03E: composed owner audit](M34A-11-02D-04C-03E-owner-integration.md).
+
+Each completed checkpoint requires its own cached gates, independent uncapped
+review, commit and push. Contracts alone keep owner admission rejected. Local
+leaf proof cannot close this parent; all child/family obligations below remain
+required. Incoming ABI/custom allocator contracts stay 04D and actual generated
+body summaries stay 05, as already specified, without new deferrals.
 
 ## Definition of done
 
