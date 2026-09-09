@@ -5,7 +5,7 @@ mod known_values;
 mod numeric;
 mod tree;
 
-pub(super) use numeric::{CInteger, CNumber};
+pub(super) use numeric::{CInteger, CNumber, limits};
 pub(super) use tree::evaluate;
 
 #[cfg(test)]

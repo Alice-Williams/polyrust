@@ -1,5 +1,5 @@
 //! Evaluate selected numeric children; callers first validate all syntax.
-use super::super::{CSafetyError as E, layout::Layouts};
+use super::super::{CSafetyError as E, layout::Layouts, ranges::CScalarRange};
 use super::{CInteger, CNumber, integer_operations::boolean, known_values::known};
 use crate::ast::{
     CBinaryOperator, CConversion, CLiteral, CObjectTypeKind, CScalarType, CSignedLiteral as S,
@@ -25,7 +25,11 @@ pub(in crate::ownership) fn evaluate(
             i128::from(layouts.object(ty)?.alignment()),
         )
         .map(CNumber::Integer),
-        V::Unary { operator, operand } => evaluate(layouts, operand)?.unary(*operator),
+        V::Unary { operator, operand } => CScalarRange::exact(evaluate(layouts, operand)?)
+            .unary(*operator)?
+            .range()
+            .exact_value()
+            .ok_or(E::ExpectedNumericConstant),
         V::Binary {
             operator,
             left,
@@ -35,7 +39,11 @@ pub(in crate::ownership) fn evaluate(
             match operator {
                 CBinaryOperator::LogicalAnd if !left.truth() => boolean(false),
                 CBinaryOperator::LogicalOr if left.truth() => boolean(true),
-                _ => left.binary(*operator, evaluate(layouts, right)?),
+                _ => CScalarRange::exact(left)
+                    .binary(*operator, CScalarRange::exact(evaluate(layouts, right)?))?
+                    .range()
+                    .exact_value()
+                    .ok_or(E::ExpectedNumericConstant),
             }
         }
         V::Conditional {
@@ -51,12 +59,20 @@ pub(in crate::ownership) fn evaluate(
             let CObjectTypeKind::Scalar(ty) = value.ty().kind() else {
                 return Err(E::ExpectedNumericConstant);
             };
-            evaluate(layouts, selected)?.convert(*ty)
+            CScalarRange::exact(evaluate(layouts, selected)?)
+                .convert(*ty)?
+                .range()
+                .exact_value()
+                .ok_or(E::ExpectedNumericConstant)
         }
         V::Convert {
             conversion: CConversion::Numeric(ty),
             operand,
-        } => evaluate(layouts, operand)?.convert(*ty),
+        } => CScalarRange::exact(evaluate(layouts, operand)?)
+            .convert(*ty)?
+            .range()
+            .exact_value()
+            .ok_or(E::ExpectedNumericConstant),
         V::Read(_)
         | V::AddressOf(_)
         | V::FunctionAddress(_)

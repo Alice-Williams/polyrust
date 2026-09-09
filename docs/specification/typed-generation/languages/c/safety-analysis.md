@@ -35,6 +35,8 @@ The [constant/layout contract](constant-and-layout-proof.md) specifies exact
 numeric conversions, evaluated versus all-syntax traversal and private facts.
 The [sequencing/control contract](sequencing-and-control-facts.md) specifies
 the exact call positions, typed edge meanings and immutable context boundary.
+The [numeric range contract](numeric-range-proof.md) fixes scalar domains,
+invalidation, convergence, counted progress and outstanding storage obligations.
 
 Reuse the existing actual-AST graph. Extend it with closed edge meanings,
 including predicate polarity, switch selection/default and loop/backedge/exit

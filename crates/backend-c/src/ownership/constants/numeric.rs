@@ -33,7 +33,7 @@ impl CInteger {
     }
 }
 
-pub(super) fn limits(ty: CScalarType) -> Result<(i128, i128), E> {
+pub(in crate::ownership) fn limits(ty: CScalarType) -> Result<(i128, i128), E> {
     Ok(match ty.representation() {
         R::Bool => (0, 1),
         R::Signed(width) => {

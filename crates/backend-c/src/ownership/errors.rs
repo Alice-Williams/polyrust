@@ -13,6 +13,16 @@ use crate::ast::{CContextError, COperatorError, CRegistryError};
 /// use portable_backend_c::ast::CScalarType;
 /// let forged = CInteger::checked(CScalarType::I8, 1000);
 /// ```
+///
+/// ```compile_fail
+/// use portable_backend_c::ownership::ranges::integer::IntegerRange;
+/// let forged = IntegerRange { ty: todo!(), min: 1, max: 0 };
+/// ```
+///
+/// ```compile_fail
+/// use portable_backend_c::ownership::ranges::floating::FloatRange;
+/// let forged = FloatRange { kind: todo!() };
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CSafetyError {
     Context(CContextError),
@@ -29,6 +39,7 @@ pub enum CSafetyError {
     InvalidShift,
     FalseAssertion,
     UnsequencedCall,
+    InvalidNumericRange,
 }
 
 impl From<CContextError> for CSafetyError {
@@ -60,13 +71,16 @@ impl std::fmt::Display for CSafetyError {
             Self::IntegerRange => {
                 f.write_str("C numeric conversion is outside its proven integer range")
             }
-            Self::DivisionByZero => f.write_str("C integer division or remainder has zero divisor"),
-            Self::SignedOverflow => f.write_str("C signed constant arithmetic overflows"),
-            Self::InvalidShift => f.write_str("C constant shift has invalid operands or result"),
+            Self::DivisionByZero => f.write_str("C integer divisor is not proved nonzero"),
+            Self::SignedOverflow => f.write_str("C signed arithmetic is not proved representable"),
+            Self::InvalidShift => f.write_str("C shift operands and result are not proved valid"),
             Self::FalseAssertion => f.write_str("C static assertion evaluates to zero"),
             Self::UnsequencedCall => f.write_str(
                 "C call must be a permitted full-expression root with call-free operands",
             ),
+            Self::InvalidNumericRange => {
+                f.write_str("C numeric range has unordered bounds or mismatched scalar types")
+            }
         }
     }
 }
