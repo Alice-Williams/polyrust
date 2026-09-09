@@ -9,5 +9,6 @@ mod numeric_flow;
 mod package_constants;
 mod ranges;
 mod sequencing;
+mod storage;
 
 pub use errors::CSafetyError;

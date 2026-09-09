@@ -1,6 +1,6 @@
 # M34A-11-02D-04 — C ownership, allocator and borrow dataflow
 
-- Status: planned
+- Status: in-progress
 - Depends on: M34A-11-02D-03
 
 ## Goal
@@ -8,6 +8,20 @@
 Derive storage provenance, initialization and lifetime facts on actual paths.
 
 ## Definition of done
+
+Implement the complete contract in these dependency-ordered checkpoints:
+
+1. [04A: actual index extent handoff](M34A-11-02D-04A-index-extents.md).
+2. [04B: storage, initialization and pointer paths](M34A-11-02D-04B-storage-paths.md).
+3. [04C: allocation and lifecycle transitions](M34A-11-02D-04C-allocation-lifecycle.md).
+4. [04D: borrows, allocator flow and boundary composition](M34A-11-02D-04D-borrows-boundaries.md).
+
+These checkpoints split responsibilities and review scope, not the parent exit
+contract. Each receives focused and full cached gates plus independent review,
+then its own commit/push. Parent 04 stays open until all are complete. The
+[storage proof specification](../../specification/typed-generation/languages/c/storage-proof.md)
+fixes the evidence boundaries. No checkpoint opens a renderer or advertises C
+compliance. Generated-body summaries remain 05; unknown effects fail closed.
 
 - Track Empty/Live/Moved/Dropped handles and Uninitialized/Prefix/complete storage
   separately, with concrete types, allocator identity, extents and active members.

@@ -229,6 +229,19 @@ mod numeric_storage;
 mod numeric_switches;
 
 #[cfg(test)]
+#[path = "tests/index_extent_fixture.rs"]
+mod index_extent_fixture;
+#[cfg(test)]
+#[path = "tests/index_extent_guards.rs"]
+mod index_extent_guards;
+#[cfg(test)]
+#[path = "tests/index_extent_paths.rs"]
+mod index_extent_paths;
+#[cfg(test)]
+#[path = "tests/index_extents.rs"]
+mod index_extents;
+
+#[cfg(test)]
 #[path = "tests/constant_initializers.rs"]
 mod constant_initializers;
 

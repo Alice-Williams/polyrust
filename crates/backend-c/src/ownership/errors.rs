@@ -49,6 +49,8 @@ pub enum CSafetyError {
     ExpectedNumericValue,
     UnprovedSizeArithmetic,
     InvalidNumericSite,
+    IndexOutOfBounds,
+    UnprovedPointerExtent,
 }
 
 impl From<CContextError> for CSafetyError {
@@ -77,6 +79,12 @@ impl std::fmt::Display for CSafetyError {
             Self::LayoutCapacity => f.write_str("C size/alignment calculation exceeds target Size"),
             Self::ExpectedNumericConstant => f.write_str("C expression is not a numeric constant"),
             Self::ExpectedNumericValue => f.write_str("C expression does not have a numeric value"),
+            Self::IndexOutOfBounds => {
+                f.write_str("C index is not proved inside its actual array extent")
+            }
+            Self::UnprovedPointerExtent => {
+                f.write_str("C pointer index lacks authenticated storage extent")
+            }
             Self::InvalidNumericSite => {
                 f.write_str("C numeric fact does not match its actual graph site")
             }
