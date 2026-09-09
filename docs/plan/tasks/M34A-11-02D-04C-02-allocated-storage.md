@@ -1,12 +1,22 @@
 # M34A-11-02D-04C-02 — Typed allocated storage and dynamic extents
 
-- Status: planned
+- Status: in-progress
 - Depends on: M34A-11-02D-04C-01
 
 ## Goal
 
 Compose actual allocation provenance with type/layout, initialized subobjects
 and fixed or dynamic element extents.
+
+## Ordered checkpoints
+
+1. [02A: fixed typed heap objects](M34A-11-02D-04C-02A-fixed-heap.md).
+2. [02B: coupled numeric memory](M34A-11-02D-04C-02B-numeric-memory.md).
+3. [02C: dynamic extents and initialized prefixes](M34A-11-02D-04C-02C-dynamic-heap.md).
+
+Each checkpoint requires its own full cached gates, uncapped independent review
+and commit/push. The parent remains open until all three pass. In particular,
+fixed object capacity is not a substitute for dynamic count relations.
 
 ## Definition of done
 

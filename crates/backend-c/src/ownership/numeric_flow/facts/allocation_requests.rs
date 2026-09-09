@@ -24,6 +24,23 @@ pub(in crate::ownership) struct AllocationRequest {
     alignment: u64,
 }
 impl AllocationRequest {
+    pub(in crate::ownership) fn admits_object(
+        &self,
+        allocation: &crate::ast::CAllocationRef,
+        registry: &crate::ast::CRegistry,
+    ) -> Result<(), E> {
+        self.validate()?;
+        if allocation.scope().function() != &self.origin.function
+            || allocation.allocator() != &crate::ast::CAllocatorSource::Default
+        {
+            return Err(E::UnprovedAllocation);
+        }
+        let layout = Layouts::new(registry).object(allocation.object_type())?;
+        if layout.size() > self.bytes.0 || layout.alignment() > self.alignment {
+            return Err(E::UnprovedAllocationSize);
+        }
+        Ok(())
+    }
     pub(in crate::ownership) fn origin(&self) -> &AllocationOrigin {
         &self.origin
     }

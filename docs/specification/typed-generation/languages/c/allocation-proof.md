@@ -58,6 +58,28 @@ minima alone cannot relate an arbitrary index to a runtime allocation count.
 Writes establish fields or prefixes; reads require the selected initialized
 storage and union member. Mutations invalidate dependent count/extent facts.
 
+The fixed-object checkpoint establishes a conservative access-type binding at
+an action-root restore. This is checker policy, not a claim that a C cast itself
+initializes an object or establishes C effective type. Repeated compatible
+restores reuse that binding and storage; nested restores require an existing
+binding. Conflicting bindings stay conflicting across joins. Spare bytes do
+not grant a scalar pointer an array extent. The fixed-array syntax may represent
+an actual fixed object, never a fabricated maximum dynamic capacity.
+
+Compatible bindings use one authenticated storage identity across branch joins,
+including their roots, paths and pointer values. Normalize ABI-compatible scalar
+spellings and immediate pointee qualification, not equal-sized types. Preserve
+nominal references, array bounds and deeper pointer qualifiers. Callback alias
+metadata may normalize only after authenticating the original signature. This
+private key never replaces source AST origins or dependencies for rendering.
+
+Numeric memory composition must retain the numeric value written to storage,
+including its arithmetic/call/global history. Proving initialization does not
+justify clearing an indirect Read loss: a wrapped size stored through a pointer
+and read back is still wrapped. The composed analysis must use the existing
+numeric transfer rules and actual reaching memory facts before accepting such
+values as allocation sizes or bounds. Until then these uses remain rejected.
+
 ## Ownership is separate from initialized representation
 
 Empty/Live/Moved/Dropped is not interchangeable with uninitialized/prefix/

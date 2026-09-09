@@ -45,6 +45,7 @@ mod statement_errors;
 mod statement_model;
 mod statement_placement;
 mod type_compatibility;
+mod type_identity;
 mod types;
 
 #[cfg(test)]
@@ -295,6 +296,33 @@ mod allocation_identity;
 #[cfg(test)]
 #[path = "tests/allocation_loops.rs"]
 mod allocation_loops;
+#[cfg(test)]
+#[path = "tests/heap_aggregates.rs"]
+mod heap_aggregates;
+#[cfg(test)]
+#[path = "tests/heap_aliases.rs"]
+mod heap_aliases;
+#[cfg(test)]
+#[path = "tests/heap_binding_flow.rs"]
+mod heap_binding_flow;
+#[cfg(test)]
+#[path = "tests/heap_fixture.rs"]
+mod heap_fixture;
+#[cfg(test)]
+#[path = "tests/heap_join_identity.rs"]
+mod heap_join_identity;
+#[cfg(test)]
+#[path = "tests/heap_loops.rs"]
+mod heap_loops;
+#[cfg(test)]
+#[path = "tests/heap_scalars.rs"]
+mod heap_scalars;
+#[cfg(test)]
+#[path = "tests/heap_types.rs"]
+mod heap_types;
+#[cfg(test)]
+#[path = "tests/storage_type_identity.rs"]
+mod storage_type_identity;
 pub use comments::{CAssertDiagnostic, CComment};
 pub use contextual::CContextError;
 pub use declaration_construction::CDeclarations;

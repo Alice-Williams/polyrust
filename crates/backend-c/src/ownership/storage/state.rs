@@ -14,6 +14,11 @@ pub(super) struct State {
 }
 impl State {
     pub(super) fn live(&self, path: &Key) -> Result<(), E> {
+        if let Root::Allocation(origin, _) = path.root()
+            && self.allocations.nonnull(origin)? != Some(true)
+        {
+            return Err(E::ExpiredStorage);
+        }
         self.roots
             .contains_key(path.root())
             .then_some(())

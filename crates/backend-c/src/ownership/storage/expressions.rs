@@ -31,7 +31,12 @@ impl<'facts, 'ast> Engine<'facts, 'ast> {
                 let cell = self.expression(operand, state)?;
                 match conversion {
                     CConversion::Numeric(_) => Cell::Initialized,
-                    CConversion::AllocationRestore(_) => return Err(E::UnprovedAllocation),
+                    CConversion::AllocationRestore(allocation) => {
+                        let root = self.heap_root(allocation, operand, state, false)?;
+                        let path = crate::ownership::paths::Key::from_root(root);
+                        state.live(&path)?;
+                        Cell::Pointer(Pointer::Target(Box::new(path)))
+                    }
                     CConversion::AdapterRestore(_) => {
                         if let Pointer::Target(path) = cell.pointer()? {
                             let CObjectTypeKind::Pointer(CPointerTarget::Object(target)) =

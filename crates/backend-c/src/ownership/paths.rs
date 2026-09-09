@@ -11,6 +11,7 @@ pub(in crate::ownership) enum Root {
     Local(CLocalRef),
     Parameter(CParameterRef),
     Global(CObjectRef),
+    Allocation(Box<super::numeric_flow::AllocationOrigin>, CObjectType),
 }
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(in crate::ownership) enum Selector {
@@ -29,6 +30,7 @@ impl Root {
             Self::Local(value) => value.ty(),
             Self::Parameter(value) => value.ty(),
             Self::Global(value) => value.ty(),
+            Self::Allocation(_, ty) => ty,
         }
         .canonical()
     }

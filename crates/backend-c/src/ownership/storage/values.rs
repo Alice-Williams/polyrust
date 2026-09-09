@@ -110,7 +110,7 @@ impl Cell {
     ) -> Result<bool, E> {
         Ok(match ty.canonical().kind() {
             CObjectTypeKind::Pointer(_) => match self.pointer()? {
-                Pointer::Target(path) => !matches!(path.root(), Root::Global(_)),
+                Pointer::Target(path) => matches!(path.root(), Root::Local(_) | Root::Parameter(_)),
                 Pointer::Unknown | Pointer::Expired => true,
                 Pointer::Null | Pointer::Function(_) | Pointer::Allocation(_) => false,
             },

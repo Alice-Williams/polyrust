@@ -1,4 +1,5 @@
 //! Finite must-flow over authenticated points; strict checks follow convergence.
+mod audit;
 use super::{Engine, state::State, values::Cell};
 use crate::ast::{
     CDefinitionKind, CFileItem,
@@ -132,30 +133,5 @@ fn function<'ast>(facts: &NumericFacts<'ast>, graph: &Graph<'ast>, entry: State)
             }
         }
     }
-    for point in graph.points() {
-        if !facts.reachable(graph, point) {
-            continue;
-        }
-        let Some(mut state) = incoming[point.index()].clone() else {
-            continue;
-        };
-        let mut engine = Engine {
-            facts,
-            cursor: Some(facts.cursor(graph, point)?),
-        };
-        engine.action(graph.node(point).action(), &mut state)?;
-        // Falling off a void function has no successor edge in the actual graph.
-        if matches!(
-            graph.node(point).action(),
-            crate::ast::contextual::flow_graph::Action::FunctionEnd
-        ) {
-            state.allocations.finish()?;
-        }
-        for edge in graph.node(point).successors() {
-            if edge.destination() == Destination::FunctionReturn {
-                state.allocations.finish()?;
-            }
-        }
-    }
-    Ok(())
+    audit::check(facts, graph, &incoming)
 }

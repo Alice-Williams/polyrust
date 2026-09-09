@@ -5,6 +5,7 @@ mod allocation_edges;
 mod allocations;
 mod expressions;
 mod flow;
+mod heap;
 mod index_extents;
 mod places;
 mod state;
@@ -29,8 +30,8 @@ impl Engine<'_, '_> {
 
 impl CRegistry {
     /// Checks derived storage, initialization, bounds and automatic lifetimes.
-    /// Default allocation/null/release flow is checked; typed restoration and
-    /// other call effects remain unresolved. Success is not a full ownership or
+    /// Default allocation/null/release and fixed typed restoration are checked;
+    /// dynamic extents and other call effects remain unresolved. Success is not a full ownership or
     /// rendering certificate.
     ///
     /// ```compile_fail
@@ -41,6 +42,11 @@ impl CRegistry {
     /// ```compile_fail
     /// use portable_backend_c::ownership::numeric_flow::AllocationOrigin;
     /// fn forge() -> AllocationOrigin { todo!() }
+    /// ```
+    ///
+    /// ```compile_fail
+    /// use portable_backend_c::ownership::storage::heap::Binding;
+    /// fn forge() -> Binding { Binding::Unbound }
     /// ```
     pub fn check_storage_paths(&self, files: &[CSourceFile]) -> Result<(), CSafetyError> {
         let numeric = NumericFacts::check(self, files)?;

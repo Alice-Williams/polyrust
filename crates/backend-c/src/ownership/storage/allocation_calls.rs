@@ -14,6 +14,9 @@ impl<'ast> Engine<'_, 'ast> {
         value: &'ast CValue,
         state: &mut State,
     ) -> Result<Cell, E> {
+        if let Some(cell) = self.establish_heap(value, state)? {
+            return Ok(cell);
+        }
         let CValueKind::Call(call) = value.kind() else {
             return self.expression(value, state);
         };
@@ -38,6 +41,16 @@ impl<'ast> Engine<'_, 'ast> {
             Pointer::Allocation(origin) => {
                 if state.allocations.release(&origin)? {
                     state.expire_allocation(&origin);
+                }
+                Ok(())
+            }
+            Pointer::Target(path) if path.whole_root() => {
+                let crate::ownership::paths::Root::Allocation(origin, _) = path.root() else {
+                    return Err(E::InvalidAllocationRelease);
+                };
+                state.live(&path)?;
+                if state.allocations.release(origin)? {
+                    state.expire_allocation(origin);
                 }
                 Ok(())
             }

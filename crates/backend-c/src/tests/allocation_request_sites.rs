@@ -3,6 +3,53 @@ use super::*;
 use crate::ast::{CValueKind, numeric_fixture::Fixture};
 
 #[test]
+fn object_layout_requires_original_bytes_and_measured_alignment() {
+    use crate::ast::{
+        CAllocatorSource, CDeclarationKey, CGeneratedOrigin, CIdentifier, CScalarType,
+        CSynthesisReason,
+    };
+    let mut f = Fixture::new(&[]);
+    let object = f
+        .registry
+        .register_allocation(
+            &f.scope,
+            CDeclarationKey {
+                name: CIdentifier::new("object").unwrap(),
+                origin: CGeneratedOrigin::Synthesized(CSynthesisReason::TestHarness),
+            },
+            CObjectType::scalar(CScalarType::I64),
+            CAllocatorSource::Default,
+        )
+        .unwrap();
+    let value = f
+        .values()
+        .call_value(f.values().known(CKnownCall::Allocate), vec![f.size(8)])
+        .unwrap();
+    let files = [f.source(vec![f.discard(value)])];
+    let facts = NumericFacts::check(&f.registry, &files).unwrap();
+    let actual = facts
+        .analysis
+        .obligations
+        .iter()
+        .find_map(|entry| match &entry.kind {
+            Obligation::Call { call, .. } => Some(*call),
+            _ => None,
+        })
+        .unwrap();
+    let request = facts.allocation_request(actual).unwrap();
+    assert_eq!(request.admits_object(&object, &f.registry), Ok(()));
+    for (bytes, alignment) in [((7, 64), 16), ((8, 8), 4)] {
+        let mut insufficient = request.clone();
+        insufficient.bytes = bytes;
+        insufficient.alignment = alignment;
+        assert_eq!(
+            insufficient.admits_object(&object, &f.registry),
+            Err(E::UnprovedAllocationSize)
+        );
+    }
+}
+
+#[test]
 fn request_retains_actual_call_site_bytes_and_measured_alignment() {
     let f = Fixture::new(&[]);
     let value = f
