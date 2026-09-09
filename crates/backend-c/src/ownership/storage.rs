@@ -9,6 +9,7 @@ mod flow;
 mod heap;
 mod index_extents;
 mod numeric;
+mod owners;
 mod places;
 mod prefix_reads;
 mod prefixes;
@@ -41,11 +42,16 @@ impl Engine<'_, '_> {
 impl CRegistry {
     /// Checks derived storage, initialization, bounds and automatic lifetimes.
     /// Default allocation/null/release, fixed restoration and guarded dynamic
-    /// element storage and complete counted prefixes are checked. Owner transfer
-    /// and other call effects remain unresolved. Success is not a full ownership
+    /// element storage, complete counted prefixes and local fixed leaf owners are
+    /// checked. Other call effects remain unresolved. Success is not a full ownership
     /// or rendering certificate; prefix numeric history stays conservative.
-    /// Registered owner roles currently reject until lifecycle composition is
-    /// implemented; they cannot silently bypass this diagnostic boundary.
+    /// Owner roles require actual lifecycle proof; unresolved children and
+    /// dynamic families cannot silently bypass this diagnostic boundary.
+    ///
+    /// ```compile_fail
+    /// use portable_backend_c::ownership::storage::owners::Owners;
+    /// fn forge() -> Owners { Owners::default() }
+    /// ```
     ///
     /// ```compile_fail
     /// use portable_backend_c::ownership::storage::state::State;

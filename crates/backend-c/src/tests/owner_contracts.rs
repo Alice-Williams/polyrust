@@ -98,7 +98,7 @@ fn owner_aliases_are_authenticated_without_losing_the_declared_type() {
 }
 
 #[test]
-fn ownership_requires_a_real_local_occurrence_and_more_than_registration() {
+fn ownership_requires_a_real_occurrence_and_proves_actual_empty_initialization() {
     for owned in [false, true] {
         let mut f = Fixture::new(&[]);
         let slot = local(
@@ -120,14 +120,7 @@ fn ownership_requires_a_real_local_occurrence_and_more_than_registration() {
                 .check_package_structure(std::slice::from_ref(&source)),
             Ok(())
         );
-        assert_eq!(
-            f.registry.check_storage_paths(&[source]),
-            if owned {
-                Err(CSafetyError::UnprovedOwnership)
-            } else {
-                Ok(())
-            }
-        );
+        assert_eq!(f.registry.check_storage_paths(&[source]), Ok(()));
     }
 }
 

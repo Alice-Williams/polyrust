@@ -25,6 +25,7 @@ impl<'ast> Product<'ast> {
             site: Some((graph, point)),
             numeric: Some(self.numeric.clone()),
         };
+        let owner_plan = engine.owner_action(graph.node(point).action(), &self.memory);
         let resolver = Resolver {
             engine: &engine,
             memory: &self.memory,
@@ -37,11 +38,16 @@ impl<'ast> Product<'ast> {
         };
         // A failing numeric action is not a successful memory proof either.
         let storage = engine.action(graph.node(point).action(), &mut self.memory);
-        if let Err(error) = numeric.and(storage) {
+        let result = numeric
+            .and(storage)
+            .and(owner_plan)
+            .and_then(|plan| plan.apply(&mut self.memory, context.registry()));
+        if let Err(error) = result {
             if strict {
                 return Err(error);
             }
             self.memory.forget_values();
+            self.memory.owners.fail();
             self.numeric.forget(self.memory.roots.keys().cloned());
         } else {
             pending.apply(&mut self.memory);
@@ -100,7 +106,19 @@ impl<'ast> Product<'ast> {
             }
         }
         outgoing.complete_prefixes(edge, loops);
+        if let Err(error) = outgoing.memory.owners.edge(graph, point, edge) {
+            if strict {
+                return Err(error);
+            }
+            outgoing.memory.owners.fail();
+        }
         for scope in edge.exited_scopes() {
+            if let Err(error) = outgoing.memory.owners.leave(scope) {
+                if strict {
+                    return Err(error);
+                }
+                outgoing.memory.owners.fail();
+            }
             outgoing.memory.leave(scope);
             outgoing.numeric.leave(scope);
         }

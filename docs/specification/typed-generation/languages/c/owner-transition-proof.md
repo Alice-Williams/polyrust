@@ -66,6 +66,21 @@ drop may succeed without releasing anything again. A raw alias release cannot
 erase the remaining slot-reset obligation. Every exit and redeclaration must
 account for live owners and pending resets before retiring local state.
 
+For the local leaf grammar, writes to owner slots use the direct local AST node;
+indirect slot writes reject. A move source is likewise a direct local read. Copy
+and reset are connected by one unconditional flow edge, without a crossed scope
+or another predecessor at the reset. A local drop uses the closed default release
+call with an object-to-void conversion of the direct owner read. This grammar
+does not infer a transaction through an arbitrary borrow, conversion or helper.
+Claim uses an already bound allocation with a structurally pointer-free payload;
+even inactive pointer-bearing union alternatives require the later child proof.
+After each successful ordinary operation, recheck every live leaf owner's actual
+slot/base and complete active payload. Switching a union arm cannot preserve an
+outdated inhabited-owner claim over a partially initialized replacement. Build
+partial replacements in non-owning construction storage before committing them.
+Only the exact owner awaiting a verified release-reset is exempt while its
+physical allocation has already been retired; no other action may intervene.
+
 ## Nested construction and rollback
 
 Define typed child roles using authenticated nominal/member/element paths,

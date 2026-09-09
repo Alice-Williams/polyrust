@@ -13,6 +13,7 @@ pub(super) struct State {
     pub(super) roots: BTreeMap<Root, RootCell>,
     pub(super) prefixes: BTreeMap<Root, super::prefixes::Prefixes>,
     pub(super) allocations: super::allocations::Allocations,
+    pub(super) owners: super::owners::Owners,
 }
 impl State {
     pub(super) fn live(&self, path: &Key) -> Result<(), E> {
@@ -110,6 +111,7 @@ impl State {
             roots,
             prefixes,
             allocations: self.allocations.join(&other.allocations),
+            owners: self.owners.join(&other.owners),
         })
     }
     pub(super) fn forget_values(&mut self) {

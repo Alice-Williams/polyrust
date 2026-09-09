@@ -53,8 +53,26 @@ mod types;
 mod contextual_reconstruction;
 
 #[cfg(test)]
+#[path = "tests/owner_aggregates.rs"]
+mod owner_aggregates;
+#[cfg(test)]
 #[path = "tests/owner_contracts.rs"]
 mod owner_contracts;
+#[cfg(test)]
+#[path = "tests/owner_control.rs"]
+mod owner_control;
+#[cfg(test)]
+#[path = "tests/owner_leaf_fixture.rs"]
+mod owner_leaf_fixture;
+#[cfg(test)]
+#[path = "tests/owner_local.rs"]
+mod owner_local;
+#[cfg(test)]
+#[path = "tests/owner_loops.rs"]
+mod owner_loops;
+#[cfg(test)]
+#[path = "tests/owner_numbers.rs"]
+mod owner_numbers;
 
 #[cfg(test)]
 #[path = "tests/contextual_package.rs"]

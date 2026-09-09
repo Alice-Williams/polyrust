@@ -15,11 +15,6 @@ use crate::ast::{CDefinitionKind, CFileItem};
 use crate::ownership::{CSafetyError as E, context_facts::ContextFacts, loops, paths::Root};
 
 pub(super) fn check<'ast>(context: &ContextFacts<'ast>) -> Result<(), E> {
-    // Registration adds obligations, never an optimistic ownership certificate.
-    // The next checkpoint integrates actual local lifecycle transitions here.
-    if context.registry().owner_slots().next().is_some() {
-        return Err(E::UnprovedOwnership);
-    }
     let loops = loops::check(context)?;
     let mut globals = State::default();
     for file in context.files() {
