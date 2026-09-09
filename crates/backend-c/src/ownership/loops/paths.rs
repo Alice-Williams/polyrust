@@ -1,5 +1,5 @@
 //! Finite per-iteration path counting, including nested cycles and early exits.
-use super::{E, LoopEvidence, shape};
+use super::{E, LoopEvidence, StepPhase, shape};
 use crate::ast::{
     CRegistry,
     contextual::flow_graph::{BranchOwner, Destination, EdgeMeaning, Graph, Polarity},
@@ -17,7 +17,7 @@ pub(super) fn check(
     registry: &CRegistry,
     graph: &Graph<'_>,
     evidence: &LoopEvidence<'_>,
-) -> Result<(), E> {
+) -> Result<Vec<Option<StepPhase>>, E> {
     let entry = graph
         .nodes()
         .iter()
@@ -82,5 +82,18 @@ pub(super) fn check(
             }
         }
     }
-    Ok(())
+    let mut phases = vec![None; graph.nodes().len()];
+    for (point, steps) in visited {
+        let phase = match steps {
+            Steps::Zero => StepPhase::Before,
+            Steps::One => StepPhase::After,
+        };
+        let old = &mut phases[point.index()];
+        *old = Some(match *old {
+            None => phase,
+            Some(old) if old == phase => phase,
+            Some(_) => StepPhase::Either,
+        });
+    }
+    Ok(phases)
 }

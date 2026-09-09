@@ -5,8 +5,9 @@ mod shape;
 
 use super::{CSafetyError as E, context_facts::ContextFacts};
 use crate::ast::{
-    CBlock, CCountedProgress, CLocalDeclaration, CLoopRef, CRegistry, CSourceFile, CStatement,
-    CStatementKind, CValue, contextual::flow_graph::Graph,
+    CBlock, CCountedProgress, CFunctionRef, CLocalDeclaration, CLocalRef, CLoopRef, CRegistry,
+    CSourceFile, CStatement, CStatementKind, CValue,
+    contextual::flow_graph::{Graph, Point},
 };
 
 pub(super) struct LoopEvidence<'a> {
@@ -18,6 +19,29 @@ pub(super) struct LoopEvidence<'a> {
     counter: &'a CLocalDeclaration,
     bound: &'a CLocalDeclaration,
     steps: Vec<&'a CStatement>,
+    phases: Vec<Option<StepPhase>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum StepPhase {
+    Before,
+    After,
+    Either,
+}
+
+impl LoopEvidence<'_> {
+    pub(super) fn phase(&self, function: &CFunctionRef, point: Point) -> Option<StepPhase> {
+        if function != self.identity.scope().function() {
+            return None;
+        }
+        self.phases.get(point.index()).copied().flatten()
+    }
+    pub(super) fn counter(&self) -> &CLocalRef {
+        self.counter.local()
+    }
+    pub(super) fn bound(&self) -> &CLocalRef {
+        self.bound.local()
+    }
 }
 
 pub(super) fn check<'a>(context: &ContextFacts<'a>) -> Result<Vec<LoopEvidence<'a>>, E> {
@@ -25,8 +49,8 @@ pub(super) fn check<'a>(context: &ContextFacts<'a>) -> Result<Vec<LoopEvidence<'
     for graph in context.functions() {
         let mut loops = candidates(graph)?;
         inventory::check(context, graph, &mut loops)?;
-        for evidence in loops {
-            paths::check(context.registry(), graph, &evidence)?;
+        for mut evidence in loops {
+            evidence.phases = paths::check(context.registry(), graph, &evidence)?;
             checked.push(evidence);
         }
     }
@@ -55,6 +79,7 @@ fn candidates<'a>(graph: &Graph<'a>) -> Result<Vec<LoopEvidence<'a>>, E> {
                 counter: shape::declaration(graph, progress.counter())?,
                 bound: shape::declaration(graph, progress.bound())?,
                 steps: Vec::new(),
+                phases: Vec::new(),
             };
             shape::check(&candidate)?;
             result.push(candidate);

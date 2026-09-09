@@ -5,6 +5,7 @@ mod context_facts;
 mod errors;
 mod layout;
 mod loops;
+mod numeric_flow;
 mod package_constants;
 mod ranges;
 mod sequencing;

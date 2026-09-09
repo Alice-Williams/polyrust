@@ -1,6 +1,6 @@
 # M34A-11-02D-03 — Dominating C ranges and counted-loop proof
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-11-02D-02
 
 ## Goal
@@ -51,3 +51,28 @@ the parent closes only with all child checkpoints and the checklist below.
 
 Record evidence and commit/push M34A-11-02D-03. No generic iteration/arity cap
 is added; native finite-loop renderer proof remains stage 04.
+
+## Combined closure evidence
+
+- 03A closed at ee2b571 with checked scalar domains/transfers, exact-value
+  independent oracles, boundary controls and clean independent review.
+- 03B closed at 6c74c36 with actual counter/bound/write/alias inventory and
+  finite path proof of exactly one step per continuing path, including branches,
+  nested cycles and Continue. Zero/one/SIZE_MAX controls do not unroll huge loops.
+- 03C closes in this checkpoint with actual edge refinement, conservative
+  joins/widening, strict converged operation checking, invalidation and retained
+  arithmetic/storage origins, algebraic size relations, actual-site obligations
+  and the numeric consumer of retained pre/post-step phases.
+
+The combined C unit suite has 317 passing tests. Final focused gate
+39476103-f140-41ae-be06-df14a0672da1 includes Rustdoc, Clippy, Buildifier and docs.
+Full tracked gate 9e57e76f-6c8e-44f7-8592-b86e93e025d7 passes 320 targets;
+release 67372068-dafa-4bd7-9fd2-696d18133499 passes 257; conformance
+a01c5ca6-66ba-4de9-9b7a-1b314db75544 proves 50 cases plus one portable test
+across eight targets with deterministic manifests. 03C records the accepted
+review findings, red regressions, repairs and final clean independent review.
+
+All parent numeric/counting requirements are covered. Private index/extent and
+call obligations are retained for 04/05; none is a pointer, initialization,
+allocation, lifetime, generated-call or render-ready certificate. Existing
+legacy C conformance is regression evidence, not typed-C cutover evidence.

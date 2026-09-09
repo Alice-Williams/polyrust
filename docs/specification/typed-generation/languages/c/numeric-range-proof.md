@@ -43,6 +43,14 @@ model. Finite exhaustive small-domain and boundary-sampled controls independentl
 compare results against that model; tests must exercise useful bounded results,
 not merely assert that an unknown domain contains everything.
 
+The 03C flow domain may retain normalized finite unions of the checked integer
+intervals. This represents exclusions such as a signed divisor not equal to
+zero without pretending its interval hull excludes zero. Union/intersection
+preserve the actual scalar identity; transfer considers every retained operand
+interval combination. Empty domains represent unreachable numeric states, not
+an arbitrary default value. No caller supplies these sets or exclusions.
+Floating restrictions retain NaN possibility and both zero signs where needed.
+
 ## Operations and conversions
 
 Apply actual promotions/usual conversions before an operation. Signed overflow,
@@ -94,6 +102,63 @@ than declaring success. Check operation safety against converged incoming
 facts, not a convenient earlier iteration. No semantic iteration cap, timeout
 success or arbitrary portable arity limit is introduced.
 
+Ordinary branch joins retain the union of possible numeric values. Growing
+loop-head inputs widen conservatively to the actual type domain when necessary;
+stable cells need not lose their facts. Solve-time imprecision or an unproved
+operation produces an unknown result, never an optimistic success or an
+unreachable edge. A separate strict pass checks operations against the converged
+inputs. Predicate inversion through integer promotions/conversions is permitted
+only when the preimage is proved sound; modulo narrowing cannot be inverted by
+copying target bounds onto the original operand.
+
+Storage keys retain closed Local/Parameter/Global roots and actual member or
+exact-index selectors. Root-wide invalidation is a permissible conservative
+fallback for overlapping writes. Opaque indirect writes and calls invalidate
+globals and address-exposed roots; nonexposure comes from an all-syntax address
+inventory. Predicates tied to a materialized known-call result also retain
+their dependencies. Exposure is derived from actual AddressOf expression nodes,
+not a walker's non-reading traversal of a member/array base. Ordinary field or
+element reads do not expose automatic storage; explicit addresses of those
+subobjects expose the containing root, even in unreachable syntax. Globals
+remain exposed independently of explicit address-taking. Predicates retain
+their actual operand dependencies and are killed when those dependencies change.
+Arithmetic provenance survives materialization: an already-wrapped product is
+not rehabilitated merely by reading it through a Size local.
+
+Unproved provenance is a closed set of reasons referencing actual arithmetic,
+aggregate expressions, reads, writes or calls. A widened type domain with an
+unresolved origin is not proved-clean size arithmetic. Aggregate assignment and
+expression initialization project/rebase the actual source subobject snapshot;
+complex or indirect aggregate sources retain an unresolved source obligation.
+Root fallback origins cover numeric fields not yet materialized in the state.
+Unknown-index/indirect writes and opaque effects poison those fallbacks as well
+as existing cells. Scope exits remove expired roots; joins union unresolved
+origins, including an absent cell on one predecessor. Exact subsequent scalar
+assignment can establish a new clean value without laundering sibling fields.
+Absent global cells intrinsically retain authenticated global-object origins,
+including when constructed for a missing join predecessor or guard refinement.
+A later read is not responsible for discovering this absence. A global is clean
+after a branch join only when every incoming path established a clean value.
+Unproved global reads and generated-call returns retain explicit origins until
+04/05 establishes the relevant storage/body contract. Numeric library transforms
+such as trunc/fmod inherit argument history; classifiers and Bool normalization
+produce new classifier values and do not inherit extent arithmetic history.
+
+Size algebra has a closed additional relation grammar: for value-preserving
+Size/U64 terms, a dominating a<=SIZE_MAX-b proves nonwrapping addition, and
+a<=SIZE_MAX/b with b proved positive proves nonwrapping multiplication.
+Strict comparisons also entail the corresponding non-strict guard; reversed
+operand order and false-edge integer complements are normalized structurally.
+Terms are authenticated storage reads, exact constants or representation-
+identical unsigned conversions, not arbitrary source text. Relation keys retain
+their actual guard witnesses and storage dependencies. Writes, scope exit and
+opaque effects kill affected relations; joins retain only relations established
+on every incoming path, retaining the witnesses from each path.
+An algebraic relation may refine the primitive result/loss proof, but does not
+erase earlier operand wrap history or discharge pointer/allocator obligations.
+The implicit element-size product in WriteBytes uses the same relation proof
+over that exact known call's actual arguments.
+
 ## Counted-loop evidence
 
 The [exact counted-while grammar](counted-loops.md) remains authoritative.
@@ -113,6 +178,12 @@ updated relation is counter <= bound. Preserve the possible zero-iteration
 exit and handle zero, one and multiple iterations without unrolling enormous
 bounds. Direct SIZE_MAX-1/SIZE_MAX proof tests do not execute SIZE_MAX loops.
 
+The path proof's verifier-derived step phase is retained per actual program
+point. BeforeStep permits the strict counter<bound relation; AfterStep permits
+only counter<=bound; a join of phases retains only their common facts. Branch
+updates, nested-loop cycles and Continue edges cannot transplant a strict
+pre-update relation onto a post-update value.
+
 ## Composition and remaining obligations
 
 03C composes ranges/progress with ContextFacts over the same borrowed package.
@@ -122,3 +193,10 @@ nonnull state, initialization, union member, allocator or lifetime. Generated
 call summaries and mutually dependent storage/range conditions are rechecked
 during complete safety composition. Compiler/resource admission and portable
 source-order certificates remain their existing later-stage gates.
+
+Every retained Calculation, Index and Call obligation is tied to an actual
+function/graph point and rechecked for pointer-identical occurrence inside that
+point's action. Re-deriving a previously materialized predicate is proof work,
+not another runtime execution of its old expression at the new point; it cannot
+create transplanted runtime obligations. The retained call contains its actual
+argument trees and the implicit WriteBytes product checked at that call point.

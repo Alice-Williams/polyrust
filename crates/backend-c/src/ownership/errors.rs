@@ -46,6 +46,9 @@ pub enum CSafetyError {
     LoopAddressEscape,
     MissingLoopStep,
     RepeatedLoopStep,
+    ExpectedNumericValue,
+    UnprovedSizeArithmetic,
+    InvalidNumericSite,
 }
 
 impl From<CContextError> for CSafetyError {
@@ -73,6 +76,13 @@ impl std::fmt::Display for CSafetyError {
             Self::RecursiveLayout => f.write_str("C by-value layout graph is recursive"),
             Self::LayoutCapacity => f.write_str("C size/alignment calculation exceeds target Size"),
             Self::ExpectedNumericConstant => f.write_str("C expression is not a numeric constant"),
+            Self::ExpectedNumericValue => f.write_str("C expression does not have a numeric value"),
+            Self::InvalidNumericSite => {
+                f.write_str("C numeric fact does not match its actual graph site")
+            }
+            Self::UnprovedSizeArithmetic => {
+                f.write_str("C size calculation is not proved nonwrapping")
+            }
             Self::ExpectedIntegerConstant => f.write_str("C expression is not an integer constant"),
             Self::IntegerRange => {
                 f.write_str("C numeric conversion is outside its proven integer range")

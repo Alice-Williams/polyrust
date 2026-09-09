@@ -135,6 +135,9 @@ impl<'a> Graph<'a> {
     pub(crate) fn nodes(&self) -> &[Node<'a>] {
         &self.nodes
     }
+    pub(crate) fn points(&self) -> impl Iterator<Item = Point> {
+        (0..self.nodes.len()).map(Point)
+    }
     pub(crate) const fn entry(&self) -> Point {
         self.entry
     }

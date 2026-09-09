@@ -191,6 +191,42 @@ mod counted_paths;
 #[cfg(test)]
 #[path = "tests/counted_shapes.rs"]
 mod counted_shapes;
+#[cfg(test)]
+#[path = "tests/numeric_exposure.rs"]
+mod numeric_exposure;
+#[cfg(test)]
+#[path = "tests/numeric_fixture.rs"]
+pub(crate) mod numeric_fixture;
+#[cfg(test)]
+#[path = "tests/numeric_floating.rs"]
+mod numeric_floating;
+#[cfg(test)]
+#[path = "tests/numeric_generated_calls.rs"]
+mod numeric_generated_calls;
+#[cfg(test)]
+#[path = "tests/numeric_guards.rs"]
+mod numeric_guards;
+#[cfg(test)]
+#[path = "tests/numeric_lineage.rs"]
+mod numeric_lineage;
+#[cfg(test)]
+#[path = "tests/numeric_loop_flow.rs"]
+mod numeric_loop_flow;
+#[cfg(test)]
+#[path = "tests/numeric_loop_paths.rs"]
+mod numeric_loop_paths;
+#[cfg(test)]
+#[path = "tests/numeric_relations.rs"]
+mod numeric_relations;
+#[cfg(test)]
+#[path = "tests/numeric_sizes.rs"]
+mod numeric_sizes;
+#[cfg(test)]
+#[path = "tests/numeric_storage.rs"]
+mod numeric_storage;
+#[cfg(test)]
+#[path = "tests/numeric_switches.rs"]
+mod numeric_switches;
 
 #[cfg(test)]
 #[path = "tests/constant_initializers.rs"]
