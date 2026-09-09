@@ -15,6 +15,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+mod allocations;
+mod buffer_counts;
 mod contextual_inventory;
 mod contracts;
 mod control;
@@ -30,8 +32,10 @@ mod register_symbols;
 mod symbols;
 mod type_membership;
 
+pub use allocations::{CAllocationRef, CAllocationShape, CAllocatorSource};
+pub use buffer_counts::CBufferCountRef;
 pub use contracts::{CCallableContractOrigin, CCallableContractRef, CMemberBinding};
-pub use control::{CAllocationRef, CAllocatorSource, CCleanupExitRef, CLoopRef, CSwitchRef};
+pub use control::{CCleanupExitRef, CLoopRef, CSwitchRef};
 pub use files::{CFileKey, CFileRef, CFileRole};
 pub use frozen::CFrozenRegistry;
 pub use identity::{CDeclarationKey, CGeneratedOrigin, CSynthesisReason};
@@ -60,6 +64,7 @@ pub enum CRegistryError {
     ParameterIndex,
     InterfaceTableType,
     CallableContractMismatch,
+    InvalidBufferCount,
 }
 
 impl std::fmt::Display for CRegistryError {
@@ -75,6 +80,7 @@ impl std::fmt::Display for CRegistryError {
             Self::AlreadyDefined => "C declaration already has a definition",
             Self::WrongOwner => "C reference belongs to a different declaration owner",
             Self::ParameterIndex => "C parameter index is outside the registered exact signature",
+            Self::InvalidBufferCount => "C buffer count requires an immutable size_t local",
             Self::CallableContractMismatch => {
                 "C callable member does not bind this function contract"
             }

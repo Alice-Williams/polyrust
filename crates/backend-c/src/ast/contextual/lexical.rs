@@ -249,6 +249,9 @@ impl Visitor for Lexical<'_> {
             if !ancestor(value.scope(), self.scope()) {
                 return Err(E::WrongLexicalOwner);
             }
+            if let super::super::CAllocationShape::Elements(count) = value.shape() {
+                self.local(count.local())?;
+            }
             match value.allocator() {
                 CAllocatorSource::Default => {}
                 CAllocatorSource::Local(value) => self.local(value)?,

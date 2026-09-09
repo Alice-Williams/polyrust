@@ -1,9 +1,19 @@
 //! Allocation requests retain authenticated call sites and original byte facts.
 #[cfg(test)]
+#[path = "../../../tests/buffer_product_fixture.rs"]
+mod product_fixture;
+#[cfg(test)]
+#[path = "../../../tests/buffer_product_guards.rs"]
+mod product_guards;
+#[cfg(test)]
+#[path = "../../../tests/buffer_product_shapes.rs"]
+mod product_shapes;
+#[cfg(test)]
 #[path = "../../../tests/allocation_request_sites.rs"]
 mod tests;
 #[cfg(test)]
 use super::NumericFacts;
+use super::count_products::Products;
 use crate::ast::{
     CCall, CCallableKind, CFunctionRef, CKnownObject, CObjectType, CScopeRef,
     contextual::flow_graph::Point,
@@ -23,6 +33,7 @@ pub(in crate::ownership) struct AllocationRequest {
     scope: CScopeRef,
     bytes: (u64, u64),
     alignment: u64,
+    products: Products,
 }
 impl AllocationRequest {
     pub(in crate::ownership) fn join(&self, other: &Self) -> Option<Self> {
@@ -37,6 +48,7 @@ impl AllocationRequest {
             self.bytes.0.min(other.bytes.0),
             self.bytes.1.max(other.bytes.1),
         );
+        result.products = self.products.join(&other.products);
         result.validate().ok()?;
         Some(result)
     }
@@ -46,6 +58,7 @@ impl AllocationRequest {
         point: Point,
         call: &CCall,
         bytes: &crate::ownership::numeric_flow::Number<'_>,
+        state: &crate::ownership::numeric_flow::State<'_>,
     ) -> Result<Self, E> {
         if !context
             .functions()
@@ -77,6 +90,12 @@ impl AllocationRequest {
             },
             scope: graph.node(point).scope().clone(),
             bytes: bounds,
+            products: Products::actual(
+                context.registry(),
+                graph,
+                call.arguments().first().ok_or(E::ExpectedNumericValue)?,
+                state,
+            ),
             alignment: Layouts::new(context.registry())
                 .object(&CObjectType::known(CKnownObject::MaxAlign))?
                 .alignment(),
@@ -90,6 +109,14 @@ impl AllocationRequest {
         registry: &crate::ast::CRegistry,
     ) -> Result<(), E> {
         self.validate()?;
+        if matches!(
+            allocation.shape(),
+            crate::ast::CAllocationShape::Elements(_)
+        ) {
+            self.element_bounds(allocation, registry)?;
+            // Matching bytes is not a dynamic storage/access certificate (checkpoint 02).
+            return Err(E::UnprovedAllocation);
+        }
         if allocation.scope().function() != &self.origin.function
             || allocation.allocator() != &crate::ast::CAllocatorSource::Default
         {
@@ -101,11 +128,43 @@ impl AllocationRequest {
         }
         Ok(())
     }
+    fn element_bounds(
+        &self,
+        allocation: &crate::ast::CAllocationRef,
+        registry: &crate::ast::CRegistry,
+    ) -> Result<(u64, u64), E> {
+        self.validate()?;
+        let crate::ast::CAllocationShape::Elements(count) = allocation.shape() else {
+            return Err(E::UnprovedAllocation);
+        };
+        if allocation.scope().function() != &self.origin.function
+            || allocation.allocator() != &crate::ast::CAllocatorSource::Default
+        {
+            return Err(E::UnprovedAllocation);
+        }
+        let layout = Layouts::new(registry).object(allocation.object_type())?;
+        let stride = layout.size();
+        let (first, last) = self
+            .products
+            .bounds(count, stride)
+            .ok_or(E::UnprovedAllocationSize)?;
+        if stride == 0 || layout.alignment() > self.alignment {
+            return Err(E::UnprovedAllocationSize);
+        }
+        let first = first.max((self.bytes.0 - 1) / stride + 1);
+        let last = last.min(self.bytes.1 / stride);
+        if first == 0 || first > last {
+            return Err(E::UnprovedAllocationSize);
+        }
+        Ok((first, last))
+    }
     pub(in crate::ownership) fn origin(&self) -> &AllocationOrigin {
         &self.origin
     }
     pub(in crate::ownership) fn validate(&self) -> Result<(), E> {
-        if self.scope.function() != &self.origin.function {
+        if self.scope.function() != &self.origin.function
+            || !self.products.valid_for(&self.origin.function)
+        {
             return Err(E::InvalidNumericSite);
         }
         if self.bytes.0 == 0 || self.bytes.0 > self.bytes.1 || !self.alignment.is_power_of_two() {
@@ -162,6 +221,7 @@ impl<'ast> NumericFacts<'ast> {
                 },
                 scope: graph.node(entry.site.point).scope().clone(),
                 bytes: bounds,
+                products: Products::default(),
                 alignment: Layouts::new(self.context.registry())
                     .object(&CObjectType::known(CKnownObject::MaxAlign))?
                     .alignment(),

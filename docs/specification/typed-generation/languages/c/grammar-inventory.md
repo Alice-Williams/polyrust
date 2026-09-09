@@ -64,6 +64,13 @@ a verified effect summary and cannot manufacture proof transitions.
 | Binary operator | Add, Subtract, Multiply, Divide, Remainder, ShiftLeft, ShiftRight, BitAnd, BitOr, BitXor, Equal, NotEqual, Less, LessEqual, Greater, GreaterEqual, LogicalAnd, LogicalOr |
 | Internal pointer test | IsNull(pointer value), IsNonNull(pointer value), SameSlot(left owning-slot pointer, right owning-slot pointer of the exact same type) |
 | Conversion | Numeric(exact destination scalar), AddConst(exact destination pointer), ObjectToVoid(exact destination qualified void pointer), AllocationRestore(allocation registration, exact object pointer), AdapterErase(adapter registration), AdapterRestore(same adapter registration) |
+| Allocation requested shape | Object; Elements(typed immutable size_t count binding), with an authenticated object/element type and allocator origin |
+
+The Elements count is an authenticated actual local, not a numeric capacity or
+caller-authored proof. Its declaration dominates restoration; allocation proof
+matches that exact count to the original actual byte product. See
+[dynamic buffer proof](dynamic-buffer-proof.md). These staged builders do not
+authorize rendering before the storage, certification and native-oracle gates.
 
 Expressions distinguish void call effects from values; void cannot be an
 operand, initializer or argument. Operator signatures use the actual C integer

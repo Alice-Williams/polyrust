@@ -172,8 +172,9 @@ fn composed_requests_reject_cloned_calls_wrong_points_and_foreign_graphs() {
     let bytes = arguments[0].as_ref().unwrap();
     let graph = &facts.context.functions()[0];
     let expected = facts.allocation_request(call).unwrap();
+    let state = crate::ownership::numeric_flow::State::default();
     assert_eq!(
-        AllocationRequest::actual(&facts.context, graph, entry.site.point, call, bytes),
+        AllocationRequest::actual(&facts.context, graph, entry.site.point, call, bytes, &state),
         Ok(expected.clone())
     );
     assert_eq!(
@@ -182,7 +183,8 @@ fn composed_requests_reject_cloned_calls_wrong_points_and_foreign_graphs() {
             graph,
             entry.site.point,
             &(*call).clone(),
-            bytes
+            bytes,
+            &state
         ),
         Err(E::InvalidNumericSite)
     );
@@ -191,7 +193,7 @@ fn composed_requests_reject_cloned_calls_wrong_points_and_foreign_graphs() {
         .find(|p| matches!(graph.node(*p).action(), Action::FunctionEnd))
         .unwrap();
     assert_eq!(
-        AllocationRequest::actual(&facts.context, graph, wrong, call, bytes),
+        AllocationRequest::actual(&facts.context, graph, wrong, call, bytes, &state),
         Err(E::InvalidNumericSite)
     );
     let second = crate::ownership::context_facts::ContextFacts::check(&f.registry, &files).unwrap();
@@ -201,7 +203,8 @@ fn composed_requests_reject_cloned_calls_wrong_points_and_foreign_graphs() {
             &second.functions()[0],
             entry.site.point,
             call,
-            bytes
+            bytes,
+            &state
         ),
         Err(E::InvalidNumericSite)
     );

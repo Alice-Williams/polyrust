@@ -1,12 +1,25 @@
 # M34A-11-02D-04C-02C — Dynamic extents and initialized prefixes
 
-- Status: planned
+- Status: in-progress
 - Depends on: M34A-11-02D-04C-02B
 
 ## Goal
 
 Prove runtime-sized buffers using actual allocation count relations and
 construction progress, not invented fixed C array types or interval minima.
+
+## Ordered implementation checkpoints
+
+The [dynamic-buffer specification](../../specification/typed-generation/languages/c/dynamic-buffer-proof.md)
+defines the admitted count grammar and proof boundary.
+
+1. [01: typed counts and actual allocation products](M34A-11-02D-04C-02C-01-count-products.md).
+2. [02: dynamic storage and guarded access](M34A-11-02D-04C-02C-02-buffer-paths.md).
+3. [03: initialized prefixes and construction](M34A-11-02D-04C-02C-03-prefixes.md).
+
+Each checkpoint has its own tests, full cached gates, independent review and
+commit/push. Count metadata alone cannot admit dynamic access. Parent 02C and
+parent 02 remain open until all three checkpoints meet their definitions of done.
 
 ## Definition of done
 

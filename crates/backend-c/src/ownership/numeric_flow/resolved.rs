@@ -29,7 +29,7 @@ impl<'ast, 'resolver> Engine<'ast, 'resolver> {
             call.arguments().first().ok_or(E::ExpectedNumericValue)?,
             state,
         )?;
-        super::AllocationRequest::actual(context, graph, point, call, &bytes)
+        super::AllocationRequest::actual(context, graph, point, call, &bytes, state)
     }
     pub(in crate::ownership) fn composed(
         context: &ContextFacts<'ast>,

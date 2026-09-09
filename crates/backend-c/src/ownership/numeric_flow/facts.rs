@@ -1,5 +1,6 @@
 //! Immutable composed facts retain the same context and actual program-point sites.
 mod allocation_requests;
+mod count_products;
 mod indices;
 mod static_indices;
 use super::{Analysis, ContextFacts, E, solve};

@@ -297,6 +297,9 @@ mod allocation_identity;
 #[path = "tests/allocation_loops.rs"]
 mod allocation_loops;
 #[cfg(test)]
+#[path = "tests/buffer_count_bindings.rs"]
+mod buffer_count_bindings;
+#[cfg(test)]
 #[path = "tests/heap_aggregates.rs"]
 mod heap_aggregates;
 #[cfg(test)]
@@ -362,13 +365,13 @@ pub use known_objects::CKnownObject;
 pub use literals::{CLiteral, CNullPointer, CSignedLiteral, CUnsignedLiteral};
 pub use operator_signatures::{CBinaryOperator, COperatorError, CUnaryOperator};
 pub use registry::{
-    CAggregateRef, CAllocationRef, CAllocatorSource, CCallableContractOrigin, CCallableContractRef,
-    CCleanupExitRef, CDeclarationKey, CEnumRef, CEnumeratorRef, CFileKey, CFileRef, CFileRole,
-    CFrozenRegistry, CFunctionRef, CGeneratedOrigin, CInterfaceAdapterRef, CInterfaceTableRef,
-    CInterfaceWitnessRef, CLocalRef, CLoopRef, CMemberBinding, CMemberRef, CObjectRef,
-    CParameterRef, CRegistrationKind, CRegistrationOwner, CRegistrationSummary, CRegistry,
-    CRegistryError, CScopeRef, CStructRef, CSwitchRef, CSynthesisReason, CTypedefRef, CUnionRef,
-    CWitnessMethod,
+    CAggregateRef, CAllocationRef, CAllocationShape, CAllocatorSource, CBufferCountRef,
+    CCallableContractOrigin, CCallableContractRef, CCleanupExitRef, CDeclarationKey, CEnumRef,
+    CEnumeratorRef, CFileKey, CFileRef, CFileRole, CFrozenRegistry, CFunctionRef, CGeneratedOrigin,
+    CInterfaceAdapterRef, CInterfaceTableRef, CInterfaceWitnessRef, CLocalRef, CLoopRef,
+    CMemberBinding, CMemberRef, CObjectRef, CParameterRef, CRegistrationKind, CRegistrationOwner,
+    CRegistrationSummary, CRegistry, CRegistryError, CScopeRef, CStructRef, CSwitchRef,
+    CSynthesisReason, CTypedefRef, CUnionRef, CWitnessMethod,
 };
 pub use scalar_representation::{CIntegerWidth, CScalarRepresentation};
 pub use signatures::{CFunctionType, CParameterType, CReturnType, CReturnValue};
