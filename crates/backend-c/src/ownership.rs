@@ -4,6 +4,7 @@ mod constants;
 mod context_facts;
 mod errors;
 mod layout;
+mod loops;
 mod package_constants;
 mod ranges;
 mod sequencing;

@@ -31,6 +31,14 @@ places, call summaries, control paths and registered owners, not from a supplied
 safe/progress flag. Multiple branch-local updates are legal only when every
 continuing path executes exactly one and no path executes two.
 
+The initial 02D-03B proof rejects every address exposure of the counter or
+bound, including const-bound addresses. This conservative diagnostic avoids
+assuming that const typing alone proves transitive storage/call effects.
+02D-04/05 may admit authenticated read-only bound aliases without weakening
+the no-writable-alias rule. All-syntax inventories include unreachable nodes;
+path counting may discard an edge only using a checked constant predicate.
+Unknown branches and switch alternatives remain conservatively possible.
+
 Step occurrences are identified by walking the actual Assign nodes and their
 authenticated counter references, with verifier-owned structural program points
 for path counting. The verifier inventories every write to that counter, not

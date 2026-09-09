@@ -177,6 +177,22 @@ mod sequencing_places;
 mod sequencing_roots;
 
 #[cfg(test)]
+#[path = "tests/counted_fixture.rs"]
+mod counted_fixture;
+#[cfg(test)]
+#[path = "tests/counted_mutations.rs"]
+mod counted_mutations;
+#[cfg(test)]
+#[path = "tests/counted_nested.rs"]
+mod counted_nested;
+#[cfg(test)]
+#[path = "tests/counted_paths.rs"]
+mod counted_paths;
+#[cfg(test)]
+#[path = "tests/counted_shapes.rs"]
+mod counted_shapes;
+
+#[cfg(test)]
 #[path = "tests/constant_initializers.rs"]
 mod constant_initializers;
 

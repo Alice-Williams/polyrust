@@ -40,6 +40,12 @@ pub enum CSafetyError {
     FalseAssertion,
     UnsequencedCall,
     InvalidNumericRange,
+    InvalidCountedLoop,
+    SharedLoopCounter,
+    InvalidLoopMutation,
+    LoopAddressEscape,
+    MissingLoopStep,
+    RepeatedLoopStep,
 }
 
 impl From<CContextError> for CSafetyError {
@@ -80,6 +86,22 @@ impl std::fmt::Display for CSafetyError {
             ),
             Self::InvalidNumericRange => {
                 f.write_str("C numeric range has unordered bounds or mismatched scalar types")
+            }
+            Self::InvalidCountedLoop => {
+                f.write_str("C loop does not match the checked counted grammar")
+            }
+            Self::SharedLoopCounter => f.write_str("C counted loops cannot share a counter"),
+            Self::InvalidLoopMutation => {
+                f.write_str("C loop counter has an unowned or noncanonical write")
+            }
+            Self::LoopAddressEscape => {
+                f.write_str("C counted-loop counter or bound address is exposed")
+            }
+            Self::MissingLoopStep => {
+                f.write_str("C continuing path does not execute its counted step")
+            }
+            Self::RepeatedLoopStep => {
+                f.write_str("C iteration path executes its counted step more than once")
             }
         }
     }
