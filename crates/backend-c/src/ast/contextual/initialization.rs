@@ -131,6 +131,7 @@ struct Reader<'a> {
     state: &'a State,
 }
 impl Visitor for Reader<'_> {
+    type Error = E;
     fn evaluation(&self) -> walk::Evaluation {
         walk::Evaluation::RuntimePaths
     }

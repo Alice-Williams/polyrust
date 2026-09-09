@@ -15,7 +15,7 @@ mod call_construction;
 mod call_model;
 mod comments;
 mod constant_expressions;
-mod contextual;
+pub(crate) mod contextual;
 mod control_construction;
 mod declaration_construction;
 mod declaration_model;
@@ -36,8 +36,9 @@ mod operator_signatures;
 mod ownership_conversions;
 mod place_construction;
 mod pointer_expressions;
-mod registry;
+pub(crate) mod registry;
 mod scalar_abi;
+mod scalar_representation;
 mod signatures;
 mod statement_construction;
 mod statement_errors;
@@ -158,6 +159,15 @@ mod known_calls;
 #[path = "tests/contextual_known_calls.rs"]
 mod contextual_known_calls;
 
+#[cfg(test)]
+#[path = "tests/constant_packages.rs"]
+mod constant_packages;
+
+#[cfg(test)]
+#[path = "tests/constant_initializers.rs"]
+mod constant_initializers;
+
+pub use crate::ownership::CSafetyError;
 pub use call_model::{CCall, CCallContract, CCallable, CCallableKind, CEffect};
 pub use comments::{CAssertDiagnostic, CComment};
 pub use contextual::CContextError;
@@ -188,6 +198,7 @@ pub use registry::{
     CRegistryError, CScopeRef, CStructRef, CSwitchRef, CSynthesisReason, CTypedefRef, CUnionRef,
     CWitnessMethod,
 };
+pub use scalar_representation::{CIntegerWidth, CScalarRepresentation};
 pub use signatures::{CFunctionType, CParameterType, CReturnType, CReturnValue};
 pub use statement_construction::CStatements;
 pub use statement_errors::CStatementError;

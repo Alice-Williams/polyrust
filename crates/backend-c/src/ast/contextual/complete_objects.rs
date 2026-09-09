@@ -63,6 +63,7 @@ pub(super) fn check(registry: &CRegistry, files: &[CSourceFile]) -> Result<(), E
 }
 
 impl super::access_walk::Visitor for CompleteObjects<'_> {
+    type Error = E;
     fn value(&mut self, value: &super::super::CValue) -> Result<(), E> {
         // Expression-only casts/null pointers can introduce a type which no
         // registration stores. Check its form even in unreachable syntax.

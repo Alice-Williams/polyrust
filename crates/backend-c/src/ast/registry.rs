@@ -44,7 +44,7 @@ pub use nominals::{
 };
 pub use symbols::{CFunctionRef, CLocalRef, CObjectRef, CParameterRef, CScopeRef};
 
-pub(super) use contextual_inventory::CRegistered;
+pub(crate) use contextual_inventory::CRegistered;
 pub(super) use identity::RegistryScope;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

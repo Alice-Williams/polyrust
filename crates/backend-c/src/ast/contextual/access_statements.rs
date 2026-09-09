@@ -1,12 +1,9 @@
 //! All-syntax object accesses, including unreachable branches and definitions.
 
 use super::super::{CBlock, CDefinitionKind, CFileItem, CSourceFile, CStatement, CStatementKind};
-use super::{
-    CContextError as E,
-    access_walk::{self as walk, Access, Visitor},
-};
+use super::access_walk::{self as walk, Access, Visitor};
 
-pub(super) fn file(visitor: &mut impl Visitor, file: &CSourceFile) -> Result<(), E> {
+pub(crate) fn file<V: Visitor>(visitor: &mut V, file: &CSourceFile) -> Result<(), V::Error> {
     for item in file.items() {
         match item {
             CFileItem::Definition(value) => match value.kind() {
@@ -22,14 +19,14 @@ pub(super) fn file(visitor: &mut impl Visitor, file: &CSourceFile) -> Result<(),
     Ok(())
 }
 
-fn block(visitor: &mut impl Visitor, value: &CBlock) -> Result<(), E> {
+fn block<V: Visitor>(visitor: &mut V, value: &CBlock) -> Result<(), V::Error> {
     for value in value.statements() {
         statement(visitor, value)?;
     }
     Ok(())
 }
 
-fn statement(visitor: &mut impl Visitor, value: &CStatement) -> Result<(), E> {
+fn statement<V: Visitor>(visitor: &mut V, value: &CStatement) -> Result<(), V::Error> {
     match value.kind() {
         CStatementKind::Block(value) => block(visitor, value)?,
         CStatementKind::Declare(value) => {

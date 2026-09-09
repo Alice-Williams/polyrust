@@ -8,7 +8,7 @@ use super::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(in crate::ast) enum CRegistered<'a> {
+pub(crate) enum CRegistered<'a> {
     Struct(&'a CStructRef),
     Union(&'a CUnionRef),
     Enum(&'a CEnumRef),
@@ -34,7 +34,7 @@ impl CRegistry {
         self.files.iter()
     }
 
-    pub(in crate::ast) fn contextual_inventory(&self) -> Vec<CRegistered<'_>> {
+    pub(crate) fn contextual_inventory(&self) -> Vec<CRegistered<'_>> {
         // No mutable projection: deleting an AST item cannot delete its
         // registration obligation. Each item still carries its actual owner.
         let mut values = Vec::new();

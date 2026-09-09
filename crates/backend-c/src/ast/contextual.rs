@@ -1,7 +1,7 @@
 //! Independent target-tree checking; successful local checks cannot render.
 
-mod access_statements;
-mod access_walk;
+pub(crate) mod access_statements;
+pub(crate) mod access_walk;
 mod case_constants;
 mod complete_objects;
 mod constant_leaves;

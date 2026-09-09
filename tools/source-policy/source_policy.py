@@ -27,6 +27,7 @@ DIRECTIVE = re.compile(
 FIXTURE_ALLOWLIST = {
     "crates/backend-c/test/abi_model_probe.c",
     "crates/backend-c/test/known_calls_probe.c",
+    "crates/backend-c/test/constants_layout_probe.c",
     "crates/backend-c/test/abi_shapes_test.c",
     "crates/backend-c/test/c_consumer_test.c",
     "crates/backend-c/test/runtime_ownership_test.c",
@@ -336,6 +337,13 @@ const BODY: &str = "plain body";
                      "crates/backend-c/src/known_calls_probe.c"]:
         if not target_template_offenders(adjacent, "#include <math.h>\n"):
             raise AssertionError("known-call oracle exception admitted an adjacent template")
+    constants_probe = "crates/backend-c/test/constants_layout_probe.c"
+    if target_template_offenders(constants_probe, "#include <stdint.h>\n"):
+        raise AssertionError("independent constants/layout oracle includes were rejected")
+    for adjacent in [constants_probe + ".copy", "crates/backend-c/test/other_constants_probe.c",
+                     "crates/backend-c/src/constants_layout_probe.c"]:
+        if not target_template_offenders(adjacent, "#include <stdint.h>\n"):
+            raise AssertionError("constants/layout oracle exception admitted an adjacent template")
     harness = "crates/backend-java/test/check_mapping_contract.py"
     if target_template_offenders(harness, "from pathlib import Path\n"):
         raise AssertionError("compiler-contract harness imports were rejected")

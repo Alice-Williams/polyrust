@@ -166,6 +166,8 @@ labels are planned and must actually be added before their owning stage closes.
 | c_gcc_abi_model_probe_test | Existing since 00R; 02B/04 | Same ABI probes under GCC 14.2 at O0/O2; unsigned-char negative control |
 | c_known_calls_probe_test / c_known_calls_unoptimized_probe_test | 02D-00 | Exact library prototypes and macro result types under Zig at O2/O0; actual runtime calls |
 | c_gcc_known_calls_probe_test | 02D-00 | Same library controls under GCC 14.2 at O0/O2; wrong Bool predicate result rejected |
+| c_constants_layout_probe_test / c_constants_layout_unoptimized_probe_test | 02D-01 | Constant arithmetic/conversions, selected evaluation and layouts under Zig at O2/O0 |
+| c_gcc_constants_layout_probe_test | 02D-01 | Same controls under GCC 14.2 O0/O2; signed-overflow negative control |
 | c_grammar_inventory_test | 04 | Every closed AST variant has positive, mutation and native coverage |
 | c_structural_format_test | 04 | Canonical formatting fixtures, repeated-render no-diff and hostile translation-phase text |
 | c_ast_compiler_oracle_test | 04 | Certified ASTs compile; rejected contextual mutations cannot certify |

@@ -31,6 +31,9 @@ revalidation; it consumes the same catalogue rather than reauthoring signatures.
 
 ## Control and fixed points
 
+The [constant/layout contract](constant-and-layout-proof.md) specifies exact
+numeric conversions, evaluated versus all-syntax traversal and private facts.
+
 Reuse the existing actual-AST graph. Extend it with closed edge meanings,
 including predicate polarity, switch selection/default and loop/backedge/exit
 identity. Do not infer truth from a successor's position in a Vec. Scope exits

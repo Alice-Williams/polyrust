@@ -228,6 +228,7 @@ fn ancestor(outer: &CScopeRef, inner: &CScopeRef) -> bool {
 }
 
 impl Visitor for Lexical<'_> {
+    type Error = E;
     fn place(&mut self, place: &CPlace, _access: Access) -> Result<(), E> {
         match place.kind() {
             CPlaceKind::Local(value) => self.local(value)?,

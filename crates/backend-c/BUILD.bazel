@@ -84,6 +84,25 @@ sh_test(
     data = ["test/known_calls_probe.c"],
 )
 
+cc_test(
+    name = "c_constants_layout_probe_test",
+    srcs = ["test/constants_layout_probe.c"],
+    copts = C_KNOWN_CALL_COPTS + ["-O2"],
+)
+
+cc_test(
+    name = "c_constants_layout_unoptimized_probe_test",
+    srcs = ["test/constants_layout_probe.c"],
+    copts = C_KNOWN_CALL_COPTS + ["-O0"],
+)
+
+sh_test(
+    name = "c_gcc_constants_layout_probe_test",
+    srcs = ["//tools/c:test_constants_layout.sh"],
+    args = ["$(location test/constants_layout_probe.c)"],
+    data = ["test/constants_layout_probe.c"],
+)
+
 rust_library(
     name = "portable_backend_c",
     srcs = glob(

@@ -4,32 +4,35 @@ use super::super::{
     CBinaryOperator, CCall, CCallableKind, CIndexBase, CInitializer, CInitializerKind, CPlace,
     CPlaceKind, CPointerTest, CValue, CValueKind,
 };
-use super::CContextError as E;
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum Access {
+pub(crate) enum Access {
     Read,
     Write,
     Address,
 }
 
-pub(super) trait Visitor {
+pub(crate) trait Visitor {
+    type Error;
     fn evaluation(&self) -> Evaluation {
         Evaluation::AllSyntax
     }
-    fn place(&mut self, place: &CPlace, access: Access) -> Result<(), E>;
-    fn value(&mut self, _value: &CValue) -> Result<(), E> {
+    fn place(&mut self, place: &CPlace, access: Access) -> Result<(), Self::Error>;
+    fn value(&mut self, _value: &CValue) -> Result<(), Self::Error> {
         Ok(())
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum Evaluation {
+pub(crate) enum Evaluation {
     AllSyntax,
     RuntimePaths,
 }
 
-pub(super) fn place(visitor: &mut impl Visitor, value: &CPlace, access: Access) -> Result<(), E> {
+pub(crate) fn place<V: Visitor>(
+    visitor: &mut V,
+    value: &CPlace,
+    access: Access,
+) -> Result<(), V::Error> {
     visitor.place(value, access)?;
     match value.kind() {
         CPlaceKind::Local(_) | CPlaceKind::Parameter(_) | CPlaceKind::Global(_) => {}
@@ -46,7 +49,7 @@ pub(super) fn place(visitor: &mut impl Visitor, value: &CPlace, access: Access) 
     Ok(())
 }
 
-pub(super) fn expression(visitor: &mut impl Visitor, value: &CValue) -> Result<(), E> {
+pub(crate) fn expression<V: Visitor>(visitor: &mut V, value: &CValue) -> Result<(), V::Error> {
     visitor.value(value)?;
     match value.kind() {
         CValueKind::Read(value) => place(visitor, value, Access::Read)?,
@@ -103,7 +106,7 @@ pub(super) fn expression(visitor: &mut impl Visitor, value: &CValue) -> Result<(
     Ok(())
 }
 
-pub(super) fn call(visitor: &mut impl Visitor, value: &CCall) -> Result<(), E> {
+pub(crate) fn call<V: Visitor>(visitor: &mut V, value: &CCall) -> Result<(), V::Error> {
     match value.callable().kind() {
         CCallableKind::Indirect { pointer, .. } => expression(visitor, pointer)?,
         CCallableKind::Direct(_) | CCallableKind::Known(_) => {}
@@ -114,7 +117,10 @@ pub(super) fn call(visitor: &mut impl Visitor, value: &CCall) -> Result<(), E> {
     Ok(())
 }
 
-pub(super) fn initializer(visitor: &mut impl Visitor, value: &CInitializer) -> Result<(), E> {
+pub(crate) fn initializer<V: Visitor>(
+    visitor: &mut V,
+    value: &CInitializer,
+) -> Result<(), V::Error> {
     match value.kind() {
         CInitializerKind::Expression(value) => expression(visitor, value)?,
         CInitializerKind::Zero(_) => {}

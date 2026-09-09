@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 
 mod generator;
+mod ownership;
 
 pub mod ast;
 pub mod dialect;
