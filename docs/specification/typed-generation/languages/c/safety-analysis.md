@@ -60,6 +60,8 @@ facts must dominate pointer formation, not only the eventual memory read.
 ## Storage and interprocedural composition
 
 Uninitialized storage, initialized prefixes and complete live owners are distinct.
+The [allocation proof contract](allocation-proof.md) specifies actual producing
+origins, null/success/release flow, dynamic extents and staged lifecycle evidence.
 Zero initializes empty lifecycle slots, not valid inhabited values. Allocation
 restore preserves actual storage state. Copy, clone, move, drop and borrow are
 different transitions with exact allocator/extent/lifetime obligations.

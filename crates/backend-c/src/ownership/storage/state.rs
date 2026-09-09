@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct State {
     pub(super) roots: BTreeMap<Root, Cell>,
+    pub(super) allocations: super::allocations::Allocations,
 }
 impl State {
     pub(super) fn live(&self, path: &Key) -> Result<(), E> {
@@ -29,6 +30,9 @@ impl State {
         registry: &CRegistry,
     ) -> Result<(), E> {
         self.live(path)?;
+        if matches!(path.root(), Root::Global(_)) && value.contains_allocation() {
+            return Err(E::UnprovedAllocation);
+        }
         if matches!(path.root(), Root::Global(_))
             && value.automatic_address(&path.ty(), registry)?
         {
@@ -63,7 +67,10 @@ impl State {
                 roots.insert(root.clone(), left.join(right, &root.ty(), registry)?);
             }
         }
-        Ok(Self { roots })
+        Ok(Self {
+            roots,
+            allocations: self.allocations.join(&other.allocations),
+        })
     }
     pub(super) fn forget_values(&mut self) {
         for value in self.roots.values_mut() {

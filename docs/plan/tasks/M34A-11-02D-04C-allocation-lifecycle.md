@@ -1,12 +1,24 @@
 # M34A-11-02D-04C — Allocation and lifecycle transitions
 
-- Status: planned
+- Status: in-progress
 - Depends on: M34A-11-02D-04B
 
 ## Goal
 
 Authenticate actual allocation results and partial construction, move, release
 and cleanup transitions rather than trusting registered ownership labels.
+
+## Ordered implementation
+
+1. [04C-01: actual allocation requests and raw lifecycle](M34A-11-02D-04C-01-allocation-origins.md).
+2. [04C-02: typed allocated storage and dynamic extents](M34A-11-02D-04C-02-allocated-storage.md).
+3. [04C-03: construction, transfer and cleanup](M34A-11-02D-04C-03-owner-transitions.md).
+
+The [allocation proof specification](../../specification/typed-generation/languages/c/allocation-proof.md)
+defines these boundaries. Each completed checkpoint has its own test/review and
+commit/push evidence. Splitting the implementation does not reduce the parent
+definition of done. Custom incoming allocator contracts remain 04D and actual
+generated callback summaries remain 05; registrations never bootstrap either.
 
 ## Definition of done
 

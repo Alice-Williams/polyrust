@@ -1,5 +1,8 @@
 //! Storage-specific proof consumers; intermediate checks cannot render output.
 mod actions;
+mod allocation_calls;
+mod allocation_edges;
+mod allocations;
 mod expressions;
 mod flow;
 mod index_extents;
@@ -26,12 +29,18 @@ impl Engine<'_, '_> {
 
 impl CRegistry {
     /// Checks derived storage, initialization, bounds and automatic lifetimes.
-    /// Calls and allocation restoration remain unresolved at this intermediate
-    /// boundary. Success is neither an ownership nor rendering certificate.
+    /// Default allocation/null/release flow is checked; typed restoration and
+    /// other call effects remain unresolved. Success is not a full ownership or
+    /// rendering certificate.
     ///
     /// ```compile_fail
     /// use portable_backend_c::ownership::storage::state::State;
     /// fn forge() -> State { State::default() }
+    /// ```
+    ///
+    /// ```compile_fail
+    /// use portable_backend_c::ownership::numeric_flow::AllocationOrigin;
+    /// fn forge() -> AllocationOrigin { todo!() }
     /// ```
     pub fn check_storage_paths(&self, files: &[CSourceFile]) -> Result<(), CSafetyError> {
         let numeric = NumericFacts::check(self, files)?;

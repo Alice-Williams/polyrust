@@ -108,6 +108,17 @@ fn function<'ast>(facts: &NumericFacts<'ast>, graph: &Graph<'ast>, entry: State)
                 continue;
             }
             let mut outgoing = state.clone();
+            if let EdgeMeaning::Predicate {
+                condition,
+                polarity,
+                ..
+            } = edge.meaning()
+                && !engine
+                    .refine_allocations(condition, polarity == Polarity::True, &mut outgoing)
+                    .unwrap_or(true)
+            {
+                continue;
+            }
             for scope in edge.exited_scopes() {
                 outgoing.leave(scope);
             }
@@ -133,6 +144,18 @@ fn function<'ast>(facts: &NumericFacts<'ast>, graph: &Graph<'ast>, entry: State)
             cursor: Some(facts.cursor(graph, point)?),
         };
         engine.action(graph.node(point).action(), &mut state)?;
+        // Falling off a void function has no successor edge in the actual graph.
+        if matches!(
+            graph.node(point).action(),
+            crate::ast::contextual::flow_graph::Action::FunctionEnd
+        ) {
+            state.allocations.finish()?;
+        }
+        for edge in graph.node(point).successors() {
+            if edge.destination() == Destination::FunctionReturn {
+                state.allocations.finish()?;
+            }
+        }
     }
     Ok(())
 }

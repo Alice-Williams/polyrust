@@ -23,6 +23,7 @@ use crate::ast::{
 };
 pub(super) use facts::Cursor;
 pub(super) use facts::NumericFacts;
+pub(super) use facts::{AllocationOrigin, AllocationRequest};
 use state::{Number, State};
 use std::collections::BTreeSet;
 use storage::Root;

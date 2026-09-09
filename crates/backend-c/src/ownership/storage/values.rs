@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum Pointer {
     Null,
+    Allocation(Box<crate::ownership::numeric_flow::AllocationOrigin>),
     Target(Box<Key>),
     Function(CFunctionRef),
     Unknown,
@@ -111,7 +112,7 @@ impl Cell {
             CObjectTypeKind::Pointer(_) => match self.pointer()? {
                 Pointer::Target(path) => !matches!(path.root(), Root::Global(_)),
                 Pointer::Unknown | Pointer::Expired => true,
-                Pointer::Null | Pointer::Function(_) => false,
+                Pointer::Null | Pointer::Function(_) | Pointer::Allocation(_) => false,
             },
             CObjectTypeKind::Struct(owner) => {
                 let owner = crate::ast::CAggregateRef::Struct(owner.clone());

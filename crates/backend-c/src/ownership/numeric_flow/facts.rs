@@ -1,9 +1,11 @@
 //! Immutable composed facts retain the same context and actual program-point sites.
+mod allocation_requests;
 mod indices;
 mod static_indices;
 mod storage_view;
 use super::{Analysis, ContextFacts, E, solve};
 use crate::ast::{CRegistry, CSourceFile};
+pub(in crate::ownership) use allocation_requests::{AllocationOrigin, AllocationRequest};
 pub(in crate::ownership) use storage_view::Cursor;
 
 #[cfg(test)]

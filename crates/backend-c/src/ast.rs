@@ -277,6 +277,24 @@ mod storage_pointers;
 #[path = "tests/storage_type_aliases.rs"]
 mod storage_type_aliases;
 pub use call_model::{CCall, CCallContract, CCallable, CCallableKind, CEffect};
+#[cfg(test)]
+#[path = "tests/allocation_aggregate_paths.rs"]
+mod allocation_aggregate_paths;
+#[cfg(test)]
+#[path = "tests/allocation_exits.rs"]
+mod allocation_exits;
+#[cfg(test)]
+#[path = "tests/allocation_fixture.rs"]
+mod allocation_fixture;
+#[cfg(test)]
+#[path = "tests/allocation_flow.rs"]
+mod allocation_flow;
+#[cfg(test)]
+#[path = "tests/allocation_identity.rs"]
+mod allocation_identity;
+#[cfg(test)]
+#[path = "tests/allocation_loops.rs"]
+mod allocation_loops;
 pub use comments::{CAssertDiagnostic, CComment};
 pub use contextual::CContextError;
 pub use declaration_construction::CDeclarations;

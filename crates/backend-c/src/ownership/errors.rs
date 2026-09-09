@@ -60,6 +60,9 @@ pub enum CSafetyError {
     AutomaticAddressEscape,
     UnprovedStorageCall,
     UnprovedAllocation,
+    UnprovedAllocationSize,
+    UnreleasedAllocation,
+    InvalidAllocationRelease,
 }
 
 impl From<CContextError> for CSafetyError {
@@ -80,6 +83,15 @@ impl From<COperatorError> for CSafetyError {
 impl std::fmt::Display for CSafetyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::UnprovedAllocationSize => {
+                f.write_str("C allocation needs positive checked bytes")
+            }
+            Self::UnreleasedAllocation => {
+                f.write_str("C path retains an unaccounted live allocation")
+            }
+            Self::InvalidAllocationRelease => {
+                f.write_str("C release lacks the exact live allocator base")
+            }
             Self::UnprovedStorage => f.write_str("C storage provenance is not established"),
             Self::UninitializedStorage => f.write_str("C selected storage is not initialized"),
             Self::InactiveUnionMember => f.write_str("C union read lacks its actual active member"),

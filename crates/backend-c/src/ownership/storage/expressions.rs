@@ -182,6 +182,7 @@ impl<'facts, 'ast> Engine<'facts, 'ast> {
                 let nonnull = match pointer {
                     Pointer::Null => Some(false),
                     Pointer::Target(_) | Pointer::Function(_) => Some(true),
+                    Pointer::Allocation(origin) => state.allocations.nonnull(&origin)?,
                     Pointer::Unknown | Pointer::Expired => None,
                 };
                 let is_nonnull = matches!(value.kind(), V::PointerTest(CPointerTest::IsNonNull(_)));

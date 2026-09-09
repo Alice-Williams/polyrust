@@ -49,6 +49,7 @@ impl<'ast> Engine<'_, 'ast> {
             Pointer::Null => return Err(E::NullStorage),
             Pointer::Expired => return Err(E::ExpiredStorage),
             Pointer::Unknown | Pointer::Function(_) => return Err(E::UnprovedStorage),
+            Pointer::Allocation(_) => return Err(E::UnprovedAllocation),
         };
         if !self
             .registry()
