@@ -246,6 +246,36 @@ mod index_extents;
 mod constant_initializers;
 
 pub use crate::ownership::CSafetyError;
+#[cfg(test)]
+#[path = "tests/storage_adapters.rs"]
+mod storage_adapters;
+#[cfg(test)]
+#[path = "tests/storage_aggregates.rs"]
+mod storage_aggregates;
+#[cfg(test)]
+#[path = "tests/storage_aliases.rs"]
+mod storage_aliases;
+#[cfg(test)]
+#[path = "tests/storage_boundaries.rs"]
+mod storage_boundaries;
+#[cfg(test)]
+#[path = "tests/storage_fixture.rs"]
+mod storage_fixture;
+#[cfg(test)]
+#[path = "tests/storage_flow.rs"]
+mod storage_flow;
+#[cfg(test)]
+#[path = "tests/storage_initialization.rs"]
+mod storage_initialization;
+#[cfg(test)]
+#[path = "tests/storage_lifetimes.rs"]
+mod storage_lifetimes;
+#[cfg(test)]
+#[path = "tests/storage_pointers.rs"]
+mod storage_pointers;
+#[cfg(test)]
+#[path = "tests/storage_type_aliases.rs"]
+mod storage_type_aliases;
 pub use call_model::{CCall, CCallContract, CCallable, CCallableKind, CEffect};
 pub use comments::{CAssertDiagnostic, CComment};
 pub use contextual::CContextError;

@@ -255,6 +255,31 @@ fn static_address_indices_cannot_lose_unsigned_wrap_history() {
 }
 
 #[test]
+fn storage_composition_rechecks_static_indices_in_every_initializer_shape() {
+    for shape in [
+        Shape::Plain,
+        Shape::Array,
+        Shape::Struct,
+        Shape::Union,
+        Shape::Conversions,
+    ] {
+        for (index, wrapped) in [(0, false), (2, false), (0, true)] {
+            let (f, files) = shaped_fixture(index, wrapped, shape);
+            assert_eq!(
+                f.registry.check_storage_paths(&files),
+                if wrapped {
+                    Err(E::UnprovedSizeArithmetic)
+                } else if index == 2 {
+                    Err(E::IndexOutOfBounds)
+                } else {
+                    Ok(())
+                }
+            );
+        }
+    }
+}
+
+#[test]
 fn static_observation_requires_its_actual_initializer_and_place_occurrence() {
     let (f, files) = fixture(1, false);
     let mut facts = NumericFacts::check(&f.registry, &files).unwrap();

@@ -64,6 +64,43 @@ opaque effects and owner transitions invalidate dependent observations.
 
 ## Allocators, calls and proof composition
 
+### 04B diagnostic subset
+
+The initial storage checker uses shared authenticated declaration roots and
+member/index selectors. An actual numeric observation may give an index
+interval; every selected element must be valid. Pointer indexing admits
+nonnegative offsets within the same array, or zero for a scalar subobject.
+A member pointer does not inherit its containing array's extent.
+
+Storage values compress zero arrays and sparse initialized elements. A
+non-singleton write weakly updates possible targets and never initializes a
+particular previously uninitialized element. Reads prove complete selected
+coverage, including the active union member. Joins retain exact pointer
+agreement; ambiguous or imported pointer values remain unproved, even for a
+read of the pointer value itself at this intermediate boundary. Boundary
+contracts will supply admissible incoming-pointer facts in 04D/05.
+
+Every evaluated expression result satisfies that same storage-value boundary,
+including discarded known stream pointers and results joined by conditionals
+or variable-index reads. Equivalent proved null representations retain their
+common fact recursively through aggregates; unknown or expired pointers do not.
+Target matching uses the authenticated AST ABI type relation (including
+Int/I32 and U64/Size), ignoring only immediate pointee qualification. Array
+bounds, nominal identities and qualifiers behind nested pointers remain exact.
+
+Crossed lexical exits invalidate retained pointer copies recursively through
+aggregates. A later activation of the same local declaration cannot revive
+them. Returning or globally storing automatic addresses rejects, including
+addresses nested inside aggregates. Function-entry globals are initialized
+representations, not assumed copies of their startup initializer values.
+
+The diagnostic boundary rejects calls and AllocationRestore until producing
+call/lifecycle and body-derived effect evidence is composed. Adapter restoration
+requires agreement with the retained original object type; casts do not grant
+extent or alignment. These restrictions are explicit subset boundaries, not
+claims that every rejected program is invalid C. No owning-handle or rendering
+certificate is created.
+
 The exact allocator, lifecycle and validation ladder are authoritative in
 [callable ABI](callable-abi.md) and [ownership ABI](ownership-and-abi.md).
 Storage checking derives local transitions and call-site obligations from

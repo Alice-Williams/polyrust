@@ -6,6 +6,42 @@ use super::{
 };
 
 impl CRegistry {
+    /// Compare authenticated pointees while ignoring only their immediate
+    /// qualification. Array qualification belongs to the element; qualification
+    /// behind a nested pointer remains significant.
+    pub(crate) fn pointee_types_match(
+        &self,
+        left: &CObjectType,
+        right: &CObjectType,
+    ) -> Result<bool, CRegistryError> {
+        self.check_type(left)?;
+        self.check_type(right)?;
+        let left = left.canonical();
+        let right = right.canonical();
+        let (mut left, mut right) = (&left, &right);
+        while let (
+            CObjectTypeKind::Array {
+                element: a,
+                length: x,
+            },
+            CObjectTypeKind::Array {
+                element: b,
+                length: y,
+            },
+        ) = (left.kind(), right.kind())
+        {
+            if x != y {
+                return Ok(false);
+            }
+            left = a;
+            right = b;
+        }
+        self.types_match(
+            &left.clone().without_top_level_const(),
+            &right.clone().without_top_level_const(),
+        )
+    }
+
     /// Authenticate source aliases first, then compare their concrete types.
     /// ABI-compatible scalar spellings match; distinct nominal registrations do
     /// not. No qualifier addition/loss, decay or pointer conversion is implicit.

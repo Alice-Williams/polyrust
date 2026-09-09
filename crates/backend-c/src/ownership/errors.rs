@@ -51,6 +51,15 @@ pub enum CSafetyError {
     InvalidNumericSite,
     IndexOutOfBounds,
     UnprovedPointerExtent,
+    UnprovedStorage,
+    UninitializedStorage,
+    InactiveUnionMember,
+    ExpiredStorage,
+    NullStorage,
+    StorageTypeMismatch,
+    AutomaticAddressEscape,
+    UnprovedStorageCall,
+    UnprovedAllocation,
 }
 
 impl From<CContextError> for CSafetyError {
@@ -71,6 +80,25 @@ impl From<COperatorError> for CSafetyError {
 impl std::fmt::Display for CSafetyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::UnprovedStorage => f.write_str("C storage provenance is not established"),
+            Self::UninitializedStorage => f.write_str("C selected storage is not initialized"),
+            Self::InactiveUnionMember => f.write_str("C union read lacks its actual active member"),
+            Self::ExpiredStorage => {
+                f.write_str("C automatic storage or pointer lifetime has expired")
+            }
+            Self::NullStorage => f.write_str("C null pointer cannot designate accessed storage"),
+            Self::StorageTypeMismatch => {
+                f.write_str("C pointer target differs from its backing storage type")
+            }
+            Self::AutomaticAddressEscape => {
+                f.write_str("C automatic address may escape its lifetime")
+            }
+            Self::UnprovedStorageCall => {
+                f.write_str("C call storage effects require body-derived evidence")
+            }
+            Self::UnprovedAllocation => {
+                f.write_str("C allocation restoration lacks producing-call evidence")
+            }
             Self::Context(value) => value.fmt(f),
             Self::Registry(value) => value.fmt(f),
             Self::Operator(value) => value.fmt(f),

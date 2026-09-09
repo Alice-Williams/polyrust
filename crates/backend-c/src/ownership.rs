@@ -7,6 +7,7 @@ mod layout;
 mod loops;
 mod numeric_flow;
 mod package_constants;
+mod paths;
 mod ranges;
 mod sequencing;
 mod storage;

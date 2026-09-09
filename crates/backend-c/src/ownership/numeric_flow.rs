@@ -21,6 +21,7 @@ use super::{
 use crate::ast::{
     CCall, CFunctionRef, CPlace, CRegistry, CSourceFile, CValue, contextual::flow_graph::Point,
 };
+pub(super) use facts::Cursor;
 pub(super) use facts::NumericFacts;
 use state::{Number, State};
 use std::collections::BTreeSet;
