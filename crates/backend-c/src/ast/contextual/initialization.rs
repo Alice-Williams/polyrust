@@ -6,7 +6,7 @@ use super::super::{
 use super::{
     CContextError as E,
     access_walk::{self as walk, Access, Visitor},
-    flow_graph::{Action, Graph},
+    flow_graph::{Action, Destination, Graph},
     initialized_paths::{Path, State},
 };
 use std::collections::VecDeque;
@@ -56,53 +56,59 @@ fn transfer(action: &Action<'_>, state: &mut State) {
                 state.mark(path);
             }
         }
-        Action::ScopeExit(scope) => state.leave_scope(scope),
         _ => {}
     }
 }
 
 fn analyze(registry: &CRegistry, graph: &Graph<'_>, entry: State, void: bool) -> Result<(), E> {
-    let mut incoming = vec![None; graph.nodes.len()];
-    incoming[graph.entry.0] = Some(entry);
-    let mut pending = VecDeque::from([graph.entry]);
+    let mut incoming = vec![None; graph.nodes().len()];
+    incoming[graph.entry().index()] = Some(entry);
+    let mut pending = VecDeque::from([graph.entry()]);
     while let Some(point) = pending.pop_front() {
-        let node = &graph.nodes[point.0];
-        let mut state = incoming[point.0]
+        let node = graph.node(point);
+        let mut state = incoming[point.index()]
             .clone()
             .expect("queued only after a reachable input");
-        transfer(&node.action, &mut state);
-        for next in &node.successors {
-            let joined = match &incoming[next.0] {
-                None => state.clone(),
-                Some(old) => old.intersect(&state, registry)?,
+        transfer(node.action(), &mut state);
+        for edge in node.successors() {
+            let Destination::Point(next) = edge.destination() else {
+                continue;
             };
-            if incoming[next.0].as_ref() != Some(&joined) {
-                incoming[next.0] = Some(joined);
-                pending.push_back(*next);
+            let mut outgoing = state.clone();
+            for scope in edge.exited_scopes() {
+                outgoing.leave_scope(scope);
+            }
+            let joined = match &incoming[next.index()] {
+                None => outgoing,
+                Some(old) => old.intersect(&outgoing, registry)?,
+            };
+            if incoming[next.index()].as_ref() != Some(&joined) {
+                incoming[next.index()] = Some(joined);
+                pending.push_back(next);
             }
         }
     }
-    for (node, state) in graph.nodes.iter().zip(incoming) {
+    for (node, state) in graph.nodes().iter().zip(incoming) {
         let Some(mut state) = state else { continue };
         // Scope is retained on every actual point for 02D's lifetime/edge
         // checks, including transfers that skip ordinary ScopeExit nodes.
-        if node.scope.function() != graph.nodes[graph.entry.0].scope.function() {
+        if node.scope().function() != graph.function() {
             return Err(E::WrongLexicalOwner);
         }
         if node
-            .origin
-            .is_some_and(|statement| statement.function() != node.scope.function())
+            .origin()
+            .is_some_and(|statement| statement.function() != node.scope().function())
         {
             return Err(E::WrongLexicalOwner);
         }
-        if let Action::Declare(value) = &node.action {
+        if let Action::Declare(value) = node.action() {
             state.kill_local(value.local());
         }
         let mut reader = Reader {
             registry,
             state: &state,
         };
-        match &node.action {
+        match node.action() {
             Action::Declare(value) => {
                 if let Some(value) = value.initializer() {
                     walk::initializer(&mut reader, value)?;
@@ -113,11 +119,11 @@ fn analyze(registry: &CRegistry, graph: &Graph<'_>, entry: State, void: bool) ->
                 walk::place(&mut reader, place, Access::Write)?;
             }
             Action::Evaluate(value) => walk::call(&mut reader, value.call())?,
-            Action::Read(value) => walk::expression(&mut reader, value)?,
+            Action::Read(value) | Action::Discard(value) => walk::expression(&mut reader, value)?,
             Action::Return(Some(value)) => walk::expression(&mut reader, value)?,
             Action::FunctionEnd if !void => return Err(E::MissingReturn),
             Action::CaseEnd => return Err(E::SwitchFallthrough),
-            Action::Label(identity) if identity.scope() != node.scope => {
+            Action::Label(identity) if identity.scope() != node.scope() => {
                 return Err(E::WrongLexicalOwner);
             }
             _ => {}

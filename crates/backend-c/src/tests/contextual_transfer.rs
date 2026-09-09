@@ -58,30 +58,38 @@ fn loop_declaration_clears_previous_iteration_state_before_initializer() {
         let root = ast.block(scope, vec![iteration]).unwrap();
         let graph = Graph::build(&root).unwrap();
         let declaration = graph
-            .nodes
+            .nodes()
             .iter()
-            .find(|node| matches!(&node.action, Action::Declare(value) if value.local() == &local))
+            .find(|node| matches!(node.action(), Action::Declare(value) if value.local() == &local))
             .unwrap();
         let continuation = graph
-            .nodes
+            .nodes()
             .iter()
             .find(|node| {
-                node.origin
+                node.origin()
                     .is_some_and(|value| matches!(value.kind(), CStatementKind::Continue(_)))
             })
             .unwrap();
-        assert_eq!(continuation.successors.len(), 1);
-        let repeat = &graph.nodes[continuation.successors[0].0];
+        assert_eq!(continuation.successors().len(), 1);
+        let Destination::Point(repeat) = continuation.successors()[0].destination() else {
+            panic!("Continue must have a point destination");
+        };
+        let repeat = graph.node(repeat);
         assert!(
             repeat
-                .origin
+                .origin()
                 .is_some_and(|value| matches!(value.kind(), CStatementKind::BoundedLoop { .. }))
         );
         let path = Path::local(&local);
         let mut previous_iteration = State::default();
         previous_iteration.mark(path.clone());
         assert!(previous_iteration.covers(&path, &registry).unwrap());
-        transfer(&declaration.action, &mut previous_iteration);
+        let mut outgoing = previous_iteration.clone();
+        for scope in continuation.successors()[0].exited_scopes() {
+            outgoing.leave_scope(scope);
+        }
+        assert!(!outgoing.covers(&path, &registry).unwrap());
+        transfer(declaration.action(), &mut previous_iteration);
         assert_eq!(
             previous_iteration.covers(&path, &registry).unwrap(),
             initialized

@@ -33,6 +33,8 @@ revalidation; it consumes the same catalogue rather than reauthoring signatures.
 
 The [constant/layout contract](constant-and-layout-proof.md) specifies exact
 numeric conversions, evaluated versus all-syntax traversal and private facts.
+The [sequencing/control contract](sequencing-and-control-facts.md) specifies
+the exact call positions, typed edge meanings and immutable context boundary.
 
 Reuse the existing actual-AST graph. Extend it with closed edge meanings,
 including predicate polarity, switch selection/default and loop/backedge/exit

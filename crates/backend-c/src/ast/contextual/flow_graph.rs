@@ -1,20 +1,37 @@
-//! Private graph derived from actual control nodes, never input-authored IDs.
+//! Immutable graph derived from actual control nodes, never input-authored IDs.
+mod builder;
+mod scope_edges;
 
-use super::super::{
-    CBlock, CBreakTarget, CCleanupExitRef, CEffect, CLocalDeclaration, CPlace, CScopeRef,
-    CStatement, CStatementKind, CValue,
+#[cfg(test)]
+#[path = "../../tests/control_graph_edges.rs"]
+mod edge_tests;
+#[cfg(test)]
+#[path = "../../tests/control_graph_exits.rs"]
+mod exit_tests;
+#[cfg(test)]
+#[path = "../../tests/control_graph_loops.rs"]
+mod loop_tests;
+
+use super::CContextError;
+use crate::ast::{
+    CBlock, CBreakTarget, CCaseConstant, CCleanupExitRef, CEffect, CFunctionRef, CLocalDeclaration,
+    CLoopRef, CPlace, CScopeRef, CStatement, CSwitchRef, CValue,
 };
-use super::CContextError as E;
-use std::collections::BTreeMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(super) struct Point(pub(super) usize);
+pub(crate) struct Point(usize);
+impl Point {
+    pub(crate) const fn index(self) -> usize {
+        self.0
+    }
+}
 
-pub(super) enum Action<'a> {
+pub(crate) enum Action<'a> {
     Declare(&'a CLocalDeclaration),
     Assign(&'a CPlace, &'a CValue),
     Evaluate(&'a CEffect),
     Read(&'a CValue),
+    Discard(&'a CValue),
     ScopeExit(&'a CScopeRef),
     Return(Option<&'a CValue>),
     CleanupJump(&'a CCleanupExitRef),
@@ -24,187 +41,107 @@ pub(super) enum Action<'a> {
     Empty,
 }
 
-pub(super) struct Node<'a> {
-    pub(super) origin: Option<&'a CStatement>,
-    pub(super) action: Action<'a>,
-    pub(super) scope: &'a CScopeRef,
-    pub(super) successors: Vec<Point>,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Destination {
+    Point(Point),
+    FunctionReturn,
 }
 
-pub(super) struct Graph<'a> {
-    pub(super) nodes: Vec<Node<'a>>,
-    pub(super) entry: Point,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Polarity {
+    True,
+    False,
 }
 
-struct Control {
-    target: CBreakTarget,
-    exit: Point,
-    repeat: Option<Point>,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum BranchOwner<'a> {
+    If,
+    Loop(&'a CLoopRef),
 }
 
-struct Builder<'a> {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Selection<'a> {
+    Cases(&'a [CCaseConstant]),
+    Default,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum EdgeMeaning<'a> {
+    Flow,
+    Predicate {
+        condition: &'a CValue,
+        polarity: Polarity,
+        owner: BranchOwner<'a>,
+    },
+    Switch {
+        identity: &'a CSwitchRef,
+        value: &'a CValue,
+        selection: Selection<'a>,
+    },
+    Backedge(&'a CLoopRef),
+    Break(&'a CBreakTarget),
+    Continue(&'a CLoopRef),
+    Return,
+    Cleanup(&'a CCleanupExitRef),
+}
+
+pub(crate) struct Edge<'a> {
+    destination: Destination,
+    meaning: EdgeMeaning<'a>,
+    exited_scopes: Vec<&'a CScopeRef>,
+}
+impl<'a> Edge<'a> {
+    pub(crate) const fn destination(&self) -> Destination {
+        self.destination
+    }
+    pub(crate) const fn meaning(&self) -> EdgeMeaning<'a> {
+        self.meaning
+    }
+    pub(crate) fn exited_scopes(&self) -> &[&'a CScopeRef] {
+        &self.exited_scopes
+    }
+}
+
+pub(crate) struct Node<'a> {
+    origin: Option<&'a CStatement>,
+    action: Action<'a>,
+    scope: &'a CScopeRef,
+    successors: Vec<Edge<'a>>,
+}
+impl<'a> Node<'a> {
+    pub(crate) const fn origin(&self) -> Option<&'a CStatement> {
+        self.origin
+    }
+    pub(crate) const fn action(&self) -> &Action<'a> {
+        &self.action
+    }
+    pub(crate) const fn scope(&self) -> &'a CScopeRef {
+        self.scope
+    }
+    pub(crate) fn successors(&self) -> &[Edge<'a>] {
+        &self.successors
+    }
+}
+
+pub(crate) struct Graph<'a> {
     nodes: Vec<Node<'a>>,
-    controls: Vec<Control>,
-    labels: BTreeMap<&'a CCleanupExitRef, Point>,
+    entry: Point,
+    function: &'a CFunctionRef,
 }
-
 impl<'a> Graph<'a> {
-    pub(super) fn build(body: &'a CBlock) -> Result<Self, E> {
-        let mut builder = Builder {
-            nodes: Vec::new(),
-            controls: Vec::new(),
-            labels: BTreeMap::new(),
-        };
-        let end = builder.node(body.scope(), Action::FunctionEnd, vec![]);
-        let entry = builder.block(body, end)?;
-        for node in &mut builder.nodes {
-            if let Action::CleanupJump(identity) = node.action {
-                node.successors
-                    .push(*builder.labels.get(identity).ok_or(E::InvalidCleanupExit)?);
-            }
-        }
-        Ok(Self {
-            nodes: builder.nodes,
-            entry,
-        })
+    pub(crate) fn build(body: &'a CBlock) -> Result<Self, CContextError> {
+        builder::build(body)
     }
-}
-
-impl<'a> Builder<'a> {
-    fn node(&mut self, scope: &'a CScopeRef, action: Action<'a>, successors: Vec<Point>) -> Point {
-        let point = Point(self.nodes.len());
-        self.nodes.push(Node {
-            origin: None,
-            action,
-            scope,
-            successors,
-        });
-        point
+    pub(crate) fn nodes(&self) -> &[Node<'a>] {
+        &self.nodes
     }
-
-    fn block(&mut self, block: &'a CBlock, next: Point) -> Result<Point, E> {
-        let mut next = self.node(block.scope(), Action::ScopeExit(block.scope()), vec![next]);
-        for statement in block.statements().iter().rev() {
-            next = self.statement(block.scope(), statement, next)?;
-        }
-        Ok(next)
+    pub(crate) const fn entry(&self) -> Point {
+        self.entry
     }
-
-    fn statement(
-        &mut self,
-        scope: &'a CScopeRef,
-        statement: &'a CStatement,
-        next: Point,
-    ) -> Result<Point, E> {
-        let point = self.statement_entry(scope, statement, next)?;
-        if !matches!(statement.kind(), CStatementKind::Block(_)) {
-            // Keep the actual control/progress/transfer payload for the later
-            // ownership and backedge proofs, not only an anonymous graph edge.
-            self.nodes[point.0].origin = Some(statement);
-        }
-        Ok(point)
+    pub(crate) const fn function(&self) -> &'a CFunctionRef {
+        self.function
     }
-
-    fn statement_entry(
-        &mut self,
-        scope: &'a CScopeRef,
-        statement: &'a CStatement,
-        next: Point,
-    ) -> Result<Point, E> {
-        let action = match statement.kind() {
-            CStatementKind::Empty => Action::Empty,
-            CStatementKind::Declare(value) => Action::Declare(value),
-            CStatementKind::Assign { place, value } => Action::Assign(place, value),
-            CStatementKind::Evaluate(value) => Action::Evaluate(value),
-            CStatementKind::Discard(value) => Action::Read(value),
-            CStatementKind::Block(block) => return self.block(block, next),
-            CStatementKind::Return(value) => {
-                return Ok(self.node(scope, Action::Return(value.as_ref()), vec![]));
-            }
-            CStatementKind::CleanupJump(value) => {
-                return Ok(self.node(scope, Action::CleanupJump(value), vec![]));
-            }
-            CStatementKind::Label {
-                identity,
-                statement,
-            } => {
-                let child = self.statement(scope, statement, next)?;
-                let point = self.node(scope, Action::Label(identity), vec![child]);
-                if self.labels.insert(identity, point).is_some() {
-                    return Err(E::DuplicateOccurrence);
-                }
-                return Ok(point);
-            }
-            CStatementKind::If {
-                condition,
-                then_block,
-                else_block,
-            } => {
-                let then_entry = self.block(then_block, next)?;
-                let else_entry = self.block(else_block, next)?;
-                return Ok(self.node(scope, Action::Read(condition), vec![then_entry, else_entry]));
-            }
-            CStatementKind::BoundedLoop {
-                identity,
-                condition,
-                body,
-                ..
-            } => {
-                let test = self.node(scope, Action::Read(condition), vec![next]);
-                self.controls.push(Control {
-                    target: CBreakTarget::Loop(identity.clone()),
-                    exit: next,
-                    repeat: Some(test),
-                });
-                let body_entry = self.block(body, test)?;
-                self.controls.pop();
-                self.nodes[test.0].successors.push(body_entry);
-                return Ok(test);
-            }
-            CStatementKind::Switch {
-                identity,
-                value,
-                arms,
-                default,
-            } => {
-                self.controls.push(Control {
-                    target: CBreakTarget::Switch(identity.clone()),
-                    exit: next,
-                    repeat: None,
-                });
-                let end = self.node(scope, Action::CaseEnd, vec![]);
-                let mut entries = Vec::new();
-                for arm in arms {
-                    entries.push(self.block(arm.body(), end)?);
-                }
-                entries.push(self.block(default, end)?);
-                self.controls.pop();
-                return Ok(self.node(scope, Action::Read(value), entries));
-            }
-            CStatementKind::Break(target) => {
-                let control = self.controls.last().ok_or(E::WrongControlTarget)?;
-                if &control.target != target {
-                    return Err(E::WrongControlTarget);
-                }
-                return Ok(self.node(scope, Action::Empty, vec![control.exit]));
-            }
-            CStatementKind::Continue(identity) => {
-                let control = self
-                    .controls
-                    .iter()
-                    .rev()
-                    .find(|value| value.repeat.is_some())
-                    .ok_or(E::WrongControlTarget)?;
-                if control.target != CBreakTarget::Loop(identity.clone()) {
-                    return Err(E::WrongControlTarget);
-                }
-                return Ok(self.node(
-                    scope,
-                    Action::Empty,
-                    vec![control.repeat.ok_or(E::WrongControlTarget)?],
-                ));
-            }
-        };
-        Ok(self.node(scope, action, vec![next]))
+    pub(crate) fn node(&self, point: Point) -> &Node<'a> {
+        &self.nodes[point.0]
     }
 }

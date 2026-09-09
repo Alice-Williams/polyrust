@@ -28,6 +28,7 @@ pub enum CSafetyError {
     SignedOverflow,
     InvalidShift,
     FalseAssertion,
+    UnsequencedCall,
 }
 
 impl From<CContextError> for CSafetyError {
@@ -63,6 +64,9 @@ impl std::fmt::Display for CSafetyError {
             Self::SignedOverflow => f.write_str("C signed constant arithmetic overflows"),
             Self::InvalidShift => f.write_str("C constant shift has invalid operands or result"),
             Self::FalseAssertion => f.write_str("C static assertion evaluates to zero"),
+            Self::UnsequencedCall => f.write_str(
+                "C call must be a permitted full-expression root with call-free operands",
+            ),
         }
     }
 }

@@ -6,7 +6,7 @@ mod case_constants;
 mod complete_objects;
 mod constant_leaves;
 mod errors;
-mod flow_graph;
+pub(crate) mod flow_graph;
 mod initialization;
 mod initialized_paths;
 mod lexical;

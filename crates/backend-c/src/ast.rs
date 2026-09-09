@@ -164,6 +164,19 @@ mod contextual_known_calls;
 mod constant_packages;
 
 #[cfg(test)]
+#[path = "tests/sequencing_callables.rs"]
+mod sequencing_callables;
+#[cfg(test)]
+#[path = "tests/sequencing_nested.rs"]
+mod sequencing_nested;
+#[cfg(test)]
+#[path = "tests/sequencing_places.rs"]
+mod sequencing_places;
+#[cfg(test)]
+#[path = "tests/sequencing_roots.rs"]
+mod sequencing_roots;
+
+#[cfg(test)]
 #[path = "tests/constant_initializers.rs"]
 mod constant_initializers;
 
