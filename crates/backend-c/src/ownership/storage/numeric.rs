@@ -31,6 +31,35 @@ impl<'ast> Places<'ast> for Resolver<'_, '_, 'ast> {
     }
 }
 impl<'ast> Engine<'_, 'ast> {
+    pub(super) fn index_binding(
+        &self,
+        value: &'ast CValue,
+        memory: &State,
+    ) -> Result<Option<Key>, E> {
+        let resolver = Resolver {
+            engine: self,
+            memory,
+        };
+        let mut checker = numeric_flow::Engine::composed(self.context, &resolver, false)?;
+        checker.index_binding(value, self.numeric.as_ref().ok_or(E::InvalidNumericSite)?)
+    }
+    pub(super) fn index_below_count(
+        &self,
+        index: &'ast CValue,
+        count: &crate::ast::CBufferCountRef,
+        memory: &State,
+    ) -> Result<bool, E> {
+        let resolver = Resolver {
+            engine: self,
+            memory,
+        };
+        let mut checker = numeric_flow::Engine::composed(self.context, &resolver, false)?;
+        checker.below_count(
+            index,
+            count,
+            self.numeric.as_ref().ok_or(E::InvalidNumericSite)?,
+        )
+    }
     pub(super) fn number(&self, value: &'ast CValue, memory: &State) -> Result<Number<'ast>, E> {
         let resolver = Resolver {
             engine: self,

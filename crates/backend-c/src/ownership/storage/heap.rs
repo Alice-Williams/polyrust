@@ -1,34 +1,34 @@
-//! Fixed heap bindings are proof state, not another allocation or a C cast effect.
+//! Heap bindings preserve the proved storage shape across every restored alias.
 use super::{
     Engine,
     state::State,
     values::{Cell, Pointer},
 };
-use crate::ast::{CAllocationRef, CConversion, CObjectType, CRegistry, CValue, CValueKind};
+use crate::ast::{CAllocationRef, CConversion, CRegistry, CValue, CValueKind};
 use crate::ownership::{
     CSafetyError as E,
-    paths::{Key, Root},
+    paths::{Key, Root, Shape},
 };
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) enum Binding {
     #[default]
     Unbound,
-    Object(CObjectType),
+    Bound(Shape),
     Conflicting,
 }
 impl Binding {
-    pub(super) fn object(
+    pub(super) fn shape(
         &self,
-        requested: &CObjectType,
+        requested: &Shape,
         registry: &CRegistry,
         establish: bool,
-    ) -> Result<CObjectType, E> {
+    ) -> Result<Shape, E> {
         match self {
-            Self::Unbound if establish => Ok(registry.pointee_storage_identity(requested)?),
-            Self::Object(ty) if registry.pointee_types_match(ty, requested)? => Ok(ty.clone()),
+            Self::Unbound if establish => Ok(requested.clone()),
+            Self::Bound(shape) if compatible(shape, requested, registry)? => Ok(shape.clone()),
             Self::Unbound => Err(E::UnprovedAllocation),
-            Self::Object(_) | Self::Conflicting => Err(E::StorageTypeMismatch),
+            Self::Bound(_) | Self::Conflicting => Err(E::StorageTypeMismatch),
         }
     }
     pub(super) fn join(&self, other: &Self) -> Self {
@@ -42,6 +42,23 @@ impl Binding {
     }
 }
 
+fn compatible(left: &Shape, right: &Shape, registry: &CRegistry) -> Result<bool, E> {
+    Ok(match (left, right) {
+        (Shape::Object(left), Shape::Object(right)) => registry.pointee_types_match(left, right)?,
+        (
+            Shape::Elements {
+                element: left,
+                count: a,
+            },
+            Shape::Elements {
+                element: right,
+                count: b,
+            },
+        ) => a == b && registry.pointee_types_match(left, right)?,
+        _ => false,
+    })
+}
+
 impl<'ast> Engine<'_, 'ast> {
     pub(super) fn heap_root(
         &mut self,
@@ -53,7 +70,7 @@ impl<'ast> Engine<'_, 'ast> {
         let pointer = self.expression(operand, state)?.pointer()?;
         let origin = match pointer {
             Pointer::Allocation(origin) => *origin,
-            Pointer::Target(path) if path.whole_root() => {
+            Pointer::Target(path) if path.allocation_base() => {
                 let Root::Allocation(origin, _) = path.root() else {
                     return Err(E::UnprovedAllocation);
                 };
@@ -85,7 +102,7 @@ impl<'ast> Engine<'_, 'ast> {
         state
             .roots
             .entry(root.clone())
-            .or_insert(Cell::Uninitialized);
+            .or_insert_with(|| super::root_cells::RootCell::new(&root));
         Ok(Some(Cell::Pointer(Pointer::Target(Box::new(
             Key::from_root(root),
         )))))

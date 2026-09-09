@@ -63,6 +63,7 @@ impl Cell {
             return Ok(self.clone());
         };
         match next {
+            Selector::Element(_) => Err(E::UnprovedStorage),
             Selector::Member(member) => {
                 self.member(member, registry)?
                     .read(member.ty(), tail, registry)
@@ -103,6 +104,9 @@ fn selected_type(ty: &CObjectType, tail: &[Selector]) -> CObjectType {
     let mut ty = ty.canonical();
     for selector in tail {
         ty = match selector {
+            Selector::Element(_) => {
+                unreachable!("buffer selectors are consumed by root storage")
+            }
             Selector::Member(member) => member.ty().canonical(),
             Selector::Index { .. } => match ty.kind() {
                 CObjectTypeKind::Array { element, .. } => element.canonical(),

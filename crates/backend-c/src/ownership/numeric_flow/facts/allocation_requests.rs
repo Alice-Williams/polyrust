@@ -114,7 +114,7 @@ impl AllocationRequest {
             crate::ast::CAllocationShape::Elements(_)
         ) {
             self.element_bounds(allocation, registry)?;
-            // Matching bytes is not a dynamic storage/access certificate (checkpoint 02).
+            // An element sequence is not one fixed object.
             return Err(E::UnprovedAllocation);
         }
         if allocation.scope().function() != &self.origin.function
@@ -142,7 +142,19 @@ impl AllocationRequest {
         {
             return Err(E::UnprovedAllocation);
         }
-        let layout = Layouts::new(registry).object(allocation.object_type())?;
+        self.buffer_bounds(count, allocation.object_type(), registry)
+    }
+    pub(in crate::ownership) fn buffer_bounds(
+        &self,
+        count: &crate::ast::CBufferCountRef,
+        element: &CObjectType,
+        registry: &crate::ast::CRegistry,
+    ) -> Result<(u64, u64), E> {
+        self.validate()?;
+        if count.local().scope().function() != &self.origin.function {
+            return Err(E::UnprovedAllocation);
+        }
+        let layout = Layouts::new(registry).object(element)?;
         let stride = layout.size();
         let (first, last) = self
             .products
@@ -157,6 +169,26 @@ impl AllocationRequest {
             return Err(E::UnprovedAllocationSize);
         }
         Ok((first, last))
+    }
+    pub(in crate::ownership) fn admitted_shape(
+        &self,
+        allocation: &crate::ast::CAllocationRef,
+        registry: &crate::ast::CRegistry,
+    ) -> Result<crate::ownership::paths::Shape, E> {
+        use crate::ownership::paths::Shape;
+        Ok(match allocation.shape() {
+            crate::ast::CAllocationShape::Object => {
+                self.admits_object(allocation, registry)?;
+                Shape::Object(registry.pointee_storage_identity(allocation.object_type())?)
+            }
+            crate::ast::CAllocationShape::Elements(count) => {
+                self.element_bounds(allocation, registry)?;
+                Shape::Elements {
+                    element: registry.pointee_storage_identity(allocation.object_type())?,
+                    count: count.clone(),
+                }
+            }
+        })
     }
     pub(in crate::ownership) fn origin(&self) -> &AllocationOrigin {
         &self.origin

@@ -17,6 +17,7 @@ impl Cell {
             return Ok(());
         };
         match next {
+            Selector::Element(_) => return Err(E::UnprovedStorage),
             Selector::Member(member) => match member.owner() {
                 CAggregateRef::Union(_) => {
                     let mut child = if self.active(ty, registry)?.as_ref() == Some(member) {

@@ -21,6 +21,9 @@ Each checkpoint has its own tests, full cached gates, independent review and
 commit/push. Count metadata alone cannot admit dynamic access. Parent 02C and
 parent 02 remain open until all three checkpoints meet their definitions of done.
 
+Checkpoints 01 and 02 are complete with their recorded local gates and independent
+review evidence. Checkpoint 03 is next; this parent remains in-progress.
+
 ## Definition of done
 
 - Retain original count-times-element-size identity, nonwrapping bytes, concrete

@@ -3,12 +3,14 @@ mod actions;
 mod allocation_calls;
 mod allocation_edges;
 mod allocations;
+mod buffer_paths;
 mod expressions;
 mod flow;
 mod heap;
 mod index_extents;
 mod numeric;
 mod places;
+mod root_cells;
 mod state;
 mod values;
 
@@ -36,9 +38,9 @@ impl Engine<'_, '_> {
 
 impl CRegistry {
     /// Checks derived storage, initialization, bounds and automatic lifetimes.
-    /// Default allocation/null/release and fixed typed restoration are checked;
-    /// dynamic extents and other call effects remain unresolved. Success is not a full ownership or
-    /// rendering certificate.
+    /// Default allocation/null/release, fixed restoration and guarded dynamic
+    /// element storage are checked. Prefix construction and other call effects
+    /// remain unresolved. Success is not a full ownership or rendering certificate.
     ///
     /// ```compile_fail
     /// use portable_backend_c::ownership::storage::state::State;
@@ -59,6 +61,16 @@ impl CRegistry {
     /// use portable_backend_c::ownership::numeric_flow::Places;
     /// struct FakeResolver;
     /// impl<'ast> Places<'ast> for FakeResolver {}
+    /// ```
+    ///
+    /// ```compile_fail
+    /// use portable_backend_c::ownership::paths::ElementIndex;
+    /// fn forge() -> ElementIndex { ElementIndex::constant(0) }
+    /// ```
+    ///
+    /// ```compile_fail
+    /// use portable_backend_c::ownership::paths::Shape;
+    /// fn forge() -> Shape { todo!() }
     /// ```
     pub fn check_storage_paths(&self, files: &[CSourceFile]) -> Result<(), CSafetyError> {
         let context = ContextFacts::check(self, files)?;

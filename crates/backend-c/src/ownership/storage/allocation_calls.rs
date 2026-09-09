@@ -44,7 +44,7 @@ impl<'ast> Engine<'_, 'ast> {
                 }
                 Ok(())
             }
-            Pointer::Target(path) if path.whole_root() => {
+            Pointer::Target(path) if path.allocation_base() => {
                 let crate::ownership::paths::Root::Allocation(origin, _) = path.root() else {
                     return Err(E::InvalidAllocationRelease);
                 };

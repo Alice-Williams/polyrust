@@ -5,12 +5,24 @@ impl<'a> State<'a> {
     pub(in crate::ownership::numeric_flow) fn write_key(&mut self, destination: &Key) {
         let before = self.cells.clone();
         self.kill(destination.root());
+        if matches!(
+            destination.root().shape(),
+            crate::ownership::paths::Shape::Elements { .. }
+        ) {
+            // An unseen symbolic selection may alias any written element.
+            // Exact reaching writes below override this conservative fallback.
+            self.fallback_origin(destination.root(), Origin::Incomplete);
+        }
         for (key, old) in before {
             if key.root() == destination.root()
-                && !key.overlaps(destination)
                 && let Some(value) = self.cells.get_mut(&key)
             {
-                value.domain = old.domain;
+                if !key.overlaps(destination) {
+                    value.domain = old.domain;
+                } else if key != *destination {
+                    // A different observation may now see the new write's losses.
+                    merge(&mut value.losses, &[Origin::Incomplete]);
+                }
             }
         }
     }

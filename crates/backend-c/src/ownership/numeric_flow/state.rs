@@ -1,4 +1,5 @@
 //! Facts are derived snapshots; writes kill relations to the old storage value.
+mod observations;
 mod projections;
 use super::provenance::{Origin, merge};
 use super::storage::{Key, Root};
@@ -97,8 +98,7 @@ impl<'a> State<'a> {
         self.cells.get(key)
     }
     pub(in crate::ownership) fn number(&self, key: &Key, ty: CScalarType) -> Result<Number<'a>, E> {
-        if let Some(value) = self.read(key) {
-            let mut value = value.clone();
+        if let Some(mut value) = self.observed_number(key)? {
             if value.domain.ty() != ty {
                 let converted = value.domain.convert(ty)?;
                 if converted.loss != crate::ownership::ranges::NumericLoss::None {
@@ -126,11 +126,20 @@ impl<'a> State<'a> {
         {
             value.predicate = None;
         }
+        // A transfer/refinement replaces the current observation. Control-flow
+        // merging uses merge_observation instead and must join every loss.
+        self.cells
+            .retain(|old, _| old.join_observation(&key).is_none());
         self.cells.insert(key, value);
     }
     pub(in crate::ownership) fn kill(&mut self, root: &Root) {
         self.relations.invalidate(|candidate| candidate == root);
         for (key, value) in &mut self.cells {
+            if key.index_touches(|dependency| dependency == root) {
+                value.domain = NumericDomain::full(value.domain.ty()).expect("checked scalar");
+                value.predicate = None;
+                merge(&mut value.losses, &[Origin::Incomplete]);
+            }
             if key.root() == root {
                 value.domain = NumericDomain::full(value.domain.ty()).expect("checked scalar");
                 value.predicate = None;
@@ -155,7 +164,7 @@ impl<'a> State<'a> {
         }
         self.relations.invalidate(|root| root.exposed(addresses));
         for (key, value) in &mut self.cells {
-            if key.root().exposed(addresses) {
+            if key.touches(|root| root.exposed(addresses)) {
                 value.domain = NumericDomain::full(value.domain.ty()).expect("checked scalar");
                 value.predicate = None;
                 merge(&mut value.losses, std::slice::from_ref(&origin));
@@ -173,6 +182,13 @@ impl<'a> State<'a> {
     }
     pub(in crate::ownership) fn leave(&mut self, scope: &CScopeRef) {
         self.relations.invalidate(|root| root.leaves(scope));
+        for (key, value) in &mut self.cells {
+            if key.index_touches(|root| root.leaves(scope)) {
+                value.domain = NumericDomain::full(value.domain.ty()).expect("checked scalar");
+                value.predicate = None;
+                merge(&mut value.losses, &[Origin::Incomplete]);
+            }
+        }
         self.cells.retain(|key, _| !key.root().leaves(scope));
         self.fallback.retain(|root, _| !root.leaves(scope));
         for value in self.cells.values_mut() {
@@ -184,27 +200,5 @@ impl<'a> State<'a> {
                 value.predicate = None;
             }
         }
-    }
-    pub(in crate::ownership) fn join(&self, other: &Self, widen: bool) -> Result<Self, E> {
-        let mut result = Self {
-            relations: self.relations.join(&other.relations),
-            fallback: self.fallback.clone(),
-            ..Self::default()
-        };
-        for (root, origins) in &other.fallback {
-            merge(result.fallback.entry(root.clone()).or_default(), origins);
-        }
-        // Absence is an unknown typed value, not unreachable or numeric zero.
-        for (key, left) in &self.cells {
-            let right = other.number(key, left.domain.ty())?;
-            result.set(key.clone(), left.join(&right, widen)?);
-        }
-        for (key, right) in &other.cells {
-            if !self.cells.contains_key(key) {
-                let unknown = self.number(key, right.domain.ty())?;
-                result.set(key.clone(), unknown.join(right, widen)?);
-            }
-        }
-        Ok(result)
     }
 }

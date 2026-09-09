@@ -1,4 +1,5 @@
 //! Full-expression storage transfers derived from actual immutable graph actions.
+use super::root_cells::RootCell;
 use super::{Engine, state::State, values::Cell};
 use crate::ast::CInitializerKind;
 use crate::ast::contextual::flow_graph::Action;
@@ -10,13 +11,15 @@ impl<'ast> Engine<'_, 'ast> {
             Action::Declare(value) => {
                 let root = Root::Local(value.local().clone());
                 state.expire(&root);
-                state.roots.insert(root.clone(), Cell::Uninitialized);
+                state
+                    .roots
+                    .insert(root.clone(), RootCell::object(Cell::Uninitialized));
                 if let Some(initializer) = value.initializer() {
                     let cell = match initializer.kind() {
                         CInitializerKind::Expression(value) => self.action_value(value, state)?,
                         _ => self.initializer(initializer, state)?,
                     };
-                    state.roots.insert(root, cell);
+                    state.roots.insert(root, RootCell::object(cell));
                 }
             }
             Action::Assign(place, value) => {

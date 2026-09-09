@@ -36,6 +36,7 @@ impl<'a> Engine<'a, '_> {
         operator: B,
         operands: [&'a CValue; 2],
     ) -> Result<(), E> {
+        self.remember_order(state, guard, operator, operands)?;
         let [left, right] = operands;
         for (operator, left, right) in [
             (operator, left, right),

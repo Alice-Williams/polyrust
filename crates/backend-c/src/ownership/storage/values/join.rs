@@ -19,6 +19,10 @@ impl Cell {
         Ok(match ty.canonical().kind() {
             CObjectTypeKind::Pointer(_) => match (self.pointer(), other.pointer()) {
                 (Ok(a), Ok(b)) if a == b => Self::Pointer(a),
+                (Ok(Pointer::Target(left)), Ok(Pointer::Target(right))) => Self::Pointer(
+                    left.join_observation(&right)
+                        .map_or(Pointer::Unknown, |key| Pointer::Target(Box::new(key))),
+                ),
                 _ => Self::Pointer(Pointer::Unknown),
             },
             CObjectTypeKind::Struct(owner) => {

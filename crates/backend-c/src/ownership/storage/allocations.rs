@@ -10,7 +10,7 @@ use crate::ownership::{
     CSafetyError as E,
     numeric_flow::{AllocationOrigin, AllocationRequest},
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Status {
@@ -47,6 +47,8 @@ pub(super) struct Allocation {
     request: AllocationRequest,
     status: Status,
     binding: super::heap::Binding,
+    expired_count_scopes: BTreeSet<crate::ast::CScopeRef>,
+    expired_count_locals: BTreeSet<crate::ast::CLocalRef>,
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct Allocations(BTreeMap<AllocationOrigin, Allocation>);
@@ -62,22 +64,64 @@ impl Allocations {
             return Err(E::NullStorage);
         }
         let allocation = self.0.get(origin).ok_or(E::UnprovedAllocation)?;
-        allocation.request.admits_object(descriptor, registry)?;
-        let ty = allocation
-            .binding
-            .object(descriptor.object_type(), registry, establish)?;
+        let requested = allocation.request.admitted_shape(descriptor, registry)?;
+        if let crate::ownership::paths::Shape::Elements { count, .. } = &requested
+            && !allocation.count_active(count)
+        {
+            return Err(E::UnprovedAllocation);
+        }
+        let shape = allocation.binding.shape(&requested, registry, establish)?;
         Ok(crate::ownership::paths::Root::Allocation(
             Box::new(origin.clone()),
-            ty,
+            shape,
         ))
     }
     pub(super) fn bind(&mut self, root: &crate::ownership::paths::Root) -> Result<(), E> {
-        let crate::ownership::paths::Root::Allocation(origin, ty) = root else {
+        let crate::ownership::paths::Root::Allocation(origin, shape) = root else {
             return Err(E::UnprovedAllocation);
         };
         self.0.get_mut(origin).ok_or(E::UnprovedAllocation)?.binding =
-            super::heap::Binding::Object(ty.clone());
+            super::heap::Binding::Bound(shape.clone());
         Ok(())
+    }
+    pub(super) fn buffer_bounds(
+        &self,
+        root: &crate::ownership::paths::Root,
+        registry: &crate::ast::CRegistry,
+    ) -> Result<(u64, u64), E> {
+        use crate::ownership::paths::{Root, Shape};
+        let Root::Allocation(origin, shape @ Shape::Elements { element, count }) = root else {
+            return Err(E::UnprovedAllocation);
+        };
+        if self.nonnull(origin)? != Some(true) {
+            return Err(E::NullStorage);
+        }
+        let allocation = self.0.get(origin).ok_or(E::UnprovedAllocation)?;
+        allocation.binding.shape(shape, registry, false)?;
+        allocation.request.buffer_bounds(count, element, registry)
+    }
+    pub(super) fn leave_count_scope(&mut self, scope: &crate::ast::CScopeRef) {
+        for allocation in self.0.values_mut() {
+            allocation.expired_count_scopes.insert(scope.clone());
+        }
+    }
+    pub(super) fn expire_count_local(&mut self, local: &crate::ast::CLocalRef) {
+        for allocation in self.0.values_mut() {
+            allocation.expired_count_locals.insert(local.clone());
+        }
+    }
+    pub(super) fn current_count(
+        &self,
+        root: &crate::ownership::paths::Root,
+    ) -> Option<crate::ast::CBufferCountRef> {
+        use crate::ownership::paths::{Root, Shape};
+        let Root::Allocation(origin, Shape::Elements { count, .. }) = root else {
+            return None;
+        };
+        self.0
+            .get(origin)?
+            .count_active(count)
+            .then(|| count.clone())
     }
     pub(super) fn start(&mut self, request: AllocationRequest) -> Result<AllocationOrigin, E> {
         request.validate()?;
@@ -95,6 +139,8 @@ impl Allocations {
                 request,
                 status: Status::Possible,
                 binding: super::heap::Binding::Unbound,
+                expired_count_scopes: BTreeSet::new(),
+                expired_count_locals: BTreeSet::new(),
             },
         );
         Ok(origin)
@@ -145,6 +191,10 @@ impl Allocations {
                 .entry(origin.clone())
                 .and_modify(|old| {
                     old.binding = old.binding.join(&value.binding);
+                    old.expired_count_scopes
+                        .extend(value.expired_count_scopes.iter().cloned());
+                    old.expired_count_locals
+                        .extend(value.expired_count_locals.iter().cloned());
                     old.status = if let Some(request) = old.request.join(&value.request) {
                         old.request = request;
                         old.status.join(value.status)
@@ -157,6 +207,12 @@ impl Allocations {
         result
     }
 }
+impl Allocation {
+    fn count_active(&self, count: &crate::ast::CBufferCountRef) -> bool {
+        !self.expired_count_scopes.contains(count.local().scope())
+            && !self.expired_count_locals.contains(count.local())
+    }
+}
 impl State {
     pub(super) fn expire_allocation(&mut self, origin: &AllocationOrigin) {
         self.roots.retain(|root, _| {
@@ -164,7 +220,7 @@ impl State {
             crate::ownership::paths::Root::Allocation(old, _) if old.as_ref() == origin)
         });
         for cell in self.roots.values_mut() {
-            cell.expire_allocation(origin);
+            cell.each_mut(|cell| cell.expire_allocation(origin));
         }
     }
 }

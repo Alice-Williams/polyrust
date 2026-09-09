@@ -1,4 +1,5 @@
 //! Compressed representation initialization, separate from owning-handle state.
+mod index_invalidation;
 mod join;
 mod projections;
 mod writes;

@@ -35,7 +35,11 @@ impl<'ast> Engine<'_, 'ast> {
                     CIndexBase::Pointer(value) => {
                         let pointer = self.expression(value, state)?.pointer()?;
                         let base = self.target(pointer, place)?;
-                        Self::offset(base, first, last)?
+                        if matches!(base.selectors(), [Selector::Element(_)]) {
+                            self.buffer_offset(base, index, (first, last), state)?
+                        } else {
+                            Self::offset(base, first, last)?
+                        }
                     }
                 }
             }

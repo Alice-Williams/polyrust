@@ -196,7 +196,7 @@ fn count_metadata_cannot_bypass_actual_declaration_dominance() {
 }
 
 #[test]
-fn actual_matching_product_reaches_the_explicit_dynamic_storage_boundary() {
+fn actual_matching_product_establishes_empty_element_storage() {
     let mut f = Fixture::new(&[]);
     let count = f
         .registry
@@ -222,8 +222,5 @@ fn actual_matching_product_reaches_the_explicit_dynamic_storage_boundary() {
         f.discard(restore(&f, &descriptor, f.read(&raw))),
         release(&f, f.read(&raw)),
     ]);
-    assert_eq!(
-        f.registry.check_storage_paths(&[source]),
-        Err(CSafetyError::UnprovedAllocation)
-    );
+    assert_eq!(f.registry.check_storage_paths(&[source]), Ok(()));
 }

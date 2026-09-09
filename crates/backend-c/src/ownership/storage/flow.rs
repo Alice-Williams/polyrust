@@ -1,7 +1,11 @@
 //! One numeric/memory fixed point followed by strict replay, never staged guesses.
 mod audit;
+#[cfg(test)]
+#[path = "../../tests/buffer_activation_boundaries.rs"]
+mod buffer_tests;
 mod product;
 mod solve;
+use super::root_cells::RootCell;
 use super::{Engine, state::State, values::Cell};
 use crate::ast::{CDefinitionKind, CFileItem};
 use crate::ownership::{CSafetyError as E, context_facts::ContextFacts, loops, paths::Root};
@@ -14,9 +18,10 @@ pub(super) fn check<'ast>(context: &ContextFacts<'ast>) -> Result<(), E> {
             if let CFileItem::Definition(definition) = item
                 && let CDefinitionKind::Object { object, .. } = definition.kind()
             {
-                globals
-                    .roots
-                    .insert(Root::Global(object.clone()), Cell::Uninitialized);
+                globals.roots.insert(
+                    Root::Global(object.clone()),
+                    RootCell::object(Cell::Uninitialized),
+                );
             }
         }
     }
@@ -36,13 +41,15 @@ pub(super) fn check<'ast>(context: &ContextFacts<'ast>) -> Result<(), E> {
             {
                 let cell = static_engine.initializer(initializer, &globals)?;
                 cell.complete(object.ty(), context.registry())?;
-                globals.roots.insert(Root::Global(object.clone()), cell);
+                globals
+                    .roots
+                    .insert(Root::Global(object.clone()), RootCell::object(cell));
             }
         }
     }
     // Arbitrary function entry is not program startup.
     for cell in globals.roots.values_mut() {
-        *cell = Cell::Initialized;
+        *cell = RootCell::object(Cell::Initialized);
     }
     for graph in context.functions() {
         let mut entry = globals.clone();
@@ -57,9 +64,10 @@ pub(super) fn check<'ast>(context: &ContextFacts<'ast>) -> Result<(), E> {
                     && function == graph.function()
                 {
                     for parameter in parameters {
-                        entry
-                            .roots
-                            .insert(Root::Parameter(parameter.clone()), Cell::Initialized);
+                        entry.roots.insert(
+                            Root::Parameter(parameter.clone()),
+                            RootCell::object(Cell::Initialized),
+                        );
                     }
                 }
             }

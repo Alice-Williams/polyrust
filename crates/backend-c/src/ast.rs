@@ -297,8 +297,47 @@ mod allocation_identity;
 #[path = "tests/allocation_loops.rs"]
 mod allocation_loops;
 #[cfg(test)]
+#[path = "tests/buffer_aggregate_paths.rs"]
+mod buffer_aggregate_paths;
+#[cfg(test)]
+#[path = "tests/buffer_constant_paths.rs"]
+mod buffer_constant_paths;
+#[cfg(test)]
 #[path = "tests/buffer_count_bindings.rs"]
 mod buffer_count_bindings;
+#[cfg(test)]
+#[path = "tests/buffer_counted_paths.rs"]
+mod buffer_counted_paths;
+#[cfg(test)]
+#[path = "tests/buffer_fixture.rs"]
+pub(crate) mod buffer_fixture;
+#[cfg(test)]
+#[path = "tests/buffer_order_guards.rs"]
+mod buffer_order_guards;
+#[cfg(test)]
+#[path = "tests/buffer_range_copies.rs"]
+mod buffer_range_copies;
+#[cfg(test)]
+#[path = "tests/buffer_range_joins.rs"]
+mod buffer_range_joins;
+#[cfg(test)]
+#[path = "tests/buffer_reactivation.rs"]
+mod buffer_reactivation;
+#[cfg(test)]
+#[path = "tests/buffer_scope_paths.rs"]
+mod buffer_scope_paths;
+#[cfg(test)]
+#[path = "tests/buffer_symbolic_fixture.rs"]
+mod buffer_symbolic_fixture;
+#[cfg(test)]
+#[path = "tests/buffer_symbolic_joins.rs"]
+mod buffer_symbolic_joins;
+#[cfg(test)]
+#[path = "tests/buffer_symbolic_numbers.rs"]
+mod buffer_symbolic_numbers;
+#[cfg(test)]
+#[path = "tests/buffer_symbolic_paths.rs"]
+mod buffer_symbolic_paths;
 #[cfg(test)]
 #[path = "tests/heap_aggregates.rs"]
 mod heap_aggregates;

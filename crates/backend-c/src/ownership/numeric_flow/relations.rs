@@ -1,5 +1,6 @@
 //! Algebraic bounds retain actual guard witnesses and authenticated storage terms.
 mod derive;
+mod order;
 
 use super::{
     DomainTransfer, E, Engine, Number, NumericDomain, NumericLoss, State,
@@ -39,7 +40,7 @@ impl Relation {
     }
     fn touches(&self, mut test: impl FnMut(&Root) -> bool) -> bool {
         [&self.left, &self.right].iter().any(|term| match term {
-            Term::Read(key) => test(key.root()),
+            Term::Read(key) => key.touches(&mut test),
             Term::Constant(_) => false,
         })
     }
@@ -47,14 +48,19 @@ impl Relation {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(super) struct Relations<'a> {
     guards: BTreeMap<Relation, Vec<&'a CValue>>,
+    orders: order::Orders<'a>,
 }
 impl<'a> Relations<'a> {
     pub(super) fn invalidate(&mut self, mut test: impl FnMut(&Root) -> bool) {
+        self.orders.invalidate(&mut test);
         self.guards
             .retain(|relation, _| !relation.touches(&mut test));
     }
     pub(super) fn join(&self, other: &Self) -> Self {
-        let mut joined = Self::default();
+        let mut joined = Self {
+            orders: self.orders.join(&other.orders),
+            ..Self::default()
+        };
         for (relation, witnesses) in &self.guards {
             if let Some(right) = other.guards.get(relation) {
                 let mut witnesses = witnesses.clone();
