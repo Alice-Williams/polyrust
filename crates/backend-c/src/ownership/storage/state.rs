@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct State {
     pub(super) roots: BTreeMap<Root, RootCell>,
+    pub(super) prefixes: BTreeMap<Root, super::prefixes::Prefixes>,
     pub(super) allocations: super::allocations::Allocations,
 }
 impl State {
@@ -45,6 +46,11 @@ impl State {
         {
             return Err(E::AutomaticAddressEscape);
         }
+        if let Some(prefixes) = self.prefixes.get_mut(path.root())
+            && let crate::ownership::paths::Shape::Elements { element, .. } = path.root().shape()
+        {
+            prefixes.write(path, value, &element, registry)?;
+        }
         self.roots
             .get_mut(path.root())
             .ok_or(E::ExpiredStorage)?
@@ -56,11 +62,18 @@ impl State {
             self.allocations.expire_count_local(local);
         }
         self.roots.remove(root);
+        self.prefixes.remove(root);
+        for prefixes in self.prefixes.values_mut() {
+            prefixes.each_mut(|cell| cell.expire(root));
+        }
         for cell in self.roots.values_mut() {
             cell.each_mut(|cell| cell.expire(root));
         }
     }
     fn invalidate_indices(&mut self, root: &Root) {
+        for prefixes in self.prefixes.values_mut() {
+            prefixes.invalidate_index(root);
+        }
         for cell in self.roots.values_mut() {
             cell.invalidate_index(root);
         }
@@ -84,12 +97,23 @@ impl State {
                 roots.insert(root.clone(), left.join(right, &root.shape(), registry)?);
             }
         }
+        let mut prefixes = BTreeMap::new();
+        for (root, left) in &self.prefixes {
+            if let Some(right) = other.prefixes.get(root)
+                && roots.contains_key(root)
+                && let crate::ownership::paths::Shape::Elements { element, .. } = root.shape()
+            {
+                prefixes.insert(root.clone(), left.join(right, &element, registry)?);
+            }
+        }
         Ok(Self {
             roots,
+            prefixes,
             allocations: self.allocations.join(&other.allocations),
         })
     }
     pub(super) fn forget_values(&mut self) {
+        self.prefixes.clear();
         for value in self.roots.values_mut() {
             value.forget();
         }

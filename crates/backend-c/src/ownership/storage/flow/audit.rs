@@ -24,7 +24,7 @@ pub(super) fn check<'ast>(
             continue;
         }
         let node = graph.node(point);
-        state.action(context, graph, point, true)?;
+        state.action(context, graph, point, loops, true)?;
         if matches!(node.action(), Action::FunctionEnd)
             || node
                 .successors()
@@ -35,7 +35,9 @@ pub(super) fn check<'ast>(
         }
         for edge in node.successors() {
             if let Destination::Point(next) = edge.destination()
-                && state.edge(context, graph, point, edge, true)?.is_some()
+                && state
+                    .edge(context, graph, point, edge, loops, true)?
+                    .is_some()
             {
                 pending.push_back(next);
             }

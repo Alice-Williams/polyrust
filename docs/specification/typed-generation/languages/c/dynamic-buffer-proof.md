@@ -142,6 +142,45 @@ skipped or reordered writes cannot claim a complete buffer. Early break/cleanup
 retains only the prefix actually established, so partial cleanup cannot inspect
 uninitialized descendants. Releasing/restarting a site resets prefix evidence.
 
+### Prefix representation and transitions
+
+Use private closed states for a prefix tied to the actual construction counter,
+an immutable snapshot of that frontier, and a completed original count. Missing
+evidence is distinct from a proved empty prefix. Empty coverage has no element
+value to join; an absent predecessor must never be treated as vacuous evidence.
+
+Seed empty coverage at the actual matching counted-loop entry only when its
+counter is proved zero and the allocation retains the matching active count.
+Before the authenticated counter update, require the prior prefix and a complete
+current element on every incoming path. Extend only after both numeric and
+memory transfers succeed. Otherwise discard the construction claim; a loop that
+requires no later coverage claim may still be valid. Applying a captured summary
+must retain the actual update's saved-index invalidation and any declaration's
+old-activation expiry; pre-action capture cannot undo post-action retirement.
+Backedge/continue joins retain only common coverage and conservative element
+representations.
+
+Only the actual matching false loop-condition edge can promote maintained
+coverage to the original count. Early exits retain their current frontier.
+An immutable frontier snapshot must come from an actual direct counter read in
+its declaration, not an equal interval or caller-supplied count assertion.
+An immutable copy of another snapshot does not acquire prefix authority under
+this initial direct-counter grammar, even though the scalar copy itself is valid.
+Snapshot redeclaration or scope exit retires its authority. A later loop can
+read an established prefix without replacing it with that loop's empty seed.
+
+Prefix reads recheck allocation lifetime, current bounds/ordering and nested
+element completeness. Do not cache prefix-authority flags in pointer paths.
+Writes at the current frontier do not affect earlier elements; other possibly
+overlapping writes conservatively update their common representation. Release,
+reactivation, unknown effects and dependent binding expiry invalidate claims.
+
+Representation initialization is not a clean numeric-value certificate.
+Non-exact prefix numeric reads retain the existing unproved-write fallback;
+exact reaching current-element facts remain available. In particular, later
+guards cannot turn wrapped prefix contents into proved allocation lengths.
+Across-iteration numeric precision is not claimed by this coverage proof.
+
 ## Delivery and proof boundary
 
 Implementation is ordered: typed count/product evidence; dynamic storage and

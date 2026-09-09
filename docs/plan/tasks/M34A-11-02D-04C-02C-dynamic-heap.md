@@ -1,6 +1,6 @@
 # M34A-11-02D-04C-02C — Dynamic extents and initialized prefixes
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-11-02D-04C-02B
 
 ## Goal
@@ -19,10 +19,23 @@ defines the admitted count grammar and proof boundary.
 
 Each checkpoint has its own tests, full cached gates, independent review and
 commit/push. Count metadata alone cannot admit dynamic access. Parent 02C and
-parent 02 remain open until all three checkpoints meet their definitions of done.
+parent 02 remained open until all three checkpoints met their definitions of done.
 
-Checkpoints 01 and 02 are complete with their recorded local gates and independent
-review evidence. Checkpoint 03 is next; this parent remains in-progress.
+All three checkpoints are complete with their recorded local gates and
+independent review evidence. The final 03 review re-audited this parent and
+allocated-storage 02 without finding an outstanding current-stage obligation.
+
+## Closure evidence
+
+Checkpoint 01 authenticates original count/stride/layout and actual allocation;
+02 checks current guarded paths, alias/index/count lifetimes and sparse storage;
+03 proves complete writes on all continuing paths, full and partial prefixes,
+actual snapshots and retirement. Their positive/rejected controls compose in
+the final [03 gate and review record](M34A-11-02D-04C-02C-03-prefixes.md#final-evidence):
+515 C units and companion gates, 320 tracked tests, 257 release tests, and
+deterministic evaluator/eight-target conformance all pass. Both accepted 03
+review findings have regression evidence; the subsequent complete independent
+review passes. Semantic owner transitions remain 04C-03; C is not certified.
 
 ## Definition of done
 

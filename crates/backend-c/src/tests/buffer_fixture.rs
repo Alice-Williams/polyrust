@@ -16,22 +16,28 @@ impl Buffer {
         Self::scoped(f, &f.scope.clone(), element)
     }
     pub fn scoped(f: &mut Fixture, scope: &CScopeRef, element: CObjectType) -> Self {
+        Self::scoped_named(f, scope, element, "buffer")
+    }
+    pub fn named(f: &mut Fixture, element: CObjectType, name: &str) -> Self {
+        Self::scoped_named(f, &f.scope.clone(), element, name)
+    }
+    fn scoped_named(f: &mut Fixture, scope: &CScopeRef, element: CObjectType, name: &str) -> Self {
         let count = f
             .registry
-            .register_buffer_count(scope, key("buffer_count"))
+            .register_buffer_count(scope, key(&format!("{name}_count")))
             .unwrap();
         let descriptor = f
             .registry
             .register_buffer_allocation(
                 scope,
-                key("buffer_allocation"),
+                key(&format!("{name}_allocation")),
                 element.clone(),
                 count.clone(),
                 CAllocatorSource::Default,
             )
             .unwrap();
-        let raw = raw(f, "buffer_raw");
-        let data = local(f, pointer_type(element.clone()), "buffer_data");
+        let raw = raw(f, &format!("{name}_raw"));
+        let data = local(f, pointer_type(element.clone()), &format!("{name}_data"));
         Self {
             count,
             descriptor,

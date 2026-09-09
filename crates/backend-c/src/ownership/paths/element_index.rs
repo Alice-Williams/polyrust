@@ -67,6 +67,11 @@ impl ElementIndex {
     pub(in crate::ownership) fn bounds(&self) -> (u64, u64) {
         (self.first, self.last)
     }
+    pub(in crate::ownership) fn source(&self) -> Option<Key> {
+        self.current
+            .as_ref()
+            .map(|binding| Key::from_root(binding.root()))
+    }
     pub(in crate::ownership) fn join_selection(&self, other: &Self) -> Option<Self> {
         if self.current.is_some() && self.current == other.current {
             Some(Self {

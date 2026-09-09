@@ -1,4 +1,4 @@
-//! Loop phase bounds prove one current element, not a completed prefix.
+//! Loop phase bounds and complete initialized prefixes are separate obligations.
 use super::{buffer_symbolic_fixture::*, contextual_reconstruction::key, storage_fixture::*, *};
 
 #[test]
@@ -62,7 +62,7 @@ fn counted_buffer_access_obeys_the_actual_pre_step_phase() {
 }
 
 #[test]
-fn completing_a_loop_does_not_yet_certify_a_buffer_prefix() {
+fn completing_all_current_element_writes_certifies_a_buffer_prefix() {
     let (mut f, buffer, mut body) = setup();
     let counter = f.local(CScalarType::Size, "counter");
     let scope = f
@@ -100,5 +100,5 @@ fn completing_a_loop_does_not_yet_certify_a_buffer_prefix() {
     );
     body.push(f.discard(buffer.read(&f, 0)));
     body.push(buffer.release(&f));
-    check(&f, body, Err(CSafetyError::UninitializedStorage));
+    check(&f, body, Ok(()));
 }

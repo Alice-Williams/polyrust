@@ -23,12 +23,12 @@ pub(super) fn function<'ast>(
         if !numeric_flow::progress(&mut state.numeric, graph, point, loops)? {
             continue;
         }
-        state.action(context, graph, point, false)?;
+        state.action(context, graph, point, loops, false)?;
         for edge in graph.node(point).successors() {
             let Destination::Point(next) = edge.destination() else {
                 continue;
             };
-            let Some(mut outgoing) = state.edge(context, graph, point, edge, false)? else {
+            let Some(mut outgoing) = state.edge(context, graph, point, edge, loops, false)? else {
                 continue;
             };
             if !numeric_flow::progress(&mut outgoing.numeric, graph, next, loops)? {

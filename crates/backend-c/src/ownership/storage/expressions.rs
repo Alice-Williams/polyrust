@@ -16,7 +16,10 @@ impl<'facts, 'ast> Engine<'facts, 'ast> {
         let cell = match value.kind() {
             V::Read(place) => {
                 let path = self.place(place, state)?;
-                state.read(&path, self.registry())?
+                match state.read(&path, self.registry()) {
+                    Ok(cell) => cell,
+                    Err(error) => self.prefix_read(&path, state)?.ok_or(error)?,
+                }
             }
             V::AddressOf(place) => {
                 Cell::Pointer(Pointer::Target(Box::new(self.place(place, state)?)))

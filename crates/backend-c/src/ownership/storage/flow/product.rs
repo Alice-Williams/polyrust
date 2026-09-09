@@ -1,7 +1,8 @@
 //! Paired transfers use the same incoming snapshot and invalidate dead memory.
 use super::super::numeric::Resolver;
 use super::{E, Engine, State};
-use crate::ast::contextual::flow_graph::{Edge, EdgeMeaning, Graph, Point, Polarity};
+use crate::ast::contextual::flow_graph::{Destination, Edge, EdgeMeaning, Graph, Point, Polarity};
+use crate::ownership::loops::LoopEvidence;
 use crate::ownership::{context_facts::ContextFacts, numeric_flow};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -15,8 +16,10 @@ impl<'ast> Product<'ast> {
         context: &ContextFacts<'ast>,
         graph: &Graph<'ast>,
         point: Point,
+        loops: &[LoopEvidence<'ast>],
         strict: bool,
     ) -> Result<(), E> {
+        let pending = self.pending_prefixes(context, graph, point, loops)?;
         let mut engine = Engine {
             context,
             site: Some((graph, point)),
@@ -40,6 +43,8 @@ impl<'ast> Product<'ast> {
             }
             self.memory.forget_values();
             self.numeric.forget(self.memory.roots.keys().cloned());
+        } else {
+            pending.apply(&mut self.memory);
         }
         self.numeric
             .retain_memory(&self.memory.roots.keys().cloned().collect());
@@ -52,6 +57,7 @@ impl<'ast> Product<'ast> {
         graph: &Graph<'ast>,
         point: Point,
         edge: &Edge<'ast>,
+        loops: &[LoopEvidence<'ast>],
         strict: bool,
     ) -> Result<Option<Self>, E> {
         let engine = Engine {
@@ -93,6 +99,7 @@ impl<'ast> Product<'ast> {
                 _ => {}
             }
         }
+        outgoing.complete_prefixes(edge, loops);
         for scope in edge.exited_scopes() {
             outgoing.memory.leave(scope);
             outgoing.numeric.leave(scope);
@@ -100,6 +107,9 @@ impl<'ast> Product<'ast> {
         outgoing
             .numeric
             .retain_memory(&outgoing.memory.roots.keys().cloned().collect());
+        if let Destination::Point(next) = edge.destination() {
+            outgoing.seed_prefixes(graph, next, loops);
+        }
         Ok(Some(outgoing))
     }
 }

@@ -30,6 +30,22 @@ pub(super) enum StepPhase {
 }
 
 impl LoopEvidence<'_> {
+    pub(super) fn identity(&self) -> &CLoopRef {
+        self.identity
+    }
+    pub(super) fn header(&self, graph: &Graph<'_>, point: Point) -> bool {
+        graph.function() == self.identity.scope().function()
+            && graph
+                .node(point)
+                .origin()
+                .is_some_and(|statement| std::ptr::eq(statement, self.statement))
+    }
+    pub(super) fn step(&self, graph: &Graph<'_>, point: Point) -> bool {
+        graph.function() == self.identity.scope().function()
+            && graph.node(point).origin().is_some_and(|statement| {
+                self.steps.iter().any(|step| std::ptr::eq(*step, statement))
+            })
+    }
     pub(super) fn phase(&self, function: &CFunctionRef, point: Point) -> Option<StepPhase> {
         if function != self.identity.scope().function() {
             return None;

@@ -315,6 +315,36 @@ pub(crate) mod buffer_fixture;
 #[path = "tests/buffer_order_guards.rs"]
 mod buffer_order_guards;
 #[cfg(test)]
+#[path = "tests/buffer_prefix_aggregates.rs"]
+mod buffer_prefix_aggregates;
+#[cfg(test)]
+#[path = "tests/buffer_prefix_boundaries.rs"]
+mod buffer_prefix_boundaries;
+#[cfg(test)]
+#[path = "tests/buffer_prefix_cleanup.rs"]
+mod buffer_prefix_cleanup;
+#[cfg(test)]
+#[path = "tests/buffer_prefix_control.rs"]
+mod buffer_prefix_control;
+#[cfg(test)]
+#[path = "tests/buffer_prefix_fixture.rs"]
+pub(crate) mod buffer_prefix_fixture;
+#[cfg(test)]
+#[path = "tests/buffer_prefix_lifetimes.rs"]
+mod buffer_prefix_lifetimes;
+#[cfg(test)]
+#[path = "tests/buffer_prefix_numbers.rs"]
+mod buffer_prefix_numbers;
+#[cfg(test)]
+#[path = "tests/buffer_prefix_partial.rs"]
+mod buffer_prefix_partial;
+#[cfg(test)]
+#[path = "tests/buffer_prefix_pointer_steps.rs"]
+mod buffer_prefix_pointer_steps;
+#[cfg(test)]
+#[path = "tests/buffer_prefix_reactivation.rs"]
+mod buffer_prefix_reactivation;
+#[cfg(test)]
 #[path = "tests/buffer_range_copies.rs"]
 mod buffer_range_copies;
 #[cfg(test)]

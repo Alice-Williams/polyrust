@@ -40,10 +40,12 @@ impl<'ast> Engine<'_, 'ast> {
         } else {
             false
         };
-        if last >= minimum && !relational {
+        let selected = base
+            .element_selection(ElementIndex::checked(first, last, source.as_ref())?)
+            .ok_or(E::UnprovedStorage)?;
+        if last >= minimum && !relational && !self.prefix_covers(&selected, state)? {
             return Err(E::IndexOutOfBounds);
         }
-        base.element_selection(ElementIndex::checked(first, last, source.as_ref())?)
-            .ok_or(E::UnprovedStorage)
+        Ok(selected)
     }
 }

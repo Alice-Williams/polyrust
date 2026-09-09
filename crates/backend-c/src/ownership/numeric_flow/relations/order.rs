@@ -5,6 +5,16 @@ use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(super) struct Orders<'a>(BTreeMap<(Term, Term), Vec<&'a CValue>>);
+impl State<'_> {
+    pub(in crate::ownership) fn below_keys(&self, left: &Key, right: &Key) -> Result<bool, E> {
+        self.number(left, CScalarType::Size)?.extent_bounds()?;
+        self.number(right, CScalarType::Size)?.extent_bounds()?;
+        Ok(self.relations.orders.0.contains_key(&(
+            Term::Read(Box::new(left.clone())),
+            Term::Read(Box::new(right.clone())),
+        )))
+    }
+}
 impl<'a> Orders<'a> {
     pub(super) fn invalidate(&mut self, mut test: impl FnMut(&Root) -> bool) {
         self.0.retain(|(left, right), _| {

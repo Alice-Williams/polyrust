@@ -10,6 +10,8 @@ mod heap;
 mod index_extents;
 mod numeric;
 mod places;
+mod prefix_reads;
+mod prefixes;
 mod root_cells;
 mod state;
 mod values;
@@ -39,8 +41,9 @@ impl Engine<'_, '_> {
 impl CRegistry {
     /// Checks derived storage, initialization, bounds and automatic lifetimes.
     /// Default allocation/null/release, fixed restoration and guarded dynamic
-    /// element storage are checked. Prefix construction and other call effects
-    /// remain unresolved. Success is not a full ownership or rendering certificate.
+    /// element storage and complete counted prefixes are checked. Owner transfer
+    /// and other call effects remain unresolved. Success is not a full ownership
+    /// or rendering certificate; prefix numeric history stays conservative.
     ///
     /// ```compile_fail
     /// use portable_backend_c::ownership::storage::state::State;
@@ -71,6 +74,16 @@ impl CRegistry {
     /// ```compile_fail
     /// use portable_backend_c::ownership::paths::Shape;
     /// fn forge() -> Shape { todo!() }
+    /// ```
+    ///
+    /// ```compile_fail
+    /// use portable_backend_c::ownership::storage::prefixes::Prefixes;
+    /// fn forge() -> Prefixes { Prefixes::default() }
+    /// ```
+    ///
+    /// ```compile_fail
+    /// use portable_backend_c::ownership::storage::prefixes::Bound;
+    /// fn forge() -> Bound { Bound::OriginalCount }
     /// ```
     pub fn check_storage_paths(&self, files: &[CSourceFile]) -> Result<(), CSafetyError> {
         let context = ContextFacts::check(self, files)?;

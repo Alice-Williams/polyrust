@@ -215,6 +215,12 @@ impl Allocation {
 }
 impl State {
     pub(super) fn expire_allocation(&mut self, origin: &AllocationOrigin) {
+        self.prefixes.retain(|root, _| {
+            !matches!(root, crate::ownership::paths::Root::Allocation(old, _) if old.as_ref() == origin)
+        });
+        for prefixes in self.prefixes.values_mut() {
+            prefixes.each_mut(|cell| cell.expire_allocation(origin));
+        }
         self.roots.retain(|root, _| {
             !matches!(root,
             crate::ownership::paths::Root::Allocation(old, _) if old.as_ref() == origin)

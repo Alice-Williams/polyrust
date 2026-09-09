@@ -3,6 +3,10 @@ mod audit;
 #[cfg(test)]
 #[path = "../../tests/buffer_activation_boundaries.rs"]
 mod buffer_tests;
+#[cfg(test)]
+#[path = "../../tests/buffer_prefix_activations.rs"]
+mod prefix_activation_tests;
+mod prefixes;
 mod product;
 mod solve;
 use super::root_cells::RootCell;

@@ -1,6 +1,6 @@
 # M34A-11-02D-04C-02 — Typed allocated storage and dynamic extents
 
-- Status: in-progress
+- Status: complete
 - Depends on: M34A-11-02D-04C-01
 
 ## Goal
@@ -12,11 +12,27 @@ and fixed or dynamic element extents.
 
 1. [02A: fixed typed heap objects](M34A-11-02D-04C-02A-fixed-heap.md) — complete.
 2. [02B: coupled numeric memory](M34A-11-02D-04C-02B-numeric-memory.md) — complete.
-3. [02C: dynamic extents and initialized prefixes](M34A-11-02D-04C-02C-dynamic-heap.md).
+3. [02C: dynamic extents and initialized prefixes](M34A-11-02D-04C-02C-dynamic-heap.md) — complete.
 
 Each checkpoint requires its own full cached gates, uncapped independent review
-and commit/push. The parent remains open until all three pass. In particular,
+and commit/push. The parent remained open until all three passed. In particular,
 fixed object capacity is not a substitute for dynamic count relations.
+
+## Closure audit and evidence
+
+02A covers exact successful allocation restore, layout/qualifiers, effective
+type, shared physical identity and selected subobject initialization. 02B retains
+actual numeric memory history, aliases and conservative joins. Completed 02C
+adds original runtime count products, guarded elements and actual construction
+prefixes. Release/expiry and failure-path controls compose in the same gate;
+partial storage cleanup does not certify semantic owning-child rollback.
+
+The final [02C-03 evidence](M34A-11-02D-04C-02C-03-prefixes.md#final-evidence)
+passes 515 C units and companion gates, all 320 tracked and 257 release tests,
+and deterministic eight-target conformance. Its complete independent review
+explicitly re-audited this parent and found no remaining storage obligation.
+Owner transitions, live allocation families, incoming ABI and body-derived call
+contracts retain their separate tasks. This closure cannot render new C code.
 
 ## Definition of done
 
