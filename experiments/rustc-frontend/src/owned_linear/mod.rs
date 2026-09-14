@@ -4,6 +4,11 @@ mod flow;
 #[path = "../../test/owned_linear/mutations.rs"]
 pub(crate) mod mutations;
 mod relations;
+mod scopes;
+pub(crate) use scopes::ScopeEvidence;
+#[cfg(owned_scope_proof)]
+#[path = "../../test/owned_scopes/mutations.rs"]
+pub(crate) mod scope_mutations;
 mod source;
 mod values;
 
@@ -16,6 +21,7 @@ pub(crate) enum LinearError {
     Signature,
     BodyShape,
     SourceIdentity,
+    Scope,
     Constructor(ConstructionError),
     Owner,
     Phase,
@@ -38,6 +44,7 @@ pub(crate) struct LinearOwnedBody<'tcx> {
     bindings: Vec<(HirId, mir::Local)>,
     moves: Vec<mir::Location>,
     scope: HirId,
+    scopes: ScopeEvidence<'tcx>,
     scalar_read: mir::Location,
     drop: mir::Location,
 }
@@ -46,6 +53,13 @@ impl<'tcx> LinearOwnedBody<'tcx> {
     /// Caller must be the successful-analysis boundary. No arbitrary MIR input.
     pub(crate) fn read(tcx: TyCtxt<'tcx>, owner: LocalDefId) -> Result<Self> {
         let plan = source::read(tcx, owner)?;
+        Self::from_plan(tcx, owner, plan)
+    }
+    pub(crate) fn read_tail_scopes(tcx: TyCtxt<'tcx>, owner: LocalDefId) -> Result<Self> {
+        let plan = source::read_tail_scopes(tcx, owner)?;
+        Self::from_plan(tcx, owner, plan)
+    }
+    fn from_plan(tcx: TyCtxt<'tcx>, owner: LocalDefId, plan: source::Plan<'tcx>) -> Result<Self> {
         let body = tcx.mir_drops_elaborated_and_const_checked(owner).borrow();
         let matched = relations::validate(tcx, &plan, &body)?;
         Ok(Self {
@@ -53,6 +67,7 @@ impl<'tcx> LinearOwnedBody<'tcx> {
             bindings: plan.bindings.into_iter().zip(matched.owners).collect(),
             moves: matched.moves,
             scope: plan.scope,
+            scopes: plan.scopes,
             scalar_read: matched.scalar_read,
             drop: matched.drop,
             constructor: plan.constructor,
@@ -66,6 +81,9 @@ impl<'tcx> LinearOwnedBody<'tcx> {
     }
     pub(crate) fn scope(&self) -> HirId {
         self.scope
+    }
+    pub(crate) fn scopes(&self) -> &ScopeEvidence<'tcx> {
+        &self.scopes
     }
     /// Entry n moves bindings[n] into bindings[n + 1], in source chain order.
     pub(crate) fn moves(&self) -> &[mir::Location] {

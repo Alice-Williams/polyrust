@@ -330,3 +330,10 @@ value moves and a final scalar read/drop, retaining canonical HIR bindings and
 authenticated MIR places/locations. Private mutations reject incorrect producer,
 move, read, drop and control-flow relations. This remains compiler-only evidence,
 not C/Java heap admission. See [linear correspondence specification](../../docs/specification/typed-generation/languages/c/rust-linear-owned-correspondence.md).
+
+M35-02B-03A adds the separately selected tail-scope reader and `owned_scope_*`
+proof targets. Canonical HIR containment certifies block parents and binding,
+read and owner/drop scopes, including empty wrappers and ownership moved inward.
+The one-owner MIR relation is reused; the root-only entry remains restricted.
+This does not admit sibling exits, branches or multiple owners and does not
+enable heap generation. See [tail-scope specification](../../docs/specification/typed-generation/languages/c/rust-owned-tail-scopes.md).

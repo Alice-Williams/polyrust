@@ -56,6 +56,14 @@ pub(super) fn check(tcx: TyCtxt<'_>) {
             crate::owned_linear::mutations::check(tcx, owner);
         }
         if let Some(count) = expected {
+            let scoped = LinearOwnedBody::read_tail_scopes(tcx, owner).unwrap();
+            assert_eq!(
+                scoped.scopes().blocks().collect::<Vec<_>>(),
+                vec![(scoped.scope(), None)]
+            );
+            assert_eq!(scoped.scopes().read_scope(), scoped.scope());
+            assert_eq!(scoped.scopes().drop_scope(), scoped.scope());
+            assert_eq!(scoped.scopes().bindings().len(), count);
             let proof = result.unwrap_or_else(|error| {
                 let body = tcx.mir_drops_elaborated_and_const_checked(owner).borrow();
                 panic!(

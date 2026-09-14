@@ -1,6 +1,6 @@
 # M35-02B-03 — Extend structured ownership correspondence
 
-- Status: planned
+- Status: in-progress
 - Parent: [M35-02B](M35-02B-structured-owned-mapping.md)
 - Depends on: M35-02B-02
 
@@ -13,6 +13,11 @@ contract before admission. Compiler drop flags and place projections are evidenc
 they are not a request for goto-based generation or a custom source borrow checker.
 
 ## Definition of done and tests
+
+The first increment is [M35-02B-03A — Tail-nested lexical scopes](M35-02B-03A-tail-scopes.md).
+It deliberately retains one owner chain and one normal path. The remaining
+multi-owner, branch/partial-move, early-return and call-boundary increments stay
+unimplemented until their own closed contracts and proof tasks are written.
 
 - Map every admitted structured exit and owned operation unambiguously to the
   compiler's corresponding places/drop obligations; unsupported shapes diagnose.
