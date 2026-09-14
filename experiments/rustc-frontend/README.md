@@ -310,3 +310,10 @@ unsafe, FFI or unwind support. This proof does not establish heap cleanup,
 universal safety, full Rust support or production C compliance. See
 [the experiment specification](../../docs/specification/rustc-frontend-proof.md)
 and [M35](../../docs/plan/milestones/M35-rustc-frontend-proof.md).
+
+M35-02A adds a backend-independent `owned_probe` executable, observing pinned
+rustc drop-elaborated MIR after successful analysis. Its `owned_probe_test` also
+depends on C/Java adapters for rejection controls. It tests moves, conditional and
+partial drops, early returns, shadowing and a same-spelled counterfeit Box.
+It does not enable heap translation. See the [typed observation evidence](../../docs/specification/typed-generation/languages/c/rust-drop-observations.md)
+and [ordered owned-value plan](../../docs/plan/tasks/M35-02-rustc-owned-values.md).

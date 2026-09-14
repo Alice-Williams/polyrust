@@ -17,6 +17,7 @@ load(":java_source_targets.bzl", "java_source_targets")
 load(":metadata_action_targets.bzl", "metadata_action_targets")
 load(":metadata_agreement_targets.bzl", "metadata_agreement_targets")
 load(":metadata_analysis_tests.bzl", "metadata_analysis_tests")
+load(":owned_probe_targets.bzl", "owned_probe_targets")
 load(":public_package_targets.bzl", "public_package_targets")
 load(":publication_probe_targets.bzl", "publication_probe_targets")
 load(":source_capability_targets.bzl", "source_capability_targets")
@@ -70,6 +71,8 @@ source_check_targets(name = "source_check_test")
 source_capability_targets(name = "source_capabilities_test")
 
 source_origin_targets(name = "source_origin_test")
+
+owned_probe_targets(name = "owned_probe_test")
 
 java_source_targets(name = "java_adapter")
 

@@ -1,6 +1,6 @@
 # M35-02 — Owned allocation and cleanup proof
 
-- Status: planned
+- Status: in-progress
 - Depends on: M35-01B, M35-01C and M35-01D (typed C, documentation and crate boundaries)
 
 ## Goal
@@ -34,3 +34,17 @@ Mutation tests detect missing/double cleanup in target lowering.
 
 Fresh independent review, required Linux/Bazel gates, documented evidence,
 commit and push. Production cutover is separate.
+
+## Ordered checkpoints
+
+Start with `Box<i32>`, then owned scalar-field records; String/Vec are deferred.
+No backend advertises heap support merely because the compiler probe succeeds.
+
+1. [M35-02A — Pinned compiler drop evidence](M35-02A-compiler-drop-evidence.md).
+2. [M35-02B — Structured ownership correspondence](M35-02B-structured-owned-mapping.md).
+3. [M35-02C — Typed C Box mapping](M35-02C-c-box-mapping.md).
+4. [M35-02D — Native cleanup proof and closure](M35-02D-native-owned-proof.md).
+
+The [owned-value contract](../../specification/typed-generation/languages/c/rust-owned-values.md)
+keeps compiler observation, source/target correspondence and runtime cleanup
+proof distinct. Existing no-heap C/Java gates and unrelated M34 work remain intact.
