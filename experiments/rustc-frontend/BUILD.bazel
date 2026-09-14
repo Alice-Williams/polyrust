@@ -8,6 +8,12 @@ load(":defs.bzl", "adapter_format_test", "compiler_adapter", "compiler_adapter_c
 load(":direct_call_targets.bzl", "direct_call_targets")
 load(":documentation_targets.bzl", "documentation_targets")
 load(":export_graph_targets.bzl", "export_graph_targets")
+load(":java_ast_targets.bzl", "java_ast_targets")
+load(":java_bundle_targets.bzl", "java_bundle_targets")
+load(":java_contract_targets.bzl", "java_contract_targets")
+load(":java_fixture_targets.bzl", "java_fixture_targets")
+load(":java_graph_targets.bzl", "java_graph_targets")
+load(":java_source_targets.bzl", "java_source_targets")
 load(":metadata_action_targets.bzl", "metadata_action_targets")
 load(":metadata_agreement_targets.bzl", "metadata_agreement_targets")
 load(":metadata_analysis_tests.bzl", "metadata_analysis_tests")
@@ -64,6 +70,18 @@ source_check_targets(name = "source_check_test")
 source_capability_targets(name = "source_capabilities_test")
 
 source_origin_targets(name = "source_origin_test")
+
+java_source_targets(name = "java_adapter")
+
+java_contract_targets(name = "java_capability_contract_test")
+
+java_ast_targets(name = "java_source_ast_test")
+
+java_graph_targets(name = "java_graph_check_test")
+
+java_bundle_targets(name = "java_bundle")
+
+java_fixture_targets(name = "java_fixture_native_test")
 
 publication_probe_targets(name = "directory_rename_probe_test")
 
@@ -131,6 +149,7 @@ adapter_format_test(
     name = "rustfmt_test",
     srcs = glob([
         "publication/*.rs",
+        "java_bundle/*.rs",
         "src/**/*.rs",
         "fixtures/*.rs",
         "test/*.rs",

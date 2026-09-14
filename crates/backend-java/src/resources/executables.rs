@@ -116,6 +116,7 @@ impl Checker<'_> {
                 arguments,
             } => {
                 let signature = match callable {
+                    JavaCallableRef::Dependency(callable) => callable.signature(),
                     JavaCallableRef::Known { signature, .. }
                     | JavaCallableRef::Runtime { signature, .. }
                     | JavaCallableRef::Generated { signature, .. }
@@ -180,7 +181,8 @@ impl Checker<'_> {
                 match field {
                     JavaFieldRef::Known(_) => {}
                     JavaFieldRef::Structural { name, ty }
-                    | JavaFieldRef::Generated { name, ty, .. } => {
+                    | JavaFieldRef::Generated { name, ty, .. }
+                    | JavaFieldRef::RustSource { name, ty, .. } => {
                         self.name(name);
                         self.ty(ty);
                     }

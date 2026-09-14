@@ -71,8 +71,9 @@ impl CapabilityMapping<JavaDialect> for JavaModules {
             JavaFilePlacement::Main,
             vec![JavaFileItem::Type {
                 conformances: input.conformances.into(),
+                dependencies: Default::default(),
                 declared: input.declared,
-                declaration,
+                declaration: Box::new(declaration),
             }],
             JavaSourceFileKind::CompilationUnit,
             source("generated-file"),

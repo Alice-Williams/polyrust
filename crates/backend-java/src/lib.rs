@@ -1,5 +1,6 @@
-//! Java 21 generation through verified CoreIR, a typed Java AST, the shared
-//! symbol linker, opaque syntax certification, and total structural rendering.
+//! Java 21 generation through a typed Java AST, the shared symbol linker,
+//! opaque syntax certification, and total structural rendering. CoreIR and the
+//! isolated compiler-source adapter feed that same target verification pipeline.
 
 #![forbid(unsafe_code)]
 #![cfg_attr(not(test), deny(clippy::wildcard_imports))]

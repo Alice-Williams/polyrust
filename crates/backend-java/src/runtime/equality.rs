@@ -262,9 +262,10 @@ pub(super) fn runtime_record_equality_method(
                             object.clone(),
                             member_call(
                                 this.clone(),
-                                match component.origin {
-                                    JavaRecordComponentOrigin::Runtime(member) => member,
-                                    JavaRecordComponentOrigin::Core(_) => unreachable!(
+                                match &component.origin {
+                                    JavaRecordComponentOrigin::Runtime(member) => *member,
+                                    JavaRecordComponentOrigin::Core(_)
+                                    | JavaRecordComponentOrigin::RustSource(_) => unreachable!(
                                         "runtime semantic records have runtime components"
                                     ),
                                 },
@@ -276,9 +277,10 @@ pub(super) fn runtime_record_equality_method(
                             object.clone(),
                             member_call(
                                 other.clone(),
-                                match component.origin {
-                                    JavaRecordComponentOrigin::Runtime(member) => member,
-                                    JavaRecordComponentOrigin::Core(_) => unreachable!(
+                                match &component.origin {
+                                    JavaRecordComponentOrigin::Runtime(member) => *member,
+                                    JavaRecordComponentOrigin::Core(_)
+                                    | JavaRecordComponentOrigin::RustSource(_) => unreachable!(
                                         "runtime semantic records have runtime components"
                                     ),
                                 },

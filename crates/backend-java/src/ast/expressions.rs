@@ -84,6 +84,9 @@ impl JavaExpr {
                 arguments,
             } => {
                 match callable {
+                    JavaCallableRef::Dependency(callable) => {
+                        symbols.insert(TargetSymbolRef::DependencyCallable(callable.clone()));
+                    }
                     JavaCallableRef::Known { callable, .. } => {
                         symbols.insert(TargetSymbolRef::KnownCallable(*callable));
                         symbols.insert(TargetSymbolRef::KnownType(callable.owner()));
@@ -156,7 +159,8 @@ impl JavaExpr {
                         symbols.insert(TargetSymbolRef::KnownType(value.owner()));
                     }
                     JavaFieldRef::Structural { ty, .. } => ty.symbols(symbols),
-                    JavaFieldRef::Generated { owner, ty, .. } => {
+                    JavaFieldRef::Generated { owner, ty, .. }
+                    | JavaFieldRef::RustSource { owner, ty, .. } => {
                         symbols.insert(TargetSymbolRef::Generated(GeneratedSymbolId::Type(*owner)));
                         ty.symbols(symbols);
                     }
@@ -378,6 +382,14 @@ impl JavaExpr {
                                     name.as_str()
                                 ),
                             ));
+                        }
+                    }
+                    JavaFieldRef::RustSource { owner, field, name, ty } => {
+                        if receiver.ty != JavaType::Reference(JavaTypeName::Generated(*owner))
+                            || !super::source_fields::matches(*owner, *field, name, ty, context)
+                        {
+                            violations.push(AstViolation::new(DiagnosticCode::UnresolvedReference,
+                                "RustSource Java field reference does not match its declared receiver/owner/identity/name/type"));
                         }
                     }
                     JavaFieldRef::Generated {

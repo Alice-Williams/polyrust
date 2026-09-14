@@ -1,3 +1,4 @@
+use super::JavaPackage;
 use super::blocks::{JavaBlock, JavaLocalFinality};
 use super::completion::block_guarantees_exit;
 use super::declaration_model::{
@@ -19,7 +20,7 @@ use super::lexical_scope::JavaLexicalScope;
 use super::operator_signatures::{
     binary_signature_matches, literal_matches_type, unary_signature_matches,
 };
-use super::resolved_files::{JavaFilePlacement, JavaPackage, JavaSourceFileKind};
+use super::resolved_files::{JavaFilePlacement, JavaSourceFileKind};
 use super::runtime_members::JavaRuntimeMember;
 use super::statement_model::{JavaCatch, JavaPattern, JavaStmt, JavaSwitchArm};
 use super::types::{
@@ -81,8 +82,9 @@ fn verify_fixture(
             .into_iter()
             .map(|(declared, declaration)| JavaFileItem::Type {
                 conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                dependencies: Default::default(),
                 declared,
-                declaration,
+                declaration: Box::new(declaration),
             })
             .collect(),
     )

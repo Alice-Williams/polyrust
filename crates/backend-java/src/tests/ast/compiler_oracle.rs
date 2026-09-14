@@ -153,8 +153,9 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
             JavaFilePlacement::Main,
             vec![JavaFileItem::Type {
                 conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                dependencies: Default::default(),
                 declared: vec![],
-                declaration,
+                declaration: Box::new(declaration),
             }],
             JavaSourceFileKind::CompilationUnit,
             verifier_source("mutation-oracle-file"),
@@ -461,18 +462,21 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
         vec![
             JavaFileItem::Type {
                 conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                dependencies: Default::default(),
                 declared: vec![],
-                declaration: structured_record,
+                declaration: Box::new(structured_record),
             },
             JavaFileItem::Type {
                 conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                dependencies: Default::default(),
                 declared: vec![],
-                declaration: structured_interface,
+                declaration: Box::new(structured_interface),
             },
             JavaFileItem::Type {
                 conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                dependencies: Default::default(),
                 declared: vec![],
-                declaration: super::fixture_declaration(vec![structural_method(
+                declaration: Box::new(super::fixture_declaration(vec![structural_method(
                     "crossItemChoice",
                     JavaType::Reference(JavaTypeName::Generated(oracle_enum)),
                     vec![],
@@ -484,16 +488,17 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
                             variant: oracle_first,
                         }),
                     }))]),
-                )]),
+                )])),
             },
             JavaFileItem::Type {
                 conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                dependencies: Default::default(),
                 declared: vec![
                     GeneratedSymbolId::Type(oracle_enum),
                     GeneratedSymbolId::Value(oracle_first),
                     GeneratedSymbolId::Value(oracle_second),
                 ],
-                declaration: structured_class,
+                declaration: Box::new(structured_class),
             },
         ]
         .into_iter()

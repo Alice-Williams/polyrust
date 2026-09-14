@@ -7,6 +7,10 @@ pub(crate) mod budget_oracle;
 pub(crate) mod capability_fixtures;
 mod classfile_metrics;
 mod collection_boundaries_native;
+mod dependency_api;
+mod dependency_inventory;
+mod dependency_legacy;
+pub(crate) mod documentation_fixture;
 mod mapping_coverage;
 mod mapping_short_circuit;
 pub(crate) mod match_dispatch;
@@ -16,6 +20,13 @@ mod nested_payload_matches;
 mod portable_expectation_nan;
 mod resource_encoding_native;
 mod resources_native;
+pub(crate) mod source_dependency_fixture;
+mod source_dependency_fixture_tests;
+#[path = "source_documentation/fixture.rs"]
+pub(crate) mod source_documentation_fixture;
+mod source_inventory;
+#[path = "source_records/fixture.rs"]
+pub(crate) mod source_record_fixture;
 mod switch_dominance_native;
 mod totality_empty_interfaces;
 mod totality_interfaces;

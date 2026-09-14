@@ -172,12 +172,13 @@ pub(super) fn items(builder: &mut TargetAstBuilder<JavaDialect>) -> Vec<JavaFile
         root.name = JavaIdentifier::from_portable(name);
         JavaFileItem::Type {
             conformances: crate::ast::JavaConformanceInventory::structural().into(),
+            dependencies: Default::default(),
             declared: vec![
                 GeneratedSymbolId::Type(owner),
                 GeneratedSymbolId::Value(constant),
                 GeneratedSymbolId::Callable(function),
             ],
-            declaration: root,
+            declaration: Box::new(root),
         }
     })
     .collect()

@@ -64,16 +64,18 @@ pub(super) fn add_consumer(
     assert!(matches!(declaration.members[0], JavaMember::Method(_)));
     let mut items = vec![JavaFileItem::Type {
         conformances: JavaConformanceInventory::structural().into(),
+        dependencies: Default::default(),
         declared: vec![],
-        declaration,
+        declaration: Box::new(declaration),
     }];
     for index in 1..=9 {
         let mut occupied = super::fixture_declaration(vec![]);
         occupied.name = JavaIdentifier::new(format!("OracleEnumConsumer${index}")).unwrap();
         items.push(JavaFileItem::Type {
             conformances: JavaConformanceInventory::structural().into(),
+            dependencies: Default::default(),
             declared: vec![],
-            declaration: occupied,
+            declaration: Box::new(occupied),
         });
     }
     let file = builder.file(portable_codegen::TargetFile::new(

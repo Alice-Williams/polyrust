@@ -193,16 +193,7 @@ diff -rq "$artifact" "$example"
 These are proofs for the admitted no-heap subset, not support for arbitrary
 Rust crates. The task record retains the gate IDs and independent review results.
 
-## Java production bundles (subsequent checkpoint)
-
-This C checkpoint retains the historical Java backend and its tests, with
-uninhabited dependency-call types for compatibility with the shared linker.
-These types cannot construct a call and do not advertise Java dependency support.
-The Java
-compiler-frontend implementation and the Java generation targets described in
-this forward-looking section are introduced by the next migration checkpoint.
-Its plans and specifications are retained here so the dependency order is
-visible; they are not claims that these Java commands exist in this C tree.
+## Java production bundles
 
 The same real four-crate Rust source graph now generates a production Java
 bundle through the existing typed Java AST, certifier and structural renderer.

@@ -76,12 +76,15 @@ pub(super) fn resolved_name(
         .get(symbol)
         .map(|value| match value {
             JavaResolvedName::Local(value) => value.as_str().to_owned(),
-            JavaResolvedName::DeclaredPath(value) => std::iter::once(value.package.name())
-                .chain(value.owners.iter().map(|name| name.as_str()))
-                .chain(std::iter::once(value.member.as_str()))
-                .collect::<Vec<_>>()
-                .join("."),
-            JavaResolvedName::Qualified(value) => value.text().to_owned(),
+            JavaResolvedName::DeclaredPath(value) => {
+                let package = value.package.name();
+                std::iter::once(package.as_ref())
+                    .chain(value.owners.iter().map(|name| name.as_str()))
+                    .chain(std::iter::once(value.member.as_str()))
+                    .collect::<Vec<_>>()
+                    .join(".")
+            }
+            JavaResolvedName::Qualified(value) => value.text().into_owned(),
             JavaResolvedName::GeneratedMember { owner, member } => {
                 format!("{}.{}", owner.text(), member.as_str())
             }

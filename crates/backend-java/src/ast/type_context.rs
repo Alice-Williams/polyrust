@@ -149,6 +149,7 @@ pub(super) fn verify_expression_type_context(
             arguments,
         } => {
             let signature = match callable {
+                JavaCallableRef::Dependency(callable) => callable.signature(),
                 JavaCallableRef::Known { signature, .. }
                 | JavaCallableRef::Runtime { signature, .. }
                 | JavaCallableRef::Generated { signature, .. }

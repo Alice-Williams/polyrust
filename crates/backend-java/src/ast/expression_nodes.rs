@@ -38,6 +38,12 @@ pub enum JavaFieldRef {
         name: JavaIdentifier,
         ty: JavaType,
     },
+    RustSource {
+        owner: GeneratedTypeId,
+        field: portable_codegen::RustDeclarationId,
+        name: JavaIdentifier,
+        ty: JavaType,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

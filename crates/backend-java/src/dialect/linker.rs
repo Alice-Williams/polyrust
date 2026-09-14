@@ -26,10 +26,8 @@ use portable_diagnostics::DiagnosticCode;
 use std::collections::{BTreeMap, BTreeSet};
 
 impl LinkerDialect for JavaDialect {
-    // This checkpoint retains the historical backend: no dependency calls can
-    // be constructed until the subsequent Java source-integration checkpoint.
-    type DependencyCallable = std::convert::Infallible;
-    type DependencyPackage = std::convert::Infallible;
+    type DependencyCallable = super::JavaImportedCallable;
+    type DependencyPackage = super::JavaDependencyPackage;
     type KnownField = JavaKnownField;
     type KnownConstructor = JavaKnownConstructor;
     type KnownMethod = JavaKnownMethod;
@@ -47,6 +45,20 @@ impl LinkerDialect for JavaDialect {
     type ImportKind = JavaImportKind;
     type ResolvedModule = JavaPackage;
     type ResolvedFileItem = ResolvedJavaFileItem;
+
+    fn dependency_callable_spec(
+        &self,
+        callable: &Self::DependencyCallable,
+    ) -> portable_codegen::DependencyCallableSpec<Self> {
+        callable.spec()
+    }
+
+    fn package_symbol_catalogue(
+        &self,
+        package: &TargetAstPackage<Self>,
+    ) -> Result<SymbolCatalogue<Self>, Vec<portable_diagnostics::Diagnostic>> {
+        super::dependency_scope::catalogue(package)
+    }
 
     fn package_ecosystem(&self, package: &Self::ExternalPackage) -> PackageEcosystem {
         match package {
@@ -76,13 +88,6 @@ impl LinkerDialect for JavaDialect {
 
     fn symbol_catalogue(&self) -> SymbolCatalogue<Self> {
         java_symbol_catalogue()
-    }
-
-    fn dependency_callable_spec(
-        &self,
-        callable: &Self::DependencyCallable,
-    ) -> portable_codegen::DependencyCallableSpec<Self> {
-        match *callable {}
     }
 
     fn identifier_from_candidate(
@@ -250,9 +255,9 @@ impl LinkerDialect for JavaDialect {
                 | ResolvedReference::Imported { binding: value, .. } => {
                     JavaResolvedName::Local(value.clone())
                 }
-                ResolvedReference::Qualified(value) => JavaResolvedName::Qualified(*value),
+                ResolvedReference::Qualified(value) => JavaResolvedName::Qualified(value.clone()),
                 ResolvedReference::Member { owner, member } => JavaResolvedName::Member {
-                    owner: *owner,
+                    owner: owner.clone(),
                     member: *member,
                 },
             };
@@ -261,13 +266,22 @@ impl LinkerDialect for JavaDialect {
         Ok(ResolvedJavaFileItem {
             item: item.clone(),
             names,
+            documentation: super::documentation::lower(package, item)?,
+            source_inventory: crate::ast::JavaSourceInventory::derive(package, item)?,
         })
     }
 
     fn verify_resolved_file_item(&self, item: &Self::ResolvedFileItem) -> Vec<AstViolation> {
         let expected = item.item.symbols().into_iter().collect::<BTreeSet<_>>();
         let actual = item.names.keys().cloned().collect::<BTreeSet<_>>();
-        if expected == actual {
+        let dependencies_match = item.names.iter().all(|(symbol, name)| match symbol {
+            TargetSymbolRef::DependencyCallable(callable) => {
+                matches!(name, JavaResolvedName::Qualified(JavaQualifiedName::Dependency(path))
+                    if path == callable.function().path())
+            }
+            _ => true,
+        });
+        if expected == actual && dependencies_match {
             vec![]
         } else {
             vec![AstViolation::new(
@@ -292,6 +306,7 @@ impl LinkerDialect for JavaDialect {
                 .any(|item| declares_reserved_runtime_type(&item.item)),
         );
         violations.extend(verify_composed_java_file(
+            file.module(),
             file.placement(),
             file.items().iter().map(|item| &item.item).collect(),
             context,

@@ -8,8 +8,9 @@ use super::syntax::{
     visibility,
 };
 use crate::ast::{
-    JavaAnnotation, JavaConstructor, JavaDeclarationKind, JavaField, JavaMember, JavaMethod,
-    JavaMethodDeclaration, JavaParameter, JavaResolvedName, JavaTypeDeclaration,
+    JavaAnnotation, JavaConstructor, JavaDeclarationKind, JavaDocumentation,
+    JavaDocumentationOwner, JavaField, JavaMember, JavaMethod, JavaMethodDeclaration,
+    JavaParameter, JavaResolvedName, JavaTypeDeclaration,
 };
 use crate::dialect::JavaDialect;
 use portable_codegen::{GeneratedSymbolId, LinkedFile, TargetSymbolRef};
@@ -18,15 +19,17 @@ use portable_diagnostics::Diagnostic;
 pub(super) fn render_type(
     value: &JavaTypeDeclaration,
     names: &std::collections::BTreeMap<TargetSymbolRef<JavaDialect>, JavaResolvedName>,
+    docs: &JavaDocumentation,
     depth: usize,
     file: &LinkedFile<JavaDialect>,
 ) -> Result<String, Vec<Diagnostic>> {
-    render_type_with_extra(value, names, depth, "", file)
+    render_type_with_extra(value, names, docs, depth, "", file)
 }
 
 pub(super) fn render_type_with_extra(
     value: &JavaTypeDeclaration,
     names: &std::collections::BTreeMap<TargetSymbolRef<JavaDialect>, JavaResolvedName>,
+    docs: &JavaDocumentation,
     depth: usize,
     extra_members: &str,
     file: &LinkedFile<JavaDialect>,
@@ -44,31 +47,28 @@ pub(super) fn render_type_with_extra(
     let mut enum_constants = Vec::new();
     for member in &value.members {
         if let JavaMember::EnumConstant(constant) = member {
-            enum_constants.push(render_enum_constant(constant, names)?);
+            enum_constants.push(format!(
+                "{}{}{}",
+                super::documentation::render(
+                    docs,
+                    JavaDocumentationOwner::Symbol(GeneratedSymbolId::Value(constant.declared))
+                ),
+                "    ".repeat(depth + 1),
+                render_enum_constant(constant, names)?
+            ));
         } else {
-            members.push_str(&render_member(member, names, depth + 1, file)?);
+            members.push_str(&render_member(member, names, docs, depth + 1, file)?);
         }
     }
     members.push_str(extra_members);
-    let components = value
-        .record_components
-        .iter()
-        .map(|component| {
-            Ok(format!(
-                "{} {}",
-                render_java_type(&component.ty, names)?,
-                component.name.as_str()
-            ))
-        })
-        .collect::<Result<Vec<_>, Vec<Diagnostic>>>()?
-        .join(", ");
+    let components = super::record_components::render(value, names, docs, depth)?;
     let permits = value
         .permits
         .iter()
         .map(|ty| render_java_type(ty, names))
         .collect::<Result<Vec<_>, Vec<Diagnostic>>>()?
         .join(", ");
-    match value.kind {
+    let declaration: Result<String, Vec<Diagnostic>> = match value.kind {
         JavaDeclarationKind::FinalClass => Ok(format!(
             "{indent}{visibility}{declaration_modifiers}final class {declaration_name}{type_parameters}{heritage} {{\n{members}{indent}}}\n"
         )),
@@ -77,11 +77,6 @@ pub(super) fn render_type_with_extra(
         )),
         JavaDeclarationKind::Enum => {
             let constants = enum_constants.join(",\n");
-            let constants = constants
-                .lines()
-                .map(|line| format!("{}{}", "    ".repeat(depth + 1), line))
-                .collect::<Vec<_>>()
-                .join("\n");
             Ok(format!(
                 "{indent}{visibility}{declaration_modifiers}enum {declaration_name} {{\n{constants};\n{members}{indent}}}\n"
             ))
@@ -95,16 +90,41 @@ pub(super) fn render_type_with_extra(
         JavaDeclarationKind::SealedInterface => Ok(format!(
             "{indent}{visibility}{declaration_modifiers}sealed interface {declaration_name}{type_parameters} permits {permits} {{\n{members}{indent}}}\n"
         )),
-    }
+    };
+    let comment = value.declared.map_or_else(String::new, |id| {
+        super::documentation::render(
+            docs,
+            JavaDocumentationOwner::Symbol(GeneratedSymbolId::Type(id)),
+        )
+    });
+    Ok(format!("{comment}{}", declaration?))
 }
 
 pub(super) fn render_member(
     value: &JavaMember,
     names: &std::collections::BTreeMap<TargetSymbolRef<JavaDialect>, JavaResolvedName>,
+    docs: &JavaDocumentation,
     depth: usize,
     file: &LinkedFile<JavaDialect>,
 ) -> Result<String, Vec<Diagnostic>> {
-    match value {
+    let owner = match value {
+        JavaMember::Field(field) => field.declared.map(GeneratedSymbolId::Value),
+        JavaMember::EnumConstant(value) => Some(GeneratedSymbolId::Value(value.declared)),
+        JavaMember::Method(method) => match method.declared {
+            JavaMethodDeclaration::Callable(id) => Some(GeneratedSymbolId::Callable(id)),
+            JavaMethodDeclaration::Interface(id) => Some(GeneratedSymbolId::InterfaceMethod(id)),
+            JavaMethodDeclaration::Structural
+            | JavaMethodDeclaration::Implementation { .. }
+            | JavaMethodDeclaration::UninhabitedImplementation(_) => None,
+        },
+        JavaMember::CompileFailField(_)
+        | JavaMember::Constructor(_)
+        | JavaMember::NestedType(_) => None,
+    };
+    let comment = owner.map_or_else(String::new, |owner| {
+        super::documentation::render(docs, JavaDocumentationOwner::Symbol(owner))
+    });
+    let rendered = match value {
         JavaMember::Field(value) => render_field(value, names, depth, file),
         JavaMember::CompileFailField(value) => {
             let field = JavaField {
@@ -123,8 +143,9 @@ pub(super) fn render_member(
         )),
         JavaMember::Method(value) => render_method(value, names, depth, file),
         JavaMember::Constructor(value) => render_constructor(value, names, depth, file),
-        JavaMember::NestedType(value) => render_type(value, names, depth, file),
-    }
+        JavaMember::NestedType(value) => render_type(value, names, docs, depth, file),
+    }?;
+    Ok(format!("{comment}{rendered}"))
 }
 
 fn render_enum_constant(

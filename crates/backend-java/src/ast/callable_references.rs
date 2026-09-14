@@ -15,6 +15,9 @@ impl JavaCallableRef {
         context: &TargetAstContext<'_, JavaDialect>,
     ) -> Option<JavaMethodSignature> {
         match self {
+            // Opaque owner metadata is already certified. Consumer membership
+            // is checked once per file, then independently by the linker.
+            Self::Dependency(callable) => Some(callable.signature().clone()),
             Self::Known {
                 callable,
                 signature,
@@ -110,7 +113,7 @@ impl JavaFieldRef {
         match self {
             Self::Known(value) => value.ty(),
             Self::Structural { ty, .. } => ty.clone(),
-            Self::Generated { ty, .. } => ty.clone(),
+            Self::Generated { ty, .. } | Self::RustSource { ty, .. } => ty.clone(),
         }
     }
 }

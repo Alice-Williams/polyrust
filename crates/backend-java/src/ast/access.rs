@@ -18,7 +18,7 @@ pub(super) fn verify(
     for file in context.files() {
         for item in file.items() {
             if let JavaFileItem::Type { declaration, .. } = item {
-                let mut pending = vec![(declaration, false, false)];
+                let mut pending = vec![(declaration.as_ref(), false, false)];
                 while let Some((node, parent_private, nested)) = pending.pop() {
                     let private = parent_private || node.visibility == JavaVisibility::Private;
                     if let Some(id) = node.declared {
@@ -86,7 +86,10 @@ pub(super) fn verify(
         super::expression_visit::member(member, &mut |value| {
             if let JavaExprKind::Field { receiver, field } = &value.kind {
                 let private_owner = match field {
-                    JavaFieldRef::Generated { owner, .. } => Some(JavaTypeName::Generated(*owner)),
+                    JavaFieldRef::Generated { owner, .. }
+                    | JavaFieldRef::RustSource { owner, .. } => {
+                        Some(JavaTypeName::Generated(*owner))
+                    }
                     JavaFieldRef::Structural { name, .. } => {
                         let private = super::field_metadata::find_type_declaration(&receiver.ty, context).is_some_and(|node| {
                             node.record_components.iter().any(|value| value.name == *name)

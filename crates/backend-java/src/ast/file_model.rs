@@ -8,7 +8,8 @@ pub enum JavaFileItem {
     Type {
         declared: Vec<GeneratedSymbolId>,
         conformances: Box<super::conformance_inventory::JavaConformanceInventory>,
-        declaration: JavaTypeDeclaration,
+        dependencies: crate::dialect::JavaDependencyBindings,
+        declaration: Box<JavaTypeDeclaration>,
     },
     RuntimeMembers {
         helper: crate::dialect::JavaRuntimeHelper,

@@ -37,6 +37,7 @@ pub(super) fn expression(value: &JavaExpr) -> Code {
             arguments,
         } => {
             let signature = match callable {
+                JavaCallableRef::Dependency(callable) => callable.signature(),
                 JavaCallableRef::Known { signature, .. }
                 | JavaCallableRef::Runtime { signature, .. }
                 | JavaCallableRef::Generated { signature, .. }
@@ -99,9 +100,9 @@ pub(super) fn expression(value: &JavaExpr) -> Code {
             code.add(&expression(receiver));
             match field {
                 JavaFieldRef::Known(_) => {}
-                JavaFieldRef::Structural { ty, .. } | JavaFieldRef::Generated { ty, .. } => {
-                    code.ty(ty)
-                }
+                JavaFieldRef::Structural { ty, .. }
+                | JavaFieldRef::Generated { ty, .. }
+                | JavaFieldRef::RustSource { ty, .. } => code.ty(ty),
             }
         }
         JavaExprKind::Cast { target, value }

@@ -55,6 +55,10 @@ impl TypedAstDialect for JavaDialect {
     type Statement = JavaArenaStatement;
     type FileItem = JavaFileItem;
 
+    fn verify_package(&self, package: &TargetAstPackage<Self>) -> Vec<AstViolation> {
+        super::source_registration::verify(package)
+    }
+
     fn known_callable_signature(
         &self,
         callable: &Self::KnownCallable,
@@ -163,6 +167,7 @@ impl TypedAstDialect for JavaDialect {
             ));
         }
         violations.extend(verify_composed_java_file(
+            file.module(),
             file.placement(),
             file.items().iter().collect(),
             context,

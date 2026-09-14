@@ -1,4 +1,5 @@
 use crate::ast::{JavaKnownType, JavaType};
+pub use crate::render::JavaRenderer as JavaStructuralRenderer;
 mod member_names;
 pub use member_names::JavaMemberName;
 mod known_fields;
@@ -20,8 +21,17 @@ pub use arena_nodes::{JavaArenaExpression, JavaArenaStatement};
 mod ast_binding;
 mod catalogue;
 mod declaration_paths;
+mod dependency_api;
+pub use dependency_api::{
+    JavaDependencyApi, JavaDependencyFunction, JavaDependencyPackage, JavaSourceDescription,
+    JavaSourceDescriptionKind, JavaSourceTarget,
+};
+mod dependency_scope;
+pub use dependency_scope::{JavaDependencyBindings, JavaDependencyScope, JavaImportedCallable};
+mod documentation;
 mod file_checks;
 mod linker;
+mod source_registration;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct JavaDialect;
@@ -90,11 +100,12 @@ impl JavaImportKind {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum JavaQualifiedName {
     Type(JavaKnownType),
     Callable(JavaKnownCallable),
     RuntimeCallable(JavaRuntimeCallable),
+    Dependency(crate::ast::JavaDeclaredPath),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -111,11 +122,12 @@ impl JavaGeneratedContainer {
 }
 
 impl JavaQualifiedName {
-    pub const fn text(self) -> &'static str {
+    pub fn text(&self) -> std::borrow::Cow<'_, str> {
         match self {
-            Self::Type(value) => value.qualified_name(),
-            Self::Callable(value) => value.qualified_name(),
-            Self::RuntimeCallable(value) => value.qualified_name(),
+            Self::Type(value) => value.qualified_name().into(),
+            Self::Callable(value) => value.qualified_name().into(),
+            Self::RuntimeCallable(value) => value.qualified_name().into(),
+            Self::Dependency(path) => path.text().into(),
         }
     }
 }

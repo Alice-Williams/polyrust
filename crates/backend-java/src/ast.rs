@@ -19,6 +19,12 @@ pub use declaration_model::{
     JavaVisibility,
 };
 mod declarations;
+mod doc_comments;
+pub use doc_comments::JavaDocComment;
+mod documentation;
+pub use documentation::{
+    JavaDocumentation, JavaDocumentationAttachment, JavaDocumentationOwner, JavaDocumentationStyle,
+};
 mod exceptions;
 mod expression_arena;
 mod expression_model;
@@ -31,6 +37,8 @@ pub use expression_nodes::{JavaConstructorRef, JavaExpr, JavaExprKind, JavaField
 mod expressions;
 mod field_metadata;
 mod field_registration;
+pub(crate) mod source_fields;
+pub use source_fields::JavaSourceFieldOrigin;
 mod file_model;
 pub use file_model::JavaFileItem;
 mod array_creation;
@@ -59,13 +67,17 @@ mod method_contracts;
 mod modifiers;
 mod object_members;
 mod operator_signatures;
+mod packages;
+pub use packages::JavaPackage;
 mod privileged_literals;
 pub(crate) mod qualifier_names;
 mod resolved_files;
+mod source_inventory;
 pub use resolved_files::{
-    JavaCompilationUnit, JavaDeclaredPath, JavaFilePlacement, JavaPackage, JavaResolvedName,
-    JavaSourceFileKind, ResolvedJavaFileItem,
+    JavaCompilationUnit, JavaDeclaredPath, JavaFilePlacement, JavaResolvedName, JavaSourceFileKind,
+    ResolvedJavaFileItem,
 };
+pub(crate) use source_inventory::{JavaSourceDeclaration, JavaSourceInventory};
 mod runtime_members;
 pub use runtime_members::JavaRuntimeMember;
 mod sealed_permits;

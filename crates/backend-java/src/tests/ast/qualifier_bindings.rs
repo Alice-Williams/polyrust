@@ -22,7 +22,8 @@ fn structural_top_level_names_are_unique_across_the_package() {
                 declarations.push(super::JavaFileItem::Type {
                     declared: vec![],
                     conformances: crate::ast::JavaConformanceInventory::structural().into(),
-                    declaration,
+                    dependencies: Default::default(),
+                    declaration: Box::new(declaration),
                 });
             }
             let units = if separate_files {

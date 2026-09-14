@@ -28,6 +28,21 @@ pub(super) fn structural_field_metadata(
         });
     }
     let declaration = find_type_declaration(owner, context)?;
+    if declaration.kind == super::JavaDeclarationKind::Record
+        && declaration
+            .declared
+            .and_then(|id| context.generated_type(id))
+            .is_some_and(|value| {
+                matches!(
+                    value.origin,
+                    portable_codegen::GeneratedOrigin::RustSource(_)
+                )
+            })
+    {
+        // Source record access must carry the Rust field declaration identity.
+        // A matching name/type is not an alternative source mapping authority.
+        return None;
+    }
     let substitutions = declaration_type_substitutions(&declaration, owner)?;
     if let Some(component) = declaration
         .record_components

@@ -17,8 +17,10 @@ impl TargetFileItemNode<JavaDialect> for JavaFileItem {
                 declared,
                 conformances,
                 declaration,
+                dependencies,
             } => {
                 let mut violations = declaration.verify(context, true);
+                violations.extend(dependencies.verify_item(self));
                 violations.extend(super::access::verify(self, context));
                 violations.extend(super::declaration_placement::verify(declaration, context));
                 violations.extend(conformances.verify(declaration, context));

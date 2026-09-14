@@ -53,8 +53,9 @@ mod call_builders;
 pub(crate) fn shell_item() -> JavaFileItem {
     JavaFileItem::Type {
         conformances: crate::ast::JavaConformanceInventory::structural().into(),
+        dependencies: Default::default(),
         declared: vec![],
-        declaration: JavaTypeDeclaration {
+        declaration: Box::new(JavaTypeDeclaration {
             declared: None,
             kind: JavaDeclarationKind::FinalClass,
             visibility: JavaVisibility::Public,
@@ -70,7 +71,7 @@ pub(crate) fn shell_item() -> JavaFileItem {
                 parameters: vec![],
                 body: JavaBlock::new(vec![]),
             })],
-        },
+        }),
     }
 }
 

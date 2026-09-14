@@ -143,6 +143,7 @@ impl JavaTypeDeclaration {
         }
         violations.extend(verify_declaration_kind_grammar(self));
         violations.extend(super::uninhabited::verify(self, context, top_level));
+        violations.extend(super::source_fields::verify(self, context));
         violations.extend(verify_sealed_permits(self, context));
         violations.extend(verify_field_initializer_declaration_order(self));
         match &self.heritage {
@@ -202,7 +203,7 @@ impl JavaTypeDeclaration {
                     "Java record component is declared more than once",
                 ));
             }
-            if !component_origins.insert(component.origin) {
+            if !component_origins.insert(component.origin.clone()) {
                 violations.push(AstViolation::new(
                     DiagnosticCode::DuplicateDeclaration,
                     "Java record component origin is declared more than once",

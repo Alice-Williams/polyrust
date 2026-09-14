@@ -57,7 +57,9 @@ pub(super) fn assigned_blank_final<'a>(
         return None;
     }
     let name = match field {
-        JavaFieldRef::Structural { name, .. } | JavaFieldRef::Generated { name, .. } => name,
+        JavaFieldRef::Structural { name, .. }
+        | JavaFieldRef::Generated { name, .. }
+        | JavaFieldRef::RustSource { name, .. } => name,
         JavaFieldRef::Known(_) => return None,
     };
     blank_finals.contains(name).then_some(name)
@@ -105,7 +107,8 @@ pub(super) fn collect_blank_final_reads(
                 if matches!(receiver.kind, JavaExprKind::Value(JavaValueRef::This)) {
                     let name = match field {
                         JavaFieldRef::Structural { name, .. }
-                        | JavaFieldRef::Generated { name, .. } => Some(name),
+                        | JavaFieldRef::Generated { name, .. }
+                        | JavaFieldRef::RustSource { name, .. } => Some(name),
                         JavaFieldRef::Known(_) => None,
                     };
                     if let Some(name) = name

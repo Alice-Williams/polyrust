@@ -2,7 +2,10 @@
 
 pub(crate) mod budget;
 mod declarations;
+mod dependencies;
+mod documentation;
 mod executables;
+mod source_inventory;
 mod types;
 
 #[cfg(test)]
@@ -20,6 +23,10 @@ mod budget_tests;
 #[cfg(test)]
 #[path = "tests/resource_certification.rs"]
 mod certification_tests;
+
+#[cfg(test)]
+#[path = "tests/resource_packages.rs"]
+mod package_tests;
 
 use crate::ast::{JavaFileItem, JavaMember, JavaPackage, JavaResolvedName, JavaTypeDeclaration};
 use crate::dialect::JavaDialect;
@@ -74,7 +81,9 @@ impl std::error::Error for JavaResourceError {}
 pub(crate) fn resolved(package: &LinkedTargetPackage<JavaDialect>) -> Result<(), Vec<Diagnostic>> {
     let mut names = Names::new();
     let mut local_names = Names::new();
-    let mut errors = Vec::new();
+    let mut errors = documentation::verify(package);
+    errors.extend(source_inventory::verify(package));
+    errors.extend(dependencies::verify(package));
     for file in package.files() {
         for item in file.items() {
             for (symbol, spelling) in &item.names {
@@ -92,9 +101,10 @@ pub(crate) fn resolved(package: &LinkedTargetPackage<JavaDialect>) -> Result<(),
                                 .saturating_add(path.member.as_str().len()),
                         ),
                     ),
-                    JavaResolvedName::GeneratedMember { owner, member } => {
-                        (Some(member), Some(generated_member_length(*owner, member)))
-                    }
+                    JavaResolvedName::GeneratedMember { owner, member } => (
+                        Some(member),
+                        Some(generated_member_length(*file.module(), *owner, member)),
+                    ),
                     JavaResolvedName::Qualified(_) | JavaResolvedName::Member { .. } => {
                         (None, None)
                     }
@@ -125,6 +135,7 @@ pub(crate) fn resolved(package: &LinkedTargetPackage<JavaDialect>) -> Result<(),
             .map(|file| {
                 (
                     file.path().as_str(),
+                    file.module().name().len() + 1,
                     file.items().iter().map(|item| &item.item).collect(),
                 )
             })
@@ -137,21 +148,28 @@ pub(crate) fn resolved(package: &LinkedTargetPackage<JavaDialect>) -> Result<(),
 
 #[cfg(test)]
 fn check(files: Vec<(&str, Vec<&JavaFileItem>)>) -> Result<(), Vec<Diagnostic>> {
-    check_with_names(files, Names::new(), Names::new(), Vec::new())
+    check_with_names(
+        files
+            .into_iter()
+            .map(|(path, items)| (path, JavaPackage::Generated.name().len() + 1, items))
+            .collect(),
+        Names::new(),
+        Names::new(),
+        Vec::new(),
+    )
 }
 
 fn check_with_names(
-    files: Vec<(&str, Vec<&JavaFileItem>)>,
+    files: Vec<(&str, usize, Vec<&JavaFileItem>)>,
     mut names: Names,
     local_names: Names,
     mut errors: Vec<Diagnostic>,
 ) -> Result<(), Vec<Diagnostic>> {
-    let prefix = JavaPackage::Generated.name().len() + 1;
-    for (_, items) in &files {
+    for (_, prefix, items) in &files {
         for item in items {
             match item {
                 JavaFileItem::Type { declaration, .. } => {
-                    collect_names(declaration, prefix, &local_names, &mut names)
+                    collect_names(declaration, *prefix, &local_names, &mut names)
                 }
                 JavaFileItem::RuntimeMembers { members, .. } => {
                     for member in members {
@@ -170,7 +188,7 @@ fn check_with_names(
     }
     let type_count = files
         .iter()
-        .flat_map(|(_, items)| items)
+        .flat_map(|(_, _, items)| items)
         .fold(0usize, |total, item| {
             total.saturating_add(match item {
                 JavaFileItem::Type { declaration, .. } => budget::declaration_count(declaration),
@@ -188,7 +206,7 @@ fn check_with_names(
                 }
             })
         });
-    for (path, items) in files {
+    for (path, prefix, items) in files {
         for item in &items {
             if let JavaFileItem::Type { declaration, .. } = item {
                 // Helper members belong to the same Runtime class file, not
@@ -228,10 +246,11 @@ fn check_with_names(
 type Names = BTreeMap<portable_codegen::GeneratedTypeId, usize>;
 
 fn generated_member_length(
+    package: JavaPackage,
     owner: crate::dialect::JavaGeneratedContainer,
     member: &crate::ast::JavaIdentifier,
 ) -> usize {
-    JavaPackage::Generated
+    package
         .name()
         .len()
         .saturating_add(1)

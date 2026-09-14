@@ -150,14 +150,16 @@ fn generated_member_binary_names_include_the_package_prefix() {
     let owner = crate::dialect::JavaGeneratedContainer::PublicApi;
     let member = JavaIdentifier::new("A".repeat(65_527)).unwrap();
     assert_eq!(
-        super::generated_member_length(owner, &member),
+        super::generated_member_length(crate::ast::JavaPackage::Generated, owner, &member),
         crate::ast::JavaPackage::Generated.name().len()
             + 1
             + owner.text().len()
             + 1
             + member.as_str().len()
     );
-    assert!(super::generated_member_length(owner, &member) > 65_535);
+    assert!(
+        super::generated_member_length(crate::ast::JavaPackage::Generated, owner, &member) > 65_535
+    );
 }
 
 #[test]

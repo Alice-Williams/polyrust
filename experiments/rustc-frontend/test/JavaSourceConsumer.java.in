@@ -1,0 +1,11 @@
+import __PACKAGE__.Generated;
+
+public final class JavaSourceConsumer {
+    public static void main(String[] args) throws java.io.IOException {
+        try (var input = new java.io.BufferedReader(new java.io.InputStreamReader(System.in, java.nio.charset.StandardCharsets.UTF_8))) {
+            for (String line; (line = input.readLine()) != null;) {
+                System.out.println(Generated.score(Integer.parseInt(line)));
+            }
+        }
+    }
+}

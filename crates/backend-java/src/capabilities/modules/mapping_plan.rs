@@ -25,6 +25,7 @@ fn verify(input: &JavaModuleInput, output: &TargetFile<JavaDialect>) -> bool {
     let [
         JavaFileItem::Type {
             conformances,
+            dependencies,
             declared,
             declaration: a,
         },
@@ -33,6 +34,7 @@ fn verify(input: &JavaModuleInput, output: &TargetFile<JavaDialect>) -> bool {
         return false;
     };
     if declared != &input.declared
+        || dependencies != &Default::default()
         || conformances.as_ref() != &input.conformances
         || a.declared != Some(input.entry)
         || a.kind != JavaDeclarationKind::FinalClass

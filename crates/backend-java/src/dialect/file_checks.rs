@@ -13,8 +13,6 @@ pub(super) fn verify_java_file_identity(
     declares_runtime_type: bool,
 ) -> Vec<AstViolation> {
     const RUNTIME_PATH: &str = "src/main/java/org/polyrust/generated/Runtime.java";
-    const MAIN_ROOT: &str = "src/main/java/org/polyrust/generated/";
-    const TEST_ROOT: &str = "src/test/java/org/polyrust/generated/";
     let canonical = role == portable_codegen::SourceRole::Runtime
         && module == &JavaPackage::Generated
         && path == RUNTIME_PATH
@@ -22,7 +20,7 @@ pub(super) fn verify_java_file_identity(
     let uses_reserved_identity = role == portable_codegen::SourceRole::Runtime
         || path == RUNTIME_PATH
         || *placement == JavaFilePlacement::Runtime
-        || (module == &JavaPackage::Generated && declares_runtime_type);
+        || declares_runtime_type;
     let mut violations = Vec::new();
     if uses_reserved_identity && !canonical {
         violations.push(AstViolation::new(
@@ -35,18 +33,20 @@ pub(super) fn verify_java_file_identity(
             portable_codegen::SourceRole::PublicApi | portable_codegen::SourceRole::Implementation,
             JavaFilePlacement::Main,
         )
-        | (portable_codegen::SourceRole::Runtime, JavaFilePlacement::Runtime) => Some(MAIN_ROOT),
+        | (portable_codegen::SourceRole::Runtime, JavaFilePlacement::Runtime) => {
+            Some(module.source_directory(*placement))
+        }
         (portable_codegen::SourceRole::NativeTest, JavaFilePlacement::NativeTest)
         | (portable_codegen::SourceRole::Conformance, JavaFilePlacement::Conformance)
         | (portable_codegen::SourceRole::NegativeTest, JavaFilePlacement::NegativeTest) => {
-            Some(TEST_ROOT)
+            Some(module.source_directory(*placement))
         }
         _ => None,
     };
     match expected_root {
         Some(root)
             if path
-                .strip_prefix(root)
+                .strip_prefix(root.as_str())
                 .is_some_and(|filename| !filename.is_empty() && !filename.contains('/')) => {}
         Some(_) => violations.push(AstViolation::new(
             DiagnosticCode::UnsafeOutputPath,
@@ -68,10 +68,17 @@ pub(super) fn declares_reserved_runtime_type(item: &JavaFileItem) -> bool {
 }
 
 pub(super) fn verify_composed_java_file(
+    module: &JavaPackage,
     placement: &JavaFilePlacement,
     items: Vec<&JavaFileItem>,
     context: &TargetAstContext<'_, JavaDialect>,
 ) -> Vec<AstViolation> {
+    if context.files().any(|file| file.module() != module) {
+        return vec![AstViolation::new(
+            DiagnosticCode::InvalidStructure,
+            "one certified Java package must use exactly one namespace",
+        )];
+    }
     let runtime_fragments = items
         .iter()
         .filter(|item| matches!(item, JavaFileItem::RuntimeMembers { .. }))

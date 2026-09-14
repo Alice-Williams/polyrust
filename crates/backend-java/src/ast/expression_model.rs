@@ -98,6 +98,7 @@ pub struct JavaMethodSignature {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JavaCallableRef {
+    Dependency(crate::dialect::JavaImportedCallable),
     Known {
         callable: crate::dialect::JavaKnownCallable,
         signature: JavaMethodSignature,

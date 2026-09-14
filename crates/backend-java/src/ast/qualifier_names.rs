@@ -145,7 +145,7 @@ fn registered_shell(
             };
             context.files().any(|file| {
                 file.role() == role && file.items().iter().any(|item| {
-                    matches!(item, JavaFileItem::Type { declaration: root, .. } if std::ptr::eq(root, declaration))
+                    matches!(item, JavaFileItem::Type { declaration: root, .. } if std::ptr::eq(root.as_ref(), declaration))
                 })
             })
         }

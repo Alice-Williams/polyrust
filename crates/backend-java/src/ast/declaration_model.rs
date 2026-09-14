@@ -146,10 +146,11 @@ pub struct JavaRecordComponent {
     pub name: JavaIdentifier,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum JavaRecordComponentOrigin {
     Core(CoreFieldId),
     Runtime(JavaRuntimeMember),
+    RustSource(super::source_fields::JavaSourceFieldOrigin),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

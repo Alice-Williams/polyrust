@@ -178,6 +178,23 @@ pub(super) fn verify_assignment_target(
                     })
                 }
                 (
+                    JavaFieldRef::RustSource {
+                        owner,
+                        field,
+                        name,
+                        ty,
+                    },
+                    Some(context),
+                ) if receiver.ty == JavaType::Reference(JavaTypeName::Generated(*owner))
+                    && super::source_fields::matches(*owner, *field, name, ty, context) =>
+                {
+                    Some(JavaFieldMetadata {
+                        ty: ty.clone(),
+                        final_field: true,
+                        blank_final: true,
+                    })
+                }
+                (
                     JavaFieldRef::Generated {
                         owner,
                         field,
