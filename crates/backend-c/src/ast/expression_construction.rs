@@ -84,7 +84,7 @@ impl<'a> CExpressions<'a> {
     }
 
     pub fn function_address(&self, value: CFunctionRef) -> Result<CValue, E> {
-        self.registry.check_function(&value)?;
+        self.registry.check_owned_function(&value)?;
         let ty = CObjectType::pointer(CPointerTarget::Function(Box::new(
             value.signature().clone(),
         )));

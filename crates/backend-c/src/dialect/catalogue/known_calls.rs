@@ -2,10 +2,29 @@
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CHeader {
+    Stdint,
+    Stddef,
+    Limits,
+    Float,
     Stdlib,
     String,
     Math,
     Stdio,
+}
+
+impl CHeader {
+    pub const fn spelling(self) -> &'static str {
+        match self {
+            Self::Stdint => "stdint.h",
+            Self::Stddef => "stddef.h",
+            Self::Limits => "limits.h",
+            Self::Float => "float.h",
+            Self::Stdlib => "stdlib.h",
+            Self::String => "string.h",
+            Self::Math => "math.h",
+            Self::Stdio => "stdio.h",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]

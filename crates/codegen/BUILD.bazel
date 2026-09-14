@@ -7,13 +7,16 @@ filegroup(
     srcs = [
         "src/linking.rs",
         "src/target_ast.rs",
-    ],
+    ] + glob(["src/linking/**/*.rs"]),
     visibility = ["//visibility:public"],
 )
 
 filegroup(
     name = "typed_renderer_policy_sources",
-    srcs = ["src/rendering.rs"],
+    srcs = [
+        "src/import_rendering.rs",
+        "src/rendering.rs",
+    ],
     visibility = ["//visibility:public"],
 )
 

@@ -15,6 +15,7 @@ name = "portable_backend_c"
 portable_check.workspace = true
 portable_codegen.workspace = true
 portable_core_ir.workspace = true
+portable_diagnostics.workspace = true
 portable_ir.workspace = true
 
 [dev-dependencies]

@@ -17,7 +17,12 @@ impl CRegistry {
     ) -> Result<CFunctionRef, CRegistryError> {
         self.check_file(file)?;
         self.check_signature(&signature)?;
-        if self.functions.iter().any(|old| old.key() == &key) {
+        if self
+            .functions
+            .iter()
+            .chain(self.imports.keys())
+            .any(|old| old.key() == &key)
+        {
             return Err(CRegistryError::DuplicateRegistration);
         }
         let value = CFunctionRef {
@@ -25,6 +30,7 @@ impl CRegistry {
                 identity: Identity::new(&self.scope, key.clone()),
                 file: file.clone(),
                 origin: CCallableContractOrigin::GeneratedBody,
+                dependency: None,
             },
             identity: Identity::new(&self.scope, key),
             file: file.clone(),
@@ -39,7 +45,7 @@ impl CRegistry {
         if self.functions.contains(value) {
             Ok(())
         } else {
-            Err(CRegistryError::UnregisteredReference)
+            self.imported_function(value).map(|_| ())
         }
     }
 
@@ -48,12 +54,13 @@ impl CRegistry {
         value: &CCallableContractRef,
     ) -> Result<(), CRegistryError> {
         self.check_scope(&value.identity.scope)?;
-        if self
+        if let Some(function) = self
             .functions
             .iter()
-            .any(|function| function.contract() == value)
+            .chain(self.imports.keys())
+            .find(|function| function.contract() == value)
         {
-            Ok(())
+            self.check_function(function)
         } else {
             Err(CRegistryError::UnregisteredReference)
         }
@@ -97,7 +104,7 @@ impl CRegistry {
         key: CDeclarationKey,
         constness: CConstness,
     ) -> Result<CParameterRef, CRegistryError> {
-        self.check_function(function)?;
+        self.check_owned_function(function)?;
         let parameter = function
             .signature()
             .parameters()
@@ -148,7 +155,7 @@ impl CRegistry {
         parent: Option<&CScopeRef>,
         key: CDeclarationKey,
     ) -> Result<CScopeRef, CRegistryError> {
-        self.check_function(function)?;
+        self.check_owned_function(function)?;
         if let Some(parent) = parent {
             self.check_lexical_scope(parent)?;
             if parent.function() != function {

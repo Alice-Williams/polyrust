@@ -22,7 +22,7 @@ rust_clippy_test(
     name = "rust_clippy_test",
     targets = [
         "//crates/backend-c:portable_backend_c",
-        "//crates/backend-c:portable_backend_c_test",
+        "//crates/backend-c:portable_backend_c_unit_test",
         "//crates/backend-cpp:portable_backend_cpp",
         "//crates/backend-cpp:portable_backend_cpp_test",
         "//crates/backend-go:portable_backend_go",
@@ -104,7 +104,7 @@ rustfmt_test(
     name = "rustfmt_test",
     targets = [
         "//crates/backend-c:portable_backend_c",
-        "//crates/backend-c:portable_backend_c_test",
+        "//crates/backend-c:portable_backend_c_unit_test",
         "//crates/backend-cpp:portable_backend_cpp",
         "//crates/backend-cpp:portable_backend_cpp_test",
         "//crates/backend-go:portable_backend_go",
@@ -223,6 +223,7 @@ test_suite(
         "//crates/backend-c:c_known_calls_probe_test",
         "//crates/backend-c:c_known_calls_unoptimized_probe_test",
         "//crates/backend-c:c_typed_compile_fail_test",
+        "//crates/backend-c:portable_backend_c_test",
         "//crates/backend-java:cargo_oracle_environment_test",
         "//crates/backend-java:generated_capability_methods_test",
         "//crates/backend-java:generated_capability_operations_test",

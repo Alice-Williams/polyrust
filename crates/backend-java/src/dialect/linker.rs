@@ -26,6 +26,10 @@ use portable_diagnostics::DiagnosticCode;
 use std::collections::{BTreeMap, BTreeSet};
 
 impl LinkerDialect for JavaDialect {
+    // This checkpoint retains the historical backend: no dependency calls can
+    // be constructed until the subsequent Java source-integration checkpoint.
+    type DependencyCallable = std::convert::Infallible;
+    type DependencyPackage = std::convert::Infallible;
     type KnownField = JavaKnownField;
     type KnownConstructor = JavaKnownConstructor;
     type KnownMethod = JavaKnownMethod;
@@ -72,6 +76,13 @@ impl LinkerDialect for JavaDialect {
 
     fn symbol_catalogue(&self) -> SymbolCatalogue<Self> {
         java_symbol_catalogue()
+    }
+
+    fn dependency_callable_spec(
+        &self,
+        callable: &Self::DependencyCallable,
+    ) -> portable_codegen::DependencyCallableSpec<Self> {
+        match *callable {}
     }
 
     fn identifier_from_candidate(

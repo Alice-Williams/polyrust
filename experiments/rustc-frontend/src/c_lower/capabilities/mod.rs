@@ -1,0 +1,81 @@
+//! Narrow Rust-source capabilities, not full portable catalogue support.
+mod direct_calls;
+mod entry_signatures;
+mod function_signatures;
+mod lexical_control;
+mod literal_values;
+mod object_types;
+mod record_initializers;
+mod resolved_places;
+mod scalar_comparisons;
+mod shared_borrows;
+mod slots;
+
+#[cfg(mapping_contract_duplicate)]
+#[path = "../../../test/capability_duplicate.rs"]
+mod contract_duplicate;
+#[cfg(mapping_contract_missing)]
+#[path = "../../../test/capability_missing.rs"]
+mod contract_missing;
+#[cfg(mapping_contract_wrong_input)]
+#[path = "../../../test/capability_wrong_input.rs"]
+mod contract_wrong_input;
+#[cfg(mapping_contract_wrong_mapping)]
+#[path = "../../../test/capability_wrong_mapping.rs"]
+mod contract_wrong_mapping;
+#[cfg(mapping_contract_wrong_output)]
+#[path = "../../../test/capability_wrong_output.rs"]
+mod contract_wrong_output;
+
+#[cfg(mapping_contract_wrong_context)]
+#[path = "../../../test/capability_wrong_context.rs"]
+mod contract_wrong_context;
+#[cfg(mapping_contract_wrong_mapping_output)]
+#[path = "../../../test/capability_wrong_mapping_output.rs"]
+mod contract_wrong_mapping_output;
+
+#[cfg(mapping_contract_target_scope)]
+#[path = "../../../test/capability_target_scope.rs"]
+mod contract_target_scope;
+
+pub(crate) use direct_calls::CDirectCalls;
+pub(crate) use entry_signatures::CEntrySignatures;
+pub(crate) use function_signatures::CFunctionSignatures;
+pub(crate) use lexical_control::CLexicalControl;
+pub(crate) use literal_values::CLiteralValues;
+pub(crate) use object_types::CObjectTypes;
+pub(crate) use record_initializers::CRecordInitializers;
+pub(crate) use resolved_places::CResolvedPlaces;
+pub(crate) use scalar_comparisons::CScalarComparisons;
+pub(crate) use shared_borrows::CSharedBorrows;
+pub(crate) use slots::{Bindings, Builder};
+
+pub(crate) use crate::source_capabilities::*;
+
+pub(crate) type CBindings = Bindings<
+    CLiteralValues,
+    CScalarComparisons,
+    CResolvedPlaces,
+    CSharedBorrows,
+    CObjectTypes,
+    CRecordInitializers,
+    CLexicalControl,
+    CEntrySignatures,
+    CDirectCalls,
+    CFunctionSignatures,
+>;
+
+pub(crate) fn c_bindings() -> CBindings {
+    Builder::new()
+        .literal_values(CLiteralValues)
+        .scalar_comparisons(CScalarComparisons)
+        .resolved_places(CResolvedPlaces)
+        .shared_borrows(CSharedBorrows)
+        .object_types(CObjectTypes)
+        .record_initializers(CRecordInitializers)
+        .lexical_control(CLexicalControl)
+        .entry_signatures(CEntrySignatures)
+        .direct_calls(CDirectCalls)
+        .function_signatures(CFunctionSignatures)
+        .build()
+}

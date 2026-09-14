@@ -49,6 +49,7 @@ private header and TS test source. A dash rejects the combination.
 | CoreDeclaration except Test | yes | yes | - | - | yes | - |
 | CoreDeclaration Test | - | - | - | - | - | yes |
 | CoreExpression | - | yes | - | - | yes | yes |
+| RustSource metadata | yes | yes | - | - | yes | - |
 | Runtime synthesis | - | - | yes | yes | yes | - |
 | OwnershipAdapter / InterfaceAdapter synthesis | yes | yes | - | - | yes | yes |
 | EvaluationTemporary synthesis | - | yes | - | - | yes | yes |
@@ -70,3 +71,51 @@ The renderer prints already-resolved includes, guards, declarations and
 definitions. It does not discover complete-type order, helpers or ownership
 cleanup by scanning source. Exact import/placement/collision/cycle mutations
 and separately linked multiple translation units are permanent gates.
+
+## Structural dependency discovery (M35-01B)
+
+`file_dependencies` authenticates the complete source-file inventory against
+`CFrozenRegistry`, then exhaustively visits declarations, definitions, statement
+bodies, initializers and expression children. It returns one immutable
+`CFileDependencies` per file, ordered by stable file key. This is dependency
+analysis, not a RenderReadyPackage or a substitute for the remaining verifier,
+linker, visibility, resource and ownership checks.
+
+The result contains closed standard-header and system-library sets plus actual
+registered tag, typedef, function and object references. No spelling lookup,
+source scan, hard-coded prelude list or user-supplied include list participates.
+Same-file references remain in the result: later placement must discharge them
+using the real declaration inventory. Indirect-call contract witnesses are proof
+metadata; they do not create an extra direct-call dependency. The actual
+function-pointer signature owns indirect-call alias and complete-type edges;
+a compatible proof witness's differently spelled aliases are not dependencies.
+
+| Typed use | Required declaration evidence |
+| --- | --- |
+| Struct/union behind a pointer or in a prototype | Forward tag declaration |
+| Stored/initialized/by-value aggregate, member access, sizeof/alignof | Complete definition |
+| Pointer to a fixed array | Complete element definition, despite the pointer |
+| Enum reference, including behind a pointer | Complete enum definition (C17 has no forward enum declaration) |
+| Typedef use | Exact alias declaration and the underlying use's prerequisites |
+| Function definition/call | Complete by-value parameters/result; pointers retain their weaker prerequisites |
+
+Requirements merge monotonically: complete-definition use cannot be weakened by
+a later pointer-only use. Signature discovery uses declared parameter/return
+types so canonical compatibility does not erase alias dependencies. Nominal
+members are inspected at their declaration, rather than recursively expanding
+referenced layouts and looping through recursive pointer graphs.
+
+The scalar spelling contract uses `_Bool` and numeric boolean literals, hence
+does not need `stdbool.h`. Exact-width scalar spellings require `stdint.h`,
+`size_t` requires `stddef.h`, and native char/int/double need no header. Known
+object, constant and callable identities own their header mapping. Math link
+requirements come from the callable catalogue, not from a `math.h` string test.
+These are structural prerequisites, not a promise of globally minimal includes.
+
+Tests cover the complete scalar matrix, constants/library objects, nested
+pointers, array completeness, aliases in prototypes, expression-only constants
+and math calls, foreign-registry rejection, deterministic file ordering and
+dependency removal. The compiler-backed provenance fixture additionally checks
+the actual HIR-lowered C tree's include and nominal requirements. Public-header
+consumer compilation and linked-file mutation proof remain integration gates;
+discovery alone does not complete them.

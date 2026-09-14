@@ -22,7 +22,7 @@ impl CExpressions<'_> {
         contract_function: CFunctionRef,
     ) -> Result<CCallable, E> {
         self.check_value(&pointer)?;
-        self.registry.check_function(&contract_function)?;
+        self.registry.check_owned_function(&contract_function)?;
         let CObjectTypeKind::Pointer(CPointerTarget::Function(signature)) = pointer.ty().kind()
         else {
             return Err(E::ExpectedFunctionPointer);

@@ -64,7 +64,51 @@ A declarative definition SHOULD generate:
 - catalogue uniqueness checks; and
 - documentation tables.
 
+## Package-derived catalogue authority
+
+`LinkerDialect::package_symbol_catalogue` derives an exact catalogue from the
+checked unresolved `TargetAstPackage`. Its default delegates to the static
+`symbol_catalogue`, preserving existing plugins. The hook is fallible: a
+dependency cannot be resolved by falling back to an invented or incomplete
+catalogue. It must be deterministic for identical immutable package authority.
+
+The linker dialect value must equal the dialect retained by the original
+package, not merely have the same Rust type. Both link and post-link boundaries
+reject a mismatch before invoking any dialect hook. Stateful configurations
+cannot validate under one policy and derive a catalogue under another.
+
+The linker validates this derived catalogue before resolving references.
+Post-link verification derives it again from the original unresolved package
+and requires exact equality with the retained catalogue, including unused
+entries and metadata. Internal consistency of modified linked names/imports
+is insufficient. Certificate-backed dependency symbols remain language-owned;
+this hook itself does not certify arbitrary caller-supplied metadata.
+
 ## Generated symbols
+
+Certified generated dependencies are distinct from static known-library symbols
+and consumer-owned generated declarations. `LinkerDialect` owns opaque
+`DependencyCallable` and `DependencyPackage` types. A `DependencyCallableSpec`
+records the exact callable, owner, native identifier, concrete typed signature,
+typed spelling policy and provenance. `DependencySpelling` is a closed enum:
+`FixedImport(ImportKind)` or `Qualified(QualifiedName)`.
+Its language hook reconstructs every field from the
+typed witness; catalogue validation requires exact agreement. A metadata record
+alone never grants authority to generate a dependency call.
+
+The shared reference is `TargetSymbolRef::DependencyCallable`, with
+`SymbolOrigin::CertifiedDependency`. This linker category does not require a
+second expression tree for compilation-unit dialects. Languages without this
+mapping use an uninhabited associated type, not a sentinel or fallback.
+
+`DependencyPolicy::FixedImport` requires the original native identifier. Both
+initial resolution and post-link verification reject aliasing, including
+reuse of a previously aliased physical import. These certified owners do not
+invent package-manager versions or consumer source-file identities.
+
+`DependencySpelling::Qualified` maps to the existing qualified reference policy
+and retains the exact typed qualified name. It allocates no local import binding
+or directive. The renderer receives that resolved name, not an alias suggestion.
 
 Program-defined declarations receive typed target IDs. The symbol table stores:
 
@@ -141,6 +185,19 @@ They contain the semantic fields needed by the language, such as:
 
 Only the renderer spells a directive.
 
+Generated-file directives are distinct from symbol imports. A shared
+`ResolvedFileImport<D>` retains the exact destination `TargetFileId` and a
+dialect-owned import kind. Its construction is confined to the shared linker.
+One real cross-file dependency yields at most one directive; it neither
+allocates nor aliases the referenced generated symbols. The dialect's
+`resolve_file_import` maps checked source/destination file facts to an import
+kind or explicitly selects no directive (for example, Java same-package access).
+
+Post-link verification reconstructs the ordered file-import list from actual
+generated-symbol references and primary declaration placement, independently
+of the stored file-dependency list. Missing, extra, duplicate, retargeted and
+kind-mutated witnesses fail. Existing visibility and cycle policies still apply.
+
 ## Package dependencies
 
 An external catalogue symbol may own a package dependency. Selecting that
@@ -190,6 +247,21 @@ enum ResolvedReference<D: TargetDialect> {
 The renderer cannot change the variant.
 
 ## Resolved verifier
+
+Binding verification reconstructs the complete ordered allocation from the
+original checked AST and its reference-derived helper closure. Comparing only
+linked names against other linked names is insufficient: coordinated changes to
+bindings and references must not replace original declaration authority.
+
+Fixed-import certified dependency names reserve the callable namespace across
+the whole package, including unused registered witnesses. They must be distinct
+from other fixed-import names and owned package-scope bindings under the
+dialect's identifier comparison rules. Qualified dependencies instead collide
+by their complete typed qualified name; their unqualified member names may
+overlap each other, fixed imports and owned bindings. These checks run before
+resolution and again during resolved verification; fixed native symbols cannot
+be import-aliased. Neither policy weakens exact witness/catalogue reconstruction
+from the original package, including unused registrations.
 
 The verifier proves:
 

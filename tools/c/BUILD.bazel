@@ -1,3 +1,10 @@
+load(":native_oracle.bzl", "zig_native_oracle")
+
+zig_native_oracle(
+    name = "zig_native_oracle",
+    visibility = ["//visibility:public"],
+)
+
 exports_files([
     "defs.bzl",
     "test_abi_model.sh",

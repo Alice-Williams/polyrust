@@ -25,8 +25,8 @@ impl CRegistry {
         let mut interface_methods = BTreeSet::new();
         let mut implementation_methods = BTreeSet::new();
         for method in &methods {
-            self.check_function(&method.concrete)?;
-            self.check_function(&method.adapter)?;
+            self.check_owned_function(&method.concrete)?;
+            self.check_owned_function(&method.adapter)?;
             if !interface_methods.insert(method.interface_method)
                 || !implementation_methods.insert(method.implementation_method)
             {
@@ -73,8 +73,8 @@ impl CRegistry {
     ) -> Result<CInterfaceTableRef, CRegistryError> {
         self.check_interface_witness(witness)?;
         self.check_object(object)?;
-        self.check_function(clone_context)?;
-        self.check_function(drop_context)?;
+        self.check_owned_function(clone_context)?;
+        self.check_owned_function(drop_context)?;
         let ty = object.ty().canonical();
         if ty.constness() != CConstness::Const || !matches!(ty.kind(), CObjectTypeKind::Struct(_)) {
             return Err(CRegistryError::InterfaceTableType);

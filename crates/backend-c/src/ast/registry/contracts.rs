@@ -9,6 +9,7 @@ use super::{CDeclarationKey, CFileRef, identity::Identity};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CCallableContractOrigin {
     GeneratedBody,
+    CertifiedDependency,
 }
 
 /// ```compile_fail
@@ -22,6 +23,7 @@ pub struct CCallableContractRef {
     pub(super) identity: Identity,
     pub(super) file: CFileRef,
     pub(super) origin: CCallableContractOrigin,
+    pub(super) dependency: Option<crate::dialect::CDependencyAuthority>,
 }
 
 impl CCallableContractRef {

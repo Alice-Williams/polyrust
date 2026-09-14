@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Enforce renderer-only dependency directives in backend source templates."""
+"""Guard source literals/templates against misplaced dependency directives.
+
+This is a lexical regression lint, not an interpreter or proof of arbitrary
+Rust string computations. Typed AST/certification and trusted renderer tests
+remain the production correctness boundary.
+"""
 
 from __future__ import annotations
 
@@ -186,7 +191,7 @@ def _function_spans(mask: str, name: str) -> list[tuple[int, int]]:
 def _language_renderer_spans(mask: str) -> list[tuple[int, int]]:
     spans = []
     pattern = re.compile(
-        r"\bimpl\b[^{};]*\bLanguageRenderer\s*<[^{}]*>\s+for\s+[^{};]+\{"
+        r"\bimpl\s+(?:LanguageRenderer|::portable_codegen::StructuralImportRenderer)\s*<[^{}]*>\s+for\s+[^{};]+\{"
     )
     for match in pattern.finditer(mask):
         spans.append(_brace_span(mask, mask.rfind("{", match.start(), match.end())))
@@ -228,8 +233,32 @@ def _is_typed_import_template(mask: str, string: RustString) -> bool:
     )
 
 
+def _string_literal_concats(source: str, mask: str, strings: list[RustString]) -> list[RustString]:
+    """Fold string-literal-only concat!; char/numeric/mixed forms are out of scope."""
+    folded = []
+    for match in re.finditer(r"\bconcat\s*!\s*\(", mask):
+        depth = 1
+        end = match.end()
+        while end < len(mask) and depth:
+            if mask[end] == "(":
+                depth += 1
+            elif mask[end] == ")":
+                depth -= 1
+            end += 1
+        if depth:
+            raise PolicyError("unclosed concat! invocation")
+        # String/comment bodies are blanked in mask. Any remaining token other
+        # than comma means this is not the string-literal-only case handled here.
+        if mask[match.end():end - 1].replace(",", "").strip():
+            continue
+        values = [item.value for item in strings if match.end() <= item.start < end - 1]
+        folded.append(RustString(match.start(), source.count("\n", 0, match.start()) + 1, "".join(values)))
+    return folded
+
+
 def rust_template_offenders(relative: str, source: str) -> list[str]:
     strings, mask = rust_strings_and_mask(source)
+    strings += _string_literal_concats(source, mask, strings)
     renderer_impls = _language_renderer_spans(mask)
     allowed = [
         span
@@ -286,6 +315,20 @@ const BODY: &str = "plain body";
 '''
     if rust_template_offenders("allowed.rs", allowed):
         raise AssertionError("renderer or unit-test spelling was rejected")
+    structural = '''
+impl ::portable_codegen::StructuralImportRenderer<CDialect> for Imports {
+    fn render_imports(&self) -> String { "#include <allowed>".into() }
+    fn other(&self) -> String { "#include <forbidden>".into() }
+}
+'''
+    if len(rust_template_offenders("structural.rs", structural)) != 1:
+        raise AssertionError("structural permission escaped the import method")
+    counterfeit = structural.replace("::portable_codegen::StructuralImportRenderer", "StructuralImportRenderer")
+    counterfeit = "trait StructuralImportRenderer<T> {}\n" + counterfeit
+    if len(rust_template_offenders("local-trait.rs", counterfeit)) != 2:
+        raise AssertionError("local same-named trait counterfeited the structural boundary")
+    if not rust_template_offenders("fake.rs", structural.replace("StructuralImportRenderer", "OtherRenderer")):
+        raise AssertionError("unrelated renderer inherited import permission")
     split_test = '#[cfg(test)] fn imports() { assert_eq!("import allowed", "import allowed"); }'
     if rust_template_offenders("split-test.rs", split_test):
         raise AssertionError("explicit test-only function was rejected")
@@ -310,6 +353,12 @@ const BODY: &str = "plain body";
     injected = 'const BODY: &str = "body\\nimport forbidden";'
     if not rust_template_offenders("injected.rs", injected):
         raise AssertionError("Rust body directive injection was not detected")
+    for split in ['concat!("#inc", "lude <bad>\\n")', 'concat!(r"im", /* gap */ "port bad")']:
+        if not rust_template_offenders("concat.rs", "const BODY: &str = " + split + ";"):
+            raise AssertionError("literal concat! hid a misplaced directive")
+        permitted = "impl ::portable_codegen::StructuralImportRenderer<D> for R { fn render_imports(&self) { " + split + "; } }"
+        if rust_template_offenders("concat-import.rs", permitted):
+            raise AssertionError("literal concat! in typed import spelling was rejected")
     counterfeit = 'fn render_imports() -> &\'static str { "import forbidden" }'
     if not rust_template_offenders("counterfeit.rs", counterfeit):
         raise AssertionError("non-renderer function inherited renderer permission")

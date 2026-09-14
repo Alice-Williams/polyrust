@@ -1,6 +1,7 @@
 load("@rules_cc//cc:defs.bzl", "cc_test")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_doc_test", "rust_library", "rust_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load(":capacity_tests.bzl", "CAPACITY_CASES", "capacity_test_suite")
 
 exports_files(["Cargo.toml"])
 
@@ -120,13 +121,18 @@ rust_library(
         "//crates/check:portable_check",
         "//crates/codegen:portable_codegen",
         "//crates/core-ir:portable_core_ir",
+        "//crates/diagnostics:portable_diagnostics",
         "//crates/ir:portable_ir",
     ],
 )
 
 rust_test(
-    name = "portable_backend_c_test",
+    name = "portable_backend_c_unit_test",
     srcs = glob(["src/**/*.rs"]),
+    args = ["--exact"] + [arg for case in CAPACITY_CASES.values() for arg in [
+        "--skip",
+        case,
+    ]],
     compile_data = [
         "src/runtime.c",
         "src/runtime.h",
@@ -135,14 +141,21 @@ rust_test(
     ],
     crate_name = "portable_backend_c",
     crate_root = "src/lib.rs",
+    data = ["//tools/c:zig_native_oracle"],
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = [
         "//crates/check:portable_check",
         "//crates/codegen:portable_codegen",
         "//crates/core-ir:portable_core_ir",
+        "//crates/diagnostics:portable_diagnostics",
         "//crates/ir:portable_ir",
     ],
+)
+
+capacity_test_suite(
+    name = "portable_backend_c_test",
+    unit = ":portable_backend_c_unit_test",
 )
 
 rust_doc_test(

@@ -20,5 +20,6 @@ python3 \
   "${root}/tools/policy/template_policy.py" \
   verify \
   "${root}/crates/codegen/src/rendering.rs" \
+  "${root}/crates/codegen/src/import_rendering.rs" \
   "${root}/crates/backend-java/src/render.rs" \
   "${java_renderers[@]}"

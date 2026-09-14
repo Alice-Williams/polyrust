@@ -8,6 +8,9 @@ use super::CContextError as E;
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(super) fn check(registry: &CRegistry, files: &[CSourceFile]) -> Result<(), E> {
+    for (function, _) in registry.imported_functions() {
+        registry.imported_function(function)?;
+    }
     super::origin_roles::check(registry, files)?;
     let mut seen = Occurrences::default();
     let mut actual_files = BTreeSet::new();

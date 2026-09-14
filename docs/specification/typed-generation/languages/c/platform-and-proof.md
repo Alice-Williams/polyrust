@@ -13,8 +13,9 @@ The initial certified native platform is Linux x86_64, little-endian, with
 8-bit bytes, exact 32/64-bit integers, 64-bit size_t and pointers, and IEC 60559
 binary64 double (radix 2, mantissa 53, maximum exponent 1024, minimum exponent
 -1021, sizeof(double)==8). int is 32 bits. Integer helpers assume and assert
-the selected fixed-width two's-complement representation. Typed platform
-assertions check these numeric properties; a native bit-pattern probe checks
+the selected fixed-width two's-complement representation. The full capability
+target must check these numeric properties with typed assertions; the current
+M35 subset's narrower guards are specified below. A native bit-pattern probe checks
 endianness and binary64 layout. Allocated objects require no alignment beyond
 max_align_t. Unsupported platform configurations are not silently admitted.
 
@@ -22,6 +23,16 @@ The compiler is the Zig SDK selected by MODULE.bazel's hermetic_cc_toolchain
 4.3.0 dependency and lockfile. The independent sanitizer compiler is exactly
 GCC 14.2.0. System C/Math libraries are platform dependencies, not bundled
 third-party generator libraries.
+
+The M35 closed no-call subset installs ten typed sizeof/_Alignof assertions for
+Bool, Int, I32, Size and void pointers. These are mechanical layout guards under
+this fixed compiler/ABI contract, not a standalone proof of signed ranges,
+typedef compatibility, all object-pointer representations or arbitrary-platform
+support. The independent ABI probes remain mandatory. New platforms or wider
+capabilities need their own proofs; merely passing these ten assertions is not
+admission. Assertion diagnostics retain original bytes but use normalized
+printable `[0xNN]` presentation for unsafe bytes, with a 4,095-display-byte limit;
+they are not executable string values and do not promise byte-identical messages.
 
 Callers must retain round-to-nearest/ties-to-even, masked FP traps and gradual
 underflow (no flush-to-zero/denormals-are-zero mode) during generated calls.

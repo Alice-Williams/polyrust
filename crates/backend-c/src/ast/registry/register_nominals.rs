@@ -70,7 +70,7 @@ impl CRegistry {
         key: CDeclarationKey,
         function: &CFunctionRef,
     ) -> Result<CMemberRef, CRegistryError> {
-        self.check_function(function)?;
+        self.check_owned_function(function)?;
         let ty = CObjectType::pointer(super::super::CPointerTarget::Function(Box::new(
             function.signature().clone(),
         )));
@@ -162,7 +162,7 @@ impl CRegistry {
         function: &CFunctionRef,
     ) -> Result<(), CRegistryError> {
         self.check_member(owner, member)?;
-        self.check_function(function)?;
+        self.check_owned_function(function)?;
         match member.binding() {
             CMemberBinding::Callable(contract) if contract == function.contract() => Ok(()),
             CMemberBinding::Callable(_) | CMemberBinding::Object => {

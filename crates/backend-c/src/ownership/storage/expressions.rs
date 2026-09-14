@@ -12,7 +12,11 @@ use crate::ownership::{CSafetyError as E, constants, layout::Layouts};
 use std::collections::BTreeMap;
 
 impl<'facts, 'ast> Engine<'facts, 'ast> {
-    pub(super) fn expression(&mut self, value: &'ast CValue, state: &State) -> Result<Cell, E> {
+    pub(super) fn expression_leaf(
+        &mut self,
+        value: &'ast CValue,
+        state: &State,
+    ) -> Result<Cell, E> {
         let cell = match value.kind() {
             V::Read(place) => {
                 let path = self.place(place, state)?;

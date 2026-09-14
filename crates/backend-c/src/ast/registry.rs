@@ -23,6 +23,7 @@ mod control;
 mod files;
 mod frozen;
 mod identity;
+mod imports;
 mod interfaces;
 mod inventory;
 mod member_ownership;
@@ -119,6 +120,7 @@ pub struct CRegistry {
     members: BTreeSet<CMemberRef>,
     enumerators: BTreeSet<CEnumeratorRef>,
     functions: BTreeSet<CFunctionRef>,
+    imports: BTreeMap<CFunctionRef, crate::dialect::CDependencyFunction>,
     objects: BTreeSet<CObjectRef>,
     parameters: BTreeSet<CParameterRef>,
     scopes: BTreeSet<CScopeRef>,
@@ -156,6 +158,7 @@ impl CRegistry {
             members: BTreeSet::new(),
             enumerators: BTreeSet::new(),
             functions: BTreeSet::new(),
+            imports: BTreeMap::new(),
             objects: BTreeSet::new(),
             parameters: BTreeSet::new(),
             scopes: BTreeSet::new(),
@@ -177,7 +180,13 @@ impl CRegistry {
             key,
             scope: self.scope.clone(),
         };
-        if self.files.iter().any(|old| old.key.path == value.key.path) {
+        if self.files.iter().any(|old| old.key.path == value.key.path)
+            || self.imports.values().any(|proof| {
+                proof
+                    .public_header()
+                    .conflicts_with_output_path(&value.key.path)
+            })
+        {
             return Err(CRegistryError::DuplicateRegistration);
         }
         self.files.insert(value.clone());

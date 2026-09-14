@@ -30,11 +30,25 @@ The critical path is:
 
 `Linux/Bazel baseline -> unchecked IR -> checker -> evaluator/builder -> backend contract -> Rust/Go proof -> remaining targets -> conformance`
 
-All authoring frontends lower to the same unchecked IR. All safe backends accept
+Existing portable-input frontends lower to the same unchecked IR. All safe backends accept
 only checked programs. Rust output is required and follows the same backend
 contract as every other target.
 
 ## Milestones
+
+### Current priority — Rust compiler frontend experiment
+
+- [M35 — Rust compiler frontend proof](milestones/M35-rustc-frontend-proof.md) — in progress
+
+M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
+is preserved pending the integration decision. See the
+[experiment specification](../specification/rustc-frontend-proof.md).
+
+The Rust-source path now has a normative [C HIR lowering specification](../specification/typed-generation/languages/c/rust-hir-lowering.md).
+It reuses checked compiler HIR, documentation attributes and the existing C
+AST/certification types; it does not force Rust semantics through the legacy
+portable IR. M35-01A closes prototype review gaps, M35-01B integrates the
+existing C types, and M35-01C preserves doc attributes before heap-owner work.
 
 ### Phase 0 — Reproducible foundation
 

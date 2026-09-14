@@ -15,7 +15,7 @@ def main() -> None:
         python_marker = work / "policy-was-invoked"
         fake_python = commands / "python3"
         fake_python.write_text(
-            '#!/bin/sh\n: > "$POLICY_MARKER"\nexit 0\n', encoding="utf-8"
+            '#!/bin/sh\nprintf "%s\\0" "$@" > "$POLICY_MARKER"\nexit 0\n', encoding="utf-8"
         )
         fake_python.chmod(0o755)
         env = {
@@ -53,6 +53,32 @@ def main() -> None:
                 assert python_marker.exists() == expected_success, (
                     "policy must not run over an incomplete discovery result", harness
                 )
+                if expected_success:
+                    arguments = python_marker.read_bytes().split(b"\0")
+                    expected = (
+                        "crates/codegen/src/linking/example.rs"
+                        if harness == "typed_generation_source_policy_test.sh"
+                        else "crates/codegen/src/import_rendering.rs"
+                    )
+                    assert any(argument.endswith(expected.encode()) for argument in arguments), (
+                        "new shared modules must actually reach the verifier", harness, arguments
+                    )
+        # A successful Java inventory cannot conceal an empty/failed second
+        # discovery of the shared linker. Both must finish before verification.
+        for partial, exit_code in [(False, 0), (True, 1)]:
+            python_marker.unlink(missing_ok=True)
+            fake_find.write_text(
+                '#!/bin/sh\ncase "$2" in\n*/codegen/src/linking)\n'
+                + ('printf "%s\\0" "$2/partial.rs"\n' if partial else "")
+                + f'exit {exit_code};;\nesac\nprintf "%s\\0" "$2/example.rs"\n',
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                ["bash", str(root / "tools/policy/typed_generation_source_policy_test.sh")],
+                env=env, capture_output=True, text=True, check=False,
+            )
+            assert result.returncode != 0, (partial, exit_code, result.stdout, result.stderr)
+            assert not python_marker.exists(), "partial shared inventory must not reach policy"
     print("policy source discovery fails closed")
 
 

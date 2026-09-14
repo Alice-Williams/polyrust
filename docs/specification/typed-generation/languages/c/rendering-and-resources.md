@@ -53,6 +53,8 @@ compiler translation capacities. Distinguish exact representation bounds from
 conservative pinned-compiler admission budgets; the latter are not claims that
 the rejected source would necessarily fail a different compiler.
 
-No compiler process or third-party generator enters production. Increasing
+The C renderer invokes no compiler process or third-party generator. The
+[Rust-source frontend](rust-hir-lowering.md) separately uses pinned rustc
+before C lowering; generated C does not depend on rustc. Increasing
 a budget or target platform requires positive boundary probes and oversized
 negative fixtures, not only updating a constant.

@@ -14,7 +14,7 @@ fn permitted(origin: &O, role: F) -> bool {
         O::CoreDeclaration(CoreDeclaration::Test(_)) | O::Synthesized(S::TestHarness) => {
             role == F::TestSource
         }
-        O::CoreDeclaration(_) => matches!(
+        O::CoreDeclaration(_) | O::RustSource(_) => matches!(
             role,
             F::GeneratedPublicHeader | F::GeneratedSource | F::PrivateHeader
         ),

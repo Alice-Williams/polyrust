@@ -27,6 +27,17 @@ crate.from_cargo(
 )
 use_repo(crate, "crates")
 
+# Isolated compiler-frontend experiment; keep the production Rust toolchain.
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "rustc_dev",
+    build_file = "//tools/rustc-dev:component.BUILD.bazel",
+    sha256 = "6fdbc2122f41ca9f892fe09782f4f3b6e18f23d60483a3403d3e5e0da119a0f2",
+    strip_prefix = "rustc-dev-1.98.0-x86_64-unknown-linux-gnu/rustc-dev",
+    urls = ["https://static.rust-lang.org/dist/rustc-dev-1.98.0-x86_64-unknown-linux-gnu.tar.xz"],
+)
+
 go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(
     name = "go_sdk",

@@ -23,6 +23,7 @@ fn comments_break_translation_phase_escape_sequences_and_preserve_line_structure
     assert_eq!(CComment::new("ordinary text").text(), "ordinary text");
     let diagnostic = CAssertDiagnostic::new(b"\0\"\\??/".to_vec());
     assert_eq!(diagnostic.bytes(), b"\0\"\\??/");
+    assert_eq!(diagnostic.display_text(), "[0x00][0x22][0x5C][0x3F][0x3F]/");
 }
 
 #[test]
@@ -67,6 +68,16 @@ fn static_assertions_require_integer_constant_shape_not_runtime_reads_or_float_c
         declarations.static_assert(ast.numeric_conversion(T::Int, floating).unwrap(), message),
         Err(E::ExpectedIntegerConstantExpression)
     );
+}
+
+#[test]
+fn comments_normalize_both_delimiters_including_overlapping_spellings() {
+    assert_eq!(CComment::new("/* nested */").text(), "/ * nested * /");
+    for input in ["/*/", "*/*", "/**/", "/*/*/", "*/*/*", "/*\r\n*/"] {
+        let comment = CComment::new(input);
+        assert!(!comment.text().contains("/*"));
+        assert!(!comment.text().contains("*/"));
+    }
 }
 
 #[test]

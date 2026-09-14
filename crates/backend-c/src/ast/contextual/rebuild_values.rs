@@ -4,10 +4,18 @@ use super::super::{
     CCall, CCallable, CCallableKind, CConversion, CEffect, CLiteral, CNullPointer, CPointerTest,
     CValue, CValueKind,
 };
+use super::rebuild_expression_work::{self as work, Built, Children, Node};
 use super::{CContextError as E, Recheck, exact};
 
 impl Recheck<'_> {
     pub(super) fn value(&self, value: &CValue) -> Result<CValue, E> {
+        match work::rebuild(self, Node::Value(value))? {
+            Built::Value(value) => Ok(*value),
+            Built::Place(_) => Err(E::StoredStructureMismatch),
+        }
+    }
+
+    pub(super) fn value_node(&self, value: &CValue, children: &mut Children) -> Result<CValue, E> {
         let ast = &self.expressions;
         let rebuilt = match value.kind() {
             CValueKind::KnownConstant(value) => ast.known_constant(*value),
@@ -22,44 +30,35 @@ impl Recheck<'_> {
                 ast.literal(literal)?
             }
             CValueKind::Call(call) => {
-                let (callable, arguments) = self.call_parts(call)?;
+                let (callable, arguments) = self.call_parts(call, children)?;
                 ast.call_value(callable, arguments)?
             }
-            CValueKind::Read(place) => ast.read(self.place(place)?)?,
-            CValueKind::AddressOf(place) => ast.address_of(self.place(place)?)?,
+            CValueKind::Read(_) => ast.read(work::place(children)?)?,
+            CValueKind::AddressOf(_) => ast.address_of(work::place(children)?)?,
             CValueKind::Enumerator(value) => ast.enumerator(value.clone())?,
             CValueKind::FunctionAddress(value) => ast.function_address(value.clone())?,
-            CValueKind::Unary { operator, operand } => {
-                ast.unary(*operator, self.value(operand)?)?
+            CValueKind::Unary { operator, .. } => ast.unary(*operator, work::value(children)?)?,
+            CValueKind::Binary { operator, .. } => {
+                ast.binary(*operator, work::value(children)?, work::value(children)?)?
             }
-            CValueKind::Binary {
-                operator,
-                left,
-                right,
-            } => ast.binary(*operator, self.value(left)?, self.value(right)?)?,
             CValueKind::PointerTest(test) => ast.pointer_test(match test {
-                CPointerTest::IsNull(value) => CPointerTest::IsNull(Box::new(self.value(value)?)),
-                CPointerTest::IsNonNull(value) => {
-                    CPointerTest::IsNonNull(Box::new(self.value(value)?))
+                CPointerTest::IsNull(_) => CPointerTest::IsNull(Box::new(work::value(children)?)),
+                CPointerTest::IsNonNull(_) => {
+                    CPointerTest::IsNonNull(Box::new(work::value(children)?))
                 }
-                CPointerTest::SameSlot { left, right } => CPointerTest::SameSlot {
-                    left: Box::new(self.value(left)?),
-                    right: Box::new(self.value(right)?),
+                CPointerTest::SameSlot { .. } => CPointerTest::SameSlot {
+                    left: Box::new(work::value(children)?),
+                    right: Box::new(work::value(children)?),
                 },
             })?,
-            CValueKind::Conditional {
-                condition,
-                then_value,
-                else_value,
-            } => ast.conditional(
-                self.value(condition)?,
-                self.value(then_value)?,
-                self.value(else_value)?,
+            CValueKind::Conditional { .. } => ast.conditional(
+                work::value(children)?,
+                work::value(children)?,
+                work::value(children)?,
             )?,
-            CValueKind::Convert {
-                conversion,
-                operand,
-            } => self.conversion(conversion, self.value(operand)?)?,
+            CValueKind::Convert { conversion, .. } => {
+                self.conversion(conversion, work::value(children)?)?
+            }
             CValueKind::SizeOf(ty) => ast.size_of(ty.clone())?,
             CValueKind::AlignOf(ty) => ast.align_of(ty.clone())?,
         };
@@ -87,16 +86,19 @@ impl Recheck<'_> {
         })
     }
 
-    fn call_parts(&self, call: &CCall) -> Result<(CCallable, Vec<CValue>), E> {
+    fn call_parts(
+        &self,
+        call: &CCall,
+        children: &mut Children,
+    ) -> Result<(CCallable, Vec<CValue>), E> {
         let original = call.callable();
         let callable = match original.kind() {
             CCallableKind::Direct(function) => self.expressions.direct((**function).clone())?,
             CCallableKind::Indirect {
-                pointer,
-                contract_function,
+                contract_function, ..
             } => self
                 .expressions
-                .indirect(self.value(pointer)?, (**contract_function).clone())?,
+                .indirect(work::value(children)?, (**contract_function).clone())?,
             CCallableKind::Known(call) => self.expressions.known(*call),
         };
         if callable.brand != original.brand {
@@ -105,13 +107,20 @@ impl Recheck<'_> {
         let arguments = call
             .arguments()
             .iter()
-            .map(|value| self.value(value))
+            .map(|_| work::value(children))
             .collect::<Result<Vec<_>, _>>()?;
         Ok((callable, arguments))
     }
 
     pub(super) fn effect(&self, effect: &CEffect) -> Result<CEffect, E> {
-        let (callable, arguments) = self.call_parts(effect.call())?;
+        let mut children = work::call_children(effect.call())
+            .into_iter()
+            .map(|node| work::rebuild(self, node))
+            .collect::<Result<Children, E>>()?;
+        let (callable, arguments) = self.call_parts(effect.call(), &mut children)?;
+        if !children.is_empty() {
+            return Err(E::StoredStructureMismatch);
+        }
         exact(effect, self.expressions.call_effect(callable, arguments)?)
     }
 }

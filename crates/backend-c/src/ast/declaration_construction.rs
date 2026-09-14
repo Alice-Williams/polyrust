@@ -82,7 +82,7 @@ impl<'a> CDeclarations<'a> {
         function: CFunctionRef,
         linkage: CLinkage,
     ) -> Result<CDeclaration, E> {
-        self.registry.check_function(&function)?;
+        self.registry.check_owned_function(&function)?;
         self.same_file(function.file())?;
         validate_linkage(linkage, function.file())?;
         Ok(self.declaration(D::FunctionPrototype { function, linkage }))
@@ -101,7 +101,7 @@ impl<'a> CDeclarations<'a> {
         parameters: Vec<CParameterRef>,
         body: CBlock,
     ) -> Result<CDefinition, E> {
-        self.registry.check_function(&function)?;
+        self.registry.check_owned_function(&function)?;
         definition_file(function.file(), &self.file)?;
         validate_linkage(linkage, function.file())?;
         if body.scope().function() != &function || body.scope().parent().is_some() {

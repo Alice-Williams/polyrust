@@ -14,6 +14,7 @@ mod places;
 mod prefix_reads;
 mod prefixes;
 mod root_cells;
+mod scalar_walk;
 mod state;
 mod values;
 
@@ -43,10 +44,18 @@ impl CRegistry {
     /// Checks derived storage, initialization, bounds and automatic lifetimes.
     /// Default allocation/null/release, fixed restoration and guarded dynamic
     /// element storage, complete counted prefixes and local fixed leaf owners are
-    /// checked. Other call effects remain unresolved. Success is not a full ownership
+    /// checked. Direct scalar calls additionally require private effect evidence
+    /// derived from actual local-only acyclic definitions; every body still
+    /// passes this same storage check. Other call effects remain unresolved.
+    /// Success is not a full ownership
     /// or rendering certificate; prefix numeric history stays conservative.
     /// Owner roles require actual lifecycle proof; unresolved children and
     /// dynamic families cannot silently bypass this diagnostic boundary.
+    ///
+    /// ```compile_fail
+    /// use portable_backend_c::ownership::scalar_calls::ScalarCalls;
+    /// fn forge() -> ScalarCalls { ScalarCalls::default() }
+    /// ```
     ///
     /// ```compile_fail
     /// use portable_backend_c::ownership::storage::owners::Owners;

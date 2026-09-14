@@ -20,6 +20,9 @@ impl<'ast> Engine<'_, 'ast> {
         let CValueKind::Call(call) = value.kind() else {
             return self.expression(value, state);
         };
+        if self.context.scalar_call(call.callable()) {
+            return self.expression(value, state);
+        }
         if call.callable().kind() != &CCallableKind::Known(CKnownCall::Allocate) {
             return Err(E::UnprovedStorageCall);
         }

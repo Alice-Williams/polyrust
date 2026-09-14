@@ -80,6 +80,13 @@ pub trait TypedAstDialect:
         file: &TargetFile<Self>,
         context: &TargetAstContext<'_, Self>,
     ) -> Vec<AstViolation>;
+
+    /// Cross-file/inventory invariants, repeated by post-link verification.
+    /// Target-owned registries can authenticate their shared graph projection
+    /// here without exposing mutable registries or weakening phase boundaries.
+    fn verify_package(&self, _package: &TargetAstPackage<Self>) -> Vec<AstViolation> {
+        vec![]
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -102,6 +109,10 @@ pub enum TargetCallableRef<D: TypedAstDialect> {
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GeneratedOrigin<D: TypedAstDialect> {
+    /// Compiler-source provenance, not evidence of successful source analysis.
+    /// The compiler bridge authenticates the input; target verification still
+    /// checks the resulting AST. Sharing metadata never grants a certificate.
+    RustSource(std::sync::Arc<crate::RustSourceOrigin>),
     CoreDeclaration(CoreDeclaration),
     CoreExpression(CoreExprId),
     Runtime(D::SymbolOrigin),
@@ -110,6 +121,7 @@ pub enum GeneratedOrigin<D: TypedAstDialect> {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SynthesisReason {
+    PlatformAssertion,
     EvaluationTemporary,
     OwnershipAdapter,
     InterfaceAdapter,
@@ -847,6 +859,13 @@ pub fn verify_target_ast<D: TypedAstDialect>(
 ) -> Result<(), Vec<Diagnostic>> {
     let context = TargetAstContext { package };
     let mut diagnostics = Vec::new();
+    for violation in package.dialect().verify_package(package) {
+        diagnostics.push(Diagnostic::error(
+            violation.code,
+            violation.message,
+            SourceRef::logical(["target-ast", "package"]),
+        ));
+    }
     for value in &package.types {
         check_source(&mut diagnostics, &value.source, "generated type");
         check_name(
@@ -1255,6 +1274,10 @@ fn root_source<D: TypedAstDialect>(package: &TargetAstPackage<D>) -> SourceRef {
 
 #[cfg(test)]
 mod tests {
+    mod rust_origins {
+        include!("tests/target_rust_origins.rs");
+    }
+
     use std::collections::BTreeSet;
 
     use super::*;

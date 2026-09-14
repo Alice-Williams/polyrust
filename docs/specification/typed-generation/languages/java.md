@@ -4,6 +4,10 @@
 - Target ID: `org.polyrust.java`
 - Language/toolchain: hermetic Java 21
 
+The planned [Rust-source frontend](java/rust-hir-lowering.md) reuses this typed
+backend after successful rustc analysis. It is a separate dynamic admission
+boundary, not an implementation of the existing builder's compile-time API.
+
 ## 1. Scope and package
 
 The plugin emits a Java 21 package rooted at

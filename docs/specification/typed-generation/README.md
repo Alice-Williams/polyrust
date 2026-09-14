@@ -50,6 +50,13 @@ Compliance:
 
 ## Required phase graphs
 
+M35 adds a compiler-checked Rust-source path, specified first for
+[C17 HIR lowering](languages/c/rust-hir-lowering.md). It uses rustc HIR and
+type-check results rather than another Rust parser or a forced conversion
+through portable CoreIR semantics. It rejoins the existing typed target
+AST/link/certify/render boundaries. The paths below remain in force for
+existing builder and portable-input frontends; M35 integration is not complete.
+
 The primary static authoring path is:
 
 ```text

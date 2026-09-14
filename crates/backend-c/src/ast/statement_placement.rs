@@ -8,8 +8,18 @@ impl CStatements<'_> {
     pub(super) fn check_placement(
         &self,
         scope: &CScopeRef,
-        statement: &CStatement,
+        mut statement: &CStatement,
     ) -> Result<(), E> {
+        // Labels retain their containing scope, so walk their chain without
+        // consuming a host stack frame for each nested label.
+        while let K::Label {
+            identity,
+            statement: child,
+        } = statement.kind()
+        {
+            same_scope(scope, identity.scope())?;
+            statement = child;
+        }
         match statement.kind() {
             K::Declare(value) => same_scope(scope, value.local().scope()),
             K::Block(block) => child_scope(scope, block),
@@ -38,13 +48,7 @@ impl CStatements<'_> {
                 }
                 Ok(())
             }
-            K::Label {
-                identity,
-                statement,
-            } => {
-                same_scope(scope, identity.scope())?;
-                self.check_placement(scope, statement)
-            }
+            K::Label { .. } => unreachable!("label chain consumed above"),
             K::Empty
             | K::Assign { .. }
             | K::Evaluate(_)

@@ -16,11 +16,24 @@ if (( ${#java_sources[@]} == 0 )); then
   exit 1
 fi
 
+readonly linking_list="${TEST_TMPDIR}/shared-linking-sources.list"
+if ! find -L "${root}/crates/codegen/src/linking" -type f -name '*.rs' \
+  -print0 > "${linking_list}"; then
+  echo "Shared linker source discovery failed" >&2
+  exit 1
+fi
+mapfile -d '' linking_sources < "${linking_list}"
+if (( ${#linking_sources[@]} == 0 )); then
+  echo "Shared linker child modules are missing from policy runfiles" >&2
+  exit 1
+fi
+
 python3 \
   "${root}/tools/policy/typed_generation_source_policy.py" \
   verify \
   "${root}/crates/build/src/typed_program.rs" \
   "${root}/crates/build/src/capabilities/"*.rs \
   "${root}/crates/codegen/src/linking.rs" \
+  "${linking_sources[@]}" \
   "${root}/crates/codegen/src/target_ast.rs" \
   "${java_sources[@]}"

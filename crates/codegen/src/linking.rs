@@ -1,5 +1,15 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+mod binding_authority;
+mod catalogue;
+mod dependency_callables;
+mod dialect;
+mod file_imports;
+mod reference_inventory;
+pub use dependency_callables::{DependencyCallableSpec, DependencySpelling};
+pub use dialect::LinkerDialect;
+pub use file_imports::ResolvedFileImport;
+
 use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef, sort_diagnostics};
 
 use crate::{
@@ -44,6 +54,7 @@ pub enum GeneratedSymbolId {
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TargetSymbolRef<D: LinkerDialect> {
+    DependencyCallable(D::DependencyCallable),
     KnownType(D::KnownType),
     KnownCallable(D::KnownCallable),
     RuntimeCallable(D::RuntimeCallable),
@@ -61,6 +72,7 @@ pub enum TargetSymbolRef<D: LinkerDialect> {
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SymbolOrigin<D: LinkerDialect> {
+    CertifiedDependency(D::DependencyPackage),
     Primitive,
     LanguagePrelude(D::PreludeSymbol),
     StandardLibrary(D::StandardLibrary),
@@ -136,6 +148,8 @@ pub struct PackageRequirement<D: LinkerDialect> {
 pub enum DependencyPolicy<D: LinkerDialect> {
     Implicit,
     Import(D::ImportKind),
+    /// The owning package exports this exact native name; aliasing is invalid.
+    FixedImport(D::ImportKind),
     Qualified,
     Member {
         owner: D::QualifiedName,
@@ -240,6 +254,7 @@ pub struct RuntimeHelperSpec<D: LinkerDialect> {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SymbolCatalogue<D: LinkerDialect> {
+    pub dependency_callables: Vec<DependencyCallableSpec<D>>,
     pub types: Vec<KnownTypeSpec<D>>,
     pub callables: Vec<KnownCallableSpec<D>>,
     pub runtime_callables: Vec<RuntimeCallableSpec<D>>,
@@ -265,263 +280,6 @@ impl<D: LinkerDialect> Default for FileItemRoots<D> {
             statements: vec![],
             symbols: vec![],
         }
-    }
-}
-
-pub trait LinkerDialect:
-    TypedAstDialect + TargetDialect<Resolved = LinkedTargetPackage<Self>> + Clone + Ord
-{
-    type KnownField: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
-    type KnownConstructor: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
-    type KnownMethod: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
-    type PreludeSymbol: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
-    type StandardLibrary: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
-    type ExternalPackage: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
-    type PackageFeature: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
-    type HelperId: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
-    type HelperCapability: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
-    type Identifier: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
-    type QualifiedName: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
-    type MemberName: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
-    type Namespace: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
-    type NameKey: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
-    type ImportKind: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
-    type ResolvedModule: Clone + std::fmt::Debug + Eq + Send + Sync;
-    type ResolvedFileItem: Clone + std::fmt::Debug + Eq + Send + Sync;
-
-    fn package_ecosystem(&self, package: &Self::ExternalPackage) -> PackageEcosystem;
-    fn package_name(&self, package: &Self::ExternalPackage) -> &'static str;
-    fn package_feature_name(&self, feature: &Self::PackageFeature) -> &'static str;
-    fn helper_name(&self, helper: &Self::HelperId) -> &'static str;
-    fn helper_capability_name(&self, capability: &Self::HelperCapability) -> &'static str;
-    fn symbol_catalogue(&self) -> SymbolCatalogue<Self>;
-    fn identifier_from_candidate(
-        &self,
-        candidate: &str,
-        namespace: &Self::Namespace,
-    ) -> Result<Self::Identifier, AstViolation>;
-    fn identifier_key(&self, identifier: &Self::Identifier) -> Self::NameKey;
-    fn is_public(&self, visibility: &Self::Visibility) -> bool;
-    fn type_namespace(&self, kind: &Self::DeclarationKind) -> Self::Namespace;
-    fn type_namespace_from_known(&self, known: &Self::KnownType) -> Self::Namespace;
-    fn callable_namespace(&self) -> Self::Namespace;
-    fn member_namespace(&self) -> Self::Namespace;
-    fn value_namespace(&self) -> Self::Namespace;
-    fn known_call_expression(
-        &self,
-        callable: Self::KnownCallable,
-        invocation: Self::InvocationKind,
-        arguments: Vec<TargetExprId>,
-    ) -> Self::Expression;
-    fn known_constructor_expression(
-        &self,
-        constructor: Self::KnownConstructor,
-        arguments: Vec<TargetExprId>,
-    ) -> Self::Expression;
-    fn known_method_expression(
-        &self,
-        method: Self::KnownMethod,
-        receiver: TargetExprId,
-        arguments: Vec<TargetExprId>,
-    ) -> Self::Expression;
-    fn expression_references(&self, expression: &Self::Expression) -> Vec<TargetSymbolRef<Self>>;
-    fn statement_references(&self, statement: &Self::Statement) -> Vec<TargetSymbolRef<Self>>;
-    fn file_item_roots(&self, item: &Self::FileItem) -> FileItemRoots<Self>;
-    fn resolve_module(
-        &self,
-        module: &Self::ModuleDeclaration,
-    ) -> Result<Self::ResolvedModule, AstViolation>;
-    fn resolve_file_item(
-        &self,
-        package: &TargetAstPackage<Self>,
-        item: &Self::FileItem,
-        references: &ResolvedReferenceMap<Self>,
-    ) -> Result<Self::ResolvedFileItem, AstViolation>;
-    fn verify_resolved_file_item(&self, item: &Self::ResolvedFileItem) -> Vec<AstViolation>;
-
-    /// Verifies semantic constraints which are visible only after the linker
-    /// has assembled a complete file, including injected runtime helpers.
-    fn verify_resolved_file(
-        &self,
-        _file: &LinkedFile<Self>,
-        _context: &crate::TargetAstContext<'_, Self>,
-    ) -> Vec<AstViolation> {
-        vec![]
-    }
-
-    fn permits_file_cycle(&self, _files: &[TargetFileId]) -> bool {
-        false
-    }
-
-    fn forward_declarations(
-        &self,
-        _file: TargetFileId,
-        _references: &[TargetSymbolRef<Self>],
-    ) -> Vec<GeneratedSymbolId> {
-        vec![]
-    }
-}
-
-impl<D: LinkerDialect> SymbolCatalogue<D> {
-    pub fn verify(&self, dialect: &D) -> Result<(), Vec<Diagnostic>> {
-        let mut diagnostics = Vec::new();
-        check_unique(
-            &mut diagnostics,
-            self.types.iter().map(|spec| (&spec.symbol, &spec.source)),
-            "known type",
-        );
-        check_unique(
-            &mut diagnostics,
-            self.callables
-                .iter()
-                .map(|spec| (&spec.symbol, &spec.source)),
-            "known callable",
-        );
-        check_unique(
-            &mut diagnostics,
-            self.runtime_callables
-                .iter()
-                .map(|spec| (&spec.symbol, &spec.source)),
-            "runtime callable",
-        );
-        check_unique(
-            &mut diagnostics,
-            self.fields.iter().map(|spec| (&spec.symbol, &spec.source)),
-            "known field",
-        );
-        check_unique(
-            &mut diagnostics,
-            self.constructors
-                .iter()
-                .map(|spec| (&spec.symbol, &spec.source)),
-            "known constructor",
-        );
-        check_unique(
-            &mut diagnostics,
-            self.methods.iter().map(|spec| (&spec.symbol, &spec.source)),
-            "known method",
-        );
-        check_unique(
-            &mut diagnostics,
-            self.helpers.iter().map(|spec| (&spec.id, &spec.source)),
-            "runtime helper",
-        );
-        check_unique(
-            &mut diagnostics,
-            self.helpers.iter().map(|spec| (&spec.order, &spec.source)),
-            "runtime helper order",
-        );
-        for helper in &self.helpers {
-            if dialect.is_public(&helper.visibility) {
-                diagnostics.push(Diagnostic::error(
-                    DiagnosticCode::InvalidStructure,
-                    "runtime helpers cannot be exposed as public declarations",
-                    helper.source.clone(),
-                ));
-            }
-            if helper.items.is_empty() {
-                diagnostics.push(Diagnostic::error(
-                    DiagnosticCode::InvalidStructure,
-                    "runtime helper must expand to structural target AST items",
-                    helper.source.clone(),
-                ));
-            }
-        }
-
-        for spec in &self.callables {
-            validate_callable_pattern(&mut diagnostics, &spec.signature, &spec.source);
-            if let Some(concrete) = concrete_signature(&spec.signature) {
-                let authoritative = dialect.known_callable_signature(&spec.symbol);
-                if concrete != authoritative {
-                    diagnostics.push(Diagnostic::error(
-                        DiagnosticCode::TypeMismatch,
-                        "known-callable metadata disagrees with its typed signature",
-                        spec.source.clone(),
-                    ));
-                }
-            }
-            validate_dependency(
-                &mut diagnostics,
-                &spec.origin,
-                &spec.policy,
-                spec.qualified_name.as_ref(),
-                spec.dependency.as_ref(),
-                &spec.source,
-            );
-        }
-        for spec in &self.runtime_callables {
-            validate_callable_pattern(&mut diagnostics, &spec.signature, &spec.source);
-            if let Some(concrete) = concrete_signature(&spec.signature) {
-                let authoritative = dialect.runtime_callable_signature(&spec.symbol);
-                if concrete != authoritative {
-                    diagnostics.push(Diagnostic::error(
-                        DiagnosticCode::TypeMismatch,
-                        "runtime-callable metadata disagrees with its typed signature",
-                        spec.source.clone(),
-                    ));
-                }
-            }
-            validate_dependency(
-                &mut diagnostics,
-                &spec.origin,
-                &spec.policy,
-                spec.qualified_name.as_ref(),
-                spec.dependency.as_ref(),
-                &spec.source,
-            );
-        }
-        for spec in &self.constructors {
-            validate_callable_pattern(&mut diagnostics, &spec.signature, &spec.source);
-            validate_dependency(
-                &mut diagnostics,
-                &spec.origin,
-                &spec.policy,
-                spec.qualified_name.as_ref(),
-                spec.dependency.as_ref(),
-                &spec.source,
-            );
-        }
-        for spec in &self.methods {
-            validate_callable_pattern(&mut diagnostics, &spec.signature, &spec.source);
-            validate_dependency(
-                &mut diagnostics,
-                &spec.origin,
-                &spec.policy,
-                None,
-                spec.dependency.as_ref(),
-                &spec.source,
-            );
-        }
-        for spec in &self.types {
-            validate_dependency(
-                &mut diagnostics,
-                &spec.origin,
-                &spec.policy,
-                spec.qualified_name.as_ref(),
-                spec.dependency.as_ref(),
-                &spec.source,
-            );
-        }
-        for spec in &self.fields {
-            validate_dependency(
-                &mut diagnostics,
-                &spec.origin,
-                &spec.policy,
-                None,
-                spec.dependency.as_ref(),
-                &spec.source,
-            );
-        }
-        sort_diagnostics(&mut diagnostics);
-        if diagnostics.is_empty() {
-            Ok(())
-        } else {
-            Err(diagnostics)
-        }
-    }
-
-    fn helper(&self, id: &D::HelperId) -> Option<&RuntimeHelperSpec<D>> {
-        self.helpers.iter().find(|spec| &spec.id == id)
     }
 }
 
@@ -856,6 +614,7 @@ pub struct LinkedFile<D: LinkerDialect> {
     dependencies: Vec<TargetFileId>,
     references: Vec<LinkedReference<D>>,
     imports: Vec<ResolvedImport<D>>,
+    file_imports: Vec<ResolvedFileImport<D>>,
     forward_declarations: Vec<GeneratedSymbolId>,
     helpers: Vec<D::HelperId>,
 }
@@ -904,6 +663,10 @@ impl<D: LinkerDialect> LinkedFile<D> {
 
     pub fn imports(&self) -> &[ResolvedImport<D>] {
         &self.imports
+    }
+
+    pub fn file_imports(&self) -> &[ResolvedFileImport<D>] {
+        &self.file_imports
     }
 
     #[cfg(test)]
@@ -1070,8 +833,9 @@ impl<D: LinkerDialect> TargetLinker<D> {
         verified: &VerifiedPackage<D>,
     ) -> Result<LinkedTargetPackage<D>, Vec<Diagnostic>> {
         let unresolved = verified.ast();
+        catalogue::verify_dialect(&self.dialect, unresolved)?;
         verify_target_ast(unresolved)?;
-        let catalogue = self.dialect.symbol_catalogue();
+        let catalogue = catalogue::derive(&self.dialect, unresolved)?;
         catalogue.verify(&self.dialect)?;
 
         let mut diagnostics = Vec::new();
@@ -1093,6 +857,12 @@ impl<D: LinkerDialect> TargetLinker<D> {
             unresolved,
             &catalogue,
             &selected_helper_ids,
+            &mut diagnostics,
+        );
+        binding_authority::verify_dependency_names(
+            &self.dialect,
+            &catalogue,
+            &bindings,
             &mut diagnostics,
         );
         let binding_lookup = bindings
@@ -1199,6 +969,13 @@ impl<D: LinkerDialect> TargetLinker<D> {
                     )),
                 }
             }
+            let file_imports = file_imports::derive(
+                &self.dialect,
+                unresolved,
+                source_file,
+                raw_file.dependencies.iter().copied(),
+                &mut diagnostics,
+            );
             files.push(LinkedFile {
                 file: raw_file.file,
                 path: source_file.path().clone(),
@@ -1211,6 +988,7 @@ impl<D: LinkerDialect> TargetLinker<D> {
                 dependencies: raw_file.dependencies,
                 references,
                 imports,
+                file_imports,
                 forward_declarations,
                 helpers: raw_file.helpers,
             });
@@ -1959,6 +1737,7 @@ fn resolve_reference<D: LinkerDialect>(
             }
         }
     }
+    let fixed = matches!(&plan.policy, DependencyPolicy::FixedImport(_));
     match plan.policy {
         DependencyPolicy::Implicit => Some(ResolvedReference::Local(plan.name)),
         DependencyPolicy::Qualified => plan
@@ -1975,7 +1754,7 @@ fn resolve_reference<D: LinkerDialect>(
         DependencyPolicy::Member { owner, member } => {
             Some(ResolvedReference::Member { owner, member })
         }
-        DependencyPolicy::Import(kind) => {
+        DependencyPolicy::Import(kind) | DependencyPolicy::FixedImport(kind) => {
             if let Some(id) = import_lookup.get(&located.symbol) {
                 let import = imports.iter().find(|import| import.id == *id)?;
                 return Some(ResolvedReference::Imported {
@@ -1986,7 +1765,7 @@ fn resolve_reference<D: LinkerDialect>(
             let physical_key = (kind.clone(), plan.name.clone());
             if let Some(id) = physical_import_lookup.get(&physical_key).copied() {
                 let import = imports.iter_mut().find(|import| import.id == id)?;
-                if import.origin != plan.origin {
+                if import.origin != plan.origin || (fixed && import.binding != plan.name) {
                     diagnostics.push(Diagnostic::error(
                         DiagnosticCode::InterfaceNonconformance,
                         "one physical import was assigned conflicting typed origins",
@@ -2004,6 +1783,13 @@ fn resolve_reference<D: LinkerDialect>(
             let key = (plan.namespace.clone(), dialect.identifier_key(&plan.name));
             let binding = if occupied.insert(key) {
                 plan.name.clone()
+            } else if fixed {
+                diagnostics.push(Diagnostic::error(
+                    DiagnosticCode::DuplicateDeclaration,
+                    "fixed native dependency symbol cannot be import-aliased",
+                    located.source.clone(),
+                ));
+                return None;
             } else {
                 let mut suffix = 2u32;
                 loop {
@@ -2053,6 +1839,9 @@ fn reference_plan<D: LinkerDialect>(
     symbol: &TargetSymbolRef<D>,
 ) -> Option<ReferencePlan<D>> {
     match symbol {
+        TargetSymbolRef::DependencyCallable(id) => {
+            dependency_callables::plan(dialect, catalogue, id)
+        }
         TargetSymbolRef::KnownType(id) => catalogue
             .types
             .iter()
@@ -2138,6 +1927,7 @@ fn reference_plan<D: LinkerDialect>(
 pub fn verify_linked_package<D: LinkerDialect>(
     package: &LinkedTargetPackage<D>,
 ) -> Result<(), Vec<Diagnostic>> {
+    catalogue::verify_dialect(&package.dialect, &package.unresolved)?;
     let mut diagnostics = Vec::new();
     if let Err(mut errors) = verify_target_ast(&package.unresolved) {
         diagnostics.append(&mut errors);
@@ -2145,6 +1935,9 @@ pub fn verify_linked_package<D: LinkerDialect>(
     if let Err(mut errors) = package.catalogue.verify(&package.dialect) {
         diagnostics.append(&mut errors);
     }
+    catalogue::verify_package(package, &mut diagnostics);
+    binding_authority::verify(package, &mut diagnostics);
+    reference_inventory::verify(package, &mut diagnostics);
     let mut names = BTreeSet::new();
     let mut symbols = BTreeSet::new();
     for binding in &package.bindings {
@@ -2278,7 +2071,12 @@ pub fn verify_linked_package<D: LinkerDialect>(
                 "forward-declarations",
             ));
         }
-        if file.dependencies != expected_file_dependencies.into_iter().collect::<Vec<_>>() {
+        if file.dependencies
+            != expected_file_dependencies
+                .iter()
+                .copied()
+                .collect::<Vec<_>>()
+        {
             diagnostics.push(link_error(
                 DiagnosticCode::InterfaceNonconformance,
                 "cross-file dependency edges are not exactly reference-derived",
@@ -2500,6 +2298,7 @@ fn resolved_reference_matches<D: LinkerDialect>(
     let Some(plan) = reference_plan(&package.dialect, &package.catalogue, &reference.symbol) else {
         return false;
     };
+    let fixed = matches!(&plan.policy, DependencyPolicy::FixedImport(_));
     match (&reference.resolved, plan.policy) {
         (ResolvedReference::Local(actual), DependencyPolicy::Implicit) => actual == &plan.name,
         (ResolvedReference::Qualified(actual), DependencyPolicy::Qualified) => {
@@ -2512,15 +2311,17 @@ fn resolved_reference_matches<D: LinkerDialect>(
             },
             DependencyPolicy::Member { owner, member },
         ) => actual_owner == &owner && actual_member == &member,
-        (ResolvedReference::Imported { binding, import }, DependencyPolicy::Import(kind)) => {
-            imports.get(import).is_some_and(|record| {
-                record.symbols.contains(&reference.symbol)
-                    && record.original_binding == plan.name
-                    && record.kind == kind
-                    && record.origin == plan.origin
-                    && &record.binding == binding
-            })
-        }
+        (
+            ResolvedReference::Imported { binding, import },
+            DependencyPolicy::Import(kind) | DependencyPolicy::FixedImport(kind),
+        ) => imports.get(import).is_some_and(|record| {
+            record.symbols.contains(&reference.symbol)
+                && (!fixed || binding == &plan.name)
+                && record.original_binding == plan.name
+                && record.kind == kind
+                && record.origin == plan.origin
+                && &record.binding == binding
+        }),
         _ => false,
     }
 }
@@ -2660,6 +2461,15 @@ fn validate_dependency<D: LinkerDialect>(
 
 #[cfg(test)]
 mod tests {
+    mod package_catalogue_tests {
+        include!("tests/linking_package_catalogues.rs");
+    }
+    mod dependency_tests {
+        include!("tests/linking_dependency_callables.rs");
+    }
+    mod file_import_tests {
+        include!("tests/linking_file_imports.rs");
+    }
     use super::*;
     use crate::{
         CertifiedTemplateEngine, CertifiedTemplateId, EmbeddedTemplate, FileGroupRole,
@@ -2672,6 +2482,9 @@ mod tests {
 
     #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
     enum CatalogueMode {
+        PackageDerived,
+        RejectedPackage,
+        EmptyPackageError,
         Normal,
         Duplicate,
         BadSignature,
@@ -2683,6 +2496,12 @@ mod tests {
         DuplicateHelper,
         PermittedFileCycle,
         DependencyConflict,
+        DependencyOwnedCollision,
+        DependencyOwnerConflict,
+        DependencyQualifiedConflict,
+        GeneratedFiles,
+        GeneratedFilesNoSpelling,
+        RejectedFiles,
     }
 
     #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -2826,6 +2645,9 @@ mod tests {
 
     #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
     enum QualifiedName {
+        DependencyFirst,
+        DependencyOther,
+        DependencyEntry,
         RuntimeIsPositive,
         StdNegate,
         StdClock,
@@ -2849,6 +2671,7 @@ mod tests {
     enum ImportKind {
         Type,
         Value,
+        File(RelativeOutputPath),
     }
 
     #[derive(Clone, Debug, PartialEq, Eq)]
@@ -3225,6 +3048,8 @@ mod tests {
     }
 
     impl LinkerDialect for TestDialect {
+        type DependencyCallable = dependency_tests::Callable;
+        type DependencyPackage = dependency_tests::Owner;
         type KnownField = KnownField;
         type KnownConstructor = KnownConstructor;
         type KnownMethod = KnownMethod;
@@ -3242,6 +3067,13 @@ mod tests {
         type ImportKind = ImportKind;
         type ResolvedModule = Module;
         type ResolvedFileItem = ResolvedItem;
+
+        fn dependency_callable_spec(
+            &self,
+            callable: &Self::DependencyCallable,
+        ) -> DependencyCallableSpec<Self> {
+            dependency_tests::spec(callable)
+        }
 
         fn package_ecosystem(&self, package: &Self::ExternalPackage) -> PackageEcosystem {
             match package {
@@ -3279,6 +3111,13 @@ mod tests {
 
         fn symbol_catalogue(&self) -> SymbolCatalogue<Self> {
             catalogue(self.0)
+        }
+
+        fn package_symbol_catalogue(
+            &self,
+            package: &TargetAstPackage<Self>,
+        ) -> Result<SymbolCatalogue<Self>, Vec<Diagnostic>> {
+            package_catalogue_tests::derive(self, package)
         }
 
         fn identifier_from_candidate(
@@ -3448,6 +3287,12 @@ mod tests {
                     references: resolve_symbols(symbols.clone(), references)?,
                 }),
                 FileItem::Root(statement) => {
+                    if self.0 == CatalogueMode::GeneratedFilesNoSpelling {
+                        return Ok(ResolvedItem {
+                            kind: ResolvedItemKind::Root,
+                            references: vec![],
+                        });
+                    }
                     let Some((statement, _)) = package.statement(*statement) else {
                         return Err(AstViolation::new(
                             DiagnosticCode::UnresolvedReference,
@@ -3486,6 +3331,23 @@ mod tests {
             self.0 == CatalogueMode::PermittedFileCycle
         }
 
+        fn resolve_file_import(
+            &self,
+            _source: &TargetFile<Self>,
+            destination: &TargetFile<Self>,
+        ) -> Result<Option<Self::ImportKind>, AstViolation> {
+            match self.0 {
+                CatalogueMode::GeneratedFiles | CatalogueMode::GeneratedFilesNoSpelling => {
+                    Ok(Some(ImportKind::File(destination.path().clone())))
+                }
+                CatalogueMode::RejectedFiles => Err(AstViolation::new(
+                    DiagnosticCode::InterfaceNonconformance,
+                    "fixture rejects generated-file directive",
+                )),
+                _ => Ok(None),
+            }
+        }
+
         fn forward_declarations(
             &self,
             _file: TargetFileId,
@@ -3504,6 +3366,7 @@ mod tests {
     fn catalogue(mode: CatalogueMode) -> SymbolCatalogue<TestDialect> {
         let math_v1 = requirement("1", [PackageFeature::Fast]);
         let mut result = SymbolCatalogue {
+            dependency_callables: dependency_tests::catalogue(mode),
             types: vec![KnownTypeSpec {
                 symbol: KnownType::Clock,
                 name: id("Clock"),
@@ -3718,8 +3581,17 @@ mod tests {
                 result.helpers.push(result.helpers[0].clone());
             }
             CatalogueMode::Normal
+            | CatalogueMode::PackageDerived
+            | CatalogueMode::RejectedPackage
+            | CatalogueMode::EmptyPackageError
             | CatalogueMode::PermittedFileCycle
-            | CatalogueMode::DependencyConflict => {}
+            | CatalogueMode::GeneratedFiles
+            | CatalogueMode::GeneratedFilesNoSpelling
+            | CatalogueMode::RejectedFiles
+            | CatalogueMode::DependencyConflict
+            | CatalogueMode::DependencyOwnedCollision
+            | CatalogueMode::DependencyOwnerConflict
+            | CatalogueMode::DependencyQualifiedConflict => {}
         }
         result
     }
@@ -3938,7 +3810,7 @@ mod tests {
         let left_statement = builder.statement(
             Statement {
                 expression: literal.id(),
-                symbols: vec![TargetSymbolRef::Generated(GeneratedSymbolId::Type(right))],
+                symbols: vec![TargetSymbolRef::Generated(GeneratedSymbolId::Type(right)); 3],
             },
             source("left-reference"),
         );

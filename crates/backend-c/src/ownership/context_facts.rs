@@ -8,6 +8,7 @@ pub(super) struct ContextFacts<'a> {
     registry: &'a CRegistry,
     files: &'a [CSourceFile],
     functions: Vec<Graph<'a>>,
+    scalar_calls: super::scalar_calls::ScalarCalls,
 }
 
 impl<'a> ContextFacts<'a> {
@@ -27,6 +28,7 @@ impl<'a> ContextFacts<'a> {
             registry,
             files,
             functions,
+            scalar_calls: super::scalar_calls::ScalarCalls::derive_registered(registry, files)?,
         };
         sequencing::check(&facts)?;
         Ok(facts)
@@ -39,6 +41,9 @@ impl<'a> ContextFacts<'a> {
     }
     pub(super) fn functions(&self) -> &[Graph<'a>] {
         &self.functions
+    }
+    pub(super) fn scalar_call(&self, callable: &crate::ast::CCallable) -> bool {
+        self.scalar_calls.accepts(callable)
     }
 }
 

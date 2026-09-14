@@ -7,6 +7,16 @@
 
 ## Detailed layer specifications
 
+The Rust-source frontend has an additional normative contract:
+
+- [Compiler-checked HIR to existing typed C AST](c/rust-hir-lowering.md)
+- [Exact HIR node/type mappings](c/rust-hir-mappings.md)
+- [Documentation attributes and required proof](c/rust-hir-documentation-and-proof.md)
+
+These specify M35's new input path; implementation is incomplete. They retain
+the existing C types and certificates, and state the narrow Rust-source
+exceptions to the portable-only ABI assumptions below.
+
 The C-specific contracts below refine every shared layer and supersede the
 historical mutable-layout ABI. Java supplies the organization and proof
 discipline, not C syntax or ownership implementation.

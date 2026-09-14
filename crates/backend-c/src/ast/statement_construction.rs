@@ -13,7 +13,7 @@ pub struct CStatements<'a> {
 
 impl<'a> CStatements<'a> {
     pub fn new(registry: &'a CRegistry, function: CFunctionRef) -> Result<Self, E> {
-        registry.check_function(&function)?;
+        registry.check_owned_function(&function)?;
         Ok(Self {
             expressions: CExpressions::new(registry),
             function,

@@ -12,6 +12,7 @@ mod initialized_paths;
 mod lexical;
 mod origin_roles;
 mod package_inventory;
+mod rebuild_expression_work;
 mod rebuild_files;
 mod rebuild_initializers;
 mod rebuild_places;

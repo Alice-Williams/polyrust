@@ -57,3 +57,57 @@ The old `generator.rs`, raw runtime files and fragment adapter are migration
 debt. They remain the explicitly legacy route until atomic cutover; new code
 cannot call them as a fallback, parse their output or wrap it in a certificate.
 No new empty directories or nominal modules count as an implemented layer.
+
+## M35 compiler-source shared projection
+
+The first compiler-source profile uses one registered `.c` compilation unit
+(GeneratedSource or TestSource). The file item owns an immutable existing
+CSourceFile and CFrozenRegistry, not a replacement C grammar or source string.
+Bidirectional typed bindings project every admitted struct, function, member,
+parameter and local into shared registrations. Lexical scopes remain owned by
+the C registry and are not misrepresented as emitted value declarations.
+
+The shared TypedAstDialect::verify_package hook reconstructs the canonical
+projection and compares the entire package: registrations, signatures, origins,
+file metadata, groups and payload. Missing and extra entries are equally invalid.
+Shared linking and post-link verification repeat this hook. This is validation
+of the lowered representation, not a substitute for rustc source analysis.
+
+The first closed grammar admits scalar parameters/results (I32, C Int and Bool),
+scalar-field structs, initialized locals, shared object pointers, reads, member
+access, comparisons, explicit numeric/qualification conversions, if/else blocks
+and value returns. Other categories diagnose; unimplemented catalogue categories
+are uninhabited enums. An iterative depth/node guard precedes recursive checks;
+it is a verifier protection budget, not a demonstrated target compiler capacity.
+
+Standard dependencies come from the C dependency traversal. Required typed
+platform assertions query size/alignment of Bool, Int, I32, Size and void
+pointers. Their I32 and Size type references require int32_t/Stdint and
+size_t/Stddef bindings even when a function body uses only Bool or Int.
+The linker allocates generated names with a poly_ prefix and preserves the
+standard typedef spelling. Private collisions receive linker-owned names;
+symbol identity never comes from the resulting string.
+
+The closed profile now enforces the measured resource policy and exposes
+CStructuralRenderer only through CertifiedSourceFile. The experimental
+frontend uses this shared certified route, with no miniature-renderer fallback.
+Public headers, crate/API mapping and their separate evidence remain unfinished;
+this one-file proof is not the production crate-boundary implementation.
+
+Private structural spelling is split into declarators, expressions, statements,
+compilation units and imports. The linker projects names to exact CIdentifier
+maps keyed by authenticated C references; spelling does not resolve shared
+symbols. Post-link checking rebuilds those maps from linker-owned bindings.
+StructuralImportRenderer accepts only resolved imports, and dependency-source
+policy permits directive strings only inside its render_imports implementation
+(or the existing explicit import-template/legacy-renderer boundaries). Other
+methods in that implementation remain prohibited from embedding directives.
+
+The source-policy scanner is a lexical regression guard, not a semantic Rust
+verifier or a proof of arbitrary string-building computations. Its bounded
+concat handling covers string-literal-only invocations, not char/numeric/mixed
+or runtime computations. The new structural import boundary requires the
+absolute external trait path `::portable_codegen::StructuralImportRenderer`;
+a local same-named trait does not inherit permission. Closed target nodes,
+phase certificates and tested trusted renderers establish generation guarantees;
+the scanner is supplementary evidence and cannot replace them.

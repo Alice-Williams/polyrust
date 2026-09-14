@@ -204,3 +204,43 @@ fn block_placement_rejects_sibling_declarations_and_wrong_parent_branches() {
     );
     assert!(statements.block(root, vec![branch]).is_ok());
 }
+
+#[test]
+fn nested_label_placement_checks_each_label_and_the_final_child() {
+    let (mut registry, function, root) = setup(CReturnType::Void);
+    let child = registry
+        .register_scope(&function, Some(&root), key("child"))
+        .unwrap();
+    let root_label = registry
+        .register_cleanup_exit(&root, key("root_exit"))
+        .unwrap();
+    let child_label = registry
+        .register_cleanup_exit(&child, key("child_exit"))
+        .unwrap();
+    let ast = CStatements::new(&registry, function).unwrap();
+    let valid = ast
+        .label(
+            root_label.clone(),
+            ast.label(root_label.clone(), ast.empty()).unwrap(),
+        )
+        .unwrap();
+    assert!(ast.block(root.clone(), vec![valid]).is_ok());
+    let wrong_label = ast
+        .label(
+            root_label.clone(),
+            ast.label(child_label, ast.empty()).unwrap(),
+        )
+        .unwrap();
+    assert_eq!(
+        ast.block(root.clone(), vec![wrong_label]),
+        Err(E::WrongScope)
+    );
+    let wrong_child = ast
+        .label(
+            root_label,
+            ast.nested_block(ast.block(root.clone(), vec![]).unwrap())
+                .unwrap(),
+        )
+        .unwrap();
+    assert_eq!(ast.block(root, vec![wrong_child]), Err(E::WrongScope));
+}

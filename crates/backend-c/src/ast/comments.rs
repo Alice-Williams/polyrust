@@ -16,7 +16,7 @@ impl CComment {
                 _ => write!(safe, "[0x{byte:02X}]").expect("writing to a string cannot fail"),
             }
         }
-        Self(safe.replace("*/", "* /"))
+        Self(safe.replace("*/", "* /").replace("/*", "/ *"))
     }
 
     pub fn text(&self) -> &str {
@@ -24,16 +24,33 @@ impl CComment {
     }
 }
 
-/// Diagnostic bytes, never source-string tokens. The renderer owns quoting
-/// and exact byte escapes, including NUL, quotes, trigraphs and backslashes.
+/// Diagnostic bytes plus non-executable printable presentation. The original
+/// bytes remain available; unsafe presentation bytes become `[0xNN]`, not C
+/// numeric escapes (rejected by the pinned Clang for unevaluated messages).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CAssertDiagnostic(Vec<u8>);
+pub struct CAssertDiagnostic {
+    bytes: Vec<u8>,
+    display: String,
+}
 
 impl CAssertDiagnostic {
     pub fn new(bytes: impl Into<Vec<u8>>) -> Self {
-        Self(bytes.into())
+        let bytes = bytes.into();
+        let mut display = String::new();
+        for byte in &bytes {
+            match byte {
+                b' '..=b'~' if !matches!(byte, b'\\' | b'"' | b'?') => {
+                    display.push(char::from(*byte));
+                }
+                _ => write!(display, "[0x{byte:02X}]").expect("writing to a string cannot fail"),
+            }
+        }
+        Self { bytes, display }
     }
     pub fn bytes(&self) -> &[u8] {
-        &self.0
+        &self.bytes
+    }
+    pub fn display_text(&self) -> &str {
+        &self.display
     }
 }

@@ -7,10 +7,12 @@ mod capability;
 mod compliance;
 mod document;
 mod heritage;
+mod import_rendering;
 mod language;
 mod linking;
 mod manifest;
 mod rendering;
+mod rust_source;
 mod target_ast;
 mod typed_pipeline;
 
@@ -19,10 +21,12 @@ pub use capability::*;
 pub use compliance::*;
 pub use document::*;
 pub use heritage::*;
+pub use import_rendering::*;
 pub use language::*;
 pub use linking::*;
 pub use manifest::*;
 pub use rendering::*;
+pub use rust_source::*;
 pub use target_ast::*;
 pub use typed_pipeline::*;
 

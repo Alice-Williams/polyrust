@@ -8,21 +8,21 @@ use crate::ast::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) struct CLayout {
+pub(crate) struct CLayout {
     size: u64,
     alignment: u64,
 }
 
 impl CLayout {
-    pub(super) const fn size(self) -> u64 {
+    pub(crate) const fn size(self) -> u64 {
         self.size
     }
-    pub(super) const fn alignment(self) -> u64 {
+    pub(crate) const fn alignment(self) -> u64 {
         self.alignment
     }
 }
 
-pub(super) struct Layouts<'a> {
+pub(crate) struct Layouts<'a> {
     registry: &'a CRegistry,
     layouts: BTreeMap<CObjectType, CLayout>,
     offsets: BTreeMap<CMemberRef, u64>,
@@ -43,7 +43,7 @@ enum Pending {
 }
 
 impl<'a> Layouts<'a> {
-    pub(super) fn new(registry: &'a CRegistry) -> Self {
+    pub(crate) fn new(registry: &'a CRegistry) -> Self {
         Self {
             registry,
             layouts: BTreeMap::new(),
@@ -51,7 +51,7 @@ impl<'a> Layouts<'a> {
         }
     }
 
-    pub(super) fn object(&mut self, ty: &CObjectType) -> Result<CLayout, E> {
+    pub(crate) fn object(&mut self, ty: &CObjectType) -> Result<CLayout, E> {
         self.registry.check_type(ty)?;
         let root = ty.canonical();
         let mut pending = vec![Pending::Enter(root.clone())];

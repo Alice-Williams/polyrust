@@ -1,0 +1,472 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_clippy_test")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load(":c_graph_targets.bzl", "c_graph_targets")
+load(":crate_identity_targets.bzl", "crate_identity_targets")
+load(":crate_native_targets.bzl", "crate_native_targets")
+load(":defs.bzl", "adapter_format_test", "compiler_adapter", "compiler_adapter_compile_fail_test")
+load(":direct_call_targets.bzl", "direct_call_targets")
+load(":documentation_targets.bzl", "documentation_targets")
+load(":export_graph_targets.bzl", "export_graph_targets")
+load(":metadata_action_targets.bzl", "metadata_action_targets")
+load(":metadata_agreement_targets.bzl", "metadata_agreement_targets")
+load(":metadata_analysis_tests.bzl", "metadata_analysis_tests")
+load(":public_package_targets.bzl", "public_package_targets")
+load(":publication_probe_targets.bzl", "publication_probe_targets")
+load(":source_capability_targets.bzl", "source_capability_targets")
+load(":source_check_targets.bzl", "source_check_targets")
+load(":source_origin_targets.bzl", "source_origin_targets")
+
+COPTS = [
+    "-std=c17",
+    "-Wall",
+    "-Wextra",
+    "-Wpedantic",
+    "-Werror",
+    "-Wstrict-prototypes",
+    "-Wmissing-prototypes",
+]
+
+# Metadata/configuration tools have independent action boundaries. Their source
+# edits must not invalidate the unrelated C lowering adapter's compiler action.
+ADAPTER_SOURCES = [
+    "src/main.rs",
+    "src/inputs.rs",
+    "src/extract.rs",
+    "src/output.rs",
+    "src/c_graph.rs",
+    "src/compiler_dependencies.rs",
+    "src/metadata_cli.rs",
+    "src/metadata_dependencies.rs",
+    "src/metadata_stage.rs",
+    "src/source_check.rs",
+] + ["src/source_admission.rs"] + glob([
+    "src/api_manifest/**/*.rs",
+    "src/c_lower/**/*.rs",
+    "src/source_capabilities/**/*.rs",
+    "src/source_origin/**/*.rs",
+    "src/output/**/*.rs",
+    "src/source_check/**/*.rs",
+])
+
+crate_identity_targets(name = "crate_identity_test")
+
+crate_native_targets(name = "crate_native_test")
+
+metadata_agreement_targets(name = "metadata_agreement_test")
+
+metadata_action_targets(name = "metadata_action_test")
+
+metadata_analysis_tests(name = "metadata_record_rejection_test")
+
+source_check_targets(name = "source_check_test")
+
+source_capability_targets(name = "source_capabilities_test")
+
+source_origin_targets(name = "source_origin_test")
+
+publication_probe_targets(name = "directory_rename_probe_test")
+
+c_graph_targets(
+    name = "c_graph_test",
+    adapter_sources = ADAPTER_SOURCES,
+)
+
+compiler_adapter(
+    name = "adapter",
+    srcs = ADAPTER_SOURCES,
+    crate_root = "src/main.rs",
+    directory_publisher = ":directory_publisher",
+    deps = [
+        ":compiler_configuration",
+        ":directory_publication",
+        "//crates/backend-c:portable_backend_c",
+        "//crates/codegen:portable_codegen",
+    ],
+)
+
+[
+    compiler_adapter_compile_fail_test(
+        name = "capability_" + case + "_test",
+        srcs = ADAPTER_SOURCES + ["test/capability_" + case + ".rs"],
+        crate_root = "src/main.rs",
+        expected_error = error,
+        expected_errors = count,
+        rustc_cfg = "mapping_contract_" + case,
+        deps = [
+            ":compiler_configuration",
+            ":directory_publication",
+            "//crates/backend-c:portable_backend_c",
+            "//crates/codegen:portable_codegen",
+        ],
+    )
+    for case, error, count in [
+        ("missing", "error[E0599]", 10),
+        ("duplicate", "error[E0599]", 10),
+        ("wrong_mapping", "error[E0271]", 3),
+        ("wrong_input", "error[E0308]", 2),
+        ("wrong_output", "error[E0308]", 2),
+        ("wrong_context", "error[E0271]", 1),
+        ("wrong_mapping_output", "error[E0271]", 1),
+        ("target_scope", "error[E0308]", 1),
+    ]
+]
+
+test_suite(
+    name = "capability_contract_test",
+    tests = [
+        ":capability_duplicate_test",
+        ":capability_missing_test",
+        ":capability_target_scope_test",
+        ":capability_wrong_context_test",
+        ":capability_wrong_input_test",
+        ":capability_wrong_mapping_output_test",
+        ":capability_wrong_mapping_test",
+        ":capability_wrong_output_test",
+        ":proof_test",
+    ],
+)
+
+adapter_format_test(
+    name = "rustfmt_test",
+    srcs = glob([
+        "publication/*.rs",
+        "src/**/*.rs",
+        "fixtures/*.rs",
+        "test/*.rs",
+    ]),
+)
+
+rust_binary(
+    name = "rust_reference",
+    srcs = [
+        "fixtures/model.rs",
+        "fixtures/reference.rs",
+    ],
+    crate_root = "fixtures/reference.rs",
+    edition = "2024",
+)
+
+rust_clippy_test(
+    name = "reference_clippy_test",
+    targets = [
+        ":rust_reference",
+        ":rust_alternate",
+        ":rust_scopes",
+        ":rust_mapping_inventory",
+        ":rust_documentation",
+    ],
+)
+
+rust_binary(
+    name = "rust_alternate",
+    srcs = [
+        "fixtures/alternate.rs",
+        "fixtures/reference_alternate.rs",
+    ],
+    crate_root = "fixtures/reference_alternate.rs",
+    edition = "2024",
+)
+
+genrule(
+    name = "generate_alternate",
+    srcs = ["fixtures/alternate.rs"],
+    outs = ["generated/alternate.c"],
+    cmd = "$(location :adapter) $(location fixtures/alternate.rs) $@",
+    tools = [":adapter"],
+)
+
+cc_binary(
+    name = "c_alternate_o0",
+    srcs = [
+        "fixtures/consumer.c",
+        ":generate_alternate",
+    ],
+    copts = COPTS + ["-O0"],
+)
+
+cc_binary(
+    name = "c_alternate_o2",
+    srcs = [
+        "fixtures/consumer.c",
+        ":generate_alternate",
+    ],
+    copts = COPTS + ["-O2"],
+)
+
+sh_test(
+    name = "alternate_proof_test",
+    srcs = ["proof_test.sh"],
+    args = [
+        "$(rootpath :adapter)",
+        "$(rootpath :rust_alternate)",
+        "$(rootpath :c_alternate_o0)",
+        "$(rootpath :c_alternate_o2)",
+        "$(rootpath fixtures/alternate.rs)",
+    ],
+    data = [
+        ":adapter",
+        ":c_alternate_o0",
+        ":c_alternate_o2",
+        ":rust_alternate",
+    ] + glob(["fixtures/*"]),
+)
+
+genrule(
+    name = "generate",
+    srcs = ["fixtures/model.rs"],
+    outs = ["generated/model.c"],
+    cmd = "$(location :adapter) $(location fixtures/model.rs) $@",
+    tools = [":adapter"],
+)
+
+cc_binary(
+    name = "c_reference_o0",
+    srcs = [
+        "fixtures/consumer.c",
+        ":generate",
+    ],
+    copts = COPTS + ["-O0"],
+)
+
+cc_binary(
+    name = "c_reference_o2",
+    srcs = [
+        "fixtures/consumer.c",
+        ":generate",
+    ],
+    copts = COPTS + ["-O2"],
+)
+
+sh_test(
+    name = "proof_test",
+    srcs = ["proof_test.sh"],
+    args = [
+        "$(rootpath :adapter)",
+        "$(rootpath :rust_reference)",
+        "$(rootpath :c_reference_o0)",
+        "$(rootpath :c_reference_o2)",
+        "$(rootpath fixtures/model.rs)",
+    ],
+    data = [
+        ":adapter",
+        ":c_reference_o0",
+        ":c_reference_o2",
+        ":rust_reference",
+    ] + glob(["fixtures/*"]),
+)
+
+rust_binary(
+    name = "rust_scopes",
+    srcs = [
+        "fixtures/reference_scopes.rs",
+        "fixtures/scopes.rs",
+    ],
+    crate_root = "fixtures/reference_scopes.rs",
+    edition = "2024",
+)
+
+genrule(
+    name = "generate_scopes",
+    srcs = ["fixtures/scopes.rs"],
+    outs = ["generated/scopes.c"],
+    cmd = "$(location :adapter) $(location fixtures/scopes.rs) $@",
+    tools = [":adapter"],
+)
+
+cc_binary(
+    name = "c_scopes_o0",
+    srcs = [
+        "fixtures/consumer.c",
+        ":generate_scopes",
+    ],
+    copts = COPTS + ["-O0"],
+)
+
+cc_binary(
+    name = "c_scopes_o2",
+    srcs = [
+        "fixtures/consumer.c",
+        ":generate_scopes",
+    ],
+    copts = COPTS + ["-O2"],
+)
+
+sh_test(
+    name = "scopes_proof_test",
+    srcs = ["proof_test.sh"],
+    args = [
+        "$(rootpath :adapter)",
+        "$(rootpath :rust_scopes)",
+        "$(rootpath :c_scopes_o0)",
+        "$(rootpath :c_scopes_o2)",
+        "$(rootpath fixtures/scopes.rs)",
+    ],
+    data = [
+        ":adapter",
+        ":c_scopes_o0",
+        ":c_scopes_o2",
+        ":rust_scopes",
+    ] + glob(["fixtures/*"]),
+)
+
+sh_test(
+    name = "boundary_test",
+    srcs = ["boundary_test.sh"],
+    args = [
+        "$(rootpath :adapter)",
+        "$(rootpath fixtures/model.rs)",
+    ],
+    data = [":adapter"] + glob(["fixtures/*"]),
+)
+
+compiler_adapter(
+    name = "provenance_adapter",
+    srcs = [
+        "test/provenance_assertions.rs",
+        "test/provenance_main.rs",
+    ] + ["src/source_admission.rs"] + glob([
+        "src/c_lower/**/*.rs",
+        "src/source_capabilities/**/*.rs",
+        "src/source_origin/**/*.rs",
+    ]),
+    crate_root = "test/provenance_main.rs",
+    deps = [
+        "//crates/backend-c:portable_backend_c",
+        "//crates/codegen:portable_codegen",
+    ],
+)
+
+sh_test(
+    name = "provenance_test",
+    srcs = ["test/provenance_test.sh"],
+    args = [
+        "$(rootpath :provenance_adapter)",
+        "$(rootpath fixtures/origin_probe.rs)",
+    ],
+    data = [
+        "fixtures/origin_probe.rs",
+        ":provenance_adapter",
+    ],
+)
+
+rust_binary(
+    name = "rust_mapping_inventory",
+    srcs = [
+        "fixtures/mapping_inventory.rs",
+        "fixtures/reference_mapping_inventory.rs",
+    ],
+    crate_root = "fixtures/reference_mapping_inventory.rs",
+    edition = "2024",
+)
+
+genrule(
+    name = "generate_mapping_inventory",
+    srcs = ["fixtures/mapping_inventory.rs"],
+    outs = ["generated/mapping_inventory.c"],
+    cmd = "$(location :adapter) $(location fixtures/mapping_inventory.rs) $@",
+    tools = [":adapter"],
+)
+
+[
+    cc_binary(
+        name = "c_mapping_inventory_o" + optimization,
+        srcs = [
+            "fixtures/consumer.c",
+            ":generate_mapping_inventory",
+        ],
+        copts = COPTS + ["-O" + optimization],
+    )
+    for optimization in [
+        "0",
+        "2",
+    ]
+]
+
+sh_test(
+    name = "mapping_inventory_proof_test",
+    srcs = ["proof_test.sh"],
+    args = [
+        "$(rootpath :adapter)",
+        "$(rootpath :rust_mapping_inventory)",
+        "$(rootpath :c_mapping_inventory_o0)",
+        "$(rootpath :c_mapping_inventory_o2)",
+        "$(rootpath fixtures/mapping_inventory.rs)",
+    ],
+    data = [
+        ":adapter",
+        ":c_mapping_inventory_o0",
+        ":c_mapping_inventory_o2",
+        ":rust_mapping_inventory",
+    ] + glob(["fixtures/*"]),
+)
+
+compiler_adapter(
+    name = "mapping_inventory_adapter",
+    srcs = [
+        "test/mapping_assertions.rs",
+        "test/mapping_main.rs",
+    ] + ["src/source_admission.rs"] + glob([
+        "src/c_lower/**/*.rs",
+        "src/source_capabilities/**/*.rs",
+        "src/source_origin/**/*.rs",
+    ]),
+    crate_root = "test/mapping_main.rs",
+    deps = [
+        "//crates/backend-c:portable_backend_c",
+        "//crates/codegen:portable_codegen",
+    ],
+)
+
+sh_test(
+    name = "mapping_inventory_ast_test",
+    srcs = ["test/provenance_test.sh"],
+    args = [
+        "$(rootpath :mapping_inventory_adapter)",
+        "$(rootpath fixtures/mapping_inventory.rs)",
+    ],
+    data = [
+        "fixtures/mapping_inventory.rs",
+        ":mapping_inventory_adapter",
+    ],
+)
+
+[
+    sh_test(
+        name = fixture + "_native_matrix_test",
+        size = "medium",
+        srcs = ["test/native_matrix_test.sh"],
+        args = [
+            "$(rootpath " + generation + ")",
+            "$(rootpath " + reference + ")",
+            "$(rootpath fixtures/consumer.c)",
+            "$(rootpath fixtures/inputs.txt)",
+            "$(rootpath //tools/c:zig_native_oracle)",
+        ],
+        data = [
+            generation,
+            reference,
+            "fixtures/consumer.c",
+            "fixtures/inputs.txt",
+            "//tools/c:zig_native_oracle",
+        ],
+    )
+    for fixture, generation, reference in [
+        ("model", ":generate", ":rust_reference"),
+        ("alternate", ":generate_alternate", ":rust_alternate"),
+        ("scopes", ":generate_scopes", ":rust_scopes"),
+        ("mapping_inventory", ":generate_mapping_inventory", ":rust_mapping_inventory"),
+        ("documentation", ":generate_documentation", ":rust_documentation"),
+    ]
+]
+
+documentation_targets(
+    name = "documentation_test",
+    copts = COPTS,
+)
+
+export_graph_targets(name = "export_graph_test")
+
+direct_call_targets(name = "direct_calls_test")
+
+public_package_targets(name = "public_package_smoke_test")

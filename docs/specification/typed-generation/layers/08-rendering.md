@@ -67,6 +67,12 @@ Small internal document/indent writers MAY be used. They are byte sinks, not
 token streams or alternate ASTs: their API cannot inject an executable node,
 skip the language checker, or accept user-provided source.
 
+`StructuralImportRenderer<D>::render_imports` receives the resolved symbol-import
+and generated-file-import lists together. It only spells those witnesses; it
+does not traverse sibling files, choose paths, allocate bindings or discover
+dependencies. Header wrappers and their resource admission remain the concrete
+language's checked file-grammar responsibility, not an import formatter feature.
+
 ## Executable-template prohibition
 
 Executable source MUST NOT be produced by Handlebars or another template

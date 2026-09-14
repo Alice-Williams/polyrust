@@ -1,0 +1,101 @@
+//! Same-analysis compiler identity to exact public C certificate binding.
+use portable_backend_c::dialect::CDependencyApi;
+use portable_codegen::RustDeclarationId;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use std::collections::BTreeMap;
+
+#[derive(Clone)]
+pub(crate) struct CheckedCrate {
+    api: CDependencyApi,
+    manifest: crate::api_manifest::ApiManifest,
+}
+
+impl CheckedCrate {
+    pub(crate) fn api(&self) -> &CDependencyApi {
+        &self.api
+    }
+    pub(crate) fn manifest(&self) -> &crate::api_manifest::ApiManifest {
+        &self.manifest
+    }
+}
+
+/// No caller-provided descriptors or deserialized manifests can construct this.
+#[derive(Clone)]
+pub(crate) struct CheckedGraph {
+    root: RustDeclarationId,
+    crates: BTreeMap<RustDeclarationId, CheckedCrate>,
+}
+
+impl CheckedGraph {
+    pub(crate) fn root(&self) -> RustDeclarationId {
+        self.root
+    }
+    pub(crate) fn crates(&self) -> &BTreeMap<RustDeclarationId, CheckedCrate> {
+        &self.crates
+    }
+}
+
+pub(crate) fn check(sysroot: &str, arguments: &[String]) -> Result<usize, String> {
+    Ok(lower(sysroot, arguments)?.crates.len())
+}
+
+pub(crate) fn lower(sysroot: &str, arguments: &[String]) -> Result<CheckedGraph, String> {
+    let graph = crate::metadata_cli::parse(arguments)?;
+    let checked =
+        crate::source_check::check::<CheckedCrate>(&graph, sysroot, |_, tcx, dependencies| {
+            let lookup = |definition: DefId| {
+                let owner = dependencies
+                    .get(&definition.krate)
+                    .map(|item| item.api())
+                    .ok_or("foreign call has no source-authenticated owning C package")?;
+                #[cfg(c_graph_wrong_owner)]
+                let owner = crate::foreign_mutations::owner(owner, dependencies);
+                if owner.root().crate_id != tcx.stable_crate_id(definition.krate).as_u64() {
+                    return Err("foreign C certificate belongs to the wrong compiler crate".into());
+                }
+                let hash = tcx.def_path_hash(definition);
+                let proof = owner
+                    .function(RustDeclarationId {
+                        crate_id: hash.stable_crate_id().as_u64(),
+                        definition_path_hash: hash.local_hash().as_u64(),
+                    })
+                    .cloned()
+                    .ok_or("foreign call is not in the certified public C API")?;
+                #[cfg(c_graph_wrong_declaration)]
+                let proof = crate::foreign_mutations::declaration(owner, proof);
+                Ok(proof)
+            };
+            let program = crate::extract::dependency_program(tcx, &lookup)?;
+            let manifest = program
+                .manifest
+                .ok_or("checked C crate has no public API inventory")?;
+            // Check-mode validates the descriptive bundle inventory too, but never publishes it.
+            manifest.bundle_json()?;
+            let api = CDependencyApi::from_certificate(program.package)?;
+            if api.root().crate_id != tcx.stable_crate_id(LOCAL_CRATE).as_u64() {
+                return Err("checked C package differs from its compiler source owner".into());
+            }
+            Ok(CheckedCrate { api, manifest })
+        })?;
+    let root = checked
+        .get(graph.root_key())
+        .ok_or("checked root missing")?
+        .api
+        .root();
+    let count = checked.len();
+    let crates: BTreeMap<_, _> = checked
+        .into_values()
+        .map(|item| (item.api.root(), item))
+        .collect();
+    if crates.len() != count {
+        return Err("duplicate checked C owner".into());
+    }
+    let graph = CheckedGraph { root, crates };
+    #[cfg(c_graph_inventory_contract)]
+    bundle_contract::check(&graph);
+    Ok(graph)
+}
+
+#[cfg(c_graph_inventory_contract)]
+#[path = "../test/c_bundle_contract.rs"]
+mod bundle_contract;

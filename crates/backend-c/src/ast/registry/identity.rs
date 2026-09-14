@@ -9,6 +9,8 @@ use super::super::CIdentifier;
 /// Provenance is structured; a generated spelling is never a declaration ID.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CGeneratedOrigin {
+    /// Metadata supplied by the compiler bridge, not a caller-held certificate.
+    RustSource(Arc<portable_codegen::RustSourceOrigin>),
     CoreDeclaration(CoreDeclaration),
     CoreExpression(CoreExprId),
     Synthesized(CSynthesisReason),
@@ -70,14 +72,16 @@ pub struct CDeclarationKey {
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) struct Identity {
-    pub(super) key: CDeclarationKey,
+    // Repeated references share the immutable spelling/provenance payload.
+    // Equality still compares key values; registry scope remains authentication.
+    pub(super) key: Arc<CDeclarationKey>,
     pub(super) scope: RegistryScope,
 }
 
 impl Identity {
     pub(super) fn new(scope: &RegistryScope, key: CDeclarationKey) -> Self {
         Self {
-            key,
+            key: Arc::new(key),
             scope: scope.clone(),
         }
     }
