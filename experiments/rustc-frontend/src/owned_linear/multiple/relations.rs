@@ -20,6 +20,7 @@ pub(super) struct Matched {
     pub chains: Vec<ChainMatched>,
     pub read: mir::Location,
     pub drops: Vec<HirId>,
+    pub returning: mir::Location,
 }
 
 pub(super) fn validate<'tcx>(
@@ -238,5 +239,6 @@ pub(super) fn validate<'tcx>(
         chains: matched,
         read,
         drops: drop_order,
+        returning: trace.returning,
     })
 }

@@ -1,0 +1,78 @@
+//! Closed block endings keep source return structure distinct from tail values.
+use super::{LinearError as Error, Result};
+use rustc_hir as hir;
+
+#[derive(Clone, Copy)]
+pub(super) enum Mode {
+    Tail,
+    Return,
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum Exit<'tcx> {
+    Tail(&'tcx hir::Expr<'tcx>),
+    Return {
+        expression: &'tcx hir::Expr<'tcx>,
+        value: &'tcx hir::Expr<'tcx>,
+    },
+}
+impl<'tcx> Exit<'tcx> {
+    pub(super) fn value(self) -> &'tcx hir::Expr<'tcx> {
+        match self {
+            Self::Tail(value) | Self::Return { value, .. } => value,
+        }
+    }
+    pub(super) fn mode(self) -> Mode {
+        match self {
+            Self::Tail(_) => Mode::Tail,
+            Self::Return { .. } => Mode::Return,
+        }
+    }
+    pub(super) fn same(self, other: Self) -> bool {
+        match (self, other) {
+            (Self::Tail(a), Self::Tail(b)) => std::ptr::eq(a, b),
+            (
+                Self::Return {
+                    expression: a,
+                    value: av,
+                },
+                Self::Return {
+                    expression: b,
+                    value: bv,
+                },
+            ) => std::ptr::eq(a, b) && std::ptr::eq(av, bv),
+            _ => false,
+        }
+    }
+}
+
+pub(super) enum End<'tcx> {
+    Nested(&'tcx hir::Block<'tcx>),
+    Exit(Exit<'tcx>),
+}
+
+pub(super) fn parts<'tcx>(
+    block: &'tcx hir::Block<'tcx>,
+    mode: Mode,
+) -> Result<(&'tcx [hir::Stmt<'tcx>], End<'tcx>)> {
+    let (statements, expression) = match (block.expr, mode) {
+        (Some(expression), _) => (block.stmts, expression),
+        (None, Mode::Return) => {
+            let (last, prefix) = block.stmts.split_last().ok_or(Error::BodyShape)?;
+            let hir::StmtKind::Semi(expression) = last.kind else {
+                return Err(Error::BodyShape);
+            };
+            (prefix, expression)
+        }
+        _ => return Err(Error::BodyShape),
+    };
+    let end = match (expression.kind, mode) {
+        (hir::ExprKind::Block(child, None), _) if block.expr.is_some() => End::Nested(child),
+        (hir::ExprKind::Ret(Some(value)), Mode::Return) => {
+            End::Exit(Exit::Return { expression, value })
+        }
+        (_, Mode::Tail) => End::Exit(Exit::Tail(expression)),
+        _ => return Err(Error::BodyShape),
+    };
+    Ok((statements, end))
+}

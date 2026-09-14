@@ -1,4 +1,5 @@
 //! Closed source/producer correspondence, not target code or a borrow checker.
+mod exits;
 mod flow;
 // The separate proof drivers select different public evidence entry points.
 #[allow(dead_code)]

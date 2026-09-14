@@ -21,6 +21,7 @@ load(":owned_construction_targets.bzl", "owned_construction_targets")
 load(":owned_linear_targets.bzl", "owned_linear_targets")
 load(":owned_multiple_targets.bzl", "owned_multiple_targets")
 load(":owned_probe_targets.bzl", "owned_probe_targets")
+load(":owned_return_targets.bzl", "owned_return_targets")
 load(":owned_scope_targets.bzl", "owned_scope_targets")
 load(":public_package_targets.bzl", "public_package_targets")
 load(":publication_probe_targets.bzl", "publication_probe_targets")
@@ -61,6 +62,8 @@ ADAPTER_SOURCES = [
 ])
 
 crate_identity_targets(name = "crate_identity_test")
+
+owned_return_targets(name = "owned_return_test")
 
 crate_native_targets(name = "crate_native_test")
 

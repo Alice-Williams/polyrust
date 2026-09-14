@@ -1,6 +1,6 @@
 //! Distinct compiler-parameter identities anchor otherwise same-typed owners.
 use super::super::{
-    LinearError as Error, Result, scopes,
+    LinearError as Error, Result, exits, scopes,
     source::{binding, local},
 };
 use crate::owned_source::BoxConstructionInput;
@@ -22,6 +22,12 @@ pub(super) struct Plan<'tcx> {
 }
 
 pub(super) fn read(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<Plan<'_>> {
+    read_shape(tcx, owner, exits::Mode::Tail)
+}
+pub(super) fn read_return(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<Plan<'_>> {
+    read_shape(tcx, owner, exits::Mode::Return)
+}
+fn read_shape(tcx: TyCtxt<'_>, owner: LocalDefId, mode: exits::Mode) -> Result<Plan<'_>> {
     if tcx.def_kind(owner) != DefKind::Fn || tcx.generics_of(owner).count() != 0 {
         return Err(Error::Signature);
     }
@@ -58,12 +64,13 @@ pub(super) fn read(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<Plan<'_>> {
     let mut blocks = Vec::new();
     let mut bindings = Vec::new();
     let mut parent = None;
-    let tail = loop {
+    let exit = loop {
         if blocks.len() >= 64 {
             return Err(Error::Budget);
         }
         blocks.push((block.hir_id, parent));
-        for statement in block.stmts {
+        let (statements, end) = exits::parts(block, mode)?;
+        for statement in statements {
             if bindings.len() >= 128 {
                 return Err(Error::Budget);
             }
@@ -118,17 +125,18 @@ pub(super) fn read(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<Plan<'_>> {
             }
             bindings.push((id, block.hir_id));
         }
-        let tail = block.expr.ok_or(Error::BodyShape)?;
-        if let hir::ExprKind::Block(child, None) = tail.kind {
-            parent = Some(block.hir_id);
-            block = child;
-        } else {
-            break tail;
+        match end {
+            exits::End::Nested(child) => {
+                parent = Some(block.hir_id);
+                block = child;
+            }
+            exits::End::Exit(exit) => break exit,
         }
     };
     if chains.is_empty() {
         return Err(Error::BodyShape);
     }
+    let tail = exit.value();
     let hir::ExprKind::Unary(hir::UnOp::Deref, operand) = tail.kind else {
         return Err(Error::BodyShape);
     };
@@ -147,7 +155,7 @@ pub(super) fn read(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<Plan<'_>> {
         parameters,
         chains,
         read,
-        scopes: scopes::certify_containment(
+        scopes: scopes::certify_exit(
             tcx,
             owner,
             scopes::ContainmentClaims {
@@ -155,6 +163,7 @@ pub(super) fn read(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<Plan<'_>> {
                 bindings,
                 read: block.hir_id,
             },
+            exit,
         )?,
     })
 }

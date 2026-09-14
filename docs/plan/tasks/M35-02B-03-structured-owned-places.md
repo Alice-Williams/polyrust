@@ -22,6 +22,10 @@ unimplemented until their own closed contracts and proof tasks are written.
 The next increment is [M35-02B-03B — Multiple owned producer chains](M35-02B-03B-multiple-owned-chains.md),
 using distinct scalar parameter identities as construction anchors.
 
+[M35-02B-03C — Explicit owned returns](M35-02B-03C-explicit-owned-returns.md)
+then retains canonical return expressions and their authenticated cleanup/return
+locations. Conditional early exits remain a later, separate increment.
+
 - Map every admitted structured exit and owned operation unambiguously to the
   compiler's corresponding places/drop obligations; unsupported shapes diagnose.
 - Distinct same-type owners, branch guards, field projections and lexical

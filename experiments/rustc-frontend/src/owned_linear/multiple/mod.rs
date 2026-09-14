@@ -7,6 +7,7 @@ mod relations;
 #[path = "../../../test/owned_multiple/renaming.rs"]
 pub(crate) mod renaming;
 mod residual;
+pub(crate) mod returns;
 mod source;
 use super::{LinearError, Result, scopes::ScopeFacts};
 use crate::owned_source::BoxConstructionInput;
@@ -53,6 +54,9 @@ impl<'tcx> MultipleOwnedBody<'tcx> {
         let plan = source::read(tcx, owner)?;
         let body = tcx.mir_drops_elaborated_and_const_checked(owner).borrow();
         let matched = relations::validate(tcx, owner, &plan, &body)?;
+        Self::from_matched(plan, matched)
+    }
+    fn from_matched(plan: source::Plan<'tcx>, matched: relations::Matched) -> Result<Self> {
         let mut chains = Vec::new();
         for (source, actual) in plan.chains.into_iter().zip(matched.chains) {
             let last = *source.bindings.last().ok_or(LinearError::MoveGraph)?;

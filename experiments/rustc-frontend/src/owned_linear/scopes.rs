@@ -1,5 +1,5 @@
 //! Certify scope claims against canonical HIR containment, never debug metadata.
-use super::{LinearError as Error, Result};
+use super::{LinearError as Error, Result, exits};
 use rustc_hir::{self as hir, HirId, def_id::LocalDefId};
 use rustc_middle::ty::TyCtxt;
 
@@ -21,6 +21,7 @@ pub(crate) struct ScopeFacts<'tcx> {
     blocks: Vec<(&'tcx hir::Block<'tcx>, Option<HirId>)>,
     bindings: Vec<(HirId, HirId)>,
     read: HirId,
+    exit: exits::Exit<'tcx>,
 }
 
 #[derive(Clone)]
@@ -73,7 +74,10 @@ pub(super) fn certify<'tcx>(
     })
 }
 
-impl ScopeFacts<'_> {
+impl<'tcx> ScopeFacts<'tcx> {
+    pub(super) fn exit(&self) -> exits::Exit<'tcx> {
+        self.exit
+    }
     pub(crate) fn blocks(&self) -> impl Iterator<Item = (HirId, Option<HirId>)> + '_ {
         self.blocks
             .iter()
@@ -92,18 +96,41 @@ pub(super) fn certify_containment<'tcx>(
     owner: LocalDefId,
     claims: ContainmentClaims,
 ) -> Result<ScopeFacts<'tcx>> {
+    walk(tcx, owner, claims, exits::Mode::Tail)
+}
+
+pub(super) fn certify_exit<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    owner: LocalDefId,
+    claims: ContainmentClaims,
+    exit: exits::Exit<'tcx>,
+) -> Result<ScopeFacts<'tcx>> {
+    let facts = walk(tcx, owner, claims, exit.mode())?;
+    if !facts.exit.same(exit) {
+        return Err(Error::Scope);
+    }
+    Ok(facts)
+}
+
+fn walk<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    owner: LocalDefId,
+    claims: ContainmentClaims,
+    mode: exits::Mode,
+) -> Result<ScopeFacts<'tcx>> {
     let hir::ExprKind::Block(mut block, None) = tcx.hir_body_owned_by(owner).value.kind else {
         return Err(Error::Scope);
     };
     let mut parent = None;
     let mut blocks = Vec::new();
     let mut bindings = Vec::new();
-    loop {
+    let exit = loop {
         if blocks.len() >= 64 {
             return Err(Error::Budget);
         }
         blocks.push((block, parent));
-        for statement in block.stmts {
+        let (statements, end) = exits::parts(block, mode)?;
+        for statement in statements {
             let hir::StmtKind::Let(local) = statement.kind else {
                 return Err(Error::Scope);
             };
@@ -112,14 +139,14 @@ pub(super) fn certify_containment<'tcx>(
             };
             bindings.push((id, block.hir_id));
         }
-        let tail = block.expr.ok_or(Error::Scope)?;
-        if let hir::ExprKind::Block(child, None) = tail.kind {
-            parent = Some(block.hir_id);
-            block = child;
-        } else {
-            break;
+        match end {
+            exits::End::Nested(child) => {
+                parent = Some(block.hir_id);
+                block = child;
+            }
+            exits::End::Exit(exit) => break exit,
         }
-    }
+    };
     if claims.blocks.len() != blocks.len()
         || claims.bindings != bindings
         || claims.read != block.hir_id
@@ -130,6 +157,7 @@ pub(super) fn certify_containment<'tcx>(
         blocks,
         bindings,
         read: claims.read,
+        exit,
     };
     if !facts.blocks().eq(claims.blocks) {
         return Err(Error::Scope);
