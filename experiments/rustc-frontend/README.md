@@ -323,3 +323,10 @@ negative contracts. It authenticates individual `Box<i32>` constructor inputs
 through compiler items and invokes a typed registered mapping in a compiler-only
 proof consumer. This does not enable C/Java heap output or establish HIR/MIR
 variable correspondence. See [constructor capability specification](../../docs/specification/typed-generation/languages/c/rust-owned-construction.md).
+
+M35-02B-02 adds `owned_linear_test`, `owned_linear_private_test` and a dedicated
+format target. They establish a closed correspondence for one Box<i32>, whole-
+value moves and a final scalar read/drop, retaining canonical HIR bindings and
+authenticated MIR places/locations. Private mutations reject incorrect producer,
+move, read, drop and control-flow relations. This remains compiler-only evidence,
+not C/Java heap admission. See [linear correspondence specification](../../docs/specification/typed-generation/languages/c/rust-linear-owned-correspondence.md).

@@ -18,6 +18,7 @@ load(":metadata_action_targets.bzl", "metadata_action_targets")
 load(":metadata_agreement_targets.bzl", "metadata_agreement_targets")
 load(":metadata_analysis_tests.bzl", "metadata_analysis_tests")
 load(":owned_construction_targets.bzl", "owned_construction_targets")
+load(":owned_linear_targets.bzl", "owned_linear_targets")
 load(":owned_probe_targets.bzl", "owned_probe_targets")
 load(":public_package_targets.bzl", "public_package_targets")
 load(":publication_probe_targets.bzl", "publication_probe_targets")
@@ -76,6 +77,8 @@ source_origin_targets(name = "source_origin_test")
 owned_probe_targets(name = "owned_probe_test")
 
 owned_construction_targets(name = "owned_construction_test")
+
+owned_linear_targets(name = "owned_linear_test")
 
 java_source_targets(name = "java_adapter")
 
