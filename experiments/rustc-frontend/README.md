@@ -361,3 +361,10 @@ continuation in its real enclosing scope and authenticate both cleanup paths.
 Unobserved Boolean/unit bookkeeping requires whole-body definition/use checks,
 with only executed writes accounted to each path. These remain compiler-only
 proofs, not C/Java heap output. See [early-return specification](../../docs/specification/typed-generation/languages/c/rust-owned-early-returns.md).
+
+M35-02B-03F adds `owned_selection_*` targets for `let selected = if flag {
+first } else { second };`. Both constructor origins of the shared destination
+are authenticated. Actual compiler cleanup decisions use exact reaching
+Boolean definitions and a whole-body use check, then pass the independent
+source-owner/drop-order relation. This remains compiler-only evidence. See
+[conditional-selection specification](../../docs/specification/typed-generation/languages/c/rust-owned-selection.md).

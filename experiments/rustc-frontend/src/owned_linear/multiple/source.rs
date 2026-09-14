@@ -44,6 +44,14 @@ pub(super) fn read_early(
     super::guarded::source::read_early(tcx, owner)?;
     read_shape(tcx, owner, exits::Mode::Early(outcome))
 }
+pub(super) fn read_selection(
+    tcx: TyCtxt<'_>,
+    owner: LocalDefId,
+    outcome: exits::Outcome,
+) -> Result<Plan<'_>> {
+    super::selection::source::read(tcx, owner)?;
+    read_shape(tcx, owner, exits::Mode::Selection(outcome))
+}
 fn read_shape(tcx: TyCtxt<'_>, owner: LocalDefId, mode: exits::Mode) -> Result<Plan<'_>> {
     if tcx.def_kind(owner) != DefKind::Fn || tcx.generics_of(owner).count() != 0 {
         return Err(Error::Signature);
@@ -56,8 +64,10 @@ fn read_shape(tcx: TyCtxt<'_>, owner: LocalDefId, mode: exits::Mode) -> Result<P
         || signature.inputs().len() > 128
         || signature.inputs().iter().any(|ty| {
             *ty != tcx.types.i32
-                && !(matches!(mode, exits::Mode::Guarded(_) | exits::Mode::Early(_))
-                    && *ty == tcx.types.bool)
+                && !(matches!(
+                    mode,
+                    exits::Mode::Guarded(_) | exits::Mode::Early(_) | exits::Mode::Selection(_)
+                ) && *ty == tcx.types.bool)
         })
         || signature.output() != tcx.types.i32
     {
@@ -129,8 +139,16 @@ fn read_shape(tcx: TyCtxt<'_>, owner: LocalDefId, mode: exits::Mode) -> Result<P
                         bindings: vec![id],
                     });
                 }
-                hir::ExprKind::Path(_) => {
-                    let previous = local(checked, init)?;
+                hir::ExprKind::Path(_) | hir::ExprKind::If(..) => {
+                    let operand = if matches!(init.kind, hir::ExprKind::If(..)) {
+                        let exits::Mode::Selection(outcome) = mode else {
+                            return Err(Error::BodyShape);
+                        };
+                        super::selection::source::operand(tcx, owner, init, id, outcome)?
+                    } else {
+                        init
+                    };
+                    let previous = local(checked, operand)?;
                     let mut matching = chains
                         .iter_mut()
                         .filter(|c| c.bindings.last() == Some(&previous));
@@ -178,7 +196,7 @@ fn read_shape(tcx: TyCtxt<'_>, owner: LocalDefId, mode: exits::Mode) -> Result<P
         read: block.hir_id,
     };
     let scopes = match mode {
-        exits::Mode::Guarded(_) | exits::Mode::Early(_) => {
+        exits::Mode::Guarded(_) | exits::Mode::Early(_) | exits::Mode::Selection(_) => {
             scopes::certify_route(tcx, owner, claims, exit, mode)?
         }
         _ => scopes::certify_exit(tcx, owner, claims, exit)?,

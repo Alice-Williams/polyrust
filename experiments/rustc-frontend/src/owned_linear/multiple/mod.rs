@@ -10,6 +10,7 @@ mod relations;
 pub(crate) mod renaming;
 mod residual;
 pub(crate) mod returns;
+pub(crate) mod selection;
 mod source;
 use super::{LinearError, Result, scopes::ScopeFacts};
 use crate::owned_source::BoxConstructionInput;

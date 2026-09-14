@@ -25,6 +25,7 @@ load(":owned_multiple_targets.bzl", "owned_multiple_targets")
 load(":owned_probe_targets.bzl", "owned_probe_targets")
 load(":owned_return_targets.bzl", "owned_return_targets")
 load(":owned_scope_targets.bzl", "owned_scope_targets")
+load(":owned_selection_targets.bzl", "owned_selection_targets")
 load(":public_package_targets.bzl", "public_package_targets")
 load(":publication_probe_targets.bzl", "publication_probe_targets")
 load(":source_capability_targets.bzl", "source_capability_targets")
@@ -70,6 +71,8 @@ owned_return_targets(name = "owned_return_test")
 owned_guard_targets(name = "owned_guard_test")
 
 owned_early_targets(name = "owned_early_test")
+
+owned_selection_targets(name = "owned_selection_test")
 
 crate_native_targets(name = "crate_native_test")
 

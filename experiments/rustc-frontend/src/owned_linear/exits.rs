@@ -10,6 +10,7 @@ pub(super) enum Mode {
     Return,
     Guarded(Outcome),
     Early(Outcome),
+    Selection(Outcome),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -78,7 +79,7 @@ pub(super) fn parts<'tcx>(
     }
     let (statements, expression) = match (block.expr, mode) {
         (Some(expression), _) => (block.stmts, expression),
-        (None, Mode::Return | Mode::Guarded(_)) => {
+        (None, Mode::Return | Mode::Guarded(_) | Mode::Selection(_)) => {
             let (last, prefix) = block.stmts.split_last().ok_or(Error::BodyShape)?;
             let hir::StmtKind::Semi(expression) = last.kind else {
                 return Err(Error::BodyShape);
@@ -99,10 +100,10 @@ pub(super) fn parts<'tcx>(
             End::Nested(child)
         }
         (hir::ExprKind::Block(child, None), _) if block.expr.is_some() => End::Nested(child),
-        (hir::ExprKind::Ret(Some(value)), Mode::Return | Mode::Guarded(_)) => {
+        (hir::ExprKind::Ret(Some(value)), Mode::Return | Mode::Guarded(_) | Mode::Selection(_)) => {
             End::Exit(Exit::Return { expression, value })
         }
-        (_, Mode::Tail) => End::Exit(Exit::Tail(expression)),
+        (_, Mode::Tail | Mode::Selection(_)) => End::Exit(Exit::Tail(expression)),
         _ => return Err(Error::BodyShape),
     };
     Ok((statements, end))

@@ -34,6 +34,10 @@ conditional moves or compiler drop flags are admitted.
 then preserves an early arm and a false-path continuation in the actual root
 scope, without inventing an else block.
 
+[M35-02B-03F — Conditional owner selection](M35-02B-03F-conditional-owned-selection.md)
+then authenticates branch-dependent moves into one binding and actual compiler
+cleanup decisions, preserving the nonselected owner's remaining obligation.
+
 - Map every admitted structured exit and owned operation unambiguously to the
   compiler's corresponding places/drop obligations; unsupported shapes diagnose.
 - Distinct same-type owners, branch guards, field projections and lexical

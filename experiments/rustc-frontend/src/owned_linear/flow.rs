@@ -2,6 +2,8 @@
 use super::{LinearError as Error, Result, exits::Outcome};
 use rustc_middle::mir::{self, StatementKind, TerminatorKind, UnwindAction};
 use std::collections::HashSet;
+#[path = "flow/flags.rs"]
+pub(super) mod flags;
 
 pub(super) struct Assignment<'a, 'tcx> {
     pub location: mir::Location,
@@ -21,6 +23,7 @@ pub(super) struct Trace<'a, 'tcx> {
     pub drops: Vec<(mir::Location, mir::Place<'tcx>)>,
     pub returning: mir::Location,
     pub branch: Option<Branch<'a, 'tcx>>,
+    pub cleanup: Vec<flags::Decision>,
     visited: HashSet<mir::BasicBlock>,
     events: Vec<mir::Location>,
 }
@@ -74,7 +77,7 @@ pub(super) fn read<'a, 'tcx>(body: &'a mir::Body<'tcx>) -> Result<Flow<'a, 'tcx>
 }
 
 pub(super) fn trace<'a, 'tcx>(body: &'a mir::Body<'tcx>) -> Result<Trace<'a, 'tcx>> {
-    let trace = inventory(body, None)?;
+    let trace = inventory(body, None, None)?;
     if trace.visited.len() != body.basic_blocks.len() {
         return Err(Error::ControlFlow);
     }
@@ -82,8 +85,33 @@ pub(super) fn trace<'a, 'tcx>(body: &'a mir::Body<'tcx>) -> Result<Trace<'a, 'tc
 }
 
 pub(super) fn split<'a, 'tcx>(body: &'a mir::Body<'tcx>) -> Result<[Trace<'a, 'tcx>; 2]> {
-    let no = inventory(body, Some(Outcome::False))?;
-    let yes = inventory(body, Some(Outcome::True))?;
+    split_with(body, None)
+}
+
+pub(super) fn selection<'a, 'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    body: &'a mir::Body<'tcx>,
+) -> Result<[Trace<'a, 'tcx>; 2]> {
+    let paths = split_with(body, Some(tcx))?;
+    if paths.iter().any(|p| p.cleanup.len() != 2) {
+        return Err(Error::ControlFlow);
+    }
+    for (no, yes) in paths[0].cleanup.iter().zip(&paths[1].cleanup) {
+        if no.location() != yes.location() || no.local() != yes.local() || no.value() == yes.value()
+        {
+            return Err(Error::ControlFlow);
+        }
+    }
+    flags::validate(tcx, body, &paths)?;
+    Ok(paths)
+}
+
+fn split_with<'a, 'tcx>(
+    body: &'a mir::Body<'tcx>,
+    constants: Option<rustc_middle::ty::TyCtxt<'tcx>>,
+) -> Result<[Trace<'a, 'tcx>; 2]> {
+    let no = inventory(body, Some(Outcome::False), constants)?;
+    let yes = inventory(body, Some(Outcome::True), constants)?;
     let a = no.branch.as_ref().ok_or(Error::ControlFlow)?;
     let b = yes.branch.as_ref().ok_or(Error::ControlFlow)?;
     if a.location != b.location
@@ -98,6 +126,7 @@ pub(super) fn split<'a, 'tcx>(body: &'a mir::Body<'tcx>) -> Result<[Trace<'a, 't
 fn inventory<'a, 'tcx>(
     body: &'a mir::Body<'tcx>,
     choice: Option<Outcome>,
+    constants: Option<rustc_middle::ty::TyCtxt<'tcx>>,
 ) -> Result<Trace<'a, 'tcx>> {
     if body.basic_blocks.len() > 512 || body.local_decls.len() > 1024 {
         return Err(Error::Budget);
@@ -108,6 +137,7 @@ fn inventory<'a, 'tcx>(
     let mut calls = Vec::new();
     let mut drops = Vec::new();
     let mut branch = None;
+    let mut cleanup = Vec::new();
     let mut block = mir::START_BLOCK;
     let returning = loop {
         if !visited.insert(block) {
@@ -148,11 +178,18 @@ fn inventory<'a, 'tcx>(
         match &data.terminator().kind {
             TerminatorKind::SwitchInt { discr, targets } => {
                 let outcome = choice.ok_or(Error::ControlFlow)?;
-                if branch.is_some()
-                    || targets.all_targets().len() != 2
+                if targets.all_targets().len() != 2
                     || targets.target_for_value(0) == targets.target_for_value(1)
                 {
                     return Err(Error::ControlFlow);
+                }
+                if branch.is_some() {
+                    let tcx = constants.ok_or(Error::ControlFlow)?;
+                    let decision =
+                        flags::resolve(tcx, body, &assignments, discr, targets, location)?;
+                    block = decision.target();
+                    cleanup.push(decision);
+                    continue;
                 }
                 let target = targets.target_for_value(outcome.value());
                 branch = Some(Branch {
@@ -192,6 +229,7 @@ fn inventory<'a, 'tcx>(
         drops,
         returning,
         branch,
+        cleanup,
         visited,
         events,
     })
