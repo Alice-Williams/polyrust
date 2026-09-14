@@ -1,6 +1,6 @@
 # M35-02B — Authenticate structured ownership correspondence
 
-- Status: planned
+- Status: in-progress
 - Parent: [M35-02](M35-02-rustc-owned-values.md)
 - Depends on: M35-02A
 
@@ -27,3 +27,15 @@ document the restriction before implementing the target mapping.
 - No public safe API fabricates a checked ownership input or bypasses successful
   compiler analysis; invalid/unsupported cases leave output absent.
 - Fresh review and the existing C/Java/native/lint gates pass unchanged.
+
+## Ordered implementation
+
+1. [M35-02B-01 — Constructor identities and executable binding](M35-02B-01-box-constructor-identities.md).
+   Authenticate individual `Box<i32>` construction operations; this is not yet
+   HIR/MIR operation correspondence or whole-body ownership admission.
+2. [M35-02B-02 — Straight-line owned-place correspondence](M35-02B-02-linear-owned-places.md).
+   Establish a closed straight-line HIR-operation/MIR-place relation, rejecting
+   ambiguity. Names/debug information/spans alone cannot select a place.
+3. [M35-02B-03 — Structured ownership correspondence](M35-02B-03-structured-owned-places.md).
+   Extend that relation to structured scopes, branches, partial moves and
+   function boundaries with typed mismatch controls before C mapping cutover.

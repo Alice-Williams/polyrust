@@ -74,6 +74,11 @@ if [ -n "$expected" ]; then
         cat "$output.diagnostic" >&2
         exit 1
     fi
+    unexpected=$(grep '^error' "$output.diagnostic" | grep -Fv "$expected" | grep -v '^error: aborting due to ' || true)
+    if [ -n "$unexpected" ]; then
+        cat "$output.diagnostic" >&2
+        exit 1
+    fi
     touch "$output"
     exit 0
 fi

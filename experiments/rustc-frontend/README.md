@@ -317,3 +317,9 @@ depends on C/Java adapters for rejection controls. It tests moves, conditional a
 partial drops, early returns, shadowing and a same-spelled counterfeit Box.
 It does not enable heap translation. See the [typed observation evidence](../../docs/specification/typed-generation/languages/c/rust-drop-observations.md)
 and [ordered owned-value plan](../../docs/plan/tasks/M35-02-rustc-owned-values.md).
+
+M35-02B-01 adds `owned_construction_test` and its separately cached compiler-
+negative contracts. It authenticates individual `Box<i32>` constructor inputs
+through compiler items and invokes a typed registered mapping in a compiler-only
+proof consumer. This does not enable C/Java heap output or establish HIR/MIR
+variable correspondence. See [constructor capability specification](../../docs/specification/typed-generation/languages/c/rust-owned-construction.md).
