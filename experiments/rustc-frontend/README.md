@@ -296,7 +296,9 @@ certified artifact with pinned GCC/Zig and GCC ASan/UBSan at O0/O2. Single-unit
 documentation placement and one-crate public-header/source packages are
 implemented. Separate dependency-crate linking has a native differential gate;
 Java now has a corresponding compiler-backed production bundle path; final
-C/Java migration and proposed-commit-tree proof remain separate closure work.
+C/Java no-heap migration and isolated commit-tree proof are complete. The
+separate C and Java checkpoints are committed and pushed; E05 records their
+exact tree/commit IDs and Linux/Bazel proof. Heap/drop support remains M35-02.
 
 HIR is rustc's higher-level AST after macro expansion and name resolution;
 it does not alone certify typing or borrowing. The adapter requires full

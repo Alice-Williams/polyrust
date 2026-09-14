@@ -1,6 +1,6 @@
 # M35-01E — Retrofit Java to compiler-checked Rust
 
-- Status: in-progress
+- Status: complete
 - Depends on: completed M35-01B, M35-01C and M35-01D
 - Contract: [Java Rust HIR lowering](../../specification/typed-generation/languages/java/rust-hir-lowering.md)
 
@@ -67,3 +67,12 @@ Keep C and Java completions in separate milestone commits. Do not push any
 migration checkpoint until the full local Linux/Bazel test gate is green.
 Do not disable failing tests to conceal a regression. No CI polling loop is
 required while pushes are held.
+
+## Completion
+
+All five ordered checkpoints are complete. The production Java source path,
+bundle transaction and admitted fixture proofs have fresh independent review
+closure. Exact isolated trees passed 346 C-checkpoint and 373 Java-checkpoint
+tests; separate matching commits were pushed. The E05 child records retain the
+evidence and explicitly preserve the no-heap boundary. M35-02 still owns heap
+allocation/drop proof; M35-03 still owns the wider production integration decision.

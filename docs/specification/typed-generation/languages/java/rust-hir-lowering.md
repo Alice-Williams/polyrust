@@ -388,7 +388,8 @@ mode. It reports success only after the entire tree is atomically published.
 `rust_java_bundle` consumes `RustSourceCrateInfo` and emits a declared Bazel tree;
 the pinned compiler and native publisher are declared tools, with no dependency
 discovery or host compiler fallback. Production atomic/native proof is complete
-in D03; E05 retains final fixture/commit-tree closure. Check mode still renders
+in D03; E05 completed fixture, isolated commit-tree and publication closure.
+Check mode still renders
 and publishes nothing.
 
 The closed Java owner API exposes source_byte_bound before text generation.

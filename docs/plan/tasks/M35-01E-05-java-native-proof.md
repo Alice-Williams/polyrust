@@ -1,6 +1,6 @@
 # M35-01E-05 — Native equivalence and migration closure
 
-- Status: in-progress
+- Status: complete
 - Parent: [M35-01E](M35-01E-java-rustc-retrofit.md)
 - Depends on: M35-01E-04
 
@@ -37,3 +37,11 @@ Execute the following focused closure checkpoints in order:
 
 This closes the no-heap Rust-source migration, not arbitrary Rust translation,
 heap/destructor support or a formal equivalence theorem for every program.
+
+## Closure
+
+E05A's complete fixture matrix/examples and fresh review loops passed. E05B
+verified isolated exact C and Java trees, including all historical tests and
+lint/documentation gates. E05C published separate commits with matching tree
+identities and preserved the unrelated local ownership work. See those child
+records for gate IDs, review outcomes, commit IDs and the verified remote ref.
