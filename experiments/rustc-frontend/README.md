@@ -354,3 +354,10 @@ move chain ends in one ordered, scope-associated drop. Repeated anchors reject
 instead of pairing allocations by matching types. Unread constant Boolean
 bookkeeping requires a complete no-read proof. No target heap generation is
 enabled. See [multi-owner specification](../../docs/specification/typed-generation/languages/c/rust-multiple-owned-chains.md).
+
+M35-02B-03C/D/E add separate explicit-return, guarded-if/else and early-return
+evidence entries. The early-return `owned_early_*` targets retain the false
+continuation in its real enclosing scope and authenticate both cleanup paths.
+Unobserved Boolean/unit bookkeeping requires whole-body definition/use checks,
+with only executed writes accounted to each path. These remain compiler-only
+proofs, not C/Java heap output. See [early-return specification](../../docs/specification/typed-generation/languages/c/rust-owned-early-returns.md).

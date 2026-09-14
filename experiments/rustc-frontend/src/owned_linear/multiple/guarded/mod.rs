@@ -1,6 +1,6 @@
 //! One authenticated Boolean guard and two complete normal ownership paths.
 pub(super) mod source;
-pub(crate) use super::super::exits::Outcome;
+pub(crate) use super::super::exits::{Exit as SourceExit, Outcome};
 use super::super::{LinearError as Error, Result, flow, scopes::ScopeFacts, values};
 use super::{ChainEvidence, MultipleOwnedBody, relations};
 use rustc_hir::{self as hir, HirId, def_id::LocalDefId};
@@ -36,6 +36,9 @@ pub(crate) struct GuardedPath<'tcx> {
     returning: mir::Location,
 }
 impl<'tcx> GuardedPath<'tcx> {
+    pub(crate) fn exit(&self) -> SourceExit<'tcx> {
+        self.scopes.exit()
+    }
     pub(crate) fn outcome(&self) -> Outcome {
         self.outcome
     }
@@ -70,23 +73,8 @@ impl<'tcx> GuardedOwnedBody<'tcx> {
     }
     fn from_body(tcx: TyCtxt<'tcx>, owner: LocalDefId, body: &mir::Body<'tcx>) -> Result<Self> {
         let shape = source::read(tcx, owner)?;
-        let [no, yes] = flow::split(body)?;
-        let location = no.branch.as_ref().ok_or(Error::ControlFlow)?.location;
-        let no = path(tcx, owner, &shape, body, &no)?;
-        let yes = path(tcx, owner, &shape, body, &yes)?;
-        let parameter = body
-            .args_iter()
-            .nth(shape.parameter_index)
-            .ok_or(Error::Argument)?;
-        Ok(Self {
-            guard: GuardEvidence {
-                branch: shape.branch,
-                condition: shape.condition,
-                parameter: (shape.parameter, parameter),
-                location,
-            },
-            paths: [no, yes],
-        })
+        let (guard, paths) = certify(tcx, owner, shape, body)?;
+        Ok(Self { guard, paths })
     }
     pub(crate) fn guard(&self) -> &GuardEvidence<'tcx> {
         &self.guard
@@ -102,6 +90,31 @@ impl<'tcx> GuardedOwnedBody<'tcx> {
 #[cfg(owned_guard_proof)]
 #[path = "../../../../test/owned_guarded/mutations.rs"]
 pub(crate) mod mutations;
+pub(super) fn certify<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    owner: LocalDefId,
+    shape: source::Shape<'tcx>,
+    body: &mir::Body<'tcx>,
+) -> Result<(GuardEvidence<'tcx>, [GuardedPath<'tcx>; 2])> {
+    let [no, yes] = flow::split(body)?;
+    let location = no.branch.as_ref().ok_or(Error::ControlFlow)?.location;
+    let no = path(tcx, owner, &shape, body, &no)?;
+    let yes = path(tcx, owner, &shape, body, &yes)?;
+    let parameter = body
+        .args_iter()
+        .nth(shape.parameter_index)
+        .ok_or(Error::Argument)?;
+    Ok((
+        GuardEvidence {
+            branch: shape.branch,
+            condition: shape.condition,
+            parameter: (shape.parameter, parameter),
+            location,
+        },
+        [no, yes],
+    ))
+}
+
 fn path<'tcx>(
     tcx: TyCtxt<'tcx>,
     owner: LocalDefId,
@@ -110,7 +123,10 @@ fn path<'tcx>(
     trace: &flow::Trace<'_, 'tcx>,
 ) -> Result<GuardedPath<'tcx>> {
     let branch = trace.branch.as_ref().ok_or(Error::ControlFlow)?;
-    let plan = super::source::read_guarded(tcx, owner, branch.outcome)?;
+    let plan = match shape.grammar {
+        source::Grammar::IfElse => super::source::read_guarded(tcx, owner, branch.outcome)?,
+        source::Grammar::Early => super::source::read_early(tcx, owner, branch.outcome)?,
+    };
     if plan.scopes.read_scope() != shape.arm(branch.outcome)
         || plan.scopes.blocks().next().map(|b| b.0) != Some(shape.root.hir_id)
     {
@@ -130,6 +146,9 @@ fn path<'tcx>(
         parameter,
         &mut used,
     )?;
+    if matches!(shape.grammar, source::Grammar::Early) {
+        super::residual::account_units(tcx, body, trace, &mut used)?;
+    }
     let matched = relations::validate_path(tcx, owner, &plan, body, trace, used)?;
     if !trace.before(branch.location, matched.read)
         || trace

@@ -30,6 +30,10 @@ locations. Conditional early exits remain a later, separate increment.
 introduces one Boolean condition and two complete explicit-return paths before
 conditional moves or compiler drop flags are admitted.
 
+[M35-02B-03E — Early return and continuation](M35-02B-03E-early-owned-returns.md)
+then preserves an early arm and a false-path continuation in the actual root
+scope, without inventing an else block.
+
 - Map every admitted structured exit and owned operation unambiguously to the
   compiler's corresponding places/drop obligations; unsupported shapes diagnose.
 - Distinct same-type owners, branch guards, field projections and lexical

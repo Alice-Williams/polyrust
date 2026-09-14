@@ -1,4 +1,6 @@
 //! Closed block endings keep source return structure distinct from tail values.
+#[path = "exit_routes/early.rs"]
+pub(super) mod early;
 use super::{LinearError as Error, Result};
 use rustc_hir as hir;
 
@@ -7,6 +9,7 @@ pub(super) enum Mode {
     Tail,
     Return,
     Guarded(Outcome),
+    Early(Outcome),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -24,7 +27,7 @@ impl Outcome {
 }
 
 #[derive(Clone, Copy)]
-pub(super) enum Exit<'tcx> {
+pub(crate) enum Exit<'tcx> {
     Tail(&'tcx hir::Expr<'tcx>),
     Return {
         expression: &'tcx hir::Expr<'tcx>,
@@ -70,6 +73,9 @@ pub(super) fn parts<'tcx>(
     block: &'tcx hir::Block<'tcx>,
     mode: Mode,
 ) -> Result<(&'tcx [hir::Stmt<'tcx>], End<'tcx>)> {
+    if let Mode::Early(outcome) = mode {
+        return early::select(block, outcome);
+    }
     let (statements, expression) = match (block.expr, mode) {
         (Some(expression), _) => (block.stmts, expression),
         (None, Mode::Return | Mode::Guarded(_)) => {

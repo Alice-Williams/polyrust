@@ -36,6 +36,14 @@ pub(super) fn read_guarded(
     super::guarded::source::read(tcx, owner)?;
     read_shape(tcx, owner, exits::Mode::Guarded(outcome))
 }
+pub(super) fn read_early(
+    tcx: TyCtxt<'_>,
+    owner: LocalDefId,
+    outcome: exits::Outcome,
+) -> Result<Plan<'_>> {
+    super::guarded::source::read_early(tcx, owner)?;
+    read_shape(tcx, owner, exits::Mode::Early(outcome))
+}
 fn read_shape(tcx: TyCtxt<'_>, owner: LocalDefId, mode: exits::Mode) -> Result<Plan<'_>> {
     if tcx.def_kind(owner) != DefKind::Fn || tcx.generics_of(owner).count() != 0 {
         return Err(Error::Signature);
@@ -48,7 +56,8 @@ fn read_shape(tcx: TyCtxt<'_>, owner: LocalDefId, mode: exits::Mode) -> Result<P
         || signature.inputs().len() > 128
         || signature.inputs().iter().any(|ty| {
             *ty != tcx.types.i32
-                && !(matches!(mode, exits::Mode::Guarded(_)) && *ty == tcx.types.bool)
+                && !(matches!(mode, exits::Mode::Guarded(_) | exits::Mode::Early(_))
+                    && *ty == tcx.types.bool)
         })
         || signature.output() != tcx.types.i32
     {
@@ -169,7 +178,9 @@ fn read_shape(tcx: TyCtxt<'_>, owner: LocalDefId, mode: exits::Mode) -> Result<P
         read: block.hir_id,
     };
     let scopes = match mode {
-        exits::Mode::Guarded(_) => scopes::certify_route(tcx, owner, claims, exit, mode)?,
+        exits::Mode::Guarded(_) | exits::Mode::Early(_) => {
+            scopes::certify_route(tcx, owner, claims, exit, mode)?
+        }
         _ => scopes::certify_exit(tcx, owner, claims, exit)?,
     };
     Ok(Plan {
