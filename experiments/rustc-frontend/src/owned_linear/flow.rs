@@ -10,14 +10,27 @@ pub(super) struct Assignment<'a, 'tcx> {
 }
 
 pub(super) struct Flow<'a, 'tcx> {
-    pub assignments: Vec<Assignment<'a, 'tcx>>,
+    pub trace: Trace<'a, 'tcx>,
     pub call: (mir::Location, &'a TerminatorKind<'tcx>),
     pub drop: (mir::Location, mir::Place<'tcx>),
+}
+
+pub(super) struct Trace<'a, 'tcx> {
+    pub assignments: Vec<Assignment<'a, 'tcx>>,
+    pub calls: Vec<(mir::Location, &'a TerminatorKind<'tcx>)>,
+    pub drops: Vec<(mir::Location, mir::Place<'tcx>)>,
     pub returning: mir::Location,
     events: Vec<mir::Location>,
 }
 
-impl<'a, 'tcx> Flow<'a, 'tcx> {
+impl<'a, 'tcx> std::ops::Deref for Flow<'a, 'tcx> {
+    type Target = Trace<'a, 'tcx>;
+    fn deref(&self) -> &Self::Target {
+        &self.trace
+    }
+}
+
+impl<'a, 'tcx> Trace<'a, 'tcx> {
     pub fn before(&self, first: mir::Location, second: mir::Location) -> bool {
         let first = self.events.iter().position(|event| *event == first);
         let second = self.events.iter().position(|event| *event == second);
@@ -37,14 +50,29 @@ impl<'a, 'tcx> Flow<'a, 'tcx> {
 }
 
 pub(super) fn read<'a, 'tcx>(body: &'a mir::Body<'tcx>) -> Result<Flow<'a, 'tcx>> {
+    let trace = trace(body)?;
+    if trace.calls.len() != 1 {
+        return Err(Error::Call);
+    }
+    if trace.drops.len() != 1 {
+        return Err(Error::Drop);
+    }
+    Ok(Flow {
+        call: trace.calls[0],
+        drop: trace.drops[0],
+        trace,
+    })
+}
+
+pub(super) fn trace<'a, 'tcx>(body: &'a mir::Body<'tcx>) -> Result<Trace<'a, 'tcx>> {
     if body.basic_blocks.len() > 512 || body.local_decls.len() > 1024 {
         return Err(Error::Budget);
     }
     let mut visited = HashSet::new();
     let mut assignments = Vec::new();
     let mut events = Vec::new();
-    let mut call = None;
-    let mut drop = None;
+    let mut calls = Vec::new();
+    let mut drops = Vec::new();
     let mut block = mir::START_BLOCK;
     let returning = loop {
         if !visited.insert(block) {
@@ -89,20 +117,17 @@ pub(super) fn read<'a, 'tcx>(body: &'a mir::Body<'tcx>) -> Result<Flow<'a, 'tcx>
                 unwind: UnwindAction::Unreachable,
                 ..
             } => {
-                if call.replace((location, kind)).is_some() {
-                    return Err(Error::Call);
-                }
+                calls.push((location, kind));
                 block = *target;
             }
             TerminatorKind::Drop {
                 place,
                 target,
                 unwind: UnwindAction::Unreachable,
+                drop: None,
                 ..
             } => {
-                if drop.replace((location, *place)).is_some() {
-                    return Err(Error::Drop);
-                }
+                drops.push((location, *place));
                 block = *target;
             }
             TerminatorKind::Return => break location,
@@ -112,10 +137,10 @@ pub(super) fn read<'a, 'tcx>(body: &'a mir::Body<'tcx>) -> Result<Flow<'a, 'tcx>
     if visited.len() != body.basic_blocks.len() {
         return Err(Error::ControlFlow);
     }
-    Ok(Flow {
+    Ok(Trace {
         assignments,
-        call: call.ok_or(Error::Call)?,
-        drop: drop.ok_or(Error::Drop)?,
+        calls,
+        drops,
         returning,
         events,
     })

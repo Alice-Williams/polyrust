@@ -1,5 +1,8 @@
 //! Closed source/producer correspondence, not target code or a borrow checker.
 mod flow;
+// The separate proof drivers select different public evidence entry points.
+#[allow(dead_code)]
+pub(crate) mod multiple;
 #[cfg(owned_linear_proof)]
 #[path = "../../test/owned_linear/mutations.rs"]
 pub(crate) mod mutations;
@@ -28,6 +31,7 @@ pub(crate) enum LinearError {
     ControlFlow,
     Call,
     Argument,
+    Ambiguous,
     Assignment,
     MoveGraph,
     Read,

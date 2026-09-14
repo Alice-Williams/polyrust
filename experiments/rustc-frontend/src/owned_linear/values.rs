@@ -1,5 +1,8 @@
 //! Trace actual typed producers, not matching scalar types or debug variables.
-use super::{LinearError as Error, Result, flow::Flow};
+use super::{
+    LinearError as Error, Result,
+    flow::{Flow, Trace},
+};
 use rustc_middle::{
     mir::{self, Operand, ProjectionElem, Rvalue},
     ty::{self, TyCtxt},
@@ -15,8 +18,29 @@ pub(super) fn argument<'tcx>(
     parameter: mir::Local,
     used: &mut HashSet<mir::Location>,
 ) -> Result<()> {
+    argument_source(
+        tcx,
+        body,
+        &flow.trace,
+        operand,
+        flow.call.0,
+        &[parameter],
+        used,
+    )?;
+    Ok(())
+}
+
+pub(super) fn argument_source<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mir::Body<'tcx>,
+    flow: &Trace<'_, 'tcx>,
+    operand: &Operand<'tcx>,
+    location: mir::Location,
+    parameters: &[mir::Local],
+    used: &mut HashSet<mir::Location>,
+) -> Result<mir::Local> {
     let mut operand = operand;
-    let mut use_location = flow.call.0;
+    let mut use_location = location;
     let mut seen = HashSet::new();
     loop {
         let (Operand::Copy(place) | Operand::Move(place)) = operand else {
@@ -25,15 +49,15 @@ pub(super) fn argument<'tcx>(
         if !place.projection.is_empty() || place.ty(&body.local_decls, tcx).ty != tcx.types.i32 {
             return Err(Error::Argument);
         }
-        if place.local == parameter {
+        if parameters.contains(&place.local) {
             if flow
                 .assignments
                 .iter()
-                .any(|a| a.destination.local == parameter)
+                .any(|a| a.destination.local == place.local)
             {
                 return Err(Error::Argument);
             }
-            return Ok(());
+            return Ok(place.local);
         }
         if !seen.insert(place.local) {
             return Err(Error::Argument);
@@ -53,7 +77,7 @@ pub(super) fn argument<'tcx>(
 pub(super) fn scalar_read<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mir::Body<'tcx>,
-    flow: &Flow<'_, 'tcx>,
+    flow: &Trace<'_, 'tcx>,
     owner: mir::Local,
     used: &mut HashSet<mir::Location>,
 ) -> Result<(mir::Location, mir::Location)> {

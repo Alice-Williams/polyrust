@@ -19,6 +19,9 @@ It deliberately retains one owner chain and one normal path. The remaining
 multi-owner, branch/partial-move, early-return and call-boundary increments stay
 unimplemented until their own closed contracts and proof tasks are written.
 
+The next increment is [M35-02B-03B — Multiple owned producer chains](M35-02B-03B-multiple-owned-chains.md),
+using distinct scalar parameter identities as construction anchors.
+
 - Map every admitted structured exit and owned operation unambiguously to the
   compiler's corresponding places/drop obligations; unsupported shapes diagnose.
 - Distinct same-type owners, branch guards, field projections and lexical

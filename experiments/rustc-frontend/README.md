@@ -337,3 +337,10 @@ read and owner/drop scopes, including empty wrappers and ownership moved inward.
 The one-owner MIR relation is reused; the root-only entry remains restricted.
 This does not admit sibling exits, branches or multiple owners and does not
 enable heap generation. See [tail-scope specification](../../docs/specification/typed-generation/languages/c/rust-owned-tail-scopes.md).
+
+M35-02B-03B adds `MultipleOwnedBody::read` and `owned_multiple_*` proof targets.
+Distinct actual scalar parameters anchor same-type allocations; each complete
+move chain ends in one ordered, scope-associated drop. Repeated anchors reject
+instead of pairing allocations by matching types. Unread constant Boolean
+bookkeeping requires a complete no-read proof. No target heap generation is
+enabled. See [multi-owner specification](../../docs/specification/typed-generation/languages/c/rust-multiple-owned-chains.md).

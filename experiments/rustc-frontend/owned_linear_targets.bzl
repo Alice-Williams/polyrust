@@ -11,7 +11,7 @@ def owned_linear_targets(name):
     """
     sources = ["src/inputs.rs", "src/source_capabilities/contracts.rs"] + native.glob([
         "src/owned_source/*.rs",
-        "src/owned_linear/*.rs",
+        "src/owned_linear/**/*.rs",
         "test/owned_linear/*.rs",
     ])
     compiler_adapter(name = "owned_linear_probe", srcs = sources, crate_root = "test/owned_linear/main.rs", rustc_cfgs = ["owned_linear_proof"])

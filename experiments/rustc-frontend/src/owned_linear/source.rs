@@ -24,14 +24,17 @@ enum Nesting {
     TailBlocks,
 }
 
-fn binding(pattern: &hir::Pat<'_>) -> Result<hir::HirId> {
+pub(super) fn binding(pattern: &hir::Pat<'_>) -> Result<hir::HirId> {
     match pattern.kind {
         hir::PatKind::Binding(BindingMode::NONE, id, _, None) => Ok(id),
         _ => Err(Error::BodyShape),
     }
 }
 
-fn local<'tcx>(checked: &TypeckResults<'tcx>, expression: &hir::Expr<'tcx>) -> Result<hir::HirId> {
+pub(super) fn local<'tcx>(
+    checked: &TypeckResults<'tcx>,
+    expression: &hir::Expr<'tcx>,
+) -> Result<hir::HirId> {
     if !checked.expr_adjustments(expression).is_empty() {
         return Err(Error::BodyShape);
     }

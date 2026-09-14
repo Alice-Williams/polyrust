@@ -11,7 +11,7 @@ def owned_scope_targets(name):
     """
     shared = ["src/inputs.rs", "src/source_capabilities/contracts.rs"] + native.glob([
         "src/owned_source/*.rs",
-        "src/owned_linear/*.rs",
+        "src/owned_linear/**/*.rs",
     ])
     sources = shared + native.glob(["test/owned_scopes/*.rs"])
     compiler_adapter(name = "owned_scope_probe", srcs = sources, crate_root = "test/owned_scopes/main.rs", rustc_cfgs = ["owned_scope_proof"])

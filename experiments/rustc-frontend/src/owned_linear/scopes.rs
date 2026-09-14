@@ -10,6 +10,19 @@ pub(super) struct Claims {
     pub drop: HirId,
 }
 
+pub(super) struct ContainmentClaims {
+    pub blocks: Vec<(HirId, Option<HirId>)>,
+    pub bindings: Vec<(HirId, HirId)>,
+    pub read: HirId,
+}
+
+#[derive(Clone)]
+pub(crate) struct ScopeFacts<'tcx> {
+    blocks: Vec<(&'tcx hir::Block<'tcx>, Option<HirId>)>,
+    bindings: Vec<(HirId, HirId)>,
+    read: HirId,
+}
+
 #[derive(Clone)]
 pub(crate) struct ScopeEvidence<'tcx> {
     blocks: Vec<(&'tcx hir::Block<'tcx>, Option<HirId>)>,
@@ -40,6 +53,45 @@ pub(super) fn certify<'tcx>(
     owner: LocalDefId,
     claims: Claims,
 ) -> Result<ScopeEvidence<'tcx>> {
+    let facts = certify_containment(
+        tcx,
+        owner,
+        ContainmentClaims {
+            blocks: claims.blocks,
+            bindings: claims.bindings,
+            read: claims.read,
+        },
+    )?;
+    if Some(claims.drop) != facts.bindings().last().map(|item| item.1) {
+        return Err(Error::Scope);
+    }
+    Ok(ScopeEvidence {
+        read: facts.read_scope(),
+        blocks: facts.blocks,
+        bindings: facts.bindings,
+        drop: claims.drop,
+    })
+}
+
+impl ScopeFacts<'_> {
+    pub(crate) fn blocks(&self) -> impl Iterator<Item = (HirId, Option<HirId>)> + '_ {
+        self.blocks
+            .iter()
+            .map(|(block, parent)| (block.hir_id, *parent))
+    }
+    pub(crate) fn bindings(&self) -> &[(HirId, HirId)] {
+        &self.bindings
+    }
+    pub(crate) fn read_scope(&self) -> HirId {
+        self.read
+    }
+}
+
+pub(super) fn certify_containment<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    owner: LocalDefId,
+    claims: ContainmentClaims,
+) -> Result<ScopeFacts<'tcx>> {
     let hir::ExprKind::Block(mut block, None) = tcx.hir_body_owned_by(owner).value.kind else {
         return Err(Error::Scope);
     };
@@ -49,9 +101,6 @@ pub(super) fn certify<'tcx>(
     loop {
         if blocks.len() >= 64 {
             return Err(Error::Budget);
-        }
-        if claims.blocks.get(blocks.len()) != Some(&(block.hir_id, parent)) {
-            return Err(Error::Scope);
         }
         blocks.push((block, parent));
         for statement in block.stmts {
@@ -74,14 +123,16 @@ pub(super) fn certify<'tcx>(
     if claims.blocks.len() != blocks.len()
         || claims.bindings != bindings
         || claims.read != block.hir_id
-        || Some(claims.drop) != bindings.last().map(|item| item.1)
     {
         return Err(Error::Scope);
     }
-    Ok(ScopeEvidence {
+    let facts = ScopeFacts {
         blocks,
         bindings,
         read: claims.read,
-        drop: claims.drop,
-    })
+    };
+    if !facts.blocks().eq(claims.blocks) {
+        return Err(Error::Scope);
+    }
+    Ok(facts)
 }
