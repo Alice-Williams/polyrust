@@ -29,6 +29,18 @@ pub(super) fn validate<'tcx>(
     plan: &Plan<'tcx>,
     body: &mir::Body<'tcx>,
 ) -> Result<Matched> {
+    let trace = flow::trace(body)?;
+    validate_path(tcx, owner, plan, body, &trace, HashSet::new())
+}
+
+pub(super) fn validate_path<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    owner: LocalDefId,
+    plan: &Plan<'tcx>,
+    body: &mir::Body<'tcx>,
+    trace: &flow::Trace<'_, 'tcx>,
+    mut used: HashSet<mir::Location>,
+) -> Result<Matched> {
     if body.source.def_id() != owner.to_def_id() {
         return Err(Error::Owner);
     }
@@ -38,9 +50,11 @@ pub(super) fn validate<'tcx>(
     let parameters: Vec<_> = body.args_iter().collect();
     if parameters.len() != plan.parameters.len()
         || body.local_decls[mir::RETURN_PLACE].ty != tcx.types.i32
+        || parameters.len() != plan.argument_types.len()
         || parameters
             .iter()
-            .any(|local| body.local_decls[*local].ty != tcx.types.i32)
+            .zip(&plan.argument_types)
+            .any(|(local, expected)| body.local_decls[*local].ty != *expected)
     {
         return Err(Error::Signature);
     }
@@ -50,11 +64,9 @@ pub(super) fn validate<'tcx>(
         .copied()
         .zip(parameters.iter().copied())
         .collect();
-    let trace = flow::trace(body)?;
     if trace.calls.len() != plan.chains.len() || trace.drops.len() != plan.chains.len() {
         return Err(Error::Call);
     }
-    let mut used = HashSet::new();
     let mut roots = HashMap::new();
     let mut call_anchors = Vec::new();
     for &(location, call) in &trace.calls {
@@ -73,7 +85,7 @@ pub(super) fn validate<'tcx>(
         let parameter = values::argument_source(
             tcx,
             body,
-            &trace,
+            trace,
             &args[0].node,
             location,
             &parameters,
@@ -206,7 +218,7 @@ pub(super) fn validate<'tcx>(
         return Err(Error::MoveGraph);
     }
     let read_owner = *ends.get(&plan.read).ok_or(Error::Read)?;
-    let (cast, read) = values::scalar_read(tcx, body, &trace, read_owner, &mut used)?;
+    let (cast, read) = values::scalar_read(tcx, body, trace, read_owner, &mut used)?;
     if last_locations
         .iter()
         .any(|&location| !trace.before(location, cast))
@@ -231,7 +243,7 @@ pub(super) fn validate<'tcx>(
             return Err(Error::Drop);
         }
     }
-    super::residual::account(tcx, body, &trace, &mut used)?;
+    super::residual::account(tcx, body, trace, &mut used)?;
     if used.len() != trace.assignments.len() {
         return Err(Error::Assignment);
     }

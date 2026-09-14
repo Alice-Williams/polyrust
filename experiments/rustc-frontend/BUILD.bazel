@@ -18,6 +18,7 @@ load(":metadata_action_targets.bzl", "metadata_action_targets")
 load(":metadata_agreement_targets.bzl", "metadata_agreement_targets")
 load(":metadata_analysis_tests.bzl", "metadata_analysis_tests")
 load(":owned_construction_targets.bzl", "owned_construction_targets")
+load(":owned_guard_targets.bzl", "owned_guard_targets")
 load(":owned_linear_targets.bzl", "owned_linear_targets")
 load(":owned_multiple_targets.bzl", "owned_multiple_targets")
 load(":owned_probe_targets.bzl", "owned_probe_targets")
@@ -64,6 +65,8 @@ ADAPTER_SOURCES = [
 crate_identity_targets(name = "crate_identity_test")
 
 owned_return_targets(name = "owned_return_test")
+
+owned_guard_targets(name = "owned_guard_test")
 
 crate_native_targets(name = "crate_native_test")
 

@@ -1,4 +1,5 @@
 //! Private multi-owner evidence; compiler analysis, not target heap admission.
+pub(crate) mod guarded;
 #[cfg(owned_multiple_proof)]
 #[path = "../../../test/owned_multiple/mutations.rs"]
 pub(crate) mod mutations;

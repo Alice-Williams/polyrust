@@ -1,5 +1,10 @@
 # Rust compiler frontend proof
 
+The one-condition/two-path ownership proof is specified in
+[M35-02B-03D](../../docs/plan/tasks/M35-02B-03D-guarded-owned-exits.md).
+`owned_guard_test` authenticates a Boolean-parameter guard and each path's
+returned owner/cleanup; a path cannot be erased into a whole-body certificate.
+
 The explicit-return ownership proof is specified in
 [M35-02B-03C](../../docs/plan/tasks/M35-02B-03C-explicit-owned-returns.md).
 Its separate `owned_return_test` target retains canonical Rust return expressions

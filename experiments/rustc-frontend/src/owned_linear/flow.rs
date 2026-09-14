@@ -1,5 +1,5 @@
 //! Complete bounded normal-flow inventory; no source-name or span matching.
-use super::{LinearError as Error, Result};
+use super::{LinearError as Error, Result, exits::Outcome};
 use rustc_middle::mir::{self, StatementKind, TerminatorKind, UnwindAction};
 use std::collections::HashSet;
 
@@ -20,7 +20,16 @@ pub(super) struct Trace<'a, 'tcx> {
     pub calls: Vec<(mir::Location, &'a TerminatorKind<'tcx>)>,
     pub drops: Vec<(mir::Location, mir::Place<'tcx>)>,
     pub returning: mir::Location,
+    pub branch: Option<Branch<'a, 'tcx>>,
+    visited: HashSet<mir::BasicBlock>,
     events: Vec<mir::Location>,
+}
+
+pub(super) struct Branch<'a, 'tcx> {
+    pub location: mir::Location,
+    pub discriminator: &'a mir::Operand<'tcx>,
+    pub target: mir::BasicBlock,
+    pub outcome: Outcome,
 }
 
 impl<'a, 'tcx> std::ops::Deref for Flow<'a, 'tcx> {
@@ -65,6 +74,31 @@ pub(super) fn read<'a, 'tcx>(body: &'a mir::Body<'tcx>) -> Result<Flow<'a, 'tcx>
 }
 
 pub(super) fn trace<'a, 'tcx>(body: &'a mir::Body<'tcx>) -> Result<Trace<'a, 'tcx>> {
+    let trace = inventory(body, None)?;
+    if trace.visited.len() != body.basic_blocks.len() {
+        return Err(Error::ControlFlow);
+    }
+    Ok(trace)
+}
+
+pub(super) fn split<'a, 'tcx>(body: &'a mir::Body<'tcx>) -> Result<[Trace<'a, 'tcx>; 2]> {
+    let no = inventory(body, Some(Outcome::False))?;
+    let yes = inventory(body, Some(Outcome::True))?;
+    let a = no.branch.as_ref().ok_or(Error::ControlFlow)?;
+    let b = yes.branch.as_ref().ok_or(Error::ControlFlow)?;
+    if a.location != b.location
+        || a.target == b.target
+        || no.visited.union(&yes.visited).count() != body.basic_blocks.len()
+    {
+        return Err(Error::ControlFlow);
+    }
+    Ok([no, yes])
+}
+
+fn inventory<'a, 'tcx>(
+    body: &'a mir::Body<'tcx>,
+    choice: Option<Outcome>,
+) -> Result<Trace<'a, 'tcx>> {
     if body.basic_blocks.len() > 512 || body.local_decls.len() > 1024 {
         return Err(Error::Budget);
     }
@@ -73,6 +107,7 @@ pub(super) fn trace<'a, 'tcx>(body: &'a mir::Body<'tcx>) -> Result<Trace<'a, 'tc
     let mut events = Vec::new();
     let mut calls = Vec::new();
     let mut drops = Vec::new();
+    let mut branch = None;
     let mut block = mir::START_BLOCK;
     let returning = loop {
         if !visited.insert(block) {
@@ -111,6 +146,23 @@ pub(super) fn trace<'a, 'tcx>(body: &'a mir::Body<'tcx>) -> Result<Trace<'a, 'tc
         };
         events.push(location);
         match &data.terminator().kind {
+            TerminatorKind::SwitchInt { discr, targets } => {
+                let outcome = choice.ok_or(Error::ControlFlow)?;
+                if branch.is_some()
+                    || targets.all_targets().len() != 2
+                    || targets.target_for_value(0) == targets.target_for_value(1)
+                {
+                    return Err(Error::ControlFlow);
+                }
+                let target = targets.target_for_value(outcome.value());
+                branch = Some(Branch {
+                    location,
+                    discriminator: discr,
+                    target,
+                    outcome,
+                });
+                block = target;
+            }
             TerminatorKind::Goto { target } => block = *target,
             kind @ TerminatorKind::Call {
                 target: Some(target),
@@ -134,14 +186,13 @@ pub(super) fn trace<'a, 'tcx>(body: &'a mir::Body<'tcx>) -> Result<Trace<'a, 'tc
             _ => return Err(Error::ControlFlow),
         }
     };
-    if visited.len() != body.basic_blocks.len() {
-        return Err(Error::ControlFlow);
-    }
     Ok(Trace {
         assignments,
         calls,
         drops,
         returning,
+        branch,
+        visited,
         events,
     })
 }

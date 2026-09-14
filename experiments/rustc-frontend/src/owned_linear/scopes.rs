@@ -105,7 +105,17 @@ pub(super) fn certify_exit<'tcx>(
     claims: ContainmentClaims,
     exit: exits::Exit<'tcx>,
 ) -> Result<ScopeFacts<'tcx>> {
-    let facts = walk(tcx, owner, claims, exit.mode())?;
+    certify_route(tcx, owner, claims, exit, exit.mode())
+}
+
+pub(super) fn certify_route<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    owner: LocalDefId,
+    claims: ContainmentClaims,
+    exit: exits::Exit<'tcx>,
+    mode: exits::Mode,
+) -> Result<ScopeFacts<'tcx>> {
+    let facts = walk(tcx, owner, claims, mode)?;
     if !facts.exit.same(exit) {
         return Err(Error::Scope);
     }

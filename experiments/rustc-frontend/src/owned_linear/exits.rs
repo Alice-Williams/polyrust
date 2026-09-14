@@ -6,6 +6,21 @@ use rustc_hir as hir;
 pub(super) enum Mode {
     Tail,
     Return,
+    Guarded(Outcome),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Outcome {
+    False,
+    True,
+}
+impl Outcome {
+    pub(super) fn value(self) -> u128 {
+        match self {
+            Self::False => 0,
+            Self::True => 1,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -57,7 +72,7 @@ pub(super) fn parts<'tcx>(
 ) -> Result<(&'tcx [hir::Stmt<'tcx>], End<'tcx>)> {
     let (statements, expression) = match (block.expr, mode) {
         (Some(expression), _) => (block.stmts, expression),
-        (None, Mode::Return) => {
+        (None, Mode::Return | Mode::Guarded(_)) => {
             let (last, prefix) = block.stmts.split_last().ok_or(Error::BodyShape)?;
             let hir::StmtKind::Semi(expression) = last.kind else {
                 return Err(Error::BodyShape);
@@ -67,8 +82,18 @@ pub(super) fn parts<'tcx>(
         _ => return Err(Error::BodyShape),
     };
     let end = match (expression.kind, mode) {
+        (hir::ExprKind::If(_, yes, Some(no)), Mode::Guarded(outcome)) => {
+            let arm = match outcome {
+                Outcome::False => no,
+                Outcome::True => yes,
+            };
+            let hir::ExprKind::Block(child, None) = arm.kind else {
+                return Err(Error::BodyShape);
+            };
+            End::Nested(child)
+        }
         (hir::ExprKind::Block(child, None), _) if block.expr.is_some() => End::Nested(child),
-        (hir::ExprKind::Ret(Some(value)), Mode::Return) => {
+        (hir::ExprKind::Ret(Some(value)), Mode::Return | Mode::Guarded(_)) => {
             End::Exit(Exit::Return { expression, value })
         }
         (_, Mode::Tail) => End::Exit(Exit::Tail(expression)),

@@ -6,7 +6,7 @@ use super::super::{
 use crate::owned_source::BoxConstructionInput;
 use rustc_abi::ExternAbi;
 use rustc_hir::{self as hir, HirId, def::DefKind, def_id::LocalDefId};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{Ty, TyCtxt};
 use std::collections::HashSet;
 
 pub(super) struct Chain<'tcx> {
@@ -16,6 +16,7 @@ pub(super) struct Chain<'tcx> {
 }
 pub(super) struct Plan<'tcx> {
     pub parameters: Vec<HirId>,
+    pub argument_types: Vec<Ty<'tcx>>,
     pub chains: Vec<Chain<'tcx>>,
     pub scopes: scopes::ScopeFacts<'tcx>,
     pub read: HirId,
@@ -27,6 +28,14 @@ pub(super) fn read(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<Plan<'_>> {
 pub(super) fn read_return(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<Plan<'_>> {
     read_shape(tcx, owner, exits::Mode::Return)
 }
+pub(super) fn read_guarded(
+    tcx: TyCtxt<'_>,
+    owner: LocalDefId,
+    outcome: exits::Outcome,
+) -> Result<Plan<'_>> {
+    super::guarded::source::read(tcx, owner)?;
+    read_shape(tcx, owner, exits::Mode::Guarded(outcome))
+}
 fn read_shape(tcx: TyCtxt<'_>, owner: LocalDefId, mode: exits::Mode) -> Result<Plan<'_>> {
     if tcx.def_kind(owner) != DefKind::Fn || tcx.generics_of(owner).count() != 0 {
         return Err(Error::Signature);
@@ -37,7 +46,10 @@ fn read_shape(tcx: TyCtxt<'_>, owner: LocalDefId, mode: exits::Mode) -> Result<P
         || signature.c_variadic()
         || signature.inputs().is_empty()
         || signature.inputs().len() > 128
-        || signature.inputs().iter().any(|ty| *ty != tcx.types.i32)
+        || signature.inputs().iter().any(|ty| {
+            *ty != tcx.types.i32
+                && !(matches!(mode, exits::Mode::Guarded(_)) && *ty == tcx.types.bool)
+        })
         || signature.output() != tcx.types.i32
     {
         return Err(Error::Signature);
@@ -151,19 +163,20 @@ fn read_shape(tcx: TyCtxt<'_>, owner: LocalDefId, mode: exits::Mode) -> Result<P
     {
         return Err(Error::Read);
     }
+    let claims = scopes::ContainmentClaims {
+        blocks,
+        bindings,
+        read: block.hir_id,
+    };
+    let scopes = match mode {
+        exits::Mode::Guarded(_) => scopes::certify_route(tcx, owner, claims, exit, mode)?,
+        _ => scopes::certify_exit(tcx, owner, claims, exit)?,
+    };
     Ok(Plan {
         parameters,
+        argument_types: signature.inputs().to_vec(),
         chains,
         read,
-        scopes: scopes::certify_exit(
-            tcx,
-            owner,
-            scopes::ContainmentClaims {
-                blocks,
-                bindings,
-                read: block.hir_id,
-            },
-            exit,
-        )?,
+        scopes,
     })
 }

@@ -26,6 +26,10 @@ using distinct scalar parameter identities as construction anchors.
 then retains canonical return expressions and their authenticated cleanup/return
 locations. Conditional early exits remain a later, separate increment.
 
+[M35-02B-03D — Guard-authenticated owned exits](M35-02B-03D-guarded-owned-exits.md)
+introduces one Boolean condition and two complete explicit-return paths before
+conditional moves or compiler drop flags are admitted.
+
 - Map every admitted structured exit and owned operation unambiguously to the
   compiler's corresponding places/drop obligations; unsupported shapes diagnose.
 - Distinct same-type owners, branch guards, field projections and lexical

@@ -39,6 +39,58 @@ pub(super) fn argument_source<'tcx>(
     parameters: &[mir::Local],
     used: &mut HashSet<mir::Location>,
 ) -> Result<mir::Local> {
+    parameter_source(
+        tcx,
+        body,
+        flow,
+        operand,
+        location,
+        Parameters {
+            locals: parameters,
+            ty: tcx.types.i32,
+        },
+        used,
+    )
+}
+
+pub(super) fn boolean_parameter<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mir::Body<'tcx>,
+    flow: &Trace<'_, 'tcx>,
+    operand: &Operand<'tcx>,
+    location: mir::Location,
+    parameter: mir::Local,
+    used: &mut HashSet<mir::Location>,
+) -> Result<()> {
+    parameter_source(
+        tcx,
+        body,
+        flow,
+        operand,
+        location,
+        Parameters {
+            locals: &[parameter],
+            ty: tcx.types.bool,
+        },
+        used,
+    )?;
+    Ok(())
+}
+
+struct Parameters<'a, 'tcx> {
+    locals: &'a [mir::Local],
+    ty: ty::Ty<'tcx>,
+}
+
+fn parameter_source<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mir::Body<'tcx>,
+    flow: &Trace<'_, 'tcx>,
+    operand: &Operand<'tcx>,
+    location: mir::Location,
+    parameters: Parameters<'_, 'tcx>,
+    used: &mut HashSet<mir::Location>,
+) -> Result<mir::Local> {
     let mut operand = operand;
     let mut use_location = location;
     let mut seen = HashSet::new();
@@ -46,10 +98,10 @@ pub(super) fn argument_source<'tcx>(
         let (Operand::Copy(place) | Operand::Move(place)) = operand else {
             return Err(Error::Argument);
         };
-        if !place.projection.is_empty() || place.ty(&body.local_decls, tcx).ty != tcx.types.i32 {
+        if !place.projection.is_empty() || place.ty(&body.local_decls, tcx).ty != parameters.ty {
             return Err(Error::Argument);
         }
-        if parameters.contains(&place.local) {
+        if parameters.locals.contains(&place.local) {
             if flow
                 .assignments
                 .iter()

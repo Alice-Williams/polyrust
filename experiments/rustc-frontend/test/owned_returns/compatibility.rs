@@ -30,9 +30,15 @@ impl Mapping for Observe {
         Ok(input.constructor())
     }
 }
-pub(super) fn mapping<'tcx>(mut tcx: TyCtxt<'tcx>, body: MultipleOwnedBody<'tcx>) {
+pub(super) fn mapping<'tcx>(tcx: TyCtxt<'tcx>, body: MultipleOwnedBody<'tcx>) {
+    chains(tcx, body.into_chains());
+}
+pub(super) fn chains<'tcx>(
+    mut tcx: TyCtxt<'tcx>,
+    chains: Vec<crate::owned_linear::multiple::ChainEvidence<'tcx>>,
+) {
     let binding = Builder::new().construction(Observe).build();
-    for chain in body.into_chains() {
+    for chain in chains {
         assert_eq!(
             binding
                 .mapping()
