@@ -43,5 +43,9 @@ containing another record that owns Boxes. Existing flat readers stay closed.
 
 L-01 is complete: the five-body pinned observation inventory and three invalid
 Rust/fourteen valid-source controls passed all 488 isolated tests and a fresh
-clean review after six assertion/oracle repairs. L-02 and L-03 remain planned;
-the observation does not close this parent or admit nested records to C/Java.
+clean review after six assertion/oracle repairs. L-02 is complete: private
+typed construction/layout inputs, six executable mapping slots, nine admitted
+and twenty-six rejected operations, eleven exact API-negative tests and a
+fresh clean review after four proof/contract repairs. The full isolated gate
+passes 501 tests. L-03 remains planned; neither checkpoint closes this parent
+or admits nested body translation to C/Java.

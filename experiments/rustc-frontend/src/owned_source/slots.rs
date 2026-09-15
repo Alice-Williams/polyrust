@@ -1,92 +1,101 @@
 //! Consuming registration with the shared executable capability traits.
 use super::{
     OwnedBoxConstruction, boxed_record::OwnedScalarRecordBoxConstruction, cloning::OwnedBoxClone,
-    local_call::OwnedLocalCall, record::OwnedRecordConstruction,
+    local_call::OwnedLocalCall, nested_record::OwnedNestedRecordConstruction,
+    record::OwnedRecordConstruction,
 };
 use crate::source_capabilities::{Mapping, Supports};
 
 pub(crate) struct Missing;
-pub(crate) struct Builder<M = Missing, R = Missing, P = Missing, F = Missing, C = Missing>(
+pub(crate) struct Builder<
+    M = Missing,
+    R = Missing,
+    P = Missing,
+    F = Missing,
+    C = Missing,
+    N = Missing,
+>(M, R, P, F, C, N);
+pub(crate) struct Bindings<M, R = Missing, P = Missing, F = Missing, C = Missing, N = Missing>(
     M,
     R,
     P,
     F,
     C,
+    N,
 );
-pub(crate) struct Bindings<M, R = Missing, P = Missing, F = Missing, C = Missing>(M, R, P, F, C);
 
 impl Builder {
     pub(crate) fn new() -> Self {
-        Self(Missing, Missing, Missing, Missing, Missing)
+        Self(Missing, Missing, Missing, Missing, Missing, Missing)
     }
 }
-impl<R, P, F, C> Builder<Missing, R, P, F, C> {
+impl<R, P, F, C, N> Builder<Missing, R, P, F, C, N> {
     pub(crate) fn construction<M: Mapping<Capability = OwnedBoxConstruction>>(
         self,
         mapping: M,
-    ) -> Builder<M, R, P, F, C> {
-        Builder(mapping, self.1, self.2, self.3, self.4)
+    ) -> Builder<M, R, P, F, C, N> {
+        Builder(mapping, self.1, self.2, self.3, self.4, self.5)
     }
 }
-impl<M, P, F, C> Builder<M, Missing, P, F, C> {
+impl<M, P, F, C, N> Builder<M, Missing, P, F, C, N> {
     // Record registration is optional for Box-only proof consumers.
     #[allow(dead_code)]
     pub(crate) fn record_construction<R: Mapping<Capability = OwnedRecordConstruction>>(
         self,
         mapping: R,
-    ) -> Builder<M, R, P, F, C> {
-        Builder(self.0, mapping, self.2, self.3, self.4)
+    ) -> Builder<M, R, P, F, C, N> {
+        Builder(self.0, mapping, self.2, self.3, self.4, self.5)
     }
 }
-impl<M, R, F, C> Builder<M, R, Missing, F, C> {
+impl<M, R, F, C, N> Builder<M, R, Missing, F, C, N> {
     #[allow(dead_code)]
     pub(crate) fn scalar_record_box<P: Mapping<Capability = OwnedScalarRecordBoxConstruction>>(
         self,
         mapping: P,
-    ) -> Builder<M, R, P, F, C> {
-        Builder(self.0, self.1, mapping, self.3, self.4)
+    ) -> Builder<M, R, P, F, C, N> {
+        Builder(self.0, self.1, mapping, self.3, self.4, self.5)
     }
 }
-impl<M, R, P, C> Builder<M, R, P, Missing, C> {
+impl<M, R, P, C, N> Builder<M, R, P, Missing, C, N> {
     #[allow(dead_code)]
     pub(crate) fn local_call<F: Mapping<Capability = OwnedLocalCall>>(
         self,
         mapping: F,
-    ) -> Builder<M, R, P, F, C> {
-        Builder(self.0, self.1, self.2, mapping, self.4)
+    ) -> Builder<M, R, P, F, C, N> {
+        Builder(self.0, self.1, self.2, mapping, self.4, self.5)
     }
 }
-impl<M: Mapping<Capability = OwnedBoxConstruction>, R, P, F, C> Builder<M, R, P, F, C> {
-    pub(crate) fn build(self) -> Bindings<M, R, P, F, C> {
-        Bindings(self.0, self.1, self.2, self.3, self.4)
+impl<M: Mapping<Capability = OwnedBoxConstruction>, R, P, F, C, N> Builder<M, R, P, F, C, N> {
+    pub(crate) fn build(self) -> Bindings<M, R, P, F, C, N> {
+        Bindings(self.0, self.1, self.2, self.3, self.4, self.5)
     }
 }
-impl<M: Mapping<Capability = OwnedBoxConstruction>, R, P, F, C> Supports<OwnedBoxConstruction>
-    for Bindings<M, R, P, F, C>
+impl<M: Mapping<Capability = OwnedBoxConstruction>, R, P, F, C, N> Supports<OwnedBoxConstruction>
+    for Bindings<M, R, P, F, C, N>
 {
     type Mapping = M;
     fn mapping(&self) -> M {
         self.0
     }
 }
-impl<M, R: Mapping<Capability = OwnedRecordConstruction>, P, F, C> Supports<OwnedRecordConstruction>
-    for Bindings<M, R, P, F, C>
+impl<M, R: Mapping<Capability = OwnedRecordConstruction>, P, F, C, N>
+    Supports<OwnedRecordConstruction> for Bindings<M, R, P, F, C, N>
 {
     type Mapping = R;
     fn mapping(&self) -> R {
         self.1
     }
 }
-impl<M, R, P: Mapping<Capability = OwnedScalarRecordBoxConstruction>, F, C>
-    Supports<OwnedScalarRecordBoxConstruction> for Bindings<M, R, P, F, C>
+impl<M, R, P: Mapping<Capability = OwnedScalarRecordBoxConstruction>, F, C, N>
+    Supports<OwnedScalarRecordBoxConstruction> for Bindings<M, R, P, F, C, N>
 {
     type Mapping = P;
     fn mapping(&self) -> P {
         self.2
     }
 }
-impl<M, R, P, F: Mapping<Capability = OwnedLocalCall>, C> Supports<OwnedLocalCall>
-    for Bindings<M, R, P, F, C>
+impl<M, R, P, F: Mapping<Capability = OwnedLocalCall>, C, N> Supports<OwnedLocalCall>
+    for Bindings<M, R, P, F, C, N>
 {
     type Mapping = F;
     fn mapping(&self) -> F {
@@ -94,20 +103,38 @@ impl<M, R, P, F: Mapping<Capability = OwnedLocalCall>, C> Supports<OwnedLocalCal
     }
 }
 
-impl<M, R, P, F> Builder<M, R, P, F, Missing> {
+impl<M, R, P, F, N> Builder<M, R, P, F, Missing, N> {
     #[allow(dead_code)]
     pub(crate) fn box_clone<C: Mapping<Capability = OwnedBoxClone>>(
         self,
         mapping: C,
-    ) -> Builder<M, R, P, F, C> {
-        Builder(self.0, self.1, self.2, self.3, mapping)
+    ) -> Builder<M, R, P, F, C, N> {
+        Builder(self.0, self.1, self.2, self.3, mapping, self.5)
     }
 }
-impl<M, R, P, F, C: Mapping<Capability = OwnedBoxClone>> Supports<OwnedBoxClone>
-    for Bindings<M, R, P, F, C>
+impl<M, R, P, F, C: Mapping<Capability = OwnedBoxClone>, N> Supports<OwnedBoxClone>
+    for Bindings<M, R, P, F, C, N>
 {
     type Mapping = C;
     fn mapping(&self) -> C {
         self.4
+    }
+}
+
+impl<M, R, P, F, C> Builder<M, R, P, F, C, Missing> {
+    #[allow(dead_code)]
+    pub(crate) fn nested_record<N: Mapping<Capability = OwnedNestedRecordConstruction>>(
+        self,
+        mapping: N,
+    ) -> Builder<M, R, P, F, C, N> {
+        Builder(self.0, self.1, self.2, self.3, self.4, mapping)
+    }
+}
+impl<M, R, P, F, C, N: Mapping<Capability = OwnedNestedRecordConstruction>>
+    Supports<OwnedNestedRecordConstruction> for Bindings<M, R, P, F, C, N>
+{
+    type Mapping = N;
+    fn mapping(&self) -> N {
+        self.5
     }
 }

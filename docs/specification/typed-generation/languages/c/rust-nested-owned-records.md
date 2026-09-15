@@ -1,6 +1,6 @@
 # Nested owned record evidence
 
-- Status: observation and admission plan; nested input is not yet supported
+- Status: observations and operation identity implemented; body admission planned
 - Plan: [M35-02B-03L](../../../../plan/tasks/M35-02B-03L-nested-owned-records.md)
 - Existing flat boundary: [owned record fields](rust-owned-record-fields.md)
 
@@ -23,8 +23,9 @@ declaration order, skipping moved leaves, at the containing binding's exit.
 ## Staged architecture
 
 L-01 asserts observed representation only. It produces no checked nested
-capability, target package or ownership certificate. L-02 will specify bounded
-private operation inputs and executable bindings; L-03 will require complete
+capability, target package or ownership certificate. L-02 implements bounded
+private [operation inputs](rust-nested-construction.md) and executable bindings;
+L-03 will require complete
 canonical source/normal-MIR correspondence before returning body evidence.
 
 Retain source initializer order, staging operations, aggregate declaration
@@ -60,5 +61,7 @@ for the next capability design, not a safe general nested-body matcher.
 L-01 is complete with exact constructor identity, one actual nominal pair,
 local nongeneric named-field records and immutable binding assertions. Its
 three invalid Rust and fourteen valid-source controls, full 488-test gate and
-fresh clean review are documented in the task. Operation and body admission
-remain the separate L-02/L-03 work.
+fresh clean review are documented in the task. L-02 is also complete, with
+private bounded layouts/canonical constructors and a 501-test full gate plus
+clean review after four proof/contract repairs. Complete body admission remains
+the separate L-03 work; no C/Java heap output is enabled by these checkpoints.
