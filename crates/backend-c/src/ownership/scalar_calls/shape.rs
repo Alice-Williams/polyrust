@@ -109,6 +109,16 @@ pub(super) fn dependencies(
                 {
                     pending.push(Node::Value(operand));
                 }
+                CValueKind::Unary {
+                    operator: CUnaryOperator::BitNot,
+                    operand,
+                } if matches!(
+                    operand.ty().kind(),
+                    CObjectTypeKind::Scalar(CScalarType::I32 | CScalarType::I64)
+                ) =>
+                {
+                    pending.push(Node::Value(operand));
+                }
                 CValueKind::Convert {
                     conversion: CConversion::Numeric(_) | CConversion::AddConst(_),
                     operand,

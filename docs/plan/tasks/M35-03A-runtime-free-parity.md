@@ -43,7 +43,9 @@ gated. M35-03A-02A adds reviewed, native-tested built-in bool negation through
 both new target paths. M35-03A-02B adds built-in lazy bool and/or with native
 evaluation-order traces and scoped AST probes. M35-03A-02C adds exact i64 values,
 comparisons and mixed-width signatures with native call-order and admission
-controls. Implementation parity remains incomplete: arithmetic, floating-point,
+controls. M35-03A-02D adds built-in i32/i64 complement and bitwise and/or/xor,
+with independent native oracles, call-order mutations and typed AST probes.
+Implementation parity remains incomplete: arithmetic, floating-point,
 char/unit values and the other capability families remain outstanding.
 
 Legacy C embeds runtime.c/runtime.h and always requests runtime.core. Its

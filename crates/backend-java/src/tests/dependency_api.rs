@@ -184,22 +184,45 @@ fn boolean_negation_is_a_closed_dependency_expression() {
 }
 
 #[test]
-fn unrelated_unary_operators_remain_unadmitted() {
-    for operator in [JavaUnaryOperator::Negate, JavaUnaryOperator::BitNot] {
+fn arithmetic_negation_remains_outside_dependency_admission() {
+    let operator = JavaUnaryOperator::Negate;
+    let mut fixture = functions(42);
+    fixture[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
+        ty: int(),
+        precedence: JavaPrecedence::Unary,
+        kind: JavaExprKind::Unary {
+            operator,
+            operand: Box::new(JavaExpr::literal(int(), JavaLiteral::I32(42))),
+        },
+    }))]);
+    assert!(
+        JavaDependencyApi::from_certificate(certify(package(7, fixture)))
+            .unwrap_err()
+            .contains("unadmitted expression")
+    );
+}
+
+#[test]
+fn integer_complement_has_full_dependency_certificates_for_both_widths() {
+    for (ty, literal) in [
+        (int(), JavaLiteral::I32(i32::MIN)),
+        (
+            JavaType::primitive(JavaPrimitive::Long),
+            JavaLiteral::I64(i64::MIN),
+        ),
+    ] {
         let mut fixture = functions(42);
+        fixture[0].result = ty.clone();
         fixture[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
-            ty: int(),
+            ty: ty.clone(),
             precedence: JavaPrecedence::Unary,
             kind: JavaExprKind::Unary {
-                operator,
-                operand: Box::new(JavaExpr::literal(int(), JavaLiteral::I32(42))),
+                operator: JavaUnaryOperator::BitNot,
+                operand: Box::new(JavaExpr::literal(ty.clone(), literal)),
             },
         }))]);
-        assert!(
-            JavaDependencyApi::from_certificate(certify(package(7, fixture)))
-                .unwrap_err()
-                .contains("unadmitted expression")
-        );
+        let api = JavaDependencyApi::from_certificate(certify(package(7, fixture))).unwrap();
+        assert_eq!(api.function(id(7, 10)).unwrap().signature().result, ty);
     }
 }
 

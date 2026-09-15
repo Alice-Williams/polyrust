@@ -151,6 +151,30 @@ impl Reader<'_> {
             {
                 self.expression(operand, depth + 1)?;
             }
+            JavaExprKind::Unary {
+                operator: JavaUnaryOperator::BitNot,
+                operand,
+            } if matches!(
+                value.ty,
+                JavaType::Primitive(JavaPrimitive::Int | JavaPrimitive::Long)
+            ) && operand.ty == value.ty =>
+            {
+                self.expression(operand, depth + 1)?;
+            }
+            JavaExprKind::Binary {
+                operator:
+                    JavaBinaryOperator::BitAnd | JavaBinaryOperator::BitOr | JavaBinaryOperator::BitXor,
+                left,
+                right,
+            } if matches!(
+                value.ty,
+                JavaType::Primitive(JavaPrimitive::Int | JavaPrimitive::Long)
+            ) && left.ty == value.ty
+                && right.ty == value.ty =>
+            {
+                self.expression(left, depth + 1)?;
+                self.expression(right, depth + 1)?;
+            }
             JavaExprKind::Binary {
                 operator,
                 left,
@@ -309,3 +333,7 @@ mod tests;
 #[cfg(test)]
 #[path = "../../tests/dependency_i64_bodies.rs"]
 mod i64_tests;
+
+#[cfg(test)]
+#[path = "../../tests/dependency_bitwise_bodies.rs"]
+mod bitwise_tests;

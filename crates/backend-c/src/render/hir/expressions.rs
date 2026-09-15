@@ -54,6 +54,10 @@ impl Writer<'_> {
                 operator: CUnaryOperator::LogicalNot,
                 operand,
             } => format!("(!{})", self.value(operand)),
+            CValueKind::Unary {
+                operator: CUnaryOperator::BitNot,
+                operand,
+            } => format!("(~{})", self.value(operand)),
             CValueKind::Binary {
                 operator,
                 left,
@@ -66,6 +70,9 @@ impl Writer<'_> {
                     CBinaryOperator::LessEqual => "<=",
                     CBinaryOperator::Greater => ">",
                     CBinaryOperator::GreaterEqual => ">=",
+                    CBinaryOperator::BitAnd => "&",
+                    CBinaryOperator::BitOr => "|",
+                    CBinaryOperator::BitXor => "^",
                     _ => unreachable!("checked operator profile"),
                 };
                 format!("({} {op} {})", self.value(left), self.value(right))

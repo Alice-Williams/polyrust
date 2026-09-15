@@ -42,7 +42,7 @@ impl ScalarCalls {
     ) -> Result<Self, crate::ast::CRegistryError> {
         let mut seeds = BTreeSet::new();
         for (function, _) in registry.imported_functions() {
-            // Public i32/bool witnesses were issued only after the owning
+            // Public admitted-scalar witnesses were issued only after the owning
             // package's actual closed scalar-call proof and certification.
             registry.imported_function(function)?;
             seeds.insert(function.clone());

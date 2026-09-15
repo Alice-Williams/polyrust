@@ -1,4 +1,8 @@
 //! Independent negative controls for the new executable slot and checked input.
+#[cfg(boolean_c)]
+use super::CIntegerBitwise as Bits;
+#[cfg(boolean_java)]
+use super::JavaIntegerBitwise as Bits;
 use super::*;
 #[cfg(boolean_c)]
 use super::{
@@ -38,6 +42,7 @@ fn missing() {
         .direct_calls(Calls)
         .function_signatures(Functions)
         .short_circuit_booleans(Lazy)
+        .integer_bitwise(Bits)
         .build();
 }
 

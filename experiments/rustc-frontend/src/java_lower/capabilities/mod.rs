@@ -3,6 +3,7 @@ mod boolean_negation;
 mod direct_calls;
 mod entry_signatures;
 mod function_signatures;
+mod integer_bitwise;
 mod lexical_control;
 mod literal_values;
 mod object_types;
@@ -12,6 +13,15 @@ mod scalar_comparisons;
 mod shared_borrows;
 mod short_circuit_booleans;
 mod slots;
+
+#[cfg(bitwise_ast_probe)]
+#[path = "../../../test/bitwise_java_ast.rs"]
+mod bitwise_ast;
+
+#[cfg(bitwise_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/bitwise_contract.rs"]
+mod bitwise_contract;
 
 #[cfg(literal_private_input)]
 #[path = "../../../test/literal_private_input.rs"]
@@ -53,6 +63,7 @@ pub(crate) use boolean_negation::JavaBooleanNegation;
 pub(crate) use direct_calls::JavaDirectCalls;
 pub(crate) use entry_signatures::JavaEntrySignatures;
 pub(crate) use function_signatures::JavaFunctionSignatures;
+pub(crate) use integer_bitwise::JavaIntegerBitwise;
 pub(crate) use lexical_control::JavaLexicalControl;
 pub(crate) use literal_values::JavaLiteralValues;
 pub(crate) use object_types::JavaObjectTypes;
@@ -76,6 +87,7 @@ pub(crate) type JavaBindings = Bindings<
     JavaFunctionSignatures,
     JavaBooleanNegation,
     JavaShortCircuitBooleans,
+    JavaIntegerBitwise,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -92,5 +104,6 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .function_signatures(JavaFunctionSignatures)
         .boolean_negation(JavaBooleanNegation)
         .short_circuit_booleans(JavaShortCircuitBooleans)
+        .integer_bitwise(JavaIntegerBitwise)
         .build()
 }

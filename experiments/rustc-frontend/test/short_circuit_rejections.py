@@ -14,7 +14,7 @@ def main():
         "right_block": ("if (value > 0) && { value < 10 } { 1 } else { 0 }", "expression mapping is not implemented"),
         "left_block": ("if { value > 0 } || (value < 10) { 1 } else { 0 }", "expression mapping is not implemented"),
         "mutable": ("let mut flag = value > 0; flag = !flag; if flag && true { 1 } else { 0 }", "only plain immutable bindings are implemented"),
-        "bitwise": ("if (value > 0) && ((value > 1) ^ (value < 10)) { 1 } else { 0 }", "only comparison binary operators are implemented"),
+        "bitwise": ("if (value > 0) && ((value > 1) ^ (value < 10)) { 1 } else { 0 }", "integer bitwise requires an unadjusted built-in"),
     }
     for label, (body, diagnostic) in cases.items():
         source = root / (label + ".rs")

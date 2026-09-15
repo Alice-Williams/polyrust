@@ -16,11 +16,10 @@ def main():
     work.mkdir()
     negation = "Boolean negation requires an unadjusted built-in bool operand"
     cases = {
-        "integer": ("if !value == 0 { 1 } else { 0 }", negation),
-        "integer_reference": ("let reference = &value; if !reference == 0 { 1 } else { 0 }", negation),
+        "integer_reference": ("let reference = &value; if !reference == 0 { 1 } else { 0 }", "integer bitwise requires an unadjusted built-in"),
         "bool_reference": ("let flag = value > 0; let reference = &flag; if !reference { 1 } else { 0 }", negation),
-        "bitand": ("if (value > 0) & (value < 10) { 1 } else { 0 }", "only comparison binary operators are implemented"),
-        "bitor": ("if (value > 0) | (value < 10) { 1 } else { 0 }", "only comparison binary operators are implemented"),
+        "bitand": ("if (value > 0) & (value < 10) { 1 } else { 0 }", "integer bitwise requires an unadjusted built-in"),
+        "bitor": ("if (value > 0) | (value < 10) { 1 } else { 0 }", "integer bitwise requires an unadjusted built-in"),
         "integer_condition": ("if !value { 1 } else { 0 }", "error[E0308]"),
         "float": ("if !1.0 { value } else { 0 }", "error[E0600]"),
     }
@@ -56,7 +55,7 @@ def main():
         output = directory / filename
         result = invoke([adapter, fixture, output])
         assert result.returncode == 0 and output.is_file(), (language, result.stderr)
-    print("Eight invalid/unsupported cases x two targets x absent/existing output reject; both valid controls publish")
+    print("Seven invalid/unsupported cases x two targets x absent/existing output reject; both valid controls publish; integer complement is covered by bitwise native tests")
 
 
 if __name__ == "__main__":

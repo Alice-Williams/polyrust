@@ -1,6 +1,9 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_clippy_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load(":bitwise_ast_targets.bzl", "bitwise_ast_targets")
+load(":bitwise_contract_targets.bzl", "bitwise_contract_targets")
+load(":bitwise_targets.bzl", "bitwise_targets")
 load(":boolean_negation_targets.bzl", "boolean_negation_contract_targets", "boolean_negation_native_targets")
 load(":box_clone_targets.bzl", "box_clone_targets")
 load(":boxed_record_flow_targets.bzl", "boxed_record_flow_targets")
@@ -94,6 +97,18 @@ boolean_negation_contract_targets(
 boolean_negation_native_targets(name = "boolean_negation_test")
 
 short_circuit_targets(name = "short_circuit_clippy_test")
+
+bitwise_targets(name = "bitwise_clippy_test")
+
+bitwise_ast_targets(
+    name = "bitwise_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+bitwise_contract_targets(
+    name = "bitwise_contract_test",
+    c_sources = ADAPTER_SOURCES,
+)
 
 i64_targets(
     name = "i64_clippy_test",

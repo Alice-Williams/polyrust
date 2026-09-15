@@ -3,6 +3,7 @@ mod boolean_negation;
 mod direct_calls;
 mod entry_signatures;
 mod function_signatures;
+mod integer_bitwise;
 mod lexical_control;
 mod literal_values;
 mod object_types;
@@ -12,6 +13,15 @@ mod scalar_comparisons;
 mod shared_borrows;
 mod short_circuit_booleans;
 mod slots;
+
+#[cfg(bitwise_ast_probe)]
+#[path = "../../../test/bitwise_c_ast.rs"]
+mod bitwise_ast;
+
+#[cfg(bitwise_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/bitwise_contract.rs"]
+mod bitwise_contract;
 
 #[cfg(literal_private_input)]
 #[path = "../../../test/literal_private_input.rs"]
@@ -62,6 +72,7 @@ pub(crate) use boolean_negation::CBooleanNegation;
 pub(crate) use direct_calls::CDirectCalls;
 pub(crate) use entry_signatures::CEntrySignatures;
 pub(crate) use function_signatures::CFunctionSignatures;
+pub(crate) use integer_bitwise::CIntegerBitwise;
 pub(crate) use lexical_control::CLexicalControl;
 pub(crate) use literal_values::CLiteralValues;
 pub(crate) use object_types::CObjectTypes;
@@ -87,6 +98,7 @@ pub(crate) type CBindings = Bindings<
     CFunctionSignatures,
     CBooleanNegation,
     CShortCircuitBooleans,
+    CIntegerBitwise,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -103,5 +115,6 @@ pub(crate) fn c_bindings() -> CBindings {
         .function_signatures(CFunctionSignatures)
         .boolean_negation(CBooleanNegation)
         .short_circuit_booleans(CShortCircuitBooleans)
+        .integer_bitwise(CIntegerBitwise)
         .build()
 }

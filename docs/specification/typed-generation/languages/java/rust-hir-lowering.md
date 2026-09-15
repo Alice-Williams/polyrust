@@ -40,6 +40,7 @@ continues to support its existing parameter lists.
 | Built-in field access/dereference | Resolve the actual compiler field/adjustment through that representation plan |
 | Scalar comparison | Java primitive comparison with Boolean result; no reference-identity equality substitution |
 | Built-in bool lazy and/or | Initialized private bool temporary and typed If/Assign; right prelude remains branch-local |
+| Built-in i32/i64 complement/and/or/xor | Exact int/long unary/binary nodes and precedence enums; eager operands materialized left to right |
 | Tail block and if/else | Structured Java scopes, branches and returns |
 | Resolved documentation attributes | Escaped documentation attached to the corresponding Java declaration |
 
@@ -85,7 +86,12 @@ the exact signed minimum, and source-size/classfile checks include their real
 representation. Other integer widths, arithmetic, casts and mutable integer
 locals are not enabled by this representation extension.
 
-Literal, comparison, Boolean-negation, short-circuit Boolean, borrow, call and record-initializer mappings produce planned
+The [integer bitwise extension](../../rust-integer-bitwise.md) registers
+IntegerBitwise with exact int/long unary/binary AST nodes and precedence enums.
+The dependency gate and source reservation traverse these operations explicitly.
+No support class or runtime helper is introduced.
+
+Literal, comparison, Boolean-negation, short-circuit Boolean, integer-bitwise, borrow, call and record-initializer mappings produce planned
 Java values. ObjectTypes produces the representation plan; ResolvedPlaces produces
 a planned place; LexicalControl produces JavaBlock. EntrySignatures and
 FunctionSignatures produce JavaMethodSignature from compiler signatures. Every
@@ -247,7 +253,7 @@ source_admission, not a capability input contract or a concrete emitter.
    analysis. Concrete target keys and registrations remain backend-owned. All
    extraction budgets and declared doc/source input checks remain mandatory.
 2. Java adapter: java_lower owns representation choices and a consuming builder
-   with exact context/output bounds for each of the twelve admitted input
+   with exact context/output bounds for each of the thirteen admitted input
    categories. It emits existing Java types, not a new generic AST.
 3. Java target model: extend the existing JavaPackage with a typed Rust crate
    identity. Its package spelling and path derive from that identity. Preserve
@@ -303,7 +309,8 @@ limits, not a claim that every syntactically valid Java program is a dependency.
 Record constructors must consist solely of exact canonical field assignments;
 method bodies admit initialized final locals, initialized mutable bool locals
 and writes to those locals, returns, total conditionals, scalar comparisons,
-built-in Boolean Not, immutable record construction/reads and closed local calls.
+built-in Boolean Not, exact int/long complement/and/or/xor, immutable record
+construction/reads and closed local calls.
 Other mutation, general arithmetic, external/runtime calls and recursion do not acquire
 this proof merely by setting a pure signature flag.
 

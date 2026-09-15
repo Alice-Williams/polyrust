@@ -24,6 +24,10 @@ mod unit_bindings;
 mod vocabulary;
 
 #[cfg(test)]
+#[path = "../tests/shared_bitwise_admission.rs"]
+mod bitwise_tests;
+
+#[cfg(test)]
 #[path = "../tests/shared_dependency_fixture.rs"]
 mod dependency_fixture;
 #[cfg(test)]

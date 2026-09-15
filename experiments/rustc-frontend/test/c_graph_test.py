@@ -14,7 +14,7 @@ scratch.mkdir()
 crates = {}
 bundle_count = 0
 expected_imports = {"leaf": 0, "middle": 2, "root": 2, "right": 1, "diamond": 2,
-                    "aliases": 1, "arities": 2, "unused": 0, "versions": 2, "unary": 0}
+                    "aliases": 1, "arities": 2, "unused": 0, "versions": 2, "unary": 0, "integer_unary": 0}
 
 
 def add(key, text, dependencies=(), name=None):
@@ -181,7 +181,9 @@ reject(generic, "generic or mismatched direct callee identity")
 unary = add("unary", "pub fn invert(v: bool) -> bool { !v }\n")
 accept(unary)
 integer_unary = add("integer_unary", "pub fn invert(v: i32) -> i32 { !v }\n")
-reject(integer_unary, "Boolean negation requires an unadjusted built-in bool operand")
+accept(integer_unary)
+arithmetic_unary = add("arithmetic_unary", "pub fn invert(v: i32) -> i32 { -v }\n")
+reject(arithmetic_unary, "only negative integer literals")
 conditional_argument = add("conditional_argument",
     "pub fn identity(v: i32) -> i32 { dep::identity(if v < 0 { 0 } else { v }) }\n",
     [("dep", "leaf")])

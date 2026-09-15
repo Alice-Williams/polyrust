@@ -30,6 +30,15 @@ impl<'tcx> Reader<'tcx> {
                 reader.place(value)?.value()
             } else {
                 match value.kind {
+                    hir::ExprKind::Unary(hir::UnOp::Not, _)
+                        if !matches!(
+                            reader.checked.expr_ty(value).kind(),
+                            rustc_middle::ty::Bool
+                        ) =>
+                    {
+                        let input = BitwiseInput::read(reader.checked, value)?;
+                        Supports::<IntegerBitwise>::mapping(&reader.mappings).lower(reader, input)
+                    }
                     hir::ExprKind::Unary(hir::UnOp::Not, _) => {
                         let input = NegationInput::read(reader.checked, value)?;
                         Supports::<BooleanNegation>::mapping(&reader.mappings).lower(reader, input)
@@ -53,6 +62,15 @@ impl<'tcx> Reader<'tcx> {
                         let input = LazyBooleanInput::read(reader.checked, value)?;
                         Supports::<ShortCircuitBooleans>::mapping(&reader.mappings)
                             .lower(reader, input)
+                    }
+                    hir::ExprKind::Binary(operator, ..)
+                        if matches!(
+                            operator.node,
+                            hir::BinOpKind::BitAnd | hir::BinOpKind::BitOr | hir::BinOpKind::BitXor
+                        ) =>
+                    {
+                        let input = BitwiseInput::read(reader.checked, value)?;
+                        Supports::<IntegerBitwise>::mapping(&reader.mappings).lower(reader, input)
                     }
                     hir::ExprKind::Binary(..) => {
                         Supports::<ScalarComparisons>::mapping(&reader.mappings)

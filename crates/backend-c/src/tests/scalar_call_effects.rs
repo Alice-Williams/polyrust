@@ -24,25 +24,53 @@ fn builtin_bool_not_retains_body_derived_scalar_call_evidence() {
 }
 
 #[test]
-fn unrelated_unary_shapes_do_not_gain_scalar_call_evidence() {
+fn logical_not_on_integer_and_arithmetic_negation_remain_unadmitted() {
     let f = Fixture::new(&[0]);
     assert!(
         f.values()
             .unary(CUnaryOperator::LogicalNot, f.literal(1))
             .is_err()
     );
-    for operator in [CUnaryOperator::BitNot, CUnaryOperator::Negate] {
-        let f = Fixture::new(&[0, 0]);
-        let value = f.values().unary(operator, f.literal(1)).unwrap();
-        let value = f
-            .values()
-            .numeric_conversion(CScalarType::I32, value)
-            .unwrap();
+    let operator = CUnaryOperator::Negate;
+    let f = Fixture::new(&[0, 0]);
+    let value = f.values().unary(operator, f.literal(1)).unwrap();
+    let value = f
+        .values()
+        .numeric_conversion(CScalarType::I32, value)
+        .unwrap();
+    let source = f.source(vec![
+        f.returning(0, f.call(1, vec![])),
+        f.returning(1, value),
+    ]);
+    assert_eq!(accepted(&f, &source), vec![false, false]);
+}
+
+#[test]
+fn signed_bitwise_complement_retains_nested_transitive_call_evidence() {
+    for scalar in [CScalarType::I32, CScalarType::I64] {
+        let f = Fixture::with_result(&[vec![], vec![], vec![]], CObjectType::scalar(scalar));
+        let literal = if scalar == CScalarType::I32 {
+            CLiteral::Signed(CSignedLiteral::I32(1))
+        } else {
+            CLiteral::Signed(CSignedLiteral::I64(1))
+        };
+        let mut value = f.values().literal(literal).unwrap();
+        for _ in 0..2 {
+            value = f.values().unary(CUnaryOperator::BitNot, value).unwrap();
+            if scalar == CScalarType::I32 {
+                value = f
+                    .values()
+                    .numeric_conversion(CScalarType::I32, value)
+                    .unwrap();
+            }
+        }
         let source = f.source(vec![
             f.returning(0, f.call(1, vec![])),
-            f.returning(1, value),
+            f.returning(1, f.call(2, vec![])),
+            f.returning(2, value),
         ]);
-        assert_eq!(accepted(&f, &source), vec![false, false]);
+        assert_eq!(accepted(&f, &source), vec![true; 3], "{scalar:?}");
+        f.registry.check_storage_paths(&[source]).unwrap();
     }
 }
 

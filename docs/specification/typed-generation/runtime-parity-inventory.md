@@ -61,6 +61,19 @@ compile contracts and target dependency/platform/resource tests protect the
 typed boundary. This does not enable arithmetic, casts, foreign re-exports or
 heap shapes, and full_features remains empty.
 
+[M35-03A-02D](../../plan/tasks/M35-03A-02D-integer-bitwise.md) adds partial
+JavaIntegerBitwise coverage for built-in i32/i64 complement/and/or/xor.
+`bitwise_native_test` checks 176,384 exact results across real two-crate
+Rust/C/Java packages and independent integer truth, including each bit position,
+sign bits and alternating patterns. Native traces detect reordered calls even
+when results are unchanged; dropped-complement controls fail the value oracle.
+`bitwise_ast_test` inspects 28 mapped nodes per target and requires identical
+probe/production bytes. Fourteen compile-negative mapping contracts, 40 atomic
+source rejections, and C/Java target admission/purity/certificate tests protect
+the boundaries. Shifts, casts, arithmetic and heap shapes remain unsupported.
+The milestone's full release gate and review must pass before its completion;
+the whole runtime migration is still incomplete and full_features stays empty.
+
 Evidence anchors for the current subset are the executable registrations in
 `src/c_lower/capabilities/mod.rs` and `src/java_lower/capabilities/mod.rs`, their
 object/literal type mappings, and the crate native differential targets under

@@ -115,7 +115,27 @@ fn lazy_boolean<'tcx>(
         .map(|input| (input.operator(), input.left(), input.right()));
 }
 
+fn bitwise<'tcx>(
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+) {
+    let _ = BitwiseInput::read(checked, expression).map(|input| match input.operands() {
+        BitwiseOperands::Complement(operand) => operand,
+        BitwiseOperands::Binary(operator, left, right) => {
+            let _ = (operator, right);
+            left
+        }
+    });
+}
+
 fn main() {
+    let _ = [
+        BitwiseOperator::And,
+        BitwiseOperator::Or,
+        BitwiseOperator::Xor,
+    ];
+    capability::<IntegerBitwise>();
+    let _ = bitwise;
     let _ = [LazyBooleanOperator::And, LazyBooleanOperator::Or];
     capability::<BooleanNegation>();
     capability::<ShortCircuitBooleans>();

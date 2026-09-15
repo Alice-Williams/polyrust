@@ -1,7 +1,7 @@
 use super::{
     Builder, CBooleanNegation, CDirectCalls, CEntrySignatures, CFunctionSignatures,
-    CLexicalControl, CLiteralValues, CObjectTypes, CRecordInitializers, CResolvedPlaces,
-    CScalarComparisons, CSharedBorrows, CShortCircuitBooleans,
+    CIntegerBitwise, CLexicalControl, CLiteralValues, CObjectTypes, CRecordInitializers,
+    CResolvedPlaces, CScalarComparisons, CSharedBorrows, CShortCircuitBooleans,
 };
 
 #[allow(dead_code)]
@@ -18,6 +18,7 @@ fn must_not_compile() {
         .entry_signatures(CEntrySignatures)
         .direct_calls(CDirectCalls)
         .function_signatures(CFunctionSignatures)
+        .integer_bitwise(CIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -31,6 +32,7 @@ fn must_not_compile() {
         .entry_signatures(CEntrySignatures)
         .direct_calls(CDirectCalls)
         .function_signatures(CFunctionSignatures)
+        .integer_bitwise(CIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -44,6 +46,7 @@ fn must_not_compile() {
         .entry_signatures(CEntrySignatures)
         .direct_calls(CDirectCalls)
         .function_signatures(CFunctionSignatures)
+        .integer_bitwise(CIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -57,6 +60,7 @@ fn must_not_compile() {
         .entry_signatures(CEntrySignatures)
         .direct_calls(CDirectCalls)
         .function_signatures(CFunctionSignatures)
+        .integer_bitwise(CIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -70,6 +74,7 @@ fn must_not_compile() {
         .entry_signatures(CEntrySignatures)
         .direct_calls(CDirectCalls)
         .function_signatures(CFunctionSignatures)
+        .integer_bitwise(CIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -83,6 +88,7 @@ fn must_not_compile() {
         .entry_signatures(CEntrySignatures)
         .direct_calls(CDirectCalls)
         .function_signatures(CFunctionSignatures)
+        .integer_bitwise(CIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -96,6 +102,7 @@ fn must_not_compile() {
         .entry_signatures(CEntrySignatures)
         .direct_calls(CDirectCalls)
         .function_signatures(CFunctionSignatures)
+        .integer_bitwise(CIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -109,6 +116,7 @@ fn must_not_compile() {
         .lexical_control(CLexicalControl)
         .direct_calls(CDirectCalls)
         .function_signatures(CFunctionSignatures)
+        .integer_bitwise(CIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -122,6 +130,7 @@ fn must_not_compile() {
         .lexical_control(CLexicalControl)
         .entry_signatures(CEntrySignatures)
         .direct_calls(CDirectCalls)
+        .integer_bitwise(CIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -135,5 +144,6 @@ fn must_not_compile() {
         .lexical_control(CLexicalControl)
         .entry_signatures(CEntrySignatures)
         .function_signatures(CFunctionSignatures)
+        .integer_bitwise(CIntegerBitwise)
         .build();
 }

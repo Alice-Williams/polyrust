@@ -218,6 +218,48 @@ fn walk<'a>(
                     {
                         add(Node::Value(operand));
                     }
+                    CValueKind::Unary {
+                        operator: CUnaryOperator::BitNot,
+                        operand,
+                    } if matches!(
+                        operand.ty().kind(),
+                        CObjectTypeKind::Scalar(CScalarType::I32 | CScalarType::I64)
+                    ) && matches!(
+                        (operand.ty().kind(), value.ty().kind()),
+                        (
+                            CObjectTypeKind::Scalar(CScalarType::I32),
+                            CObjectTypeKind::Scalar(CScalarType::Int)
+                        ) | (
+                            CObjectTypeKind::Scalar(CScalarType::I64),
+                            CObjectTypeKind::Scalar(CScalarType::I64)
+                        )
+                    ) =>
+                    {
+                        add(Node::Value(operand));
+                    }
+                    CValueKind::Binary {
+                        operator:
+                            CBinaryOperator::BitAnd | CBinaryOperator::BitOr | CBinaryOperator::BitXor,
+                        left,
+                        right,
+                    } if matches!(
+                        left.ty().kind(),
+                        CObjectTypeKind::Scalar(CScalarType::I32 | CScalarType::I64)
+                    ) && left.ty().kind() == right.ty().kind()
+                        && matches!(
+                            (left.ty().kind(), value.ty().kind()),
+                            (
+                                CObjectTypeKind::Scalar(CScalarType::I32),
+                                CObjectTypeKind::Scalar(CScalarType::Int)
+                            ) | (
+                                CObjectTypeKind::Scalar(CScalarType::I64),
+                                CObjectTypeKind::Scalar(CScalarType::I64)
+                            )
+                        ) =>
+                    {
+                        add(Node::Value(left));
+                        add(Node::Value(right));
+                    }
                     CValueKind::Binary {
                         operator,
                         left,

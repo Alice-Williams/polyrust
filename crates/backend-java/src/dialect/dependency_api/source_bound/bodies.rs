@@ -49,7 +49,7 @@ impl Reader<'_> {
             | JavaExprKind::Value(JavaValueRef::This) => Ok(()),
             JavaExprKind::Value(JavaValueRef::Local(name)) => self.spelling(name.as_str()),
             JavaExprKind::Unary {
-                operator: JavaUnaryOperator::Not,
+                operator: JavaUnaryOperator::Not | JavaUnaryOperator::BitNot,
                 operand,
             } => {
                 // The node charge covers punctuation; recurse so operand
@@ -63,7 +63,10 @@ impl Reader<'_> {
                     | JavaBinaryOperator::Less
                     | JavaBinaryOperator::LessEqual
                     | JavaBinaryOperator::Greater
-                    | JavaBinaryOperator::GreaterEqual,
+                    | JavaBinaryOperator::GreaterEqual
+                    | JavaBinaryOperator::BitAnd
+                    | JavaBinaryOperator::BitOr
+                    | JavaBinaryOperator::BitXor,
                 left,
                 right,
             } => {

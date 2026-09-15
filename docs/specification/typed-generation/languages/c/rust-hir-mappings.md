@@ -50,6 +50,7 @@ separate explicit mappings even if the C AST already represents them.
 | Scalar comparison | CBinaryOperator and CValueKind::Binary; CConversion::Numeric when needed | Exact operand types and C promotions; Rust reference comparison is not C pointer comparison |
 | Built-in bool negation | CUnaryOperator::LogicalNot plus CConversion::Numeric(Bool) | Preserve one operand evaluation; reject integer bit-not, overloads and implicit adjustments |
 | Built-in bool lazy and/or | Initialized private bool local and CStatementKind::If/Assign | Left once; entire right prelude inside the selected child scope; no eager RHS computation |
+| Built-in i32/i64 bitwise operations | CUnaryOperator::BitNot and CBinaryOperator::BitAnd/BitOr/BitXor | Equal exact-width operands; C I32 promotion normalized back from Int; ordered calls; see M35-03A-02D |
 | Struct initialization | CInitializerKind::Struct | Match the complete ordered member inventory; preserve source evaluation order separately |
 | Nested source block | CBlock and CStatementKind::Block | Keep its scope and braces; do not flatten into the enclosing block |
 | If/else | CStatementKind::If with two CBlocks | Evaluate condition once; evaluate only the selected branch |
@@ -84,6 +85,11 @@ it must not introduce a raw warning pragma or silently discard effects.
 
 ## Capabilities outside the first subset
 
+The [integer bitwise extension](../../rust-integer-bitwise.md) adds a separate
+IntegerBitwise executable slot. Its shared private input validates built-in
+operation identity, operand/result types and absent adjustments. It does not
+enable Boolean eager operators, shifts, arithmetic, casts or other widths.
+
 The [i64 extension](../../rust-i64-values.md) reuses these executable capability
 slots and adds no broad numeric escape hatch. A shared checked input interprets
 literals, including signed minima, before target mapping. C uses registered
@@ -106,6 +112,7 @@ not aliases for the complete portable capability catalogue:
 | ScalarComparisons | resolved scalar-comparison HIR expression | CValue |
 | BooleanNegation | checked private NegationInput retaining the bool operand's HIR | CValue |
 | ShortCircuitBooleans | checked private LazyBooleanInput and typed And/Or operator | CValue plus scoped Boolean evaluation statements |
+| IntegerBitwise | checked private BitwiseInput retaining exact-width operands and closed complement/And/Or/Xor shape | CValue with exact-width result normalization |
 | RecordInitializers | complete scalar-field struct HIR initializer | CInitializer |
 | LexicalControl | returning HIR expression with optional parent HIR identity | CBlock |
 | EntrySignatures | selected compiler function identity and signature facts | CFunctionType |
@@ -136,10 +143,11 @@ The same-crate call extension is specified separately in
 must pass before expanding the render-ready profile. Its two executable
 bindings established ten required slots; [Boolean negation](../../rust-boolean-negation.md)
 adds an eleventh executable slot; [short-circuit Boolean expressions](../../rust-short-circuit-booleans.md)
-add the twelfth. Missing and duplicate registration controls
-cover each slot independently. Its typed logical-not node is also admitted by
-the closed scalar-call evidence and shared-package profiles; no other unary
-operation gains admission. The scalar operand is still traversed and checked.
+add the twelfth; IntegerBitwise adds the thirteenth. Missing and duplicate
+registration controls cover each slot independently. Typed Boolean logical-not
+and exact-width integer bit-not are admitted by the closed scalar-call evidence
+and shared-package profiles. Arithmetic negation remains outside this profile.
+Every operand is still traversed and checked.
 
 Short-circuit lowering uses initialized bool locals and two explicit child
 blocks. Only direct local-bool assignments enter the closed shared/effect

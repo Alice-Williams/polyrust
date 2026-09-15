@@ -1,7 +1,8 @@
 use super::{
     Builder, JavaBooleanNegation, JavaDirectCalls, JavaEntrySignatures, JavaFunctionSignatures,
-    JavaLexicalControl, JavaLiteralValues, JavaObjectTypes, JavaRecordInitializers,
-    JavaResolvedPlaces, JavaScalarComparisons, JavaSharedBorrows, JavaShortCircuitBooleans,
+    JavaIntegerBitwise, JavaLexicalControl, JavaLiteralValues, JavaObjectTypes,
+    JavaRecordInitializers, JavaResolvedPlaces, JavaScalarComparisons, JavaSharedBorrows,
+    JavaShortCircuitBooleans,
 };
 
 #[allow(dead_code)]
@@ -18,6 +19,7 @@ fn must_not_compile() {
         .entry_signatures(JavaEntrySignatures)
         .direct_calls(JavaDirectCalls)
         .function_signatures(JavaFunctionSignatures)
+        .integer_bitwise(JavaIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -31,6 +33,7 @@ fn must_not_compile() {
         .entry_signatures(JavaEntrySignatures)
         .direct_calls(JavaDirectCalls)
         .function_signatures(JavaFunctionSignatures)
+        .integer_bitwise(JavaIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -44,6 +47,7 @@ fn must_not_compile() {
         .entry_signatures(JavaEntrySignatures)
         .direct_calls(JavaDirectCalls)
         .function_signatures(JavaFunctionSignatures)
+        .integer_bitwise(JavaIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -57,6 +61,7 @@ fn must_not_compile() {
         .entry_signatures(JavaEntrySignatures)
         .direct_calls(JavaDirectCalls)
         .function_signatures(JavaFunctionSignatures)
+        .integer_bitwise(JavaIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -70,6 +75,7 @@ fn must_not_compile() {
         .entry_signatures(JavaEntrySignatures)
         .direct_calls(JavaDirectCalls)
         .function_signatures(JavaFunctionSignatures)
+        .integer_bitwise(JavaIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -83,6 +89,7 @@ fn must_not_compile() {
         .entry_signatures(JavaEntrySignatures)
         .direct_calls(JavaDirectCalls)
         .function_signatures(JavaFunctionSignatures)
+        .integer_bitwise(JavaIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -96,6 +103,7 @@ fn must_not_compile() {
         .entry_signatures(JavaEntrySignatures)
         .direct_calls(JavaDirectCalls)
         .function_signatures(JavaFunctionSignatures)
+        .integer_bitwise(JavaIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -109,6 +117,7 @@ fn must_not_compile() {
         .lexical_control(JavaLexicalControl)
         .direct_calls(JavaDirectCalls)
         .function_signatures(JavaFunctionSignatures)
+        .integer_bitwise(JavaIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -122,6 +131,7 @@ fn must_not_compile() {
         .lexical_control(JavaLexicalControl)
         .entry_signatures(JavaEntrySignatures)
         .direct_calls(JavaDirectCalls)
+        .integer_bitwise(JavaIntegerBitwise)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -135,5 +145,6 @@ fn must_not_compile() {
         .lexical_control(JavaLexicalControl)
         .entry_signatures(JavaEntrySignatures)
         .function_signatures(JavaFunctionSignatures)
+        .integer_bitwise(JavaIntegerBitwise)
         .build();
 }

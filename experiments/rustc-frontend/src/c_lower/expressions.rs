@@ -2,9 +2,10 @@
 use super::{
     Reader, Result, c,
     capabilities::{
-        BooleanNegation, BorrowInput, CallInput, ComparisonInput, DirectCalls, LazyBooleanInput,
-        LiteralInput, LiteralValues, Mapping, NegationInput, PlaceInput, ResolvedPlaces,
-        ScalarComparisons, SharedBorrows, ShortCircuitBooleans, Supports,
+        BitwiseInput, BooleanNegation, BorrowInput, CallInput, ComparisonInput, DirectCalls,
+        IntegerBitwise, LazyBooleanInput, LiteralInput, LiteralValues, Mapping, NegationInput,
+        PlaceInput, ResolvedPlaces, ScalarComparisons, SharedBorrows, ShortCircuitBooleans,
+        Supports,
     },
 };
 use portable_backend_c::ast::{CPlace, CValue};
@@ -18,6 +19,12 @@ impl<'tcx> Reader<'tcx> {
             return c(self.expressions().read(place));
         }
         match value.kind {
+            hir::ExprKind::Unary(hir::UnOp::Not, _)
+                if !matches!(self.checked.expr_ty(value).kind(), rustc_middle::ty::Bool) =>
+            {
+                let input = BitwiseInput::read(self.checked, value)?;
+                Supports::<IntegerBitwise>::mapping(&self.mappings).lower(self, input)
+            }
             hir::ExprKind::Unary(hir::UnOp::Not, _) => {
                 let input = NegationInput::read(self.checked, value)?;
                 Supports::<BooleanNegation>::mapping(&self.mappings).lower(self, input)
@@ -46,6 +53,15 @@ impl<'tcx> Reader<'tcx> {
             {
                 let input = LazyBooleanInput::read(self.checked, value)?;
                 Supports::<ShortCircuitBooleans>::mapping(&self.mappings).lower(self, input)
+            }
+            hir::ExprKind::Binary(operator, ..)
+                if matches!(
+                    operator.node,
+                    hir::BinOpKind::BitAnd | hir::BinOpKind::BitOr | hir::BinOpKind::BitXor
+                ) =>
+            {
+                let input = BitwiseInput::read(self.checked, value)?;
+                Supports::<IntegerBitwise>::mapping(&self.mappings).lower(self, input)
             }
             hir::ExprKind::Binary(..) => {
                 let mapping = Supports::<ScalarComparisons>::mapping(&self.mappings);

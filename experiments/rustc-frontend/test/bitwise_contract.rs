@@ -1,34 +1,31 @@
 //! Independent negative controls for the new executable slot and checked input.
-#[cfg(lazy_c)]
-use super::CIntegerBitwise as Bits;
-#[cfg(lazy_java)]
-use super::JavaIntegerBitwise as Bits;
 use super::*;
-#[cfg(lazy_c)]
+#[cfg(bitwise_c)]
 use super::{
     CBooleanNegation as Negate, CDirectCalls as Calls, CEntrySignatures as Entry,
-    CFunctionSignatures as Functions, CLexicalControl as Control, CLiteralValues as Literals,
-    CObjectTypes as Objects, CRecordInitializers as Records, CResolvedPlaces as Places,
-    CScalarComparisons as Comparisons, CSharedBorrows as Borrows, CShortCircuitBooleans as Lazy,
+    CFunctionSignatures as Functions, CIntegerBitwise as Bits, CLexicalControl as Control,
+    CLiteralValues as Literals, CObjectTypes as Objects, CRecordInitializers as Records,
+    CResolvedPlaces as Places, CScalarComparisons as Comparisons, CSharedBorrows as Borrows,
+    CShortCircuitBooleans as Lazy,
 };
-#[cfg(lazy_java)]
+#[cfg(bitwise_java)]
 use super::{
     JavaBooleanNegation as Negate, JavaDirectCalls as Calls, JavaEntrySignatures as Entry,
-    JavaFunctionSignatures as Functions, JavaLexicalControl as Control,
+    JavaFunctionSignatures as Functions, JavaIntegerBitwise as Bits, JavaLexicalControl as Control,
     JavaLiteralValues as Literals, JavaObjectTypes as Objects, JavaRecordInitializers as Records,
     JavaResolvedPlaces as Places, JavaScalarComparisons as Comparisons,
     JavaSharedBorrows as Borrows, JavaShortCircuitBooleans as Lazy,
 };
-#[cfg(lazy_c)]
+#[cfg(bitwise_c)]
 use crate::c_lower::Reader;
-#[cfg(lazy_java)]
+#[cfg(bitwise_java)]
 use crate::java_lower::Reader;
-#[cfg(lazy_c)]
+#[cfg(bitwise_c)]
 type Output = portable_backend_c::ast::CValue;
-#[cfg(lazy_java)]
+#[cfg(bitwise_java)]
 type Output = crate::java_lower::Value;
 
-#[cfg(lazy_missing)]
+#[cfg(bitwise_missing)]
 fn missing() {
     Builder::new()
         .literal_values(Literals)
@@ -42,33 +39,31 @@ fn missing() {
         .direct_calls(Calls)
         .function_signatures(Functions)
         .boolean_negation(Negate)
-        .integer_bitwise(Bits)
+        .short_circuit_booleans(Lazy)
         .build();
 }
 
-#[cfg(lazy_duplicate)]
+#[cfg(bitwise_duplicate)]
 fn duplicate() {
-    Builder::new()
-        .short_circuit_booleans(Lazy)
-        .short_circuit_booleans(Lazy);
+    Builder::new().integer_bitwise(Bits).integer_bitwise(Bits);
 }
 
-#[cfg(any(lazy_wrong_capability, lazy_wrong_context, lazy_wrong_output))]
+#[cfg(any(bitwise_wrong_capability, bitwise_wrong_context, bitwise_wrong_output))]
 #[derive(Clone, Copy)]
 struct Wrong;
-#[cfg(any(lazy_wrong_capability, lazy_wrong_context, lazy_wrong_output))]
+#[cfg(any(bitwise_wrong_capability, bitwise_wrong_context, bitwise_wrong_output))]
 impl Mapping for Wrong {
-    #[cfg(lazy_wrong_capability)]
+    #[cfg(bitwise_wrong_capability)]
     type Capability = LiteralValues;
-    #[cfg(not(lazy_wrong_capability))]
-    type Capability = ShortCircuitBooleans;
-    #[cfg(lazy_wrong_context)]
+    #[cfg(not(bitwise_wrong_capability))]
+    type Capability = IntegerBitwise;
+    #[cfg(bitwise_wrong_context)]
     type Context<'tcx> = ();
-    #[cfg(not(lazy_wrong_context))]
+    #[cfg(not(bitwise_wrong_context))]
     type Context<'tcx> = Reader<'tcx>;
-    #[cfg(lazy_wrong_output)]
+    #[cfg(bitwise_wrong_output)]
     type Output = ();
-    #[cfg(not(lazy_wrong_output))]
+    #[cfg(not(bitwise_wrong_output))]
     type Output = Output;
 
     fn lower<'tcx>(
@@ -80,22 +75,20 @@ impl Mapping for Wrong {
     }
 }
 
-#[cfg(any(lazy_wrong_capability, lazy_wrong_context, lazy_wrong_output))]
+#[cfg(any(bitwise_wrong_capability, bitwise_wrong_context, bitwise_wrong_output))]
 fn wrong() {
-    Builder::new().short_circuit_booleans(Wrong);
+    Builder::new().integer_bitwise(Wrong);
 }
 
-#[cfg(lazy_wrong_input)]
+#[cfg(bitwise_wrong_input)]
 fn wrong_input<'tcx>(reader: &mut Reader<'tcx>, expression: &'tcx rustc_hir::Expr<'tcx>) {
     let input = LiteralInput::read(reader.checked, expression).unwrap();
-    let _ = Lazy.lower(reader, input);
+    let _ = Bits.lower(reader, input);
 }
 
-#[cfg(lazy_private_input)]
+#[cfg(bitwise_private_input)]
 fn private_input<'tcx>(expression: &'tcx rustc_hir::Expr<'tcx>) {
-    let _ = LazyBooleanInput {
-        operator: LazyBooleanOperator::And,
-        left: expression,
-        right: expression,
+    let _ = BitwiseInput {
+        operands: BitwiseOperands::Complement(expression),
     };
 }
