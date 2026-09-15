@@ -1,8 +1,12 @@
 //! Independent negative controls for the new executable slot and checked input.
 #[cfg(eager_c)]
 use super::CIntegerBitwise as IntegerBits;
+#[cfg(eager_c)]
+use super::CScalarConstants as Constants;
 #[cfg(eager_java)]
 use super::JavaIntegerBitwise as IntegerBits;
+#[cfg(eager_java)]
+use super::JavaScalarConstants as Constants;
 use super::*;
 #[cfg(eager_c)]
 use super::{
@@ -46,6 +50,7 @@ fn missing() {
         .boolean_negation(Negate)
         .short_circuit_booleans(Lazy)
         .integer_bitwise(IntegerBits)
+        .scalar_constants(Constants)
         .build();
 }
 

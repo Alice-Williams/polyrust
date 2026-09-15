@@ -11,9 +11,19 @@ mod object_types;
 mod record_initializers;
 mod resolved_places;
 mod scalar_comparisons;
+mod scalar_constants;
 mod shared_borrows;
 mod short_circuit_booleans;
 mod slots;
+
+#[cfg(constant_ast_probe)]
+#[path = "../../../test/constant_c_ast.rs"]
+mod constant_ast;
+
+#[cfg(constant_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/constant_contract.rs"]
+mod constant_contract;
 
 #[cfg(eager_ast_probe)]
 #[path = "../../../test/eager_c_ast.rs"]
@@ -90,6 +100,7 @@ pub(crate) use object_types::CObjectTypes;
 pub(crate) use record_initializers::CRecordInitializers;
 pub(crate) use resolved_places::CResolvedPlaces;
 pub(crate) use scalar_comparisons::CScalarComparisons;
+pub(crate) use scalar_constants::CScalarConstants;
 pub(crate) use shared_borrows::CSharedBorrows;
 pub(crate) use short_circuit_booleans::CShortCircuitBooleans;
 pub(crate) use slots::{Bindings, Builder};
@@ -111,6 +122,7 @@ pub(crate) type CBindings = Bindings<
     CShortCircuitBooleans,
     CIntegerBitwise,
     CEagerBooleans,
+    CScalarConstants,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -129,5 +141,6 @@ pub(crate) fn c_bindings() -> CBindings {
         .short_circuit_booleans(CShortCircuitBooleans)
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
+        .scalar_constants(CScalarConstants)
         .build()
 }

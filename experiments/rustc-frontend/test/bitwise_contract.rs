@@ -1,4 +1,8 @@
 //! Independent negative controls for the new executable slot and checked input.
+#[cfg(bitwise_c)]
+use super::CScalarConstants as Constants;
+#[cfg(bitwise_java)]
+use super::JavaScalarConstants as Constants;
 use super::*;
 #[cfg(bitwise_c)]
 use super::{
@@ -42,6 +46,7 @@ fn missing() {
         .boolean_negation(Negate)
         .short_circuit_booleans(Lazy)
         .eager_booleans(Eager)
+        .scalar_constants(Constants)
         .build();
 }
 

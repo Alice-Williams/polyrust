@@ -57,3 +57,7 @@ special runtime file, catalogue and renderer composition path. Typed constructio
 alone is not the requested architectural cleanup. The current Rust-source C/Java
 paths do not create these runtime artifacts, but their feature coverage is much
 narrower. No legacy implementation is deleted by this planning checkpoint.
+
+M35-03A-02F splits scalar constants into compiler-evaluated reads (02F-01) and
+proper public/local declaration support (02F-02). Completing the read step
+alone does not complete scalar parity or authorize removing legacy constants.

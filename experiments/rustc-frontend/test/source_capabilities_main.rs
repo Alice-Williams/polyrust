@@ -136,7 +136,21 @@ fn eager_boolean<'tcx>(
         .map(|input| (input.operator(), input.left(), input.right()));
 }
 
+fn constant<'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+) {
+    if let rustc_hir::ExprKind::Path(ref path) = expression.kind
+        && ConstantInput::is_constant(checked, expression, path)
+    {
+        let _ = ConstantInput::read(tcx, checked, expression).map(|input| input.value());
+    }
+}
+
 fn main() {
+    capability::<ScalarConstants>();
+    let _ = constant;
     capability::<EagerBooleans>();
     let _ = eager_boolean;
     let _ = [

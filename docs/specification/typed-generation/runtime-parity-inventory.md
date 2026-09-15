@@ -20,7 +20,7 @@ target has full replacement evidence for any broad legacy capability family.
 
 | Functionality | Rust-source C | Rust-source Java | Remaining work |
 | --- | --- | --- | --- |
-| Values and comparisons | i32/i64/bool literals, scalar comparison, immutable places, built-in bool negation, lazy/eager operators and signed integer bitwise operations | Same source subset | f64/char/unit, constants, aliases, integer and float operations: M35-03A-02 |
+| Values and comparisons | i32/i64/bool literals and evaluated constant reads, scalar comparison, immutable places, built-in bool negation, lazy/eager operators and signed integer bitwise operations | Same source subset | f64/char/unit, public/local constant declarations, type aliases, integer and float operations: M35-03A-02 |
 | Functions and modules | Closed typed signatures/direct calls, crate-owned headers and implementations | Closed typed signatures/direct calls, crate-owned Java packages | Wider signatures, methods and migrated consumers: M35-03A-03/06 |
 | Records and control | Closed scalar-field records/shared borrows, local bindings, structured branches | Same source subset | Owned shapes, enums, interfaces, loops and patterns: M35-02 then M35-03A-03 |
 | Text, Unicode and bytes | No general replacement mapping | No general replacement mapping | All legacy operations and explicit encoding/indexing policies: M35-03A-04 |
@@ -132,3 +132,12 @@ responsibility. No guarantee is inferred from the absence of an import line.
 Future coverage updates must cite feature-specific positive, negative and native
 tests. Preserve the baseline inventory until each old implementation and all
 its consumers can be removed together with reviewed replacement evidence.
+
+## Scalar constant read increment
+
+[M35-03A-02F-01](../../plan/tasks/M35-03A-02F-01-constant-reads.md) adds
+compiler-evaluated private module and inherent-associated bool/i32/i64 reads
+through the ScalarConstants slot. Native two-crate, exact-literal/provenance,
+compile-contract and atomic-rejection tests accompany the implementation.
+Public/local declarations remain 02F-02 work; this is not full constant parity
+or permission to remove the legacy constant/runtime entry points.

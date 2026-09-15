@@ -30,6 +30,7 @@ fn default_invocations_preserve_fixed_compiler_configuration() {
                 "--crate-name=poly_input",
                 "--edition=2024",
                 "-Funsafe-code",
+                "-Flong-running-const-eval",
                 "-Copt-level=0",
                 "-Cpanic=abort",
             ]
@@ -62,11 +63,12 @@ fn explicit_identity_is_order_independent_without_forwarding_options() {
     assert_eq!(first, second);
     assert_eq!(first.declared_inputs(), ["--input", "docs.md"]);
     let arguments = first.compiler_arguments("/source.rs", "/compiler");
-    assert_eq!(arguments.len(), 11);
+    assert_eq!(arguments.len(), 12);
     assert!(arguments.contains(&"--crate-name=example".into()));
     assert_eq!(arguments.last().unwrap(), "-Cmetadata=//pkg:example");
     for required in [
         "-Funsafe-code",
+        "-Flong-running-const-eval",
         "-Copt-level=0",
         "-Cpanic=abort",
         "--edition=2024",

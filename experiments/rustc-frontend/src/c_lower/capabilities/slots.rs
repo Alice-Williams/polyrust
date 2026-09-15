@@ -2,7 +2,8 @@
 use super::{
     BooleanNegation, Capability, DirectCalls, EagerBooleans, EntrySignatures, FunctionSignatures,
     IntegerBitwise, LexicalControl, LiteralValues, Mapping, ObjectTypes, RecordInitializers,
-    ResolvedPlaces, ScalarComparisons, SharedBorrows, ShortCircuitBooleans, Supports,
+    ResolvedPlaces, ScalarComparisons, ScalarConstants, SharedBorrows, ShortCircuitBooleans,
+    Supports,
 };
 use crate::c_lower::Reader;
 use portable_backend_c::ast::{CBlock, CFunctionType, CInitializer, CObjectType, CPlace, CValue};
@@ -27,7 +28,7 @@ impl<M> EntryMapping for M where
 
 pub(crate) struct Missing;
 #[derive(Clone, Copy)]
-pub(crate) struct Bindings<L, C, P, B, T, R, S, F, D, G, N, H, I, E> {
+pub(crate) struct Bindings<L, C, P, B, T, R, S, F, D, G, N, H, I, E, K> {
     literal_values: L,
     scalar_comparisons: C,
     resolved_places: P,
@@ -42,6 +43,7 @@ pub(crate) struct Bindings<L, C, P, B, T, R, S, F, D, G, N, H, I, E> {
     short_circuit_booleans: H,
     integer_bitwise: I,
     eager_booleans: E,
+    scalar_constants: K,
 }
 #[expect(
     clippy::type_complexity,
@@ -62,7 +64,8 @@ pub(crate) struct Builder<
     H = Missing,
     I = Missing,
     E = Missing,
->(Bindings<L, C, P, B, T, R, S, F, D, G, N, H, I, E>);
+    K = Missing,
+>(Bindings<L, C, P, B, T, R, S, F, D, G, N, H, I, E, K>);
 impl Builder {
     pub(crate) fn new() -> Self {
         Self(Bindings {
@@ -80,6 +83,7 @@ impl Builder {
             short_circuit_booleans: Missing,
             integer_bitwise: Missing,
             eager_booleans: Missing,
+            scalar_constants: Missing,
         })
     }
 }
@@ -95,38 +99,39 @@ macro_rules! register {
     };
 }
 register!(M; literal_values, ReaderMapping<LiteralValues, CValue>;
-    [C, P, B, T, R, S, F, D, G, N, H, I, E]; [Missing, C, P, B, T, R, S, F, D, G, N, H, I, E]; [M, C, P, B, T, R, S, F, D, G, N, H, I, E];
-    [scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans]);
+    [C, P, B, T, R, S, F, D, G, N, H, I, E, K]; [Missing, C, P, B, T, R, S, F, D, G, N, H, I, E, K]; [M, C, P, B, T, R, S, F, D, G, N, H, I, E, K];
+    [scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants]);
 
 register!(M; scalar_comparisons, ReaderMapping<ScalarComparisons, CValue>;
-    [L, P, B, T, R, S, F, D, G, N, H, I, E]; [L, Missing, P, B, T, R, S, F, D, G, N, H, I, E]; [L, M, P, B, T, R, S, F, D, G, N, H, I, E];
-    [literal_values, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans]);
+    [L, P, B, T, R, S, F, D, G, N, H, I, E, K]; [L, Missing, P, B, T, R, S, F, D, G, N, H, I, E, K]; [L, M, P, B, T, R, S, F, D, G, N, H, I, E, K];
+    [literal_values, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants]);
 
 register!(M; resolved_places, ReaderMapping<ResolvedPlaces, CPlace>;
-    [L, C, B, T, R, S, F, D, G, N, H, I, E]; [L, C, Missing, B, T, R, S, F, D, G, N, H, I, E]; [L, C, M, B, T, R, S, F, D, G, N, H, I, E];
-    [literal_values, scalar_comparisons, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans]);
+    [L, C, B, T, R, S, F, D, G, N, H, I, E, K]; [L, C, Missing, B, T, R, S, F, D, G, N, H, I, E, K]; [L, C, M, B, T, R, S, F, D, G, N, H, I, E, K];
+    [literal_values, scalar_comparisons, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants]);
 
 register!(M; shared_borrows, ReaderMapping<SharedBorrows, CValue>;
-    [L, C, P, T, R, S, F, D, G, N, H, I, E]; [L, C, P, Missing, T, R, S, F, D, G, N, H, I, E]; [L, C, P, M, T, R, S, F, D, G, N, H, I, E];
-    [literal_values, scalar_comparisons, resolved_places, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans]);
+    [L, C, P, T, R, S, F, D, G, N, H, I, E, K]; [L, C, P, Missing, T, R, S, F, D, G, N, H, I, E, K]; [L, C, P, M, T, R, S, F, D, G, N, H, I, E, K];
+    [literal_values, scalar_comparisons, resolved_places, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants]);
 
 register!(M; object_types, ReaderMapping<ObjectTypes, CObjectType>;
-    [L, C, P, B, R, S, F, D, G, N, H, I, E]; [L, C, P, B, Missing, R, S, F, D, G, N, H, I, E]; [L, C, P, B, M, R, S, F, D, G, N, H, I, E];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans]);
+    [L, C, P, B, R, S, F, D, G, N, H, I, E, K]; [L, C, P, B, Missing, R, S, F, D, G, N, H, I, E, K]; [L, C, P, B, M, R, S, F, D, G, N, H, I, E, K];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants]);
 
 register!(M; record_initializers, ReaderMapping<RecordInitializers, CInitializer>;
-    [L, C, P, B, T, S, F, D, G, N, H, I, E]; [L, C, P, B, T, Missing, S, F, D, G, N, H, I, E]; [L, C, P, B, T, M, S, F, D, G, N, H, I, E];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans]);
+    [L, C, P, B, T, S, F, D, G, N, H, I, E, K]; [L, C, P, B, T, Missing, S, F, D, G, N, H, I, E, K]; [L, C, P, B, T, M, S, F, D, G, N, H, I, E, K];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants]);
 
 register!(M; lexical_control, ReaderMapping<LexicalControl, CBlock>;
-    [L, C, P, B, T, R, F, D, G, N, H, I, E]; [L, C, P, B, T, R, Missing, F, D, G, N, H, I, E]; [L, C, P, B, T, R, M, F, D, G, N, H, I, E];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans]);
+    [L, C, P, B, T, R, F, D, G, N, H, I, E, K]; [L, C, P, B, T, R, Missing, F, D, G, N, H, I, E, K]; [L, C, P, B, T, R, M, F, D, G, N, H, I, E, K];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants]);
 
 register!(M; entry_signatures, EntryMapping;
-    [L, C, P, B, T, R, S, D, G, N, H, I, E]; [L, C, P, B, T, R, S, Missing, D, G, N, H, I, E]; [L, C, P, B, T, R, S, M, D, G, N, H, I, E];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans]);
+    [L, C, P, B, T, R, S, D, G, N, H, I, E, K]; [L, C, P, B, T, R, S, Missing, D, G, N, H, I, E, K]; [L, C, P, B, T, R, S, M, D, G, N, H, I, E, K];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants]);
 
-impl<L, C, P, B, T, R, S, F, D, G, N, H, I, E> Builder<L, C, P, B, T, R, S, F, D, G, N, H, I, E>
+impl<L, C, P, B, T, R, S, F, D, G, N, H, I, E, K>
+    Builder<L, C, P, B, T, R, S, F, D, G, N, H, I, E, K>
 where
     L: ReaderMapping<LiteralValues, CValue>,
     C: ReaderMapping<ScalarComparisons, CValue>,
@@ -142,19 +147,20 @@ where
     H: ReaderMapping<ShortCircuitBooleans, CValue>,
     I: ReaderMapping<IntegerBitwise, CValue>,
     E: ReaderMapping<EagerBooleans, CValue>,
+    K: ReaderMapping<ScalarConstants, CValue>,
 {
     #[expect(
         clippy::type_complexity,
         reason = "Preserve each executable mapping type at the completed builder boundary"
     )]
-    pub(crate) fn build(self) -> Bindings<L, C, P, B, T, R, S, F, D, G, N, H, I, E> {
+    pub(crate) fn build(self) -> Bindings<L, C, P, B, T, R, S, F, D, G, N, H, I, E, K> {
         self.0
     }
 }
 macro_rules! support {
     ($capability:ty, $slot:ident, $field:ident, $bound:path) => {
-        impl<L, C, P, B, T, R, S, F, D, G, N, H, I, E> Supports<$capability>
-            for Bindings<L, C, P, B, T, R, S, F, D, G, N, H, I, E>
+        impl<L, C, P, B, T, R, S, F, D, G, N, H, I, E, K> Supports<$capability>
+            for Bindings<L, C, P, B, T, R, S, F, D, G, N, H, I, E, K>
         where
             $slot: $bound,
         {
@@ -187,28 +193,33 @@ impl<M> FunctionMapping for M where
 {
 }
 register!(M; direct_calls, ReaderMapping<DirectCalls, CValue>;
-    [L, C, P, B, T, R, S, F, G, N, H, I, E]; [L, C, P, B, T, R, S, F, Missing, G, N, H, I, E]; [L, C, P, B, T, R, S, F, M, G, N, H, I, E];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans]);
+    [L, C, P, B, T, R, S, F, G, N, H, I, E, K]; [L, C, P, B, T, R, S, F, Missing, G, N, H, I, E, K]; [L, C, P, B, T, R, S, F, M, G, N, H, I, E, K];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants]);
 register!(M; function_signatures, FunctionMapping;
-    [L, C, P, B, T, R, S, F, D, N, H, I, E]; [L, C, P, B, T, R, S, F, D, Missing, N, H, I, E]; [L, C, P, B, T, R, S, F, D, M, N, H, I, E];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans]);
+    [L, C, P, B, T, R, S, F, D, N, H, I, E, K]; [L, C, P, B, T, R, S, F, D, Missing, N, H, I, E, K]; [L, C, P, B, T, R, S, F, D, M, N, H, I, E, K];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants]);
 support!(DirectCalls, D, direct_calls, ReaderMapping<DirectCalls, CValue>);
 support!(FunctionSignatures, G, function_signatures, FunctionMapping);
 register!(M; boolean_negation, ReaderMapping<BooleanNegation, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, H, I, E]; [L, C, P, B, T, R, S, F, D, G, Missing, H, I, E]; [L, C, P, B, T, R, S, F, D, G, M, H, I, E];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, short_circuit_booleans, integer_bitwise, eager_booleans]);
+    [L, C, P, B, T, R, S, F, D, G, H, I, E, K]; [L, C, P, B, T, R, S, F, D, G, Missing, H, I, E, K]; [L, C, P, B, T, R, S, F, D, G, M, H, I, E, K];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants]);
 support!(BooleanNegation, N, boolean_negation, ReaderMapping<BooleanNegation, CValue>);
 register!(M; short_circuit_booleans, ReaderMapping<ShortCircuitBooleans, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, I, E]; [L, C, P, B, T, R, S, F, D, G, N, Missing, I, E]; [L, C, P, B, T, R, S, F, D, G, N, M, I, E];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, integer_bitwise, eager_booleans]);
+    [L, C, P, B, T, R, S, F, D, G, N, I, E, K]; [L, C, P, B, T, R, S, F, D, G, N, Missing, I, E, K]; [L, C, P, B, T, R, S, F, D, G, N, M, I, E, K];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, integer_bitwise, eager_booleans, scalar_constants]);
 support!(ShortCircuitBooleans, H, short_circuit_booleans, ReaderMapping<ShortCircuitBooleans, CValue>);
 
 register!(M; integer_bitwise, ReaderMapping<IntegerBitwise, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, E]; [L, C, P, B, T, R, S, F, D, G, N, H, Missing, E]; [L, C, P, B, T, R, S, F, D, G, N, H, M, E];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, eager_booleans]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, E, K]; [L, C, P, B, T, R, S, F, D, G, N, H, Missing, E, K]; [L, C, P, B, T, R, S, F, D, G, N, H, M, E, K];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, eager_booleans, scalar_constants]);
 support!(IntegerBitwise, I, integer_bitwise, ReaderMapping<IntegerBitwise, CValue>);
 
 register!(M; eager_booleans, ReaderMapping<EagerBooleans, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I]; [L, C, P, B, T, R, S, F, D, G, N, H, I, Missing]; [L, C, P, B, T, R, S, F, D, G, N, H, I, M];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, K]; [L, C, P, B, T, R, S, F, D, G, N, H, I, Missing, K]; [L, C, P, B, T, R, S, F, D, G, N, H, I, M, K];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, scalar_constants]);
 support!(EagerBooleans, E, eager_booleans, ReaderMapping<EagerBooleans, CValue>);
+
+register!(M; scalar_constants, ReaderMapping<ScalarConstants, CValue>;
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, Missing]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, M];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans]);
+support!(ScalarConstants, K, scalar_constants, ReaderMapping<ScalarConstants, CValue>);

@@ -1,7 +1,7 @@
 use super::{
     Builder, CBooleanNegation, CDirectCalls, CEagerBooleans, CEntrySignatures, CFunctionSignatures,
     CIntegerBitwise, CLexicalControl, CLiteralValues, CObjectTypes, CRecordInitializers,
-    CResolvedPlaces, CScalarComparisons, CSharedBorrows, CShortCircuitBooleans,
+    CResolvedPlaces, CScalarComparisons, CScalarConstants, CSharedBorrows, CShortCircuitBooleans,
 };
 
 #[allow(dead_code)]
@@ -20,6 +20,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
+        .scalar_constants(CScalarConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -35,6 +36,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
+        .scalar_constants(CScalarConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -50,6 +52,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
+        .scalar_constants(CScalarConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -65,6 +68,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
+        .scalar_constants(CScalarConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -80,6 +84,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
+        .scalar_constants(CScalarConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -95,6 +100,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
+        .scalar_constants(CScalarConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -110,6 +116,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
+        .scalar_constants(CScalarConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -125,6 +132,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
+        .scalar_constants(CScalarConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -140,6 +148,7 @@ fn must_not_compile() {
         .direct_calls(CDirectCalls)
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
+        .scalar_constants(CScalarConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -155,5 +164,6 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
+        .scalar_constants(CScalarConstants)
         .build();
 }

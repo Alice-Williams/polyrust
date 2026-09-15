@@ -94,7 +94,7 @@ Both operands are materialized left to right, without lazy branch substitution.
 The dependency gate and source reservation traverse these operations explicitly.
 No support class or runtime helper is introduced.
 
-Literal, comparison, Boolean-negation, short-circuit Boolean, integer-bitwise, eager-Boolean, borrow, call and record-initializer mappings produce planned
+Literal, scalar-constant, comparison, Boolean-negation, short-circuit Boolean, integer-bitwise, eager-Boolean, borrow, call and record-initializer mappings produce planned
 Java values. ObjectTypes produces the representation plan; ResolvedPlaces produces
 a planned place; LexicalControl produces JavaBlock. EntrySignatures and
 FunctionSignatures produce JavaMethodSignature from compiler signatures. Every
@@ -256,7 +256,7 @@ source_admission, not a capability input contract or a concrete emitter.
    analysis. Concrete target keys and registrations remain backend-owned. All
    extraction budgets and declared doc/source input checks remain mandatory.
 2. Java adapter: java_lower owns representation choices and a consuming builder
-   with exact context/output bounds for each of the fourteen admitted input
+   with exact context/output bounds for each of the fifteen admitted input
    categories. It emits existing Java types, not a new generic AST.
 3. Java target model: extend the existing JavaPackage with a typed Rust crate
    identity. Its package spelling and path derive from that identity. Preserve
@@ -456,3 +456,15 @@ Historical Java generated examples and builder tests stay enabled until their
 replacement coverage exists. A frontend change does not authorize bypassing
 the existing Java certificate or discarding previous correctness regressions.
 The full C/Java migration gate must pass locally before any push.
+
+## Compiler-evaluated constant reads
+
+[M35-03A-02F-01](../../../../plan/tasks/M35-03A-02F-01-constant-reads.md)
+adds ScalarConstants as an executable slot under the shared
+[constant input contract](../../rust-scalar-constants.md). Map checked values
+to primitive boolean/int/long literal nodes and matching TypePlans; do not
+introduce Runtime, boxing, source fragments or synthetic static fields.
+Keep exact signed minima and wide integer spelling. Constant evaluation stays
+in rustc, not the renderer. Public constant exports and block-local constant
+declarations still reject in this bounded read-only-value step; they require
+explicit declaration/provenance support in 02F-02.

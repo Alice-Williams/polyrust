@@ -43,6 +43,12 @@ impl<'tcx> Reader<'tcx> {
                         let input = NegationInput::read(reader.checked, value)?;
                         Supports::<BooleanNegation>::mapping(&reader.mappings).lower(reader, input)
                     }
+                    hir::ExprKind::Path(ref path)
+                        if ConstantInput::is_constant(reader.checked, value, path) =>
+                    {
+                        let input = ConstantInput::read(reader.tcx, reader.checked, value)?;
+                        Supports::<ScalarConstants>::mapping(&reader.mappings).lower(reader, input)
+                    }
                     hir::ExprKind::Path(_)
                     | hir::ExprKind::Field(..)
                     | hir::ExprKind::Unary(hir::UnOp::Deref, _) => Ok(reader.place(value)?.value()),

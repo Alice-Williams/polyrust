@@ -2,10 +2,10 @@
 use super::{
     Reader, Result, c,
     capabilities::{
-        BitwiseInput, BooleanNegation, BorrowInput, CallInput, ComparisonInput, DirectCalls,
-        EagerBooleanInput, EagerBooleans, IntegerBitwise, LazyBooleanInput, LiteralInput,
-        LiteralValues, Mapping, NegationInput, PlaceInput, ResolvedPlaces, ScalarComparisons,
-        SharedBorrows, ShortCircuitBooleans, Supports,
+        BitwiseInput, BooleanNegation, BorrowInput, CallInput, ComparisonInput, ConstantInput,
+        DirectCalls, EagerBooleanInput, EagerBooleans, IntegerBitwise, LazyBooleanInput,
+        LiteralInput, LiteralValues, Mapping, NegationInput, PlaceInput, ResolvedPlaces,
+        ScalarComparisons, ScalarConstants, SharedBorrows, ShortCircuitBooleans, Supports,
     },
 };
 use portable_backend_c::ast::{CPlace, CValue};
@@ -32,6 +32,12 @@ impl<'tcx> Reader<'tcx> {
             hir::ExprKind::Call(..) => {
                 let mapping = Supports::<DirectCalls>::mapping(&self.mappings);
                 mapping.lower(self, CallInput(value))
+            }
+            hir::ExprKind::Path(ref path)
+                if ConstantInput::is_constant(self.checked, value, path) =>
+            {
+                let input = ConstantInput::read(self.tcx, self.checked, value)?;
+                Supports::<ScalarConstants>::mapping(&self.mappings).lower(self, input)
             }
             hir::ExprKind::Path(_)
             | hir::ExprKind::Field(..)

@@ -22,6 +22,9 @@ is complete, including native value/trace controls and direct mapper AST probes.
 is complete, with exhaustive truth tables, native eager/lazy evaluation controls
 and exact typed mapper probes. Other scalar families remain outstanding.
 
+[M35-03A-02F — scalar constants](M35-03A-02F-scalar-constants.md) is in progress,
+split into compiler-evaluated reads and explicit public/local declarations.
+
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing

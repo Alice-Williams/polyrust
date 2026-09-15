@@ -143,6 +143,7 @@ impl Configuration {
             format!("--crate-name={name}"),
             "--edition=2024".into(),
             "-Funsafe-code".into(),
+            "-Flong-running-const-eval".into(),
             "-Copt-level=0".into(),
             "-Cpanic=abort".into(),
         ];

@@ -109,6 +109,7 @@ not aliases for the complete portable capability catalogue:
 | Source capability | Session-bound input | C output |
 | --- | --- | --- |
 | ObjectTypes | compiler Ty | CObjectType plus registered nominal declarations |
+| ScalarConstants | private evaluated ConstantInput retaining compiler DefId/expression and exact bool/i32/i64 value | Ordinary typed literal CValue, no runtime storage |
 | LiteralValues | private checked LiteralInput with typed bool/i32/i64 value and compiler-session lifetime | CValue |
 | ResolvedPlaces | resolved path/field/dereference HIR expression and adjustments | CPlace |
 | SharedBorrows | immutable built-in borrow HIR expression | CValue |
@@ -147,7 +148,7 @@ The same-crate call extension is specified separately in
 must pass before expanding the render-ready profile. Its two executable
 bindings established ten required slots; [Boolean negation](../../rust-boolean-negation.md)
 adds an eleventh executable slot; [short-circuit Boolean expressions](../../rust-short-circuit-booleans.md)
-add the twelfth; IntegerBitwise adds the thirteenth and EagerBooleans the fourteenth. Missing and duplicate
+add the twelfth; IntegerBitwise adds the thirteenth and EagerBooleans the fourteenth. ScalarConstants adds the fifteenth. Missing and duplicate
 registration controls cover each slot independently. Typed Boolean logical-not
 and exact-width integer bit-not are admitted by the closed scalar-call evidence
 and shared-package profiles. Arithmetic negation remains outside this profile.
@@ -185,3 +186,14 @@ Composition and flat interface tables remain the design. No inheritance,
 layout-prefix downcasts, container-of tricks or string-selected methods.
 Missing C AST support requires an explicit typed extension and its tests;
 neither a raw-code escape nor the experimental miniature model is a fallback.
+
+## Compiler-evaluated constant reads
+
+[M35-03A-02F-01](../../../../plan/tasks/M35-03A-02F-01-constant-reads.md)
+implements the [scalar constant contract](../../rust-scalar-constants.md).
+Resolve nongeneric module/inherent constant paths with rustc and map evaluated
+bool/i32/i64 values to existing CLiteral/CSignedLiteral nodes. Do not infer a
+value from spelling or emit copied runtime storage. Public constant API names,
+local constant declarations, trait/generic constants and constant borrows must
+reject until their explicit mappings exist. Initializer arithmetic evaluated
+by rustc does not enable runtime arithmetic.

@@ -10,6 +10,9 @@ load(":boxed_record_flow_targets.bzl", "boxed_record_flow_targets")
 load(":c_graph_targets.bzl", "c_graph_targets")
 load(":clone_flow_targets.bzl", "clone_flow_targets")
 load(":conditional_owned_probe_targets.bzl", "conditional_owned_probe_targets")
+load(":constant_ast_targets.bzl", "constant_ast_targets")
+load(":constant_contract_targets.bzl", "constant_contract_targets")
+load(":constant_targets.bzl", "constant_targets")
 load(":crate_identity_targets.bzl", "crate_identity_targets")
 load(":crate_native_targets.bzl", "crate_native_targets")
 load(":defs.bzl", "adapter_format_test", "compiler_adapter", "compiler_adapter_compile_fail_test")
@@ -620,3 +623,15 @@ export_graph_targets(name = "export_graph_test")
 direct_call_targets(name = "direct_calls_test")
 
 public_package_targets(name = "public_package_smoke_test")
+
+constant_targets(name = "constant_fixture_clippy_test")
+
+constant_ast_targets(
+    name = "constant_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+constant_contract_targets(
+    name = "constant_contract_test",
+    c_sources = ADAPTER_SOURCES,
+)
