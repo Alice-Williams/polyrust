@@ -1,6 +1,7 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_clippy_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load(":box_clone_targets.bzl", "box_clone_targets")
 load(":boxed_record_flow_targets.bzl", "boxed_record_flow_targets")
 load(":c_graph_targets.bzl", "c_graph_targets")
 load(":crate_identity_targets.bzl", "crate_identity_targets")
@@ -21,6 +22,7 @@ load(":metadata_agreement_targets.bzl", "metadata_agreement_targets")
 load(":metadata_analysis_tests.bzl", "metadata_analysis_tests")
 load(":owned_call_graph_targets.bzl", "owned_call_graph_targets")
 load(":owned_calls_targets.bzl", "owned_calls_targets")
+load(":owned_clone_probe_targets.bzl", "owned_clone_probe_targets")
 load(":owned_construction_targets.bzl", "owned_construction_targets")
 load(":owned_early_targets.bzl", "owned_early_targets")
 load(":owned_fields_targets.bzl", "owned_fields_targets")
@@ -90,6 +92,10 @@ scalar_box_targets(name = "scalar_box_test")
 boxed_record_flow_targets(name = "boxed_record_flow_test")
 
 owned_calls_targets(name = "owned_calls_test")
+
+owned_clone_probe_targets(name = "owned_clone_probe_test")
+
+box_clone_targets(name = "box_clone_test")
 
 local_calls_targets(name = "local_calls_test")
 

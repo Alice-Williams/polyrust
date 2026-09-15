@@ -1,6 +1,8 @@
 //! Narrow owned-operation admission; not whole-body ownership certification.
 #[allow(dead_code)]
 pub(crate) mod boxed_record;
+#[allow(dead_code)]
+pub(crate) mod cloning;
 mod construction;
 #[allow(dead_code)]
 pub(crate) mod local_call;

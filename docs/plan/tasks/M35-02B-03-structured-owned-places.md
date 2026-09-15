@@ -54,6 +54,10 @@ consumer and relay effects before pairing caller/callee ownership obligations.
 then audits the completed evidence interfaces and retains canonical exits/normal
 return locations needed by structured target mapping. It adds no new source form.
 
+[M35-02B-03K — Scalar Box cloning](M35-02B-03K-owned-clone.md) then proves
+standard clone identity and a separate borrowed-source/fresh-owner correspondence
+before the C mapping consumes this remaining ownership operation.
+
 - Map every admitted structured exit and owned operation unambiguously to the
   compiler's corresponding places/drop obligations; unsupported shapes diagnose.
 - Distinct same-type owners, branch guards, field projections and lexical

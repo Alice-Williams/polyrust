@@ -414,3 +414,10 @@ M35-02B-03J makes canonical source exits and full normal-return locations visibl
 consistently across the ownership proof families. A shared ordinary consumer
 checks those projections in each family's existing runtime target. No new Rust
 shape or target heap output is enabled. See [exit projection contract](../../docs/specification/typed-generation/languages/c/rust-owned-exits.md).
+
+M35-02B-03K-01 adds `owned_clone_probe_*` compiler observations and `box_clone_*`
+operation/registration contracts. A private BoxCloneInput authenticates standard
+Box<i32> cloning through concrete trait/implementation identities, canonical local
+receivers and exact shared-borrow adjustments. An optional executable builder slot
+preserves constructor-only consumers. This does not certify whole-body clone
+cleanup or enable heap output. See [clone contract](../../docs/specification/typed-generation/languages/c/rust-owned-clone.md).

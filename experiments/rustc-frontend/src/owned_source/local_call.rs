@@ -139,7 +139,7 @@ impl<'tcx> LocalCallInput<'tcx> {
 }
 
 /// Derive the full standard allocator-bearing type from the compiler library.
-fn scalar_box_type(tcx: TyCtxt<'_>) -> Option<Ty<'_>> {
+pub(super) fn scalar_box_type(tcx: TyCtxt<'_>) -> Option<Ty<'_>> {
     let constructor = tcx.get_diagnostic_item(rustc_span::sym::box_new)?;
     if tcx.generics_of(constructor).count() != 1 {
         return None;
