@@ -368,3 +368,10 @@ are authenticated. Actual compiler cleanup decisions use exact reaching
 Boolean definitions and a whole-body use check, then pass the independent
 source-owner/drop-order relation. This remains compiler-only evidence. See
 [conditional-selection specification](../../docs/specification/typed-generation/languages/c/rust-owned-selection.md).
+
+M35-02B-03G-01 adds `owned_record_*` source-operation targets. Complete local
+record literals retain compiler nominal/field identities, normalized standard
+Box<i32> field types and source initializer order. A separate executable typed
+record binding is optional in the owned-program builder; Box-only consumers
+remain unchanged. This stage does not prove aggregate/partial-move cleanup or
+enable target heap generation. See [record identity stage](../../docs/specification/typed-generation/languages/c/rust-owned-record-fields.md#record-identity-stage).

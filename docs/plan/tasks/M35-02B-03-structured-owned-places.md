@@ -38,6 +38,10 @@ scope, without inventing an else block.
 then authenticates branch-dependent moves into one binding and actual compiler
 cleanup decisions, preserving the nonselected owner's remaining obligation.
 
+[M35-02B-03G — Partial owned records](M35-02B-03G-partial-owned-records.md)
+introduces authenticated record fields before their aggregate/partial-move
+correspondence and cleanup proof.
+
 - Map every admitted structured exit and owned operation unambiguously to the
   compiler's corresponding places/drop obligations; unsupported shapes diagnose.
 - Distinct same-type owners, branch guards, field projections and lexical
