@@ -13,7 +13,7 @@ def java_ast_targets(name):
         name = "java_ast_probe",
         crate_root = "src/java_main.rs",
         rustc_cfg = "java_ast_probe",
-        srcs = ["src/java_main.rs", "src/inputs.rs", "test/java_source_assertions.rs", "test/java_expression_assertions.rs", "test/java_dependency_assertions.rs"] + ["src/source_admission.rs"] + native.glob([
+        srcs = ["src/java_main.rs", "src/inputs.rs", "test/java_source_assertions.rs", "test/java_expression_assertions.rs", "test/java_dependency_assertions.rs", "test/package_state_java.rs"] + ["src/source_admission.rs"] + native.glob([
             "src/java_lower/**/*.rs",
             "src/source_capabilities/**/*.rs",
             "src/source_origin/**/*.rs",

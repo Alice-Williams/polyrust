@@ -1,6 +1,6 @@
 # M35-03A-02F-02B-04 — Compiler public constants and constants-only packages
 
-- Status: planned
+- Status: in-progress
 - Parent: [public constants](M35-03A-02F-02B-public-constants.md)
 - Depends on: M35-03A-02F-02B-03
 
@@ -24,3 +24,12 @@ reads and preserve private/local folding and all public export bindings/docs.
   unsupported/invalid/generic/borrowed constants reject atomically.
 - Replace old public-constant rejection only with positive equivalent evidence;
   preserve all read/local regressions. Full gate, review, examples and push.
+
+## Ordered implementation
+
+1. [04A — Function-independent package assembly](M35-03A-02F-02B-04A-package-assembly-state.md) — complete.
+2. [04B — Compiler public constant declarations and reads](M35-03A-02F-02B-04B-public-source-constants.md) — planned.
+
+The structural prerequisite is not evidence of source constant support. Each
+child receives its own proof and reviewed checkpoint. Parent04 completes only
+after both; versioned multi-crate metadata and producer joins remain child05.

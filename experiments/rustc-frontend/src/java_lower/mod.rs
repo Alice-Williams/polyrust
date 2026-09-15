@@ -10,6 +10,7 @@ mod expression_assertions;
 mod expressions;
 mod foreign;
 mod functions;
+mod package;
 mod records;
 mod representation;
 

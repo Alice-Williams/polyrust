@@ -25,6 +25,7 @@ def main():
         source = str(fixtures / (case + ".rs"))
         observed = run([probe, source, str(output), *flags])
         assert "AST_PACKAGE_CHECKED" in observed
+        assert "JAVA_PACKAGE_STATE_CHECKED\t" in observed
         assert "SCOPES_CHECKED\t" in observed
         production = work / (case + "-production") / "Generated.java"
         production.parent.mkdir()

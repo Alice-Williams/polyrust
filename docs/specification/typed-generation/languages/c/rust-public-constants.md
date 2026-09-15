@@ -98,3 +98,12 @@ or stale imported witnesses must fail the appropriate typed/certificate boundary
 Compiler and bundle integration subsequently prove aliases, docs, source-only
 private constants, exact multi-crate values and atomic publication. This target
 step alone does not claim complete Rust-source public-constant support.
+
+## Compiler assembly prerequisite
+
+Follow the C section of [package/function state](../../rust-source-package-state.md).
+Package registration owns the registry, source file, declaration inventories and
+origin cache independently of function analysis. Body Readers are constructed
+only for registered functions; zero bodies require no TypeckResults or dummy
+function. The complete C target checks still run after file assembly. This
+structural prerequisite does not itself admit source constant APIs.

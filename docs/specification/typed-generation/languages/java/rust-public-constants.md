@@ -116,3 +116,12 @@ One shared 100,000-binding budget covers functions and values; existing owner,
 qualified-name, total-name, expression and source-byte budgets remain in force.
 Constant-variable references are not classified as dynamic loop conditions:
 unmodelled compile-time constant control flow fails closed.
+
+## Compiler assembly prerequisite
+
+Follow the Java section of [package/function state](../../rust-source-package-state.md).
+Package registration owns the builder, callable/record/import inventories, origin
+cache and shared expression budget. Each actual function gets fresh checked body
+state; empty body lists emit no method. The 100,000-expression package limit must
+survive Reader replacement. Facade and file assembly occur outside a Reader. This
+structural prerequisite does not itself admit source constant APIs.

@@ -34,14 +34,14 @@ def public_package_targets(name):
     )
     compiler_adapter(
         name = "public_package_adapter",
-        srcs = ["src/inputs.rs", "test/public_package_main.rs", "test/public_package_manifest_mutations.rs"] + ["src/source_admission.rs"] + native.glob(["src/c_lower/**/*.rs", "src/source_capabilities/**/*.rs", "src/source_origin/**/*.rs", "src/api_manifest/**/*.rs"]),
+        srcs = ["src/inputs.rs", "test/public_package_main.rs", "test/public_package_manifest_mutations.rs", "test/package_state_c.rs"] + ["src/source_admission.rs"] + native.glob(["src/c_lower/**/*.rs", "src/source_capabilities/**/*.rs", "src/source_origin/**/*.rs", "src/api_manifest/**/*.rs"]),
         crate_root = "test/public_package_main.rs",
         rustc_cfg = "public_package_contract",
         deps = ["//crates/backend-c:portable_backend_c", "//crates/codegen:portable_codegen"],
     )
     sh_test(
         name = "public_package_manifest_test",
-        srcs = ["test/provenance_test.sh"],
+        srcs = ["test/package_state_c_test.sh"],
         args = ["$(rootpath :public_package_adapter)", "$(rootpath fixtures/public_package.rs)"],
         data = [":public_package_adapter", "fixtures/public_package.rs"],
     )

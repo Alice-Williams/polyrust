@@ -1,6 +1,6 @@
 //! Register the complete admitted callable inventory, then lower each body.
 use super::{
-    LoweredPackage, Reader, Result, Selection, c, capabilities, functions, origin, selection,
+    LoweredPackage, Result, Selection, c, capabilities, functions, origin, package, selection,
 };
 use crate::source_admission as admission;
 use capabilities::{
@@ -8,8 +8,6 @@ use capabilities::{
 };
 use portable_backend_c::ast::*;
 use portable_codegen::{RelativeOutputPath, RustSourceNode};
-use rustc_ast::BindingMode;
-use rustc_hir::{self as hir, def_id::LocalDefId};
 use rustc_middle::ty::TyCtxt;
 use std::collections::HashMap;
 
@@ -38,7 +36,6 @@ pub(crate) fn lower(
         None => selection::public_roots(tcx, &exports)?,
     };
     let inventory = functions::inventory(tcx, &roots, lookup)?;
-    let root = roots[0];
     let mut registry = CRegistry::new();
     let header = if entry.is_none() {
         Some(c(registry.register_file(CFileKey {
@@ -119,125 +116,52 @@ pub(crate) fn lower(
         imports.insert(origin::identity(tcx, id), (function.clone(), proof));
         foreign_functions.insert(id, function);
     }
-    let mut reader = Reader {
-        tcx,
-        checked: tcx.typeck(root),
-        mappings,
-        function: functions[&root].clone(),
-        functions,
-        foreign_functions,
+    let state = package::State {
         registry,
         file,
-        root,
+        mappings,
+        functions,
+        foreign_functions,
         records: HashMap::new(),
         declarations: Vec::new(),
-        bindings: HashMap::new(),
-        control_scopes: HashMap::new(),
         origins,
-        next_binding: 0,
-        next_scope: 0,
-        parameters: Vec::new(),
-        active_scope: None,
-        prelude: Vec::new(),
-        next_temporary: 0,
     };
-    let mut prototypes = Vec::new();
-    let mut public_prototypes = Vec::new();
-    let mut definitions = Vec::new();
-    for id in inventory.owned {
-        reader.begin_function(id)?;
-        let body = reader.branch(tcx.hir_body_owned_by(id).value, None)?;
-        if !reader.prelude.is_empty() {
-            return Err("undrained function evaluation prelude".into());
-        }
-        let linkage = if tcx.effective_visibilities(()).is_exported(id) {
-            CLinkage::External
-        } else {
-            CLinkage::Internal
-        };
-        let primary = c(CDeclarations::new(
-            &reader.registry,
-            reader.function.file().clone(),
-        ))?;
-        let prototype = CFileItem::Declaration(c(
-            primary.function_prototype(reader.function.clone(), linkage)
-        )?);
-        if header.as_ref() == Some(reader.function.file()) {
-            public_prototypes.push(prototype);
-        } else {
-            prototypes.push(prototype);
-        }
-        let declarations = c(CDeclarations::new(&reader.registry, reader.file.clone()))?;
-        definitions.push(CFileItem::Definition(c(declarations.function_definition(
-            reader.function.clone(),
-            linkage,
-            reader.parameters.clone(),
-            body,
-        ))?));
-    }
-    let mut items = reader.declarations;
+    #[cfg(public_package_contract)]
+    let state = package::assertions::check(tcx, state, &inventory.owned);
+    let package::Bodies {
+        state,
+        prototypes,
+        public_prototypes,
+        definitions,
+    } = package::lower_functions(tcx, state, &inventory.owned, header.as_ref())?;
+    let mut items = state.declarations;
     items.extend(prototypes);
     items.extend(definitions);
-    let source =
-        c(c(CDeclarations::new(&reader.registry, reader.file.clone()))?.source_file(items))?;
+    let source = c(c(CDeclarations::new(&state.registry, state.file.clone()))?.source_file(items))?;
     let mut files = Vec::new();
     if let Some(header) = header {
         files.push(c(
-            c(CDeclarations::new(&reader.registry, header))?.source_file(public_prototypes)
+            c(CDeclarations::new(&state.registry, header))?.source_file(public_prototypes)
         )?);
     }
     files.push(source);
     // rustc's source proof does not replace target representation checks.
-    c(reader.registry.check_context(&files))?;
-    c(reader.registry.check_constants_and_layout(&files))?;
-    c(reader.registry.check_sequencing_and_control(&files))?;
-    c(reader.registry.check_numeric_flow(&files))?;
-    c(reader.registry.check_index_extents(&files))?;
-    c(reader.registry.check_storage_paths(&files))?;
-    let functions = reader
+    c(state.registry.check_context(&files))?;
+    c(state.registry.check_constants_and_layout(&files))?;
+    c(state.registry.check_sequencing_and_control(&files))?;
+    c(state.registry.check_numeric_flow(&files))?;
+    c(state.registry.check_index_extents(&files))?;
+    c(state.registry.check_storage_paths(&files))?;
+    let functions = state
         .functions
         .into_iter()
         .map(|(id, function)| (origin::identity(tcx, id.to_def_id()), function))
         .collect();
     Ok(LoweredPackage {
-        registry: reader.registry.freeze(),
+        registry: state.registry.freeze(),
         sources: files,
         exports,
         functions,
         imports,
     })
-}
-
-impl Reader<'_> {
-    fn begin_function(&mut self, root: LocalDefId) -> Result<()> {
-        self.root = root;
-        self.function = self.functions[&root].clone();
-        self.checked = self.tcx.typeck(root);
-        self.bindings.clear();
-        self.control_scopes.clear();
-        self.parameters.clear();
-        self.active_scope = None;
-        self.prelude.clear();
-        self.next_binding = 0;
-        self.next_scope = 0;
-        self.next_temporary = 0;
-        for (index, parameter) in self.tcx.hir_body_owned_by(root).params.iter().enumerate() {
-            let hir::PatKind::Binding(BindingMode::NONE, id, _, None) = parameter.pat.kind else {
-                return Err("only plain immutable parameters are implemented".into());
-            };
-            let name = format!("v{index}");
-            let key = self.key(id, RustSourceNode::Parameter(id.local_id.as_u32()), &name)?;
-            let parameter = c(self.registry.register_parameter(
-                &self.function,
-                index,
-                key,
-                CConstness::Unqualified,
-            ))?;
-            self.bindings
-                .insert(id, c(self.expressions().parameter(parameter.clone()))?);
-            self.parameters.push(parameter);
-            self.next_binding += 1;
-        }
-        Ok(())
-    }
 }

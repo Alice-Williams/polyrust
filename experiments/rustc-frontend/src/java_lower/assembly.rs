@@ -1,7 +1,6 @@
 //! Register source declarations, lower bodies, and assemble the existing AST.
 use super::{
-    Callable, Place, Reader, Result, Selection, TypePlan, Value, capabilities, functions, name,
-    source,
+    Callable, Result, Selection, TypePlan, capabilities, functions, name, package, source,
 };
 use crate::source_admission as admission;
 use crate::source_origin;
@@ -13,8 +12,6 @@ use portable_backend_java::{
     dialect::{JavaDialect, JavaInvocationKind},
 };
 use portable_codegen::*;
-use rustc_ast::BindingMode;
-use rustc_hir::{self as hir, def_id::LocalDefId};
 use rustc_middle::ty::TyCtxt;
 use std::collections::HashMap;
 
@@ -104,63 +101,34 @@ pub(super) fn lower(
             },
         );
     }
-    let mut reader = Reader {
-        tcx,
-        checked: tcx.typeck(roots[0]),
+    let state = package::State {
         mappings,
         builder,
         functions,
         imported: imported.functions,
         records: HashMap::new(),
-        bindings: HashMap::new(),
         origins,
-        prelude: vec![],
-        next_local: 0,
-        active_scope: None,
-        scopes: HashMap::new(),
-        depth: 0,
         remaining: 100_000,
-        #[cfg(java_ast_probe)]
-        expression_observations: Vec::new(),
     };
+    #[cfg(java_ast_probe)]
+    let state = package::assertions::check(tcx, state, &inventory.local);
+    let (mut state, body_members) = package::lower_functions(tcx, state, &inventory.local)?;
     let mut members = vec![JavaMember::Constructor(JavaConstructor {
         modifiers: vec![JavaModifier::Private],
         name: name("Generated")?,
         parameters: vec![],
         body: JavaBlock::new(vec![]),
     })];
-    for id in inventory.local {
-        let callable = reader.functions[&id].clone();
-        let parameters = reader.begin_function(id)?;
-        let body = reader.branch(tcx.hir_body_owned_by(id).value, None)?;
-        #[cfg(java_ast_probe)]
-        super::assertions::function(&reader, id, &body);
-        members.push(JavaMember::Method(JavaMethod {
-            declared: JavaMethodDeclaration::Callable(callable.id),
-            annotations: vec![],
-            modifiers: vec![
-                match callable.visibility {
-                    JavaVisibility::Public => JavaModifier::Public,
-                    _ => JavaModifier::Private,
-                },
-                JavaModifier::Static,
-            ],
-            type_parameters: vec![],
-            return_type: callable.signature.result,
-            name: callable.name,
-            parameters,
-            body: Some(body),
-        }));
-    }
+    members.extend(body_members);
     let mut declared = vec![GeneratedSymbolId::Type(facade)];
-    let mut callables: Vec<_> = reader
+    let mut callables: Vec<_> = state
         .functions
         .values()
         .map(|function| function.id)
         .collect();
     callables.sort();
     declared.extend(callables.into_iter().map(GeneratedSymbolId::Callable));
-    let mut records: Vec<_> = reader.records.into_values().collect();
+    let mut records: Vec<_> = state.records.into_values().collect();
     records.sort_by_key(|record| record.id);
     for record in records {
         declared.push(GeneratedSymbolId::Type(record.id));
@@ -184,7 +152,7 @@ pub(super) fn lower(
         package.source_directory(JavaFilePlacement::Main)
     ))
     .map_err(|error| format!("Java package path: {error:?}"))?;
-    let file = reader.builder.file(TargetFile::new(
+    let file = state.builder.file(TargetFile::new(
         path,
         SourceRole::PublicApi,
         package,
@@ -198,12 +166,12 @@ pub(super) fn lower(
         JavaSourceFileKind::CompilationUnit,
         source(),
     ));
-    reader.builder.group(TargetFileGroup::new(
+    state.builder.group(TargetFileGroup::new(
         FileGroupRole::PublicApi,
         vec![TargetFileMember::Source(file)],
         source(),
     ));
-    let package = reader.builder.build();
+    let package = state.builder.build();
     #[cfg(java_ast_probe)]
     super::assertions::package(tcx, &package);
     Ok(package)
@@ -224,43 +192,4 @@ fn target_signature(
         parameters: signature.parameters.iter().map(ty).collect::<Result<_>>()?,
         return_type: ty(&signature.result)?,
     })
-}
-
-impl Reader<'_> {
-    fn begin_function(&mut self, root: LocalDefId) -> Result<Vec<JavaParameter>> {
-        self.checked = self.tcx.typeck(root);
-        self.bindings.clear();
-        self.scopes.clear();
-        self.prelude.clear();
-        #[cfg(java_ast_probe)]
-        self.expression_observations.clear();
-        self.active_scope = None;
-        self.next_local = 0;
-        let mut parameters = Vec::new();
-        let signature = self.functions[&root].signature.clone();
-        let body = self.tcx.hir_body_owned_by(root);
-        if body.params.len() != signature.parameters.len() {
-            return Err("source parameter count mismatch".into());
-        }
-        for (parameter, ty) in body.params.iter().zip(signature.parameters) {
-            let hir::PatKind::Binding(BindingMode::NONE, id, _, None) = parameter.pat.kind else {
-                return Err("only plain immutable parameters are implemented".into());
-            };
-            let spelling = self.fresh()?;
-            let plan = TypePlan::scalar(&ty)?;
-            self.bindings.insert(
-                id,
-                Place::resolved(Value::new(
-                    plan,
-                    JavaExpr::local(ty.clone(), spelling.clone()),
-                )?),
-            );
-            parameters.push(JavaParameter {
-                ty,
-                name: spelling,
-                final_parameter: true,
-            });
-        }
-        Ok(parameters)
-    }
 }
