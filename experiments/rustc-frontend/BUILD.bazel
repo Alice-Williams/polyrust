@@ -1,6 +1,7 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_clippy_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load(":boxed_record_flow_targets.bzl", "boxed_record_flow_targets")
 load(":c_graph_targets.bzl", "c_graph_targets")
 load(":crate_identity_targets.bzl", "crate_identity_targets")
 load(":crate_native_targets.bzl", "crate_native_targets")
@@ -82,6 +83,8 @@ owned_record_targets(name = "owned_record_test")
 owned_fields_targets(name = "owned_fields_test")
 
 scalar_box_targets(name = "scalar_box_test")
+
+boxed_record_flow_targets(name = "boxed_record_flow_test")
 
 crate_native_targets(name = "crate_native_test")
 

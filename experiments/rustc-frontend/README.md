@@ -389,3 +389,9 @@ preserves the existing i32-only input; a distinct capability and builder slot
 retain compiler nominal/field identities and closed scalar-kind enums. This
 operation proof does not establish payload producer/read/drop correspondence
 or enable target heap output. See [boxed scalar records](../../docs/specification/typed-generation/languages/c/rust-boxed-scalar-records.md).
+
+M35-02B-03H-02 adds `boxed_record_flow_*` whole-body proof targets. A private
+BoxedRecordBody retains scalar producer identity/order, record aggregate and
+Move/Copy payload transfer, whole Box moves, explicit field reads and final
+cleanup. It cannot be fabricated, erased to scalar-Box evidence or built from
+arbitrary MIR. This remains compiler-only proof, not C/Java heap generation.

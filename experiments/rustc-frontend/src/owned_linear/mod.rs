@@ -28,6 +28,7 @@ pub(crate) enum LinearError {
     Scope,
     Constructor(ConstructionError),
     Record(crate::owned_source::record::RecordError),
+    BoxedRecord(crate::owned_source::boxed_record::BoxedRecordError),
     Owner,
     Phase,
     ControlFlow,

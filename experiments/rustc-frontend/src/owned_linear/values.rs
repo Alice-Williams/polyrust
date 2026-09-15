@@ -140,12 +140,28 @@ pub(super) fn scalar_read<'tcx>(
     if !matches!(pointer.projection.as_slice(), [ProjectionElem::Deref]) {
         return Err(Error::Read);
     }
-    let pointer_ty = body.local_decls[pointer.local].ty;
-    if !matches!(pointer_ty.kind(), ty::RawPtr(inner, rustc_hir::Mutability::Not) if *inner == tcx.types.i32)
+    let cast = payload_pointer(tcx, body, flow, owner, pointer.local, tcx.types.i32)?;
+    if !flow.before(cast, read.location) || !used.insert(cast) || !used.insert(read.location) {
+        return Err(Error::Read);
+    }
+    Ok((cast, read.location))
+}
+
+/// Authenticate the compiler's representation path; never a target layout.
+pub(super) fn payload_pointer<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mir::Body<'tcx>,
+    flow: &Trace<'_, 'tcx>,
+    owner: mir::Local,
+    pointer: mir::Local,
+    payload: ty::Ty<'tcx>,
+) -> Result<mir::Location> {
+    let pointer_ty = body.local_decls[pointer].ty;
+    if !matches!(pointer_ty.kind(), ty::RawPtr(inner, rustc_hir::Mutability::Not) if *inner == payload)
     {
         return Err(Error::Read);
     }
-    let cast = flow.definition(pointer.local)?;
+    let cast = flow.definition(pointer)?;
     let Rvalue::Cast(mir::CastKind::Transmute, Operand::Copy(source), target_ty) = cast.value
     else {
         return Err(Error::Read);
@@ -205,11 +221,5 @@ pub(super) fn scalar_read<'tcx>(
     {
         return Err(Error::Read);
     }
-    if !flow.before(cast.location, read.location)
-        || !used.insert(cast.location)
-        || !used.insert(read.location)
-    {
-        return Err(Error::Read);
-    }
-    Ok((cast.location, read.location))
+    Ok(cast.location)
 }

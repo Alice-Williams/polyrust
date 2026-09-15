@@ -1,4 +1,5 @@
 //! Private multi-owner evidence; compiler analysis, not target heap admission.
+pub(crate) mod boxed_records;
 pub(crate) mod early;
 pub(crate) mod guarded;
 #[cfg(owned_multiple_proof)]

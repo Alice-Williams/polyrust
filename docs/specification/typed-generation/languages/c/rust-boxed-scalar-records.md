@@ -1,6 +1,6 @@
 # Boxes containing scalar records
 
-- Status: in-progress
+- Status: complete for the closed compiler-side construction/correspondence form
 - Plan: [M35-02B-03H](../../../../plan/tasks/M35-02B-03H-boxed-scalar-records.md)
 - Existing directions: [scalar Box construction](rust-owned-construction.md) and [records owning Boxes](rust-owned-record-fields.md)
 
@@ -50,12 +50,39 @@ Allocator-api source is excluded by the pinned stable compiler before operation
 admission; exact standard allocator identity derives from the authenticated
 constructor's full instantiated return type, not its first generic argument.
 
-## Whole-body correspondence remains required
+## Closed whole-body correspondence
 
-Before enabling a body certificate, inspect the pinned compiler's payload
-aggregate construction, moves into Box, payload-pointer/field reads and
-PostCleanup Drop. Specify the closed source grammar and correlate every
-producer/field by actual nominal identity, typed place and source order.
+H-02 admits only a root-scope, safe nongeneric function of immutable i32/bool
+parameters, one complete scalar-record literal, one Box constructor consuming
+that record binding, whole Box local moves, and a final explicit dereference
+plus scalar field selection. Tail and explicit return retain distinct canonical
+exit evidence. Implicit autoderef, record updates, arbitrary scalar expressions,
+borrows, mutation, branches and other calls are diagnosed rather than approximated.
+
+BoxedRecordBody exposes the existing SourceExit enum to consumers: Tail holds
+the canonical value, while Return holds both canonical return expression and
+value. Its returning location identifies the authenticated terminal MIR Return.
+Private retention without a consumer-visible typed projection is insufficient.
+
+The payload aggregate retains both source initializer order and declaration
+FieldIdx order. Each operand traces to its exact parameter through a unique
+typed scalar-copy staging assignment. A closed Move/Copy transfer records the
+record-to-constructor-argument edge, checked against rustc's Copy predicate.
+Neither transfer duplicates the owning Box. The final field read must use the
+actual final Box's payload pointer and exact field type/index; one final Drop
+must occur after that read and before return. All relevant locals, assignments,
+calls and normal blocks must belong to this bounded correspondence.
+
+The Copy distinction uses the compiler's
+[type_is_copy_modulo_regions query](https://doc.rust-lang.org/stable/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.type_is_copy_modulo_regions)
+only after successful analysis, with a fully monomorphized, lifetime-free
+scalar-record payload. Pinned 1.98.0 compilation and fixture proofs are the
+authoritative API/representation evidence; documentation is not a substitute.
+
+The pinned compiler's payload aggregate, moves into Box, payload-pointer/field
+reads and PostCleanup Drop have been inspected and correlated in H-02. Its
+closed source grammar authenticates every producer/field by actual nominal
+identity, typed place and source order before creating a body certificate.
 No source binding may be invented for compiler staging storage. Native-layout
 details observed in Rust are not instructions to copy Rust's Box representation
 into C.
