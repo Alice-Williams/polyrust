@@ -1,6 +1,6 @@
 # Rust owned function-boundary correspondence
 
-- Status: in-progress; I-01 identity complete, whole-body call support not admitted
+- Status: complete for I-01 identities and I-02's bounded graph; no target heap output
 - Plan: [M35-02B-03I](../../../../plan/tasks/M35-02B-03I-owned-function-boundaries.md)
 - Parent contract: [owned values](rust-owned-values.md)
 
@@ -57,11 +57,12 @@ session. Direct call arguments and destinations retain their actual compiler
 types and places. Match HIR binding order and source argument identity to MIR
 staging/move paths; no matching by spelling, debug data or equal types alone.
 
-The first graph is finite, local and acyclic. Every reachable owned callee must
-have one of the specified body proofs. Missing evidence or a cycle diagnoses
-before any target lowering/publication. The precise graph and body budgets,
-parameter/return staging and supported body grammar must be fixed from pinned
-compiler observations before this planned contract is marked implemented.
+The first graph is finite, local and acyclic. Its exact two-function grammar,
+budgets, parameter/return staging and proof contract are specified in the
+[closed owned call graph](rust-owned-call-graph.md). Every reachable owned callee
+must have one of the specified body proofs. Missing evidence, a cycle or a longer
+chain diagnoses before target lowering/publication. I-02's bounded compiler proof
+is complete; it does not admit arbitrary acyclic graphs or target heap output.
 
 Returning an owner transfers its cleanup obligation to the caller; passing an
 owner to a consumer transfers that obligation to the callee. A relay must not

@@ -1,6 +1,6 @@
 # M35-02B-03I — Authenticate owned transfers across local functions
 
-- Status: in-progress
+- Status: complete
 - Parent: [M35-02B-03](M35-02B-03-structured-owned-places.md)
 - Depends on: M35-02B-03H-02
 - Specification: [owned function boundaries](../../specification/typed-generation/languages/c/rust-owned-functions.md)
@@ -21,8 +21,10 @@ The implementation checkpoints are [I-01 — Call identities](M35-02B-03I-01-own
 and [I-02 — Caller/callee correspondence](M35-02B-03I-02-owned-call-correspondence.md).
 
 I-01 is complete: authenticated call identities and executable registrations
-passed 462 tests and independent review. I-02 remains planned; no signature is
-yet admitted as a complete ownership-transfer proof.
+passed 462 tests and independent review. I-02 is complete for the specified
+two-function entry/leaf graph, with 469 tests and a clean fresh review after
+repairing scalar staging. Longer chains, recursion and target heap output remain
+unsupported; the role signature alone still grants no ownership effect.
 
 1. Observe pinned HIR/PostCleanup bodies for a local producer returning a newly
    allocated Box, a consumer dropping an owned parameter, a relay returning its

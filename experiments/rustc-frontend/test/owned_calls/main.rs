@@ -54,7 +54,15 @@ impl Callbacks for Probe {
                 "via_producer",
                 "via_consumer",
                 "via_relay",
-                "aliased"
+                "aliased",
+                "produce_moved",
+                "consume_return",
+                "consume_direct",
+                "relay_return",
+                "relay_direct",
+                "via_consumer_return",
+                "via_relay_return",
+                "via_producer_return"
             ]
             .into_iter()
             .map(String::from)

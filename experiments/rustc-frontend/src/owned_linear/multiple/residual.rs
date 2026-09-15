@@ -54,7 +54,7 @@ impl<'tcx> Visitor<'tcx> for Uses<'_> {
     }
 }
 
-pub(super) fn account<'tcx>(
+pub(in crate::owned_linear) fn account<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mir::Body<'tcx>,
     trace: &Trace<'_, 'tcx>,
@@ -85,7 +85,7 @@ pub(super) fn account<'tcx>(
     account_unread(tcx, body, Kind::Boolean, locals, writes, used)
 }
 
-pub(super) fn account_units<'tcx>(
+pub(in crate::owned_linear) fn account_units<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mir::Body<'tcx>,
     trace: &Trace<'_, 'tcx>,

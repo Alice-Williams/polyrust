@@ -19,6 +19,7 @@ load(":local_calls_targets.bzl", "local_calls_targets")
 load(":metadata_action_targets.bzl", "metadata_action_targets")
 load(":metadata_agreement_targets.bzl", "metadata_agreement_targets")
 load(":metadata_analysis_tests.bzl", "metadata_analysis_tests")
+load(":owned_call_graph_targets.bzl", "owned_call_graph_targets")
 load(":owned_calls_targets.bzl", "owned_calls_targets")
 load(":owned_construction_targets.bzl", "owned_construction_targets")
 load(":owned_early_targets.bzl", "owned_early_targets")
@@ -91,6 +92,8 @@ boxed_record_flow_targets(name = "boxed_record_flow_test")
 owned_calls_targets(name = "owned_calls_test")
 
 local_calls_targets(name = "local_calls_test")
+
+owned_call_graph_targets(name = "owned_call_graph_test")
 
 crate_native_targets(name = "crate_native_test")
 

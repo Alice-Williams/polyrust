@@ -402,3 +402,10 @@ retains canonical resolved function/signature types and a closed Producer/
 Consumer/Relay role enum. Roles classify signatures only; callee effects and
 caller/callee ownership transfer require the separate whole-body graph proof.
 See [owned function boundaries](../../docs/specification/typed-generation/languages/c/rust-owned-functions.md).
+
+M35-02B-03I-02 adds `owned_call_graph_*` proof targets. Private graph assembly
+pairs one scalar entry with one exact checked Producer/Consumer/Relay leaf;
+signature-only or same-signature replacement bodies cannot supply ownership
+effects. Source exits and typed argument/return/drop projections remain visible
+to consumers. Recursion, longer chains, borrowed calls and target heap output
+are not admitted. See [closed graph contract](../../docs/specification/typed-generation/languages/c/rust-owned-call-graph.md).

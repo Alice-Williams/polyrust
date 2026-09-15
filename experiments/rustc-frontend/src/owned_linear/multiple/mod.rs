@@ -10,7 +10,7 @@ mod relations;
 #[cfg(owned_multiple_proof)]
 #[path = "../../../test/owned_multiple/renaming.rs"]
 pub(crate) mod renaming;
-mod residual;
+pub(super) mod residual;
 pub(crate) mod returns;
 pub(crate) mod selection;
 mod source;
