@@ -72,6 +72,15 @@ pub(in crate::dialect) fn catalogue(
                     ));
                 }
             }
+            for value in item.symbols() {
+                if let TargetSymbolRef::DependencyValue(value) = value
+                    && !dependencies.contains_value(&value)
+                {
+                    return Err(error(
+                        "Java dependency value is absent from its original consumer scope",
+                    ));
+                }
+            }
             if let crate::ast::JavaPackage::RustCrate(id) = file.module() {
                 owned.insert(*id);
             }
@@ -98,6 +107,10 @@ pub(in crate::dialect) fn catalogue(
     let mut catalogue = JavaDialect.symbol_catalogue();
     let mut pending = Vec::new();
     if let Some(scope) = scope {
+        for value in scope.values() {
+            pending.push(value.constant().package_identity());
+            catalogue.dependency_values.push(value.spec());
+        }
         for callable in scope.functions() {
             let owner = callable.function.package_identity();
             pending.push(owner);

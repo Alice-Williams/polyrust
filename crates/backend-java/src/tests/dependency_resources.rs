@@ -52,7 +52,7 @@ fn used_and_unused_registrations_consume_exact_shared_limits() {
         let linked = TargetLinker::new(JavaDialect).link_ast(&verified).unwrap();
         assert!(linked.files().iter().all(|file| file.imports().is_empty()));
         let mut limits = Limits {
-            functions: 3,
+            bindings: 3,
             owners: 2,
             names,
             name,
@@ -60,7 +60,7 @@ fn used_and_unused_registrations_consume_exact_shared_limits() {
         assert!(check(&linked, &limits).is_empty());
         for fault in 0..4 {
             let (counter, needle) = match fault {
-                0 => (&mut limits.functions, "registered dependency functions"),
+                0 => (&mut limits.bindings, "registered dependency bindings"),
                 1 => (&mut limits.owners, "registered dependency owners"),
                 2 => (&mut limits.names, "dependency name bytes"),
                 3 => (&mut limits.name, "dependency qualified-name bytes"),
@@ -80,7 +80,7 @@ fn used_and_unused_registrations_consume_exact_shared_limits() {
                 "{errors:?}"
             );
             limits = Limits {
-                functions: 3,
+                bindings: 3,
                 owners: 2,
                 names,
                 name,
@@ -88,7 +88,7 @@ fn used_and_unused_registrations_consume_exact_shared_limits() {
         }
     }
     assert_eq!(
-        (LIMITS.functions, LIMITS.owners, LIMITS.names, LIMITS.name),
+        (LIMITS.bindings, LIMITS.owners, LIMITS.names, LIMITS.name),
         (100_000, 1024, 64 * 1024 * 1024, 65_535)
     );
 }

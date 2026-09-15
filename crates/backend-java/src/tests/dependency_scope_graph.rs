@@ -186,7 +186,7 @@ fn entirely_unused_owner_closures_still_reject_conflicts_and_overlap() {
             .dependencies()
             .map(|owner| owner.root().crate_id)
             .collect::<Vec<_>>(),
-        [6]
+        [6, 8]
     );
     let (scope, safe_call) =
         JavaDependencyScope::new().import(safe.function(f::id(6, 10)).unwrap().clone());

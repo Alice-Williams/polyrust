@@ -3,22 +3,25 @@ use crate::{
     ast::{JavaFileItem, JavaResolvedName},
     dialect::{JavaDialect, JavaQualifiedName},
 };
-use portable_codegen::LinkedTargetPackage;
+use portable_codegen::{LinkedTargetPackage, TargetSymbolRef};
 use portable_diagnostics::Diagnostic;
 use std::collections::BTreeSet;
 
 #[cfg(test)]
 #[path = "../tests/dependency_resources.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "../tests/dependency_value_resources.rs"]
+mod value_tests;
 
 struct Limits {
-    functions: usize,
+    bindings: usize,
     owners: usize,
     names: usize,
     name: usize,
 }
 const LIMITS: Limits = Limits {
-    functions: 100_000,
+    bindings: 100_000,
     owners: 1024,
     names: 64 * 1024 * 1024,
     name: super::types::MAX_UTF8,
@@ -30,18 +33,33 @@ pub(super) fn verify(package: &LinkedTargetPackage<JavaDialect>) -> Vec<Diagnost
 
 fn check(package: &LinkedTargetPackage<JavaDialect>, limits: &Limits) -> Vec<Diagnostic> {
     let mut errors = Vec::new();
-    let mut functions = BTreeSet::new();
+    let mut bindings = BTreeSet::new();
     let mut owners = BTreeSet::new();
     let mut names = 0usize;
     for file in package.files() {
         for item in file.items() {
             if let JavaFileItem::Type { dependencies, .. } = &item.item {
-                for callable in dependencies.functions() {
-                    if functions.insert(callable) {
-                        let path = callable.function().path();
+                let references = dependencies
+                    .functions()
+                    .map(|callable| {
+                        (
+                            TargetSymbolRef::<JavaDialect>::DependencyCallable(callable.clone()),
+                            callable.function().package_identity(),
+                            callable.function().path(),
+                        )
+                    })
+                    .chain(dependencies.values().map(|value| {
+                        (
+                            TargetSymbolRef::DependencyValue(value.clone()),
+                            value.constant().package_identity(),
+                            value.constant().path(),
+                        )
+                    }));
+                for (symbol, owner, path) in references {
+                    if bindings.insert(symbol) {
                         let length = path.encoded_len();
                         names = names.saturating_add(length);
-                        owners.insert(callable.function().package_identity());
+                        owners.insert(owner);
                         super::limit(
                             &mut errors,
                             file.path().as_str(),
@@ -68,9 +86,9 @@ fn check(package: &LinkedTargetPackage<JavaDialect>, limits: &Limits) -> Vec<Dia
     super::limit(
         &mut errors,
         "java-dependencies",
-        "registered dependency functions",
-        functions.len(),
-        limits.functions,
+        "registered dependency bindings",
+        bindings.len(),
+        limits.bindings,
     );
     super::limit(
         &mut errors,

@@ -356,16 +356,19 @@ consumer membership is checked once per file over its collected typed symbols,
 then independently during original-package catalogue derivation. Signature and
 exception checks must not rescan the complete package for each call.
 
-Dependency registration is bounded to 100,000 functions, 1,024 owner proofs and
-64 MiB of qualified-name bytes per consumer package. The transitive used-owner
+Dependency registration is bounded to 100,000 combined function/value bindings,
+1,024 owner proofs and 64 MiB of qualified-name bytes per consumer package. The transitive used-owner
 closure of every registration also admits at most 1,024 distinct owner proofs;
 it rejects conflicting certificates or consumer identity overlap at any depth,
 not just immediate imports. Exact shared leaves in a diamond are visited once.
 Each qualified dependency
 path is also bounded to 65,535 bytes. Checks include unused registrations.
-The certificate-derived API reports exactly the directly used owners, in source
-crate identity order, rather than all registered owners. These are generated
-package dependencies, not fabricated Maven package-manager entries.
+The certificate-derived API retains every registered direct owner, including
+unused function and value registrations, in source crate identity order. Each
+retained owner preserves its own registered dependency closure for transitive
+authority checks. Retaining a proof does not emit an unused reference or import.
+These are generated package dependencies, not fabricated Maven package-manager
+entries.
 
 Imported-call admission carries the owner's checked call height into the consumer
 calculation; a cross-crate edge cannot reset the 128-level acyclic call-path limit.

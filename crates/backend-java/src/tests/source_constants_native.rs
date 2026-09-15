@@ -7,7 +7,7 @@ use std::{
     process::{Command, Output},
 };
 
-fn tool(name: &str) -> PathBuf {
+pub(super) fn tool(name: &str) -> PathBuf {
     let root = std::env::var_os("RUNFILES_DIR")
         .or_else(|| std::env::var_os("TEST_SRCDIR"))
         .expect("authoritative Bazel runfiles");
@@ -24,7 +24,7 @@ fn tool(name: &str) -> PathBuf {
         })
         .expect("pinned Java21")
 }
-fn compile(source: &Path, classes: &Path) -> Output {
+pub(super) fn compile(source: &Path, classes: &Path) -> Output {
     Command::new(tool("javac"))
         .args([
             "--release",
@@ -45,14 +45,14 @@ fn compile(source: &Path, classes: &Path) -> Output {
         .output()
         .unwrap()
 }
-fn success(output: Output) {
+pub(super) fn success(output: Output) {
     assert!(
         output.status.success(),
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
 }
-fn run(classes: &Path) -> Output {
+pub(super) fn run(classes: &Path) -> Output {
     Command::new(tool("java"))
         .arg("-cp")
         .arg(classes)
@@ -61,7 +61,7 @@ fn run(classes: &Path) -> Output {
         .unwrap()
 }
 // Expectations are handwritten independently of the AST and renderer.
-const EXPECTED: [&str; 8] = [
+pub(super) const EXPECTED: [&str; 8] = [
     "false",
     "true",
     "-2147483648",

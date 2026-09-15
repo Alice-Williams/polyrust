@@ -179,14 +179,12 @@ impl JavaDependencyApi {
             .files()
             .iter()
             .flat_map(|file| file.items())
-            .flat_map(|item| item.names.keys())
-            .filter_map(|symbol| match symbol {
-                portable_codegen::TargetSymbolRef::DependencyCallable(callable) => {
-                    let owner = callable.function().package_identity();
-                    Some((owner.root().crate_id, owner.clone()))
-                }
+            .filter_map(|item| match &item.item {
+                crate::ast::JavaFileItem::Type { dependencies, .. } => Some(dependencies),
                 _ => None,
             })
+            .flat_map(|dependencies| dependencies.owners())
+            .map(|owner| (owner.root().crate_id, owner.clone()))
             .collect();
         let owner = JavaDependencyPackage(Arc::new(Authority {
             package,

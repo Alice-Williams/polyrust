@@ -158,7 +158,7 @@ fn separately_compiled_dependency_owners_match_independent_java_consumers() {
         api.dependencies()
             .map(|owner| owner.root().crate_id)
             .collect::<Vec<_>>(),
-        [7, 11, 12]
+        [6, 7, 11, 12]
     );
     for owner in [&record, &first, &second] {
         let text = publish_and_compile(owner.package(), &root, &classes);

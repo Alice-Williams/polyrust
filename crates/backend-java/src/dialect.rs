@@ -27,7 +27,9 @@ pub use dependency_api::{
     JavaSourceDescription, JavaSourceDescriptionKind, JavaSourceTarget,
 };
 mod dependency_scope;
-pub use dependency_scope::{JavaDependencyBindings, JavaDependencyScope, JavaImportedCallable};
+pub use dependency_scope::{
+    JavaDependencyBindings, JavaDependencyScope, JavaImportedCallable, JavaImportedValue,
+};
 mod documentation;
 mod file_checks;
 mod linker;

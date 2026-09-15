@@ -91,7 +91,8 @@ impl Checker<'_> {
             JavaExprKind::Literal(_) => {}
             JavaExprKind::Value(reference) => match reference {
                 JavaValueRef::Local(name) => self.name(name),
-                JavaValueRef::This
+                JavaValueRef::Dependency(_)
+                | JavaValueRef::This
                 | JavaValueRef::Generated(_)
                 | JavaValueRef::EnumVariant { .. }
                 | JavaValueRef::KnownField(_) => {}

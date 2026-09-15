@@ -1,6 +1,6 @@
 # Rust public scalar constants in Java 21
 
-- Status: normative; producer implementation in M35-03A-02F-02B-03A; consumer/source integration pending
+- Status: normative; producer and consumer complete; source integration pending
 - Parent: [shared source contract](../../rust-public-constants.md)
 - Reuse: [Java source packages](rust-hir-lowering.md)
 
@@ -88,3 +88,31 @@ constant-variable reads, semantic-mutant tests recompile consumers against each
 mutant producer; running stale consumer bytecode is not sufficient evidence.
 The Java bundle projection/serialization fail closed for Constant descriptions
 until their dedicated integration milestone. Existing source kinds stay enabled.
+
+## Consumer implementation boundary
+
+JavaDependencyScope::import_constant consumes a JavaDependencyConstant and
+returns a JavaImportedValue branded to that scope. Freezing preserves both value
+and function registrations; the same exact witness may be registered repeatedly
+without creating distinct bindings. No raw name/path or unchecked package can
+construct an imported value. Expressions carry JavaValueRef::Dependency, which
+must have the defining primitive type and appear in the containing file's exact
+frozen scope.
+
+Shared DependencyValueSpec entries derive names, owner identity, primitive type
+and qualified spelling from those opaque witnesses. Post-link checks rederive
+the original package and compare each dependency spelling with its exact producer
+path. The renderer merely emits that checked reference. Assignment remains
+forbidden, and no foreign field is promoted to an owned declaration.
+
+Dependency authority retains all registered producer packages, including unused
+values and functions. This is distinct from source emission: unreferenced fields
+and imports are not emitted. Retaining unused owners prevents a conflicting
+certificate or consumer-namespace overlap from being hidden by an intermediate
+package. Same-authority diamonds pass; different certificates for one Rust crate
+fail. Function call heights still measure actual calls, not retained constants.
+
+One shared 100,000-binding budget covers functions and values; existing owner,
+qualified-name, total-name, expression and source-byte budgets remain in force.
+Constant-variable references are not classified as dynamic loop conditions:
+unmodelled compile-time constant control flow fails closed.

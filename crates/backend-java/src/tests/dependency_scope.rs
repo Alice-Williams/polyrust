@@ -72,7 +72,10 @@ fn exact_owner_scope_and_signature_produce_qualified_calls_without_imports() {
     let api = JavaDependencyApi::from_certificate(package.clone()).unwrap();
     assert_eq!(
         api.dependencies().cloned().collect::<Vec<_>>(),
-        vec![first.package_identity().clone()]
+        vec![
+            first.package_identity().clone(),
+            unused.package_identity().clone()
+        ]
     );
     assert_eq!(api.function(f::id(9, 10)).unwrap().call_height(), 2);
     let renderer = JavaStructuralRenderer;
@@ -178,6 +181,7 @@ fn owner_signature_controls_argument_types_and_result_even_for_valid_handles() {
         }
         functions[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(value))]);
         let bindings = JavaDependencyBindings(Some(Arc::new(Frozen {
+            values: BTreeSet::new(),
             identity: scope.identity.clone(),
             functions: scope.functions.clone(),
         })));

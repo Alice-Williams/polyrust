@@ -146,6 +146,8 @@ impl Reader<'_> {
                 JavaLiteral::I32(_) | JavaLiteral::I64(_) | JavaLiteral::Boolean(_),
             )
             | JavaExprKind::Value(JavaValueRef::Local(_)) => {}
+            JavaExprKind::Value(JavaValueRef::Dependency(imported))
+                if imported.ty() == &value.ty => {}
             JavaExprKind::Value(JavaValueRef::Generated(GeneratedSymbolId::Value(id)))
                 if self.constants.get(id) == Some(&value.ty) => {}
             JavaExprKind::Unary {

@@ -47,6 +47,9 @@ impl Reader<'_> {
                 JavaLiteral::I32(_) | JavaLiteral::I64(_) | JavaLiteral::Boolean(_),
             )
             | JavaExprKind::Value(JavaValueRef::This) => Ok(()),
+            JavaExprKind::Value(JavaValueRef::Dependency(imported)) => {
+                self.symbol(TargetSymbolRef::DependencyValue(imported.clone()))
+            }
             JavaExprKind::Value(JavaValueRef::Local(name)) => self.spelling(name.as_str()),
             JavaExprKind::Value(JavaValueRef::Generated(GeneratedSymbolId::Value(id))) => {
                 self.symbol(TargetSymbolRef::Generated(GeneratedSymbolId::Value(*id)))

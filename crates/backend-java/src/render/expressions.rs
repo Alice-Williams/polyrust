@@ -23,6 +23,9 @@ pub(super) fn render_expr(
         JavaExprKind::Literal(value) => Ok(render_literal(value)),
         JavaExprKind::Value(value) => {
             let value = match value {
+                JavaValueRef::Dependency(value) => {
+                    resolved_name(names, &TargetSymbolRef::DependencyValue(value.clone()))?
+                }
                 JavaValueRef::Local(value) => value.as_str().to_owned(),
                 JavaValueRef::This => "this".to_owned(),
                 JavaValueRef::Generated(value) => {

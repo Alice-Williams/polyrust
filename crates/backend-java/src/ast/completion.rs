@@ -149,7 +149,8 @@ fn expression_has_runtime_dependency(value: &JavaExpr) -> bool {
         JavaExprKind::Literal(_) => false,
         JavaExprKind::Value(JavaValueRef::Local(_) | JavaValueRef::This) => true,
         JavaExprKind::Value(
-            JavaValueRef::Generated(_)
+            JavaValueRef::Dependency(_)
+            | JavaValueRef::Generated(_)
             | JavaValueRef::EnumVariant { .. }
             | JavaValueRef::KnownField(_),
         ) => false,

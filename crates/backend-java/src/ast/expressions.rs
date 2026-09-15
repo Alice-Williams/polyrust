@@ -44,6 +44,9 @@ impl JavaExpr {
         match &self.kind {
             JavaExprKind::Literal(_) => {}
             JavaExprKind::Value(value) => match value {
+                JavaValueRef::Dependency(value) => {
+                    symbols.insert(TargetSymbolRef::DependencyValue(value.clone()));
+                }
                 JavaValueRef::Generated(value) => {
                     symbols.insert(TargetSymbolRef::Generated(*value));
                 }
@@ -203,6 +206,11 @@ impl JavaExpr {
                 violations.extend(super::literal_limits::verify_literal(literal, &self.ty));
             }
             JavaExprKind::Value(value) => match value {
+                JavaValueRef::Dependency(value) => {
+                    if &self.ty != value.ty() {
+                        violations.push(type_error("Java dependency value type disagrees with its defining certificate"));
+                    }
+                }
                 JavaValueRef::Generated(GeneratedSymbolId::Value(id)) => {
                     match generated_static_value_matches(*id, &self.ty, context) {
                         Some(true) => {}

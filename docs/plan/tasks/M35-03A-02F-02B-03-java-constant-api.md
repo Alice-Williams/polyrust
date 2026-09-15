@@ -1,6 +1,6 @@
 # M35-03A-02F-02B-03 — Certified Java constant fields and imports
 
-- Status: in-progress
+- Status: complete
 - Parent: [public constants](M35-03A-02F-02B-public-constants.md)
 - Depends on: M35-03A-02F-02B-02
 
@@ -25,7 +25,7 @@ qualified dependency-value references without custom runtime helpers.
 ## Ordered implementation
 
 1. [03A — Owned Java constants and producer APIs](M35-03A-02F-02B-03A-java-constant-producers.md) — complete.
-2. [03B — Authenticated Java constant consumers](M35-03A-02F-02B-03B-java-constant-consumers.md) — planned.
+2. [03B — Authenticated Java constant consumers](M35-03A-02F-02B-03B-java-constant-consumers.md) — complete.
 
 The existing general Java AST already represents static-final fields. The first
 child admits precisely the scalar source-constant profile and authenticates its

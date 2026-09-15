@@ -1,8 +1,10 @@
-//! A consuming registration scope binds certified functions to one consumer.
+//! A consuming registration scope binds certified functions and values to one consumer.
 #[cfg(test)]
 #[path = "../tests/dependency_scope.rs"]
 mod tests;
+mod values;
 mod verification;
+pub use values::JavaImportedValue;
 pub(super) use verification::catalogue;
 
 use super::JavaDependencyFunction;
@@ -74,6 +76,7 @@ impl JavaImportedCallable {
 pub struct JavaDependencyScope {
     identity: Identity,
     functions: BTreeSet<JavaImportedCallable>,
+    values: BTreeSet<JavaImportedValue>,
 }
 
 impl Default for JavaDependencyScope {
@@ -86,6 +89,7 @@ impl JavaDependencyScope {
         Self {
             identity: Identity(Arc::new(0)),
             functions: BTreeSet::new(),
+            values: BTreeSet::new(),
         }
     }
     pub fn import(mut self, function: JavaDependencyFunction) -> (Self, JavaImportedCallable) {
@@ -97,12 +101,13 @@ impl JavaDependencyScope {
         (self, imported)
     }
     pub fn finish(self) -> JavaDependencyBindings {
-        if self.functions.is_empty() {
+        if self.functions.is_empty() && self.values.is_empty() {
             JavaDependencyBindings::default()
         } else {
             JavaDependencyBindings(Some(Arc::new(Frozen {
                 identity: self.identity,
                 functions: self.functions,
+                values: self.values,
             })))
         }
     }
@@ -112,6 +117,7 @@ impl JavaDependencyScope {
 struct Frozen {
     identity: Identity,
     functions: BTreeSet<JavaImportedCallable>,
+    values: BTreeSet<JavaImportedValue>,
 }
 
 /// Immutable original-package registrations. Default is the legacy empty scope.
@@ -139,18 +145,26 @@ impl JavaDependencyBindings {
         item.symbols()
             .into_iter()
             .filter_map(|symbol| {
-                if let TargetSymbolRef::DependencyCallable(callable) = symbol
-                    && !self.contains(&callable)
-                {
-                    Some(AstViolation::new(
-                        DiagnosticCode::UnresolvedReference,
-                        "Java dependency call is absent from its file's frozen consumer scope",
-                    ))
-                } else {
-                    None
-                }
+                let message = match symbol {
+                    TargetSymbolRef::DependencyCallable(callable) if !self.contains(&callable) => {
+                        "Java dependency call is absent from its file's frozen consumer scope"
+                    }
+                    TargetSymbolRef::DependencyValue(value) if !self.contains_value(&value) => {
+                        "Java dependency value is absent from its file's frozen consumer scope"
+                    }
+                    _ => return None,
+                };
+                Some(AstViolation::new(
+                    DiagnosticCode::UnresolvedReference,
+                    message,
+                ))
             })
             .collect()
+    }
+    pub(crate) fn owners(&self) -> impl Iterator<Item = &super::JavaDependencyPackage> {
+        self.functions()
+            .map(|f| f.function().package_identity())
+            .chain(self.values().map(|v| v.constant().package_identity()))
     }
     pub fn functions(&self) -> impl Iterator<Item = &JavaImportedCallable> {
         self.0.iter().flat_map(|frozen| &frozen.functions)

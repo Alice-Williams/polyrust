@@ -76,6 +76,7 @@ pub enum JavaNullPurpose {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JavaValueRef {
+    Dependency(crate::dialect::JavaImportedValue),
     Local(JavaIdentifier),
     This,
     Generated(GeneratedSymbolId),

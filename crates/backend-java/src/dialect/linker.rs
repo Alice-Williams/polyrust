@@ -26,7 +26,7 @@ use portable_diagnostics::DiagnosticCode;
 use std::collections::{BTreeMap, BTreeSet};
 
 impl LinkerDialect for JavaDialect {
-    type DependencyValue = portable_codegen::NoDependencyValue;
+    type DependencyValue = super::JavaImportedValue;
     type DependencyCallable = super::JavaImportedCallable;
     type DependencyPackage = super::JavaDependencyPackage;
     type KnownField = JavaKnownField;
@@ -51,15 +51,15 @@ impl LinkerDialect for JavaDialect {
         &self,
         value: &Self::DependencyValue,
     ) -> portable_codegen::DependencyValueSpec<Self> {
-        match *value {}
+        value.spec()
     }
 
     fn verify_dependency_value_type(
         &self,
         value: &Self::DependencyValue,
-        _ty: &portable_codegen::TargetTypeRef<Self>,
+        ty: &portable_codegen::TargetTypeRef<Self>,
     ) -> Result<(), AstViolation> {
-        match *value {}
+        value.verify_type(ty)
     }
 
     fn dependency_callable_spec(
@@ -291,6 +291,10 @@ impl LinkerDialect for JavaDialect {
         let expected = item.item.symbols().into_iter().collect::<BTreeSet<_>>();
         let actual = item.names.keys().cloned().collect::<BTreeSet<_>>();
         let dependencies_match = item.names.iter().all(|(symbol, name)| match symbol {
+            TargetSymbolRef::DependencyValue(value) => {
+                matches!(name, JavaResolvedName::Qualified(JavaQualifiedName::Dependency(path))
+                    if path == value.constant().path())
+            }
             TargetSymbolRef::DependencyCallable(callable) => {
                 matches!(name, JavaResolvedName::Qualified(JavaQualifiedName::Dependency(path))
                     if path == callable.function().path())
