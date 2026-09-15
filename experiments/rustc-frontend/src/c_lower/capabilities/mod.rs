@@ -10,12 +10,22 @@ mod record_initializers;
 mod resolved_places;
 mod scalar_comparisons;
 mod shared_borrows;
+mod short_circuit_booleans;
 mod slots;
 
 #[cfg(boolean_contract)]
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/boolean_negation_contract.rs"]
 mod boolean_contract;
+
+#[cfg(lazy_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/short_circuit_contract.rs"]
+mod lazy_contract;
+
+#[cfg(lazy_ast_probe)]
+#[path = "../../../test/short_circuit_c_ast.rs"]
+mod lazy_ast;
 
 #[cfg(mapping_contract_duplicate)]
 #[path = "../../../test/capability_duplicate.rs"]
@@ -55,6 +65,7 @@ pub(crate) use record_initializers::CRecordInitializers;
 pub(crate) use resolved_places::CResolvedPlaces;
 pub(crate) use scalar_comparisons::CScalarComparisons;
 pub(crate) use shared_borrows::CSharedBorrows;
+pub(crate) use short_circuit_booleans::CShortCircuitBooleans;
 pub(crate) use slots::{Bindings, Builder};
 
 pub(crate) use crate::source_capabilities::*;
@@ -71,6 +82,7 @@ pub(crate) type CBindings = Bindings<
     CDirectCalls,
     CFunctionSignatures,
     CBooleanNegation,
+    CShortCircuitBooleans,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -86,5 +98,6 @@ pub(crate) fn c_bindings() -> CBindings {
         .direct_calls(CDirectCalls)
         .function_signatures(CFunctionSignatures)
         .boolean_negation(CBooleanNegation)
+        .short_circuit_booleans(CShortCircuitBooleans)
         .build()
 }

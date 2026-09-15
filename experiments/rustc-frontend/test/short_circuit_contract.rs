@@ -1,13 +1,13 @@
 //! Independent negative controls for the new executable slot and checked input.
 use super::*;
-#[cfg(boolean_c)]
+#[cfg(lazy_c)]
 use super::{
     CBooleanNegation as Negate, CDirectCalls as Calls, CEntrySignatures as Entry,
     CFunctionSignatures as Functions, CLexicalControl as Control, CLiteralValues as Literals,
     CObjectTypes as Objects, CRecordInitializers as Records, CResolvedPlaces as Places,
     CScalarComparisons as Comparisons, CSharedBorrows as Borrows, CShortCircuitBooleans as Lazy,
 };
-#[cfg(boolean_java)]
+#[cfg(lazy_java)]
 use super::{
     JavaBooleanNegation as Negate, JavaDirectCalls as Calls, JavaEntrySignatures as Entry,
     JavaFunctionSignatures as Functions, JavaLexicalControl as Control,
@@ -15,16 +15,16 @@ use super::{
     JavaResolvedPlaces as Places, JavaScalarComparisons as Comparisons,
     JavaSharedBorrows as Borrows, JavaShortCircuitBooleans as Lazy,
 };
-#[cfg(boolean_c)]
+#[cfg(lazy_c)]
 use crate::c_lower::Reader;
-#[cfg(boolean_java)]
+#[cfg(lazy_java)]
 use crate::java_lower::Reader;
-#[cfg(boolean_c)]
+#[cfg(lazy_c)]
 type Output = portable_backend_c::ast::CValue;
-#[cfg(boolean_java)]
+#[cfg(lazy_java)]
 type Output = crate::java_lower::Value;
 
-#[cfg(boolean_missing)]
+#[cfg(lazy_missing)]
 fn missing() {
     Builder::new()
         .literal_values(Literals)
@@ -37,33 +37,33 @@ fn missing() {
         .entry_signatures(Entry)
         .direct_calls(Calls)
         .function_signatures(Functions)
-        .short_circuit_booleans(Lazy)
+        .boolean_negation(Negate)
         .build();
 }
 
-#[cfg(boolean_duplicate)]
+#[cfg(lazy_duplicate)]
 fn duplicate() {
     Builder::new()
-        .boolean_negation(Negate)
-        .boolean_negation(Negate);
+        .short_circuit_booleans(Lazy)
+        .short_circuit_booleans(Lazy);
 }
 
-#[cfg(any(boolean_wrong_capability, boolean_wrong_context, boolean_wrong_output))]
+#[cfg(any(lazy_wrong_capability, lazy_wrong_context, lazy_wrong_output))]
 #[derive(Clone, Copy)]
 struct Wrong;
-#[cfg(any(boolean_wrong_capability, boolean_wrong_context, boolean_wrong_output))]
+#[cfg(any(lazy_wrong_capability, lazy_wrong_context, lazy_wrong_output))]
 impl Mapping for Wrong {
-    #[cfg(boolean_wrong_capability)]
+    #[cfg(lazy_wrong_capability)]
     type Capability = LiteralValues;
-    #[cfg(not(boolean_wrong_capability))]
-    type Capability = BooleanNegation;
-    #[cfg(boolean_wrong_context)]
+    #[cfg(not(lazy_wrong_capability))]
+    type Capability = ShortCircuitBooleans;
+    #[cfg(lazy_wrong_context)]
     type Context<'tcx> = ();
-    #[cfg(not(boolean_wrong_context))]
+    #[cfg(not(lazy_wrong_context))]
     type Context<'tcx> = Reader<'tcx>;
-    #[cfg(boolean_wrong_output)]
+    #[cfg(lazy_wrong_output)]
     type Output = ();
-    #[cfg(not(boolean_wrong_output))]
+    #[cfg(not(lazy_wrong_output))]
     type Output = Output;
 
     fn lower<'tcx>(
@@ -75,19 +75,21 @@ impl Mapping for Wrong {
     }
 }
 
-#[cfg(any(boolean_wrong_capability, boolean_wrong_context, boolean_wrong_output))]
+#[cfg(any(lazy_wrong_capability, lazy_wrong_context, lazy_wrong_output))]
 fn wrong() {
-    Builder::new().boolean_negation(Wrong);
+    Builder::new().short_circuit_booleans(Wrong);
 }
 
-#[cfg(boolean_wrong_input)]
+#[cfg(lazy_wrong_input)]
 fn wrong_input<'tcx>(reader: &mut Reader<'tcx>, expression: &'tcx rustc_hir::Expr<'tcx>) {
-    let _ = Negate.lower(reader, LiteralInput(expression));
+    let _ = Lazy.lower(reader, LiteralInput(expression));
 }
 
-#[cfg(boolean_private_input)]
+#[cfg(lazy_private_input)]
 fn private_input<'tcx>(expression: &'tcx rustc_hir::Expr<'tcx>) {
-    let _ = NegationInput {
-        operand: expression,
+    let _ = LazyBooleanInput {
+        operator: LazyBooleanOperator::And,
+        left: expression,
+        right: expression,
     };
 }

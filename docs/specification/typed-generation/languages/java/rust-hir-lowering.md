@@ -38,6 +38,7 @@ continues to support its existing parameter lists.
 | Shared reference | A Java-owned typed representation plan for immutable access; no null introduction or mutable aliasing |
 | Built-in field access/dereference | Resolve the actual compiler field/adjustment through that representation plan |
 | Scalar comparison | Java primitive comparison with Boolean result; no reference-identity equality substitution |
+| Built-in bool lazy and/or | Initialized private bool temporary and typed If/Assign; right prelude remains branch-local |
 | Tail block and if/else | Structured Java scopes, branches and returns |
 | Resolved documentation attributes | Escaped documentation attached to the corresponding Java declaration |
 
@@ -75,7 +76,7 @@ separate typed wrapper admitted only from resolved bindings, authenticated field
 and built-in shared dereference. Erasure must not turn an arbitrary value into a
 place or allow reference equality, mutation, nulls or escaping reference APIs.
 
-Literal, comparison, Boolean-negation, borrow, call and record-initializer mappings produce planned
+Literal, comparison, Boolean-negation, short-circuit Boolean, borrow, call and record-initializer mappings produce planned
 Java values. ObjectTypes produces the representation plan; ResolvedPlaces produces
 a planned place; LexicalControl produces JavaBlock. EntrySignatures and
 FunctionSignatures produce JavaMethodSignature from compiler signatures. Every
@@ -94,6 +95,14 @@ slot and checked compiler input. It maps only built-in bool Not to a typed Java
 unary node, evaluating its operand once. Dependency-body admission and source
 byte reservation traverse that node without admitting other unary operations.
 No runtime helper or import is introduced.
+
+[Short-circuit Boolean expressions](../../rust-short-circuit-booleans.md) have
+their own checked input, typed And/Or enum and executable slot. Evaluate the
+left value once, initialize a private mutable bool local and place the complete
+right prelude inside its conditional block. This is implementation-local
+mutation, not support for source assignment or mutable references. Dependency
+body admission tracks initialized mutable bool locals per lexical scope/method;
+it does not admit writes to parameters, fields, final locals or other types.
 
 The single-crate source adapter initially admits at most 4,096 reachable functions,
 100,000 expression visits in call discovery, and depth 128 for discovery and
@@ -229,7 +238,7 @@ source_admission, not a capability input contract or a concrete emitter.
    analysis. Concrete target keys and registrations remain backend-owned. All
    extraction budgets and declared doc/source input checks remain mandatory.
 2. Java adapter: java_lower owns representation choices and a consuming builder
-   with exact context/output bounds for each of the eleven admitted input
+   with exact context/output bounds for each of the twelve admitted input
    categories. It emits existing Java types, not a new generic AST.
 3. Java target model: extend the existing JavaPackage with a typed Rust crate
    identity. Its package spelling and path derive from that identity. Preserve
@@ -262,7 +271,7 @@ certified packages even when source IDs coincide; authority addresses never
 determine output names or ordering. The API inventory reconciles actual public
 declarations with the entire resolved source export graph. It rejects omitted
 public bindings, private exports, non-scalar signatures and bodies outside the
-admitted closed immutable-call subset. Metadata alone cannot certify purity or
+admitted closed local-only computation subset. Metadata alone cannot certify purity or
 substitute for rustc source/metadata agreement.
 
 Resolved Java file items retain a Java-owned source-declaration inventory derived
@@ -283,10 +292,10 @@ functions, 100,000 body/block/statement/expression visits across the package and
 128 levels of body nesting or acyclic call height. These are explicit admission
 limits, not a claim that every syntactically valid Java program is a dependency.
 Record constructors must consist solely of exact canonical field assignments;
-method bodies admit initialized final locals, returns, total conditionals,
-scalar comparisons, built-in Boolean Not, immutable record construction/reads
-and closed local calls.
-Mutation, general arithmetic, external/runtime calls and recursion do not acquire
+method bodies admit initialized final locals, initialized mutable bool locals
+and writes to those locals, returns, total conditionals, scalar comparisons,
+built-in Boolean Not, immutable record construction/reads and closed local calls.
+Other mutation, general arithmetic, external/runtime calls and recursion do not acquire
 this proof merely by setting a pure signature flag.
 
 Constructor blocks (including the empty facade constructor), canonical assignment

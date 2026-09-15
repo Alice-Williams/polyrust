@@ -11,6 +11,7 @@ mod record_initializers;
 mod resolved_places;
 mod scalar_comparisons;
 mod shared_borrows;
+mod short_circuit_booleans;
 
 pub(crate) use boolean_negation::{BooleanNegation, NegationInput};
 pub(crate) use contracts::{Capability, Mapping, Supports};
@@ -24,3 +25,6 @@ pub(crate) use record_initializers::{RecordInitializers, RecordInput};
 pub(crate) use resolved_places::{PlaceInput, ResolvedPlaces};
 pub(crate) use scalar_comparisons::{ComparisonInput, ScalarComparisons};
 pub(crate) use shared_borrows::{BorrowInput, SharedBorrows};
+pub(crate) use short_circuit_booleans::{
+    LazyBooleanInput, LazyBooleanOperator, ShortCircuitBooleans,
+};

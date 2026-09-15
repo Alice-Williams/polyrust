@@ -2,6 +2,76 @@ use super::source_dependency_fixture::*;
 use crate::{ast::*, dialect::JavaDependencyApi};
 
 #[test]
+fn mutable_bool_local_branch_writes_are_closed_dependency_bodies() {
+    let mut fixture = functions(42);
+    let local = JavaExpr::local(boolean(), name("result"));
+    fixture[2].body = JavaBlock::new(vec![
+        JavaStmt::Local {
+            finality: JavaLocalFinality::Mutable,
+            ty: boolean(),
+            name: name("result"),
+            value: Some(JavaExpr::literal(boolean(), JavaLiteral::Boolean(false))),
+        },
+        JavaStmt::If {
+            condition: JavaExpr::local(boolean(), name("p0")),
+            then_block: JavaBlock::new(vec![JavaStmt::Assign {
+                target: local.clone(),
+                value: JavaExpr::literal(boolean(), JavaLiteral::Boolean(true)),
+            }]),
+            else_block: Some(JavaBlock::new(vec![])),
+        },
+        JavaStmt::Return(Some(local)),
+    ]);
+    assert!(JavaDependencyApi::from_certificate(certify(package(7, fixture))).is_ok());
+}
+
+#[test]
+fn mutable_bool_parameters_remain_outside_dependency_signature_admission() {
+    let mut fixture = functions(42);
+    fixture[0].body.statements.insert(
+        0,
+        JavaStmt::Local {
+            finality: JavaLocalFinality::Mutable,
+            ty: boolean(),
+            name: name("p0"),
+            value: Some(JavaExpr::literal(boolean(), JavaLiteral::Boolean(false))),
+        },
+    );
+    fixture[2].parameters[0].final_parameter = false;
+    fixture[2].body.statements.insert(
+        0,
+        JavaStmt::Assign {
+            target: JavaExpr::local(boolean(), name("p0")),
+            value: JavaExpr::literal(boolean(), JavaLiteral::Boolean(true)),
+        },
+    );
+    assert!(
+        JavaDependencyApi::from_certificate(certify(package(7, fixture)))
+            .unwrap_err()
+            .contains("visibility/signature/declaration inventory disagrees")
+    );
+}
+
+#[test]
+fn mutable_integer_locals_remain_outside_dependency_body_admission() {
+    let mut fixture = functions(42);
+    fixture[0].body.statements.insert(
+        0,
+        JavaStmt::Local {
+            finality: JavaLocalFinality::Mutable,
+            ty: int(),
+            name: name("result"),
+            value: Some(JavaExpr::literal(int(), JavaLiteral::I32(1))),
+        },
+    );
+    assert!(
+        JavaDependencyApi::from_certificate(certify(package(7, fixture)))
+            .unwrap_err()
+            .contains("unadmitted statement")
+    );
+}
+
+#[test]
 fn boolean_negation_is_a_closed_dependency_expression() {
     let mut fixture = functions(42);
     fixture[2].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {

@@ -47,6 +47,13 @@ impl<'tcx> Reader<'tcx> {
                         Supports::<SharedBorrows>::mapping(&reader.mappings)
                             .lower(reader, BorrowInput(value))
                     }
+                    hir::ExprKind::Binary(operator, ..)
+                        if matches!(operator.node, hir::BinOpKind::And | hir::BinOpKind::Or) =>
+                    {
+                        let input = LazyBooleanInput::read(reader.checked, value)?;
+                        Supports::<ShortCircuitBooleans>::mapping(&reader.mappings)
+                            .lower(reader, input)
+                    }
                     hir::ExprKind::Binary(..) => {
                         Supports::<ScalarComparisons>::mapping(&reader.mappings)
                             .lower(reader, ComparisonInput(value))

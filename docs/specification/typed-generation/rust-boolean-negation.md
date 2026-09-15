@@ -41,3 +41,6 @@ This contract does not enable lazy and/or, integer bit-not, trait dispatch or
 new ownership forms. Unsupported valid Rust produces a diagnostic, not an
 approximate mapping. Tests prove supported behavior and the closed boundary;
 they are not a formal proof of every arbitrary Rust program.
+
+Lazy and/or have a separate [short-circuit capability](rust-short-circuit-booleans.md).
+Their addition does not broaden the BooleanNegation input or unary AST profile.

@@ -10,12 +10,22 @@ mod record_initializers;
 mod resolved_places;
 mod scalar_comparisons;
 mod shared_borrows;
+mod short_circuit_booleans;
 mod slots;
 
 #[cfg(boolean_contract)]
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/boolean_negation_contract.rs"]
 mod boolean_contract;
+
+#[cfg(lazy_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/short_circuit_contract.rs"]
+mod lazy_contract;
+
+#[cfg(lazy_ast_probe)]
+#[path = "../../../test/short_circuit_java_ast.rs"]
+mod lazy_ast;
 
 #[cfg(java_contract_duplicate)]
 #[path = "../../../test/java_capability_duplicate.rs"]
@@ -46,6 +56,7 @@ pub(crate) use record_initializers::JavaRecordInitializers;
 pub(crate) use resolved_places::JavaResolvedPlaces;
 pub(crate) use scalar_comparisons::JavaScalarComparisons;
 pub(crate) use shared_borrows::JavaSharedBorrows;
+pub(crate) use short_circuit_booleans::JavaShortCircuitBooleans;
 pub(crate) use slots::{Bindings, Builder};
 
 pub(crate) type JavaBindings = Bindings<
@@ -60,6 +71,7 @@ pub(crate) type JavaBindings = Bindings<
     JavaDirectCalls,
     JavaFunctionSignatures,
     JavaBooleanNegation,
+    JavaShortCircuitBooleans,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -75,5 +87,6 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .direct_calls(JavaDirectCalls)
         .function_signatures(JavaFunctionSignatures)
         .boolean_negation(JavaBooleanNegation)
+        .short_circuit_booleans(JavaShortCircuitBooleans)
         .build()
 }

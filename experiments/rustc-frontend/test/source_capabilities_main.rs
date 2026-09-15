@@ -97,8 +97,18 @@ fn negation<'tcx>(
 
 fn capability<C: Capability>() {}
 
+fn lazy_boolean<'tcx>(
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+) {
+    let _ = LazyBooleanInput::read(checked, expression)
+        .map(|input| (input.operator(), input.left(), input.right()));
+}
+
 fn main() {
+    let _ = [LazyBooleanOperator::And, LazyBooleanOperator::Or];
     capability::<BooleanNegation>();
+    capability::<ShortCircuitBooleans>();
     capability::<DirectCalls>();
     capability::<EntrySignatures>();
     capability::<FunctionSignatures>();
@@ -110,7 +120,17 @@ fn main() {
     capability::<ScalarComparisons>();
     capability::<SharedBorrows>();
     let _ = (
-        map_both, call, entry, function, control, object, record, place, comparison, borrow,
+        map_both,
+        call,
+        entry,
+        function,
+        control,
+        object,
+        record,
+        place,
+        comparison,
+        borrow,
         negation,
+        lazy_boolean,
     );
 }

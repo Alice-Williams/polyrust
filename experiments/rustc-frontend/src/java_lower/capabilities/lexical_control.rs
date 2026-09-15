@@ -36,10 +36,19 @@ impl Mapping for JavaLexicalControl {
         };
         reader.active_scope = previous_scope;
         reader.bindings = previous_bindings;
+        let statements = match result {
+            Ok(statements) => statements,
+            Err(error) => {
+                // A rejected expression can have a partial local prelude. Do
+                // not replace its source diagnostic with an internal drain error.
+                reader.prelude.clear();
+                return Err(error);
+            }
+        };
         if !reader.prelude.is_empty() {
             return Err("undrained lexical evaluation prelude".into());
         }
-        result.map(JavaBlock::new)
+        Ok(JavaBlock::new(statements))
     }
 }
 

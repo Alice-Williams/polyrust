@@ -52,6 +52,15 @@ pub(super) fn dependencies(
                 CStatementKind::Declare(local) => {
                     pending.push(Node::Initializer(local.initializer()?))
                 }
+                CStatementKind::Assign { place, value }
+                    if matches!(place.kind(), CPlaceKind::Local(_))
+                        && matches!(
+                            place.ty().kind(),
+                            CObjectTypeKind::Scalar(CScalarType::Bool)
+                        ) =>
+                {
+                    pending.extend([Node::Place(place), Node::Value(value)]);
+                }
                 CStatementKind::Discard(value) | CStatementKind::Return(Some(value)) => {
                     pending.push(Node::Value(value))
                 }

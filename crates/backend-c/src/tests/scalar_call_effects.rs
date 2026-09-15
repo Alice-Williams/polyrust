@@ -55,6 +55,67 @@ fn accepted(f: &Fixture, source: &CSourceFile) -> Vec<bool> {
 }
 
 #[test]
+fn initialized_bool_local_assignment_retains_transitive_call_evidence() {
+    use super::fixture::key;
+    let boolean = CObjectType::scalar(CScalarType::Bool);
+    let mut f = Fixture::with_result(&[vec![], vec![]], boolean.clone());
+    let local = f
+        .registry
+        .register_local(&f.scopes[1], key("result"), boolean)
+        .unwrap();
+    let place = f.values().local(local.clone()).unwrap();
+    let no = f.values().literal(CLiteral::Bool(false)).unwrap();
+    let yes = f.values().literal(CLiteral::Bool(true)).unwrap();
+    let initializer = f.values().expression_initializer(no).unwrap();
+    let helper = vec![
+        f.statements(1).declare(local, Some(initializer)).unwrap(),
+        f.statements(1).assign(place.clone(), yes).unwrap(),
+        f.statements(1)
+            .return_statement(Some(f.values().read(place).unwrap()))
+            .unwrap(),
+    ];
+    let source = f.source(vec![f.returning(0, f.call(1, vec![])), helper]);
+    assert_eq!(accepted(&f, &source), vec![true, true]);
+    f.registry.check_storage_paths(&[source]).unwrap();
+}
+
+#[test]
+fn parameter_and_non_bool_local_writes_remain_outside_scalar_call_evidence() {
+    use super::fixture::key;
+    let boolean = CObjectType::scalar(CScalarType::Bool);
+    let f = Fixture::with_result(&[vec![boolean.clone()]], boolean);
+    let place = f.values().parameter(f.parameters[0][0].clone()).unwrap();
+    let value = f.values().literal(CLiteral::Bool(false)).unwrap();
+    let source = f.source(vec![vec![
+        f.statements(0).assign(place, value).unwrap(),
+        f.statements(0)
+            .return_statement(Some(f.input(0, 0)))
+            .unwrap(),
+    ]]);
+    assert_eq!(accepted(&f, &source), vec![false]);
+
+    let mut f = Fixture::new(&[0]);
+    let local = f
+        .registry
+        .register_local(
+            &f.scopes[0],
+            key("result"),
+            CObjectType::scalar(CScalarType::I32),
+        )
+        .unwrap();
+    let place = f.values().local(local.clone()).unwrap();
+    let initializer = f.values().expression_initializer(f.literal(0)).unwrap();
+    let source = f.source(vec![vec![
+        f.statements(0).declare(local, Some(initializer)).unwrap(),
+        f.statements(0).assign(place.clone(), f.literal(1)).unwrap(),
+        f.statements(0)
+            .return_statement(Some(f.values().read(place).unwrap()))
+            .unwrap(),
+    ]]);
+    assert_eq!(accepted(&f, &source), vec![false]);
+}
+
+#[test]
 fn scalar_bodies_and_their_transitive_callers_are_checked() {
     let f = Fixture::new(&[1, 3, 0, 1]);
     let source = f.source(vec![

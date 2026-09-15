@@ -1,8 +1,8 @@
-//! Closed immutable body admission; a signature's pure flag is not evidence.
+//! Closed local-only body admission; a signature's pure flag is not evidence.
 use super::inventory::{scalar, signature};
 use crate::ast::{
     JavaBinaryOperator, JavaBlock, JavaCallableRef, JavaConstructorRef, JavaExpr, JavaExprKind,
-    JavaFieldRef, JavaLiteral, JavaLocalFinality, JavaMethod, JavaPrimitive,
+    JavaFieldRef, JavaIdentifier, JavaLiteral, JavaLocalFinality, JavaMethod, JavaPrimitive,
     JavaRecordComponentOrigin, JavaStmt, JavaType, JavaTypeDeclaration, JavaTypeName,
     JavaUnaryOperator, JavaValueRef,
 };
@@ -49,12 +49,14 @@ pub(super) fn verify(
         budget,
         calls: BTreeSet::new(),
         imported_height: 0,
+        mutable_bools: BTreeSet::new(),
     };
     let mut edges = BTreeMap::new();
     let mut bases = BTreeMap::new();
     for (id, method) in methods {
         reader.calls.clear();
         reader.imported_height = 0;
+        reader.mutable_bools.clear();
         reader.block(
             method
                 .body
@@ -74,6 +76,7 @@ struct Reader<'a> {
     budget: &'a mut Budget,
     calls: BTreeSet<GeneratedCallableId>,
     imported_height: usize,
+    mutable_bools: BTreeSet<JavaIdentifier>,
 }
 
 impl Reader<'_> {
@@ -86,6 +89,7 @@ impl Reader<'_> {
     }
     fn block(&mut self, block: &JavaBlock, depth: usize) -> Result<(), String> {
         self.charge(depth)?;
+        let outer_mutable_bools = self.mutable_bools.clone();
         for statement in &block.statements {
             self.charge(depth)?;
             match statement {
@@ -95,6 +99,22 @@ impl Reader<'_> {
                     value: Some(value),
                     ..
                 } if self.ty(ty) => {
+                    self.expression(value, depth + 1)?;
+                }
+                JavaStmt::Local {
+                    finality: JavaLocalFinality::Mutable,
+                    ty,
+                    name,
+                    value: Some(value),
+                } if *ty == JavaType::primitive(JavaPrimitive::Boolean) => {
+                    self.expression(value, depth + 1)?;
+                    self.mutable_bools.insert(name.clone());
+                }
+                JavaStmt::Assign { target, value }
+                    if target.ty == JavaType::primitive(JavaPrimitive::Boolean)
+                        && value.ty == target.ty
+                        && matches!(&target.kind, JavaExprKind::Value(JavaValueRef::Local(name)) if self.mutable_bools.contains(name)) =>
+                {
                     self.expression(value, depth + 1)?;
                 }
                 JavaStmt::Return(Some(value)) => self.expression(value, depth + 1)?,
@@ -110,6 +130,7 @@ impl Reader<'_> {
                 _ => return Err("Java dependency body contains an unadmitted statement".into()),
             }
         }
+        self.mutable_bools = outer_mutable_bools;
         Ok(())
     }
     fn expression(&mut self, value: &JavaExpr, depth: usize) -> Result<(), String> {

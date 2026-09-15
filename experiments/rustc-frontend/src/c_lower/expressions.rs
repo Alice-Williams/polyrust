@@ -2,9 +2,9 @@
 use super::{
     Reader, Result, c,
     capabilities::{
-        BooleanNegation, BorrowInput, CallInput, ComparisonInput, DirectCalls, LiteralInput,
-        LiteralValues, Mapping, NegationInput, PlaceInput, ResolvedPlaces, ScalarComparisons,
-        SharedBorrows, Supports,
+        BooleanNegation, BorrowInput, CallInput, ComparisonInput, DirectCalls, LazyBooleanInput,
+        LiteralInput, LiteralValues, Mapping, NegationInput, PlaceInput, ResolvedPlaces,
+        ScalarComparisons, SharedBorrows, ShortCircuitBooleans, Supports,
     },
 };
 use portable_backend_c::ast::{CPlace, CValue};
@@ -39,6 +39,12 @@ impl<'tcx> Reader<'tcx> {
             hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, _) => {
                 let mapping = Supports::<SharedBorrows>::mapping(&self.mappings);
                 mapping.lower(self, BorrowInput(value))
+            }
+            hir::ExprKind::Binary(operator, ..)
+                if matches!(operator.node, hir::BinOpKind::And | hir::BinOpKind::Or) =>
+            {
+                let input = LazyBooleanInput::read(self.checked, value)?;
+                Supports::<ShortCircuitBooleans>::mapping(&self.mappings).lower(self, input)
             }
             hir::ExprKind::Binary(..) => {
                 let mapping = Supports::<ScalarComparisons>::mapping(&self.mappings);

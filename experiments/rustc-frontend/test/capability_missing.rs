@@ -1,13 +1,14 @@
 use super::{
     Builder, CBooleanNegation, CDirectCalls, CEntrySignatures, CFunctionSignatures,
     CLexicalControl, CLiteralValues, CObjectTypes, CRecordInitializers, CResolvedPlaces,
-    CScalarComparisons, CSharedBorrows,
+    CScalarComparisons, CSharedBorrows, CShortCircuitBooleans,
 };
 
 #[allow(dead_code)]
 fn must_not_compile() {
     Builder::new()
         .boolean_negation(CBooleanNegation)
+        .short_circuit_booleans(CShortCircuitBooleans)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)
         .shared_borrows(CSharedBorrows)
@@ -20,6 +21,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
+        .short_circuit_booleans(CShortCircuitBooleans)
         .literal_values(CLiteralValues)
         .resolved_places(CResolvedPlaces)
         .shared_borrows(CSharedBorrows)
@@ -32,6 +34,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
+        .short_circuit_booleans(CShortCircuitBooleans)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .shared_borrows(CSharedBorrows)
@@ -44,6 +47,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
+        .short_circuit_booleans(CShortCircuitBooleans)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)
@@ -56,6 +60,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
+        .short_circuit_booleans(CShortCircuitBooleans)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)
@@ -68,6 +73,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
+        .short_circuit_booleans(CShortCircuitBooleans)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)
@@ -80,6 +86,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
+        .short_circuit_booleans(CShortCircuitBooleans)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)
@@ -92,6 +99,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
+        .short_circuit_booleans(CShortCircuitBooleans)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)
@@ -104,6 +112,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
+        .short_circuit_booleans(CShortCircuitBooleans)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)
@@ -116,6 +125,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
+        .short_circuit_booleans(CShortCircuitBooleans)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)

@@ -1,7 +1,7 @@
 # Java admitted Rust-source fixture matrix
 
 All target names below are relative to `//experiments/rustc-frontend:`. The
-authoritative tests run in the Linux DevContainer. Each corpus contains the
+authoritative tests run in the Linux DevContainer. Each integer corpus contains the
 eleven checked-in boundary seeds plus every integer from -4096 to 4096: 8,204
 input rows, including deliberate duplicate seed values.
 
@@ -15,6 +15,16 @@ reads, shadowing, branch conditions and calls. It also checks exact artifact and
 export inventories and four source-call evaluations in each generated library.
 Separate `boolean_negation_rejection_test` and per-target `boolean_*` compile
 contracts protect the unsupported-source and typed registration boundaries.
+
+The separate `short_circuit.rs` fixture exhausts all eight triples of bool inputs
+across fourteen functions (112 results), using `generated_java_short_circuit`,
+`generated_c_short_circuit`, `rust_short_circuit` and `short_circuit_native_test`.
+Native test copies add entry tracing to three private identity functions;
+unmodified production bundles are tested too. Eager, duplicated and reordered
+call mutations must retain the same truth values but fail the trace oracle.
+`short_circuit_ast_test` compares 24 typed lazy projections per target to HIR
+call inventories and requires byte-identical probe/production output. Dedicated
+`short_circuit_rejection_test` and `lazy_*` contracts protect closed admission.
 
 | Rust source under `fixtures/` | Java generation target | Native Rust reference | Differential test | Inputs x outputs | Structural/metadata evidence |
 | --- | --- | --- | --- | --- | --- |

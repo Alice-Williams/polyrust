@@ -20,6 +20,9 @@ impl Writer<'_> {
                     )
                     .unwrap();
                 }
+                CStatementKind::Assign { place, value } => {
+                    writeln!(text, "{} = {};", self.place(place), self.value(value)).unwrap();
+                }
                 CStatementKind::Discard(value) => {
                     writeln!(text, "(void) {};", self.value(value)).unwrap();
                 }

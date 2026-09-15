@@ -145,6 +145,16 @@ fn walk<'a>(
                             .ok_or("first C profile requires initialized locals")?,
                     ));
                 }
+                CStatementKind::Assign { place, value }
+                    if matches!(place.kind(), CPlaceKind::Local(_))
+                        && matches!(
+                            place.ty().kind(),
+                            CObjectTypeKind::Scalar(CScalarType::Bool)
+                        ) =>
+                {
+                    add(Node::Place(place));
+                    add(Node::Value(value));
+                }
                 CStatementKind::Discard(value) | CStatementKind::Return(Some(value)) => {
                     add(Node::Value(value))
                 }

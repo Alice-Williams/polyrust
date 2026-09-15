@@ -19,8 +19,8 @@ def main():
         "integer": ("if !value == 0 { 1 } else { 0 }", negation),
         "integer_reference": ("let reference = &value; if !reference == 0 { 1 } else { 0 }", negation),
         "bool_reference": ("let flag = value > 0; let reference = &flag; if !reference { 1 } else { 0 }", negation),
-        "and": ("if (value > 0) && (value < 10) { 1 } else { 0 }", "only comparison binary operators are implemented"),
-        "or": ("if (value > 0) || (value < 10) { 1 } else { 0 }", "only comparison binary operators are implemented"),
+        "bitand": ("if (value > 0) & (value < 10) { 1 } else { 0 }", "only comparison binary operators are implemented"),
+        "bitor": ("if (value > 0) | (value < 10) { 1 } else { 0 }", "only comparison binary operators are implemented"),
         "integer_condition": ("if !value { 1 } else { 0 }", "error[E0308]"),
         "float": ("if !1.0 { value } else { 0 }", "error[E0600]"),
     }

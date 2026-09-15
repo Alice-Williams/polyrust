@@ -29,6 +29,57 @@ fn ids(count: usize) -> Vec<GeneratedCallableId> {
 }
 
 #[test]
+fn mutable_bool_body_admission_restores_lexical_scope_and_rejects_parameter_writes() {
+    let methods = BTreeMap::new();
+    let records = BTreeMap::new();
+    let mut budget = Budget::new();
+    let mut reader = Reader {
+        methods: &methods,
+        records: &records,
+        budget: &mut budget,
+        calls: BTreeSet::new(),
+        imported_height: 0,
+        mutable_bools: BTreeSet::new(),
+    };
+    let declaration = JavaStmt::Local {
+        finality: JavaLocalFinality::Mutable,
+        ty: boolean(),
+        name: name("p0"),
+        value: Some(JavaExpr::literal(boolean(), JavaLiteral::Boolean(false))),
+    };
+    let assignment = JavaStmt::Assign {
+        target: JavaExpr::local(boolean(), name("p0")),
+        value: JavaExpr::literal(boolean(), JavaLiteral::Boolean(true)),
+    };
+    reader
+        .block(
+            &JavaBlock::new(vec![declaration.clone(), assignment.clone()]),
+            0,
+        )
+        .unwrap();
+    assert!(reader.mutable_bools.is_empty());
+    // A completed method/block cannot authorize the same spelling in the next.
+    assert!(
+        reader
+            .block(&JavaBlock::new(vec![assignment.clone()]), 0)
+            .unwrap_err()
+            .contains("unadmitted statement")
+    );
+    // A declaration in the taken branch cannot authorize a sibling-branch write.
+    let sibling = JavaStmt::If {
+        condition: JavaExpr::literal(boolean(), JavaLiteral::Boolean(true)),
+        then_block: JavaBlock::new(vec![declaration]),
+        else_block: Some(JavaBlock::new(vec![assignment])),
+    };
+    assert!(
+        reader
+            .block(&JavaBlock::new(vec![sibling]), 0)
+            .unwrap_err()
+            .contains("unadmitted statement")
+    );
+}
+
+#[test]
 fn call_graph_exact_height_one_over_cycle_and_shared_diamond() {
     let ids = ids(129);
     let chain = |length: usize| {
@@ -66,6 +117,7 @@ fn body_budget_and_depth_charge_exact_and_one_over() {
         budget: &mut budget,
         calls: BTreeSet::new(),
         imported_height: 0,
+        mutable_bools: BTreeSet::new(),
     };
     reader.charge(MAX_DEPTH).unwrap();
     assert!(reader.charge(0).unwrap_err().contains("visit"));
@@ -121,6 +173,7 @@ fn actual_function_inventory_and_expression_depth_boundaries() {
         budget: &mut budget,
         calls: BTreeSet::new(),
         imported_height: 0,
+        mutable_bools: BTreeSet::new(),
     };
     reader.expression(&nested(MAX_DEPTH), 0).unwrap();
     assert!(

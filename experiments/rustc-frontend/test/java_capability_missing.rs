@@ -1,13 +1,14 @@
 use super::{
     Builder, JavaBooleanNegation, JavaDirectCalls, JavaEntrySignatures, JavaFunctionSignatures,
     JavaLexicalControl, JavaLiteralValues, JavaObjectTypes, JavaRecordInitializers,
-    JavaResolvedPlaces, JavaScalarComparisons, JavaSharedBorrows,
+    JavaResolvedPlaces, JavaScalarComparisons, JavaSharedBorrows, JavaShortCircuitBooleans,
 };
 
 #[allow(dead_code)]
 fn must_not_compile() {
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
+        .short_circuit_booleans(JavaShortCircuitBooleans)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)
         .shared_borrows(JavaSharedBorrows)
@@ -20,6 +21,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
+        .short_circuit_booleans(JavaShortCircuitBooleans)
         .literal_values(JavaLiteralValues)
         .resolved_places(JavaResolvedPlaces)
         .shared_borrows(JavaSharedBorrows)
@@ -32,6 +34,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
+        .short_circuit_booleans(JavaShortCircuitBooleans)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .shared_borrows(JavaSharedBorrows)
@@ -44,6 +47,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
+        .short_circuit_booleans(JavaShortCircuitBooleans)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)
@@ -56,6 +60,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
+        .short_circuit_booleans(JavaShortCircuitBooleans)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)
@@ -68,6 +73,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
+        .short_circuit_booleans(JavaShortCircuitBooleans)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)
@@ -80,6 +86,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
+        .short_circuit_booleans(JavaShortCircuitBooleans)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)
@@ -92,6 +99,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
+        .short_circuit_booleans(JavaShortCircuitBooleans)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)
@@ -104,6 +112,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
+        .short_circuit_booleans(JavaShortCircuitBooleans)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)
@@ -116,6 +125,7 @@ fn must_not_compile() {
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
+        .short_circuit_booleans(JavaShortCircuitBooleans)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)

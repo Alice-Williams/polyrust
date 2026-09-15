@@ -44,6 +44,9 @@ load(":public_package_targets.bzl", "public_package_targets")
 load(":publication_probe_targets.bzl", "publication_probe_targets")
 load(":runtime_parity_targets.bzl", "runtime_parity_targets")
 load(":scalar_box_targets.bzl", "scalar_box_targets")
+load(":short_circuit_ast_targets.bzl", "short_circuit_ast_targets")
+load(":short_circuit_contract_targets.bzl", "short_circuit_contract_targets")
+load(":short_circuit_targets.bzl", "short_circuit_targets")
 load(":source_capability_targets.bzl", "source_capability_targets")
 load(":source_check_targets.bzl", "source_check_targets")
 load(":source_origin_targets.bzl", "source_origin_targets")
@@ -88,6 +91,18 @@ boolean_negation_contract_targets(
 )
 
 boolean_negation_native_targets(name = "boolean_negation_test")
+
+short_circuit_targets(name = "short_circuit_clippy_test")
+
+short_circuit_contract_targets(
+    name = "short_circuit_contract_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+short_circuit_ast_targets(
+    name = "short_circuit_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)
 
 owned_return_targets(name = "owned_return_test")
 
