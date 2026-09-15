@@ -5,6 +5,14 @@ load(":test/rust_compiler_files.bzl", "rust_compiler_files")
 
 exports_files(["Cargo.toml"])
 
+exports_files(
+    [
+        "src/capabilities/mod.rs",
+        "src/dialect/runtime_helpers.rs",
+    ],
+    visibility = ["//experiments/rustc-frontend:__pkg__"],
+)
+
 rust_compiler_files(name = "mapping_contract_compiler")
 
 sh_test(

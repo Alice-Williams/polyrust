@@ -41,6 +41,7 @@ load(":owned_scope_targets.bzl", "owned_scope_targets")
 load(":owned_selection_targets.bzl", "owned_selection_targets")
 load(":public_package_targets.bzl", "public_package_targets")
 load(":publication_probe_targets.bzl", "publication_probe_targets")
+load(":runtime_parity_targets.bzl", "runtime_parity_targets")
 load(":scalar_box_targets.bzl", "scalar_box_targets")
 load(":source_capability_targets.bzl", "source_capability_targets")
 load(":source_check_targets.bzl", "source_check_targets")
@@ -111,6 +112,8 @@ nested_record_targets(name = "nested_record_test")
 nested_correspondence_targets(name = "nested_correspondence_test")
 
 conditional_owned_probe_targets(name = "conditional_owned_probe_test")
+
+runtime_parity_targets()
 
 local_calls_targets(name = "local_calls_test")
 

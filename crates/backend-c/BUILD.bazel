@@ -5,6 +5,15 @@ load(":capacity_tests.bzl", "CAPACITY_CASES", "capacity_test_suite")
 
 exports_files(["Cargo.toml"])
 
+exports_files(
+    [
+        "src/generator.rs",
+        "src/runtime.c",
+        "src/runtime.h",
+    ],
+    visibility = ["//experiments/rustc-frontend:__pkg__"],
+)
+
 cc_test(
     name = "c_abi_model_probe_test",
     srcs = ["test/abi_model_probe.c"],

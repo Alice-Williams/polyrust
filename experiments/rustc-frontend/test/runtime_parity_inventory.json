@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "groups": {
+    "M35-03A-02": {
+      "java_capabilities": ["JavaBoolValues", "JavaI32Values", "JavaI64Values", "JavaF64Values", "JavaBooleanLogic", "JavaEquality", "JavaOrdering", "JavaCheckedIntegerArithmetic", "JavaWrappingIntegerArithmetic", "JavaFloatingPointArithmetic", "JavaCharValues", "JavaIntegerBitwise", "JavaCheckedIntegerShifts", "JavaFloatingPointInspection", "JavaIntegerConversions", "JavaConstants", "JavaTypeAliases", "JavaUnitValues"],
+      "c_intrinsics": ["BoolNot", "BoolAnd", "BoolOr", "Equal", "NotEqual", "Less", "LessEqual", "Greater", "GreaterEqual", "FloatNeg", "FloatTrunc", "FloatIsNaN", "FloatIsNegativeZero", "FloatAbs", "FloatAdd", "FloatSub", "FloatMul", "FloatDiv", "FloatRemTrunc"],
+      "java_helpers": ["CheckedIntegers", "FloatBits"],
+      "c_sections": ["runtime.feature.f64"]
+    },
+    "M35-03A-03": {
+      "java_capabilities": ["JavaFunctions", "JavaRecords", "JavaModules", "JavaEnums", "JavaInterfaces", "JavaLocalBindings", "JavaConditionals", "JavaLoops", "JavaPatternMatching"],
+      "c_intrinsics": [],
+      "java_helpers": ["Interfaces"],
+      "c_sections": []
+    },
+    "M35-03A-04": {
+      "java_capabilities": ["JavaTextValues", "JavaStringConcatenation", "JavaBytesValues", "JavaStringInspection", "JavaStringTransformation", "JavaBytesOperations", "JavaUtf8Conversions"],
+      "c_intrinsics": ["StringConcat", "StringUtf16Length", "StringIndexOfLiteral", "StringSliceScalars", "StringIsEmpty", "StringContains", "StringStartsWith", "StringStripPrefix", "StringEndsWith", "StringReplaceAll", "StringReplaceMany", "StringTruncateUtf8Bytes", "StringTrimStart", "StringTrimEnd", "BytesReplaceAll"],
+      "java_helpers": ["Unicode", "Bytes", "StringOperations"],
+      "c_sections": ["runtime.core.types", "runtime.core.allocator", "runtime.core.views", "runtime.core.utf8", "runtime.core.ownership", "runtime.feature.string-utf16-length", "runtime.feature.string-index-of-literal", "runtime.feature.string-slice-scalars", "runtime.feature.string-predicates", "runtime.feature.string-strip-prefix", "runtime.feature.string-concat", "runtime.feature.string-replace-all", "runtime.feature.bytes-replace-all", "runtime.feature.string-replace-many", "runtime.feature.string-truncate-utf8", "runtime.feature.string-trim"]
+    },
+    "M35-03A-05": {
+      "java_capabilities": ["JavaListValues", "JavaOptionValues", "JavaResultValues", "JavaListOperations", "JavaOptionOperations", "JavaResultOperations", "JavaResultPropagation"],
+      "c_intrinsics": ["ListIndexOf", "OptionIsSome", "OptionIsNone", "OptionUnwrapOr"],
+      "java_helpers": ["Core", "TaggedValues", "ImmutableLists"],
+      "c_sections": []
+    },
+    "M35-03A-06": {
+      "java_capabilities": ["JavaPortableTests"],
+      "c_intrinsics": [],
+      "java_helpers": [],
+      "c_sections": []
+    }
+  },
+  "new_system": {
+    "shared_partial_features": ["JavaFunctions", "JavaRecords", "JavaBoolValues", "JavaI32Values", "JavaEquality", "JavaOrdering", "JavaModules", "JavaLocalBindings", "JavaConditionals"],
+    "full_features": [],
+    "scope": "Current shared coverage is restricted to the documented no-heap i32/bool source grammar. Unlisted features lack complete replacement evidence. Source-only Box/record observations do not count as C/Java heap support."
+  },
+  "c_limits": [
+    "Callable containers currently admit List<String> and Option<I64>, not arbitrary containers.",
+    "Enum ABI declarations exist, but callable enum lowering is incomplete.",
+    "Legacy C callable blocks reject statements and bounded iteration.",
+    "Intrinsic inventory is the explicit validator allowlist, not every Intrinsic mentioned in the generator."
+  ]
+}

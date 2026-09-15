@@ -11,6 +11,12 @@ The initial no-heap C bridge is specified and scheduled under M35-01B/C/D.
 This task extends the evidence-based decision to all languages and legacy
 ownership retirement; it does not delay or rename that initial C work.
 
+The user-requested [runtime-free parity migration](M35-03A-runtime-free-parity.md)
+may begin its inventory and artifact guards now. Missing C/Java functionality
+must be implemented before legacy runtime-backed paths are retired. This
+bounded priority does not mark M35-02 or the broader production integration
+decision complete, and does not authorize deleting existing ownership checks.
+
 ## Definition of done
 
 - Fix a private compiler-adapter/internal-IR boundary, capability contracts,
