@@ -1,5 +1,5 @@
 //! Scope-owned lets, nested tail blocks, if/else and scalar returns.
-use super::{ControlInput, LexicalControl, Mapping};
+use super::{ControlInput, LexicalControl, LocalConstantInput, LocalConstants, Mapping, Supports};
 use crate::c_lower::{Reader, Result, c};
 use portable_backend_c::ast::*;
 use portable_codegen::RustSourceNode;
@@ -75,6 +75,11 @@ impl CLexicalControl {
     ) -> Result<Vec<CStatement>> {
         let mut result = Vec::new();
         for statement in block.stmts {
+            if matches!(statement.kind, hir::StmtKind::Item(_)) {
+                let input = LocalConstantInput::read(reader.tcx, statement)?;
+                Supports::<LocalConstants>::mapping(&reader.mappings).lower(reader, input)?;
+                continue;
+            }
             let hir::StmtKind::Let(local) = statement.kind else {
                 return Err("only let statements before a tail result are implemented".into());
             };

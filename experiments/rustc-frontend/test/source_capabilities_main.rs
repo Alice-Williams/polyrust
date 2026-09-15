@@ -148,7 +148,16 @@ fn constant<'tcx>(
     }
 }
 
+fn local_constant<'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    statement: &'tcx rustc_hir::Stmt<'tcx>,
+) {
+    let _ = LocalConstantInput::read(tcx, statement).map(|input| input.value());
+}
+
 fn main() {
+    capability::<LocalConstants>();
+    let _ = local_constant;
     capability::<ScalarConstants>();
     let _ = constant;
     capability::<EagerBooleans>();

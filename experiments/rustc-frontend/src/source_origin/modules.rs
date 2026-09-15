@@ -6,6 +6,7 @@ use rustc_middle::ty::TyCtxt;
 use std::{collections::HashMap, sync::Arc};
 
 #[derive(Default)]
+#[cfg_attr(local_constant_ast_probe, derive(Debug))]
 pub(crate) struct Cache {
     exports: Option<Arc<RustCrateExports>>,
     modules: HashMap<DefId, Arc<RustModuleDocumentation>>,

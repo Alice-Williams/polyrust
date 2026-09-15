@@ -61,3 +61,9 @@ narrower. No legacy implementation is deleted by this planning checkpoint.
 M35-03A-02F splits scalar constants into compiler-evaluated reads (02F-01) and
 proper public/local declaration support (02F-02). Completing the read step
 alone does not complete scalar parity or authorize removing legacy constants.
+
+Block-local scalar declarations are implemented and verified in
+[M35-03A-02F-02A](M35-03A-02F-02A-local-constants.md), with an explicit unit-output
+mapping and shared compiler evaluator. Public constants remain
+[M35-03A-02F-02B](M35-03A-02F-02B-public-constants.md). Neither partial extension
+authorizes deletion of the existing constant capability or custom runtimes.

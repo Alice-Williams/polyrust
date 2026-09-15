@@ -7,6 +7,7 @@ mod function_signatures;
 mod integer_bitwise;
 mod lexical_control;
 mod literal_values;
+mod local_constants;
 mod object_types;
 mod record_initializers;
 mod resolved_places;
@@ -15,6 +16,15 @@ mod scalar_constants;
 mod shared_borrows;
 mod short_circuit_booleans;
 mod slots;
+
+#[cfg(local_constant_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/local_constant_contract.rs"]
+mod local_constant_contract;
+
+#[cfg(local_constant_ast_probe)]
+#[path = "../../../test/local_constant_java_ast.rs"]
+mod local_constant_ast;
 
 #[cfg(constant_ast_probe)]
 #[path = "../../../test/constant_java_ast.rs"]
@@ -87,6 +97,7 @@ pub(crate) use function_signatures::JavaFunctionSignatures;
 pub(crate) use integer_bitwise::JavaIntegerBitwise;
 pub(crate) use lexical_control::JavaLexicalControl;
 pub(crate) use literal_values::JavaLiteralValues;
+pub(crate) use local_constants::JavaLocalConstants;
 pub(crate) use object_types::JavaObjectTypes;
 pub(crate) use record_initializers::JavaRecordInitializers;
 pub(crate) use resolved_places::JavaResolvedPlaces;
@@ -112,6 +123,7 @@ pub(crate) type JavaBindings = Bindings<
     JavaIntegerBitwise,
     JavaEagerBooleans,
     JavaScalarConstants,
+    JavaLocalConstants,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -131,5 +143,6 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .integer_bitwise(JavaIntegerBitwise)
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
+        .local_constants(JavaLocalConstants)
         .build()
 }

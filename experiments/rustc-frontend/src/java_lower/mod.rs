@@ -47,6 +47,7 @@ pub fn lower(
 }
 
 #[derive(Clone)]
+#[cfg_attr(local_constant_ast_probe, derive(Debug))]
 struct Callable {
     id: GeneratedCallableId,
     name: JavaIdentifier,

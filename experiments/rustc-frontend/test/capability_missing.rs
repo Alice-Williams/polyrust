@@ -1,7 +1,8 @@
 use super::{
     Builder, CBooleanNegation, CDirectCalls, CEagerBooleans, CEntrySignatures, CFunctionSignatures,
-    CIntegerBitwise, CLexicalControl, CLiteralValues, CObjectTypes, CRecordInitializers,
-    CResolvedPlaces, CScalarComparisons, CScalarConstants, CSharedBorrows, CShortCircuitBooleans,
+    CIntegerBitwise, CLexicalControl, CLiteralValues, CLocalConstants, CObjectTypes,
+    CRecordInitializers, CResolvedPlaces, CScalarComparisons, CScalarConstants, CSharedBorrows,
+    CShortCircuitBooleans,
 };
 
 #[allow(dead_code)]
@@ -21,6 +22,7 @@ fn must_not_compile() {
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
+        .local_constants(CLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -37,6 +39,7 @@ fn must_not_compile() {
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
+        .local_constants(CLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -53,6 +56,7 @@ fn must_not_compile() {
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
+        .local_constants(CLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -69,6 +73,7 @@ fn must_not_compile() {
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
+        .local_constants(CLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -85,6 +90,7 @@ fn must_not_compile() {
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
+        .local_constants(CLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -101,6 +107,7 @@ fn must_not_compile() {
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
+        .local_constants(CLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -117,6 +124,7 @@ fn must_not_compile() {
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
+        .local_constants(CLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -133,6 +141,7 @@ fn must_not_compile() {
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
+        .local_constants(CLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -149,6 +158,7 @@ fn must_not_compile() {
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
+        .local_constants(CLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -165,5 +175,6 @@ fn must_not_compile() {
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
+        .local_constants(CLocalConstants)
         .build();
 }

@@ -1,5 +1,6 @@
 //! Shared compiler input contracts; target mappings own context and output.
 mod boolean_negation;
+mod constant_evaluation;
 mod contracts;
 mod direct_calls;
 mod eager_booleans;
@@ -8,6 +9,7 @@ mod function_signatures;
 mod integer_bitwise;
 mod lexical_control;
 mod literal_values;
+mod local_constants;
 mod object_types;
 mod record_initializers;
 mod resolved_places;
@@ -25,6 +27,7 @@ pub(crate) use function_signatures::{FunctionInput, FunctionSignatures};
 pub(crate) use integer_bitwise::{BitwiseInput, BitwiseOperands, BitwiseOperator, IntegerBitwise};
 pub(crate) use lexical_control::{ControlInput, LexicalControl};
 pub(crate) use literal_values::{LiteralInput, LiteralValue, LiteralValues};
+pub(crate) use local_constants::{LocalConstantInput, LocalConstants};
 pub(crate) use object_types::{ObjectTypes, TypeInput};
 pub(crate) use record_initializers::{RecordInitializers, RecordInput};
 pub(crate) use resolved_places::{PlaceInput, ResolvedPlaces};

@@ -13,7 +13,7 @@ def main():
                    ("public package API mapping is not implemented", "public Java package supports only ordinary scalar function exports"), True),
         "public_alias": ("mod inner { pub const VALUE:i32=4; } pub use inner::VALUE; pub fn value()->i32 { VALUE }",
                          ("public package API mapping is not implemented", "public Java package supports only ordinary scalar function exports"), True),
-        "local": ("pub fn value()->i32 { const VALUE:i32=4; VALUE }", "only let statements", True),
+        "local_unsupported": ("pub fn value()->i32 { const VALUE:u32=4; 0 }", "scalar constants support only bool, i32 and i64", True),
         "generic": ("struct S<const N:i32>; impl<const N:i32> S<N> { const VALUE:i32=N; } pub fn value()->i32 { S::<4>::VALUE }",
                     "scalar constants require nongeneric", True),
         "trait": ("struct S; trait T {const VALUE:i32;} impl T for S {const VALUE:i32=4;} pub fn value()->i32 { <S as T>::VALUE }",

@@ -30,6 +30,9 @@ load(":java_fixture_targets.bzl", "java_fixture_targets")
 load(":java_graph_targets.bzl", "java_graph_targets")
 load(":java_source_targets.bzl", "java_source_targets")
 load(":local_calls_targets.bzl", "local_calls_targets")
+load(":local_constant_ast_targets.bzl", "local_constant_ast_targets")
+load(":local_constant_contract_targets.bzl", "local_constant_contract_targets")
+load(":local_constant_targets.bzl", "local_constant_targets")
 load(":metadata_action_targets.bzl", "metadata_action_targets")
 load(":metadata_agreement_targets.bzl", "metadata_agreement_targets")
 load(":metadata_analysis_tests.bzl", "metadata_analysis_tests")
@@ -633,5 +636,17 @@ constant_ast_targets(
 
 constant_contract_targets(
     name = "constant_contract_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+local_constant_targets(name = "local_constant_fixture_clippy_test")
+
+local_constant_ast_targets(
+    name = "local_constant_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+local_constant_contract_targets(
+    name = "local_constant_contract_test",
     c_sources = ADAPTER_SOURCES,
 )

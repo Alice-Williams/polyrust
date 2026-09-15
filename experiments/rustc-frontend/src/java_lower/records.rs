@@ -6,6 +6,7 @@ use portable_codegen::{GeneratedOrigin, GeneratedType, GeneratedTypeId, RustSour
 use rustc_middle::ty::{self, AdtDef, GenericArgsRef};
 
 #[derive(Clone)]
+#[cfg_attr(local_constant_ast_probe, derive(Debug))]
 pub(super) struct Record {
     pub id: GeneratedTypeId,
     pub declaration: JavaTypeDeclaration,

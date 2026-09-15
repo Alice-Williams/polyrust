@@ -1,4 +1,4 @@
-use super::{ControlInput, LexicalControl, Mapping};
+use super::{ControlInput, LexicalControl, LocalConstantInput, LocalConstants, Mapping, Supports};
 use crate::java_lower::{Place, Reader, Result, TypePlan, Value};
 use portable_backend_java::ast::{JavaBlock, JavaExpr, JavaLocalFinality, JavaStmt};
 use rustc_ast::BindingMode;
@@ -60,6 +60,11 @@ impl JavaLexicalControl {
     ) -> Result<Vec<JavaStmt>> {
         let mut statements = Vec::new();
         for statement in block.stmts {
+            if matches!(statement.kind, hir::StmtKind::Item(_)) {
+                let input = LocalConstantInput::read(reader.tcx, statement)?;
+                Supports::<LocalConstants>::mapping(&reader.mappings).lower(reader, input)?;
+                continue;
+            }
             let hir::StmtKind::Let(local) = statement.kind else {
                 return Err("only let statements before a tail result are implemented".into());
             };

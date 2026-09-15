@@ -14,7 +14,7 @@ unsupported runtime arithmetic, arbitrary casts, storage or generic source.
 ## Ordered work and definition of done
 
 1. [02F-01 — Checked scalar constant reads](M35-03A-02F-01-constant-reads.md) — complete.
-2. [02F-02 — Public and local constant declarations](M35-03A-02F-02-constant-declarations.md) — planned.
+2. [02F-02 — Public and local constant declarations](M35-03A-02F-02-constant-declarations.md) — in progress, local declarations first.
 
 Both steps need native Rust/C/Java equality, exact typed AST evidence, atomic
 rejection, resource/identity checks, independent review and isolated green

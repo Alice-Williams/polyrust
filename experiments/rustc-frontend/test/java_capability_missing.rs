@@ -1,8 +1,8 @@
 use super::{
     Builder, JavaBooleanNegation, JavaDirectCalls, JavaEagerBooleans, JavaEntrySignatures,
     JavaFunctionSignatures, JavaIntegerBitwise, JavaLexicalControl, JavaLiteralValues,
-    JavaObjectTypes, JavaRecordInitializers, JavaResolvedPlaces, JavaScalarComparisons,
-    JavaScalarConstants, JavaSharedBorrows, JavaShortCircuitBooleans,
+    JavaLocalConstants, JavaObjectTypes, JavaRecordInitializers, JavaResolvedPlaces,
+    JavaScalarComparisons, JavaScalarConstants, JavaSharedBorrows, JavaShortCircuitBooleans,
 };
 
 #[allow(dead_code)]
@@ -22,6 +22,7 @@ fn must_not_compile() {
         .integer_bitwise(JavaIntegerBitwise)
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
+        .local_constants(JavaLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -38,6 +39,7 @@ fn must_not_compile() {
         .integer_bitwise(JavaIntegerBitwise)
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
+        .local_constants(JavaLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -54,6 +56,7 @@ fn must_not_compile() {
         .integer_bitwise(JavaIntegerBitwise)
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
+        .local_constants(JavaLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -70,6 +73,7 @@ fn must_not_compile() {
         .integer_bitwise(JavaIntegerBitwise)
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
+        .local_constants(JavaLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -86,6 +90,7 @@ fn must_not_compile() {
         .integer_bitwise(JavaIntegerBitwise)
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
+        .local_constants(JavaLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -102,6 +107,7 @@ fn must_not_compile() {
         .integer_bitwise(JavaIntegerBitwise)
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
+        .local_constants(JavaLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -118,6 +124,7 @@ fn must_not_compile() {
         .integer_bitwise(JavaIntegerBitwise)
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
+        .local_constants(JavaLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -134,6 +141,7 @@ fn must_not_compile() {
         .integer_bitwise(JavaIntegerBitwise)
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
+        .local_constants(JavaLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -150,6 +158,7 @@ fn must_not_compile() {
         .integer_bitwise(JavaIntegerBitwise)
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
+        .local_constants(JavaLocalConstants)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -166,5 +175,6 @@ fn must_not_compile() {
         .integer_bitwise(JavaIntegerBitwise)
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
+        .local_constants(JavaLocalConstants)
         .build();
 }

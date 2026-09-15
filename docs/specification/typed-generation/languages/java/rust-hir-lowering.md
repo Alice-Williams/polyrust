@@ -465,6 +465,18 @@ adds ScalarConstants as an executable slot under the shared
 to primitive boolean/int/long literal nodes and matching TypePlans; do not
 introduce Runtime, boxing, source fragments or synthetic static fields.
 Keep exact signed minima and wide integer spelling. Constant evaluation stays
-in rustc, not the renderer. Public constant exports and block-local constant
-declarations still reject in this bounded read-only-value step; they require
-explicit declaration/provenance support in 02F-02.
+in rustc, not the renderer. Public constant exports still require explicit
+API/dependency support in 02F-02B. Block-local declarations are extended below.
+
+## Block-local constant declarations
+
+[M35-03A-02F-02A](../../../../plan/tasks/M35-03A-02F-02A-local-constants.md)
+adds the LocalConstants executable slot with private compiler-derived input,
+Reader context and unit output. Follow the shared
+[local constant contract](../../rust-local-constants.md): evaluate/validate every
+admitted declaration, including unused ones, then erase it without registering
+a Java local, field, static initializer, helper or import. ScalarConstants
+retains compiler identity and exact primitive literal types at each read.
+Forward references and nested shadowing use rustc resolution, not target names.
+Unknown local item kinds and unsupported constant types reject atomically.
+Public exports, borrows and generic constants remain outside this extension.

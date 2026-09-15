@@ -109,6 +109,7 @@ not aliases for the complete portable capability catalogue:
 | Source capability | Session-bound input | C output |
 | --- | --- | --- |
 | ObjectTypes | compiler Ty | CObjectType plus registered nominal declarations |
+| LocalConstants | private compiler-derived LocalConstantInput retaining the item statement/DefId and exact bool/i32/i64 value | Unit output; validate the declaration and erase it without runtime storage |
 | ScalarConstants | private evaluated ConstantInput retaining compiler DefId/expression and exact bool/i32/i64 value | Ordinary typed literal CValue, no runtime storage |
 | LiteralValues | private checked LiteralInput with typed bool/i32/i64 value and compiler-session lifetime | CValue |
 | ResolvedPlaces | resolved path/field/dereference HIR expression and adjustments | CPlace |
@@ -148,7 +149,7 @@ The same-crate call extension is specified separately in
 must pass before expanding the render-ready profile. Its two executable
 bindings established ten required slots; [Boolean negation](../../rust-boolean-negation.md)
 adds an eleventh executable slot; [short-circuit Boolean expressions](../../rust-short-circuit-booleans.md)
-add the twelfth; IntegerBitwise adds the thirteenth and EagerBooleans the fourteenth. ScalarConstants adds the fifteenth. Missing and duplicate
+add the twelfth; IntegerBitwise adds the thirteenth and EagerBooleans the fourteenth. ScalarConstants adds the fifteenth; LocalConstants adds the sixteenth. Missing and duplicate
 registration controls cover each slot independently. Typed Boolean logical-not
 and exact-width integer bit-not are admitted by the closed scalar-call evidence
 and shared-package profiles. Arithmetic negation remains outside this profile.
@@ -194,6 +195,17 @@ implements the [scalar constant contract](../../rust-scalar-constants.md).
 Resolve nongeneric module/inherent constant paths with rustc and map evaluated
 bool/i32/i64 values to existing CLiteral/CSignedLiteral nodes. Do not infer a
 value from spelling or emit copied runtime storage. Public constant API names,
-local constant declarations, trait/generic constants and constant borrows must
-reject until their explicit mappings exist. Initializer arithmetic evaluated
+trait/generic constants and constant borrows must reject until their explicit
+mappings exist. Initializer arithmetic evaluated
 by rustc does not enable runtime arithmetic.
+
+## Block-local constant declarations
+
+[M35-03A-02F-02A](../../../../plan/tasks/M35-03A-02F-02A-local-constants.md)
+extends lexical item admission under the shared
+[local constant contract](../../rust-local-constants.md). LocalConstants uses
+the same compiler evaluator as ScalarConstants and validates unused declarations.
+Its executable C mapping returns unit: no local, static object, prelude, helper
+or import is registered. Constant reads remain exact typed literals resolved by
+compiler DefId, including forward references and nested same-name definitions.
+Other local item kinds reject; public constant exports remain a separate step.

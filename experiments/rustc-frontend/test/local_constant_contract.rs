@@ -1,40 +1,37 @@
 //! Independent negative controls for the new executable slot and checked input.
-#[cfg(constant_c)]
+#[cfg(local_constant_c)]
 use super::CIntegerBitwise as IntegerBits;
-#[cfg(constant_c)]
-use super::CLocalConstants as Locals;
-#[cfg(constant_java)]
+#[cfg(local_constant_c)]
+use super::CScalarConstants as ScalarReads;
+#[cfg(local_constant_java)]
 use super::JavaIntegerBitwise as IntegerBits;
-#[cfg(constant_java)]
-use super::JavaLocalConstants as Locals;
+#[cfg(local_constant_java)]
+use super::JavaScalarConstants as ScalarReads;
 use super::*;
-#[cfg(constant_c)]
+#[cfg(local_constant_c)]
 use super::{
     CBooleanNegation as Negate, CDirectCalls as Calls, CEagerBooleans as Eager,
     CEntrySignatures as Entry, CFunctionSignatures as Functions, CLexicalControl as Control,
-    CLiteralValues as Literals, CObjectTypes as Objects, CRecordInitializers as Records,
-    CResolvedPlaces as Places, CScalarComparisons as Comparisons, CScalarConstants as Constants,
+    CLiteralValues as Literals, CLocalConstants as Constants, CObjectTypes as Objects,
+    CRecordInitializers as Records, CResolvedPlaces as Places, CScalarComparisons as Comparisons,
     CSharedBorrows as Borrows, CShortCircuitBooleans as Lazy,
 };
-#[cfg(constant_java)]
+#[cfg(local_constant_java)]
 use super::{
     JavaBooleanNegation as Negate, JavaDirectCalls as Calls, JavaEagerBooleans as Eager,
     JavaEntrySignatures as Entry, JavaFunctionSignatures as Functions,
-    JavaLexicalControl as Control, JavaLiteralValues as Literals, JavaObjectTypes as Objects,
-    JavaRecordInitializers as Records, JavaResolvedPlaces as Places,
-    JavaScalarComparisons as Comparisons, JavaScalarConstants as Constants,
-    JavaSharedBorrows as Borrows, JavaShortCircuitBooleans as Lazy,
+    JavaLexicalControl as Control, JavaLiteralValues as Literals, JavaLocalConstants as Constants,
+    JavaObjectTypes as Objects, JavaRecordInitializers as Records, JavaResolvedPlaces as Places,
+    JavaScalarComparisons as Comparisons, JavaSharedBorrows as Borrows,
+    JavaShortCircuitBooleans as Lazy,
 };
-#[cfg(constant_c)]
+#[cfg(local_constant_c)]
 use crate::c_lower::Reader;
-#[cfg(constant_java)]
+#[cfg(local_constant_java)]
 use crate::java_lower::Reader;
-#[cfg(constant_c)]
-type Output = portable_backend_c::ast::CValue;
-#[cfg(constant_java)]
-type Output = crate::java_lower::Value;
+type Output = ();
 
-#[cfg(constant_missing)]
+#[cfg(local_constant_missing)]
 fn missing() {
     Builder::new()
         .literal_values(Literals)
@@ -51,41 +48,41 @@ fn missing() {
         .short_circuit_booleans(Lazy)
         .integer_bitwise(IntegerBits)
         .eager_booleans(Eager)
-        .local_constants(Locals)
+        .scalar_constants(ScalarReads)
         .build();
 }
 
-#[cfg(constant_duplicate)]
+#[cfg(local_constant_duplicate)]
 fn duplicate() {
     Builder::new()
-        .scalar_constants(Constants)
-        .scalar_constants(Constants);
+        .local_constants(Constants)
+        .local_constants(Constants);
 }
 
 #[cfg(any(
-    constant_wrong_capability,
-    constant_wrong_context,
-    constant_wrong_output
+    local_constant_wrong_capability,
+    local_constant_wrong_context,
+    local_constant_wrong_output
 ))]
 #[derive(Clone, Copy)]
 struct Wrong;
 #[cfg(any(
-    constant_wrong_capability,
-    constant_wrong_context,
-    constant_wrong_output
+    local_constant_wrong_capability,
+    local_constant_wrong_context,
+    local_constant_wrong_output
 ))]
 impl Mapping for Wrong {
-    #[cfg(constant_wrong_capability)]
+    #[cfg(local_constant_wrong_capability)]
     type Capability = LiteralValues;
-    #[cfg(not(constant_wrong_capability))]
-    type Capability = ScalarConstants;
-    #[cfg(constant_wrong_context)]
+    #[cfg(not(local_constant_wrong_capability))]
+    type Capability = LocalConstants;
+    #[cfg(local_constant_wrong_context)]
     type Context<'tcx> = ();
-    #[cfg(not(constant_wrong_context))]
+    #[cfg(not(local_constant_wrong_context))]
     type Context<'tcx> = Reader<'tcx>;
-    #[cfg(constant_wrong_output)]
-    type Output = ();
-    #[cfg(not(constant_wrong_output))]
+    #[cfg(local_constant_wrong_output)]
+    type Output = bool;
+    #[cfg(not(local_constant_wrong_output))]
     type Output = Output;
 
     fn lower<'tcx>(
@@ -93,30 +90,30 @@ impl Mapping for Wrong {
         _: &mut Self::Context<'tcx>,
         _: <Self::Capability as Capability>::Input<'tcx>,
     ) -> Result<Self::Output, String> {
-        Err("deliberately wrong Boolean mapping".into())
+        Err("deliberately wrong local constant mapping".into())
     }
 }
 
 #[cfg(any(
-    constant_wrong_capability,
-    constant_wrong_context,
-    constant_wrong_output
+    local_constant_wrong_capability,
+    local_constant_wrong_context,
+    local_constant_wrong_output
 ))]
 fn wrong() {
-    Builder::new().scalar_constants(Wrong);
+    Builder::new().local_constants(Wrong);
 }
 
-#[cfg(constant_wrong_input)]
+#[cfg(local_constant_wrong_input)]
 fn wrong_input<'tcx>(reader: &mut Reader<'tcx>, expression: &'tcx rustc_hir::Expr<'tcx>) {
     let input = LiteralInput::read(reader.checked, expression).unwrap();
     let _ = Constants.lower(reader, input);
 }
 
-#[cfg(constant_private_input)]
-fn private_input<'tcx>(expression: &'tcx rustc_hir::Expr<'tcx>) {
-    let _ = ConstantInput {
+#[cfg(local_constant_private_input)]
+fn private_input<'tcx>(statement: &'tcx rustc_hir::Stmt<'tcx>) {
+    let _ = LocalConstantInput {
         value: LiteralValue::I32(0),
         _definition: rustc_hir::def_id::CRATE_DEF_ID.to_def_id(),
-        _expression: expression,
+        _statement: statement,
     };
 }

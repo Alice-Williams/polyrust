@@ -7,6 +7,7 @@ mod function_signatures;
 mod integer_bitwise;
 mod lexical_control;
 mod literal_values;
+mod local_constants;
 mod object_types;
 mod record_initializers;
 mod resolved_places;
@@ -15,6 +16,15 @@ mod scalar_constants;
 mod shared_borrows;
 mod short_circuit_booleans;
 mod slots;
+
+#[cfg(local_constant_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/local_constant_contract.rs"]
+mod local_constant_contract;
+
+#[cfg(local_constant_ast_probe)]
+#[path = "../../../test/local_constant_c_ast.rs"]
+mod local_constant_ast;
 
 #[cfg(constant_ast_probe)]
 #[path = "../../../test/constant_c_ast.rs"]
@@ -96,6 +106,7 @@ pub(crate) use function_signatures::CFunctionSignatures;
 pub(crate) use integer_bitwise::CIntegerBitwise;
 pub(crate) use lexical_control::CLexicalControl;
 pub(crate) use literal_values::CLiteralValues;
+pub(crate) use local_constants::CLocalConstants;
 pub(crate) use object_types::CObjectTypes;
 pub(crate) use record_initializers::CRecordInitializers;
 pub(crate) use resolved_places::CResolvedPlaces;
@@ -123,6 +134,7 @@ pub(crate) type CBindings = Bindings<
     CIntegerBitwise,
     CEagerBooleans,
     CScalarConstants,
+    CLocalConstants,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -142,5 +154,6 @@ pub(crate) fn c_bindings() -> CBindings {
         .integer_bitwise(CIntegerBitwise)
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
+        .local_constants(CLocalConstants)
         .build()
 }

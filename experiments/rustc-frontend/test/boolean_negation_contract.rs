@@ -2,9 +2,13 @@
 #[cfg(boolean_c)]
 use super::CIntegerBitwise as Bits;
 #[cfg(boolean_c)]
+use super::CLocalConstants as Locals;
+#[cfg(boolean_c)]
 use super::CScalarConstants as Constants;
 #[cfg(boolean_java)]
 use super::JavaIntegerBitwise as Bits;
+#[cfg(boolean_java)]
+use super::JavaLocalConstants as Locals;
 #[cfg(boolean_java)]
 use super::JavaScalarConstants as Constants;
 use super::*;
@@ -51,6 +55,7 @@ fn missing() {
         .integer_bitwise(Bits)
         .eager_booleans(Eager)
         .scalar_constants(Constants)
+        .local_constants(Locals)
         .build();
 }
 
