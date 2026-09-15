@@ -9,7 +9,7 @@ def owned_call_graph_targets(name):
     Args:
         name: Runtime proof target.
     """
-    sources = ["src/inputs.rs", "src/source_capabilities/contracts.rs", "test/local_calls/mapping.rs"] + native.glob(["src/owned_source/*.rs", "src/owned_linear/**/*.rs", "test/owned_call_graph/*.rs"])
+    sources = ["src/inputs.rs", "src/source_capabilities/contracts.rs", "test/local_calls/mapping.rs", "test/owned_exit_consumer.rs"] + native.glob(["src/owned_source/*.rs", "src/owned_linear/**/*.rs", "test/owned_call_graph/*.rs"])
     compiler_adapter(name = "owned_call_graph_probe", srcs = sources, crate_root = "test/owned_call_graph/main.rs", rustc_cfg = "owned_call_graph_proof")
     for case, error in [("private_graph", "error[E0451]"), ("private_body", "error[E0451]"), ("erased", "error[E0308]"), ("raw", "error[E0061]"), ("assembly", "error[E0624]")]:
         compiler_adapter_compile_fail_test(name = "owned_call_graph_" + case + "_test", srcs = sources, crate_root = "test/owned_call_graph/main.rs", rustc_cfg = "call_graph_" + case, expected_error = error)

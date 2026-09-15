@@ -9,7 +9,7 @@ def boxed_record_flow_targets(name):
     Args:
         name: Runtime proof target.
     """
-    sources = ["src/inputs.rs", "src/source_capabilities/contracts.rs", "test/owned_returns/compatibility.rs", "test/scalar_box/mapping.rs", "test/owned_record/mapping.rs"] + native.glob(["src/owned_source/*.rs", "src/owned_linear/**/*.rs", "test/boxed_record_flow/*.rs"])
+    sources = ["test/owned_exit_consumer.rs", "src/inputs.rs", "src/source_capabilities/contracts.rs", "test/owned_returns/compatibility.rs", "test/scalar_box/mapping.rs", "test/owned_record/mapping.rs"] + native.glob(["src/owned_source/*.rs", "src/owned_linear/**/*.rs", "test/boxed_record_flow/*.rs"])
     compiler_adapter(name = "boxed_record_flow_probe", srcs = sources, crate_root = "test/boxed_record_flow/main.rs", rustc_cfg = "boxed_record_flow_proof")
     for case, error in [("private_body", "error[E0451]"), ("private_field", "error[E0451]"), ("erased", "error[E0308]"), ("raw", "error[E0061]")]:
         compiler_adapter_compile_fail_test(name = "boxed_record_flow_" + case + "_test", srcs = sources, crate_root = "test/boxed_record_flow/main.rs", rustc_cfg = "boxed_flow_" + case, expected_error = error)

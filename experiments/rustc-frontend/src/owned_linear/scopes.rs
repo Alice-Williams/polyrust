@@ -30,6 +30,7 @@ pub(crate) struct ScopeEvidence<'tcx> {
     bindings: Vec<(HirId, HirId)>,
     read: HirId,
     drop: HirId,
+    exit: exits::Exit<'tcx>,
 }
 
 impl ScopeEvidence<'_> {
@@ -46,6 +47,11 @@ impl ScopeEvidence<'_> {
     }
     pub(crate) fn drop_scope(&self) -> HirId {
         self.drop
+    }
+}
+impl<'tcx> ScopeEvidence<'tcx> {
+    pub(super) fn exit(&self) -> exits::Exit<'tcx> {
+        self.exit
     }
 }
 
@@ -71,6 +77,7 @@ pub(super) fn certify<'tcx>(
         blocks: facts.blocks,
         bindings: facts.bindings,
         drop: claims.drop,
+        exit: facts.exit,
     })
 }
 

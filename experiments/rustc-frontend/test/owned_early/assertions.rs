@@ -126,6 +126,7 @@ pub(super) fn check(tcx: TyCtxt<'_>) {
                 }
                 let scope = if index == 0 { root.hir_id } else { arm.hir_id };
                 assert_eq!(path.scopes().read_scope(), scope);
+                crate::exit_consumer::check(tcx, owner, scope, path.exit(), path.returning());
                 assert_eq!(path.scopes().blocks().count(), index + 1);
                 assert_eq!(path.scopes().blocks().next().unwrap(), (root.hir_id, None));
                 let hir::ExprKind::Unary(hir::UnOp::Deref, operand) = value.kind else {

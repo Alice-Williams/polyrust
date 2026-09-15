@@ -5,12 +5,14 @@ fn fake_body<'tcx>(proof: crate::owned_linear::multiple::MultipleOwnedBody<'tcx>
     let scopes = proof.scopes().clone();
     let read = proof.scalar_read();
     let drops = proof.drop_order().to_vec();
+    let returning = proof.returning();
     let chains = proof.into_chains();
     let _ = crate::owned_linear::multiple::MultipleOwnedBody {
         chains,
         scopes,
         read,
         drops,
+        returning,
     };
 }
 #[cfg(owned_multiple_private_chain)]

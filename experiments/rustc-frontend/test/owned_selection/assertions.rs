@@ -98,6 +98,7 @@ pub(super) fn check(tcx: TyCtxt<'_>) {
                     vec![(root.hir_id, None)]
                 );
                 assert_eq!(path.scopes().read_scope(), root.hir_id);
+                crate::exit_consumer::check(tcx, owner, root.hir_id, path.exit(), path.returning());
                 let value = match (path.exit(), exit.kind) {
                     (
                         SourceExit::Return { expression, value },

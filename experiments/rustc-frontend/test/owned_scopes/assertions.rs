@@ -84,6 +84,13 @@ pub(super) fn check(tcx: TyCtxt<'_>) {
                 }
             }
             assert_eq!(proof.scopes().read_scope(), scopes[depth - 1].0);
+            crate::exit_consumer::check(
+                tcx,
+                owner,
+                proof.scopes().read_scope(),
+                proof.exit(),
+                proof.returning(),
+            );
             assert_eq!(proof.scopes().drop_scope(), scopes[drop_depth].0);
             assert_eq!(proof.bindings().len(), binding_depths.len());
             for ((&(id, scope), &(binding, _)), &index) in proof

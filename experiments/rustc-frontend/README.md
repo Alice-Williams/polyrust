@@ -409,3 +409,8 @@ signature-only or same-signature replacement bodies cannot supply ownership
 effects. Source exits and typed argument/return/drop projections remain visible
 to consumers. Recursion, longer chains, borrowed calls and target heap output
 are not admitted. See [closed graph contract](../../docs/specification/typed-generation/languages/c/rust-owned-call-graph.md).
+
+M35-02B-03J makes canonical source exits and full normal-return locations visible
+consistently across the ownership proof families. A shared ordinary consumer
+checks those projections in each family's existing runtime target. No new Rust
+shape or target heap output is enabled. See [exit projection contract](../../docs/specification/typed-generation/languages/c/rust-owned-exits.md).

@@ -62,6 +62,13 @@ pub(super) fn check(tcx: TyCtxt<'_>) {
         }
         let evidence =
             BoxedRecordBody::read(tcx, owner).unwrap_or_else(|e| panic!("{name}: {e:?}"));
+        crate::exit_consumer::check(
+            tcx,
+            owner,
+            evidence.scopes().read_scope(),
+            evidence.exit(),
+            evidence.returning(),
+        );
         let body = tcx.mir_drops_elaborated_and_const_checked(owner).borrow();
         let checked = tcx.typeck(owner);
         let hir::ExprKind::Block(root, None) = tcx.hir_body_owned_by(owner).value.kind else {

@@ -22,6 +22,7 @@ pub(super) struct Matched<'tcx> {
     pub aggregate: (mir::Place<'tcx>, mir::Location),
     pub read: mir::Location,
     pub drops: Vec<SourcePlace>,
+    pub returning: mir::Location,
 }
 pub(super) fn validate<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -215,6 +216,7 @@ pub(super) fn validate<'tcx>(
         aggregate: (aggregate.destination, aggregate.location),
         read,
         drops,
+        returning: trace.returning,
     })
 }
 

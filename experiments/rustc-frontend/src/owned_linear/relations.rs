@@ -12,6 +12,7 @@ pub(super) struct Matched {
     pub moves: Vec<mir::Location>,
     pub scalar_read: mir::Location,
     pub drop: mir::Location,
+    pub returning: mir::Location,
 }
 
 pub(super) fn validate<'tcx>(
@@ -127,5 +128,6 @@ pub(super) fn validate<'tcx>(
         moves: move_locations,
         scalar_read,
         drop: flow.drop.0,
+        returning: flow.returning,
     })
 }

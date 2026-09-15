@@ -163,12 +163,12 @@ fn path<'tcx>(
     {
         return Err(Error::ControlFlow);
     }
-    let returning = matched.returning;
     let MultipleOwnedBody {
         chains,
         scopes,
         read,
         drops,
+        returning,
     } = MultipleOwnedBody::from_matched(plan, matched)?;
     Ok(GuardedPath {
         outcome: branch.outcome,

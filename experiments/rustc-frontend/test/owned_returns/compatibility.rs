@@ -31,6 +31,14 @@ impl Mapping for Observe {
     }
 }
 pub(super) fn mapping<'tcx>(tcx: TyCtxt<'tcx>, body: MultipleOwnedBody<'tcx>) {
+    let owner = body.chains()[0].parameter().0.owner.def_id;
+    crate::exit_consumer::check(
+        tcx,
+        owner,
+        body.scopes().read_scope(),
+        body.exit(),
+        body.returning(),
+    );
     chains(tcx, body.into_chains());
 }
 pub(super) fn chains<'tcx>(
@@ -53,6 +61,20 @@ pub(super) fn tail(tcx: TyCtxt<'_>, owner: LocalDefId) {
     let nested = LinearOwnedBody::read_tail_scopes(tcx, owner).unwrap();
     let multiple = MultipleOwnedBody::read(tcx, owner).unwrap();
     let chain = &multiple.chains()[0];
+    crate::exit_consumer::check(
+        tcx,
+        owner,
+        root.scopes().read_scope(),
+        root.exit(),
+        root.returning(),
+    );
+    crate::exit_consumer::check(
+        tcx,
+        owner,
+        nested.scopes().read_scope(),
+        nested.exit(),
+        nested.returning(),
+    );
     assert_eq!(root.parameter(), nested.parameter());
     assert_eq!(root.parameter(), chain.parameter());
     assert_eq!(root.bindings(), chain.bindings());

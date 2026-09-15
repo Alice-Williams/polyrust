@@ -9,7 +9,7 @@ def owned_multiple_targets(name):
     Args:
         name: Runtime assertion target.
     """
-    sources = ["src/inputs.rs", "src/source_capabilities/contracts.rs"] + native.glob([
+    sources = ["test/owned_exit_consumer.rs", "src/inputs.rs", "src/source_capabilities/contracts.rs"] + native.glob([
         "src/owned_source/*.rs",
         "src/owned_linear/**/*.rs",
         "test/owned_multiple/*.rs",

@@ -2,6 +2,7 @@
 #[allow(dead_code)]
 pub(crate) mod calls;
 mod exits;
+pub(crate) use exits::Exit as SourceExit;
 mod flow;
 // The separate proof drivers select different public evidence entry points.
 #[allow(dead_code)]
@@ -56,6 +57,7 @@ pub(crate) struct LinearOwnedBody<'tcx> {
     scopes: ScopeEvidence<'tcx>,
     scalar_read: mir::Location,
     drop: mir::Location,
+    returning: mir::Location,
 }
 
 impl<'tcx> LinearOwnedBody<'tcx> {
@@ -79,6 +81,7 @@ impl<'tcx> LinearOwnedBody<'tcx> {
             scopes: plan.scopes,
             scalar_read: matched.scalar_read,
             drop: matched.drop,
+            returning: matched.returning,
             constructor: plan.constructor,
         })
     }
@@ -103,6 +106,12 @@ impl<'tcx> LinearOwnedBody<'tcx> {
     }
     pub(crate) fn drop_location(&self) -> mir::Location {
         self.drop
+    }
+    pub(crate) fn exit(&self) -> SourceExit<'tcx> {
+        self.scopes.exit()
+    }
+    pub(crate) fn returning(&self) -> mir::Location {
+        self.returning
     }
     pub(crate) fn into_construction(self) -> BoxConstructionInput<'tcx> {
         self.constructor

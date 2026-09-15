@@ -9,7 +9,7 @@ def owned_selection_targets(name):
     Args:
         name: Runtime proof target.
     """
-    sources = ["src/inputs.rs", "src/source_capabilities/contracts.rs", "test/owned_returns/compatibility.rs"] + native.glob([
+    sources = ["test/owned_exit_consumer.rs", "src/inputs.rs", "src/source_capabilities/contracts.rs", "test/owned_returns/compatibility.rs"] + native.glob([
         "src/owned_source/*.rs",
         "src/owned_linear/**/*.rs",
         "test/owned_selection/*.rs",

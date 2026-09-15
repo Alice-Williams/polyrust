@@ -2,12 +2,13 @@
 use crate::owned_linear::calls::{BodyEnding, BodyStep, OwnedCallBody, SourceExit};
 use rustc_hir as hir;
 use rustc_middle::{mir, ty::TyCtxt};
-pub(super) fn check(tcx: TyCtxt<'_>, proof: &OwnedCallBody<'_>) {
+pub(super) fn check<'tcx>(tcx: TyCtxt<'tcx>, proof: &OwnedCallBody<'tcx>) {
     let owner = proof.owner();
     let body = tcx.mir_drops_elaborated_and_const_checked(owner).borrow();
     let hir::ExprKind::Block(root, None) = tcx.hir_body_owned_by(owner).value.kind else {
         panic!("root");
     };
+    super::exit_consumer::check(tcx, owner, root.hir_id, proof.exit(), proof.returning());
     match proof.exit() {
         SourceExit::Tail(value) => assert!(std::ptr::eq(root.expr.unwrap(), value)),
         SourceExit::Return { expression, value } => {

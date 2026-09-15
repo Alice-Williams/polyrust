@@ -50,6 +50,10 @@ capability before its payload producer/field-read/cleanup correspondence.
 then separates authenticated direct-call identities from complete producer,
 consumer and relay effects before pairing caller/callee ownership obligations.
 
+[M35-02B-03J — Consumer exit projections](M35-02B-03J-consumer-exit-projections.md)
+then audits the completed evidence interfaces and retains canonical exits/normal
+return locations needed by structured target mapping. It adds no new source form.
+
 - Map every admitted structured exit and owned operation unambiguously to the
   compiler's corresponding places/drop obligations; unsupported shapes diagnose.
 - Distinct same-type owners, branch guards, field projections and lexical

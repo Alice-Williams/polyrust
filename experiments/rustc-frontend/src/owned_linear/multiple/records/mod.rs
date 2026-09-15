@@ -6,7 +6,7 @@ mod constructors;
 pub(crate) mod mutations;
 mod relations;
 mod source;
-use super::super::{Result, scopes::ScopeFacts};
+use super::super::{Result, SourceExit, scopes::ScopeFacts};
 use crate::owned_source::{BoxConstructionInput, record::RecordConstructionInput};
 use rustc_hir::{HirId, def_id::LocalDefId};
 use rustc_middle::{mir, ty::TyCtxt};
@@ -58,6 +58,7 @@ pub(crate) struct RecordOwnedBody<'tcx> {
     scopes: ScopeFacts<'tcx>,
     read: (HirId, mir::Location),
     drops: Vec<SourcePlace>,
+    returning: mir::Location,
 }
 impl<'tcx> RecordOwnedBody<'tcx> {
     pub(crate) fn read(tcx: TyCtxt<'tcx>, owner: LocalDefId) -> Result<Self> {
@@ -85,6 +86,7 @@ impl<'tcx> RecordOwnedBody<'tcx> {
             scopes: plan.scopes,
             read: (plan.read, matched.read),
             drops: matched.drops,
+            returning: matched.returning,
         })
     }
     pub(crate) fn aggregate(&self) -> (HirId, mir::Place<'tcx>, mir::Location) {
@@ -101,6 +103,12 @@ impl<'tcx> RecordOwnedBody<'tcx> {
     }
     pub(crate) fn drop_order(&self) -> &[SourcePlace] {
         &self.drops
+    }
+    pub(crate) fn exit(&self) -> SourceExit<'tcx> {
+        self.scopes.exit()
+    }
+    pub(crate) fn returning(&self) -> mir::Location {
+        self.returning
     }
     pub(crate) fn into_operations(
         self,

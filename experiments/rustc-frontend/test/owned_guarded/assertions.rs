@@ -113,6 +113,13 @@ pub(super) fn check(tcx: TyCtxt<'_>) {
                     Res::Local(path.scalar_read().0)
                 );
                 assert_eq!(path.scopes().read_scope(), block.hir_id);
+                crate::exit_consumer::check(
+                    tcx,
+                    owner,
+                    path.scopes().read_scope(),
+                    path.exit(),
+                    path.returning(),
+                );
                 assert_eq!(
                     path.scopes().blocks().collect::<Vec<_>>(),
                     vec![(root.hir_id, None), (block.hir_id, Some(root.hir_id))]

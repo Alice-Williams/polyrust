@@ -7,6 +7,7 @@ fn fabricated_scope<'tcx>(proof: crate::owned_linear::LinearOwnedBody<'tcx>) {
         bindings: Vec::new(),
         read: proof.scope(),
         drop: proof.scope(),
+        exit: proof.exit(),
     };
 }
 #[cfg(owned_linear_private)]
@@ -19,6 +20,7 @@ fn fabricated<'tcx>(proof: crate::owned_linear::LinearOwnedBody<'tcx>) {
     let moves = proof.moves().to_vec();
     let scalar_read = proof.scalar_read();
     let drop = proof.drop_location();
+    let returning = proof.returning();
     let _ = crate::owned_linear::LinearOwnedBody {
         constructor: proof.into_construction(),
         parameter,
@@ -28,5 +30,6 @@ fn fabricated<'tcx>(proof: crate::owned_linear::LinearOwnedBody<'tcx>) {
         moves,
         scalar_read,
         drop,
+        returning,
     };
 }

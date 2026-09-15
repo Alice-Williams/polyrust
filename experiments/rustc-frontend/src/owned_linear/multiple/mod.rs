@@ -14,7 +14,7 @@ pub(super) mod residual;
 pub(crate) mod returns;
 pub(crate) mod selection;
 mod source;
-use super::{LinearError, Result, scopes::ScopeFacts};
+use super::{LinearError, Result, SourceExit, scopes::ScopeFacts};
 use crate::owned_source::BoxConstructionInput;
 use rustc_hir::{HirId, def_id::LocalDefId};
 use rustc_middle::{mir, ty::TyCtxt};
@@ -53,6 +53,7 @@ pub(crate) struct MultipleOwnedBody<'tcx> {
     scopes: ScopeFacts<'tcx>,
     read: (HirId, mir::Location),
     drops: Vec<HirId>,
+    returning: mir::Location,
 }
 impl<'tcx> MultipleOwnedBody<'tcx> {
     pub(crate) fn read(tcx: TyCtxt<'tcx>, owner: LocalDefId) -> Result<Self> {
@@ -86,6 +87,7 @@ impl<'tcx> MultipleOwnedBody<'tcx> {
             scopes: plan.scopes,
             read: (plan.read, matched.read),
             drops: matched.drops,
+            returning: matched.returning,
         })
     }
     pub(crate) fn chains(&self) -> &[ChainEvidence<'tcx>] {
@@ -99,6 +101,12 @@ impl<'tcx> MultipleOwnedBody<'tcx> {
     }
     pub(crate) fn drop_order(&self) -> &[HirId] {
         &self.drops
+    }
+    pub(crate) fn exit(&self) -> SourceExit<'tcx> {
+        self.scopes.exit()
+    }
+    pub(crate) fn returning(&self) -> mir::Location {
+        self.returning
     }
     pub(crate) fn into_chains(self) -> Vec<ChainEvidence<'tcx>> {
         self.chains

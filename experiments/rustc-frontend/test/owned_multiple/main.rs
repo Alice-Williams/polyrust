@@ -11,6 +11,8 @@ extern crate rustc_span;
 extern crate rustc_type_ir;
 mod assertions;
 mod contracts;
+#[path = "../owned_exit_consumer.rs"]
+mod exit_consumer;
 #[path = "../../src/inputs.rs"]
 mod inputs;
 #[path = "../../src/owned_linear/mod.rs"]

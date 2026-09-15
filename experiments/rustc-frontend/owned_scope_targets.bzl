@@ -9,7 +9,7 @@ def owned_scope_targets(name):
     Args:
         name: Runtime proof target.
     """
-    shared = ["src/inputs.rs", "src/source_capabilities/contracts.rs"] + native.glob([
+    shared = ["test/owned_exit_consumer.rs", "src/inputs.rs", "src/source_capabilities/contracts.rs"] + native.glob([
         "src/owned_source/*.rs",
         "src/owned_linear/**/*.rs",
     ])

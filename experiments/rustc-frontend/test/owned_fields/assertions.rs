@@ -73,6 +73,13 @@ pub(super) fn check(tcx: TyCtxt<'_>) {
                 _ => panic!("unasserted field fixture {name}"),
             };
         let proof = RecordOwnedBody::read(tcx, owner).unwrap_or_else(|e| panic!("{name}: {e:?}"));
+        crate::exit_consumer::check(
+            tcx,
+            owner,
+            proof.scopes().read_scope(),
+            proof.exit(),
+            proof.returning(),
+        );
         let body = tcx.mir_drops_elaborated_and_const_checked(owner).borrow();
         let parameters: Vec<_> = body.args_iter().collect();
         assert_eq!(

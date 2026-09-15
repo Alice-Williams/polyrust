@@ -131,6 +131,13 @@ pub(super) fn check(tcx: TyCtxt<'_>) {
                 drops
             );
             assert_eq!(ends[&proof.scalar_read().0].0, read_parameter);
+            crate::exit_consumer::check(
+                tcx,
+                owner,
+                proof.scopes().read_scope(),
+                proof.exit(),
+                proof.returning(),
+            );
             let read = proof.scalar_read().1;
             assert!(
                 matches!(&body.basic_blocks[read.block].statements[read.statement_index].kind, mir::StatementKind::Assign(pair) if pair.0.local == mir::RETURN_PLACE)
@@ -143,6 +150,13 @@ pub(super) fn check(tcx: TyCtxt<'_>) {
                 let old = LinearOwnedBody::read(tcx, owner).unwrap();
                 let nested = LinearOwnedBody::read_tail_scopes(tcx, owner).unwrap();
                 assert_eq!(old.scope(), nested.scope());
+                crate::exit_consumer::check(
+                    tcx,
+                    owner,
+                    old.scopes().read_scope(),
+                    old.exit(),
+                    old.returning(),
+                );
                 assert_eq!(old.parameter(), proof.chains()[0].parameter());
                 assert_eq!(old.bindings(), proof.chains()[0].bindings());
                 assert_eq!(old.moves(), proof.chains()[0].moves());

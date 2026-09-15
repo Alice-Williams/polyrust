@@ -94,6 +94,13 @@ pub(super) fn check(tcx: TyCtxt<'_>) {
                 unreachable!()
             };
             assert_eq!(proof.scope(), block.hir_id);
+            crate::exit_consumer::check(
+                tcx,
+                owner,
+                proof.scopes().read_scope(),
+                proof.exit(),
+                proof.returning(),
+            );
             assert_eq!(proof.parameter().0.owner.def_id, owner);
             let body = tcx.mir_drops_elaborated_and_const_checked(owner).borrow();
             assert_eq!(proof.moves().len() + 1, count);

@@ -68,6 +68,14 @@ pub(super) fn check(tcx: TyCtxt<'_>) {
             assert!(std::ptr::eq(expression, proof.exit().expression()));
             assert!(std::ptr::eq(value, proof.exit().value()));
             assert_eq!(block.hir_id, proof.exit().scope());
+            crate::exit_consumer::check(
+                tcx,
+                owner,
+                proof.exit().scope(),
+                proof.body().exit(),
+                proof.exit().location(),
+            );
+            assert_eq!(proof.body().returning(), proof.exit().location());
             let hir::ExprKind::Unary(hir::UnOp::Deref, operand) = value.kind else {
                 panic!("read")
             };
