@@ -395,3 +395,10 @@ BoxedRecordBody retains scalar producer identity/order, record aggregate and
 Move/Copy payload transfer, whole Box moves, explicit field reads and final
 cleanup. It cannot be fabricated, erased to scalar-Box evidence or built from
 arbitrary MIR. This remains compiler-only proof, not C/Java heap generation.
+
+M35-02B-03I starts with `owned_calls_*` representation observations and
+`local_calls_*` direct-call identity/registration contracts. LocalCallInput
+retains canonical resolved function/signature types and a closed Producer/
+Consumer/Relay role enum. Roles classify signatures only; callee effects and
+caller/callee ownership transfer require the separate whole-body graph proof.
+See [owned function boundaries](../../docs/specification/typed-generation/languages/c/rust-owned-functions.md).

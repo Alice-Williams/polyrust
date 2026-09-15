@@ -46,6 +46,10 @@ correspondence and cleanup proof.
 adds the opposite ownership direction, starting with a separate typed constructor
 capability before its payload producer/field-read/cleanup correspondence.
 
+[M35-02B-03I — Owned local-function boundaries](M35-02B-03I-owned-function-boundaries.md)
+then separates authenticated direct-call identities from complete producer,
+consumer and relay effects before pairing caller/callee ownership obligations.
+
 - Map every admitted structured exit and owned operation unambiguously to the
   compiler's corresponding places/drop obligations; unsupported shapes diagnose.
 - Distinct same-type owners, branch guards, field projections and lexical
