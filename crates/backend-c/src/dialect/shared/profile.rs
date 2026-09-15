@@ -4,7 +4,7 @@ use crate::ast::{
     CAggregateRef, CBinaryOperator, CBlock, CCallableKind, CConversion, CDeclarationKind,
     CDefinitionKind, CFileItem, CFunctionRef, CInitializer, CInitializerKind, CLinkage, CLiteral,
     CObjectType, CObjectTypeKind, CPlace, CPlaceKind, CPointerTarget, CReturnType, CScalarType,
-    CSignedLiteral, CSourceFile, CStatement, CStatementKind, CValue, CValueKind,
+    CSignedLiteral, CSourceFile, CStatement, CStatementKind, CUnaryOperator, CValue, CValueKind,
 };
 
 #[path = "profile_inventory.rs"]
@@ -191,6 +191,16 @@ fn walk<'a>(
                     ) => {}
                     CValueKind::Read(place) | CValueKind::AddressOf(place) => {
                         add(Node::Place(place))
+                    }
+                    CValueKind::Unary {
+                        operator: CUnaryOperator::LogicalNot,
+                        operand,
+                    } if matches!(
+                        operand.ty().kind(),
+                        CObjectTypeKind::Scalar(CScalarType::Bool)
+                    ) =>
+                    {
+                        add(Node::Value(operand));
                     }
                     CValueKind::Binary {
                         operator,

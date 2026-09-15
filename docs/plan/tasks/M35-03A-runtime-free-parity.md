@@ -39,7 +39,9 @@ pass before each checkpoint and the final cutover.
 ## Current audit
 
 M35-03A-01 is complete: the inventory and real-bundle guards are reviewed and
-gated. Implementation parity remains incomplete; next are the scalar mappings.
+gated. M35-03A-02A adds reviewed, native-tested built-in bool negation through
+both new target paths. Implementation parity remains incomplete; lazy Boolean
+operations and the other scalar families remain outstanding.
 
 Legacy C embeds runtime.c/runtime.h and always requests runtime.core. Its
 portable generator remains active in CLI, conformance, benchmarks and examples.

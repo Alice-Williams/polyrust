@@ -14,7 +14,7 @@ scratch.mkdir()
 crates = {}
 bundle_count = 0
 expected_imports = {"leaf": 0, "middle": 2, "root": 2, "right": 1, "diamond": 2,
-                    "aliases": 1, "arities": 2, "unused": 0, "versions": 2}
+                    "aliases": 1, "arities": 2, "unused": 0, "versions": 2, "unary": 0}
 
 
 def add(key, text, dependencies=(), name=None):
@@ -179,7 +179,9 @@ reject(reexport, "public package API mapping is not implemented")
 generic = add("generic", "pub fn identity(v: i32) -> i32 { core::convert::identity(v) }\n")
 reject(generic, "generic or mismatched direct callee identity")
 unary = add("unary", "pub fn invert(v: bool) -> bool { !v }\n")
-reject(unary, "C expression mapping is not implemented")
+accept(unary)
+integer_unary = add("integer_unary", "pub fn invert(v: i32) -> i32 { !v }\n")
+reject(integer_unary, "Boolean negation requires an unadjusted built-in bool operand")
 conditional_argument = add("conditional_argument",
     "pub fn identity(v: i32) -> i32 { dep::identity(if v < 0 { 0 } else { v }) }\n",
     [("dep", "leaf")])

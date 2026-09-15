@@ -47,6 +47,7 @@ separate explicit mappings even if the C AST already represents them.
 | Field access | CPlaceKind::Member with CMemberRef | Compiler field index must resolve to that exact nominal owner's registered member |
 | Shared borrow / built-in dereference | CValueKind::AddressOf / CPlaceKind::Dereference | Apply compiler adjustment metadata exactly; reject overloaded Deref and unimplemented coercions |
 | Scalar comparison | CBinaryOperator and CValueKind::Binary; CConversion::Numeric when needed | Exact operand types and C promotions; Rust reference comparison is not C pointer comparison |
+| Built-in bool negation | CUnaryOperator::LogicalNot plus CConversion::Numeric(Bool) | Preserve one operand evaluation; reject integer bit-not, overloads and implicit adjustments |
 | Struct initialization | CInitializerKind::Struct | Match the complete ordered member inventory; preserve source evaluation order separately |
 | Nested source block | CBlock and CStatementKind::Block | Keep its scope and braces; do not flatten into the enclosing block |
 | If/else | CStatementKind::If with two CBlocks | Evaluate condition once; evaluate only the selected branch |
@@ -93,6 +94,7 @@ not aliases for the complete portable capability catalogue:
 | ResolvedPlaces | resolved path/field/dereference HIR expression and adjustments | CPlace |
 | SharedBorrows | immutable built-in borrow HIR expression | CValue |
 | ScalarComparisons | resolved scalar-comparison HIR expression | CValue |
+| BooleanNegation | checked private NegationInput retaining the bool operand's HIR | CValue |
 | RecordInitializers | complete scalar-field struct HIR initializer | CInitializer |
 | LexicalControl | returning HIR expression with optional parent HIR identity | CBlock |
 | EntrySignatures | selected compiler function identity and signature facts | CFunctionType |
@@ -109,7 +111,7 @@ Reader's authenticated scope bindings. An absent parent binding or repeated
 current identity is a diagnostic, never an implicit new root or overwrite.
 Traversal selects a binding and passes compiler references rather than cloning
 HIR into a private source tree. Admission of dynamic HIR shapes remains checked
-inside its owning mapping; a Rust type wrapper is not a claim that arbitrary
+by its owning capability input constructor and mapping; a Rust type wrapper is not a claim that arbitrary
 customer syntax was checked when the generator itself was compiled.
 
 The initial slot refactor may migrate owners incrementally but cannot be marked
@@ -121,8 +123,11 @@ complete while operation rules remain duplicated in traversal. See
 The same-crate call extension is specified separately in
 [direct calls](rust-hir-direct-calls.md). Its effect and native-stack evidence
 must pass before expanding the render-ready profile. Its two executable
-bindings extend the consuming builder to ten required slots; missing and
-duplicate registration controls cover each slot independently.
+bindings established ten required slots; [Boolean negation](../../rust-boolean-negation.md)
+adds an eleventh executable slot. Missing and duplicate registration controls
+cover each slot independently. Its typed logical-not node is also admitted by
+the closed scalar-call evidence and shared-package profiles; no other unary
+operation gains admission. The scalar operand is still traversed and checked.
 
 These are extension obligations, not current support claims:
 

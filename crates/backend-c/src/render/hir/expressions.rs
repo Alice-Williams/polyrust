@@ -1,7 +1,7 @@
 use super::{CValueBinding, Writer};
 use crate::ast::{
     CBinaryOperator, CCallableKind, CConversion, CInitializer, CInitializerKind, CLiteral, CPlace,
-    CPlaceKind, CSignedLiteral, CValue, CValueKind,
+    CPlaceKind, CSignedLiteral, CUnaryOperator, CValue, CValueKind,
 };
 
 impl Writer<'_> {
@@ -35,6 +35,10 @@ impl Writer<'_> {
             }
             CValueKind::Read(place) => self.place(place),
             CValueKind::AddressOf(place) => format!("(&{})", self.place(place)),
+            CValueKind::Unary {
+                operator: CUnaryOperator::LogicalNot,
+                operand,
+            } => format!("(!{})", self.value(operand)),
             CValueKind::Binary {
                 operator,
                 left,

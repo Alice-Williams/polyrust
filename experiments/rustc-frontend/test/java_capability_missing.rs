@@ -1,12 +1,13 @@
 use super::{
-    Builder, JavaDirectCalls, JavaEntrySignatures, JavaFunctionSignatures, JavaLexicalControl,
-    JavaLiteralValues, JavaObjectTypes, JavaRecordInitializers, JavaResolvedPlaces,
-    JavaScalarComparisons, JavaSharedBorrows,
+    Builder, JavaBooleanNegation, JavaDirectCalls, JavaEntrySignatures, JavaFunctionSignatures,
+    JavaLexicalControl, JavaLiteralValues, JavaObjectTypes, JavaRecordInitializers,
+    JavaResolvedPlaces, JavaScalarComparisons, JavaSharedBorrows,
 };
 
 #[allow(dead_code)]
 fn must_not_compile() {
     Builder::new()
+        .boolean_negation(JavaBooleanNegation)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)
         .shared_borrows(JavaSharedBorrows)
@@ -18,6 +19,7 @@ fn must_not_compile() {
         .function_signatures(JavaFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(JavaBooleanNegation)
         .literal_values(JavaLiteralValues)
         .resolved_places(JavaResolvedPlaces)
         .shared_borrows(JavaSharedBorrows)
@@ -29,6 +31,7 @@ fn must_not_compile() {
         .function_signatures(JavaFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(JavaBooleanNegation)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .shared_borrows(JavaSharedBorrows)
@@ -40,6 +43,7 @@ fn must_not_compile() {
         .function_signatures(JavaFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(JavaBooleanNegation)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)
@@ -51,6 +55,7 @@ fn must_not_compile() {
         .function_signatures(JavaFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(JavaBooleanNegation)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)
@@ -62,6 +67,7 @@ fn must_not_compile() {
         .function_signatures(JavaFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(JavaBooleanNegation)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)
@@ -73,6 +79,7 @@ fn must_not_compile() {
         .function_signatures(JavaFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(JavaBooleanNegation)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)
@@ -84,6 +91,7 @@ fn must_not_compile() {
         .function_signatures(JavaFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(JavaBooleanNegation)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)
@@ -95,6 +103,7 @@ fn must_not_compile() {
         .function_signatures(JavaFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(JavaBooleanNegation)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)
@@ -106,6 +115,7 @@ fn must_not_compile() {
         .direct_calls(JavaDirectCalls)
         .build();
     Builder::new()
+        .boolean_negation(JavaBooleanNegation)
         .literal_values(JavaLiteralValues)
         .scalar_comparisons(JavaScalarComparisons)
         .resolved_places(JavaResolvedPlaces)

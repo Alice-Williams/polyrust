@@ -33,9 +33,9 @@
     }
   },
   "new_system": {
-    "shared_partial_features": ["JavaFunctions", "JavaRecords", "JavaBoolValues", "JavaI32Values", "JavaEquality", "JavaOrdering", "JavaModules", "JavaLocalBindings", "JavaConditionals"],
+    "shared_partial_features": ["JavaFunctions", "JavaRecords", "JavaBoolValues", "JavaI32Values", "JavaBooleanLogic", "JavaEquality", "JavaOrdering", "JavaModules", "JavaLocalBindings", "JavaConditionals"],
     "full_features": [],
-    "scope": "Current shared coverage is restricted to the documented no-heap i32/bool source grammar. Unlisted features lack complete replacement evidence. Source-only Box/record observations do not count as C/Java heap support."
+    "scope": "Current shared coverage is restricted to the documented no-heap i32/bool source grammar. JavaBooleanLogic covers built-in bool negation only; lazy and/or remain outstanding. Unlisted features lack complete replacement evidence. Source-only Box/record observations do not count as C/Java heap support."
   },
   "c_limits": [
     "Callable containers currently admit List<String> and Option<I64>, not arbitrary containers.",

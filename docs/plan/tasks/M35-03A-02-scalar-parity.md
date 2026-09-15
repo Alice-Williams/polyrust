@@ -1,10 +1,14 @@
 # M35-03A-02 — Scalar, constant and numeric feature parity
 
-- Status: planned
+- Status: in-progress
 - Parent: [M35-03A](M35-03A-runtime-free-parity.md)
 - Depends on: M35-03A-01
 
 ## Contract
+
+The first bounded implementation,
+[M35-03A-02A — Boolean negation](M35-03A-02A-boolean-negation.md), is complete.
+Other scalar operations remain separate work; this does not claim full parity.
 
 Add missing i64/f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

@@ -2,8 +2,9 @@
 use super::{
     Reader, Result, c,
     capabilities::{
-        BorrowInput, CallInput, ComparisonInput, DirectCalls, LiteralInput, LiteralValues, Mapping,
-        PlaceInput, ResolvedPlaces, ScalarComparisons, SharedBorrows, Supports,
+        BooleanNegation, BorrowInput, CallInput, ComparisonInput, DirectCalls, LiteralInput,
+        LiteralValues, Mapping, NegationInput, PlaceInput, ResolvedPlaces, ScalarComparisons,
+        SharedBorrows, Supports,
     },
 };
 use portable_backend_c::ast::{CPlace, CValue};
@@ -17,6 +18,10 @@ impl<'tcx> Reader<'tcx> {
             return c(self.expressions().read(place));
         }
         match value.kind {
+            hir::ExprKind::Unary(hir::UnOp::Not, _) => {
+                let input = NegationInput::read(self.checked, value)?;
+                Supports::<BooleanNegation>::mapping(&self.mappings).lower(self, input)
+            }
             hir::ExprKind::Call(..) => {
                 let mapping = Supports::<DirectCalls>::mapping(&self.mappings);
                 mapping.lower(self, CallInput(value))

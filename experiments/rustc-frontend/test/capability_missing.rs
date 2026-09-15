@@ -1,11 +1,13 @@
 use super::{
-    Builder, CDirectCalls, CEntrySignatures, CFunctionSignatures, CLexicalControl, CLiteralValues,
-    CObjectTypes, CRecordInitializers, CResolvedPlaces, CScalarComparisons, CSharedBorrows,
+    Builder, CBooleanNegation, CDirectCalls, CEntrySignatures, CFunctionSignatures,
+    CLexicalControl, CLiteralValues, CObjectTypes, CRecordInitializers, CResolvedPlaces,
+    CScalarComparisons, CSharedBorrows,
 };
 
 #[allow(dead_code)]
 fn must_not_compile() {
     Builder::new()
+        .boolean_negation(CBooleanNegation)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)
         .shared_borrows(CSharedBorrows)
@@ -17,6 +19,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(CBooleanNegation)
         .literal_values(CLiteralValues)
         .resolved_places(CResolvedPlaces)
         .shared_borrows(CSharedBorrows)
@@ -28,6 +31,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(CBooleanNegation)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .shared_borrows(CSharedBorrows)
@@ -39,6 +43,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(CBooleanNegation)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)
@@ -50,6 +55,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(CBooleanNegation)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)
@@ -61,6 +67,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(CBooleanNegation)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)
@@ -72,6 +79,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(CBooleanNegation)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)
@@ -83,6 +91,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(CBooleanNegation)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)
@@ -94,6 +103,7 @@ fn must_not_compile() {
         .function_signatures(CFunctionSignatures)
         .build();
     Builder::new()
+        .boolean_negation(CBooleanNegation)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)
@@ -105,6 +115,7 @@ fn must_not_compile() {
         .direct_calls(CDirectCalls)
         .build();
     Builder::new()
+        .boolean_negation(CBooleanNegation)
         .literal_values(CLiteralValues)
         .scalar_comparisons(CScalarComparisons)
         .resolved_places(CResolvedPlaces)

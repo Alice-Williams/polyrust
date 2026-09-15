@@ -1,7 +1,7 @@
 use super::Reader;
 use crate::ast::{
     JavaBinaryOperator, JavaBlock, JavaCallableRef, JavaConstructorRef, JavaExpr, JavaExprKind,
-    JavaFieldRef, JavaLiteral, JavaStmt, JavaValueRef,
+    JavaFieldRef, JavaLiteral, JavaStmt, JavaUnaryOperator, JavaValueRef,
 };
 use portable_codegen::{GeneratedSymbolId, TargetSymbolRef};
 
@@ -46,6 +46,14 @@ impl Reader<'_> {
             JavaExprKind::Literal(JavaLiteral::I32(_) | JavaLiteral::Boolean(_))
             | JavaExprKind::Value(JavaValueRef::This) => Ok(()),
             JavaExprKind::Value(JavaValueRef::Local(name)) => self.spelling(name.as_str()),
+            JavaExprKind::Unary {
+                operator: JavaUnaryOperator::Not,
+                operand,
+            } => {
+                // The node charge covers punctuation; recurse so operand
+                // names and nesting still contribute to the reservation.
+                self.expression(operand, depth + 1)
+            }
             JavaExprKind::Binary {
                 operator:
                     JavaBinaryOperator::Equal

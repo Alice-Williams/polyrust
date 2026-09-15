@@ -2,6 +2,44 @@ use super::source_dependency_fixture::*;
 use crate::{ast::*, dialect::JavaDependencyApi};
 
 #[test]
+fn boolean_negation_is_a_closed_dependency_expression() {
+    let mut fixture = functions(42);
+    fixture[2].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
+        ty: boolean(),
+        precedence: JavaPrecedence::Unary,
+        kind: JavaExprKind::Unary {
+            operator: JavaUnaryOperator::Not,
+            operand: Box::new(JavaExpr::local(boolean(), name("p0"))),
+        },
+    }))]);
+    let api = JavaDependencyApi::from_certificate(certify(package(7, fixture))).unwrap();
+    assert_eq!(
+        api.function(id(7, 12)).unwrap().signature().result,
+        boolean()
+    );
+}
+
+#[test]
+fn unrelated_unary_operators_remain_unadmitted() {
+    for operator in [JavaUnaryOperator::Negate, JavaUnaryOperator::BitNot] {
+        let mut fixture = functions(42);
+        fixture[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
+            ty: int(),
+            precedence: JavaPrecedence::Unary,
+            kind: JavaExprKind::Unary {
+                operator,
+                operand: Box::new(JavaExpr::literal(int(), JavaLiteral::I32(42))),
+            },
+        }))]);
+        assert!(
+            JavaDependencyApi::from_certificate(certify(package(7, fixture)))
+                .unwrap_err()
+                .contains("unadmitted expression")
+        );
+    }
+}
+
+#[test]
 fn private_record_is_closed_without_exposing_its_constructor_or_fields() {
     let api = JavaDependencyApi::from_certificate(certify(record_package(|_| {}))).unwrap();
     assert_eq!(api.functions().len(), 1);

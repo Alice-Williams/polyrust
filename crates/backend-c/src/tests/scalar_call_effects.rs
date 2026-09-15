@@ -3,6 +3,49 @@ use super::{ScalarCalls, fixture::Fixture};
 use crate::ast::*;
 use crate::ownership::{CSafetyError, context_facts::ContextFacts};
 
+#[test]
+fn builtin_bool_not_retains_body_derived_scalar_call_evidence() {
+    let f = Fixture::new(&[0, 0]);
+    let operand = f.values().literal(CLiteral::Bool(true)).unwrap();
+    let value = f
+        .values()
+        .unary(CUnaryOperator::LogicalNot, operand)
+        .unwrap();
+    let value = f
+        .values()
+        .numeric_conversion(CScalarType::I32, value)
+        .unwrap();
+    let source = f.source(vec![
+        f.returning(0, f.call(1, vec![])),
+        f.returning(1, value),
+    ]);
+    assert_eq!(accepted(&f, &source), vec![true, true]);
+    f.registry.check_storage_paths(&[source]).unwrap();
+}
+
+#[test]
+fn unrelated_unary_shapes_do_not_gain_scalar_call_evidence() {
+    let f = Fixture::new(&[0]);
+    assert!(
+        f.values()
+            .unary(CUnaryOperator::LogicalNot, f.literal(1))
+            .is_err()
+    );
+    for operator in [CUnaryOperator::BitNot, CUnaryOperator::Negate] {
+        let f = Fixture::new(&[0, 0]);
+        let value = f.values().unary(operator, f.literal(1)).unwrap();
+        let value = f
+            .values()
+            .numeric_conversion(CScalarType::I32, value)
+            .unwrap();
+        let source = f.source(vec![
+            f.returning(0, f.call(1, vec![])),
+            f.returning(1, value),
+        ]);
+        assert_eq!(accepted(&f, &source), vec![false, false]);
+    }
+}
+
 fn accepted(f: &Fixture, source: &CSourceFile) -> Vec<bool> {
     let facts = ContextFacts::check(&f.registry, std::slice::from_ref(source)).unwrap();
     f.functions

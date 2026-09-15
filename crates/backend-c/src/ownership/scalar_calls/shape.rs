@@ -2,7 +2,7 @@
 use crate::ast::{
     CBlock, CCallableKind, CConversion, CFunctionRef, CInitializer, CInitializerKind, CLiteral,
     CObjectType, CObjectTypeKind, CPlace, CPlaceKind, CReturnType, CScalarType, CSignedLiteral,
-    CStatement, CStatementKind, CValue, CValueKind,
+    CStatement, CStatementKind, CUnaryOperator, CValue, CValueKind,
 };
 use std::collections::BTreeSet;
 
@@ -85,6 +85,16 @@ pub(super) fn dependencies(
                 }
                 CValueKind::Binary { left, right, .. } => {
                     pending.extend([Node::Value(left), Node::Value(right)])
+                }
+                CValueKind::Unary {
+                    operator: CUnaryOperator::LogicalNot,
+                    operand,
+                } if matches!(
+                    operand.ty().kind(),
+                    CObjectTypeKind::Scalar(CScalarType::Bool)
+                ) =>
+                {
+                    pending.push(Node::Value(operand));
                 }
                 CValueKind::Convert {
                     conversion: CConversion::Numeric(_) | CConversion::AddConst(_),

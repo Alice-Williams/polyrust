@@ -2,8 +2,9 @@
 use super::inventory::{scalar, signature};
 use crate::ast::{
     JavaBinaryOperator, JavaBlock, JavaCallableRef, JavaConstructorRef, JavaExpr, JavaExprKind,
-    JavaFieldRef, JavaLiteral, JavaLocalFinality, JavaMethod, JavaRecordComponentOrigin, JavaStmt,
-    JavaType, JavaTypeDeclaration, JavaTypeName, JavaValueRef,
+    JavaFieldRef, JavaLiteral, JavaLocalFinality, JavaMethod, JavaPrimitive,
+    JavaRecordComponentOrigin, JavaStmt, JavaType, JavaTypeDeclaration, JavaTypeName,
+    JavaUnaryOperator, JavaValueRef,
 };
 use portable_codegen::{GeneratedCallableId, GeneratedTypeId};
 use std::collections::{BTreeMap, BTreeSet};
@@ -119,6 +120,14 @@ impl Reader<'_> {
         match &value.kind {
             JavaExprKind::Literal(JavaLiteral::I32(_) | JavaLiteral::Boolean(_))
             | JavaExprKind::Value(JavaValueRef::Local(_)) => {}
+            JavaExprKind::Unary {
+                operator: JavaUnaryOperator::Not,
+                operand,
+            } if value.ty == JavaType::primitive(JavaPrimitive::Boolean)
+                && operand.ty == value.ty =>
+            {
+                self.expression(operand, depth + 1)?;
+            }
             JavaExprKind::Binary {
                 operator,
                 left,

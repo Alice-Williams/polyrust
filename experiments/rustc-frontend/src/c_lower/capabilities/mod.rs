@@ -1,4 +1,5 @@
 //! Narrow Rust-source capabilities, not full portable catalogue support.
+mod boolean_negation;
 mod direct_calls;
 mod entry_signatures;
 mod function_signatures;
@@ -10,6 +11,11 @@ mod resolved_places;
 mod scalar_comparisons;
 mod shared_borrows;
 mod slots;
+
+#[cfg(boolean_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/boolean_negation_contract.rs"]
+mod boolean_contract;
 
 #[cfg(mapping_contract_duplicate)]
 #[path = "../../../test/capability_duplicate.rs"]
@@ -38,6 +44,7 @@ mod contract_wrong_mapping_output;
 #[path = "../../../test/capability_target_scope.rs"]
 mod contract_target_scope;
 
+pub(crate) use boolean_negation::CBooleanNegation;
 pub(crate) use direct_calls::CDirectCalls;
 pub(crate) use entry_signatures::CEntrySignatures;
 pub(crate) use function_signatures::CFunctionSignatures;
@@ -63,6 +70,7 @@ pub(crate) type CBindings = Bindings<
     CEntrySignatures,
     CDirectCalls,
     CFunctionSignatures,
+    CBooleanNegation,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -77,5 +85,6 @@ pub(crate) fn c_bindings() -> CBindings {
         .entry_signatures(CEntrySignatures)
         .direct_calls(CDirectCalls)
         .function_signatures(CFunctionSignatures)
+        .boolean_negation(CBooleanNegation)
         .build()
 }

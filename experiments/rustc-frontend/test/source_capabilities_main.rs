@@ -88,9 +88,17 @@ fn borrow(input: BorrowInput<'_>) {
     let _ = input.0;
 }
 
+fn negation<'tcx>(
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+) {
+    let _ = NegationInput::read(checked, expression).map(|input| input.operand());
+}
+
 fn capability<C: Capability>() {}
 
 fn main() {
+    capability::<BooleanNegation>();
     capability::<DirectCalls>();
     capability::<EntrySignatures>();
     capability::<FunctionSignatures>();
@@ -103,5 +111,6 @@ fn main() {
     capability::<SharedBorrows>();
     let _ = (
         map_both, call, entry, function, control, object, record, place, comparison, borrow,
+        negation,
     );
 }

@@ -75,7 +75,7 @@ separate typed wrapper admitted only from resolved bindings, authenticated field
 and built-in shared dereference. Erasure must not turn an arbitrary value into a
 place or allow reference equality, mutation, nulls or escaping reference APIs.
 
-Literal, comparison, borrow, call and record-initializer mappings produce planned
+Literal, comparison, Boolean-negation, borrow, call and record-initializer mappings produce planned
 Java values. ObjectTypes produces the representation plan; ResolvedPlaces produces
 a planned place; LexicalControl produces JavaBlock. EntrySignatures and
 FunctionSignatures produce JavaMethodSignature from compiler signatures. Every
@@ -88,6 +88,12 @@ a typed conditional expression to int 0 or 1; equality requires no conversion.
 Compiler-local identities map to fresh target names. A terminal nested Rust block
 may flatten into Java's terminal statement sequence when names remain distinct,
 source binding scope is retained by the adapter and no computation is reordered.
+
+[Boolean negation](../../rust-boolean-negation.md) has its own required executable
+slot and checked compiler input. It maps only built-in bool Not to a typed Java
+unary node, evaluating its operand once. Dependency-body admission and source
+byte reservation traverse that node without admitting other unary operations.
+No runtime helper or import is introduced.
 
 The single-crate source adapter initially admits at most 4,096 reachable functions,
 100,000 expression visits in call discovery, and depth 128 for discovery and
@@ -223,7 +229,7 @@ source_admission, not a capability input contract or a concrete emitter.
    analysis. Concrete target keys and registrations remain backend-owned. All
    extraction budgets and declared doc/source input checks remain mandatory.
 2. Java adapter: java_lower owns representation choices and a consuming builder
-   with exact context/output bounds for each of the ten admitted input
+   with exact context/output bounds for each of the eleven admitted input
    categories. It emits existing Java types, not a new generic AST.
 3. Java target model: extend the existing JavaPackage with a typed Rust crate
    identity. Its package spelling and path derive from that identity. Preserve
@@ -278,7 +284,8 @@ functions, 100,000 body/block/statement/expression visits across the package and
 limits, not a claim that every syntactically valid Java program is a dependency.
 Record constructors must consist solely of exact canonical field assignments;
 method bodies admit initialized final locals, returns, total conditionals,
-scalar comparisons, immutable record construction/reads and closed local calls.
+scalar comparisons, built-in Boolean Not, immutable record construction/reads
+and closed local calls.
 Mutation, general arithmetic, external/runtime calls and recursion do not acquire
 this proof merely by setting a pure signature flag.
 

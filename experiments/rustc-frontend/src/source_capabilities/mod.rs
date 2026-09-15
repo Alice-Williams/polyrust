@@ -1,4 +1,5 @@
 //! Shared compiler input contracts; target mappings own context and output.
+mod boolean_negation;
 mod contracts;
 mod direct_calls;
 mod entry_signatures;
@@ -11,6 +12,7 @@ mod resolved_places;
 mod scalar_comparisons;
 mod shared_borrows;
 
+pub(crate) use boolean_negation::{BooleanNegation, NegationInput};
 pub(crate) use contracts::{Capability, Mapping, Supports};
 pub(crate) use direct_calls::{CallInput, DirectCalls};
 pub(crate) use entry_signatures::{EntryInput, EntrySignatures};

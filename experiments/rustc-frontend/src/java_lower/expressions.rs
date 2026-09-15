@@ -30,6 +30,10 @@ impl<'tcx> Reader<'tcx> {
                 reader.place(value)?.value()
             } else {
                 match value.kind {
+                    hir::ExprKind::Unary(hir::UnOp::Not, _) => {
+                        let input = NegationInput::read(reader.checked, value)?;
+                        Supports::<BooleanNegation>::mapping(&reader.mappings).lower(reader, input)
+                    }
                     hir::ExprKind::Path(_)
                     | hir::ExprKind::Field(..)
                     | hir::ExprKind::Unary(hir::UnOp::Deref, _) => Ok(reader.place(value)?.value()),

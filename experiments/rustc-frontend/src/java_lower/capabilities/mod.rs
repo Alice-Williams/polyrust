@@ -1,4 +1,5 @@
 //! Executable mappings for the closed Rust-source subset, not support flags.
+mod boolean_negation;
 mod direct_calls;
 mod entry_signatures;
 mod function_signatures;
@@ -10,6 +11,11 @@ mod resolved_places;
 mod scalar_comparisons;
 mod shared_borrows;
 mod slots;
+
+#[cfg(boolean_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/boolean_negation_contract.rs"]
+mod boolean_contract;
 
 #[cfg(java_contract_duplicate)]
 #[path = "../../../test/java_capability_duplicate.rs"]
@@ -29,6 +35,7 @@ mod contract_signatures;
 mod contract_wrong_input;
 
 pub(crate) use crate::source_capabilities::*;
+pub(crate) use boolean_negation::JavaBooleanNegation;
 pub(crate) use direct_calls::JavaDirectCalls;
 pub(crate) use entry_signatures::JavaEntrySignatures;
 pub(crate) use function_signatures::JavaFunctionSignatures;
@@ -52,6 +59,7 @@ pub(crate) type JavaBindings = Bindings<
     JavaEntrySignatures,
     JavaDirectCalls,
     JavaFunctionSignatures,
+    JavaBooleanNegation,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -66,5 +74,6 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .entry_signatures(JavaEntrySignatures)
         .direct_calls(JavaDirectCalls)
         .function_signatures(JavaFunctionSignatures)
+        .boolean_negation(JavaBooleanNegation)
         .build()
 }

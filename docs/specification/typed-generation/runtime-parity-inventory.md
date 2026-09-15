@@ -20,7 +20,7 @@ target has full replacement evidence for any broad legacy capability family.
 
 | Functionality | Rust-source C | Rust-source Java | Remaining work |
 | --- | --- | --- | --- |
-| Values and comparisons | i32/bool literals, scalar comparison, immutable places | Same source subset | i64/f64/char/unit, constants, aliases, logic, integer and float operations: M35-03A-02 |
+| Values and comparisons | i32/bool literals, scalar comparison, immutable places, built-in bool negation | Same source subset | i64/f64/char/unit, constants, aliases, lazy and/or, integer and float operations: M35-03A-02 |
 | Functions and modules | Closed typed signatures/direct calls, crate-owned headers and implementations | Closed typed signatures/direct calls, crate-owned Java packages | Wider signatures, methods and migrated consumers: M35-03A-03/06 |
 | Records and control | Closed scalar-field records/shared borrows, local bindings, structured branches | Same source subset | Owned shapes, enums, interfaces, loops and patterns: M35-02 then M35-03A-03 |
 | Text, Unicode and bytes | No general replacement mapping | No general replacement mapping | All legacy operations and explicit encoding/indexing policies: M35-03A-04 |
@@ -29,6 +29,14 @@ target has full replacement evidence for any broad legacy capability family.
 
 Compiler observations of Box/owned-record operations are not executable C or
 Java heap support. Their work remains in M35-02; do not count them as parity.
+
+[M35-03A-02A](../../plan/tasks/M35-03A-02A-boolean-negation.md) adds partial
+JavaBooleanLogic coverage: built-in bool negation only. Its
+`boolean_negation_native_test` checks 8,204 inputs and 13 results against Rust
+and independent truth values, with Java lint and GCC/Zig O0/O2 consumers.
+`boolean_negation_rejection_test` covers unsupported/invalid operands and
+atomic publication; `boolean_negation_contract_test` checks registration and
+input privacy. Lazy and/or remain unsupported, and full_features stays empty.
 
 Evidence anchors for the current subset are the executable registrations in
 `src/c_lower/capabilities/mod.rs` and `src/java_lower/capabilities/mod.rs`, their

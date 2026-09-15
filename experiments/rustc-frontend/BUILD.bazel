@@ -1,6 +1,7 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_clippy_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load(":boolean_negation_targets.bzl", "boolean_negation_contract_targets", "boolean_negation_native_targets")
 load(":box_clone_targets.bzl", "box_clone_targets")
 load(":boxed_record_flow_targets.bzl", "boxed_record_flow_targets")
 load(":c_graph_targets.bzl", "c_graph_targets")
@@ -80,6 +81,13 @@ ADAPTER_SOURCES = [
 ])
 
 crate_identity_targets(name = "crate_identity_test")
+
+boolean_negation_contract_targets(
+    name = "boolean_negation_contract_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+boolean_negation_native_targets(name = "boolean_negation_test")
 
 owned_return_targets(name = "owned_return_test")
 

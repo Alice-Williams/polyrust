@@ -2,6 +2,7 @@
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -86,8 +87,7 @@ def main():
                  (function("choose"), ["value", "true", "-1", "false"]),
                  (function("choose"), ["value", "false", "-1", "true"]),
                  (function("choose"), ["value", "false", "-1", "false"])]
-    else:
-        assert case == "same_spelling"
+    elif case == "same_spelling":
         first = binding(root, "type", "first", "module")
         second = binding(root, "type", "second", "module")
         assert first != second
@@ -98,12 +98,44 @@ def main():
                              (root, "value", "first_value"), (root, "value", "second_value"),
                              (first, "value", "value"), (second, "value", "value")}
         calls = [(function(name), ["value"]) for name in ["first_value", "second_value"]]
+    else:
+        assert case == "boolean_negation"
+        expected_bindings = {(root, "value", name) for name in [
+            "invert", "literal_true", "literal_false", "nested", "comparison", "call",
+            "field", "shared", "shadow", "conditional", "nested_call", "argument"]}
+        calls = [(function(name), arguments) for name, arguments in [
+            ("invert", ["false"]), ("invert", ["true"]), ("literal_true", []),
+            ("literal_false", []), ("nested", ["value != 0"]), ("comparison", ["value"]),
+            ("call", ["value"]), ("field", ["value != 0"]), ("shared", ["value != 0"]),
+            ("shadow", ["value != 0"]), ("conditional", ["value"]),
+            ("nested_call", ["value"]), ("argument", ["value"])]]
     check_inventory_oracle(bindings, expected_bindings)
     declarations = {item["id"]: item for item in java["declarations"]}
     functions = {item["id"]: item for item in c["functions"]}
     assert len(declarations) == len(java["declarations"])
     assert len(functions) == len(c["functions"])
     assert set(functions) == {key for key, item in declarations.items() if item["kind"] == "function"}
+    if case == "boolean_negation":
+        # This fixed corpus has exactly four source calls: positive twice,
+        # identity once and invert once. Count declarations separately so a
+        # duplicated operand evaluation cannot hide behind pure return values.
+        c_text = (c_bundle / c["implementation"]).read_text()
+        java_text = (java_bundle / java["source"]).read_text()
+        assert len(functions) == 14
+        private_functions = [item for item in declarations.values()
+                             if item["kind"] == "function" and not item["externally_reachable"]]
+        assert len(private_functions) == 2
+        assert sorted(item["parameters"] for item in private_functions) == [["bool"], ["i32"]]
+        assert all(item["result"] == "bool" for item in private_functions)
+        expected_counts = dict.fromkeys(functions, 0)
+        expected_counts[function("invert")] = 1
+        for item in private_functions:
+            expected_counts[item["id"]] = 2 if item["parameters"] == ["i32"] else 1
+        c_counts = {identity: len(re.findall(r"\b" + re.escape(item["symbol"]) + r"\s*\(", c_text))
+                    - (2 if item["linkage"] == "internal" else 1) for identity, item in functions.items()}
+        java_counts = {identity: len(re.findall(r"\b" + re.escape(item["target"]["path"]["member"]) + r"\s*\(", java_text))
+                       - 1 for identity, item in declarations.items() if item["kind"] == "function"}
+        assert c_counts == java_counts == expected_counts, ("per-function evaluation count", c_counts, java_counts, expected_counts)
     java_calls, c_calls = [], []
     for identity, arguments in calls:
         declaration, native = declarations[identity], functions[identity]
@@ -155,6 +187,11 @@ def main():
     # Fixture truth is independent of both compilers and manifest-driven consumers.
     truth = [([42, int(value), int(value), int(value), int(int(value) > 0), int(value), -1, 42]
               if case == "public_package" else [int(value), int(value)]) for value in values]
+    if case == "boolean_negation":
+        truth = [[1, 0, 0, 1, int(value != 0), int(value <= 0), int(value <= 0),
+                  int(value == 0), int(value == 0), int(value != 0),
+                  -1 if value <= 0 else 1, int(value > 0), int(value <= 0)]
+                 for value in map(int, values)]
     assert expected == "".join(" ".join(map(str, row)) + "\n" for row in truth)
     assert run([runtime / "java", "-cp", classes, "Consumer"], inputs=inputs) == expected
     assert run(["gcc-14", "-dumpfullversion"]).strip() == "14.2.0"
