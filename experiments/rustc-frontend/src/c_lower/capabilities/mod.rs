@@ -1,6 +1,7 @@
 //! Narrow Rust-source capabilities, not full portable catalogue support.
 mod boolean_negation;
 mod direct_calls;
+mod eager_booleans;
 mod entry_signatures;
 mod function_signatures;
 mod integer_bitwise;
@@ -13,6 +14,15 @@ mod scalar_comparisons;
 mod shared_borrows;
 mod short_circuit_booleans;
 mod slots;
+
+#[cfg(eager_ast_probe)]
+#[path = "../../../test/eager_c_ast.rs"]
+mod eager_ast;
+
+#[cfg(eager_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/eager_contract.rs"]
+mod eager_contract;
 
 #[cfg(bitwise_ast_probe)]
 #[path = "../../../test/bitwise_c_ast.rs"]
@@ -70,6 +80,7 @@ mod contract_target_scope;
 
 pub(crate) use boolean_negation::CBooleanNegation;
 pub(crate) use direct_calls::CDirectCalls;
+pub(crate) use eager_booleans::CEagerBooleans;
 pub(crate) use entry_signatures::CEntrySignatures;
 pub(crate) use function_signatures::CFunctionSignatures;
 pub(crate) use integer_bitwise::CIntegerBitwise;
@@ -99,6 +110,7 @@ pub(crate) type CBindings = Bindings<
     CBooleanNegation,
     CShortCircuitBooleans,
     CIntegerBitwise,
+    CEagerBooleans,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -116,5 +128,6 @@ pub(crate) fn c_bindings() -> CBindings {
         .boolean_negation(CBooleanNegation)
         .short_circuit_booleans(CShortCircuitBooleans)
         .integer_bitwise(CIntegerBitwise)
+        .eager_booleans(CEagerBooleans)
         .build()
 }

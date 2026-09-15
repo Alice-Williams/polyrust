@@ -6,19 +6,19 @@ import sys
 
 
 def main():
-    root = Path(os.environ["TEST_TMPDIR"]) / "bitwise-rejections"
+    root = Path(os.environ["TEST_TMPDIR"]) / "eager-rejections"
     root.mkdir()
     cases = {
-        "u32": ("pub fn value(v: u32) -> u32 { !v }", "only i32, i64 and bool", True),
-        "i16": ("pub fn value(v: i16) -> i16 { !v }", "only i32, i64 and bool", True),
-        "shift": ("pub fn value(v: i64) -> i64 { v << 1 }", "only comparison binary operators", True),
-        "cast": ("pub fn value(v: i64) -> i64 { (v as i32) as i64 }", "expression mapping is not implemented", True),
-        "bool_and": ("pub fn value(a: bool,b: bool) -> bool { (&a) & b }", "eager Boolean input requires", True),
-        "bool_or": ("pub fn value(a: bool,b: bool) -> bool { (&a) | b }", "eager Boolean input requires", True),
-        "bool_xor": ("pub fn value(a: bool,b: bool) -> bool { (&a) ^ b }", "eager Boolean input requires", True),
-        "mixed": ("pub fn value(a: i32,b: i64) -> i64 { a & b }", "error[E", False),
-        "ref": ("pub fn value(a: i64) -> i64 { let r = &a; !r }", "integer bitwise requires", True),
-        "arithmetic": ("pub fn value(a: i64) -> i64 { a + 1 }", "only comparison binary operators", True),
+        "ref_and": ("pub fn value(a: bool,b: bool) -> bool { (&a) & b }", "eager Boolean input requires", True),
+        "ref_or": ("pub fn value(a: bool,b: bool) -> bool { a | (&b) }", "eager Boolean input requires", True),
+        "ref_xor": ("pub fn value(a: bool,b: bool) -> bool { (&a) ^ (&b) }", "eager Boolean input requires", True),
+        "mixed": ("pub fn value(a: bool,b: i32) -> bool { a & b }", "error[E", False),
+        "cast": ("pub fn value(a: bool,b: bool) -> bool { (a as i32 & b as i32) != 0 }", "expression mapping is not implemented", True),
+        "block_left": ("pub fn value(a: bool,b: bool) -> bool { ({ a }) & b }", "expression mapping is not implemented", True),
+        "block_right": ("pub fn value(a: bool,b: bool) -> bool { a | { b } }", "expression mapping is not implemented", True),
+        "write": ("pub fn value(a: bool,b: bool) -> bool { let mut c=a; c &= b; c }", "only plain immutable bindings are implemented", True),
+        "u32": ("pub fn value(a: u32,b: u32) -> u32 { a & b }", "only i32, i64 and bool", True),
+        "arithmetic": ("pub fn value(a: i32,b: i32) -> bool { a + b > 0 }", "only comparison binary operators", True),
     }
     for label, (code, diagnostic, valid) in cases.items():
         source = root / (label + ".rs")
@@ -40,7 +40,7 @@ def main():
                     assert "error[E" not in result.stderr, (label, result.stderr)
                 after = {str(p.relative_to(work)): p.read_bytes() for p in work.rglob("*") if p.is_file()}
                 assert before == after and output.exists() == existing
-    print("40 atomic bitwise boundary rejections")
+    print("40 atomic eager boundary rejections")
 
 
 if __name__ == "__main__":

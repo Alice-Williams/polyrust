@@ -1,36 +1,36 @@
 //! Independent negative controls for the new executable slot and checked input.
-#[cfg(boolean_c)]
-use super::CIntegerBitwise as Bits;
-#[cfg(boolean_java)]
-use super::JavaIntegerBitwise as Bits;
+#[cfg(eager_c)]
+use super::CIntegerBitwise as IntegerBits;
+#[cfg(eager_java)]
+use super::JavaIntegerBitwise as IntegerBits;
 use super::*;
-#[cfg(boolean_c)]
+#[cfg(eager_c)]
 use super::{
-    CBooleanNegation as Negate, CDirectCalls as Calls, CEagerBooleans as Eager,
+    CBooleanNegation as Negate, CDirectCalls as Calls, CEagerBooleans as Bits,
     CEntrySignatures as Entry, CFunctionSignatures as Functions, CLexicalControl as Control,
     CLiteralValues as Literals, CObjectTypes as Objects, CRecordInitializers as Records,
     CResolvedPlaces as Places, CScalarComparisons as Comparisons, CSharedBorrows as Borrows,
     CShortCircuitBooleans as Lazy,
 };
-#[cfg(boolean_java)]
+#[cfg(eager_java)]
 use super::{
-    JavaBooleanNegation as Negate, JavaDirectCalls as Calls, JavaEagerBooleans as Eager,
+    JavaBooleanNegation as Negate, JavaDirectCalls as Calls, JavaEagerBooleans as Bits,
     JavaEntrySignatures as Entry, JavaFunctionSignatures as Functions,
     JavaLexicalControl as Control, JavaLiteralValues as Literals, JavaObjectTypes as Objects,
     JavaRecordInitializers as Records, JavaResolvedPlaces as Places,
     JavaScalarComparisons as Comparisons, JavaSharedBorrows as Borrows,
     JavaShortCircuitBooleans as Lazy,
 };
-#[cfg(boolean_c)]
+#[cfg(eager_c)]
 use crate::c_lower::Reader;
-#[cfg(boolean_java)]
+#[cfg(eager_java)]
 use crate::java_lower::Reader;
-#[cfg(boolean_c)]
+#[cfg(eager_c)]
 type Output = portable_backend_c::ast::CValue;
-#[cfg(boolean_java)]
+#[cfg(eager_java)]
 type Output = crate::java_lower::Value;
 
-#[cfg(boolean_missing)]
+#[cfg(eager_missing)]
 fn missing() {
     Builder::new()
         .literal_values(Literals)
@@ -43,35 +43,33 @@ fn missing() {
         .entry_signatures(Entry)
         .direct_calls(Calls)
         .function_signatures(Functions)
+        .boolean_negation(Negate)
         .short_circuit_booleans(Lazy)
-        .integer_bitwise(Bits)
-        .eager_booleans(Eager)
+        .integer_bitwise(IntegerBits)
         .build();
 }
 
-#[cfg(boolean_duplicate)]
+#[cfg(eager_duplicate)]
 fn duplicate() {
-    Builder::new()
-        .boolean_negation(Negate)
-        .boolean_negation(Negate);
+    Builder::new().eager_booleans(Bits).eager_booleans(Bits);
 }
 
-#[cfg(any(boolean_wrong_capability, boolean_wrong_context, boolean_wrong_output))]
+#[cfg(any(eager_wrong_capability, eager_wrong_context, eager_wrong_output))]
 #[derive(Clone, Copy)]
 struct Wrong;
-#[cfg(any(boolean_wrong_capability, boolean_wrong_context, boolean_wrong_output))]
+#[cfg(any(eager_wrong_capability, eager_wrong_context, eager_wrong_output))]
 impl Mapping for Wrong {
-    #[cfg(boolean_wrong_capability)]
+    #[cfg(eager_wrong_capability)]
     type Capability = LiteralValues;
-    #[cfg(not(boolean_wrong_capability))]
-    type Capability = BooleanNegation;
-    #[cfg(boolean_wrong_context)]
+    #[cfg(not(eager_wrong_capability))]
+    type Capability = EagerBooleans;
+    #[cfg(eager_wrong_context)]
     type Context<'tcx> = ();
-    #[cfg(not(boolean_wrong_context))]
+    #[cfg(not(eager_wrong_context))]
     type Context<'tcx> = Reader<'tcx>;
-    #[cfg(boolean_wrong_output)]
+    #[cfg(eager_wrong_output)]
     type Output = ();
-    #[cfg(not(boolean_wrong_output))]
+    #[cfg(not(eager_wrong_output))]
     type Output = Output;
 
     fn lower<'tcx>(
@@ -83,20 +81,22 @@ impl Mapping for Wrong {
     }
 }
 
-#[cfg(any(boolean_wrong_capability, boolean_wrong_context, boolean_wrong_output))]
+#[cfg(any(eager_wrong_capability, eager_wrong_context, eager_wrong_output))]
 fn wrong() {
-    Builder::new().boolean_negation(Wrong);
+    Builder::new().eager_booleans(Wrong);
 }
 
-#[cfg(boolean_wrong_input)]
+#[cfg(eager_wrong_input)]
 fn wrong_input<'tcx>(reader: &mut Reader<'tcx>, expression: &'tcx rustc_hir::Expr<'tcx>) {
     let input = LiteralInput::read(reader.checked, expression).unwrap();
-    let _ = Negate.lower(reader, input);
+    let _ = Bits.lower(reader, input);
 }
 
-#[cfg(boolean_private_input)]
+#[cfg(eager_private_input)]
 fn private_input<'tcx>(expression: &'tcx rustc_hir::Expr<'tcx>) {
-    let _ = NegationInput {
-        operand: expression,
+    let _ = EagerBooleanInput {
+        operator: EagerBooleanOperator::And,
+        left: expression,
+        right: expression,
     };
 }

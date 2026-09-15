@@ -69,8 +69,15 @@ impl<'tcx> Reader<'tcx> {
                             hir::BinOpKind::BitAnd | hir::BinOpKind::BitOr | hir::BinOpKind::BitXor
                         ) =>
                     {
-                        let input = BitwiseInput::read(reader.checked, value)?;
-                        Supports::<IntegerBitwise>::mapping(&reader.mappings).lower(reader, input)
+                        if matches!(reader.checked.expr_ty(value).kind(), rustc_middle::ty::Bool) {
+                            let input = EagerBooleanInput::read(reader.checked, value)?;
+                            Supports::<EagerBooleans>::mapping(&reader.mappings)
+                                .lower(reader, input)
+                        } else {
+                            let input = BitwiseInput::read(reader.checked, value)?;
+                            Supports::<IntegerBitwise>::mapping(&reader.mappings)
+                                .lower(reader, input)
+                        }
                     }
                     hir::ExprKind::Binary(..) => {
                         Supports::<ScalarComparisons>::mapping(&reader.mappings)

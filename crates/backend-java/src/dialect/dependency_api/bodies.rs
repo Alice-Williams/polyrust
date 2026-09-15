@@ -168,7 +168,9 @@ impl Reader<'_> {
                 right,
             } if matches!(
                 value.ty,
-                JavaType::Primitive(JavaPrimitive::Int | JavaPrimitive::Long)
+                JavaType::Primitive(
+                    JavaPrimitive::Boolean | JavaPrimitive::Int | JavaPrimitive::Long
+                )
             ) && left.ty == value.ty
                 && right.ty == value.ty =>
             {

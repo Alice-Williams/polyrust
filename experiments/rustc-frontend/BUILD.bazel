@@ -15,6 +15,9 @@ load(":crate_native_targets.bzl", "crate_native_targets")
 load(":defs.bzl", "adapter_format_test", "compiler_adapter", "compiler_adapter_compile_fail_test")
 load(":direct_call_targets.bzl", "direct_call_targets")
 load(":documentation_targets.bzl", "documentation_targets")
+load(":eager_ast_targets.bzl", "eager_ast_targets")
+load(":eager_contract_targets.bzl", "eager_contract_targets")
+load(":eager_targets.bzl", "eager_targets")
 load(":export_graph_targets.bzl", "export_graph_targets")
 load(":i64_targets.bzl", "i64_targets")
 load(":java_ast_targets.bzl", "java_ast_targets")
@@ -99,6 +102,18 @@ boolean_negation_native_targets(name = "boolean_negation_test")
 short_circuit_targets(name = "short_circuit_clippy_test")
 
 bitwise_targets(name = "bitwise_clippy_test")
+
+eager_targets(name = "eager_clippy_test")
+
+eager_contract_targets(
+    name = "eager_contract_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+eager_ast_targets(
+    name = "eager_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)
 
 bitwise_ast_targets(
     name = "bitwise_ast_test",

@@ -18,8 +18,8 @@ def main():
     cases = {
         "integer_reference": ("let reference = &value; if !reference == 0 { 1 } else { 0 }", "integer bitwise requires an unadjusted built-in"),
         "bool_reference": ("let flag = value > 0; let reference = &flag; if !reference { 1 } else { 0 }", negation),
-        "bitand": ("if (value > 0) & (value < 10) { 1 } else { 0 }", "integer bitwise requires an unadjusted built-in"),
-        "bitor": ("if (value > 0) | (value < 10) { 1 } else { 0 }", "integer bitwise requires an unadjusted built-in"),
+        "bitand_reference": ("if (&(value > 0)) & (value < 10) { 1 } else { 0 }", "eager Boolean input requires"),
+        "bitor_reference": ("if (value > 0) | (&(value < 10)) { 1 } else { 0 }", "eager Boolean input requires"),
         "integer_condition": ("if !value { 1 } else { 0 }", "error[E0308]"),
         "float": ("if !1.0 { value } else { 0 }", "error[E0600]"),
     }
@@ -47,15 +47,17 @@ def main():
                 assert set(directory.iterdir()) == ({output} if existing else set()), (case, "partial publication")
                 if existing:
                     assert output.read_bytes() == b"preserved\x00\xff"
-    fixture = work / "valid.rs"
-    fixture.write_text("pub fn score(value: i32) -> i32 { if !(value > 0) { 1 } else { 0 } }\n")
-    for language, adapter, filename in [("c", c, "output.c"), ("java", java, "Generated.java")]:
-        directory = work / ("valid-" + language)
-        directory.mkdir()
-        output = directory / filename
-        result = invoke([adapter, fixture, output])
-        assert result.returncode == 0 and output.is_file(), (language, result.stderr)
-    print("Seven invalid/unsupported cases x two targets x absent/existing output reject; both valid controls publish; integer complement is covered by bitwise native tests")
+    for case, condition in [("not", "!(value > 0)"), ("and", "(value > 0) & (value < 10)"),
+                            ("or", "(value > 0) | (value < 10)")]:
+        fixture = work / (case + ".rs")
+        fixture.write_text(f"pub fn score(value: i32) -> i32 {{ if {condition} {{ 1 }} else {{ 0 }} }}\n")
+        for language, adapter, filename in [("c", c, "output.c"), ("java", java, "Generated.java")]:
+            directory = work / (case + "-" + language)
+            directory.mkdir()
+            output = directory / filename
+            result = invoke([adapter, fixture, output])
+            assert result.returncode == 0 and output.is_file(), (case, language, result.stderr)
+    print("Seven invalid/unsupported cases x two targets x absent/existing output reject; six valid controls publish; integer complement is covered by bitwise native tests")
 
 
 if __name__ == "__main__":

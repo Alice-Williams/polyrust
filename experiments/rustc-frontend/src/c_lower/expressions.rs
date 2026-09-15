@@ -3,9 +3,9 @@ use super::{
     Reader, Result, c,
     capabilities::{
         BitwiseInput, BooleanNegation, BorrowInput, CallInput, ComparisonInput, DirectCalls,
-        IntegerBitwise, LazyBooleanInput, LiteralInput, LiteralValues, Mapping, NegationInput,
-        PlaceInput, ResolvedPlaces, ScalarComparisons, SharedBorrows, ShortCircuitBooleans,
-        Supports,
+        EagerBooleanInput, EagerBooleans, IntegerBitwise, LazyBooleanInput, LiteralInput,
+        LiteralValues, Mapping, NegationInput, PlaceInput, ResolvedPlaces, ScalarComparisons,
+        SharedBorrows, ShortCircuitBooleans, Supports,
     },
 };
 use portable_backend_c::ast::{CPlace, CValue};
@@ -60,8 +60,13 @@ impl<'tcx> Reader<'tcx> {
                     hir::BinOpKind::BitAnd | hir::BinOpKind::BitOr | hir::BinOpKind::BitXor
                 ) =>
             {
-                let input = BitwiseInput::read(self.checked, value)?;
-                Supports::<IntegerBitwise>::mapping(&self.mappings).lower(self, input)
+                if matches!(self.checked.expr_ty(value).kind(), rustc_middle::ty::Bool) {
+                    let input = EagerBooleanInput::read(self.checked, value)?;
+                    Supports::<EagerBooleans>::mapping(&self.mappings).lower(self, input)
+                } else {
+                    let input = BitwiseInput::read(self.checked, value)?;
+                    Supports::<IntegerBitwise>::mapping(&self.mappings).lower(self, input)
+                }
             }
             hir::ExprKind::Binary(..) => {
                 let mapping = Supports::<ScalarComparisons>::mapping(&self.mappings);

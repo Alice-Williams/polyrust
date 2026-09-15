@@ -6,18 +6,20 @@ use super::JavaIntegerBitwise as Bits;
 use super::*;
 #[cfg(lazy_c)]
 use super::{
-    CBooleanNegation as Negate, CDirectCalls as Calls, CEntrySignatures as Entry,
-    CFunctionSignatures as Functions, CLexicalControl as Control, CLiteralValues as Literals,
-    CObjectTypes as Objects, CRecordInitializers as Records, CResolvedPlaces as Places,
-    CScalarComparisons as Comparisons, CSharedBorrows as Borrows, CShortCircuitBooleans as Lazy,
+    CBooleanNegation as Negate, CDirectCalls as Calls, CEagerBooleans as Eager,
+    CEntrySignatures as Entry, CFunctionSignatures as Functions, CLexicalControl as Control,
+    CLiteralValues as Literals, CObjectTypes as Objects, CRecordInitializers as Records,
+    CResolvedPlaces as Places, CScalarComparisons as Comparisons, CSharedBorrows as Borrows,
+    CShortCircuitBooleans as Lazy,
 };
 #[cfg(lazy_java)]
 use super::{
-    JavaBooleanNegation as Negate, JavaDirectCalls as Calls, JavaEntrySignatures as Entry,
-    JavaFunctionSignatures as Functions, JavaLexicalControl as Control,
-    JavaLiteralValues as Literals, JavaObjectTypes as Objects, JavaRecordInitializers as Records,
-    JavaResolvedPlaces as Places, JavaScalarComparisons as Comparisons,
-    JavaSharedBorrows as Borrows, JavaShortCircuitBooleans as Lazy,
+    JavaBooleanNegation as Negate, JavaDirectCalls as Calls, JavaEagerBooleans as Eager,
+    JavaEntrySignatures as Entry, JavaFunctionSignatures as Functions,
+    JavaLexicalControl as Control, JavaLiteralValues as Literals, JavaObjectTypes as Objects,
+    JavaRecordInitializers as Records, JavaResolvedPlaces as Places,
+    JavaScalarComparisons as Comparisons, JavaSharedBorrows as Borrows,
+    JavaShortCircuitBooleans as Lazy,
 };
 #[cfg(lazy_c)]
 use crate::c_lower::Reader;
@@ -43,6 +45,7 @@ fn missing() {
         .function_signatures(Functions)
         .boolean_negation(Negate)
         .integer_bitwise(Bits)
+        .eager_booleans(Eager)
         .build();
 }
 

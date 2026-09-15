@@ -115,7 +115,7 @@ fn bitwise_nodes_admit_only_equal_exact_widths_not_other_integer_operations() {
                 );
                 assert_eq!(
                     admitted(left, Op::Binary(operator, right)),
-                    bitwise && exact && left == right,
+                    bitwise && (exact || left == CScalarType::Bool) && left == right,
                     "{left:?} {operator:?} {right:?}"
                 );
             }

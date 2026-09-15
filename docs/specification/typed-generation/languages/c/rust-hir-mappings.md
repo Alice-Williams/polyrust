@@ -89,6 +89,9 @@ The [integer bitwise extension](../../rust-integer-bitwise.md) adds a separate
 IntegerBitwise executable slot. Its shared private input validates built-in
 operation identity, operand/result types and absent adjustments. It does not
 enable Boolean eager operators, shifts, arithmetic, casts or other widths.
+The separate [eager Boolean extension](../../rust-eager-booleans.md) maps bool
+And/Or/Xor through its own executable slot. Its Bool operands promote to Int;
+normalize that result back to Bool and retain once-only left-to-right calls.
 
 The [i64 extension](../../rust-i64-values.md) reuses these executable capability
 slots and adds no broad numeric escape hatch. A shared checked input interprets
@@ -113,6 +116,7 @@ not aliases for the complete portable capability catalogue:
 | BooleanNegation | checked private NegationInput retaining the bool operand's HIR | CValue |
 | ShortCircuitBooleans | checked private LazyBooleanInput and typed And/Or operator | CValue plus scoped Boolean evaluation statements |
 | IntegerBitwise | checked private BitwiseInput retaining exact-width operands and closed complement/And/Or/Xor shape | CValue with exact-width result normalization |
+| EagerBooleans | checked private EagerBooleanInput retaining Bool operands and closed And/Or/Xor operator | CValue with Int-to-Bool normalization |
 | RecordInitializers | complete scalar-field struct HIR initializer | CInitializer |
 | LexicalControl | returning HIR expression with optional parent HIR identity | CBlock |
 | EntrySignatures | selected compiler function identity and signature facts | CFunctionType |
@@ -143,7 +147,7 @@ The same-crate call extension is specified separately in
 must pass before expanding the render-ready profile. Its two executable
 bindings established ten required slots; [Boolean negation](../../rust-boolean-negation.md)
 adds an eleventh executable slot; [short-circuit Boolean expressions](../../rust-short-circuit-booleans.md)
-add the twelfth; IntegerBitwise adds the thirteenth. Missing and duplicate
+add the twelfth; IntegerBitwise adds the thirteenth and EagerBooleans the fourteenth. Missing and duplicate
 registration controls cover each slot independently. Typed Boolean logical-not
 and exact-width integer bit-not are admitted by the closed scalar-call evidence
 and shared-package profiles. Arithmetic negation remains outside this profile.

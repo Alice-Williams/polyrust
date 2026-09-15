@@ -1,6 +1,7 @@
 //! Executable mappings for the closed Rust-source subset, not support flags.
 mod boolean_negation;
 mod direct_calls;
+mod eager_booleans;
 mod entry_signatures;
 mod function_signatures;
 mod integer_bitwise;
@@ -13,6 +14,15 @@ mod scalar_comparisons;
 mod shared_borrows;
 mod short_circuit_booleans;
 mod slots;
+
+#[cfg(eager_ast_probe)]
+#[path = "../../../test/eager_java_ast.rs"]
+mod eager_ast;
+
+#[cfg(eager_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/eager_contract.rs"]
+mod eager_contract;
 
 #[cfg(bitwise_ast_probe)]
 #[path = "../../../test/bitwise_java_ast.rs"]
@@ -61,6 +71,7 @@ mod contract_wrong_input;
 pub(crate) use crate::source_capabilities::*;
 pub(crate) use boolean_negation::JavaBooleanNegation;
 pub(crate) use direct_calls::JavaDirectCalls;
+pub(crate) use eager_booleans::JavaEagerBooleans;
 pub(crate) use entry_signatures::JavaEntrySignatures;
 pub(crate) use function_signatures::JavaFunctionSignatures;
 pub(crate) use integer_bitwise::JavaIntegerBitwise;
@@ -88,6 +99,7 @@ pub(crate) type JavaBindings = Bindings<
     JavaBooleanNegation,
     JavaShortCircuitBooleans,
     JavaIntegerBitwise,
+    JavaEagerBooleans,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -105,5 +117,6 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .boolean_negation(JavaBooleanNegation)
         .short_circuit_booleans(JavaShortCircuitBooleans)
         .integer_bitwise(JavaIntegerBitwise)
+        .eager_booleans(JavaEagerBooleans)
         .build()
 }

@@ -18,6 +18,10 @@ target-AST admission tests. Other scalar families below remain outstanding.
 [M35-03A-02D — integer bitwise operations](M35-03A-02D-integer-bitwise.md)
 is complete, including native value/trace controls and direct mapper AST probes.
 
+[M35-03A-02E — eager Boolean operators](M35-03A-02E-eager-booleans.md)
+is complete, with exhaustive truth tables, native eager/lazy evaluation controls
+and exact typed mapper probes. Other scalar families remain outstanding.
+
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing

@@ -2,6 +2,7 @@
 mod boolean_negation;
 mod contracts;
 mod direct_calls;
+mod eager_booleans;
 mod entry_signatures;
 mod function_signatures;
 mod integer_bitwise;
@@ -17,6 +18,7 @@ mod short_circuit_booleans;
 pub(crate) use boolean_negation::{BooleanNegation, NegationInput};
 pub(crate) use contracts::{Capability, Mapping, Supports};
 pub(crate) use direct_calls::{CallInput, DirectCalls};
+pub(crate) use eager_booleans::{EagerBooleanInput, EagerBooleanOperator, EagerBooleans};
 pub(crate) use entry_signatures::{EntryInput, EntrySignatures};
 pub(crate) use function_signatures::{FunctionInput, FunctionSignatures};
 pub(crate) use integer_bitwise::{BitwiseInput, BitwiseOperands, BitwiseOperator, IntegerBitwise};

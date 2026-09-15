@@ -20,7 +20,7 @@ target has full replacement evidence for any broad legacy capability family.
 
 | Functionality | Rust-source C | Rust-source Java | Remaining work |
 | --- | --- | --- | --- |
-| Values and comparisons | i32/i64/bool literals, scalar comparison, immutable places, built-in bool negation and lazy and/or | Same source subset | f64/char/unit, constants, aliases, integer and float operations: M35-03A-02 |
+| Values and comparisons | i32/i64/bool literals, scalar comparison, immutable places, built-in bool negation, lazy/eager operators and signed integer bitwise operations | Same source subset | f64/char/unit, constants, aliases, integer and float operations: M35-03A-02 |
 | Functions and modules | Closed typed signatures/direct calls, crate-owned headers and implementations | Closed typed signatures/direct calls, crate-owned Java packages | Wider signatures, methods and migrated consumers: M35-03A-03/06 |
 | Records and control | Closed scalar-field records/shared borrows, local bindings, structured branches | Same source subset | Owned shapes, enums, interfaces, loops and patterns: M35-02 then M35-03A-03 |
 | Text, Unicode and bytes | No general replacement mapping | No general replacement mapping | All legacy operations and explicit encoding/indexing policies: M35-03A-04 |
@@ -71,8 +71,14 @@ when results are unchanged; dropped-complement controls fail the value oracle.
 probe/production bytes. Fourteen compile-negative mapping contracts, 40 atomic
 source rejections, and C/Java target admission/purity/certificate tests protect
 the boundaries. Shifts, casts, arithmetic and heap shapes remain unsupported.
-The milestone's full release gate and review must pass before its completion;
-the whole runtime migration is still incomplete and full_features stays empty.
+The milestone's full release gate and independent review passed; the whole
+runtime migration is still incomplete and full_features stays empty.
+
+[M35-03A-02E](../../plan/tasks/M35-03A-02E-eager-booleans.md) adds
+built-in bool eager And/Or/Xor. Its passing proof covers 104 exhaustive results,
+real two-crate native consumers, evaluation mutations, 15 actual mapped AST
+nodes per target, atomic rejection and executable mapping contracts. The full
+588-test gate and independent reviews passed; this is not full catalogue parity.
 
 Evidence anchors for the current subset are the executable registrations in
 `src/c_lower/capabilities/mod.rs` and `src/java_lower/capabilities/mod.rs`, their

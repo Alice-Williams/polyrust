@@ -128,7 +128,22 @@ fn bitwise<'tcx>(
     });
 }
 
+fn eager_boolean<'tcx>(
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+) {
+    let _ = EagerBooleanInput::read(checked, expression)
+        .map(|input| (input.operator(), input.left(), input.right()));
+}
+
 fn main() {
+    capability::<EagerBooleans>();
+    let _ = eager_boolean;
+    let _ = [
+        EagerBooleanOperator::And,
+        EagerBooleanOperator::Or,
+        EagerBooleanOperator::Xor,
+    ];
     let _ = [
         BitwiseOperator::And,
         BitwiseOperator::Or,

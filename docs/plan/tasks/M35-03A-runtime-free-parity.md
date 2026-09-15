@@ -45,6 +45,8 @@ evaluation-order traces and scoped AST probes. M35-03A-02C adds exact i64 values
 comparisons and mixed-width signatures with native call-order and admission
 controls. M35-03A-02D adds built-in i32/i64 complement and bitwise and/or/xor,
 with independent native oracles, call-order mutations and typed AST probes.
+M35-03A-02E adds built-in eager bool And/Or/Xor with exhaustive value/trace
+controls, lazy-composition and real imported-call proofs.
 Implementation parity remains incomplete: arithmetic, floating-point,
 char/unit values and the other capability families remain outstanding.
 

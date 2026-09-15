@@ -77,10 +77,7 @@ fn exact_bitwise_operands_and_results_are_required_by_dependency_bodies() {
                     };
                     assert_eq!(
                         admitted(value),
-                        bitwise
-                            && left != JavaPrimitive::Boolean
-                            && left == right
-                            && right == result,
+                        bitwise && left == right && right == result,
                         "{left:?} {operator:?} {right:?} {result:?}"
                     );
                 }

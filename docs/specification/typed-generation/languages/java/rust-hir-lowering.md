@@ -88,10 +88,13 @@ locals are not enabled by this representation extension.
 
 The [integer bitwise extension](../../rust-integer-bitwise.md) registers
 IntegerBitwise with exact int/long unary/binary AST nodes and precedence enums.
+The separate [eager Boolean extension](../../rust-eager-booleans.md) registers
+EagerBooleans with primitive Boolean bitwise nodes and their exact precedence.
+Both operands are materialized left to right, without lazy branch substitution.
 The dependency gate and source reservation traverse these operations explicitly.
 No support class or runtime helper is introduced.
 
-Literal, comparison, Boolean-negation, short-circuit Boolean, integer-bitwise, borrow, call and record-initializer mappings produce planned
+Literal, comparison, Boolean-negation, short-circuit Boolean, integer-bitwise, eager-Boolean, borrow, call and record-initializer mappings produce planned
 Java values. ObjectTypes produces the representation plan; ResolvedPlaces produces
 a planned place; LexicalControl produces JavaBlock. EntrySignatures and
 FunctionSignatures produce JavaMethodSignature from compiler signatures. Every
@@ -253,7 +256,7 @@ source_admission, not a capability input contract or a concrete emitter.
    analysis. Concrete target keys and registrations remain backend-owned. All
    extraction budgets and declared doc/source input checks remain mandatory.
 2. Java adapter: java_lower owns representation choices and a consuming builder
-   with exact context/output bounds for each of the thirteen admitted input
+   with exact context/output bounds for each of the fourteen admitted input
    categories. It emits existing Java types, not a new generic AST.
 3. Java target model: extend the existing JavaPackage with a typed Rust crate
    identity. Its package spelling and path derive from that identity. Preserve
@@ -309,7 +312,7 @@ limits, not a claim that every syntactically valid Java program is a dependency.
 Record constructors must consist solely of exact canonical field assignments;
 method bodies admit initialized final locals, initialized mutable bool locals
 and writes to those locals, returns, total conditionals, scalar comparisons,
-built-in Boolean Not, exact int/long complement/and/or/xor, immutable record
+built-in Boolean Not and eager and/or/xor, exact int/long complement/and/or/xor, immutable record
 construction/reads and closed local calls.
 Other mutation, general arithmetic, external/runtime calls and recursion do not acquire
 this proof merely by setting a pure signature flag.

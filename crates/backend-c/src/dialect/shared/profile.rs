@@ -244,12 +244,14 @@ fn walk<'a>(
                         right,
                     } if matches!(
                         left.ty().kind(),
-                        CObjectTypeKind::Scalar(CScalarType::I32 | CScalarType::I64)
+                        CObjectTypeKind::Scalar(
+                            CScalarType::Bool | CScalarType::I32 | CScalarType::I64
+                        )
                     ) && left.ty().kind() == right.ty().kind()
                         && matches!(
                             (left.ty().kind(), value.ty().kind()),
                             (
-                                CObjectTypeKind::Scalar(CScalarType::I32),
+                                CObjectTypeKind::Scalar(CScalarType::Bool | CScalarType::I32),
                                 CObjectTypeKind::Scalar(CScalarType::Int)
                             ) | (
                                 CObjectTypeKind::Scalar(CScalarType::I64),
