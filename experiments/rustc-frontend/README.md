@@ -421,3 +421,11 @@ Box<i32> cloning through concrete trait/implementation identities, canonical loc
 receivers and exact shared-borrow adjustments. An optional executable builder slot
 preserves constructor-only consumers. This does not certify whole-body clone
 cleanup or enable heap output. See [clone contract](../../docs/specification/typed-generation/languages/c/rust-owned-clone.md).
+
+M35-02B-03K-02 adds `clone_flow_*` correspondence targets for one construction,
+one clone, whole-owner moves and a final read from either owner. Private evidence
+retains exact shared-borrow/reborrow stages, canonical exits and two distinct
+ordered cleanup obligations. A complete no-reader proof handles otherwise unused
+Boolean compiler bookkeeping; it does not select cleanup. Body evidence cannot
+be fabricated, erased to a single-owner certificate or built from arbitrary MIR.
+C/Java heap output and native allocation/failure proof remain separate milestones.

@@ -1,6 +1,6 @@
 # M35-02B-03K — Authenticate scalar Box cloning
 
-- Status: in-progress
+- Status: complete
 - Parent: [M35-02B-03](M35-02B-03-structured-owned-places.md)
 - Depends on: M35-02B-03J
 - Specification: [scalar Box clone](../../specification/typed-generation/languages/c/rust-owned-clone.md)
@@ -29,3 +29,11 @@ HIR as the structured input and actual compiler identities/types as authority.
 - Missing, repeated or swapped owner cleanup and borrowed-source substitutions
   fail the correspondence oracle. Native allocator proof remains M35-02D.
 - No target heap support is announced or enabled by compiler-only evidence.
+
+## Completion
+
+Both child checkpoints are complete. K-01 authenticates and binds the standard
+operation; K-02 certifies the closed original/clone body and ordinary consumer
+projections. K-02 passed 486 isolated tests and a clean fresh review after fixing
+all three initial proof-coverage findings. Detailed evidence is in the child
+tasks. This closes scalar clone evidence, not the parent C/Java heap translation.

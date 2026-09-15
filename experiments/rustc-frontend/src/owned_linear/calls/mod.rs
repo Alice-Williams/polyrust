@@ -1,6 +1,6 @@
 //! Query-only two-function evidence; no target heap admission follows.
 mod evidence;
-mod frame;
+use super::frame;
 mod moves;
 #[cfg(owned_call_graph_proof)]
 #[path = "../../../test/owned_call_graph/mutations.rs"]

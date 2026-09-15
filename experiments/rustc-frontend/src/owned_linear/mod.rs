@@ -1,9 +1,13 @@
 //! Closed source/producer correspondence, not target code or a borrow checker.
 #[allow(dead_code)]
 pub(crate) mod calls;
+#[allow(dead_code)]
+pub(crate) mod cloning;
 mod exits;
 pub(crate) use exits::Exit as SourceExit;
 mod flow;
+#[allow(dead_code)]
+mod frame;
 // The separate proof drivers select different public evidence entry points.
 #[allow(dead_code)]
 pub(crate) mod multiple;
@@ -30,6 +34,7 @@ pub(crate) enum LinearError {
     SourceIdentity,
     Scope,
     Constructor(ConstructionError),
+    Clone(crate::owned_source::cloning::CloneError),
     Record(crate::owned_source::record::RecordError),
     BoxedRecord(crate::owned_source::boxed_record::BoxedRecordError),
     Owner,

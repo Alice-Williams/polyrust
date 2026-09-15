@@ -1,6 +1,6 @@
 # Standard scalar Box clone evidence
 
-- Status: operation identity complete; whole-body correspondence remains planned
+- Status: operation identity complete; whole-body correspondence in progress
 - Plan: [M35-02B-03K](../../../../plan/tasks/M35-02B-03K-owned-clone.md)
 - Parent: [owned values](rust-owned-values.md)
 
@@ -84,3 +84,49 @@ K-01 passed all 481 tests across 613 isolated Linux/Bazel targets and a fresh
 independent broad review after strengthening its observation assertions. The
 linked task records the exact tree, review repair and gate evidence. No body
 certificate or C/Java heap support is implied by this checkpoint.
+
+## Closed whole-body stage
+
+K-02 admits one nongeneric safe Rust i32-to-i32 free function with an unlabeled
+root block, 2..128 immutable let declarations and one final scalar dereference
+as a tail or explicit return. The first declaration constructs Box<i32> from the
+parameter. Exactly one later declaration clones the current original owner with
+a K-01 input. Other declarations may only move one of the two live owners into
+a fresh binding. The final read may select either remaining owner; both are
+cleaned up in reverse order of their final root-scope binding declarations.
+Names, including shadowing, do not determine owner identity.
+
+The private body certificate retains canonical scope/exit information, actual
+source-binding/MIR-local pairs and distinct Original/Cloned owner tags. It exposes
+typed source-operation inputs and matched construction, move, shared-loan, read,
+drop and complete Return locations. The original remains live after cloning;
+the clone destination must be fresh and disjoint from the original chain.
+
+Match the compiler's source Clone trait FnDef/arguments at the MIR call, retaining
+the separately resolved concrete Instance from K-01. Method syntax requires one
+unique shared-reference stage from the exact current original place; explicit
+syntax additionally requires the unique built-in shared reborrow stage. Validate
+full reference types, place projections, call operands and chronological order.
+The scalar constructor argument has one direct Copy stage from the parameter.
+
+Account for every assignment, Box local, both calls, both drops and the full
+normal Return in the bounded PostCleanup trace. Correspondence cannot be supplied
+by arbitrary caller-provided MIR. Do not admit unexamined residual instructions,
+extra allocations/clones/calls, branches/nested scopes, mutable bindings, field or
+temporary receivers, preborrowed variables, or extra scalar expressions. Existing
+ownership readers are not widened. Test coherent same-type owner substitutions,
+not only malformed individual fields. C/Java heap output remains disabled.
+
+The pinned compiler retains constant Boolean bookkeeping stores after moving
+the original owner following a clone. Such stores are admitted only by the
+existing whole-body no-reader proof: every definition must be a typed Boolean
+constant and every use must be an accounted store or StorageLive/StorageDead.
+Any read, borrow, nonconstant definition or projected store rejects. These
+unobserved temporaries do not select target cleanup and are not emitted. Other
+unmatched assignments, including unit bookkeeping, remain outside this stage.
+
+K-02 is complete for this closed grammar: eleven accepted source bodies,
+thirteen rejected forms and 528 explicit corruption checks pass alongside all
+486 historical/full-gate tests. A fresh independent review found no remaining
+core defects after consumer-location and provenance-oracle repairs. The body
+certificate remains compiler-only; runtime translation is a separate milestone.

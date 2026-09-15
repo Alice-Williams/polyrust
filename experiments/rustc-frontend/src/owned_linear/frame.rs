@@ -1,5 +1,5 @@
 //! One canonical root frame, independent of any ownership-effect classification.
-use super::super::{LinearError as Error, Result, exits, scopes, source::binding};
+use super::{LinearError as Error, Result, exits, scopes, source::binding};
 use rustc_abi::ExternAbi;
 use rustc_hir::{self as hir, HirId, def::DefKind, def_id::LocalDefId};
 use rustc_middle::ty::{FnSig, TyCtxt};
