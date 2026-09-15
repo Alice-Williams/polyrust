@@ -26,6 +26,7 @@ use portable_diagnostics::DiagnosticCode;
 use std::collections::{BTreeMap, BTreeSet};
 
 impl LinkerDialect for JavaDialect {
+    type DependencyValue = portable_codegen::NoDependencyValue;
     type DependencyCallable = super::JavaImportedCallable;
     type DependencyPackage = super::JavaDependencyPackage;
     type KnownField = JavaKnownField;
@@ -45,6 +46,21 @@ impl LinkerDialect for JavaDialect {
     type ImportKind = JavaImportKind;
     type ResolvedModule = JavaPackage;
     type ResolvedFileItem = ResolvedJavaFileItem;
+
+    fn dependency_value_spec(
+        &self,
+        value: &Self::DependencyValue,
+    ) -> portable_codegen::DependencyValueSpec<Self> {
+        match *value {}
+    }
+
+    fn verify_dependency_value_type(
+        &self,
+        value: &Self::DependencyValue,
+        _ty: &portable_codegen::TargetTypeRef<Self>,
+    ) -> Result<(), AstViolation> {
+        match *value {}
+    }
 
     fn dependency_callable_spec(
         &self,

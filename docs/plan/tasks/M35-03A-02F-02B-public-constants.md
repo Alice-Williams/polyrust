@@ -1,6 +1,6 @@
 # M35-03A-02F-02B — Public scalar constant APIs
 
-- Status: planned
+- Status: in-progress
 - Parent: [M35-03A-02F-02](M35-03A-02F-02-constant-declarations.md)
 - Depends on: M35-03A-02F-02A
 
@@ -37,3 +37,17 @@ semantics and wider types remain separate capabilities.
   target AST, dependency, native, readonly-assignment and atomic rejection tests.
 - Per-language specs/tasks, evaluated independent reviews, exported examples
   and isolated full Bazel/lint gates precede scoped commits and pushes.
+
+## Ordered implementation
+
+1. [01 — Shared certified dependency values](M35-03A-02F-02B-01-dependency-values.md) — complete.
+2. [02 — Certified C constant declarations and imports](M35-03A-02F-02B-02-c-constant-api.md) — planned.
+3. [03 — Certified Java constant fields and imports](M35-03A-02F-02B-03-java-constant-api.md) — planned.
+4. [04 — Compiler public constants and constants-only packages](M35-03A-02F-02B-04-source-constant-mappings.md) — planned.
+5. [05 — Multi-crate constant metadata and integration proof](M35-03A-02F-02B-05-constant-bundles.md) — planned.
+
+Specifications precede implementation: [shared source](../../specification/typed-generation/rust-public-constants.md),
+[dependency values](../../specification/typed-generation/certified-dependency-values.md),
+[C17](../../specification/typed-generation/languages/c/rust-public-constants.md), and
+[Java21](../../specification/typed-generation/languages/java/rust-public-constants.md).
+Each child has independent exit evidence and a separate reviewed commit/push.

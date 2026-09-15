@@ -4,6 +4,7 @@ use super::*;
 pub trait LinkerDialect:
     TypedAstDialect + TargetDialect<Resolved = LinkedTargetPackage<Self>> + Clone + Ord
 {
+    type DependencyValue: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
     type DependencyCallable: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
     type DependencyPackage: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
     type KnownField: Clone + std::fmt::Debug + Eq + Ord + Send + Sync;
@@ -30,6 +31,13 @@ pub trait LinkerDialect:
     fn helper_name(&self, helper: &Self::HelperId) -> &'static str;
     fn helper_capability_name(&self, capability: &Self::HelperCapability) -> &'static str;
     fn symbol_catalogue(&self) -> SymbolCatalogue<Self>;
+    fn dependency_value_spec(&self, value: &Self::DependencyValue) -> DependencyValueSpec<Self>;
+    /// Validate a dependency value's target type using language-owned authority.
+    fn verify_dependency_value_type(
+        &self,
+        value: &Self::DependencyValue,
+        ty: &TargetTypeRef<Self>,
+    ) -> Result<(), AstViolation>;
     fn dependency_callable_spec(
         &self,
         callable: &Self::DependencyCallable,

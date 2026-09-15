@@ -42,20 +42,43 @@ pub(super) fn verify_dependency_names<D: LinkerDialect>(
     bindings: &[ResolvedBinding<D>],
     diagnostics: &mut Vec<Diagnostic>,
 ) {
-    let namespace = dialect.callable_namespace();
     let owned = bindings
         .iter()
-        .filter(|binding| binding.scope == BindingScope::Package && binding.namespace == namespace)
-        .map(|binding| dialect.identifier_key(&binding.identifier))
+        .filter(|binding| binding.scope == BindingScope::Package)
+        .map(|binding| {
+            (
+                binding.namespace.clone(),
+                dialect.identifier_key(&binding.identifier),
+            )
+        })
         .collect::<BTreeSet<_>>();
-    for spec in &catalogue.dependency_callables {
-        if matches!(spec.spelling, DependencySpelling::FixedImport(_))
-            && owned.contains(&dialect.identifier_key(&spec.name))
+    let symbols = catalogue
+        .dependency_callables
+        .iter()
+        .map(|spec| {
+            (
+                dialect.callable_namespace(),
+                &spec.name,
+                &spec.spelling,
+                &spec.source,
+            )
+        })
+        .chain(catalogue.dependency_values.iter().map(|spec| {
+            (
+                dialect.value_namespace(),
+                &spec.name,
+                &spec.spelling,
+                &spec.source,
+            )
+        }));
+    for (namespace, name, spelling, source) in symbols {
+        if matches!(spelling, DependencySpelling::FixedImport(_))
+            && owned.contains(&(namespace, dialect.identifier_key(name)))
         {
             diagnostics.push(Diagnostic::error(
                 DiagnosticCode::DuplicateDeclaration,
                 "fixed dependency symbol collides with an owned package binding",
-                spec.source.clone(),
+                source.clone(),
             ));
         }
     }

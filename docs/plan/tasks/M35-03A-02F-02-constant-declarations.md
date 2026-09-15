@@ -20,7 +20,7 @@ statement or storage identity. Use compiler resolution, not a textual scope map.
 Ordered children:
 
 1. [02F-02A — Block-local declarations](M35-03A-02F-02A-local-constants.md) — complete.
-2. [02F-02B — Public constant APIs](M35-03A-02F-02B-public-constants.md).
+2. [02F-02B — Public constant APIs](M35-03A-02F-02B-public-constants.md) — in progress; shared dependency values first.
 
 Each child has its own gate/review/commit. This parent is complete only after
 both local declaration semantics and public/dependency APIs have evidence.

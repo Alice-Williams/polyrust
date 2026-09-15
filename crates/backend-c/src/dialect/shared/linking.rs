@@ -44,6 +44,7 @@ impl CProjectedUnit {
 }
 
 impl LinkerDialect for CDialect {
+    type DependencyValue = CUnavailable;
     type DependencyCallable = super::CImportedCallable;
     type DependencyPackage = super::CDependencyPackage;
     type KnownField = CUnavailable;
@@ -83,6 +84,7 @@ impl LinkerDialect for CDialect {
     fn symbol_catalogue(&self) -> SymbolCatalogue<Self> {
         SymbolCatalogue {
             dependency_callables: vec![],
+            dependency_values: vec![],
             types: [CStdType::I32, CStdType::I64, CStdType::Size]
                 .into_iter()
                 .map(|symbol| KnownTypeSpec {
@@ -111,6 +113,21 @@ impl LinkerDialect for CDialect {
         package: &TargetAstPackage<Self>,
     ) -> Result<SymbolCatalogue<Self>, Vec<portable_diagnostics::Diagnostic>> {
         super::dependency_symbols::catalogue(package)
+    }
+
+    fn dependency_value_spec(
+        &self,
+        value: &Self::DependencyValue,
+    ) -> portable_codegen::DependencyValueSpec<Self> {
+        match *value {}
+    }
+
+    fn verify_dependency_value_type(
+        &self,
+        value: &Self::DependencyValue,
+        _ty: &portable_codegen::TargetTypeRef<Self>,
+    ) -> Result<(), AstViolation> {
+        match *value {}
     }
 
     fn dependency_callable_spec(

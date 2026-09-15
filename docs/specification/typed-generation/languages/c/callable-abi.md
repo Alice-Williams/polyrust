@@ -187,7 +187,14 @@ exists.
 
 ## Constants
 
-Every public constant has an allocator-parameterized getter with the same
+This section describes the owned-value ABI of the portable-IR path, not the
+Rust-source scalar constant profile. For Rust-source bool/i32/i64 constants,
+[ordinary public scalar objects](rust-public-constants.md) take precedence:
+an extern const declaration and one definition, with no allocator or accessor.
+Other Rust-source constant families remain unsupported until separately
+specified and proved; this section is not an implicit fallback to a runtime.
+
+Within this owned-value ABI, every public constant has an allocator-parameterized getter with the same
 outcome ABI, even if its private backing data can be static const. Every read
 returns a fresh independently owned value/outcome. No lazy mutable global,
 process-wide initialization flag or shared owning singleton is permitted.

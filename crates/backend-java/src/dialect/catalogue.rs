@@ -24,6 +24,7 @@ use std::collections::BTreeSet;
 pub(super) fn java_symbol_catalogue() -> SymbolCatalogue<JavaDialect> {
     SymbolCatalogue {
         dependency_callables: vec![],
+        dependency_values: vec![],
         types: JavaKnownType::ALL
             .into_iter()
             .map(known_type_spec)

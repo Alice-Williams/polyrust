@@ -48,6 +48,7 @@ impl<D: LinkerDialect> SymbolCatalogue<D> {
     pub fn verify(&self, dialect: &D) -> Result<(), Vec<Diagnostic>> {
         let mut diagnostics = Vec::new();
         dependency_callables::verify(self, dialect, &mut diagnostics);
+        dependency_values::verify(self, dialect, &mut diagnostics);
         check_unique(
             &mut diagnostics,
             self.types.iter().map(|spec| (&spec.symbol, &spec.source)),

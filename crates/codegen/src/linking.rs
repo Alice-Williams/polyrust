@@ -3,10 +3,13 @@ use std::collections::{BTreeMap, BTreeSet};
 mod binding_authority;
 mod catalogue;
 mod dependency_callables;
+mod dependency_values;
 mod dialect;
 mod file_imports;
+mod import_bindings;
 mod reference_inventory;
 pub use dependency_callables::{DependencyCallableSpec, DependencySpelling};
+pub use dependency_values::{DependencyValueSpec, NoDependencyValue};
 pub use dialect::LinkerDialect;
 pub use file_imports::ResolvedFileImport;
 
@@ -55,6 +58,7 @@ pub enum GeneratedSymbolId {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TargetSymbolRef<D: LinkerDialect> {
     DependencyCallable(D::DependencyCallable),
+    DependencyValue(D::DependencyValue),
     KnownType(D::KnownType),
     KnownCallable(D::KnownCallable),
     RuntimeCallable(D::RuntimeCallable),
@@ -255,6 +259,7 @@ pub struct RuntimeHelperSpec<D: LinkerDialect> {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SymbolCatalogue<D: LinkerDialect> {
     pub dependency_callables: Vec<DependencyCallableSpec<D>>,
+    pub dependency_values: Vec<DependencyValueSpec<D>>,
     pub types: Vec<KnownTypeSpec<D>>,
     pub callables: Vec<KnownCallableSpec<D>>,
     pub runtime_callables: Vec<RuntimeCallableSpec<D>>,
@@ -1674,7 +1679,7 @@ fn resolve_reference<D: LinkerDialect>(
     binding_lookup: &BTreeMap<BindableSymbolId<D>, usize>,
     imports: &mut Vec<ResolvedImport<D>>,
     import_lookup: &mut BTreeMap<TargetSymbolRef<D>, ResolvedImportId>,
-    physical_import_lookup: &mut BTreeMap<(D::ImportKind, D::Identifier), ResolvedImportId>,
+    physical_import_lookup: &mut BTreeMap<import_bindings::Key<D>, ResolvedImportId>,
     occupied: &mut BTreeSet<(D::Namespace, D::NameKey)>,
     requirements: &mut BTreeMap<D::ExternalPackage, PackageRequirement<D>>,
     next_import: &mut usize,
@@ -1762,7 +1767,11 @@ fn resolve_reference<D: LinkerDialect>(
                     import: *id,
                 });
             }
-            let physical_key = (kind.clone(), plan.name.clone());
+            let physical_key = import_bindings::Key {
+                domain: import_bindings::domain(&located.symbol, plan.namespace.clone()),
+                kind: kind.clone(),
+                name: plan.name.clone(),
+            };
             if let Some(id) = physical_import_lookup.get(&physical_key).copied() {
                 let import = imports.iter_mut().find(|import| import.id == id)?;
                 if import.origin != plan.origin || (fixed && import.binding != plan.name) {
@@ -1839,6 +1848,7 @@ fn reference_plan<D: LinkerDialect>(
     symbol: &TargetSymbolRef<D>,
 ) -> Option<ReferencePlan<D>> {
     match symbol {
+        TargetSymbolRef::DependencyValue(id) => dependency_values::plan(dialect, catalogue, id),
         TargetSymbolRef::DependencyCallable(id) => {
             dependency_callables::plan(dialect, catalogue, id)
         }
@@ -1998,7 +2008,19 @@ pub fn verify_linked_package<D: LinkerDialect>(
                     "imports",
                 ));
             }
-            if !physical_imports.insert((import.kind.clone(), import.original_binding.clone())) {
+            let domain = import_bindings::reconstruct(&package.dialect, &package.catalogue, import);
+            if domain.is_none() {
+                diagnostics.push(link_error(
+                    DiagnosticCode::InterfaceNonconformance,
+                    "one resolved import must have exactly one typed binding domain",
+                    "imports",
+                ));
+            }
+            if !physical_imports.insert((
+                domain,
+                import.kind.clone(),
+                import.original_binding.clone(),
+            )) {
                 diagnostics.push(link_error(
                     DiagnosticCode::DuplicateDeclaration,
                     "one physical import appears more than once in a file",
@@ -2464,6 +2486,9 @@ mod tests {
     mod package_catalogue_tests {
         include!("tests/linking_package_catalogues.rs");
     }
+    mod dependency_value_tests {
+        include!("tests/linking_dependency_values.rs");
+    }
     mod dependency_tests {
         include!("tests/linking_dependency_callables.rs");
     }
@@ -2499,6 +2524,13 @@ mod tests {
         DependencyOwnedCollision,
         DependencyOwnerConflict,
         DependencyQualifiedConflict,
+        DependencyValueOwnedCollision,
+        DependencyValueCallableCollision,
+        DependencyValueQualifiedCollision,
+        DependencyValueInvalidType,
+        DependencyValueSeparateNamespace,
+        DependencyValueSeparateOwnerNamespace,
+        KnownTypeConstructorImport,
         GeneratedFiles,
         GeneratedFilesNoSpelling,
         RejectedFiles,
@@ -2516,6 +2548,7 @@ mod tests {
     #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
     enum KnownType {
         Clock,
+        ScalarAlias,
         Uncatalogued,
     }
 
@@ -2646,6 +2679,8 @@ mod tests {
     #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
     enum QualifiedName {
         DependencyFirst,
+        DependencyValueFirst,
+        DependencyValueOther,
         DependencyOther,
         DependencyEntry,
         RuntimeIsPositive,
@@ -3049,6 +3084,7 @@ mod tests {
 
     impl LinkerDialect for TestDialect {
         type DependencyCallable = dependency_tests::Callable;
+        type DependencyValue = dependency_value_tests::Value;
         type DependencyPackage = dependency_tests::Owner;
         type KnownField = KnownField;
         type KnownConstructor = KnownConstructor;
@@ -3067,6 +3103,21 @@ mod tests {
         type ImportKind = ImportKind;
         type ResolvedModule = Module;
         type ResolvedFileItem = ResolvedItem;
+
+        fn dependency_value_spec(
+            &self,
+            value: &Self::DependencyValue,
+        ) -> DependencyValueSpec<Self> {
+            dependency_value_tests::spec(value)
+        }
+
+        fn verify_dependency_value_type(
+            &self,
+            _value: &Self::DependencyValue,
+            ty: &TargetTypeRef<Self>,
+        ) -> Result<(), AstViolation> {
+            dependency_value_tests::verify_type(ty)
+        }
 
         fn dependency_callable_spec(
             &self,
@@ -3165,7 +3216,15 @@ mod tests {
         }
 
         fn value_namespace(&self) -> Self::Namespace {
-            Namespace::Value
+            if matches!(
+                self.0,
+                CatalogueMode::DependencyValueSeparateNamespace
+                    | CatalogueMode::DependencyValueSeparateOwnerNamespace
+            ) {
+                Namespace::Member
+            } else {
+                Namespace::Value
+            }
         }
 
         fn known_call_expression(
@@ -3367,17 +3426,21 @@ mod tests {
         let math_v1 = requirement("1", [PackageFeature::Fast]);
         let mut result = SymbolCatalogue {
             dependency_callables: dependency_tests::catalogue(mode),
-            types: vec![KnownTypeSpec {
-                symbol: KnownType::Clock,
-                name: id("Clock"),
-                alias_stem: "Clock".to_owned(),
-                qualified_name: Some(QualifiedName::StdClock),
-                origin: SymbolOrigin::StandardLibrary(StandardLibrary::Time),
-                arity: 0,
-                policy: DependencyPolicy::Import(ImportKind::Type),
-                dependency: None,
-                source: source("known-type"),
-            }],
+            dependency_values: dependency_value_tests::catalogue(mode),
+            types: vec![
+                KnownTypeSpec {
+                    symbol: KnownType::Clock,
+                    name: id("Clock"),
+                    alias_stem: "Clock".to_owned(),
+                    qualified_name: Some(QualifiedName::StdClock),
+                    origin: SymbolOrigin::StandardLibrary(StandardLibrary::Time),
+                    arity: 0,
+                    policy: DependencyPolicy::Import(ImportKind::Type),
+                    dependency: None,
+                    source: source("known-type"),
+                },
+                dependency_value_tests::scalar_type(),
+            ],
             callables: vec![
                 known_callable(
                     KnownCallable::Zero,
@@ -3591,7 +3654,22 @@ mod tests {
             | CatalogueMode::DependencyConflict
             | CatalogueMode::DependencyOwnedCollision
             | CatalogueMode::DependencyOwnerConflict
-            | CatalogueMode::DependencyQualifiedConflict => {}
+            | CatalogueMode::DependencyQualifiedConflict
+            | CatalogueMode::DependencyValueOwnedCollision
+            | CatalogueMode::DependencyValueCallableCollision
+            | CatalogueMode::DependencyValueQualifiedCollision
+            | CatalogueMode::DependencyValueInvalidType
+            | CatalogueMode::DependencyValueSeparateNamespace
+            | CatalogueMode::DependencyValueSeparateOwnerNamespace => {}
+            CatalogueMode::KnownTypeConstructorImport => {
+                let constructor = &result.constructors[0];
+                let known = &mut result.types[0];
+                known.name = constructor.name.clone();
+                known.origin = constructor.origin.clone();
+                known.policy = constructor.policy.clone();
+                known.dependency = constructor.dependency.clone();
+                known.qualified_name = constructor.qualified_name.clone();
+            }
         }
         result
     }
@@ -3935,7 +4013,7 @@ mod tests {
     fn catalogue_is_typed_complete_and_rejects_duplicate_or_inconsistent_entries() {
         let normal = TestDialect(CatalogueMode::Normal);
         let catalogue = normal.symbol_catalogue();
-        assert_eq!(catalogue.types.len(), 1);
+        assert_eq!(catalogue.types.len(), 2);
         assert_eq!(catalogue.callables.len(), 3);
         assert_eq!(catalogue.runtime_callables.len(), 1);
         assert_eq!(catalogue.fields.len(), 1);
