@@ -27,6 +27,7 @@ pub(crate) enum LinearError {
     SourceIdentity,
     Scope,
     Constructor(ConstructionError),
+    Record(crate::owned_source::record::RecordError),
     Owner,
     Phase,
     ControlFlow,

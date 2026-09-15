@@ -1,6 +1,6 @@
 # M35-02B-03G — Authenticate owned record fields and partial moves
 
-- Status: in-progress
+- Status: complete
 - Parent: [M35-02B-03](M35-02B-03-structured-owned-places.md)
 - Depends on: M35-02B-03F
 - Specification: [partial owned records](../../specification/typed-generation/languages/c/rust-owned-record-fields.md)
@@ -25,6 +25,10 @@ Begin with [G-01 — Record construction identities](M35-02B-03G-01-record-const
 Individual source operation admission is not whole-body aggregate/cleanup
 correspondence and cannot close this parent by itself.
 
+G-01 and [G-02 — Aggregate and partial-move places](M35-02B-03G-02-record-place-correspondence.md)
+are complete for this closed flat-record form. Their task files record the
+independent review, typed negative controls and isolated full-gate evidence.
+
 - Inspect pinned HIR/typed aggregate operands/projected Drop before admission.
   Use compiler AdtDef/DefId, FieldIdx, Ty and Place projections, with a private
   source record-construction capability input and executable typed binding.
@@ -48,4 +52,4 @@ correspondence and cannot close this parent by itself.
 
 Boxes containing scalar records, nested owned records, conditional partial
 initialization/moves and function-boundary transfers remain required additional
-work before the parent ownership mapping can close.
+work before M35-02B/M35-02 can close. They are not enabled by this flat-record proof.

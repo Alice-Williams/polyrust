@@ -19,6 +19,7 @@ load(":metadata_agreement_targets.bzl", "metadata_agreement_targets")
 load(":metadata_analysis_tests.bzl", "metadata_analysis_tests")
 load(":owned_construction_targets.bzl", "owned_construction_targets")
 load(":owned_early_targets.bzl", "owned_early_targets")
+load(":owned_fields_targets.bzl", "owned_fields_targets")
 load(":owned_guard_targets.bzl", "owned_guard_targets")
 load(":owned_linear_targets.bzl", "owned_linear_targets")
 load(":owned_multiple_targets.bzl", "owned_multiple_targets")
@@ -76,6 +77,8 @@ owned_early_targets(name = "owned_early_test")
 owned_selection_targets(name = "owned_selection_test")
 
 owned_record_targets(name = "owned_record_test")
+
+owned_fields_targets(name = "owned_fields_test")
 
 crate_native_targets(name = "crate_native_test")
 

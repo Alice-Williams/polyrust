@@ -4,6 +4,7 @@ pub(crate) mod guarded;
 #[cfg(owned_multiple_proof)]
 #[path = "../../../test/owned_multiple/mutations.rs"]
 pub(crate) mod mutations;
+pub(crate) mod records;
 mod relations;
 #[cfg(owned_multiple_proof)]
 #[path = "../../../test/owned_multiple/renaming.rs"]

@@ -1,6 +1,6 @@
 # Owned record fields and partial moves
 
-- Status: in-progress
+- Status: complete
 - Plan: [M35-02B-03G](../../../../plan/tasks/M35-02B-03G-partial-owned-records.md)
 - Foundation: [conditional owner selection](rust-owned-selection.md)
 
@@ -89,3 +89,54 @@ and require the production field predicate to reject it even when initializer
 and field agree. The test-only [Ty constructor](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.new_adt)
 does not confer checked-source status or bypass the private operation input.
 It tests full type equality without enabling unstable allocator-api source.
+
+## Aggregate and partial-move stage
+
+G-02 admits the closed root form above through a separate query-only
+`RecordOwnedBody`. It accepts a successful-analysis compiler context and body
+owner, not caller-authored HIR plans, MIR bodies or source-to-place mappings.
+Private construction queries canonical HIR and PostCleanup MIR itself.
+
+The whole-body budget is at most 128 scalar parameters and 128 HIR let statements,
+independently of G-01's 128-field operation limit. Constructing one owner per
+field, the record and at least one extraction therefore fits at most 126 fields
+in G-02; extra source bindings reduce that capacity. Exceeding either budget
+diagnoses rather than dropping operations or weakening correspondence checks.
+
+Source paths use `SourcePlace::Local(HirId)` or `SourcePlace::Field` with the
+record binding, field DefId and FieldIdx. A path starts at an authenticated
+parameter-rooted constructor, optionally moves between local bindings, and may
+enter one record field. A moved-out field becomes another local owner. Every
+source binding and its exact compiler Place remain in the evidence. Staging
+temporaries are not fabricated HIR bindings: `Transfer::IntoField` retains their
+actual typed place, staging assignment and aggregate assignment; `Transfer::Move`
+retains an ordinary local/partial-move assignment.
+
+Pinned Rust 1.98.0 stages local record initializers through distinct Box
+temporaries in source order. The single
+[ADT aggregate](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.AggregateKind.html)
+then consumes those temporaries in declared FieldIdx order. Authenticate the
+nominal DefId, variant zero, exact arguments, absent user/union annotations,
+complete operands and each staging move's unique source/current owner. Both
+staging order and complete source-binding event order must agree; equal Box
+types or an equal aggregate operand count are insufficient.
+
+The retained compiler [Place projections](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Place.html#method.project_deeper)
+include exact field index/type. One actual record storage local and every Box
+local must be accounted for, including initializer temporaries. All assignments,
+calls, normal blocks and drops are consumed; only independently proven unread
+constant Boolean/unit compiler bookkeeping may remain semantically irrelevant.
+
+Require the final scalar read to come from a current moved-out field owner.
+Check drops after the read and before return: reverse live-local binding order,
+then remaining record fields in declaration order at the record binding's
+cleanup position. Every chain retains its final actual place, drop location and
+canonical root drop scope. All-field moves leave no record-field cleanup.
+Other constructed owners can remain outside the record and retain their own
+lexical cleanup positions. Earlier local-only readers continue rejecting records.
+
+G-02 excludes post-record allocation, inline allocation in record initializers,
+whole-record moves, nested/conditional records or scopes, references, updates,
+assignment/reinitialization and arbitrary call transfers. Those require later
+closed source contracts. This compiler-only certificate does not enable C or
+Java heap output, remove native cleanup tests, or claim universal Rust support.

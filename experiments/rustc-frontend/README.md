@@ -375,3 +375,10 @@ Box<i32> field types and source initializer order. A separate executable typed
 record binding is optional in the owned-program builder; Box-only consumers
 remain unchanged. This stage does not prove aggregate/partial-move cleanup or
 enable target heap generation. See [record identity stage](../../docs/specification/typed-generation/languages/c/rust-owned-record-fields.md#record-identity-stage).
+
+M35-02B-03G-02 adds `owned_fields_*` whole-body correspondence targets. Typed
+source local/field paths retain actual compiler staging moves, aggregate field
+operands, partial moves and ordered cleanup with canonical root scopes. A
+query-only RecordOwnedBody cannot be constructed from arbitrary MIR or erased
+into local-only evidence. This remains compiler-only proof, not target heap
+generation. See [aggregate and partial-move stage](../../docs/specification/typed-generation/languages/c/rust-owned-record-fields.md#aggregate-and-partial-move-stage).
