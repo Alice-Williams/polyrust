@@ -58,6 +58,12 @@ return locations needed by structured target mapping. It adds no new source form
 standard clone identity and a separate borrowed-source/fresh-owner correspondence
 before the C mapping consumes this remaining ownership operation.
 
+The post-K handoff audit recovered two explicit obligations retained by G:
+[03L — Nested owned records](M35-02B-03L-nested-owned-records.md) and
+[03M — Conditional record initialization/moves](M35-02B-03M-conditional-owned-records.md).
+Neither is discharged by flat records plus scalar owner selection. They remain
+required before closing this compiler stage and enabling C mapping.
+
 - Map every admitted structured exit and owned operation unambiguously to the
   compiler's corresponding places/drop obligations; unsupported shapes diagnose.
 - Distinct same-type owners, branch guards, field projections and lexical
