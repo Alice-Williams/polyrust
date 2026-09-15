@@ -1,6 +1,6 @@
 # M35-02B-03M — Conditional partial record initialization and moves
 
-- Status: planned
+- Status: in-progress
 - Parent: [M35-02B-03](M35-02B-03-structured-owned-places.md)
 - Depends on: M35-02B-03L
 
@@ -11,6 +11,18 @@ Observe pinned source/HIR/PostCleanup before choosing the closed admission
 grammar. Preserve actual Boolean producer, branch-local field initialization or
 move, live/dead field obligations and canonical exits on every normal path.
 Flat record evidence plus scalar selection is not sufficient by composition.
+
+## Ordered checkpoints
+
+1. [M-01 — Compiler observations](M35-02B-03M-01-conditional-observations.md):
+   complete; asserts both outcomes for conditional initialization, scoped field movement
+   and early return versus continuation before admitting new body evidence.
+2. [M-02 — Typed source frame](M35-02B-03M-02-conditional-source-frame.md):
+   freeze the observed source forms, canonical control/field/scope identities
+   and executable operation bindings behind private compiler-session inputs.
+3. [M-03 — Complete correspondence](M35-02B-03M-03-conditional-correspondence.md):
+   account for every normal path, initialization state, field movement, cleanup
+   decision and exit with ordinary consumers and non-vacuous corruption tests.
 
 ## Definition of done and tests
 
