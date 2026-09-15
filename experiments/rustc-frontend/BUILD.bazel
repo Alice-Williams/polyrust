@@ -21,6 +21,7 @@ load(":local_calls_targets.bzl", "local_calls_targets")
 load(":metadata_action_targets.bzl", "metadata_action_targets")
 load(":metadata_agreement_targets.bzl", "metadata_agreement_targets")
 load(":metadata_analysis_tests.bzl", "metadata_analysis_tests")
+load(":nested_correspondence_targets.bzl", "nested_correspondence_targets")
 load(":nested_owned_probe_targets.bzl", "nested_owned_probe_targets")
 load(":nested_record_targets.bzl", "nested_record_targets")
 load(":owned_call_graph_targets.bzl", "owned_call_graph_targets")
@@ -105,6 +106,8 @@ clone_flow_targets(name = "clone_flow_test")
 nested_owned_probe_targets(name = "nested_owned_probe_test")
 
 nested_record_targets(name = "nested_record_test")
+
+nested_correspondence_targets(name = "nested_correspondence_test")
 
 local_calls_targets(name = "local_calls_test")
 

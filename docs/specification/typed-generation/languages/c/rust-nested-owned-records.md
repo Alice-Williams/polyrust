@@ -1,6 +1,6 @@
 # Nested owned record evidence
 
-- Status: observations and operation identity implemented; body admission planned
+- Status: observations, operation identity and bounded body evidence implemented
 - Plan: [M35-02B-03L](../../../../plan/tasks/M35-02B-03L-nested-owned-records.md)
 - Existing flat boundary: [owned record fields](rust-owned-record-fields.md)
 
@@ -25,15 +25,17 @@ declaration order, skipping moved leaves, at the containing binding's exit.
 L-01 asserts observed representation only. It produces no checked nested
 capability, target package or ownership certificate. L-02 implements bounded
 private [operation inputs](rust-nested-construction.md) and executable bindings;
-L-03 will require complete
-canonical source/normal-MIR correspondence before returning body evidence.
+L-03 implements complete [canonical source/normal-MIR correspondence](rust-nested-correspondence.md)
+before returning private body evidence. Its separately frozen grammar covers
+the two-level tree, whole-inner and leaf movement, and actual grouped or leaf
+cleanup, with explicit statement/path/normal-flow budgets.
 
 Retain source initializer order, staging operations, aggregate declaration
 membership, complete nested move paths, lexical bindings and actual read/drop/
 Return locations for ordinary typed consumers. Existing flat/single-owner
 readers remain closed. Unsupported input diagnoses before target publication.
 
-Before body admission, freeze depth/member/statement/path limits and require
+Body admission freezes depth/member/statement/path limits and requires
 whole-body accounting, typed mismatch/forgery controls and coherent wrong-owner
 mutations. Do not infer nested proof from equal record shapes or Drop counts.
 Conditional partial initialization/moves remain the separate required 03M

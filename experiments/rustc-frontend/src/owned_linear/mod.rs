@@ -4,6 +4,8 @@ pub(crate) mod calls;
 #[allow(dead_code)]
 pub(crate) mod cloning;
 mod exits;
+#[allow(dead_code)]
+pub(crate) mod nested;
 pub(crate) use exits::Exit as SourceExit;
 mod flow;
 #[allow(dead_code)]
@@ -37,6 +39,7 @@ pub(crate) enum LinearError {
     Clone(crate::owned_source::cloning::CloneError),
     Record(crate::owned_source::record::RecordError),
     BoxedRecord(crate::owned_source::boxed_record::BoxedRecordError),
+    NestedRecord(crate::owned_source::nested_record::NestedError),
     Owner,
     Phase,
     ControlFlow,

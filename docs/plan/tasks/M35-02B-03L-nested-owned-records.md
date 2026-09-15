@@ -1,6 +1,6 @@
 # M35-02B-03L — Nested owned record correspondence
 
-- Status: in-progress
+- Status: complete
 - Parent: [M35-02B-03](M35-02B-03-structured-owned-places.md)
 - Depends on: M35-02B-03K-02
 - Specification: [nested owned records](../../specification/typed-generation/languages/c/rust-nested-owned-records.md)
@@ -47,5 +47,10 @@ clean review after six assertion/oracle repairs. L-02 is complete: private
 typed construction/layout inputs, six executable mapping slots, nine admitted
 and twenty-six rejected operations, eleven exact API-negative tests and a
 fresh clean review after four proof/contract repairs. The full isolated gate
-passes 501 tests. L-03 remains planned; neither checkpoint closes this parent
-or admits nested body translation to C/Java.
+passes 501 tests. L-03 is complete: fourteen bodies, 1,727 MIR corruption
+controls, fourteen source-owner substitutions and fourteen accepted local
+bijections prove complete bounded nested correspondence. Its exact-tree gate
+passes 508 tests across 644 targets, and a fresh independent Sol Extra High
+review found no core defects. This closes L's bounded evidence obligation.
+Required conditional initialization/partial movement remains 03M; C/Java
+heap output is not enabled by these evidence checkpoints.
