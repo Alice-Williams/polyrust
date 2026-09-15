@@ -17,7 +17,7 @@ pub(super) struct Inventory {
 fn scalar(ty: &CObjectType) -> bool {
     matches!(
         ty.kind(),
-        CObjectTypeKind::Scalar(CScalarType::I32 | CScalarType::Bool)
+        CObjectTypeKind::Scalar(CScalarType::I32 | CScalarType::I64 | CScalarType::Bool)
     )
 }
 
@@ -139,7 +139,7 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
         if exported {
             if !signature(function) || !closed.contains(function) {
                 return Err(
-                    "C dependency function lacks the closed i32/bool scalar-call proof".into(),
+                    "C dependency function lacks the closed i32/i64/bool scalar-call proof".into(),
                 );
             }
             if !symbols.insert(definition.name().clone()) {

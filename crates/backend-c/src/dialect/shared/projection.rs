@@ -86,9 +86,16 @@ fn build(
             super::unit_bindings::project(&bindings, files, dependencies)?;
         let mut standards = BTreeSet::new();
         for header in dependencies.headers() {
-            standards.insert(match header {
-                CHeader::Stdint => CStdType::I32,
-                CHeader::Stddef => CStdType::Size,
+            standards.extend(match header {
+                CHeader::Stdint
+                    if dependencies
+                        .scalars()
+                        .contains(&crate::ast::CScalarType::I64) =>
+                {
+                    &[CStdType::I32, CStdType::I64][..]
+                }
+                CHeader::Stdint => &[CStdType::I32][..],
+                CHeader::Stddef => &[CStdType::Size][..],
                 _ => return Err("header is outside the first C profile".into()),
             });
         }

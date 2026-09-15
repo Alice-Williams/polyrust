@@ -2,6 +2,7 @@
 #![feature(rustc_private)]
 #![forbid(unsafe_code)]
 
+extern crate rustc_ast;
 extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_middle;
@@ -18,7 +19,12 @@ impl Mapping for NumericMapping {
     type Output = u32;
 
     fn lower<'tcx>(&self, context: &mut u32, input: LiteralInput<'tcx>) -> Result<u32, String> {
-        Ok(*context + input.0.hir_id.local_id.as_u32())
+        Ok(*context
+            + match input.value() {
+                LiteralValue::I32(_) => 1,
+                LiteralValue::I64(_) => 2,
+                LiteralValue::Bool(_) => 3,
+            })
     }
 }
 
@@ -30,7 +36,7 @@ impl Mapping for BooleanMapping {
     type Output = bool;
 
     fn lower<'tcx>(&self, context: &mut bool, input: LiteralInput<'tcx>) -> Result<bool, String> {
-        Ok(*context && input.0.hir_id.local_id.as_u32() == 0)
+        Ok(*context && matches!(input.value(), LiteralValue::Bool(true)))
     }
 }
 
@@ -53,11 +59,8 @@ impl Supports<LiteralValues> for BooleanBindings {
 // Type-check both executable signatures against the very same input identity.
 // No fabricated HIR value is constructed or evaluated by this probe.
 fn map_both(input: LiteralInput<'_>) {
-    let expression = input.0;
     let _: Result<u32, String> = NumericBindings.mapping().lower(&mut 0, input);
-    let _: Result<bool, String> = BooleanBindings
-        .mapping()
-        .lower(&mut false, LiteralInput(expression));
+    let _: Result<bool, String> = BooleanBindings.mapping().lower(&mut false, input);
 }
 
 fn call(input: CallInput<'_>) {
@@ -97,6 +100,13 @@ fn negation<'tcx>(
 
 fn capability<C: Capability>() {}
 
+fn literal<'tcx>(
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+) {
+    let _ = LiteralInput::read(checked, expression).map(|input| input.value());
+}
+
 fn lazy_boolean<'tcx>(
     checked: &rustc_middle::ty::TypeckResults<'tcx>,
     expression: &'tcx rustc_hir::Expr<'tcx>,
@@ -121,6 +131,7 @@ fn main() {
     capability::<SharedBorrows>();
     let _ = (
         map_both,
+        literal,
         call,
         entry,
         function,

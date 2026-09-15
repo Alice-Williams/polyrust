@@ -20,7 +20,7 @@ target has full replacement evidence for any broad legacy capability family.
 
 | Functionality | Rust-source C | Rust-source Java | Remaining work |
 | --- | --- | --- | --- |
-| Values and comparisons | i32/bool literals, scalar comparison, immutable places, built-in bool negation and lazy and/or | Same source subset | i64/f64/char/unit, constants, aliases, integer and float operations: M35-03A-02 |
+| Values and comparisons | i32/i64/bool literals, scalar comparison, immutable places, built-in bool negation and lazy and/or | Same source subset | f64/char/unit, constants, aliases, integer and float operations: M35-03A-02 |
 | Functions and modules | Closed typed signatures/direct calls, crate-owned headers and implementations | Closed typed signatures/direct calls, crate-owned Java packages | Wider signatures, methods and migrated consumers: M35-03A-03/06 |
 | Records and control | Closed scalar-field records/shared borrows, local bindings, structured branches | Same source subset | Owned shapes, enums, interfaces, loops and patterns: M35-02 then M35-03A-03 |
 | Text, Unicode and bytes | No general replacement mapping | No general replacement mapping | All legacy operations and explicit encoding/indexing policies: M35-03A-04 |
@@ -47,6 +47,19 @@ mutants preserve truth but fail the trace oracle. The AST probe checks all
 boundary and mapping-contract tests retain atomic rejection and typed inputs.
 The broader legacy operand grammar is not yet migrated: full_features stays
 empty, and this evidence does not enable source mutation or heap values.
+
+[M35-03A-02C](../../plan/tasks/M35-03A-02C-i64-values.md) adds partial
+JavaI64Values and wide comparison coverage. `i64_native_test` compares 17,640
+results across two actual crates against Rust and an independent exact-integer
+oracle, with separately compiled Java/GCC/Zig O0/O2 consumers. Deliberate
+narrowing mutations must disagree with that oracle. Instrumented test copies
+check exact wide operand-call order, and six reordered-comparison mutants must
+retain truth but fail trace expectations. Width metadata mutations
+must fail the signature contract. `i64_rejection_test` checks 44 atomic invalid
+or unsupported cases and Java's 255/256 parameter-slot boundary. Input-privacy
+compile contracts and target dependency/platform/resource tests protect the
+typed boundary. This does not enable arithmetic, casts, foreign re-exports or
+heap shapes, and full_features remains empty.
 
 Evidence anchors for the current subset are the executable registrations in
 `src/c_lower/capabilities/mod.rs` and `src/java_lower/capabilities/mod.rs`, their

@@ -72,6 +72,7 @@ impl CBindings {
         }
         match ty.kind() {
             CObjectTypeKind::Scalar(CScalarType::I32) => TargetTypeRef::Known(CStdType::I32),
+            CObjectTypeKind::Scalar(CScalarType::I64) => TargetTypeRef::Known(CStdType::I64),
             CObjectTypeKind::Scalar(value) => TargetTypeRef::Primitive(*value),
             CObjectTypeKind::Struct(value) => TargetTypeRef::Generated(self.types[value]),
             // The exact qualified pointer tree and registered pointee are kept,

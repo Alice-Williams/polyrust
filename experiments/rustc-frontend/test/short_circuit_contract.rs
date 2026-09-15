@@ -82,7 +82,8 @@ fn wrong() {
 
 #[cfg(lazy_wrong_input)]
 fn wrong_input<'tcx>(reader: &mut Reader<'tcx>, expression: &'tcx rustc_hir::Expr<'tcx>) {
-    let _ = Lazy.lower(reader, LiteralInput(expression));
+    let input = LiteralInput::read(reader.checked, expression).unwrap();
+    let _ = Lazy.lower(reader, input);
 }
 
 #[cfg(lazy_private_input)]

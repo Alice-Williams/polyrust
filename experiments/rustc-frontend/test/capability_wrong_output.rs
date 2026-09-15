@@ -5,6 +5,7 @@ use rustc_hir as hir;
 
 #[allow(dead_code)]
 fn must_not_compile<'tcx>(reader: &mut Reader<'tcx>, value: &'tcx hir::Expr<'tcx>) {
-    let _: CPlace = CLiteralValues.lower(reader, LiteralInput(value)).unwrap();
+    let input = LiteralInput::read(reader.checked, value).unwrap();
+    let _: CPlace = CLiteralValues.lower(reader, input).unwrap();
     let _: CPlace = CDirectCalls.lower(reader, CallInput(value)).unwrap();
 }

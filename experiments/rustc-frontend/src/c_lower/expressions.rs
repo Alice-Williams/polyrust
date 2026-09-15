@@ -34,7 +34,8 @@ impl<'tcx> Reader<'tcx> {
             }
             hir::ExprKind::Lit(_) | hir::ExprKind::Unary(hir::UnOp::Neg, _) => {
                 let mapping = Supports::<LiteralValues>::mapping(&self.mappings);
-                mapping.lower(self, LiteralInput(value))
+                let input = LiteralInput::read(self.checked, value)?;
+                mapping.lower(self, input)
             }
             hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, _) => {
                 let mapping = Supports::<SharedBorrows>::mapping(&self.mappings);

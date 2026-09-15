@@ -17,7 +17,9 @@ enum Node<'a> {
 fn scalar(ty: &CObjectType) -> bool {
     matches!(
         ty.kind(),
-        CObjectTypeKind::Scalar(CScalarType::I32 | CScalarType::Int | CScalarType::Bool)
+        CObjectTypeKind::Scalar(
+            CScalarType::I32 | CScalarType::I64 | CScalarType::Int | CScalarType::Bool
+        )
     )
 }
 
@@ -87,7 +89,9 @@ pub(super) fn dependencies(
             Node::Value(value) => match value.kind() {
                 CValueKind::Literal(
                     CLiteral::Bool(_)
-                    | CLiteral::Signed(CSignedLiteral::I32(_) | CSignedLiteral::Int(_)),
+                    | CLiteral::Signed(
+                        CSignedLiteral::I32(_) | CSignedLiteral::I64(_) | CSignedLiteral::Int(_),
+                    ),
                 ) => {}
                 CValueKind::Read(place) | CValueKind::AddressOf(place) => {
                     pending.push(Node::Place(place))

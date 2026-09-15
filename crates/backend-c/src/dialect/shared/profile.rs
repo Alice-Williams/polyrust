@@ -26,7 +26,9 @@ pub(super) enum Node<'a> {
 fn scalar(ty: &CObjectType) -> bool {
     matches!(
         ty.kind(),
-        CObjectTypeKind::Scalar(CScalarType::I32 | CScalarType::Int | CScalarType::Bool)
+        CObjectTypeKind::Scalar(
+            CScalarType::I32 | CScalarType::I64 | CScalarType::Int | CScalarType::Bool
+        )
     )
 }
 
@@ -197,7 +199,11 @@ fn walk<'a>(
                     }
                     CValueKind::Literal(
                         CLiteral::Bool(_)
-                        | CLiteral::Signed(CSignedLiteral::I32(_) | CSignedLiteral::Int(_)),
+                        | CLiteral::Signed(
+                            CSignedLiteral::I32(_)
+                            | CSignedLiteral::I64(_)
+                            | CSignedLiteral::Int(_),
+                        ),
                     ) => {}
                     CValueKind::Read(place) | CValueKind::AddressOf(place) => {
                         add(Node::Place(place))
@@ -225,7 +231,17 @@ fn walk<'a>(
                                 | CBinaryOperator::LessEqual
                                 | CBinaryOperator::Greater
                                 | CBinaryOperator::GreaterEqual
-                        ) {
+                        ) || left.ty().kind() != right.ty().kind()
+                            || !matches!(
+                                left.ty().kind(),
+                                CObjectTypeKind::Scalar(
+                                    CScalarType::Bool
+                                        | CScalarType::Int
+                                        | CScalarType::I32
+                                        | CScalarType::I64
+                                )
+                            )
+                        {
                             return Err(
                                 "only scalar comparisons are admitted by the first C profile"
                                     .into(),
@@ -240,7 +256,15 @@ fn walk<'a>(
                                 CScalarType::Bool | CScalarType::Int | CScalarType::I32,
                             ),
                         operand,
-                    } => add(Node::Value(operand)),
+                    } if matches!(
+                        operand.ty().kind(),
+                        CObjectTypeKind::Scalar(
+                            CScalarType::Bool | CScalarType::Int | CScalarType::I32
+                        )
+                    ) =>
+                    {
+                        add(Node::Value(operand))
+                    }
                     CValueKind::Convert {
                         conversion: CConversion::AddConst(ty),
                         operand,
@@ -262,7 +286,7 @@ fn walk<'a>(
             }
             Node::Type(ty) => match ty.kind() {
                 CObjectTypeKind::Scalar(
-                    CScalarType::I32 | CScalarType::Int | CScalarType::Bool,
+                    CScalarType::I32 | CScalarType::I64 | CScalarType::Int | CScalarType::Bool,
                 )
                 | CObjectTypeKind::Struct(_) => {}
                 CObjectTypeKind::Pointer(CPointerTarget::Object(pointee)) => {

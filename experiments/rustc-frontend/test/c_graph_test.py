@@ -186,11 +186,11 @@ conditional_argument = add("conditional_argument",
     "pub fn identity(v: i32) -> i32 { dep::identity(if v < 0 { 0 } else { v }) }\n",
     [("dep", "leaf")])
 reject(conditional_argument, "C expression mapping is not implemented")
-wide = add("wide", "pub fn identity(v: i64) -> i64 { v }\n")
+wide = add("wide", "pub fn identity(v: u64) -> u64 { v }\n")
 emit(wide)
 wide_unused = add("wide_unused", "pub fn identity(v: i32) -> i32 { v }\n",
                   [("dep", "wide")])
-reject(wide_unused, "direct-call signatures support only i32 and bool")
+reject(wide_unused, "direct-call signatures support only i32, i64 and bool")
 
 # A newly certified leaf cannot authenticate a consumer loading stale metadata.
 leaf["source"].write_text("/// Changed docs.\n" + leaf_text)

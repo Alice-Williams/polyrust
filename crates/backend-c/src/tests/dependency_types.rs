@@ -68,6 +68,7 @@ fn every_scalar_has_an_independent_header_expectation() {
             &header.into_iter().collect(),
             "{scalar:?}"
         );
+        assert_eq!(dependencies.scalars(), &BTreeSet::from([scalar]));
     }
 }
 

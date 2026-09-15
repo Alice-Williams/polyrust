@@ -7,6 +7,7 @@ pub(super) enum Object {
     Bool,
     Int,
     I32,
+    I64,
     Size,
     Pointer,
 }
@@ -27,6 +28,7 @@ impl Object {
             Self::Bool => CObjectType::scalar(CScalarType::Bool),
             Self::Int => CObjectType::scalar(CScalarType::Int),
             Self::I32 => CObjectType::scalar(CScalarType::I32),
+            Self::I64 => CObjectType::scalar(CScalarType::I64),
             Self::Size => CObjectType::scalar(CScalarType::Size),
             Self::Pointer => CObjectType::pointer(CPointerTarget::Void(CConstness::Unqualified)),
         }
@@ -39,6 +41,7 @@ impl Object {
             CObjectTypeKind::Scalar(CScalarType::Bool) => Ok(Self::Bool),
             CObjectTypeKind::Scalar(CScalarType::Int) => Ok(Self::Int),
             CObjectTypeKind::Scalar(CScalarType::I32) => Ok(Self::I32),
+            CObjectTypeKind::Scalar(CScalarType::I64) => Ok(Self::I64),
             CObjectTypeKind::Scalar(CScalarType::Size) => Ok(Self::Size),
             CObjectTypeKind::Pointer(CPointerTarget::Void(CConstness::Unqualified)) => {
                 Ok(Self::Pointer)
@@ -50,26 +53,30 @@ impl Object {
         match self {
             Self::Bool => 1,
             Self::Int | Self::I32 => 4,
-            Self::Size | Self::Pointer => 8,
+            Self::I64 | Self::Size | Self::Pointer => 8,
         }
     }
 }
 
-fn required() -> BTreeSet<Check> {
-    [
+fn required(sources: &[CSourceFile]) -> BTreeSet<Check> {
+    let mut objects = vec![
         Object::Bool,
         Object::Int,
         Object::I32,
         Object::Size,
         Object::Pointer,
-    ]
-    .into_iter()
-    .flat_map(|object| {
-        [Query::Size, Query::Alignment]
-            .into_iter()
-            .map(move |query| Check { object, query })
-    })
-    .collect()
+    ];
+    if crate::dialect::dependencies::source_scalars(sources).contains(&CScalarType::I64) {
+        objects.push(Object::I64);
+    }
+    objects
+        .into_iter()
+        .flat_map(|object| {
+            [Query::Size, Query::Alignment]
+                .into_iter()
+                .map(move |query| Check { object, query })
+        })
+        .collect()
 }
 
 pub(super) fn classify(assertion: &CStaticAssertion) -> Result<Check, String> {
@@ -94,7 +101,12 @@ pub(super) fn classify(assertion: &CStaticAssertion) -> Result<Check, String> {
     Ok(Check { object, query })
 }
 
+#[cfg(test)]
 pub(super) fn verify(source: &CSourceFile) -> Result<(), String> {
+    verify_required(source, &required(std::slice::from_ref(source)))
+}
+
+fn verify_required(source: &CSourceFile, expected: &BTreeSet<Check>) -> Result<(), String> {
     let mut actual = BTreeSet::new();
     for item in source.items() {
         if let CFileItem::StaticAssert(assertion) = item
@@ -103,7 +115,7 @@ pub(super) fn verify(source: &CSourceFile) -> Result<(), String> {
             return Err("duplicate C platform assertion".into());
         }
     }
-    if actual != required() {
+    if actual != *expected {
         return Err("missing C platform assertions".into());
     }
     Ok(())
@@ -121,7 +133,7 @@ pub(super) fn install(
 
 pub(super) fn verify_package(sources: &[CSourceFile]) -> Result<(), String> {
     let ordered = super::profile::ordered_sources(sources)?;
-    verify(ordered[0])
+    verify_required(ordered[0], &required(sources))
 }
 
 pub(super) fn install_package(
@@ -131,6 +143,7 @@ pub(super) fn install_package(
     // Guard every supplied tree before cloning or contextual work. In a pair,
     // the header carries platform obligations for both implementation and users.
     super::profile::check_registered_package(registry.registrations(), &sources)?;
+    let expected = required(&sources);
     let target = super::profile::ordered_sources(&sources)?[0]
         .identity()
         .clone();
@@ -138,7 +151,7 @@ pub(super) fn install_package(
         .into_iter()
         .map(|source| {
             if source.identity() == &target {
-                install_checked(registry, source)
+                install_checked(registry, source, &expected)
             } else {
                 Ok(source)
             }
@@ -149,20 +162,24 @@ pub(super) fn install_package(
     Ok(installed)
 }
 
-fn install_checked(registry: &CFrozenRegistry, source: CSourceFile) -> Result<CSourceFile, String> {
+fn install_checked(
+    registry: &CFrozenRegistry,
+    source: CSourceFile,
+    expected: &BTreeSet<Check>,
+) -> Result<CSourceFile, String> {
     if source
         .items()
         .iter()
         .any(|item| matches!(item, CFileItem::StaticAssert(_)))
     {
-        verify(&source)?;
+        verify_required(&source, expected)?;
         return Ok(source);
     }
     let declarations = CDeclarations::new(registry.registrations(), source.identity().clone())
         .map_err(|e| e.to_string())?;
     let expressions = CExpressions::new(registry.registrations());
     let mut items = Vec::new();
-    for check in required() {
+    for check in expected {
         let query = match check.query {
             Query::Size => expressions.size_of(check.object.ty()),
             Query::Alignment => expressions.align_of(check.object.ty()),

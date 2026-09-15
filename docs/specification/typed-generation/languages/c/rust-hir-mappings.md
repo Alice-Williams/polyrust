@@ -11,8 +11,9 @@ The implementation names below are authoritative. Older specification shorthand
 | Compiler-admitted input | Existing C representation | Required mapping rule |
 | --- | --- | --- |
 | i32 | CObjectType with CScalarType::I32 | Exact fixed width; not implementation-sized int |
+| i64 | CObjectType with CScalarType::I64 and CStdType::I64 | Exact int64_t identity, stdint dependency and conditional LP64 size/alignment obligations |
 | bool | CObjectType with CScalarType::Bool | Native _Bool; comparisons may require explicit conversion from C int |
-| Nonempty, non-generic no-Drop struct with only i32/bool fields | CStructRef, CMemberRef and CObjectType::structure | Private value layout; distinct nominal owners even for identical fields |
+| Nonempty, non-generic no-Drop struct with only i32/i64/bool fields | CStructRef, CMemberRef and CObjectType::structure | Private value layout; distinct nominal owners even for identical fields |
 | Shared reference to an admitted local object | CObjectType::pointer, CPointerTarget::Object, CConstness::Const on the pointee | Preserve reference depth, target type and qualifiers; not nullable ownership |
 | Function signature | CFunctionType, CParameterType, CReturnType and CReturnValue | Exact prototype; no variadics, unspecified-argument declarations or callable casts |
 | Integer/bool literal | CLiteral and CSignedLiteral where applicable | Use checked literal constructors and exact minimum-value spelling |
@@ -83,6 +84,14 @@ it must not introduce a raw warning pragma or silently discard effects.
 
 ## Capabilities outside the first subset
 
+The [i64 extension](../../rust-i64-values.md) reuses these executable capability
+slots and adds no broad numeric escape hatch. A shared checked input interprets
+literals, including signed minima, before target mapping. C uses registered
+int64_t references and explicitly typed minimum-value spelling. The dependency
+traversal retains scalar identities as well as headers; platform assertions do
+not count as source uses and cannot request their own layout obligations.
+Source arithmetic, other integer widths and integer writes remain unsupported.
+
 ### Executable source mapping ownership
 
 The compiler bridge registers these narrow source-capability owners. They are
@@ -91,7 +100,7 @@ not aliases for the complete portable capability catalogue:
 | Source capability | Session-bound input | C output |
 | --- | --- | --- |
 | ObjectTypes | compiler Ty | CObjectType plus registered nominal declarations |
-| LiteralValues | literal/negative-literal HIR expression | CValue |
+| LiteralValues | private checked LiteralInput with typed bool/i32/i64 value and compiler-session lifetime | CValue |
 | ResolvedPlaces | resolved path/field/dereference HIR expression and adjustments | CPlace |
 | SharedBorrows | immutable built-in borrow HIR expression | CValue |
 | ScalarComparisons | resolved scalar-comparison HIR expression | CValue |

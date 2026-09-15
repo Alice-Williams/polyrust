@@ -24,6 +24,29 @@ fn within(api: &JavaDependencyApi) -> u64 {
 }
 
 #[test]
+fn wide_literals_have_a_real_source_reservation() {
+    for value in [
+        i64::MIN,
+        -9_007_199_254_740_993,
+        0,
+        9_007_199_254_740_993,
+        i64::MAX,
+    ] {
+        let long = JavaType::primitive(JavaPrimitive::Long);
+        let mut functions = f::functions(0);
+        functions[0].result = long.clone();
+        functions[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr::literal(
+            long.clone(),
+            JavaLiteral::I64(value),
+        )))]);
+        let api =
+            JavaDependencyApi::from_certificate(f::certify(f::package(7, functions))).unwrap();
+        assert_eq!(api.function(f::id(7, 10)).unwrap().signature().result, long);
+        within(&api);
+    }
+}
+
+#[test]
 fn small_records_and_expanded_documentation_fit_before_rendering() {
     for value in [i32::MIN, -1, 0, i32::MAX] {
         within(
@@ -146,7 +169,7 @@ fn unmeasured_shapes_do_not_receive_a_small_fallback() {
     };
     assert!(
         reader
-            .ty(&JavaType::primitive(JavaPrimitive::Long))
+            .ty(&JavaType::primitive(JavaPrimitive::Double))
             .is_err()
     );
     assert!(

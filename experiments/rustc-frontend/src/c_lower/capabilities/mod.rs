@@ -13,6 +13,10 @@ mod shared_borrows;
 mod short_circuit_booleans;
 mod slots;
 
+#[cfg(literal_private_input)]
+#[path = "../../../test/literal_private_input.rs"]
+mod literal_private_input;
+
 #[cfg(boolean_contract)]
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/boolean_negation_contract.rs"]

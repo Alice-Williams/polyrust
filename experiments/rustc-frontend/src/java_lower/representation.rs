@@ -6,6 +6,7 @@ use portable_codegen::GeneratedTypeId;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum TypePlan {
     I32,
+    I64,
     Bool,
     Record(GeneratedTypeId),
     Shared(Box<TypePlan>),
@@ -15,6 +16,7 @@ impl TypePlan {
     pub(crate) fn java_type(&self) -> JavaType {
         match self {
             Self::I32 => JavaType::primitive(JavaPrimitive::Int),
+            Self::I64 => JavaType::primitive(JavaPrimitive::Long),
             Self::Bool => JavaType::primitive(JavaPrimitive::Boolean),
             Self::Record(id) => JavaType::Reference(JavaTypeName::Generated(*id)),
             Self::Shared(referent) => referent.java_type(),
@@ -24,8 +26,9 @@ impl TypePlan {
     pub(crate) fn scalar(ty: &JavaType) -> Result<Self> {
         match ty {
             JavaType::Primitive(JavaPrimitive::Int) => Ok(Self::I32),
+            JavaType::Primitive(JavaPrimitive::Long) => Ok(Self::I64),
             JavaType::Primitive(JavaPrimitive::Boolean) => Ok(Self::Bool),
-            _ => Err("source signature requires an i32/bool representation".into()),
+            _ => Err("source signature requires an i32/i64/bool representation".into()),
         }
     }
 }

@@ -7,6 +7,7 @@ use portable_codegen::{TargetLinker, verify_unresolved_package};
 fn scalar_measurements_use_the_existing_pinned_layout_model() {
     for (scalar, bytes) in [
         (CScalarType::I32, 4),
+        (CScalarType::I64, 8),
         (CScalarType::Int, 4),
         (CScalarType::Bool, 1),
     ] {
@@ -16,7 +17,10 @@ fn scalar_measurements_use_the_existing_pinned_layout_model() {
         let linked = TargetLinker::new(CDialect).link_ast(&checked).unwrap();
         let unit = &linked.files()[0].items()[0];
         let measured = resources::measure(unit).unwrap();
-        assert_eq!(measured.nodes, 100);
+        assert_eq!(
+            measured.nodes,
+            if scalar == CScalarType::I64 { 118 } else { 100 }
+        );
         assert_eq!(measured.depth, 5);
         assert_eq!(measured.automatic_bytes, bytes);
         assert_eq!(measured.value_bytes, bytes * 2);

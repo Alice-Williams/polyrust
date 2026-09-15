@@ -16,8 +16,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::{CHeader, CSystemLibrary};
 use crate::ast::{
-    CContextError, CEnumRef, CFileRef, CFrozenRegistry, CFunctionRef, CObjectRef, CSourceFile,
-    CStructRef, CTypedefRef, CUnionRef,
+    CContextError, CEnumRef, CFileItem, CFileRef, CFrozenRegistry, CFunctionRef, CObjectRef,
+    CScalarType, CSourceFile, CStructRef, CTypedefRef, CUnionRef,
 };
 
 /// C17 has separate tag and ordinary namespaces. Never key these by spelling.
@@ -40,6 +40,7 @@ pub enum CTypeRequirement {
 pub struct CFileDependencies {
     file: CFileRef,
     headers: BTreeSet<CHeader>,
+    scalars: BTreeSet<CScalarType>,
     libraries: BTreeSet<CSystemLibrary>,
     tags: BTreeMap<CTagDependency, CTypeRequirement>,
     aliases: BTreeSet<CTypedefRef>,
@@ -52,6 +53,7 @@ impl CFileDependencies {
         Self {
             file,
             headers: BTreeSet::new(),
+            scalars: BTreeSet::new(),
             libraries: BTreeSet::new(),
             tags: BTreeMap::new(),
             aliases: BTreeSet::new(),
@@ -65,6 +67,9 @@ impl CFileDependencies {
     }
     pub fn headers(&self) -> &BTreeSet<CHeader> {
         &self.headers
+    }
+    pub(crate) fn scalars(&self) -> &BTreeSet<CScalarType> {
+        &self.scalars
     }
     pub fn libraries(&self) -> &BTreeSet<CSystemLibrary> {
         &self.libraries
@@ -88,6 +93,22 @@ impl CFileDependencies {
             .and_modify(|old| *old = (*old).max(requirement))
             .or_insert(requirement);
     }
+}
+
+/// Structural discovery after the caller's profile/context gate. Platform
+/// assertions are excluded so an assertion cannot authorize its own presence.
+pub(crate) fn source_scalars(files: &[CSourceFile]) -> BTreeSet<CScalarType> {
+    let mut scalars = BTreeSet::new();
+    for file in files {
+        let mut dependencies = CFileDependencies::new(file.identity().clone());
+        for item in file.items() {
+            if !matches!(item, CFileItem::StaticAssert(_)) {
+                dependencies.item(item);
+            }
+        }
+        scalars.extend(dependencies.scalars);
+    }
+    scalars
 }
 
 /// Authenticate the whole package before collecting references. No raw source,

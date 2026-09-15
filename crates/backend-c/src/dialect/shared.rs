@@ -66,6 +66,14 @@ mod capacity_policy_tests;
 mod profile_inventory_tests;
 
 #[cfg(test)]
+#[path = "../tests/shared_i64_admission.rs"]
+mod i64_admission_tests;
+
+#[cfg(test)]
+#[path = "../tests/shared_i64_platform_pair.rs"]
+mod i64_platform_pair_tests;
+
+#[cfg(test)]
 #[path = "../tests/shared_storage_fixture.rs"]
 mod storage_fixture;
 

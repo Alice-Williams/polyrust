@@ -31,6 +31,7 @@ continues to support its existing parameter lists.
 | Rust source | Java representation and obligation |
 | --- | --- |
 | i32 | Java int; exact signed 32-bit values |
+| i64 | Java long; exact signed 64-bit values and two-slot JVM parameter/local accounting |
 | bool | Java boolean |
 | Nonempty no-Drop scalar-field struct | Nominal immutable implementation type, constructor and final fields; retain declaration/member identity |
 | Initialized immutable binding | Typed local with exact initialization and lexical scope |
@@ -68,13 +69,21 @@ typed registrations. The renderer performs structural Java spelling only.
 
 ## Java-owned source representation
 
-The adapter's representation enum distinguishes i32, bool, immutable nominal
+The adapter's representation enum distinguishes i32, i64, bool, immutable nominal
 records and shared-reference referents. It is a target representation plan, not
 a reconstructed generic Rust AST. A Java value pairs that plan with an existing
 JavaExpr whose JavaType agrees with the erased representation. A place is a
 separate typed wrapper admitted only from resolved bindings, authenticated fields
 and built-in shared dereference. Erasure must not turn an arbitrary value into a
 place or allow reference equality, mutation, nulls or escaping reference APIs.
+
+The [i64 extension](../../rust-i64-values.md) uses primitive long throughout,
+including imported method signatures and immutable scalar-field records. Shared
+checked literal input distinguishes I32, I64 and Bool values; Java lowering
+maps that enum without parsing source token text. Native long literals retain
+the exact signed minimum, and source-size/classfile checks include their real
+representation. Other integer widths, arithmetic, casts and mutable integer
+locals are not enabled by this representation extension.
 
 Literal, comparison, Boolean-negation, short-circuit Boolean, borrow, call and record-initializer mappings produce planned
 Java values. ObjectTypes produces the representation plan; ResolvedPlaces produces

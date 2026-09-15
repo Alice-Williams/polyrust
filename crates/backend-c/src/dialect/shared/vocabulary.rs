@@ -10,6 +10,7 @@ pub enum CUnavailable {}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CStdType {
     I32,
+    I64,
     Size,
 }
 
@@ -17,12 +18,13 @@ impl CStdType {
     pub(super) const fn spelling(self) -> &'static str {
         match self {
             Self::I32 => "int32_t",
+            Self::I64 => "int64_t",
             Self::Size => "size_t",
         }
     }
     pub(super) const fn header(self) -> crate::dialect::CHeader {
         match self {
-            Self::I32 => crate::dialect::CHeader::Stdint,
+            Self::I32 | Self::I64 => crate::dialect::CHeader::Stdint,
             Self::Size => crate::dialect::CHeader::Stddef,
         }
     }

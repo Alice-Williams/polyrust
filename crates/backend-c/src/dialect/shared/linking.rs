@@ -83,7 +83,7 @@ impl LinkerDialect for CDialect {
     fn symbol_catalogue(&self) -> SymbolCatalogue<Self> {
         SymbolCatalogue {
             dependency_callables: vec![],
-            types: [CStdType::I32, CStdType::Size]
+            types: [CStdType::I32, CStdType::I64, CStdType::Size]
                 .into_iter()
                 .map(|symbol| KnownTypeSpec {
                     symbol,

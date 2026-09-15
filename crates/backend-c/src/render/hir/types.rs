@@ -6,6 +6,7 @@ impl Writer<'_> {
     pub(super) fn scalar(&self, scalar: CScalarType) -> &str {
         match scalar {
             CScalarType::I32 => self.names.standards[&CStdType::I32].as_str(),
+            CScalarType::I64 => self.names.standards[&CStdType::I64].as_str(),
             CScalarType::Int => "int",
             CScalarType::Bool => "_Bool",
             _ => unreachable!("checked scalar profile"),

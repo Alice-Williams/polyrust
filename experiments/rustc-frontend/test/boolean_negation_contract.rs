@@ -82,7 +82,8 @@ fn wrong() {
 
 #[cfg(boolean_wrong_input)]
 fn wrong_input<'tcx>(reader: &mut Reader<'tcx>, expression: &'tcx rustc_hir::Expr<'tcx>) {
-    let _ = Negate.lower(reader, LiteralInput(expression));
+    let input = LiteralInput::read(reader.checked, expression).unwrap();
+    let _ = Negate.lower(reader, input);
 }
 
 #[cfg(boolean_private_input)]

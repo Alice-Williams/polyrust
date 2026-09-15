@@ -11,8 +11,11 @@ The first bounded implementation,
 Other scalar operations remain separate work; this does not claim full parity.
 [M35-03A-02B — short-circuit Boolean expressions](M35-03A-02B-short-circuit-booleans.md)
 is also complete, including native operand-call traces and typed AST probes.
+[M35-03A-02C — exact i64 values and comparisons](M35-03A-02C-i64-values.md)
+is complete, including mixed-width signatures, native call-order controls and
+target-AST admission tests. Other scalar families below remain outstanding.
 
-Add missing i64/f64/char/unit values, constants/aliases, Boolean operations,
+Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing
 i32/bool support is only partial parity. Specify source forms and target rules

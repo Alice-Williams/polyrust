@@ -139,7 +139,9 @@ impl Reader<'_> {
             return Err("Java dependency body contains an unadmitted value type".into());
         }
         match &value.kind {
-            JavaExprKind::Literal(JavaLiteral::I32(_) | JavaLiteral::Boolean(_))
+            JavaExprKind::Literal(
+                JavaLiteral::I32(_) | JavaLiteral::I64(_) | JavaLiteral::Boolean(_),
+            )
             | JavaExprKind::Value(JavaValueRef::Local(_)) => {}
             JavaExprKind::Unary {
                 operator: JavaUnaryOperator::Not,
@@ -162,7 +164,8 @@ impl Reader<'_> {
                     | JavaBinaryOperator::Greater
                     | JavaBinaryOperator::GreaterEqual
             ) && scalar(&left.ty)
-                && scalar(&right.ty) =>
+                && left.ty == right.ty
+                && value.ty == JavaType::primitive(JavaPrimitive::Boolean) =>
             {
                 self.expression(left, depth + 1)?;
                 self.expression(right, depth + 1)?;
@@ -302,3 +305,7 @@ fn call_heights_with_bases(
 #[cfg(test)]
 #[path = "../../tests/dependency_body_limits.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "../../tests/dependency_i64_bodies.rs"]
+mod i64_tests;

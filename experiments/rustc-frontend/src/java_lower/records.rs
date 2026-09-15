@@ -58,6 +58,7 @@ impl<'tcx> Reader<'tcx> {
                 .map_err(|_| "record field normalization failed")?;
             let plan = match field_type.kind() {
                 ty::Int(ty::IntTy::I32) => TypePlan::I32,
+                ty::Int(ty::IntTy::I64) => TypePlan::I64,
                 ty::Bool => TypePlan::Bool,
                 _ => return Err("only scalar record fields are implemented".into()),
             };

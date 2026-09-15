@@ -214,6 +214,7 @@ fn target_signature(
 ) -> Result<TargetCallableSignature<JavaDialect>> {
     let ty = |ty: &JavaType| match TypePlan::scalar(ty)? {
         TypePlan::I32 => Ok(TargetTypeRef::Primitive(JavaPrimitive::Int)),
+        TypePlan::I64 => Ok(TargetTypeRef::Primitive(JavaPrimitive::Long)),
         TypePlan::Bool => Ok(TargetTypeRef::Primitive(JavaPrimitive::Boolean)),
         _ => Err("non-scalar callable signature".to_owned()),
     };

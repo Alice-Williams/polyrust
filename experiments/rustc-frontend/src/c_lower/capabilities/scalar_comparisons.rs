@@ -35,7 +35,7 @@ impl Mapping for CScalarComparisons {
         for operand in [left, right] {
             if !matches!(
                 reader.checked.expr_ty_adjusted(operand).kind(),
-                ty::Int(ty::IntTy::I32) | ty::Bool
+                ty::Int(ty::IntTy::I32 | ty::IntTy::I64) | ty::Bool
             ) {
                 return Err("only scalar comparisons are implemented".into());
             }

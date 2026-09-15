@@ -22,6 +22,21 @@ impl Writer<'_> {
                 )
             }
             CValueKind::Literal(CLiteral::Bool(value)) => if *value { "1" } else { "0" }.into(),
+            CValueKind::Literal(CLiteral::Signed(CSignedLiteral::I64(value))) => {
+                let literal = if *value == i64::MIN {
+                    "(-9223372036854775807LL - 1LL)".into()
+                } else if *value < 0 {
+                    format!("({value}LL)")
+                } else {
+                    format!("{value}LL")
+                };
+                // int64_t need not be a typedef of long long on LP64. Keep the
+                // rendered expression's type equal to its certified AST type.
+                format!(
+                    "(({}) {literal})",
+                    self.scalar(crate::ast::CScalarType::I64)
+                )
+            }
             CValueKind::Literal(CLiteral::Signed(
                 CSignedLiteral::I32(value) | CSignedLiteral::Int(value),
             )) => {

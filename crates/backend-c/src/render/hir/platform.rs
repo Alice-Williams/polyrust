@@ -21,6 +21,7 @@ impl Writer<'_> {
             Object::Int => "int",
             Object::Pointer => "void *",
             Object::I32 => self.names.standards[&CStdType::I32].as_str(),
+            Object::I64 => self.names.standards[&CStdType::I64].as_str(),
             Object::Size => self.names.standards[&CStdType::Size].as_str(),
         };
         write!(

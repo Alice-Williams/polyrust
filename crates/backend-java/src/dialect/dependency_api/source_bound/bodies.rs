@@ -43,7 +43,9 @@ impl Reader<'_> {
     fn expression(&mut self, value: &JavaExpr, depth: usize) -> Result<(), String> {
         self.budget.node(depth)?;
         match &value.kind {
-            JavaExprKind::Literal(JavaLiteral::I32(_) | JavaLiteral::Boolean(_))
+            JavaExprKind::Literal(
+                JavaLiteral::I32(_) | JavaLiteral::I64(_) | JavaLiteral::Boolean(_),
+            )
             | JavaExprKind::Value(JavaValueRef::This) => Ok(()),
             JavaExprKind::Value(JavaValueRef::Local(name)) => self.spelling(name.as_str()),
             JavaExprKind::Unary {

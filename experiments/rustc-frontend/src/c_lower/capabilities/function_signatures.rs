@@ -29,8 +29,9 @@ impl Mapping for CFunctionSignatures {
         let scalar = |ty: ty::Ty<'tcx>| -> Result<CObjectType> {
             Ok(CObjectType::scalar(match ty.kind() {
                 ty::Int(ty::IntTy::I32) => CScalarType::I32,
+                ty::Int(ty::IntTy::I64) => CScalarType::I64,
                 ty::Bool => CScalarType::Bool,
-                _ => return Err("direct-call signatures support only i32 and bool".into()),
+                _ => return Err("direct-call signatures support only i32, i64 and bool".into()),
             }))
         };
         let parameters = signature

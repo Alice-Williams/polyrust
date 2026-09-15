@@ -14,6 +14,12 @@ generic instances, not string-tag or ID comparisons in rendering.
 
 ## Definition of done and tests
 
+- Close the foreign function re-export gap found by M35-03A-02C: preserve the
+  dependency-owned definition identity through a public alias, and prove it with
+  separately compiled C/Java consumers and missing/wrong-owner rejection tests.
+  Local aliases and imported calls do not establish this capability. Split this
+  into its own implementation checkpoint before claiming crate-boundary parity.
+
 - Ordinary generated C declarations and Java types implement the admitted
   source behavior without Runtime type/member privileges.
 - Native tests exercise enum cases/payloads, empty interfaces, multiple

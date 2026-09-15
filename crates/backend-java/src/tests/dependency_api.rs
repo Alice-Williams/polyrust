@@ -2,6 +2,100 @@ use super::source_dependency_fixture::*;
 use crate::{ast::*, dialect::JavaDependencyApi};
 
 #[test]
+fn mixed_width_comparisons_reject_before_java_dependency_certification() {
+    for operator in [
+        JavaBinaryOperator::Equal,
+        JavaBinaryOperator::NotEqual,
+        JavaBinaryOperator::Less,
+        JavaBinaryOperator::LessEqual,
+        JavaBinaryOperator::Greater,
+        JavaBinaryOperator::GreaterEqual,
+    ] {
+        for mixed in [false, true] {
+            for reverse in [false, true] {
+                let wide = JavaExpr::literal(
+                    JavaType::primitive(JavaPrimitive::Long),
+                    JavaLiteral::I64(1),
+                );
+                let other = if mixed {
+                    JavaExpr::literal(int(), JavaLiteral::I32(1))
+                } else {
+                    wide.clone()
+                };
+                let (left, right) = if reverse {
+                    (other, wide)
+                } else {
+                    (wide, other)
+                };
+                let mut fixture = functions(42);
+                fixture[0].result = boolean();
+                fixture[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
+                    ty: boolean(),
+                    precedence: JavaPrecedence::Primary,
+                    kind: JavaExprKind::Binary {
+                        operator,
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    },
+                }))]);
+                let draft = package(7, fixture);
+                if mixed {
+                    // Java syntax permits promotion, but our existing AST
+                    // contract requires exact operand types before certification.
+                    let errors = portable_codegen::verify_unresolved_package(
+                        &crate::dialect::JavaDialect,
+                        draft,
+                    )
+                    .unwrap_err();
+                    assert!(
+                        errors
+                            .iter()
+                            .any(|error| error.message.contains("binary operator type mismatch")),
+                        "{errors:?}"
+                    );
+                } else {
+                    assert!(JavaDependencyApi::from_certificate(certify(draft)).is_ok());
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn long_signatures_remain_distinct_and_long_mutation_is_not_admitted() {
+    let long = JavaType::primitive(JavaPrimitive::Long);
+    let mut fixture = functions(42);
+    fixture[1].parameters[0].ty = long.clone();
+    fixture[1].result = long.clone();
+    fixture[1].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr::local(
+        long.clone(),
+        name("p0"),
+    )))]);
+    let api = JavaDependencyApi::from_certificate(certify(package(7, fixture))).unwrap();
+    let signature = api.function(id(7, 11)).unwrap().signature();
+    assert_eq!(
+        signature.parameters,
+        [long.clone(), boolean(), int(), boolean()]
+    );
+    assert_eq!(signature.result, long);
+    let mut fixture = functions(42);
+    fixture[0].body.statements.insert(
+        0,
+        JavaStmt::Local {
+            finality: JavaLocalFinality::Mutable,
+            ty: long.clone(),
+            name: name("wide"),
+            value: Some(JavaExpr::literal(long, JavaLiteral::I64(i64::MIN))),
+        },
+    );
+    assert!(
+        JavaDependencyApi::from_certificate(certify(package(7, fixture)))
+            .unwrap_err()
+            .contains("unadmitted statement")
+    );
+}
+
+#[test]
 fn mutable_bool_local_branch_writes_are_closed_dependency_bodies() {
     let mut fixture = functions(42);
     let local = JavaExpr::local(boolean(), name("result"));

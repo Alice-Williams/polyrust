@@ -13,6 +13,7 @@ load(":defs.bzl", "adapter_format_test", "compiler_adapter", "compiler_adapter_c
 load(":direct_call_targets.bzl", "direct_call_targets")
 load(":documentation_targets.bzl", "documentation_targets")
 load(":export_graph_targets.bzl", "export_graph_targets")
+load(":i64_targets.bzl", "i64_targets")
 load(":java_ast_targets.bzl", "java_ast_targets")
 load(":java_bundle_targets.bzl", "java_bundle_targets")
 load(":java_contract_targets.bzl", "java_contract_targets")
@@ -93,6 +94,11 @@ boolean_negation_contract_targets(
 boolean_negation_native_targets(name = "boolean_negation_test")
 
 short_circuit_targets(name = "short_circuit_clippy_test")
+
+i64_targets(
+    name = "i64_clippy_test",
+    c_sources = ADAPTER_SOURCES,
+)
 
 short_circuit_contract_targets(
     name = "short_circuit_contract_test",

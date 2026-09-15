@@ -74,12 +74,17 @@ fn unsupported_public_category_rejects_instead_of_being_silently_omitted() {
 }
 
 #[test]
-fn non_scalar_export_does_not_acquire_a_scalar_dependency_handle() {
+fn character_export_does_not_acquire_an_integer_dependency_handle() {
     let mut fixture = functions(42);
-    fixture[0].result = JavaType::primitive(JavaPrimitive::Long);
-    fixture[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr::literal(
-        JavaType::primitive(JavaPrimitive::Long),
-        JavaLiteral::I64(42),
+    fixture[0].result = JavaType::primitive(JavaPrimitive::Char);
+    fixture[0].parameters = vec![JavaParameter {
+        ty: JavaType::primitive(JavaPrimitive::Char),
+        name: name("character"),
+        final_parameter: true,
+    }];
+    fixture[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr::local(
+        JavaType::primitive(JavaPrimitive::Char),
+        name("character"),
     )))]);
     assert!(
         JavaDependencyApi::from_certificate(certify(package(7, fixture)))

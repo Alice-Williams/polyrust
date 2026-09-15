@@ -41,8 +41,10 @@ pass before each checkpoint and the final cutover.
 M35-03A-01 is complete: the inventory and real-bundle guards are reviewed and
 gated. M35-03A-02A adds reviewed, native-tested built-in bool negation through
 both new target paths. M35-03A-02B adds built-in lazy bool and/or with native
-evaluation-order traces and scoped AST probes. Implementation parity remains
-incomplete; wider scalar types and the other scalar families remain outstanding.
+evaluation-order traces and scoped AST probes. M35-03A-02C adds exact i64 values,
+comparisons and mixed-width signatures with native call-order and admission
+controls. Implementation parity remains incomplete: arithmetic, floating-point,
+char/unit values and the other capability families remain outstanding.
 
 Legacy C embeds runtime.c/runtime.h and always requests runtime.core. Its
 portable generator remains active in CLI, conformance, benchmarks and examples.

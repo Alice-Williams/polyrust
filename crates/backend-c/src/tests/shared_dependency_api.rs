@@ -157,7 +157,7 @@ fn certificate_alone_does_not_admit_non_package_or_non_rust_scalar_apis() {
     assert!(
         CDependencyApi::from_certificate(certify(&wide_api))
             .unwrap_err()
-            .contains("i32/bool")
+            .contains("i32/i64/bool")
     );
 }
 

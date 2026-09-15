@@ -13,6 +13,7 @@ impl Mapping for JavaObjectTypes {
     fn lower<'tcx>(&self, reader: &mut Reader<'tcx>, input: TypeInput<'tcx>) -> Result<TypePlan> {
         match input.0.kind() {
             ty::Int(ty::IntTy::I32) => Ok(TypePlan::I32),
+            ty::Int(ty::IntTy::I64) => Ok(TypePlan::I64),
             ty::Bool => Ok(TypePlan::Bool),
             ty::Ref(_, referent, rustc_hir::Mutability::Not) => {
                 Ok(TypePlan::Shared(Box::new(reader.ty(*referent)?)))

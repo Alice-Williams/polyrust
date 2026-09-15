@@ -6,7 +6,10 @@ use crate::ast::{CFunctionType, CObjectType, CObjectTypeKind, CPointerTarget, CR
 impl CFileDependencies {
     pub(super) fn object_type(&mut self, ty: &CObjectType, need: CTypeRequirement) {
         match ty.kind() {
-            CObjectTypeKind::Scalar(scalar) => self.headers.extend(scalar.header()),
+            CObjectTypeKind::Scalar(scalar) => {
+                self.headers.extend(scalar.header());
+                self.scalars.insert(*scalar);
+            }
             CObjectTypeKind::Known(known) => {
                 self.headers.insert(known.header());
             }
