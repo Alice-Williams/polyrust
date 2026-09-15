@@ -48,7 +48,10 @@ fn owned_constants_cannot_collide_with_unselected_direct_or_transitive_exports()
     }
 }
 
-fn write_package(package: &RenderReadyPackage<CDialect>, directory: &Path) -> Vec<PathBuf> {
+pub(super) fn write_package(
+    package: &RenderReadyPackage<CDialect>,
+    directory: &Path,
+) -> Vec<PathBuf> {
     let rendered = render_certified_package(&CStructuralRenderer, package).unwrap();
     let mut sources = vec![];
     for file in rendered.files() {

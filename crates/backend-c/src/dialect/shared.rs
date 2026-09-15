@@ -1,6 +1,7 @@
 //! Checked projection of the existing C tree into the shared phase machinery.
 
 mod bindings;
+mod constant_view;
 mod definition_view;
 mod dependency_api;
 mod dependency_exports;
@@ -23,6 +24,18 @@ mod spelling;
 mod unit_bindings;
 mod vocabulary;
 
+#[cfg(test)]
+#[path = "../tests/shared_constant_producer_dependencies.rs"]
+mod constant_producer_dependency_tests;
+#[cfg(test)]
+#[path = "../tests/shared_constant_producer_metadata.rs"]
+mod constant_producer_metadata_tests;
+#[cfg(test)]
+#[path = "../tests/shared_constant_producer_native.rs"]
+mod constant_producer_native_tests;
+#[cfg(test)]
+#[path = "../tests/shared_constant_producers.rs"]
+mod constant_producer_tests;
 #[cfg(test)]
 #[path = "../tests/shared_owned_constant_dependency_fixture.rs"]
 mod owned_constant_dependency_fixture;
@@ -150,9 +163,12 @@ pub(crate) mod package_source_fixture;
 #[path = "../tests/shared_platform_native.rs"]
 mod platform_native_tests;
 
+pub use constant_view::{CDefinedConstant, c_defined_constants};
 pub use definition_view::{CDefinedFunction, c_defined_functions, c_output_byte_bound};
 pub(crate) use dependency_api::CDependencyAuthority;
-pub use dependency_api::{CDependencyApi, CDependencyFunction, CDependencyPackage};
+pub use dependency_api::{
+    CDependencyApi, CDependencyConstant, CDependencyFunction, CDependencyPackage,
+};
 pub use dependency_symbols::CImportedCallable;
 pub use file_imports::{CGeneratedHeader, CHeaderGuard, CImportKind};
 pub use import_view::{CImportedFunction, c_imported_functions};

@@ -1,5 +1,6 @@
 //! Reconstruct dependency API membership from the immutable certificate.
-use super::super::{CDialect, CGeneratedHeader, c_defined_functions};
+mod constants;
+use super::super::{CDialect, CGeneratedHeader, c_defined_constants, c_defined_functions};
 use crate::ast::*;
 use portable_codegen::{
     RenderReadyPackage, RustDeclarationId, RustExportNamespace, RustExportTarget, RustSourceNode,
@@ -12,6 +13,14 @@ pub(super) struct Inventory {
     pub header: CGeneratedHeader,
     pub implementation: CFileRef,
     pub functions: BTreeMap<RustDeclarationId, (CFunctionRef, CIdentifier)>,
+    pub constants: BTreeMap<RustDeclarationId, Constant>,
+}
+
+pub(super) struct Constant {
+    pub object: CObjectRef,
+    pub symbol: CIdentifier,
+    pub value: CLiteral,
+    pub read_type: CObjectType,
 }
 
 fn scalar(ty: &CObjectType) -> bool {
@@ -32,18 +41,6 @@ fn signature(function: &CFunctionRef) -> bool {
 
 pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventory, String> {
     let files = package.ast().files();
-    // Until typed imported objects are implemented, the function-only API must
-    // reject EVERY object-bearing producer, including synthesized constants
-    // absent from Rust exports. Otherwise its collision inventory omits symbols
-    // that the producer's public header and implementation actually emit.
-    if files.iter().flat_map(|file| file.items()).any(|unit| {
-        unit.unit.data.source.items().iter().any(|item| {
-            matches!(item, CFileItem::Definition(definition)
-                if matches!(definition.kind(), CDefinitionKind::Object { .. }))
-        })
-    }) {
-        return Err("C dependency API cannot yet authenticate object exports".into());
-    }
     if files.len() != 2 {
         return Err("C dependency API requires a certified public header/source pair".into());
     }
@@ -63,10 +60,12 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
     )
     .map_err(|error| error.message)?;
     let first = c_defined_functions(package)
+        .map(|definition| &definition.function().key().origin)
+        .chain(c_defined_constants(package).map(|definition| &definition.object().key().origin))
         .next()
         .ok_or("C dependency API has no definitions")?;
-    let CGeneratedOrigin::RustSource(first_origin) = &first.function().key().origin else {
-        return Err("C dependency API currently requires Rust-source function provenance".into());
+    let CGeneratedOrigin::RustSource(first_origin) = first else {
+        return Err("C dependency API requires Rust-source definition provenance".into());
     };
     let exports = &first_origin.crate_exports;
     let root = exports.root;
@@ -99,14 +98,15 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
                 }
                 _ => {
                     return Err(
-                        "C dependency export has no supported local function mapping".into(),
+                        "C dependency export has no supported local function/constant mapping"
+                            .into(),
                     );
                 }
             }
         }
     }
     if public.is_empty() {
-        return Err("C dependency API has no public function bindings".into());
+        return Err("C dependency API has no public value bindings".into());
     }
     let sources = projection
         .sources
@@ -160,7 +160,24 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
             functions.insert(id, (function.clone(), definition.name().clone()));
         }
     }
-    if functions.keys().copied().collect::<BTreeSet<_>>() != public {
+    let constants = constants::collect(
+        package,
+        constants::Context {
+            exports,
+            public: &public,
+            header: header.file(),
+            implementation: implementation.module(),
+        },
+        &mut definitions,
+        &mut symbols,
+    )?;
+    if functions
+        .keys()
+        .chain(constants.keys())
+        .copied()
+        .collect::<BTreeSet<_>>()
+        != public
+    {
         return Err("C dependency API omits a compiler public binding".into());
     }
     Ok(Inventory {
@@ -168,5 +185,6 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
         header,
         implementation: implementation.module().clone(),
         functions,
+        constants,
     })
 }

@@ -32,6 +32,22 @@ pub(super) fn middle(owner: &CDependencyApi) -> CDependencyApi {
 }
 
 pub(super) fn consumer(name: &str, dependency: CDependencyFunction, call: bool) -> Fixture {
+    with_call(
+        name,
+        "consumer_read",
+        dependency,
+        &[CLiteral::Signed(CSignedLiteral::I32(42))],
+        call,
+    )
+}
+
+pub(super) fn with_call(
+    name: &str,
+    function_name: &str,
+    dependency: CDependencyFunction,
+    arguments: &[CLiteral],
+    call: bool,
+) -> Fixture {
     let mut registry = CRegistry::new();
     let imported = registry.import_function(dependency).unwrap();
     let header = registry
@@ -57,7 +73,7 @@ pub(super) fn consumer(name: &str, dependency: CDependencyFunction, call: bool) 
     let function = registry
         .register_function(
             &header,
-            key("consumer_read"),
+            key(function_name),
             CFunctionType::new(CReturnType::Value(CReturnValue::new(ty).unwrap()), vec![]),
         )
         .unwrap();
@@ -73,7 +89,13 @@ pub(super) fn consumer(name: &str, dependency: CDependencyFunction, call: bool) 
     let statements = CStatements::new(&registry, function.clone()).unwrap();
     let value = if call {
         expressions
-            .call_value(expressions.direct(imported).unwrap(), vec![literal()])
+            .call_value(
+                expressions.direct(imported).unwrap(),
+                arguments
+                    .iter()
+                    .map(|value| expressions.literal(value.clone()).unwrap())
+                    .collect(),
+            )
             .unwrap()
     } else {
         literal()

@@ -18,22 +18,6 @@ pub(super) fn linked(fixture: &owned_constant_fixture::Fixture) -> LinkedTargetP
 }
 
 #[test]
-fn constant_bearing_packages_cannot_claim_function_only_dependency_apis() {
-    for fixture in [
-        owned_constant_fixture::fixture(Shape::ConstantsOnly),
-        owned_constant_fixture::fixture(Shape::Mixed),
-        owned_constant_fixture::synthesized_constants_fixture(),
-    ] {
-        let certificate = certify_resolved_package(&CDialect, linked(&fixture)).unwrap();
-        let error = super::CDependencyApi::from_certificate(certificate).unwrap_err();
-        assert!(
-            error.contains("cannot yet authenticate object exports"),
-            "{error}"
-        );
-    }
-}
-
-#[test]
 fn constants_only_and_mixed_packages_use_typed_global_bindings() {
     for shape in [Shape::ConstantsOnly, Shape::Mixed] {
         let fixture = owned_constant_fixture::fixture(shape);

@@ -26,7 +26,14 @@ pub(super) fn key(name: &str) -> CDeclarationKey {
 }
 
 pub(super) fn fixture(shape: Shape) -> Fixture {
-    build(shape, ConstantOrigins::RustSource)
+    build(shape, ConstantOrigins::RustSource, |_| {})
+}
+
+pub(super) fn with_origin_changes(
+    shape: Shape,
+    change: impl Fn(&mut portable_codegen::RustSourceOrigin),
+) -> Fixture {
+    build(shape, ConstantOrigins::RustSource, change)
 }
 
 #[derive(Clone, Copy)]
@@ -36,10 +43,14 @@ enum ConstantOrigins {
 }
 
 pub(super) fn synthesized_constants_fixture() -> Fixture {
-    build(Shape::Mixed, ConstantOrigins::Synthesized)
+    build(Shape::Mixed, ConstantOrigins::Synthesized, |_| {})
 }
 
-fn build(shape: Shape, origins: ConstantOrigins) -> Fixture {
+fn build(
+    shape: Shape,
+    origins: ConstantOrigins,
+    change: impl Fn(&mut portable_codegen::RustSourceOrigin),
+) -> Fixture {
     let literals = [
         ("false_value", CLiteral::Bool(false)),
         ("true_value", CLiteral::Bool(true)),
@@ -87,6 +98,7 @@ fn build(shape: Shape, origins: ConstantOrigins) -> Fixture {
         origin.declaration = id(hash);
         origin.documentation = vec![format!("Documentation for {name}.")];
         origin.crate_exports = exports.clone();
+        change(&mut origin);
         CGeneratedOrigin::RustSource(Arc::new(origin))
     };
     let mut registry = CRegistry::new();

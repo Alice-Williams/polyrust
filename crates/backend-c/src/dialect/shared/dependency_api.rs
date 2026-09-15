@@ -1,7 +1,9 @@
 //! Certificate-derived dependency evidence, separate from consumer registration.
+mod constants;
 mod inventory;
 use super::{CDialect, CGeneratedHeader, resources};
 use crate::ast::{CFileRef, CFunctionRef, CFunctionType, CIdentifier};
+pub use constants::CDependencyConstant;
 use portable_codegen::{RenderReadyPackage, RustDeclarationId};
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -68,6 +70,10 @@ impl CDependencyPackage {
         super::c_defined_functions(&self.authority.0.package)
             .filter(|definition| definition.linkage() == crate::ast::CLinkage::External)
             .map(|definition| definition.name())
+            .chain(
+                super::c_defined_constants(&self.authority.0.package)
+                    .map(|definition| definition.name()),
+            )
     }
 
     pub fn root(&self) -> RustDeclarationId {
@@ -195,6 +201,7 @@ impl Ord for CDependencyFunction {
 pub struct CDependencyApi {
     authority: Arc<Authority>,
     functions: BTreeMap<RustDeclarationId, CDependencyFunction>,
+    constants: BTreeMap<RustDeclarationId, CDependencyConstant>,
 }
 
 impl CDependencyApi {
@@ -223,9 +230,20 @@ impl CDependencyApi {
                 )
             })
             .collect();
+        let constants = inventory
+            .constants
+            .into_iter()
+            .map(|(declaration, constant)| {
+                (
+                    declaration,
+                    CDependencyConstant::new(authority.clone(), declaration, constant),
+                )
+            })
+            .collect();
         Ok(Self {
             authority,
             functions,
+            constants,
         })
     }
 
@@ -249,5 +267,13 @@ impl CDependencyApi {
 
     pub fn function(&self, declaration: RustDeclarationId) -> Option<&CDependencyFunction> {
         self.functions.get(&declaration)
+    }
+
+    pub fn constants(&self) -> impl Iterator<Item = &CDependencyConstant> {
+        self.constants.values()
+    }
+
+    pub fn constant(&self, declaration: RustDeclarationId) -> Option<&CDependencyConstant> {
+        self.constants.get(&declaration)
     }
 }

@@ -1,6 +1,6 @@
 # M35-03A-02F-02B-02B — Certified C constant imports
 
-- Status: planned
+- Status: in-progress
 - Parent: [C constant APIs](M35-03A-02F-02B-02-c-constant-api.md)
 - Depends on: M35-03A-02F-02B-02A
 
@@ -32,7 +32,16 @@ using those certificates. Foreign objects never become fake owned definitions.
 - Fresh clean review, isolated full Bazel/lint, inspectable ignored examples and
   scoped commit/push. Complete parent02 only after both children pass.
 
-## Boundary
+## Ordered implementation
+
+1. [01 — Certified producer APIs](M35-03A-02F-02B-02B-01-constant-producers.md) — complete, reviewed and fully gated.
+2. [02 — Authenticated consumers](M35-03A-02F-02B-02B-02-constant-consumers.md) — planned.
+
+Each child is independently reviewed, fully gated and committed. The interim
+producer rejection is removed only with complete certified export inventories;
+consumer constant imports are enabled only with their own authenticated mapping.
+
+## Remaining source boundary
 
 Rust HIR admission and multi-crate metadata publication remain children04/05.
 No remaining legacy constant family or runtime is removed by this target step.
