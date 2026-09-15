@@ -15,8 +15,15 @@ pub(super) fn project(
     dependencies: &CFileDependencies,
 ) -> Result<(CBindings, Vec<Symbol>), String> {
     let mut bodies = BTreeMap::new();
+    let mut object_bodies = BTreeMap::new();
     for source in sources {
         for item in source.items() {
+            if let CFileItem::Definition(definition) = item
+                && let CDefinitionKind::Object { object, .. } = definition.kind()
+                && object_bodies.insert(object, source.identity()).is_some()
+            {
+                return Err("C object has more than one defining source file".into());
+            }
             if let CFileItem::Definition(definition) = item
                 && let CDefinitionKind::Function { function, .. } = definition.kind()
                 && bodies.insert(function, source.identity()).is_some()
@@ -39,6 +46,7 @@ pub(super) fn project(
     }
     for (value, id) in &bindings.values {
         let owner = match value {
+            CValueBinding::Global(object) => object.file(),
             CValueBinding::Member(member) => match member.owner() {
                 CAggregateRef::Struct(record) => record.file(),
                 CAggregateRef::Union(record) => record.file(),
@@ -80,6 +88,19 @@ pub(super) fn project(
                 .functions
                 .get(function)
                 .ok_or("C used function has no binding")?,
+        ));
+    }
+    for object in dependencies.objects().iter().chain(
+        object_bodies
+            .iter()
+            .filter(|(_, owner)| **owner == file)
+            .map(|(object, _)| *object),
+    ) {
+        used.insert(Symbol::Value(
+            *bindings
+                .values
+                .get(&CValueBinding::Global(object.clone()))
+                .ok_or("C used global object has no binding")?,
         ));
     }
     let mut selected = select(bindings, &used)?;

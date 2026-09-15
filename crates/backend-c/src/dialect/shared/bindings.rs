@@ -2,8 +2,8 @@
 
 use super::{CDialect, CInvocation, CStdType};
 use crate::ast::{
-    CFunctionRef, CLocalRef, CMemberRef, CObjectType, CObjectTypeKind, CParameterRef, CReturnType,
-    CScalarType, CStructRef,
+    CFunctionRef, CLocalRef, CMemberRef, CObjectRef, CObjectType, CObjectTypeKind, CParameterRef,
+    CReturnType, CScalarType, CStructRef,
 };
 use portable_codegen::{
     GeneratedCallableId, GeneratedSymbolId, GeneratedTypeId, GeneratedValueId,
@@ -24,6 +24,7 @@ pub(super) struct CBindings {
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) enum CValueBinding {
+    Global(CObjectRef),
     Member(CMemberRef),
     Parameter(CParameterRef),
     Local(CLocalRef),
@@ -32,6 +33,7 @@ pub(super) enum CValueBinding {
 impl CValueBinding {
     pub fn key(&self) -> &crate::ast::CDeclarationKey {
         match self {
+            Self::Global(v) => v.key(),
             Self::Member(v) => v.key(),
             Self::Parameter(v) => v.key(),
             Self::Local(v) => v.key(),
@@ -39,6 +41,7 @@ impl CValueBinding {
     }
     pub fn ty(&self) -> &CObjectType {
         match self {
+            Self::Global(v) => v.ty(),
             Self::Member(v) => v.ty(),
             Self::Parameter(v) => v.ty(),
             Self::Local(v) => v.ty(),

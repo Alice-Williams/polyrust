@@ -119,6 +119,22 @@ fn unit_text(unit: &CResolvedUnit) -> String {
                     }
                     writeln!(text, "{};", writer.function(function, *linkage, None)).unwrap();
                 }
+                CDeclarationKind::ObjectDeclaration(object) => {
+                    for comment in
+                        documentation.comments(&CDocumentationOwner::Object(object.clone()))
+                    {
+                        writeln!(text, "/* {} */", comment.text()).unwrap();
+                    }
+                    writeln!(
+                        text,
+                        "extern {};",
+                        writer.declarator(
+                            object.ty(),
+                            writer.names.values[&CValueBinding::Global(object.clone())].as_str()
+                        )
+                    )
+                    .unwrap();
+                }
                 _ => unreachable!("checked declaration profile"),
             },
             CFileItem::Definition(definition) => match definition.kind() {
@@ -135,6 +151,22 @@ fn unit_text(unit: &CResolvedUnit) -> String {
                     )
                     .unwrap();
                     writer.block(body, 0, &mut text);
+                }
+                CDefinitionKind::Object {
+                    object,
+                    linkage: CLinkage::External,
+                    initializer,
+                } => {
+                    writeln!(
+                        text,
+                        "{} = {};",
+                        writer.declarator(
+                            object.ty(),
+                            writer.names.values[&CValueBinding::Global(object.clone())].as_str()
+                        ),
+                        writer.initializer(initializer)
+                    )
+                    .unwrap();
                 }
                 _ => unreachable!("checked definition profile"),
             },

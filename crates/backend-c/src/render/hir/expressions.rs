@@ -93,6 +93,9 @@ impl Writer<'_> {
     }
     pub(super) fn place(&self, place: &CPlace) -> String {
         match place.kind() {
+            CPlaceKind::Global(object) => self.names.values[&CValueBinding::Global(object.clone())]
+                .as_str()
+                .into(),
             CPlaceKind::Local(local) => self.names.values[&CValueBinding::Local(local.clone())]
                 .as_str()
                 .into(),

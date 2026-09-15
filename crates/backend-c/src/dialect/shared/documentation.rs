@@ -1,7 +1,7 @@
 //! Normalize documentation into exact owner attachments before certification.
 use crate::ast::{
     CAggregateRef, CComment, CDeclarationKey, CDeclarationKind, CFileItem, CFileRef, CFunctionRef,
-    CGeneratedOrigin, CMemberRef, CSourceFile, CStructRef,
+    CGeneratedOrigin, CMemberRef, CObjectRef, CSourceFile, CStructRef,
 };
 use portable_codegen::{
     RustCrateExports, RustDeclarationId, RustModuleAncestry, RustModuleDocumentation,
@@ -24,6 +24,7 @@ mod tests;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) enum CDocumentationOwner {
+    Object(CObjectRef),
     Module(CFileRef, RustDeclarationId),
     Struct(CStructRef),
     Member(CMemberRef),
@@ -33,6 +34,7 @@ pub(super) enum CDocumentationOwner {
 impl CDocumentationOwner {
     fn file(&self) -> &CFileRef {
         match self {
+            Self::Object(object) => object.file(),
             Self::Module(file, _) => file,
             Self::Struct(record) => record.file(),
             Self::Function(function) => function.file(),
@@ -113,6 +115,9 @@ pub(super) fn lower_package(
                     CDocumentationOwner::Function(function.clone()),
                     function.key(),
                 )?;
+            }
+            CDeclarationKind::ObjectDeclaration(object) => {
+                lowering.owner(CDocumentationOwner::Object(object.clone()), object.key())?;
             }
             _ => return Err("documentation owner is outside the checked C profile".into()),
         }

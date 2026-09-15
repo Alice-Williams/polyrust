@@ -162,7 +162,7 @@ fn imported_functions_cannot_acquire_local_bodies_parameters_or_prototypes() {
         .source_file(vec![])
         .unwrap();
     let error = project_c_package(registry.freeze(), vec![source]).unwrap_err();
-    assert!(format!("{error:?}").contains("requires a function definition"));
+    assert!(format!("{error:?}").contains("requires a function or scalar constant definition"));
 }
 
 #[test]

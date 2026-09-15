@@ -67,15 +67,9 @@ pub(super) fn verify(package: &LinkedTargetPackage<CDialect>) -> Result<(), Stri
     }
     let mut owned_names = BTreeSet::new();
     for unit in package.files().iter().flat_map(|file| file.items()) {
-        for function in unit.unit.data.bindings.functions.keys() {
-            owned_names.insert(
-                unit.spelling
-                    .functions
-                    .get(function)
-                    .ok_or("C dependency proof lacks an owned callable spelling")?
-                    .clone(),
-            );
-        }
+        owned_names.extend(
+            super::super::dependency_exports::owned_names(unit).map_err(|error| error.message)?,
+        );
     }
     let mut budget = Budget::default();
     let mut pending = VecDeque::new();

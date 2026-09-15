@@ -66,9 +66,15 @@ fn check_pair(header: &CSourceFile, implementation: &CSourceFile) -> Result<(), 
                     function,
                     linkage: CLinkage::External,
                 } if function.file() == header.identity() => public += 1,
+                CDeclarationKind::ObjectDeclaration(object)
+                    if object.file() == header.identity() =>
+                {
+                    super::constants::object(object)?;
+                    public += 1;
+                }
                 _ => {
                     return Err(
-                        "C public header admits only primary external scalar prototypes".into(),
+                        "C public header admits only primary scalar functions and constants".into(),
                     );
                 }
             },
@@ -79,7 +85,7 @@ fn check_pair(header: &CSourceFile, implementation: &CSourceFile) -> Result<(), 
         }
     }
     if public == 0 {
-        return Err("C public header requires an exported function".into());
+        return Err("C public header requires an exported function or scalar constant".into());
     }
     for item in implementation.items() {
         match item {
@@ -105,6 +111,13 @@ fn check_pair(header: &CSourceFile, implementation: &CSourceFile) -> Result<(), 
                     linkage: CLinkage::Internal,
                     ..
                 } if function.file() == implementation.identity() => {}
+                CDefinitionKind::Object {
+                    object,
+                    linkage: CLinkage::External,
+                    initializer,
+                } if object.file() == header.identity() => {
+                    super::constants::initializer(object, initializer)?;
+                }
                 _ => {
                     return Err(
                         "C definition linkage does not match header/private ownership".into(),

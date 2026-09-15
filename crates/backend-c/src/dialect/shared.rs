@@ -24,6 +24,28 @@ mod unit_bindings;
 mod vocabulary;
 
 #[cfg(test)]
+#[path = "../tests/shared_owned_constant_dependency_fixture.rs"]
+mod owned_constant_dependency_fixture;
+#[cfg(test)]
+#[path = "../tests/shared_owned_constant_dependencies.rs"]
+mod owned_constant_dependency_tests;
+#[cfg(test)]
+#[path = "../tests/shared_owned_constant_fixture.rs"]
+mod owned_constant_fixture;
+#[cfg(test)]
+#[path = "../tests/shared_owned_constant_native.rs"]
+mod owned_constant_native_tests;
+#[cfg(test)]
+#[path = "../tests/shared_owned_constant_projection.rs"]
+mod owned_constant_projection_tests;
+#[cfg(test)]
+#[path = "../tests/shared_owned_constant_rejections.rs"]
+mod owned_constant_rejection_tests;
+#[cfg(test)]
+#[path = "../tests/shared_owned_constants.rs"]
+mod owned_constant_tests;
+
+#[cfg(test)]
 #[path = "../tests/shared_bitwise_admission.rs"]
 mod bitwise_tests;
 

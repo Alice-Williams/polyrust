@@ -73,6 +73,7 @@ pub(super) fn register(
                 continue;
             }
             CRegistered::Member(member) => CValueBinding::Member(member.clone()),
+            CRegistered::Object(object) => CValueBinding::Global(object.clone()),
             CRegistered::Parameter(parameter) => CValueBinding::Parameter(parameter.clone()),
             CRegistered::Local(local) => CValueBinding::Local(local.clone()),
             _ => {
@@ -84,7 +85,11 @@ pub(super) fn register(
         let id = builder.value(GeneratedValue {
             name: value.key().name.as_str().into(),
             ty: bindings.ty(value.ty()),
-            visibility: CVisibility::Private,
+            visibility: if matches!(value, CValueBinding::Global(_)) {
+                CVisibility::Exported
+            } else {
+                CVisibility::Private
+            },
             origin: origin(value.key()),
             source: location(value.key()),
         });

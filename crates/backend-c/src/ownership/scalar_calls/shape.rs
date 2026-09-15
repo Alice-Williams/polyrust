@@ -93,6 +93,10 @@ pub(super) fn dependencies(
                         CSignedLiteral::I32(_) | CSignedLiteral::I64(_) | CSignedLiteral::Int(_),
                     ),
                 ) => {}
+                CValueKind::Read(place)
+                    if matches!(place.kind(), CPlaceKind::Global(object)
+                    if object.ty().constness() == crate::ast::CConstness::Const
+                        && scalar(object.ty())) => {}
                 CValueKind::Read(place) | CValueKind::AddressOf(place) => {
                     pending.push(Node::Place(place))
                 }

@@ -174,7 +174,7 @@ fn public_header_owned_private_layout_is_rejected_even_with_authentic_registrati
     assert!(errors.iter().any(|error| {
         error
             .message
-            .contains("only primary external scalar prototypes")
+            .contains("only primary scalar functions and constants")
     }));
 }
 

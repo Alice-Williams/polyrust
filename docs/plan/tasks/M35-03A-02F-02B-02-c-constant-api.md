@@ -1,6 +1,6 @@
 # M35-03A-02F-02B-02 — Certified C constant declarations and imports
 
-- Status: planned
+- Status: in-progress
 - Parent: [public constants](M35-03A-02F-02B-public-constants.md)
 - Depends on: M35-03A-02F-02B-01
 
@@ -21,3 +21,11 @@ complete export collision checks, typed reads and resource obligations.
   dependency and export metadata reject. Keep all existing C gates enabled.
 - Full isolated Bazel/lint gate, reviewed fixes, examples and dedicated push.
   HIR support remains pending child04.
+
+## Ordered implementation
+
+1. [02A — Owned readonly C scalar objects](M35-03A-02F-02B-02A-c-owned-constants.md) — complete.
+2. [02B — Certified C constant imports](M35-03A-02F-02B-02B-c-imported-constants.md) — planned.
+
+Each child has its own native/negative evidence, full gate, review and checkpoint.
+The parent is complete only when both owned and imported behavior are proved.

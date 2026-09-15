@@ -168,7 +168,7 @@ fn scalar_dependency_header_layouts_reject_before_certification() {
     assert!(error.iter().any(|error| {
         error
             .message
-            .contains("public header admits only primary external scalar prototypes")
+            .contains("public header admits only primary scalar functions and constants")
     }));
 }
 

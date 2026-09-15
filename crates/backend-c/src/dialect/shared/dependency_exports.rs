@@ -1,5 +1,5 @@
 //! A dependency header/object exposes all its exports, not only selected calls.
-use super::{CDependencyPackage, CResolvedUnit, violation};
+use super::{CDependencyPackage, CResolvedUnit, bindings::CValueBinding, violation};
 use crate::ast::{CIdentifier, CRegistry};
 use portable_codegen::AstViolation;
 use std::collections::{BTreeMap, BTreeSet};
@@ -28,6 +28,20 @@ pub(super) fn inventory(
 
 pub(super) fn verify_unit(unit: &CResolvedUnit) -> Result<(), AstViolation> {
     let names = inventory(unit.unit.projection.registry.registrations())?;
+    for name in owned_names(unit)? {
+        if names.contains_key(&name) {
+            return Err(violation(
+                "owned C binding collides with a complete dependency export inventory",
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Ordinary file-scope identifiers participate in both header and link-time
+/// collision checks. Block-local and member namespaces do not.
+pub(super) fn owned_names(unit: &CResolvedUnit) -> Result<BTreeSet<CIdentifier>, AstViolation> {
+    let mut names = BTreeSet::new();
     // These are actual allocated spellings, not guesses from requested names.
     // Imported references are excluded from the owned declaration map.
     for function in unit.unit.data.bindings.functions.keys() {
@@ -36,11 +50,17 @@ pub(super) fn verify_unit(unit: &CResolvedUnit) -> Result<(), AstViolation> {
             .functions
             .get(function)
             .ok_or_else(|| violation("owned C function lacks its resolved spelling"))?;
-        if names.contains_key(name) {
-            return Err(violation(
-                "owned C binding collides with a complete dependency export inventory",
-            ));
+        names.insert(name.clone());
+    }
+    for value in unit.unit.data.bindings.values.keys() {
+        if matches!(value, CValueBinding::Global(_)) {
+            let name = unit
+                .spelling
+                .values
+                .get(value)
+                .ok_or_else(|| violation("owned C global lacks its resolved spelling"))?;
+            names.insert(name.clone());
         }
     }
-    Ok(())
+    Ok(names)
 }

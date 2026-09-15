@@ -7,6 +7,8 @@ use crate::ast::{
     CSignedLiteral, CSourceFile, CStatement, CStatementKind, CUnaryOperator, CValue, CValueKind,
 };
 
+#[path = "profile_constants.rs"]
+mod constants;
 #[path = "profile_inventory.rs"]
 mod inventory;
 #[path = "profile_layout.rs"]
@@ -82,6 +84,7 @@ fn walk<'a>(
         .collect();
     let mut nodes = 0usize;
     let mut functions = 0usize;
+    let mut objects = 0usize;
     let mut inventory = inventory::Inventory::with_registry(registry)?;
     while let Some((source, node, depth)) = pending.pop() {
         nodes += 1;
@@ -113,6 +116,10 @@ fn walk<'a>(
                 } => {
                     signature(function)?;
                 }
+                CDeclarationKind::ObjectDeclaration(object) => {
+                    constants::object(object)?;
+                    add(Node::Type(object.ty()));
+                }
                 _ => return Err("C declaration is outside the first shared profile".into()),
             },
             Node::Item(CFileItem::Definition(definition)) => match definition.kind() {
@@ -125,6 +132,16 @@ fn walk<'a>(
                     signature(function)?;
                     functions += 1;
                     add(Node::Block(body));
+                }
+                CDefinitionKind::Object {
+                    object,
+                    linkage: CLinkage::External,
+                    initializer,
+                } => {
+                    constants::initializer(object, initializer)?;
+                    objects += 1;
+                    add(Node::Type(object.ty()));
+                    add(Node::Initializer(initializer));
                 }
                 _ => return Err("C definition is outside the first shared profile".into()),
             },
@@ -205,7 +222,10 @@ fn walk<'a>(
                             | CSignedLiteral::Int(_),
                         ),
                     ) => {}
-                    CValueKind::Read(place) | CValueKind::AddressOf(place) => {
+                    CValueKind::Read(place) => add(Node::Place(place)),
+                    CValueKind::AddressOf(place)
+                        if !matches!(place.kind(), CPlaceKind::Global(_)) =>
+                    {
                         add(Node::Place(place))
                     }
                     CValueKind::Unary {
@@ -323,6 +343,7 @@ fn walk<'a>(
                 add(Node::Type(place.ty()));
                 match place.kind() {
                     CPlaceKind::Local(_) | CPlaceKind::Parameter(_) => {}
+                    CPlaceKind::Global(object) => constants::object(object)?,
                     CPlaceKind::Member { base, .. } => add(Node::Place(base)),
                     CPlaceKind::Dereference(value) => add(Node::Value(value)),
                     _ => return Err("C place is outside the first shared profile".into()),
@@ -340,8 +361,8 @@ fn walk<'a>(
             },
         }
     }
-    if functions == 0 {
-        return Err("first C shared profile requires a function definition".into());
+    if functions == 0 && objects == 0 {
+        return Err("C shared profile requires a function or scalar constant definition".into());
     }
     inventory.finish()?;
     Ok(())

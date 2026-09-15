@@ -32,6 +32,18 @@ fn signature(function: &CFunctionRef) -> bool {
 
 pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventory, String> {
     let files = package.ast().files();
+    // Until typed imported objects are implemented, the function-only API must
+    // reject EVERY object-bearing producer, including synthesized constants
+    // absent from Rust exports. Otherwise its collision inventory omits symbols
+    // that the producer's public header and implementation actually emit.
+    if files.iter().flat_map(|file| file.items()).any(|unit| {
+        unit.unit.data.source.items().iter().any(|item| {
+            matches!(item, CFileItem::Definition(definition)
+                if matches!(definition.kind(), CDefinitionKind::Object { .. }))
+        })
+    }) {
+        return Err("C dependency API cannot yet authenticate object exports".into());
+    }
     if files.len() != 2 {
         return Err("C dependency API requires a certified public header/source pair".into());
     }

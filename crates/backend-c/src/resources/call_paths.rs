@@ -146,6 +146,9 @@ impl Inventory {
             .into_iter()
             .map(|(function, frame)| Ok((function, frame.add(shared)?.bound()?)))
             .collect::<Result<BTreeMap<_, _>, String>>()?;
+        if frames.is_empty() {
+            return Ok((frames, 0));
+        }
         let mut weighted = frames.clone();
         let mut edges = self.edges.clone();
         for target in self.edges.values().flatten() {

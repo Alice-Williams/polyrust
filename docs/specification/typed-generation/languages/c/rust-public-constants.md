@@ -1,6 +1,6 @@
 # Rust public scalar constants in C17
 
-- Status: normative design; implementation pending M35-03A-02F-02B-02
+- Status: owned target mapping complete in M35-03A-02F-02B-02A; imported constants pending child02B
 - Parent: [shared source contract](../../rust-public-constants.md)
 - Reuse: [C package projection](rust-hir-public-packages.md)
 
@@ -42,6 +42,12 @@ namespace/layout obligations and complete source exports without synthetic
 functions. Existing function and record safety checks still run when present.
 
 ## Dependency boundary
+
+Until child02B implements the complete constant API below, the function-only
+dependency API rejects every object-bearing producer certificate, including
+synthesized constants absent from Rust export metadata. Owned constant consumers
+still check their resolved global names against every direct and transitive
+function-dependency export, whether or not that export is referenced.
 
 Add an opaque CDependencyConstant derived only from a certified producer and a
 CImportedValue consumer witness bound through CRegistry. Retain producer package,
