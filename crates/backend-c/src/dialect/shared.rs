@@ -9,6 +9,7 @@ mod dependency_symbols;
 mod documentation;
 mod file_imports;
 mod import_view;
+mod imported_values;
 mod linking;
 mod nodes;
 mod package;
@@ -23,6 +24,31 @@ mod resources;
 mod spelling;
 mod unit_bindings;
 mod vocabulary;
+
+#[cfg(test)]
+#[path = "../tests/shared_constant_consumer_collisions.rs"]
+mod constant_consumer_collision_tests;
+#[cfg(test)]
+#[path = "../tests/shared_constant_consumer_composition.rs"]
+mod constant_consumer_composition_tests;
+#[cfg(test)]
+#[path = "../tests/shared_constant_consumer_fixture.rs"]
+mod constant_consumer_fixture;
+#[cfg(test)]
+#[path = "../tests/shared_constant_consumer_native_chain.rs"]
+mod constant_consumer_native_chain_tests;
+#[cfg(test)]
+#[path = "../tests/shared_constant_consumer_native.rs"]
+mod constant_consumer_native_tests;
+#[cfg(test)]
+#[path = "../tests/shared_constant_consumer_projection.rs"]
+mod constant_consumer_projection_tests;
+#[cfg(test)]
+#[path = "../tests/shared_constant_consumer_registry.rs"]
+mod constant_consumer_registry_tests;
+#[cfg(test)]
+#[path = "../tests/shared_constant_consumers.rs"]
+mod constant_consumer_tests;
 
 #[cfg(test)]
 #[path = "../tests/shared_constant_producer_dependencies.rs"]
@@ -172,6 +198,7 @@ pub use dependency_api::{
 pub use dependency_symbols::CImportedCallable;
 pub use file_imports::{CGeneratedHeader, CHeaderGuard, CImportKind};
 pub use import_view::{CImportedFunction, c_imported_functions};
+pub use imported_values::CImportedValue;
 pub use nodes::CResolvedUnit;
 pub use package::CProjectedUnit;
 pub use projection::project_c_package;

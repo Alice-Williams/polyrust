@@ -1,6 +1,6 @@
 # Rust public scalar constants in C17
 
-- Status: owned target mapping and certified producer APIs complete; imported constant consumers pending child02B-02
+- Status: owned and imported C target mappings complete in M35-03A-02F-02B-02; source/bundle integration remains pending
 - Parent: [shared source contract](../../rust-public-constants.md)
 - Reuse: [C package projection](rust-hir-public-packages.md)
 
@@ -50,11 +50,11 @@ unqualified read type, source identity, allocated symbol and owning files.
 Constants-only producers have zero function frames, not a fabricated function.
 Synthesized constants cannot stand in for Rust public declaration provenance.
 Owned consumers check their resolved names against every direct and transitive
-dependency export, whether or not that export is referenced. Child02B-02 adds
-consumer constant registration and reads; those remain unavailable until then.
+dependency export, whether or not that export is referenced. Child02B-02 completes
+authenticated consumer constant registration and reads with native proofs.
 
-Add an opaque CDependencyConstant derived only from a certified producer and a
-CImportedValue consumer witness bound through CRegistry. Retain producer package,
+CDependencyConstant is derived only from a certified producer; the consumer
+mapping binds a CImportedValue through CRegistry. Retain producer package,
 Rust declaration origin, exact const scalar type/value, fixed symbol and header
 identity. Foreign objects cannot be registered as owned objects or authenticated
 from a supplied name, JSON, raw signature or copied RustSource metadata.
@@ -69,6 +69,23 @@ The complete producer public-symbol inventory
 includes objects and functions, including unreferenced exports. Check all C
 ordinary-identifier collisions, not only referenced function names. Imports and
 resource bounds cover values-only and mixed dependencies.
+
+Imported objects live in a separate registry witness map, never the owned
+declaration/definition inventory. General reads authenticate the consumer brand
+and original object metadata; declaration builders require owned references.
+Values and functions share producer identity and header/symbol conflict checks
+in either registration order. Unused registrations retain complete dependency
+closure obligations without producing unnecessary includes.
+
+The memory checker seeds initialized foreign scalar roots from retained producer
+evidence. Numeric reads use the exact immutable certified literal through the
+existing numeric-literal evaluator, not a caller-supplied range. Address borrowing
+remains outside this source profile. Exact numeric evidence does not enable
+otherwise unsupported arithmetic source admission.
+
+Dependency traversal follows both value and function witnesses. A constants-only
+producer may have a measured zero-frame bound; equality to original measurements,
+all resource limits, and actual callable costs remain mandatory.
 
 ## Proof
 

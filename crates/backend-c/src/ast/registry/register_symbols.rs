@@ -22,6 +22,7 @@ impl CRegistry {
             .iter()
             .chain(self.imports.keys())
             .any(|old| old.key() == &key)
+            || self.constant_imports.keys().any(|old| old.key() == &key)
         {
             return Err(CRegistryError::DuplicateRegistration);
         }
@@ -76,7 +77,13 @@ impl CRegistry {
         self.check_type(&ty)?;
         ty.require_storable()
             .map_err(CRegistryError::InvalidObjectType)?;
-        if self.objects.iter().any(|old| old.key() == &key) {
+        if self
+            .objects
+            .iter()
+            .chain(self.constant_imports.keys())
+            .any(|old| old.key() == &key)
+            || self.imports.keys().any(|old| old.key() == &key)
+        {
             return Err(CRegistryError::DuplicateRegistration);
         }
         let value = CObjectRef {
@@ -93,7 +100,7 @@ impl CRegistry {
         if self.objects.contains(value) {
             Ok(())
         } else {
-            Err(CRegistryError::UnregisteredReference)
+            self.imported_constant(value).map(|_| ())
         }
     }
 

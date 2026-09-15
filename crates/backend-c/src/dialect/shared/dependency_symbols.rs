@@ -74,9 +74,13 @@ pub(super) fn catalogue(
     let registry = unit.projection.registry.registrations();
     super::dependency_exports::inventory(registry).map_err(|error| diagnostic(error.message))?;
     let dependency_crates: std::collections::BTreeSet<_> = registry
-        .imported_functions()
-        .map(|(_, dependency)| dependency.declaration().crate_id)
-        .collect();
+        .dependency_packages()
+        .map(|owner| {
+            owner
+                .map(|owner| owner.root().crate_id)
+                .map_err(|error| diagnostic(error.to_string()))
+        })
+        .collect::<Result<_, _>>()?;
     for entry in registry.inventory() {
         if let crate::ast::CGeneratedOrigin::RustSource(origin) = &entry.key.origin
             && (dependency_crates.contains(&origin.declaration.crate_id)
@@ -91,6 +95,13 @@ pub(super) fn catalogue(
     for (function, _) in registry.imported_functions() {
         catalogue.dependency_callables.push(
             CImportedCallable::from_registry(registry, function)
+                .map_err(diagnostic)?
+                .spec(),
+        );
+    }
+    for (object, _) in registry.imported_constants() {
+        catalogue.dependency_values.push(
+            super::CImportedValue::from_registry(registry, object)
                 .map_err(diagnostic)?
                 .spec(),
         );

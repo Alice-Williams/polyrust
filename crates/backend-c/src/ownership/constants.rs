@@ -6,7 +6,7 @@ mod numeric;
 mod tree;
 
 pub(super) use numeric::{CInteger, CNumber, limits};
-pub(super) use tree::evaluate;
+pub(super) use tree::{evaluate, literal_value};
 
 #[cfg(test)]
 #[path = "../tests/constant_numbers.rs"]

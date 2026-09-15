@@ -112,6 +112,7 @@ impl CDependencyFunction {
         CDependencyAuthority(self.authority.clone())
     }
 
+    #[cfg(test)]
     pub(crate) fn shares_certificate(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.authority, &other.authority)
     }

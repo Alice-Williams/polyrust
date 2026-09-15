@@ -44,14 +44,9 @@ fn enqueue(
     pending: &mut VecDeque<CDependencyPackage>,
     budget: &mut Budget,
 ) -> Result<(), String> {
-    for (function, _) in registry.imported_functions() {
+    for owner in registry.dependency_packages() {
         budget.edge()?;
-        pending.push_back(
-            registry
-                .imported_function(function)
-                .map_err(|error| error.to_string())?
-                .package_identity(),
-        );
+        pending.push_back(owner.map_err(|error| error.to_string())?);
     }
     Ok(())
 }
@@ -113,7 +108,6 @@ pub(super) fn verify(package: &LinkedTargetPackage<CDialect>) -> Result<(), Stri
         // calls this verifier. Every child is checked separately by this queue.
         let measured = measure_package(original)?;
         if measured.total.frame_bound != owner.stack_bound_bytes()
-            || owner.stack_bound_bytes() == 0
             || !policy::check(
                 &measured.total,
                 portable_diagnostics::SourceRef::logical(["c", "dependency"]),

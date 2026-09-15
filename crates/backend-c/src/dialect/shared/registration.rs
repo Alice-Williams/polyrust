@@ -102,6 +102,12 @@ pub(super) fn register(
             super::CImportedCallable::from_registry(registrations, function)?,
         );
     }
+    for (object, _) in registrations.imported_constants() {
+        bindings.imported_values.insert(
+            object.clone(),
+            super::CImportedValue::from_registry(registrations, object)?,
+        );
+    }
     Ok(bindings)
 }
 

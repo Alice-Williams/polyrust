@@ -82,7 +82,7 @@ pub(in crate::ownership) fn evaluate(
     }
 }
 
-fn literal_value(literal: &CLiteral) -> Result<CInteger, E> {
+pub(in crate::ownership) fn literal_value(literal: &CLiteral) -> Result<CInteger, E> {
     let value = match literal {
         CLiteral::Bool(value) => i128::from(*value),
         CLiteral::CharByte(value) => i128::from(*value),

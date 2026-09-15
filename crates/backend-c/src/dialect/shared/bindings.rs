@@ -14,6 +14,7 @@ use std::collections::BTreeMap;
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct CBindings {
     pub imports: BTreeMap<CFunctionRef, super::CImportedCallable>,
+    pub imported_values: BTreeMap<CObjectRef, super::CImportedValue>,
     pub types: BTreeMap<CStructRef, GeneratedTypeId>,
     pub functions: BTreeMap<CFunctionRef, GeneratedCallableId>,
     pub values: BTreeMap<CValueBinding, GeneratedValueId>,

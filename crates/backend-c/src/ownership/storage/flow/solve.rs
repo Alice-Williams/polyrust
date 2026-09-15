@@ -7,9 +7,18 @@ use std::collections::VecDeque;
 pub(super) fn function<'ast>(
     context: &ContextFacts<'ast>,
     graph: &Graph<'ast>,
-    entry: State,
+    mut entry: State,
     loops: &[LoopEvidence<'ast>],
 ) -> Result<Vec<Option<Product<'ast>>>, E> {
+    // Immutable foreign storage is initialized by its independently certified
+    // producer, not by a fabricated consumer declaration or startup action.
+    for (object, _) in context.registry().imported_constants() {
+        context.registry().imported_constant(object)?;
+        entry.roots.insert(
+            crate::ownership::paths::Root::Global(object.clone()),
+            super::super::root_cells::RootCell::object(super::super::values::Cell::Initialized),
+        );
+    }
     let mut incoming = vec![None; graph.nodes().len()];
     incoming[graph.entry().index()] = Some(Product {
         memory: entry,

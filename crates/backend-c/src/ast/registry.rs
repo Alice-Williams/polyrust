@@ -20,9 +20,11 @@ mod buffer_counts;
 mod contextual_inventory;
 mod contracts;
 mod control;
+mod dependency_owners;
 mod files;
 mod frozen;
 mod identity;
+mod imported_constants;
 mod imports;
 mod interfaces;
 mod inventory;
@@ -122,6 +124,7 @@ pub struct CRegistry {
     functions: BTreeSet<CFunctionRef>,
     imports: BTreeMap<CFunctionRef, crate::dialect::CDependencyFunction>,
     objects: BTreeSet<CObjectRef>,
+    constant_imports: BTreeMap<CObjectRef, crate::dialect::CDependencyConstant>,
     parameters: BTreeSet<CParameterRef>,
     scopes: BTreeSet<CScopeRef>,
     locals: BTreeSet<CLocalRef>,
@@ -160,6 +163,7 @@ impl CRegistry {
             functions: BTreeSet::new(),
             imports: BTreeMap::new(),
             objects: BTreeSet::new(),
+            constant_imports: BTreeMap::new(),
             parameters: BTreeSet::new(),
             scopes: BTreeSet::new(),
             locals: BTreeSet::new(),
@@ -181,11 +185,16 @@ impl CRegistry {
             scope: self.scope.clone(),
         };
         if self.files.iter().any(|old| old.key.path == value.key.path)
-            || self.imports.values().any(|proof| {
-                proof
-                    .public_header()
-                    .conflicts_with_output_path(&value.key.path)
-            })
+            || self
+                .imports
+                .values()
+                .map(|proof| proof.public_header())
+                .chain(
+                    self.constant_imports
+                        .values()
+                        .map(|proof| proof.public_header()),
+                )
+                .any(|header| header.conflicts_with_output_path(&value.key.path))
         {
             return Err(CRegistryError::DuplicateRegistration);
         }

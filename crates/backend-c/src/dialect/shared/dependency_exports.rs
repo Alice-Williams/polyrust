@@ -9,11 +9,8 @@ pub(super) fn inventory(
 ) -> Result<BTreeMap<CIdentifier, CDependencyPackage>, AstViolation> {
     let mut owners = BTreeSet::new();
     let mut names = BTreeMap::new();
-    for (function, _) in registry.imported_functions() {
-        let dependency = registry
-            .imported_function(function)
-            .map_err(|error| violation(error.to_string()))?;
-        let owner = dependency.package_identity();
+    for owner in registry.dependency_packages() {
+        let owner = owner.map_err(|error| violation(error.to_string()))?;
         if !owners.insert(owner.clone()) {
             continue;
         }

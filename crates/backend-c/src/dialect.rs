@@ -12,6 +12,6 @@ pub use dependencies::{CFileDependencies, CTagDependency, CTypeRequirement, file
 pub use shared::{
     CDefinedConstant, CDefinedFunction, CDependencyApi, CDependencyConstant, CDependencyFunction,
     CDependencyPackage, CDialect, CGeneratedHeader, CHeaderGuard, CImportKind, CImportedCallable,
-    CImportedFunction, CStructuralRenderer, c_defined_constants, c_defined_functions,
-    c_imported_functions, c_output_byte_bound, project_c_package,
+    CImportedFunction, CImportedValue, CStructuralRenderer, c_defined_constants,
+    c_defined_functions, c_imported_functions, c_output_byte_bound, project_c_package,
 };

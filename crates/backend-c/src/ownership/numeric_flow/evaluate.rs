@@ -22,6 +22,14 @@ impl<'a> Engine<'a, '_> {
                 let Some(ty) = storage::scalar(self.registry, value.ty())? else {
                     return Ok(None);
                 };
+                if let CPlaceKind::Global(object) = place.kind()
+                    && let Ok(dependency) = self.registry.imported_constant(object)
+                {
+                    let number = constants::literal_value(dependency.value())?;
+                    return Ok(Some(Number::domain(NumericDomain::exact(
+                        CNumber::Integer(number),
+                    ))));
+                }
                 let key = self.exact_place(place, state)?;
                 if let Some(key) = key {
                     state.number(&key, ty)?

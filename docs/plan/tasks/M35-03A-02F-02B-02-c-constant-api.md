@@ -1,6 +1,6 @@
 # M35-03A-02F-02B-02 — Certified C constant declarations and imports
 
-- Status: in-progress
+- Status: complete
 - Parent: [public constants](M35-03A-02F-02B-public-constants.md)
 - Depends on: M35-03A-02F-02B-01
 
@@ -25,7 +25,14 @@ complete export collision checks, typed reads and resource obligations.
 ## Ordered implementation
 
 1. [02A — Owned readonly C scalar objects](M35-03A-02F-02B-02A-c-owned-constants.md) — complete.
-2. [02B — Certified C constant imports](M35-03A-02F-02B-02B-c-imported-constants.md) — in progress.
+2. [02B — Certified C constant imports](M35-03A-02F-02B-02B-c-imported-constants.md) — complete.
 
 Each child has its own native/negative evidence, full gate, review and checkpoint.
 The parent is complete only when both owned and imported behavior are proved.
+
+Both children now have independent native/negative proofs, clean Sol Extra High
+reviews, inspectable ignored examples and successful isolated full gates. The
+final import checkpoint passed all 624 Bazel test targets, including 743 ordinary
+C cases and 67 C compile-negative/documentation cases; exact trees/invocations
+are recorded in the child evidence. Java and source/bundle integration remain
+the next children of the public-constant milestone.

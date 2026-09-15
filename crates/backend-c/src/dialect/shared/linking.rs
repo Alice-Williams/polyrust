@@ -34,6 +34,14 @@ impl CProjectedUnit {
             )
             .chain(
                 self.data
+                    .bindings
+                    .imported_values
+                    .values()
+                    .cloned()
+                    .map(TargetSymbolRef::DependencyValue),
+            )
+            .chain(
+                self.data
                     .standards
                     .iter()
                     .copied()
@@ -44,7 +52,7 @@ impl CProjectedUnit {
 }
 
 impl LinkerDialect for CDialect {
-    type DependencyValue = CUnavailable;
+    type DependencyValue = super::CImportedValue;
     type DependencyCallable = super::CImportedCallable;
     type DependencyPackage = super::CDependencyPackage;
     type KnownField = CUnavailable;
@@ -119,15 +127,15 @@ impl LinkerDialect for CDialect {
         &self,
         value: &Self::DependencyValue,
     ) -> portable_codegen::DependencyValueSpec<Self> {
-        match *value {}
+        value.spec()
     }
 
     fn verify_dependency_value_type(
         &self,
         value: &Self::DependencyValue,
-        _ty: &portable_codegen::TargetTypeRef<Self>,
+        ty: &portable_codegen::TargetTypeRef<Self>,
     ) -> Result<(), AstViolation> {
-        match *value {}
+        value.verify_type(ty)
     }
 
     fn dependency_callable_spec(

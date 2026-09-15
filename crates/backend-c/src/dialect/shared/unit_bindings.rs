@@ -96,6 +96,9 @@ pub(super) fn project(
             .filter(|(_, owner)| **owner == file)
             .map(|(object, _)| *object),
     ) {
+        if bindings.imported_values.contains_key(object) {
+            continue;
+        }
         used.insert(Symbol::Value(
             *bindings
                 .values
@@ -107,6 +110,13 @@ pub(super) fn project(
     for function in dependencies.functions() {
         if let Some(import) = bindings.imports.get(function) {
             selected.imports.insert(function.clone(), import.clone());
+        }
+    }
+    for object in dependencies.objects() {
+        if let Some(import) = bindings.imported_values.get(object) {
+            selected
+                .imported_values
+                .insert(object.clone(), import.clone());
         }
     }
     Ok((selected, declarations.into_iter().collect()))

@@ -89,7 +89,7 @@ impl<'a> CDeclarations<'a> {
     }
 
     pub fn object_declaration(&self, object: CObjectRef) -> Result<CDeclaration, E> {
-        self.registry.check_object(&object)?;
+        self.registry.check_owned_object(&object)?;
         self.same_file(object.file())?;
         Ok(self.declaration(D::ObjectDeclaration(object)))
     }
@@ -131,7 +131,7 @@ impl<'a> CDeclarations<'a> {
         linkage: CLinkage,
         initializer: CInitializer,
     ) -> Result<CDefinition, E> {
-        self.registry.check_object(&object)?;
+        self.registry.check_owned_object(&object)?;
         definition_file(object.file(), &self.file)?;
         validate_linkage(linkage, object.file())?;
         CExpressions::new(self.registry).initializer_fits(object.ty(), &initializer)?;

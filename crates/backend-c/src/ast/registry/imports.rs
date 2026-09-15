@@ -26,25 +26,12 @@ impl CRegistry {
         dependency: CDependencyFunction,
     ) -> Result<CFunctionRef, CRegistryError> {
         let original = dependency.function();
-        if self.functions.iter().any(|old| old.key() == original.key())
-            || self.imports.iter().any(|(old, proof)| {
-                old.key() == original.key()
-                    || proof.declaration() == dependency.declaration()
-                    || proof.symbol() == dependency.symbol()
-                    || (proof.declaration().crate_id == dependency.declaration().crate_id
-                        && !proof.shares_certificate(&dependency))
-                    || (proof.public_header().include_path()
-                        == dependency.public_header().include_path()
-                        && proof.public_header() != dependency.public_header())
-            })
-            || self.files.iter().any(|file| {
-                dependency
-                    .public_header()
-                    .conflicts_with_output_path(&file.key().path)
-            })
-        {
-            return Err(CRegistryError::DuplicateRegistration);
-        }
+        self.check_dependency_registration(
+            original.key(),
+            dependency.declaration(),
+            dependency.symbol(),
+            &dependency.package_identity(),
+        )?;
         self.check_signature(dependency.signature())?;
         let value = CFunctionRef {
             identity: Identity::new(&self.scope, original.key().clone()),

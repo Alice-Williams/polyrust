@@ -57,11 +57,31 @@ impl CResolvedNames {
                 ));
             }
         }
-        let values = bindings
+        let mut values: BTreeMap<_, _> = bindings
             .values
             .iter()
             .map(|(key, id)| Ok((key.clone(), local(GeneratedSymbolId::Value(*id))?)))
             .collect::<Result<_, AstViolation>>()?;
+        for (object, import) in &bindings.imported_values {
+            let Some(ResolvedReference::Imported { binding, .. }) =
+                names.get(&TargetSymbolRef::DependencyValue(import.clone()))
+            else {
+                return Err(violation(
+                    "C dependency constant must have an imported binding",
+                ));
+            };
+            if binding != import.dependency().symbol() {
+                return Err(violation("C dependency constant cannot be import-aliased"));
+            }
+            if values
+                .insert(CValueBinding::Global(object.clone()), binding.clone())
+                .is_some()
+            {
+                return Err(violation(
+                    "C dependency constant conflicts with an owned binding",
+                ));
+            }
+        }
         let mut standards = BTreeMap::new();
         for (symbol, resolved) in names {
             if let TargetSymbolRef::KnownType(kind) = symbol {
