@@ -47,6 +47,7 @@ fn dependency_comparisons_require_equal_widths_and_boolean_results_locally() {
                     let mut reader = Reader {
                         methods: &BTreeMap::new(),
                         records: &BTreeMap::new(),
+                        constants: &BTreeMap::new(),
                         budget: &mut budget,
                         calls: BTreeSet::new(),
                         imported_height: 0,

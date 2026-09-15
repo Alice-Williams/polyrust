@@ -69,7 +69,7 @@ fn unsupported_public_category_rejects_instead_of_being_silently_omitted() {
     assert!(
         JavaDependencyApi::from_certificate(certify(draft))
             .unwrap_err()
-            .contains("no supported local scalar-function mapping")
+            .contains("no supported local scalar function/constant mapping")
     );
 }
 

@@ -50,6 +50,26 @@ pub(crate) fn collect<'a>(
                     },
                 })?;
             }
+            JavaMember::Field(field) => {
+                let symbol = GeneratedSymbolId::Value(
+                    field.declared.ok_or("source constant identity missing")?,
+                );
+                let Some(crate::ast::JavaExpr {
+                    kind: crate::ast::JavaExprKind::Literal(value),
+                    ..
+                }) = &field.initializer
+                else {
+                    return Err("source constant literal missing".into());
+                };
+                insert(JavaSourceDescription {
+                    source: origin(item, symbol)?,
+                    target: JavaSourceTarget::Declaration(path(item, symbol)?),
+                    kind: JavaSourceDescriptionKind::Constant {
+                        ty: &field.ty,
+                        value,
+                    },
+                })?;
+            }
             JavaMember::NestedType(record) => {
                 let symbol = GeneratedSymbolId::Type(
                     record.declared.ok_or("source record identity missing")?,

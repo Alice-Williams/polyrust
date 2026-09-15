@@ -20,6 +20,10 @@ mod nested_payload_matches;
 mod portable_expectation_nan;
 mod resource_encoding_native;
 mod resources_native;
+mod source_constant_bounds;
+pub(crate) mod source_constant_fixture;
+mod source_constants;
+mod source_constants_native;
 pub(crate) mod source_dependency_fixture;
 mod source_dependency_fixture_tests;
 #[path = "source_documentation/fixture.rs"]

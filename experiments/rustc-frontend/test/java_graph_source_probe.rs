@@ -74,6 +74,7 @@ pub(super) fn check(tcx: TyCtxt<'_>, api: &JavaDependencyApi) {
                         .collect::<Vec<_>>()
                 );
             }
+            Kind::Constant { .. } => panic!("Java constant source projection not yet admitted"),
             Kind::Record => assert_eq!(tcx.def_kind(id), DefKind::Struct),
             Kind::Field { owner, ty } => {
                 assert_eq!(tcx.def_kind(id), DefKind::Field);

@@ -6,7 +6,7 @@ use crate::ast::{
     JavaRecordComponentOrigin, JavaStmt, JavaType, JavaTypeDeclaration, JavaTypeName,
     JavaUnaryOperator, JavaValueRef,
 };
-use portable_codegen::{GeneratedCallableId, GeneratedTypeId};
+use portable_codegen::{GeneratedCallableId, GeneratedSymbolId, GeneratedTypeId, GeneratedValueId};
 use std::collections::{BTreeMap, BTreeSet};
 
 const MAX_FUNCTIONS: usize = 4096;
@@ -38,6 +38,7 @@ impl Budget {
 pub(super) fn verify(
     methods: &BTreeMap<GeneratedCallableId, &JavaMethod>,
     records: &BTreeMap<GeneratedTypeId, &JavaTypeDeclaration>,
+    constants: &BTreeMap<GeneratedValueId, JavaType>,
     budget: &mut Budget,
 ) -> Result<BTreeMap<GeneratedCallableId, usize>, String> {
     if methods.len() > MAX_FUNCTIONS {
@@ -46,6 +47,7 @@ pub(super) fn verify(
     let mut reader = Reader {
         methods,
         records,
+        constants,
         budget,
         calls: BTreeSet::new(),
         imported_height: 0,
@@ -73,6 +75,7 @@ pub(super) fn verify(
 struct Reader<'a> {
     methods: &'a BTreeMap<GeneratedCallableId, &'a JavaMethod>,
     records: &'a BTreeMap<GeneratedTypeId, &'a JavaTypeDeclaration>,
+    constants: &'a BTreeMap<GeneratedValueId, JavaType>,
     budget: &'a mut Budget,
     calls: BTreeSet<GeneratedCallableId>,
     imported_height: usize,
@@ -143,6 +146,8 @@ impl Reader<'_> {
                 JavaLiteral::I32(_) | JavaLiteral::I64(_) | JavaLiteral::Boolean(_),
             )
             | JavaExprKind::Value(JavaValueRef::Local(_)) => {}
+            JavaExprKind::Value(JavaValueRef::Generated(GeneratedSymbolId::Value(id)))
+                if self.constants.get(id) == Some(&value.ty) => {}
             JavaExprKind::Unary {
                 operator: JavaUnaryOperator::Not,
                 operand,

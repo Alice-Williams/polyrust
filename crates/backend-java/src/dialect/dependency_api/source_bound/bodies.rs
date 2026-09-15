@@ -40,7 +40,7 @@ impl Reader<'_> {
         }
         Ok(())
     }
-    fn expression(&mut self, value: &JavaExpr, depth: usize) -> Result<(), String> {
+    pub(super) fn expression(&mut self, value: &JavaExpr, depth: usize) -> Result<(), String> {
         self.budget.node(depth)?;
         match &value.kind {
             JavaExprKind::Literal(
@@ -48,6 +48,9 @@ impl Reader<'_> {
             )
             | JavaExprKind::Value(JavaValueRef::This) => Ok(()),
             JavaExprKind::Value(JavaValueRef::Local(name)) => self.spelling(name.as_str()),
+            JavaExprKind::Value(JavaValueRef::Generated(GeneratedSymbolId::Value(id))) => {
+                self.symbol(TargetSymbolRef::Generated(GeneratedSymbolId::Value(*id)))
+            }
             JavaExprKind::Unary {
                 operator: JavaUnaryOperator::Not | JavaUnaryOperator::BitNot,
                 operand,

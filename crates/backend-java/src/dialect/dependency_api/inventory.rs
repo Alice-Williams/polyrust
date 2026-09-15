@@ -1,4 +1,5 @@
 //! Exact source export/declaration reconciliation for a certified Java owner.
+mod constants;
 use super::{JavaDialect, bodies, exports::Agreement, records};
 use crate::ast::{
     JavaDeclarationKind, JavaDeclaredPath, JavaFileItem, JavaFilePlacement, JavaHeritage,
@@ -22,10 +23,18 @@ pub(super) struct Function {
     pub path: JavaDeclaredPath,
     pub signature: JavaMethodSignature,
 }
+pub(super) struct Constant {
+    pub generated: portable_codegen::GeneratedValueId,
+    pub source: Arc<RustSourceOrigin>,
+    pub path: JavaDeclaredPath,
+    pub ty: JavaType,
+    pub value: crate::ast::JavaLiteral,
+}
 pub(super) struct Inventory {
     pub root: RustDeclarationId,
     pub namespace: JavaPackage,
     pub functions: BTreeMap<RustDeclarationId, Function>,
+    pub constants: BTreeMap<RustDeclarationId, Constant>,
 }
 
 pub(super) fn scalar(ty: &JavaType) -> bool {
@@ -134,6 +143,8 @@ pub(super) fn collect_with_budget(
         }
     }
     let mut functions = BTreeMap::new();
+    let mut constants = BTreeMap::new();
+    let mut constant_types = BTreeMap::new();
     let mut methods = BTreeMap::new();
     let mut nominal = BTreeMap::new();
     let mut constructors = 0;
@@ -154,6 +165,21 @@ pub(super) fn collect_with_budget(
                     || nominal.insert(id, record).is_some()
                 {
                     return Err("Java dependency duplicates a nominal declaration".into());
+                }
+            }
+            JavaMember::Field(field) => {
+                budget.charge(0)?;
+                let constant =
+                    constants::verify(field, item, *file.module(), &facade.name, &public)?;
+                if !expected.insert(GeneratedSymbolId::Value(constant.generated))
+                    || constant_types
+                        .insert(constant.generated, constant.ty.clone())
+                        .is_some()
+                    || constants
+                        .insert(constant.source.declaration, constant)
+                        .is_some()
+                {
+                    return Err("Java dependency duplicates a source constant".into());
                 }
             }
             JavaMember::Method(method) => {
@@ -247,10 +273,17 @@ pub(super) fn collect_with_budget(
     {
         return Err("Java dependency contains unsupported or missing source declarations".into());
     }
-    if functions.keys().copied().collect::<BTreeSet<_>>() != public {
+    if functions.keys().any(|id| constants.contains_key(id))
+        || functions
+            .keys()
+            .chain(constants.keys())
+            .copied()
+            .collect::<BTreeSet<_>>()
+            != public
+    {
         return Err("Java dependency API omits a compiler public binding".into());
     }
-    let heights = bodies::verify(&methods, &nominal, budget)?;
+    let heights = bodies::verify(&methods, &nominal, &constant_types, budget)?;
     for function in functions.values_mut() {
         function.call_height = heights[&function.generated];
     }
@@ -258,6 +291,7 @@ pub(super) fn collect_with_budget(
         root: exports.root,
         namespace: *file.module(),
         functions,
+        constants,
     })
 }
 
@@ -278,7 +312,7 @@ fn public_bindings(exports: &RustCrateExports) -> Result<BTreeSet<RustDeclaratio
                 }
                 _ => {
                     return Err(
-                        "Java dependency export has no supported local scalar-function mapping"
+                        "Java dependency export has no supported local scalar function/constant mapping"
                             .into(),
                     );
                 }
@@ -286,7 +320,7 @@ fn public_bindings(exports: &RustCrateExports) -> Result<BTreeSet<RustDeclaratio
         }
     }
     if public.is_empty() {
-        return Err("Java dependency API has no public function bindings".into());
+        return Err("Java dependency API has no public function/constant bindings".into());
     }
     Ok(public)
 }

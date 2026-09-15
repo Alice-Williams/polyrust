@@ -23,8 +23,8 @@ mod catalogue;
 mod declaration_paths;
 mod dependency_api;
 pub use dependency_api::{
-    JavaDependencyApi, JavaDependencyFunction, JavaDependencyPackage, JavaSourceDescription,
-    JavaSourceDescriptionKind, JavaSourceTarget,
+    JavaDependencyApi, JavaDependencyConstant, JavaDependencyFunction, JavaDependencyPackage,
+    JavaSourceDescription, JavaSourceDescriptionKind, JavaSourceTarget,
 };
 mod dependency_scope;
 pub use dependency_scope::{JavaDependencyBindings, JavaDependencyScope, JavaImportedCallable};

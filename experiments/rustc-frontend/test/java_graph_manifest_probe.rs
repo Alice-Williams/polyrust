@@ -55,6 +55,7 @@ pub(super) fn write(api: &JavaDependencyApi, output: &mut String) {
                     .join(","),
                 scalar(result).into(),
             ),
+            Kind::Constant { .. } => panic!("Java constant source projection not yet admitted"),
             Kind::Record => ("record", "-".into(), "-".into()),
             Kind::Field { owner, ty } => ("field", scalar(ty).into(), id(owner)),
         };

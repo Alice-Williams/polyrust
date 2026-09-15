@@ -71,6 +71,9 @@ pub(crate) fn project(owner: Owner<'_>) -> Result<Manifest<'_>, String> {
                     return Err("private Java description grants a callable".into());
                 }
             }
+            Kind::Constant { .. } => {
+                return Err("Java constant bundle projection is not yet admitted".into());
+            }
             Kind::Record => {}
             Kind::Field { ty, .. } => {
                 scalar(ty)?;

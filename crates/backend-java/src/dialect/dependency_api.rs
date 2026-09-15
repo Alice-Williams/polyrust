@@ -1,5 +1,7 @@
 //! Java owner authority derives only from an immutable render-ready package.
 mod bodies;
+mod constants;
+pub use constants::JavaDependencyConstant;
 mod descriptions;
 mod exports;
 mod inventory;
@@ -154,6 +156,7 @@ impl Ord for JavaDependencyFunction {
 pub struct JavaDependencyApi {
     owner: JavaDependencyPackage,
     functions: BTreeMap<RustDeclarationId, JavaDependencyFunction>,
+    constants: BTreeMap<RustDeclarationId, JavaDependencyConstant>,
 }
 
 impl JavaDependencyApi {
@@ -207,7 +210,16 @@ impl JavaDependencyApi {
                 )
             })
             .collect();
-        Ok(Self { owner, functions })
+        let constants = inventory
+            .constants
+            .into_iter()
+            .map(|(id, value)| (id, JavaDependencyConstant::new(owner.clone(), value)))
+            .collect();
+        Ok(Self {
+            owner,
+            functions,
+            constants,
+        })
     }
     pub fn root(&self) -> RustDeclarationId {
         self.owner.root()
@@ -217,6 +229,12 @@ impl JavaDependencyApi {
     }
     pub fn package(&self) -> &RenderReadyPackage<JavaDialect> {
         &self.owner.0.package
+    }
+    pub fn constants(&self) -> impl ExactSizeIterator<Item = &JavaDependencyConstant> {
+        self.constants.values()
+    }
+    pub fn constant(&self, id: RustDeclarationId) -> Option<&JavaDependencyConstant> {
+        self.constants.get(&id)
     }
     pub fn functions(&self) -> impl ExactSizeIterator<Item = &JavaDependencyFunction> {
         self.functions.values()

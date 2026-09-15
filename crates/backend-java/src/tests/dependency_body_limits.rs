@@ -36,6 +36,7 @@ fn mutable_bool_body_admission_restores_lexical_scope_and_rejects_parameter_writ
     let mut reader = Reader {
         methods: &methods,
         records: &records,
+        constants: &BTreeMap::new(),
         budget: &mut budget,
         calls: BTreeSet::new(),
         imported_height: 0,
@@ -114,6 +115,7 @@ fn body_budget_and_depth_charge_exact_and_one_over() {
     let mut reader = Reader {
         methods: &methods,
         records: &records,
+        constants: &BTreeMap::new(),
         budget: &mut budget,
         calls: BTreeSet::new(),
         imported_height: 0,
@@ -146,10 +148,10 @@ fn actual_function_inventory_and_expression_depth_boundaries() {
         .iter()
         .map(|id| (*id, &method))
         .collect();
-    verify(&methods, &records, &mut Budget::new()).unwrap();
+    verify(&methods, &records, &BTreeMap::new(), &mut Budget::new()).unwrap();
     let methods = ids.iter().map(|id| (*id, &method)).collect();
     assert!(
-        verify(&methods, &records, &mut Budget::new())
+        verify(&methods, &records, &BTreeMap::new(), &mut Budget::new())
             .unwrap_err()
             .contains("function limit")
     );
@@ -170,6 +172,7 @@ fn actual_function_inventory_and_expression_depth_boundaries() {
     let mut reader = Reader {
         methods: &methods,
         records: &records,
+        constants: &BTreeMap::new(),
         budget: &mut budget,
         calls: BTreeSet::new(),
         imported_height: 0,

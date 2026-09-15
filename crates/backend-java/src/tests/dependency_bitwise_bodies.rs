@@ -16,6 +16,7 @@ fn admitted(value: JavaExpr) -> bool {
     Reader {
         methods: &BTreeMap::new(),
         records: &BTreeMap::new(),
+        constants: &BTreeMap::new(),
         budget: &mut budget,
         calls: BTreeSet::new(),
         imported_height: 0,

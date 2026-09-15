@@ -1,6 +1,6 @@
 # Rust public scalar constants in Java 21
 
-- Status: normative design; implementation pending M35-03A-02F-02B-03
+- Status: normative; producer implementation in M35-03A-02F-02B-03A; consumer/source integration pending
 - Parent: [shared source contract](../../rust-public-constants.md)
 - Reuse: [Java source packages](rust-hir-lowering.md)
 
@@ -65,3 +65,26 @@ tampering must fail structural checks or independent native truth as appropriate
 Final compiler/bundle work adds real Rust-source constants, aliases, private
 names, docs, stale producer metadata and atomic publication. Existing Java
 certification, source-function and private/local constant tests stay enabled.
+
+## Producer implementation boundary
+
+JavaDependencyApi reconciles the complete public function/constant union.
+JavaDependencyConstant retains the defining RenderReadyPackage through its
+JavaDependencyPackage, the generated value ID, Rust source declaration, declared
+field path, primitive type and exact literal. Equality/ordering distinguish
+independently certified owners even when source IDs and emitted text coincide.
+Borrowed descriptions have a distinct Constant case; descriptions and resolved
+items cannot be promoted into constant authority.
+
+The original render-ready certificate authenticates the source inventory against
+the original registration table. The narrower producer projection additionally
+checks literal/type/static/final/public/owner/export agreement and admits method
+reads only from its verified constant inventory. Neither layer claims that
+caller-constructed source metadata authenticates a real Rust program: that join
+belongs to the rustc adapter and the compiler/bundle milestones.
+
+Producer tests use separately compiled Java21 consumers. Since javac can inline
+constant-variable reads, semantic-mutant tests recompile consumers against each
+mutant producer; running stale consumer bytecode is not sufficient evidence.
+The Java bundle projection/serialization fail closed for Constant descriptions
+until their dedicated integration milestone. Existing source kinds stay enabled.

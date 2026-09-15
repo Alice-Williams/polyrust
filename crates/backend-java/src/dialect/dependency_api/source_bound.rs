@@ -117,6 +117,19 @@ impl Reader<'_> {
                     self.parameters(&value.parameters, depth + 1)?;
                     self.block(&value.body, depth + 2)?;
                 }
+                JavaMember::Field(value) => {
+                    self.symbol(TargetSymbolRef::Generated(GeneratedSymbolId::Value(
+                        value.declared.ok_or("source constant identity missing")?,
+                    )))?;
+                    self.ty(&value.ty)?;
+                    self.expression(
+                        value
+                            .initializer
+                            .as_ref()
+                            .ok_or("source constant initializer missing")?,
+                        depth + 2,
+                    )?;
+                }
                 JavaMember::Method(value) => {
                     let JavaMethodDeclaration::Callable(id) = value.declared else {
                         return Err("source method identity missing".into());

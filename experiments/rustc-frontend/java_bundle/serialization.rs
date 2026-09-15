@@ -95,6 +95,9 @@ fn declaration(out: &mut impl Sink, description: &JavaSourceDescription<'_>) -> 
     out.fixed(",\"kind\":")?;
     out.string(match description.kind() {
         Kind::Function { .. } => "function",
+        Kind::Constant { .. } => {
+            return Err("Java constant serialization is not yet admitted".into());
+        }
         Kind::Record => "record",
         Kind::Field { .. } => "field",
     })?;
@@ -142,6 +145,9 @@ fn declaration(out: &mut impl Sink, description: &JavaSourceDescription<'_>) -> 
             }
             out.fixed("],\"result\":")?;
             out.string(scalar(result)?)?;
+        }
+        Kind::Constant { .. } => {
+            return Err("Java constant serialization is not yet admitted".into());
         }
         Kind::Record => {}
         Kind::Field { owner, ty } => {
