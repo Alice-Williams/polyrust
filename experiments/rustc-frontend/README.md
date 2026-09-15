@@ -382,3 +382,10 @@ operands, partial moves and ordered cleanup with canonical root scopes. A
 query-only RecordOwnedBody cannot be constructed from arbitrary MIR or erased
 into local-only evidence. This remains compiler-only proof, not target heap
 generation. See [aggregate and partial-move stage](../../docs/specification/typed-generation/languages/c/rust-owned-record-fields.md#aggregate-and-partial-move-stage).
+
+M35-02B-03H-01 adds `scalar_box_*` targets for authentic Box construction with
+a local i32/bool-field record payload. A private shared constructor reader
+preserves the existing i32-only input; a distinct capability and builder slot
+retain compiler nominal/field identities and closed scalar-kind enums. This
+operation proof does not establish payload producer/read/drop correspondence
+or enable target heap output. See [boxed scalar records](../../docs/specification/typed-generation/languages/c/rust-boxed-scalar-records.md).

@@ -30,6 +30,7 @@ load(":owned_scope_targets.bzl", "owned_scope_targets")
 load(":owned_selection_targets.bzl", "owned_selection_targets")
 load(":public_package_targets.bzl", "public_package_targets")
 load(":publication_probe_targets.bzl", "publication_probe_targets")
+load(":scalar_box_targets.bzl", "scalar_box_targets")
 load(":source_capability_targets.bzl", "source_capability_targets")
 load(":source_check_targets.bzl", "source_check_targets")
 load(":source_origin_targets.bzl", "source_origin_targets")
@@ -79,6 +80,8 @@ owned_selection_targets(name = "owned_selection_test")
 owned_record_targets(name = "owned_record_test")
 
 owned_fields_targets(name = "owned_fields_test")
+
+scalar_box_targets(name = "scalar_box_test")
 
 crate_native_targets(name = "crate_native_test")
 

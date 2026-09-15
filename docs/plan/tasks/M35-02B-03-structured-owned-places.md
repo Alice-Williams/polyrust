@@ -42,6 +42,10 @@ cleanup decisions, preserving the nonselected owner's remaining obligation.
 introduces authenticated record fields before their aggregate/partial-move
 correspondence and cleanup proof.
 
+[M35-02B-03H — Boxes containing scalar records](M35-02B-03H-boxed-scalar-records.md)
+adds the opposite ownership direction, starting with a separate typed constructor
+capability before its payload producer/field-read/cleanup correspondence.
+
 - Map every admitted structured exit and owned operation unambiguously to the
   compiler's corresponding places/drop obligations; unsupported shapes diagnose.
 - Distinct same-type owners, branch guards, field projections and lexical
