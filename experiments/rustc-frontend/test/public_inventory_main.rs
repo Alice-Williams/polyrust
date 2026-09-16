@@ -149,5 +149,6 @@ fn forged(exports: std::sync::Arc<portable_codegen::RustCrateExports>) -> Invent
     Inventory {
         exports,
         declarations: std::collections::BTreeMap::new(),
+        foreign_constants: std::collections::BTreeMap::new(),
     }
 }

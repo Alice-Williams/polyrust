@@ -1,14 +1,20 @@
 //! Cache module payloads and ancestry; bound raw text before cloning attributes.
 use super::{Result, identity, location};
-use portable_codegen::{RustCrateExports, RustModuleAncestry, RustModuleDocumentation};
+use portable_codegen::{
+    RustCrateExports, RustDeclarationId, RustModuleAncestry, RustModuleDocumentation,
+};
 use rustc_hir::{def::DefKind, def_id::DefId};
 use rustc_middle::ty::TyCtxt;
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 
 #[derive(Default)]
 #[cfg_attr(local_constant_ast_probe, derive(Debug))]
 pub(crate) struct Cache {
     exports: Option<Arc<RustCrateExports>>,
+    export_definitions: BTreeMap<RustDeclarationId, DefId>,
     modules: HashMap<DefId, Arc<RustModuleDocumentation>>,
     ancestries: HashMap<DefId, RustModuleAncestry>,
     raw_bytes: usize,
@@ -20,9 +26,20 @@ impl Cache {
         if let Some(exports) = &self.exports {
             return Ok(exports.clone());
         }
-        let exports = Arc::new(super::exports::collect(tcx, self)?);
+        let collected = super::exports::collect(tcx, self)?;
+        let exports = Arc::new(collected.graph);
+        self.export_definitions = collected.definitions;
         self.exports = Some(exports.clone());
         Ok(exports)
+    }
+
+    pub(super) fn export_definition(
+        &mut self,
+        tcx: TyCtxt<'_>,
+        identity: RustDeclarationId,
+    ) -> Result<Option<DefId>> {
+        self.exports(tcx)?;
+        Ok(self.export_definitions.get(&identity).copied())
     }
 
     pub(super) fn documentation(&mut self, tcx: TyCtxt<'_>, id: DefId) -> Result<Vec<String>> {

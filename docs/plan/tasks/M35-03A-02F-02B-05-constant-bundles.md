@@ -29,7 +29,7 @@ metadata alone must not create authority.
 
 1. [05A — Owned constant bundle publication](M35-03A-02F-02B-05A-owned-constant-bundles.md) — complete.
 2. [05B — Authenticated foreign constant reads](M35-03A-02F-02B-05B-foreign-constant-reads.md) — complete.
-3. [05C — Cross-crate export closure](M35-03A-02F-02B-05C-constant-alias-closure.md) — planned.
+3. [05C — Cross-crate export closure](M35-03A-02F-02B-05C-constant-alias-closure.md) — in-progress.
 
 Each child has its own complete proof, reviewed checkpoint and push. Publishing
 owned constants in a bundle does not authorize a foreign Rust read or re-export.

@@ -1,20 +1,29 @@
 //! Shared reader for rustc's resolved public binding graph, not textual uses.
 mod budget;
+#[cfg(export_definition_mismatch)]
+#[path = "../../test/export_definition_mismatch.rs"]
+mod mismatch;
 use super::{Result, identity};
 use portable_codegen::{RustCrateExports, RustExportName, RustExportNamespace, RustExportTarget};
 use rustc_hir::{
     def::{DefKind, Namespace, Res},
-    def_id::CRATE_DEF_ID,
+    def_id::{CRATE_DEF_ID, DefId},
 };
 use rustc_middle::ty::{TyCtxt, Visibility};
 use std::collections::{BTreeMap, HashSet};
 
-pub(super) fn collect(tcx: TyCtxt<'_>, cache: &mut super::Cache) -> Result<RustCrateExports> {
+pub(super) struct Collected {
+    pub graph: RustCrateExports,
+    pub definitions: BTreeMap<portable_codegen::RustDeclarationId, DefId>,
+}
+
+pub(super) fn collect(tcx: TyCtxt<'_>, cache: &mut super::Cache) -> Result<Collected> {
     let mut result = RustCrateExports {
         root: identity(tcx, CRATE_DEF_ID.to_def_id()),
         modules: BTreeMap::new(),
         module_ancestries: BTreeMap::new(),
     };
+    let mut definitions = BTreeMap::new();
     let mut pending = vec![CRATE_DEF_ID];
     let mut seen = HashSet::from([CRATE_DEF_ID]);
     let mut budget = budget::Budget::default();
@@ -55,6 +64,11 @@ pub(super) fn collect(tcx: TyCtxt<'_>, cache: &mut super::Cache) -> Result<RustC
                 }
                 RustExportTarget::Module(declaration)
             } else {
+                if let Some(previous) = definitions.insert(declaration, target)
+                    && previous != target
+                {
+                    return Err("ambiguous stable compiler export definition identity".into());
+                }
                 RustExportTarget::Declaration(declaration)
             };
             if bindings.insert(name, target).is_some() {
@@ -65,5 +79,10 @@ pub(super) fn collect(tcx: TyCtxt<'_>, cache: &mut super::Cache) -> Result<RustC
             .modules
             .insert(identity(tcx, module.to_def_id()), bindings);
     }
-    Ok(result)
+    #[cfg(export_definition_mismatch)]
+    mismatch::apply(&mut definitions);
+    Ok(Collected {
+        graph: result,
+        definitions,
+    })
 }

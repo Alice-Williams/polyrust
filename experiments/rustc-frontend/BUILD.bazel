@@ -24,6 +24,7 @@ load(":eager_ast_targets.bzl", "eager_ast_targets")
 load(":eager_contract_targets.bzl", "eager_contract_targets")
 load(":eager_targets.bzl", "eager_targets")
 load(":export_graph_targets.bzl", "export_graph_targets")
+load(":foreign_export_targets.bzl", "foreign_export_targets")
 load(":i64_targets.bzl", "i64_targets")
 load(":java_ast_targets.bzl", "java_ast_targets")
 load(":java_bundle_targets.bzl", "java_bundle_targets")
@@ -664,6 +665,8 @@ local_constant_contract_targets(
 )
 
 public_inventory_targets(name = "public_inventory_test")
+
+foreign_export_targets(name = "foreign_export_inventory_test")
 
 public_constant_targets(
     name = "public_constant_native_test",

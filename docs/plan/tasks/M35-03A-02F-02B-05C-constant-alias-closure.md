@@ -1,8 +1,11 @@
 # M35-03A-02F-02B-05C — Preserve cross-crate constant exports and close proof
 
-- Status: planned
+- Status: in-progress
 - Parent: [multi-crate constants](M35-03A-02F-02B-05-constant-bundles.md)
 - Depends on: M35-03A-02F-02B-05B
+- Specifications: [shared](../../specification/typed-generation/rust-constant-reexports.md),
+  [C17](../../specification/typed-generation/languages/c/rust-constant-reexports.md),
+  [Java21](../../specification/typed-generation/languages/java/rust-constant-reexports.md)
 
 ## Contract
 
@@ -34,3 +37,34 @@ or other declaration kinds remain diagnosed, not silently omitted.
   generated examples and scoped push complete this checkpoint.
 - Close 05/02B/02 only after all required evidence is recorded. Do not claim wider
   constant families, all Rust syntax or legacy runtime retirement is complete.
+
+## Bounded implementation order
+
+1. [Typed compiler inventory](M35-03A-02F-02B-05C-01-source-export-inventory.md)
+   — complete. Retain checked DefId bindings alongside the finite shared
+   export graph; expose a distinct private foreign-module-constant declaration
+   type, separate from owned LocalDefId declarations. Resolve direct, renamed and
+   transitive aliases to one defining identity. Keep the current production
+   constructor fail-closed until both target certificate paths below exist.
+2. Package provenance: preserve the selected crate's export graph independently
+   of any owned function/field. A re-export-only crate needs no fabricated source
+   declaration. C header/source and Java facade metadata must retain this explicit
+   package provenance and reconcile it with every owned declaration.
+3. Target export evidence: certify a separate alias inventory backed by original
+   imported constant witnesses. Aliases point to defining symbols/paths; they do
+   not enter owned constant definitions or create new producer authority. Check
+   complete local/foreign binding union, retained dependency closure, documentation,
+   identifier collisions and existing bounds, including zero-owned-item packages.
+4. Compiler lowering and schemas: register exports even when no body reads them;
+   preserve direct/transitive owner authority and all finite module/name bindings.
+   Explicitly version new alias metadata and reconstruct it from certified target
+   evidence before publication. Only then enable source foreign constant exports.
+5. End-to-end proof: native separate Rust/C/Java consumers, direct/transitive and
+   re-export-only fixtures, stale/replaced/missing/wrong-kind controls, exact
+   publication inventory, independent source mutation and Bazel invalidation,
+   examples, fresh review, and complete release/lint gate.
+
+Finite cycles in local module aliases are represented as graph edges and need
+not be rejected or expanded into paths. Cyclic crate dependency graphs and
+unbounded/over-budget expansion remain rejected. Producer declaration docs stay
+on the producer; facade/module docs remain with the re-exporting crate.
