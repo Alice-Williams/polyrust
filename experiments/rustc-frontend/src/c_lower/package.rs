@@ -14,12 +14,14 @@ use std::collections::HashMap;
 #[path = "../../test/package_state_c.rs"]
 pub(super) mod assertions;
 
-pub(super) struct State {
+pub(crate) struct State {
     pub registry: CRegistry,
     pub file: CFileRef,
     pub mappings: capabilities::CBindings,
     pub functions: HashMap<LocalDefId, CFunctionRef>,
     pub foreign_functions: HashMap<DefId, CFunctionRef>,
+    pub header: Option<CFileRef>,
+    pub constants: super::constants::OwnedConstants,
     pub records: HashMap<DefId, CStructRef>,
     pub declarations: Vec<CFileItem>,
     pub origins: origin::Cache,
@@ -41,6 +43,8 @@ impl State {
             function,
             functions: self.functions,
             foreign_functions: self.foreign_functions,
+            header: self.header,
+            constants: self.constants,
             records: self.records,
             declarations: self.declarations,
             origins: self.origins,
@@ -63,6 +67,8 @@ impl State {
             mappings: reader.mappings,
             functions: reader.functions,
             foreign_functions: reader.foreign_functions,
+            header: reader.header,
+            constants: reader.constants,
             records: reader.records,
             declarations: reader.declarations,
             origins: reader.origins,

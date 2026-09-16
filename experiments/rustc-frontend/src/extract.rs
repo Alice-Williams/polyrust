@@ -57,7 +57,30 @@ fn certify(lowered: crate::c_lower::LoweredPackage, mode: Mode) -> Result<Progra
     let manifest = match mode {
         Mode::Entry => None,
         Mode::PublicPackage => {
-            let manifest = if lowered.imports.is_empty() {
+            let manifest = if !lowered.constants.is_empty() {
+                let manifest = ApiManifest::with_constants(
+                    &package,
+                    lowered.exports.clone(),
+                    &lowered.functions,
+                    &lowered.imports,
+                    &lowered.constants,
+                )?;
+                manifest.verify_constants(
+                    &package,
+                    lowered.exports.clone(),
+                    &lowered.functions,
+                    &lowered.imports,
+                    &lowered.constants,
+                )?;
+                #[cfg(public_constant_ast_probe)]
+                crate::api_manifest::constant_contract::check(
+                    &package,
+                    &manifest,
+                    &lowered.functions,
+                    &lowered.constants,
+                );
+                manifest
+            } else if lowered.imports.is_empty() {
                 let manifest =
                     ApiManifest::new(&package, lowered.exports.clone(), &lowered.functions)?;
                 manifest.verify(&package, lowered.exports, &lowered.functions)?;

@@ -16,6 +16,8 @@ use super::{
     CRecordInitializers as Records, CResolvedPlaces as Places, CScalarComparisons as Comparisons,
     CSharedBorrows as Borrows, CShortCircuitBooleans as Lazy,
 };
+#[cfg(local_constant_c)]
+use super::{CPublicConstantReads as PublicReads, CPublicConstants as PublicDeclarations};
 #[cfg(local_constant_java)]
 use super::{
     JavaBooleanNegation as Negate, JavaDirectCalls as Calls, JavaEagerBooleans as Eager,
@@ -25,6 +27,8 @@ use super::{
     JavaScalarComparisons as Comparisons, JavaSharedBorrows as Borrows,
     JavaShortCircuitBooleans as Lazy,
 };
+#[cfg(local_constant_java)]
+use super::{JavaPublicConstantReads as PublicReads, JavaPublicConstants as PublicDeclarations};
 #[cfg(local_constant_c)]
 use crate::c_lower::Reader;
 #[cfg(local_constant_java)]
@@ -49,6 +53,8 @@ fn missing() {
         .integer_bitwise(IntegerBits)
         .eager_booleans(Eager)
         .scalar_constants(ScalarReads)
+        .public_constants(PublicDeclarations)
+        .public_constant_reads(PublicReads)
         .build();
 }
 

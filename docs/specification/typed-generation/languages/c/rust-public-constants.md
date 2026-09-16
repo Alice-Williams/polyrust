@@ -1,6 +1,6 @@
 # Rust public scalar constants in C17
 
-- Status: owned and imported C target mappings complete in M35-03A-02F-02B-02; source/bundle integration remains pending
+- Status: owned and imported C target mappings complete in M35-03A-02F-02B-02; single-crate source integration implemented; bundle integration pending
 - Parent: [shared source contract](../../rust-public-constants.md)
 - Reuse: [C package projection](rust-hir-public-packages.md)
 
@@ -107,3 +107,29 @@ origin cache independently of function analysis. Body Readers are constructed
 only for registered functions; zero bodies require no TypeckResults or dummy
 function. The complete C target checks still run after file assembly. This
 structural prerequisite does not itself admit source constant APIs.
+
+## Single-crate compiler publication
+
+PublicConstants maps a private compiler-evaluated input into package-state
+registration and returns its CObjectRef. PublicConstantReads resolves the exact
+owned object by DefId and checks its Rust origin, header and evaluated value;
+the generated read cannot silently become a folded literal. Both mappings are
+required consuming-builder slots, with package-State and function-Reader
+contexts respectively.
+
+Single-crate api.json retains schema 1 for function-only packages and uses schema
+3 when constants are present. Module bindings distinguish constant/function.
+Each constant records its exact identity, allocated symbol, primary header,
+implementation source, scalar type, readonly flag and value. Bool values are JSON
+booleans; i32/i64 values are canonical signed decimal strings, preserving values
+outside double precision. Metadata is reconstructed against certified objects
+and the compiler-owned expected inventory in both directions. Schema 2 bundle
+publication continues to reject owned constants until child05 extends that path.
+
+The manifest accepts only RenderReadyPackage<CDialect>. C profile certification
+already requires public-header const bool/i32/i64 objects with exact matching
+literal initializers; schema 3's readonly/type descriptions depend on that
+certificate, not on unverified caller-supplied ASTs. Manifest reconstruction
+separately checks compiler identities, export completeness, files, linkage,
+values and allocated names. Repeating the profile's constness/type checker in
+the JSON layer is not a substitute for preserving this certificate boundary.

@@ -10,6 +10,8 @@ pub(super) fn snapshot(reader: &Reader<'_>) -> String {
         checked,
         mappings: _,
         builder,
+        public_api,
+        constants,
         functions,
         imported,
         records,
@@ -28,6 +30,7 @@ pub(super) fn snapshot(reader: &Reader<'_>) -> String {
         "{:?}",
         (
             session,
+            (public_api, constants),
             (
                 builder, functions, imported, records, bindings, origins, prelude
             ),

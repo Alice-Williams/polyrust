@@ -1,6 +1,6 @@
 # Rust public scalar constants in Java 21
 
-- Status: normative; producer and consumer complete; source integration pending
+- Status: normative; single-crate source integration implemented; bundle integration pending
 - Parent: [shared source contract](../../rust-public-constants.md)
 - Reuse: [Java source packages](rust-hir-lowering.md)
 
@@ -125,3 +125,27 @@ cache and shared expression budget. Each actual function gets fresh checked body
 state; empty body lists emit no method. The 100,000-expression package limit must
 survive Reader replacement. Facade and file assembly occur outside a Reader. This
 structural prerequisite does not itself admit source constant APIs.
+
+## Single-crate compiler publication
+
+PublicConstants uses a private compiler-evaluated ConstantDeclarationInput and
+package State, returning a GeneratedValueId. State retains the exact DefId,
+generated value registration, field and evaluated LiteralValue. PublicConstantReads
+uses function Reader state to resolve the same DefId and evaluated value into a
+typed JavaExprKind::Value reference. Both are required executable consuming-builder
+slots; missing/duplicate and wrong capability/context/input/output registrations
+fail Rust compilation.
+
+The compiler's closed public inventory registers all fields before lowering any
+function body. Mixed facades contain real methods and fields; constants-only
+facades have fields and the ordinary private constructor, with no dummy method.
+Finite aliases stay in the certified source inventory and share one field identity.
+Selected-entry mode deliberately remains value-only and folds public constants;
+it does not claim to publish the crate's complete API.
+
+The standalone adapter emits the ordinary Generated.java file. Compiler probes
+reconstruct JavaDependencyApi from its certificate and compare values, primitive
+types, identities, export bindings and qualified paths before native consumers
+compile. No standalone Java JSON sidecar is added by this step. Cross-crate
+source joins and versioned bundle output remain child05; foreign module constant
+reads reject before either creating output or replacing existing output.

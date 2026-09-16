@@ -1,6 +1,6 @@
 # M35-03A-02F-02B-04 — Compiler public constants and constants-only packages
 
-- Status: in-progress
+- Status: complete
 - Parent: [public constants](M35-03A-02F-02B-public-constants.md)
 - Depends on: M35-03A-02F-02B-03
 
@@ -28,8 +28,18 @@ reads and preserve private/local folding and all public export bindings/docs.
 ## Ordered implementation
 
 1. [04A — Function-independent package assembly](M35-03A-02F-02B-04A-package-assembly-state.md) — complete.
-2. [04B — Compiler public constant declarations and reads](M35-03A-02F-02B-04B-public-source-constants.md) — in-progress.
+2. [04B — Compiler public constant declarations and reads](M35-03A-02F-02B-04B-public-source-constants.md) — complete.
 
 The structural prerequisite is not evidence of source constant support. Each
 child receives its own proof and reviewed checkpoint. Parent04 completes only
 after both; versioned multi-crate metadata and producer joins remain child05.
+
+## Completion evidence
+
+Both children are complete. Child04B records the private source inputs,
+executable C/Java declaration/read mappings, exact single-crate metadata,
+constants-only/mixed/selected-entry native proof, 28 compile-negative targets,
+atomic negatives, evaluated reviews and exported examples. Its final code tree
+passed all 716 Linux Bazel/release/lint tests; a fresh independent Sol Extra High
+review found no actionable defects. Multi-crate source joins and constant bundles
+remain child05. This completion does not retire legacy runtimes.

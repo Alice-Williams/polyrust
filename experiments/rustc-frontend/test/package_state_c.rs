@@ -21,6 +21,8 @@ fn empty() -> State {
         mappings: capabilities::c_bindings(),
         functions: HashMap::new(),
         foreign_functions: HashMap::new(),
+        header: None,
+        constants: HashMap::new(),
         records: HashMap::new(),
         declarations: vec![],
         origins: origin::Cache::default(),

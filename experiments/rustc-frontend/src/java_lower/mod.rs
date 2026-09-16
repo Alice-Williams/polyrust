@@ -4,6 +4,7 @@ mod assembly;
 #[path = "../../test/java_source_assertions.rs"]
 mod assertions;
 mod capabilities;
+mod constants;
 #[cfg(java_ast_probe)]
 #[path = "../../test/java_expression_assertions.rs"]
 mod expression_assertions;
@@ -63,6 +64,8 @@ pub(crate) struct Reader<'tcx> {
     builder: TargetAstBuilder<JavaDialect>,
     functions: HashMap<LocalDefId, Callable>,
     imported: HashMap<DefId, JavaImportedCallable>,
+    public_api: bool,
+    constants: HashMap<DefId, constants::Constant>,
     records: HashMap<DefId, records::Record>,
     bindings: HashMap<hir::HirId, Place>,
     origins: crate::source_origin::Cache,

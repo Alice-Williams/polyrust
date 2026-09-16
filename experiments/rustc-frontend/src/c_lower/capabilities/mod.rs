@@ -9,6 +9,15 @@ mod lexical_control;
 mod literal_values;
 mod local_constants;
 mod object_types;
+#[cfg(public_constant_ast_probe)]
+#[path = "../../../test/public_constant_c_ast.rs"]
+mod public_constant_ast;
+#[cfg(public_constant_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/public_constant_contract.rs"]
+mod public_constant_contract;
+mod public_constant_reads;
+mod public_constants;
 mod record_initializers;
 mod resolved_places;
 mod scalar_comparisons;
@@ -108,6 +117,8 @@ pub(crate) use lexical_control::CLexicalControl;
 pub(crate) use literal_values::CLiteralValues;
 pub(crate) use local_constants::CLocalConstants;
 pub(crate) use object_types::CObjectTypes;
+pub(crate) use public_constant_reads::CPublicConstantReads;
+pub(crate) use public_constants::CPublicConstants;
 pub(crate) use record_initializers::CRecordInitializers;
 pub(crate) use resolved_places::CResolvedPlaces;
 pub(crate) use scalar_comparisons::CScalarComparisons;
@@ -135,6 +146,8 @@ pub(crate) type CBindings = Bindings<
     CEagerBooleans,
     CScalarConstants,
     CLocalConstants,
+    CPublicConstants,
+    CPublicConstantReads,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -155,5 +168,7 @@ pub(crate) fn c_bindings() -> CBindings {
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
+        .public_constants(CPublicConstants)
+        .public_constant_reads(CPublicConstantReads)
         .build()
 }

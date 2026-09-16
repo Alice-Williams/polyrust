@@ -13,6 +13,8 @@ fn empty() -> State {
         mappings: capabilities::java_bindings(),
         functions: HashMap::new(),
         imported: HashMap::new(),
+        public_api: false,
+        constants: HashMap::new(),
         records: HashMap::new(),
         origins: crate::source_origin::Cache::default(),
         remaining: 100_000,

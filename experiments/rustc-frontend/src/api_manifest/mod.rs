@@ -1,4 +1,8 @@
 //! Bidirectional compiler-binding/checked-C metadata; never parsed output code.
+#[cfg(public_constant_ast_probe)]
+#[path = "../../test/public_constant_manifest.rs"]
+pub(crate) mod constant_contract;
+mod constants;
 #[cfg(public_package_contract)]
 #[path = "../../test/public_package_manifest_mutations.rs"]
 pub(crate) mod contract;
@@ -36,6 +40,7 @@ pub(crate) struct ApiManifest {
     implementation: CFileRef,
     functions: BTreeMap<RustDeclarationId, Function>,
     imports: imports::ExpectedImports,
+    constants: BTreeMap<RustDeclarationId, constants::Constant>,
 }
 
 impl ApiManifest {
@@ -52,12 +57,23 @@ impl ApiManifest {
             .iter()
             .map(|(id, function)| (*id, function.reference.clone()))
             .collect();
-        self.verify_imports(
-            api.package(),
-            self.exports.clone(),
-            &expected,
-            &self.imports,
-        )
+        let constants = self
+            .constants
+            .iter()
+            .map(|(id, constant)| (*id, (constant.reference.clone(), constant.value.clone())))
+            .collect();
+        if self
+            != &Self::with_constants(
+                api.package(),
+                self.exports.clone(),
+                &expected,
+                &self.imports,
+                &constants,
+            )?
+        {
+            return Err("bundle manifest owner inventory disagrees".into());
+        }
+        Ok(())
     }
 
     pub(crate) fn bundle_bound(&self) -> Result<usize, String> {
@@ -78,6 +94,22 @@ impl ApiManifest {
         expected: &BTreeMap<RustDeclarationId, CFunctionRef>,
         imported: &imports::ExpectedImports,
     ) -> Result<Self, String> {
+        Self::with_constants(package, exports, expected, imported, &BTreeMap::new())
+    }
+
+    pub(crate) fn with_constants(
+        package: &RenderReadyPackage<CDialect>,
+        exports: Arc<RustCrateExports>,
+        expected: &BTreeMap<RustDeclarationId, CFunctionRef>,
+        imported: &imports::ExpectedImports,
+        expected_constants: &constants::ExpectedConstants,
+    ) -> Result<Self, String> {
+        if expected_constants
+            .keys()
+            .any(|id| expected.contains_key(id))
+        {
+            return Err("API constant and function identity overlap".into());
+        }
         let files = package.ast().files();
         if files.len() != 2 {
             return Err("API manifest requires a certified public pair".into());
@@ -109,7 +141,8 @@ impl ApiManifest {
                     RustExportTarget::Declaration(id)
                         if name.namespace == RustExportNamespace::Value
                             && id.crate_id == exports.root.crate_id
-                            && expected.contains_key(id) =>
+                            && (expected.contains_key(id)
+                                || expected_constants.contains_key(id)) =>
                     {
                         public.insert(*id);
                     }
@@ -118,7 +151,7 @@ impl ApiManifest {
             }
         }
         if public.is_empty() {
-            return Err("API manifest has no public functions".into());
+            return Err("API manifest has no public declarations".into());
         }
         let mut functions = BTreeMap::new();
         for definition in c_defined_functions(package) {
@@ -155,11 +188,23 @@ impl ApiManifest {
                 return Err("duplicate API definition identity".into());
             }
         }
-        if functions.len() != expected.len() || !public.iter().all(|id| functions.contains_key(id))
+        if functions.len() != expected.len()
+            || !public
+                .iter()
+                .all(|id| functions.contains_key(id) || expected_constants.contains_key(id))
         {
             return Err("API manifest misses a source or target function".into());
         }
+        let constants = constants::collect(
+            package,
+            &exports,
+            &header,
+            &implementation,
+            expected_constants,
+            &public,
+        )?;
         let manifest = Self {
+            constants,
             imports: imports::collect(package, exports.root, imported)?,
             exports,
             header,
@@ -168,6 +213,22 @@ impl ApiManifest {
         };
         manifest.encoded_bound()?;
         Ok(manifest)
+    }
+
+    pub(crate) fn verify_constants(
+        &self,
+        package: &RenderReadyPackage<CDialect>,
+        exports: Arc<RustCrateExports>,
+        expected: &BTreeMap<RustDeclarationId, CFunctionRef>,
+        imported: &imports::ExpectedImports,
+        constants: &constants::ExpectedConstants,
+    ) -> Result<(), String> {
+        if self != &Self::with_constants(package, exports, expected, imported, constants)? {
+            return Err(
+                "API manifest differs from exact compiler/target constant reconstruction".into(),
+            );
+        }
+        Ok(())
     }
 
     pub(crate) fn verify(
@@ -186,9 +247,6 @@ impl ApiManifest {
         expected: &BTreeMap<RustDeclarationId, CFunctionRef>,
         imported: &imports::ExpectedImports,
     ) -> Result<(), String> {
-        if self != &Self::with_imports(package, exports, expected, imported)? {
-            return Err("API manifest differs from exact compiler/target reconstruction".into());
-        }
-        Ok(())
+        self.verify_constants(package, exports, expected, imported, &BTreeMap::new())
     }
 }

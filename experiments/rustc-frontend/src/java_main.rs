@@ -44,6 +44,10 @@ use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 
+#[cfg(public_constant_ast_probe)]
+#[path = "../test/public_constant_java_probe.rs"]
+mod public_constant_probe;
+
 struct Adapter {
     inputs: inputs::DeclaredInputs,
     public: bool,
@@ -80,6 +84,10 @@ impl Callbacks for Adapter {
             #[cfg(java_ast_probe)]
             if self.public {
                 dependency_assertions::check(tcx, &certificate);
+            }
+            #[cfg(public_constant_ast_probe)]
+            if self.public {
+                public_constant_probe::check(tcx, &certificate);
             }
             Ok(certificate)
         }));

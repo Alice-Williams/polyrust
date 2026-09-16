@@ -16,6 +16,8 @@ use super::{
     CRecordInitializers as Records, CResolvedPlaces as Places, CScalarComparisons as Comparisons,
     CSharedBorrows as Borrows, CShortCircuitBooleans as Lazy,
 };
+#[cfg(bitwise_c)]
+use super::{CPublicConstantReads as PublicReads, CPublicConstants as PublicDeclarations};
 #[cfg(bitwise_java)]
 use super::{
     JavaBooleanNegation as Negate, JavaDirectCalls as Calls, JavaEagerBooleans as Eager,
@@ -25,6 +27,8 @@ use super::{
     JavaScalarComparisons as Comparisons, JavaSharedBorrows as Borrows,
     JavaShortCircuitBooleans as Lazy,
 };
+#[cfg(bitwise_java)]
+use super::{JavaPublicConstantReads as PublicReads, JavaPublicConstants as PublicDeclarations};
 #[cfg(bitwise_c)]
 use crate::c_lower::Reader;
 #[cfg(bitwise_java)]
@@ -52,6 +56,8 @@ fn missing() {
         .eager_booleans(Eager)
         .scalar_constants(Constants)
         .local_constants(Locals)
+        .public_constants(PublicDeclarations)
+        .public_constant_reads(PublicReads)
         .build();
 }
 

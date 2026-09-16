@@ -10,6 +10,8 @@ pub(super) fn snapshot(reader: &Reader<'_>) -> String {
         checked,
         mappings: _,
         registry,
+        header,
+        constants,
         file,
         function,
         functions,
@@ -33,6 +35,7 @@ pub(super) fn snapshot(reader: &Reader<'_>) -> String {
         "{:?}",
         (
             session,
+            (header, constants),
             (
                 registry,
                 file,

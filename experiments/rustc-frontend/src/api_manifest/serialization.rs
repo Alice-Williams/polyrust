@@ -11,6 +11,9 @@ impl ApiManifest {
     }
 
     pub(crate) fn bundle_json(&self) -> Result<String, String> {
+        if !self.constants.is_empty() {
+            return Err("C public constant bundle metadata is not yet admitted".into());
+        }
         self.encode(true)
     }
 
@@ -18,7 +21,13 @@ impl ApiManifest {
         let bound = self.encoded_bound()?;
         let mut text = format!(
             "{{\"schema_version\":{},\"root\":{},\"header\":{},\"implementation\":{},\"modules\":[",
-            if bundle { 2 } else { 1 },
+            if bundle {
+                2
+            } else if self.constants.is_empty() {
+                1
+            } else {
+                3
+            },
             identity(self.exports.root),
             quote(self.header.key().path.as_str()),
             quote(self.implementation.key().path.as_str())
@@ -39,6 +48,9 @@ impl ApiManifest {
                 };
                 let (kind, id) = match target {
                     RustExportTarget::Module(id) => ("module", id),
+                    RustExportTarget::Declaration(id) if self.constants.contains_key(id) => {
+                        ("constant", id)
+                    }
                     RustExportTarget::Declaration(id) => ("function", id),
                 };
                 write!(
@@ -75,6 +87,19 @@ impl ApiManifest {
             .unwrap();
         }
         text.push(']');
+        if !self.constants.is_empty() {
+            text.push_str(",\"constants\":[");
+            for (index, (id, constant)) in self.constants.iter().enumerate() {
+                if index != 0 {
+                    text.push(',');
+                }
+                let (ty, value) = constants::scalar(&constant.value)?;
+                write!(text, "{{\"id\":{},\"symbol\":{},\"primary\":{},\"implementation\":{},\"type\":{},\"value\":{},\"readonly\":true}}",
+                    identity(*id), quote(constant.name.as_str()), quote(self.header.key().path.as_str()),
+                    quote(self.implementation.key().path.as_str()), quote(ty), value).unwrap();
+            }
+            text.push(']');
+        }
         if bundle {
             self.write_imports(&mut text)?;
         }
@@ -109,6 +134,9 @@ impl ApiManifest {
         }
         for function in self.functions.values() {
             add(512 + function.name.as_str().len())?;
+        }
+        for constant in self.constants.values() {
+            add(512 + constant.name.as_str().len())?;
         }
         for bytes in self.import_bounds() {
             add(bytes?)?;

@@ -4,8 +4,9 @@ use super::{
     capabilities::{
         BitwiseInput, BooleanNegation, BorrowInput, CallInput, ComparisonInput, ConstantInput,
         DirectCalls, EagerBooleanInput, EagerBooleans, IntegerBitwise, LazyBooleanInput,
-        LiteralInput, LiteralValues, Mapping, NegationInput, PlaceInput, ResolvedPlaces,
-        ScalarComparisons, ScalarConstants, SharedBorrows, ShortCircuitBooleans, Supports,
+        LiteralInput, LiteralValues, Mapping, NegationInput, PlaceInput, PublicConstantReadInput,
+        PublicConstantReads, ResolvedPlaces, ScalarComparisons, ScalarConstants, SharedBorrows,
+        ShortCircuitBooleans, Supports,
     },
 };
 use portable_backend_c::ast::{CPlace, CValue};
@@ -37,7 +38,14 @@ impl<'tcx> Reader<'tcx> {
                 if ConstantInput::is_constant(self.checked, value, path) =>
             {
                 let input = ConstantInput::read(self.tcx, self.checked, value)?;
-                Supports::<ScalarConstants>::mapping(&self.mappings).lower(self, input)
+                if self.header.is_some()
+                    && PublicConstantReadInput::requires_reference(self.tcx, input.definition())
+                {
+                    let input = PublicConstantReadInput::read(self.tcx, self.checked, value)?;
+                    Supports::<PublicConstantReads>::mapping(&self.mappings).lower(self, input)
+                } else {
+                    Supports::<ScalarConstants>::mapping(&self.mappings).lower(self, input)
+                }
             }
             hir::ExprKind::Path(_)
             | hir::ExprKind::Field(..)

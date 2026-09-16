@@ -4,6 +4,7 @@ use super::{
     CRecordInitializers, CResolvedPlaces, CScalarComparisons, CScalarConstants, CSharedBorrows,
     CShortCircuitBooleans,
 };
+use super::{CPublicConstantReads, CPublicConstants};
 
 #[allow(dead_code)]
 fn must_not_compile() {
@@ -23,6 +24,8 @@ fn must_not_compile() {
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
+        .public_constants(CPublicConstants)
+        .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -40,6 +43,8 @@ fn must_not_compile() {
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
+        .public_constants(CPublicConstants)
+        .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -57,6 +62,8 @@ fn must_not_compile() {
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
+        .public_constants(CPublicConstants)
+        .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -74,6 +81,8 @@ fn must_not_compile() {
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
+        .public_constants(CPublicConstants)
+        .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -91,6 +100,8 @@ fn must_not_compile() {
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
+        .public_constants(CPublicConstants)
+        .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -108,6 +119,8 @@ fn must_not_compile() {
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
+        .public_constants(CPublicConstants)
+        .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -125,6 +138,8 @@ fn must_not_compile() {
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
+        .public_constants(CPublicConstants)
+        .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -142,6 +157,8 @@ fn must_not_compile() {
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
+        .public_constants(CPublicConstants)
+        .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -159,6 +176,8 @@ fn must_not_compile() {
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
+        .public_constants(CPublicConstants)
+        .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -176,5 +195,7 @@ fn must_not_compile() {
         .eager_booleans(CEagerBooleans)
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
+        .public_constants(CPublicConstants)
+        .public_constant_reads(CPublicConstantReads)
         .build();
 }

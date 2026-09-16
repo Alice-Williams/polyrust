@@ -35,9 +35,26 @@ pub(super) fn lower(
     admission::aliases(tcx)?;
     let mut origins = source_origin::Cache::default();
     let exports = origins.exports(tcx)?;
+    let public_inventory = if entry.is_none() {
+        Some(crate::source_origin::public_api::Inventory::read(
+            tcx,
+            &mut origins,
+        )?)
+    } else {
+        None
+    };
     let roots = match &entry {
         Some((root, _)) => vec![*root],
-        None => source_origin::public_api::Inventory::read(tcx, &mut origins)?.function_roots()?,
+        None => public_inventory
+            .as_ref()
+            .ok_or("missing public export inventory")?
+            .declarations()
+            .values()
+            .filter(|declaration| {
+                declaration.kind() == crate::source_origin::public_api::DeclarationKind::Function
+            })
+            .map(|declaration| declaration.definition())
+            .collect(),
     };
     let inventory = functions::inventory(tcx, &roots)?;
     let imported = super::foreign::register(tcx, &inventory.foreign, &mappings, lookup)?;
@@ -101,15 +118,30 @@ pub(super) fn lower(
             },
         );
     }
-    let state = package::State {
+    let mut state = package::State {
         mappings,
         builder,
         functions,
         imported: imported.functions,
+        public_api: entry.is_none(),
+        constants: HashMap::new(),
         records: HashMap::new(),
         origins,
         remaining: 100_000,
     };
+    if let Some(public) = &public_inventory {
+        for declaration in public.declarations().values() {
+            if declaration.kind() == crate::source_origin::public_api::DeclarationKind::Constant {
+                let input = capabilities::ConstantDeclarationInput::read(
+                    tcx,
+                    public,
+                    declaration.definition().to_def_id(),
+                )?;
+                Supports::<capabilities::PublicConstants>::mapping(&mappings)
+                    .lower(&mut state, input)?;
+            }
+        }
+    }
     #[cfg(java_ast_probe)]
     let state = package::assertions::check(tcx, state, &inventory.local);
     let (mut state, body_members) = package::lower_functions(tcx, state, &inventory.local)?;
@@ -127,6 +159,12 @@ pub(super) fn lower(
         .map(|function| function.id)
         .collect();
     callables.sort();
+    let mut constants: Vec<_> = state.constants.into_values().collect();
+    constants.sort_by_key(|constant| constant.id);
+    for constant in constants {
+        declared.push(GeneratedSymbolId::Value(constant.id));
+        members.push(JavaMember::Field(constant.field));
+    }
     declared.extend(callables.into_iter().map(GeneratedSymbolId::Callable));
     let mut records: Vec<_> = state.records.into_values().collect();
     records.sort_by_key(|record| record.id);

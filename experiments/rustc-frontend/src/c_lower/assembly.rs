@@ -29,10 +29,26 @@ pub(crate) fn lower(
     admission::aliases(tcx)?;
     let mut origins = origin::Cache::default();
     let exports = origins.exports(tcx)?;
+    let public_inventory = if entry.is_none() {
+        Some(crate::source_origin::public_api::Inventory::read(
+            tcx,
+            &mut origins,
+        )?)
+    } else {
+        None
+    };
     let roots = match &entry {
         Some((root, _)) => vec![*root],
-        None => crate::source_origin::public_api::Inventory::read(tcx, &mut origins)?
-            .function_roots()?,
+        None => public_inventory
+            .as_ref()
+            .ok_or("missing public export inventory")?
+            .declarations()
+            .values()
+            .filter(|declaration| {
+                declaration.kind() == crate::source_origin::public_api::DeclarationKind::Function
+            })
+            .map(|declaration| declaration.definition())
+            .collect(),
     };
     let inventory = functions::inventory(tcx, &roots, lookup)?;
     let mut registry = CRegistry::new();
@@ -115,16 +131,31 @@ pub(crate) fn lower(
         imports.insert(origin::identity(tcx, id), (function.clone(), proof));
         foreign_functions.insert(id, function);
     }
-    let state = package::State {
+    let mut state = package::State {
         registry,
         file,
         mappings,
         functions,
         foreign_functions,
+        header: header.clone(),
+        constants: HashMap::new(),
         records: HashMap::new(),
         declarations: Vec::new(),
         origins,
     };
+    if let Some(public) = &public_inventory {
+        for declaration in public.declarations().values() {
+            if declaration.kind() == crate::source_origin::public_api::DeclarationKind::Constant {
+                let input = capabilities::ConstantDeclarationInput::read(
+                    tcx,
+                    public,
+                    declaration.definition().to_def_id(),
+                )?;
+                Supports::<capabilities::PublicConstants>::mapping(&mappings)
+                    .lower(&mut state, input)?;
+            }
+        }
+    }
     #[cfg(public_package_contract)]
     let state = package::assertions::check(tcx, state, &inventory.owned);
     let package::Bodies {
@@ -133,14 +164,17 @@ pub(crate) fn lower(
         public_prototypes,
         definitions,
     } = package::lower_functions(tcx, state, &inventory.owned, header.as_ref())?;
+    let (mut constant_prototypes, constant_definitions) = super::constants::files(&state)?;
+    constant_prototypes.extend(public_prototypes);
     let mut items = state.declarations;
+    items.extend(constant_definitions);
     items.extend(prototypes);
     items.extend(definitions);
     let source = c(c(CDeclarations::new(&state.registry, state.file.clone()))?.source_file(items))?;
     let mut files = Vec::new();
     if let Some(header) = header {
         files.push(c(
-            c(CDeclarations::new(&state.registry, header))?.source_file(public_prototypes)
+            c(CDeclarations::new(&state.registry, header))?.source_file(constant_prototypes)
         )?);
     }
     files.push(source);
@@ -156,7 +190,18 @@ pub(crate) fn lower(
         .into_iter()
         .map(|(id, function)| (origin::identity(tcx, id.to_def_id()), function))
         .collect();
+    let constants = state
+        .constants
+        .into_iter()
+        .map(|(id, (object, value))| {
+            (
+                origin::identity(tcx, id),
+                (object, super::constants::literal(value)),
+            )
+        })
+        .collect();
     Ok(LoweredPackage {
+        constants,
         registry: state.registry.freeze(),
         sources: files,
         exports,

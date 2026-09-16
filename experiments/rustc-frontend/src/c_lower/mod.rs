@@ -1,6 +1,7 @@
 //! Compiler-to-existing-C-AST bridge; shared by the adapter and compiler probes.
 pub(crate) mod assembly;
 mod capabilities;
+mod constants;
 mod control;
 mod expressions;
 mod functions;
@@ -47,6 +48,8 @@ pub struct LoweredPackage {
     pub registry: CFrozenRegistry,
     pub sources: Vec<CSourceFile>,
     pub exports: std::sync::Arc<portable_codegen::RustCrateExports>,
+    pub constants:
+        std::collections::BTreeMap<portable_codegen::RustDeclarationId, (CObjectRef, CLiteral)>,
     pub functions: std::collections::BTreeMap<portable_codegen::RustDeclarationId, CFunctionRef>,
     pub imports: std::collections::BTreeMap<
         portable_codegen::RustDeclarationId,
@@ -76,6 +79,8 @@ pub(crate) struct Reader<'tcx> {
     foreign_functions: HashMap<DefId, CFunctionRef>,
     parameters: Vec<CParameterRef>,
     root: LocalDefId,
+    header: Option<CFileRef>,
+    constants: constants::OwnedConstants,
     records: HashMap<DefId, CStructRef>,
     declarations: Vec<CFileItem>,
     bindings: HashMap<hir::HirId, CPlace>,

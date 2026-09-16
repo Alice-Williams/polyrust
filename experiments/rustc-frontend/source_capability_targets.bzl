@@ -12,7 +12,8 @@ def source_capability_targets(name):
     compiler_adapter(
         name = "source_capabilities_probe",
         crate_root = "test/source_capabilities_main.rs",
-        srcs = ["test/source_capabilities_main.rs"] + native.glob(["src/source_capabilities/**/*.rs"]),
+        srcs = ["test/source_capabilities_main.rs"] + native.glob(["src/source_capabilities/**/*.rs", "src/source_origin/**/*.rs"]),
+        deps = ["//crates/codegen:portable_codegen"],
     )
     sh_test(
         name = name,

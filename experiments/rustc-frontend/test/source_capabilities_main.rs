@@ -1,4 +1,4 @@
-//! Compile-only input boundary probe with no C, Java or codegen dependency.
+//! Compile-only input boundary probe with no concrete target backend dependency.
 #![feature(rustc_private)]
 #![forbid(unsafe_code)]
 
@@ -6,6 +6,10 @@ extern crate rustc_ast;
 extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_middle;
+extern crate rustc_span;
+
+#[path = "../src/source_origin/mod.rs"]
+mod source_origin;
 
 #[path = "../src/source_capabilities/mod.rs"]
 mod source_capabilities;
@@ -155,7 +159,34 @@ fn local_constant<'tcx>(
     let _ = LocalConstantInput::read(tcx, statement).map(|input| input.value());
 }
 
+fn public_constant<'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+    definition: rustc_hir::def_id::DefId,
+) {
+    let mut cache = source_origin::Cache::default();
+    let _ = source_origin::read(
+        tcx,
+        &mut cache,
+        definition,
+        portable_codegen::RustSourceNode::Declaration,
+        tcx.def_span(definition),
+    );
+    if let Ok(inventory) = source_origin::public_api::Inventory::read(tcx, &mut cache) {
+        let _ = ConstantDeclarationInput::read(tcx, &inventory, definition)
+            .map(|input| (input.tcx(), input.definition(), input.value()));
+    }
+    if PublicConstantReadInput::requires_reference(tcx, definition) {
+        let _ = PublicConstantReadInput::read(tcx, checked, expression)
+            .map(|input| (input.definition(), input.value()));
+    }
+}
+
 fn main() {
+    capability::<PublicConstants>();
+    capability::<PublicConstantReads>();
+    let _ = public_constant;
     capability::<LocalConstants>();
     let _ = local_constant;
     capability::<ScalarConstants>();

@@ -4,6 +4,7 @@ use super::{
     JavaLocalConstants, JavaObjectTypes, JavaRecordInitializers, JavaResolvedPlaces,
     JavaScalarComparisons, JavaScalarConstants, JavaSharedBorrows, JavaShortCircuitBooleans,
 };
+use super::{JavaPublicConstantReads, JavaPublicConstants};
 
 #[allow(dead_code)]
 fn must_not_compile() {
@@ -23,6 +24,8 @@ fn must_not_compile() {
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
+        .public_constants(JavaPublicConstants)
+        .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -40,6 +43,8 @@ fn must_not_compile() {
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
+        .public_constants(JavaPublicConstants)
+        .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -57,6 +62,8 @@ fn must_not_compile() {
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
+        .public_constants(JavaPublicConstants)
+        .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -74,6 +81,8 @@ fn must_not_compile() {
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
+        .public_constants(JavaPublicConstants)
+        .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -91,6 +100,8 @@ fn must_not_compile() {
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
+        .public_constants(JavaPublicConstants)
+        .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -108,6 +119,8 @@ fn must_not_compile() {
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
+        .public_constants(JavaPublicConstants)
+        .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -125,6 +138,8 @@ fn must_not_compile() {
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
+        .public_constants(JavaPublicConstants)
+        .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -142,6 +157,8 @@ fn must_not_compile() {
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
+        .public_constants(JavaPublicConstants)
+        .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -159,6 +176,8 @@ fn must_not_compile() {
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
+        .public_constants(JavaPublicConstants)
+        .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -176,5 +195,7 @@ fn must_not_compile() {
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
+        .public_constants(JavaPublicConstants)
+        .public_constant_reads(JavaPublicConstantReads)
         .build();
 }

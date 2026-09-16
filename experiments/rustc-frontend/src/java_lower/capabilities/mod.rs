@@ -9,6 +9,15 @@ mod lexical_control;
 mod literal_values;
 mod local_constants;
 mod object_types;
+#[cfg(public_constant_ast_probe)]
+#[path = "../../../test/public_constant_java_ast.rs"]
+mod public_constant_ast;
+#[cfg(public_constant_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/public_constant_contract.rs"]
+mod public_constant_contract;
+mod public_constant_reads;
+mod public_constants;
 mod record_initializers;
 mod resolved_places;
 mod scalar_comparisons;
@@ -99,6 +108,8 @@ pub(crate) use lexical_control::JavaLexicalControl;
 pub(crate) use literal_values::JavaLiteralValues;
 pub(crate) use local_constants::JavaLocalConstants;
 pub(crate) use object_types::JavaObjectTypes;
+pub(crate) use public_constant_reads::JavaPublicConstantReads;
+pub(crate) use public_constants::JavaPublicConstants;
 pub(crate) use record_initializers::JavaRecordInitializers;
 pub(crate) use resolved_places::JavaResolvedPlaces;
 pub(crate) use scalar_comparisons::JavaScalarComparisons;
@@ -124,6 +135,8 @@ pub(crate) type JavaBindings = Bindings<
     JavaEagerBooleans,
     JavaScalarConstants,
     JavaLocalConstants,
+    JavaPublicConstants,
+    JavaPublicConstantReads,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -144,5 +157,7 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .eager_booleans(JavaEagerBooleans)
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
+        .public_constants(JavaPublicConstants)
+        .public_constant_reads(JavaPublicConstantReads)
         .build()
 }

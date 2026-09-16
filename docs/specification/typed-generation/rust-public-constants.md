@@ -1,6 +1,6 @@
 # Checked Rust public scalar constants
 
-- Status: normative design; implementation pending M35-03A-02F-02B
+- Status: normative; single-crate source mappings implemented; multi-crate integration pending
 - Prerequisite: [local constants](rust-local-constants.md)
 - Layers: [shared dependency values](certified-dependency-values.md),
   [C17](languages/c/rust-public-constants.md),
@@ -41,10 +41,12 @@ need no dummy function.
 
 This classification is deliberately separate from type/value admission. A
 Constant entry does not certify that its type or initializer is supported.
-Until executable declaration/read mappings and publication are complete, both
-production adapters explicitly request function_roots, which rejects any
-constant entry. Selected-entry behavior and private/local folding remain as
-before. This prerequisite is tracked in M35-03A-02F-02B-04B-01.
+Production public-package adapters partition this inventory by the closed kind,
+register/evaluate every admitted constant, then lower the function inventory.
+The function_roots compatibility helper still rejects constants for its focused
+inventory probe; production package selection no longer calls it. Selected-entry
+behavior and private/local folding remain as specified below. Shared inventory
+construction is tracked in M35-03A-02F-02B-04B-01.
 
 ## Executable capability mappings
 
@@ -71,7 +73,12 @@ witness; rustc metadata or matching text alone cannot mint it.
 Split package state from per-function analysis state. Constants-only assembly
 uses the crate's checked export/origin context, never tcx.typeck(roots[0]).
 Function Readers exist only while lowering actual functions. Preserve existing
-function-only, selected-entry and local-constant behavior.
+function-only and local-constant behavior. Selected-entry mode is explicitly a
+value-only projection: constants reachable from that one entry continue to fold
+through ScalarConstants, even if public. Public-package mode must register and
+reference each local public constant; foreign public reads fail closed until
+child05 provides an authenticated producer join. No package-mode fallback to
+selected-entry folding is allowed.
 
 ## Public exports, dependencies and files
 

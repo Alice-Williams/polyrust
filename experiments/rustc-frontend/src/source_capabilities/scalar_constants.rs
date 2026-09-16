@@ -72,6 +72,10 @@ impl<'tcx> ConstantInput<'tcx> {
         })
     }
 
+    pub(crate) fn definition(self) -> DefId {
+        self._definition
+    }
+
     pub(crate) fn value(self) -> LiteralValue {
         self.value
     }

@@ -47,7 +47,20 @@ impl<'tcx> Reader<'tcx> {
                         if ConstantInput::is_constant(reader.checked, value, path) =>
                     {
                         let input = ConstantInput::read(reader.tcx, reader.checked, value)?;
-                        Supports::<ScalarConstants>::mapping(&reader.mappings).lower(reader, input)
+                        if reader.public_api
+                            && PublicConstantReadInput::requires_reference(
+                                reader.tcx,
+                                input.definition(),
+                            )
+                        {
+                            let input =
+                                PublicConstantReadInput::read(reader.tcx, reader.checked, value)?;
+                            Supports::<PublicConstantReads>::mapping(&reader.mappings)
+                                .lower(reader, input)
+                        } else {
+                            Supports::<ScalarConstants>::mapping(&reader.mappings)
+                                .lower(reader, input)
+                        }
                     }
                     hir::ExprKind::Path(_)
                     | hir::ExprKind::Field(..)

@@ -17,11 +17,13 @@ use std::collections::HashMap;
 #[path = "../../test/package_state_java.rs"]
 pub(super) mod assertions;
 
-pub(super) struct State {
+pub(crate) struct State {
     pub builder: TargetAstBuilder<JavaDialect>,
     pub mappings: capabilities::JavaBindings,
     pub functions: HashMap<LocalDefId, Callable>,
     pub imported: HashMap<DefId, JavaImportedCallable>,
+    pub public_api: bool,
+    pub constants: HashMap<DefId, super::constants::Constant>,
     pub records: HashMap<DefId, records::Record>,
     pub origins: crate::source_origin::Cache,
     pub remaining: usize,
@@ -39,6 +41,8 @@ impl State {
             builder: self.builder,
             functions: self.functions,
             imported: self.imported,
+            public_api: self.public_api,
+            constants: self.constants,
             records: self.records,
             origins: self.origins,
             remaining: self.remaining,
@@ -59,6 +63,8 @@ impl State {
             mappings: reader.mappings,
             functions: reader.functions,
             imported: reader.imported,
+            public_api: reader.public_api,
+            constants: reader.constants,
             records: reader.records,
             origins: reader.origins,
             remaining: reader.remaining,
