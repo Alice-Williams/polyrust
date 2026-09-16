@@ -51,9 +51,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Install selected Rust
+        shell: bash
         run: rustup toolchain install "${{ matrix.toolchain }}" --profile minimal
-      - name: Test workspace with selected Rust
-        run: cargo +"${{ matrix.toolchain }}" test --workspace --all-features
+      # Native tests require Bazel-declared compilers and runfiles. The release
+      # job executes them; this matrix checks compilation/linking on each Rust.
+      - name: Compile workspace tests with selected Rust
+        shell: bash
+        run: cargo +"${{ matrix.toolchain }}" test --no-run --workspace --all-features --locked
 
   deterministic-manifests:
     name: Determinism on ${{ matrix.os }}
@@ -141,6 +145,7 @@ jobs:
           POLYRUST_CI_CACHE_ROOT: ${{ runner.temp }}/polyrust-cache
         run: bash tools/ci/install_release_tools.sh
       - name: Cached complete release gate
+        shell: bash
         run: bash tools/release/release_gate.sh
       - name: Prepare persistent cache archive
         run: |

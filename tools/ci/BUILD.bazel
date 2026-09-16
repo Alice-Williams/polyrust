@@ -48,3 +48,15 @@ sh_test(
     ],
     tags = ["policy"],
 )
+
+sh_test(
+    name = "rust_compatibility_policy_test",
+    srcs = ["rust_compatibility_policy_test.sh"],
+    data = [
+        "rust_compatibility_policy_test.py",
+        "//:.github/workflows/ci.yml",
+        "//tools/release:release_gate.sh",
+    ],
+    tags = ["policy"],
+    visibility = ["//visibility:public"],
+)

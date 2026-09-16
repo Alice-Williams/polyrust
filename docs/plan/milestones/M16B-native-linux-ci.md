@@ -12,6 +12,7 @@ same cached Bazel release contract directly on Linux runners.
 ## Task sequence
 
 1. [M16B-01 — migrate CI to native Linux execution](../tasks/M16B-01-native-linux-ci.md)
+2. [M16B-02 — Rust compatibility and native test ownership](../tasks/M16B-02-rust-compatibility-boundary.md)
 
 ## Required exit evidence
 

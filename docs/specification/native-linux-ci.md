@@ -1,7 +1,7 @@
 # Native Linux CI specification
 
 - Status: accepted for M16B
-- Last updated: 2026-09-04
+- Last updated: 2026-09-16
 
 ## Purpose
 
@@ -40,8 +40,16 @@ root. The requirements in `ci-cache.md` apply unchanged.
 
 The release script MUST NOT duplicate workspace Rustfmt, Clippy, or unit-test
 commands already represented by authoritative Bazel targets. The Rust
-compatibility matrix retains direct Cargo tests because it validates compiler
-versions distinct from the Bazel production toolchain.
+compatibility matrix MUST compile and link all workspace tests with all features
+using cargo test --no-run --workspace --all-features --locked and its explicitly
+selected toolchain. It checks compiler compatibility, not native test execution:
+Cargo does not provide Bazel test directories or declared compiler runfiles.
+
+The release job MUST execute all tests through the unfiltered Bazel test //...
+entry point. Missing native tools/runfiles MUST fail that gate. No test may be
+ignored or silently skipped to make the compiler-compatibility matrix pass.
+Compatibility and release failures MUST remain blocking; a successful compile-
+only matrix is not evidence that runtime tests or the complete CI passed.
 
 The hosted workflow MUST contain no `docker build` or `docker run`
 invocation. The Windows job MAY continue validating that the development
