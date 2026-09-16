@@ -14,6 +14,8 @@ same cached Bazel release contract directly on Linux runners.
 1. [M16B-01 — migrate CI to native Linux execution](../tasks/M16B-01-native-linux-ci.md)
 2. [M16B-02 — Rust compatibility and native test ownership](../tasks/M16B-02-rust-compatibility-boundary.md)
 
+3. [M16B-03 — Java native suite execution budget](../tasks/M16B-03-java-native-suite-budget.md)
+
 ## Required exit evidence
 
 - The native Linux specification is enforced by a tracked Bazel policy test.

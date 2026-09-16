@@ -128,6 +128,9 @@ rust_doc_test(
 
 rust_test(
     name = "portable_backend_java_test",
+    # The suite runs hundreds of javac/java positive and mutation controls.
+    # Hosted runners exceed the default five-minute medium-test budget.
+    size = "large",
     srcs = glob(["src/**/*.rs"]),
     compile_data = ["//crates/build:testdata/registration.poly.json"],
     crate_name = "portable_backend_java",

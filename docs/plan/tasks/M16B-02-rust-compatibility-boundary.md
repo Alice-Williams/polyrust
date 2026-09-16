@@ -59,5 +59,16 @@ skip filters, continue-on-error or a successful fallback for missing tools.
   the steps list. Required steps explicitly select Bash. A fresh review and final isolated gate
   cover this stronger policy before push.
 
+## Hosted evidence
+
+Run [35099743690](https://github.com/Alice-Williams/polyrust/actions/runs/35099743690)
+at a3934c85c424ca41411a9417f150b01b795c777b passed both Rust compatibility
+jobs, the Rust/Bazel linters, both determinism jobs, the manifest comparison and
+the Windows contract. The native release job executed all 684 Bazel tests:
+683 passed, but the 330-case Java backend suite reached its inherited 300-second
+timeout. No assertion failure was reported in that suite's partial output.
+The downstream conformance command and cache save did not run. Follow-up
+[M16B-03](M16B-03-java-native-suite-budget.md) addresses the test classification.
+
 Hosted success is still pending. This task is not complete merely because its
 local tests pass; the exact pushed SHA must finish all hosted jobs successfully.
