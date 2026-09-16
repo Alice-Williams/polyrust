@@ -73,11 +73,13 @@ mod privileged_literals;
 pub(crate) mod qualifier_names;
 mod resolved_files;
 mod source_inventory;
+mod source_package;
 pub use resolved_files::{
     JavaCompilationUnit, JavaDeclaredPath, JavaFilePlacement, JavaResolvedName, JavaSourceFileKind,
     ResolvedJavaFileItem,
 };
 pub(crate) use source_inventory::{JavaSourceDeclaration, JavaSourceInventory};
+pub use source_package::JavaSourcePackage;
 mod runtime_members;
 pub use runtime_members::JavaRuntimeMember;
 mod sealed_permits;

@@ -209,6 +209,7 @@ pub(super) fn lower(
         vec![JavaFileItem::Type {
             declared,
             conformances: JavaConformanceInventory::structural().into(),
+            source_package: Some(JavaSourcePackage::new(exports.clone())),
             dependencies: imported.bindings,
             declaration: Box::new(declaration),
         }],

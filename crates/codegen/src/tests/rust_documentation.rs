@@ -6,6 +6,9 @@ mod budgets;
 #[path = "rust_documentation/export_kinds.rs"]
 mod export_kinds;
 
+#[path = "rust_documentation/explicit_package.rs"]
+mod explicit_package;
+
 fn id(hash: u64) -> RustDeclarationId {
     RustDeclarationId {
         crate_id: 7,

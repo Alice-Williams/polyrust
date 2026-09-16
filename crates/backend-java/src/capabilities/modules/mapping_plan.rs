@@ -25,6 +25,7 @@ fn verify(input: &JavaModuleInput, output: &TargetFile<JavaDialect>) -> bool {
     let [
         JavaFileItem::Type {
             conformances,
+            source_package: None,
             dependencies,
             declared,
             declaration: a,

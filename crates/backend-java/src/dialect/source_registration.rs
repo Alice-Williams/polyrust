@@ -2,8 +2,8 @@
 use super::JavaDialect;
 use crate::ast::JavaPackage;
 use portable_codegen::{
-    AstViolation, CheckedRustDocumentation, GeneratedOrigin, RustSourceNode, RustSourceOrigin,
-    RustVisibility, TargetAstPackage,
+    AstViolation, GeneratedOrigin, RustSourceNode, RustSourceOrigin, RustVisibility,
+    TargetAstPackage,
 };
 use portable_diagnostics::DiagnosticCode;
 use std::collections::BTreeSet;
@@ -13,7 +13,7 @@ pub(super) fn verify(package: &TargetAstPackage<JavaDialect>) -> Vec<AstViolatio
     let origins = origins(package);
     let mut seen = BTreeSet::new();
     let mut violations = Vec::new();
-    let checked = CheckedRustDocumentation::check(origins.inspect(|origin| {
+    let checked = super::source_package::metadata(package, origins.inspect(|origin| {
         let crate_id = origin.declaration.crate_id;
         if module != Some(JavaPackage::RustCrate(crate_id)) {
             violations.push(error(
@@ -41,7 +41,7 @@ pub(super) fn verify(package: &TargetAstPackage<JavaDialect>) -> Vec<AstViolatio
         }
     }));
     match checked {
-        Err(problem) => violations.push(error(&problem.to_string())),
+        Err(problem) => violations.push(problem),
         Ok(metadata) => violations.extend(super::documentation::verify_presentation_owner(
             package, &metadata,
         )),

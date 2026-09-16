@@ -213,6 +213,7 @@ impl Fixture {
             vec![JavaFileItem::Type {
                 declared,
                 conformances: JavaConformanceInventory::structural().into(),
+                source_package: None,
                 dependencies: Default::default(),
                 declaration: Box::new(facade),
             }],

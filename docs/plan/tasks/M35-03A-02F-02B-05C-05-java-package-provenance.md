@@ -1,6 +1,6 @@
 # M35-03A-02F-02B-05C-05 — Explicit Java source-package provenance
 
-- Status: planned
+- Status: complete
 - Parent: [constant alias closure](M35-03A-02F-02B-05C-constant-alias-closure.md)
 - Depends on: M35-03A-02F-02B-05C-04
 - Specification: [Java constant re-exports](../../specification/typed-generation/languages/java/rust-constant-reexports.md)
@@ -70,3 +70,58 @@ of absent metadata to old AST constructors must not change their behavior.
   tree. Fresh Sol Extra High review loops leave no unaddressed core errors.
 - Record evidence, commit this task ID and push. Do not mark Java foreign exports,
   compiler publication, parent parity or legacy runtime retirement complete.
+
+## Implementation and focused proof
+
+Implemented the explicit graph entry point on CheckedRustDocumentation and
+JavaSourcePackage metadata on the typed facade. Source registration and module
+documentation share one selector; production compiler assembly always attaches
+the compiler export graph. Existing portable constructors retain None, and their
+module mapping contract requires None explicitly rather than silently ignoring
+unexpected source metadata.
+
+Focused Linux Bazel on tree `c1b47deb443a4c914379dacfb2940d7643516cbf` passed
+**3/3 targets**: shared codegen, Java unit/native and Java typed compile-fail;
+137.794 seconds, invocation `a047726d-c161-437b-81b3-cf81e3a3dbd3`.
+An earlier constructor-migration build caught one exhaustive match and three
+non-file module-input initializers; corrected before this passing tree.
+
+Final implementation tree `7b5b0e0a7da40cf02872f783d94c82e9d6678e78` adds
+fake-facade, field-only graph conflict and 100,001-binding resource regressions.
+The compiler-backed Java AST probe now requires explicit package metadata and
+compares its root directly with rustc's crate definition identity and every owned
+source graph. Java's unit/native suite passed **336 cases** on this tree.
+
+An independent Sol Extra High review reported **no core findings**, covering
+coherence, bounded allocation traversal, facade identity, field origins,
+documentation, reconstruction, production registration and compatibility.
+The linked-mutation test compares the exact resolved-item equality used by the
+shared verifier: safe callers cannot mutate a LinkedFile slot. Metadata-only,
+docs-only and jointly substituted copies differ from the independently
+reconstructed original item. Existing shared tests exercise real linked-item
+tampering; no unsafe mutation API was introduced solely for tests.
+
+The actual pinned Java 21 native test compiles the generated empty documented
+facade and independent reflection consumer with --release 21 -Xlint:all -Werror.
+Reflection verifies zero fields, zero methods and exactly one private constructor.
+Actual generated sources are exported locally to
+`generated/examples/java-source-package-7b5b0e/{Generated.java,Consumer.java}`;
+they are ignored, not committed. The facade contains only its package declaration,
+root/nested module docs, final class and private constructor, with no runtime.
+
+An empty facade still cannot become JavaDependencyApi without the subsequent
+certified public binding inventory. Foreign-export admission, bundle schemas and
+legacy runtime removal remain outside this checkpoint.
+
+## Complete release gate
+
+Exact implementation tree `7b5b0e0a7da40cf02872f783d94c82e9d6678e78`
+passed Linux dev-container command
+`bazelisk --output_user_root=/tmp/polyrust-m34a10w-bazel --batch test //... //:release_gate --noshow_progress --noverbose_failures --test_output=errors --test_summary=terse --keep_going`:
+**738/738 tests**, 1,093 targets, 133 executed and 605 cached,
+807.780 seconds, invocation `370237b3-d19e-49d0-8ac3-79388e1b8080`.
+This includes Rust/Bazel lint, the compiler-backed Java source AST assertions,
+generated native-language checks and all existing capacity cases.
+The shared suite passed 142 cases, Java 336 and C 765 plus its five separately
+scheduled expensive tests. No test was disabled or weakened. All 20 preserved
+ownership-work hashes remained unchanged.

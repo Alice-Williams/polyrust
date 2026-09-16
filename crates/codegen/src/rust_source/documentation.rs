@@ -56,6 +56,15 @@ impl<'a> CheckedRustDocumentation<'a> {
         check(origins, Limits::PRODUCTION)
     }
 
+    /// Check explicit package metadata even when no source declaration exists.
+    /// This establishes metadata coherence, never compiler or target authority.
+    pub fn check_with_exports(
+        exports: &'a Arc<RustCrateExports>,
+        origins: impl IntoIterator<Item = &'a RustSourceOrigin>,
+    ) -> Result<Self> {
+        check_input(origins, Some(exports), Limits::PRODUCTION)
+    }
+
     pub fn declarations(&self) -> impl Iterator<Item = &'a RustSourceOrigin> + '_ {
         self.declarations.values().copied()
     }
@@ -80,6 +89,14 @@ fn check<'a>(
     origins: impl IntoIterator<Item = &'a RustSourceOrigin>,
     limits: Limits,
 ) -> Result<CheckedRustDocumentation<'a>> {
+    check_input(origins, None, limits)
+}
+
+fn check_input<'a>(
+    origins: impl IntoIterator<Item = &'a RustSourceOrigin>,
+    exports: Option<&'a Arc<RustCrateExports>>,
+    limits: Limits,
+) -> Result<CheckedRustDocumentation<'a>> {
     let mut checking = Checking {
         checked: CheckedRustDocumentation {
             declarations: BTreeMap::new(),
@@ -90,6 +107,9 @@ fn check<'a>(
         export_allocations: BTreeSet::new(),
         exported_declarations: BTreeSet::new(),
     };
+    if let Some(exports) = exports {
+        checking.exports(exports)?;
+    }
     for origin in origins {
         checking.origin(origin)?;
     }
@@ -132,12 +152,33 @@ impl<'a> Checking<'a> {
         }
         self.budget.text(origin.location.file.len())?;
         self.budget.attributes(&origin.documentation)?;
-        // Never compare unbounded distinct graphs. Shared allocations are immutable
-        // for the lifetime of the inventory and need only one complete traversal.
-        if self
-            .export_allocations
-            .insert(Arc::as_ptr(&origin.crate_exports))
+        self.exports(&origin.crate_exports)?;
+        self.ancestry(exports.root, origin.module, &origin.module_ancestors)?;
+        if let RustVisibility::RestrictedTo(scope) = origin.visibility
+            && !origin
+                .module_ancestors
+                .iter()
+                .any(|module| module.declaration == scope)
         {
+            return Err(RustDocumentationError::Structure(
+                "visibility scope is not an ancestor module",
+            ));
+        }
+        Ok(())
+    }
+
+    fn exports(&mut self, allocation: &'a Arc<RustCrateExports>) -> Result<()> {
+        let exports = allocation.as_ref();
+        if self
+            .checked
+            .exports
+            .is_some_and(|prior| prior.root != exports.root)
+        {
+            return Err(RustDocumentationError::Structure("conflicting crate roots"));
+        }
+        // Charge and validate a distinct immutable graph before comparing it.
+        // Pointer identity memoizes traversal only; it does not grant authority.
+        if self.export_allocations.insert(Arc::as_ptr(allocation)) {
             self.exported_declarations
                 .extend(graph::verify(exports, &mut self.budget)?);
             for (owner, ancestry) in &exports.module_ancestries {
@@ -154,17 +195,6 @@ impl<'a> Checking<'a> {
             }
         }
         self.checked.exports = Some(exports);
-        self.ancestry(exports.root, origin.module, &origin.module_ancestors)?;
-        if let RustVisibility::RestrictedTo(scope) = origin.visibility
-            && !origin
-                .module_ancestors
-                .iter()
-                .any(|module| module.declaration == scope)
-        {
-            return Err(RustDocumentationError::Structure(
-                "visibility scope is not an ancestor module",
-            ));
-        }
         Ok(())
     }
 

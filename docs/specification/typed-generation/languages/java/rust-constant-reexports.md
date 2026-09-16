@@ -1,6 +1,7 @@
 # Rust constant re-exports in Java 21
 
-- Status: planned; existing foreign-export rejection remains active.
+- Status: explicit package provenance implemented; certified foreign exports are
+  planned. Production rustc foreign-export rejection remains active.
 - Contract: [shared re-export design](../../rust-constant-reexports.md)
 
 ## Package provenance and fields
@@ -61,6 +62,24 @@ foreign binding returns the original producer witness/path rather than creating
 a replacement witness owned by the facade. Certified alias metadata retains each
 module/name/namespace binding and exact defining declaration, owner, qualified
 field path, primitive type and lossless value.
+
+JavaDependencyApi::foreign_constants() returns JavaForeignConstantExport views
+in deterministic module/name order. Private fields and module(), name() and
+dependency() accessors mirror the C distinction: the returned dependency is the
+original producer's JavaDependencyConstant, never a facade-owned field. Existing
+owned lookup and iteration APIs retain their meaning.
+
+A focused typed selection reconciles explicit export metadata with frozen
+JavaImportedValue registrations before dependency linking. Export-only aliases
+contribute real dependency roots and exact original qualified field paths without
+inventing Java expressions or imported field copies. Independent reconstruction
+must reject missing, extra, swapped and jointly altered dependency projections.
+
+An alias-only facade retains the ordinary private constructor and module docs.
+Its owned source descriptions are empty; its source-byte bound still covers all
+rendered bytes. Owner closure validation uses the selected RustCrate namespace
+even without a source method or field. Missing, conflicting, stale or
+wrong-consumer producer authority cannot be repaired by matching a string name.
 
 Version the alias-bearing owner schema explicitly. Keep used expression imports
 separate from export-only aliases; the dependencies inventory covers both.

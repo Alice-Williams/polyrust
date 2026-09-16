@@ -17,6 +17,7 @@ fn fixture(package: JavaPackage, name: &str, path: String) -> TargetFile<JavaDia
         vec![JavaFileItem::Type {
             declared: vec![],
             conformances: JavaConformanceInventory::structural().into(),
+            source_package: None,
             dependencies: Default::default(),
             declaration: Box::new(JavaTypeDeclaration {
                 declared: None,
@@ -111,6 +112,7 @@ fn valid(module: JavaPackage) -> TargetAstPackage<JavaDialect> {
         vec![JavaFileItem::Type {
             declared: vec![GeneratedSymbolId::Type(owner)],
             conformances: JavaConformanceInventory::structural().into(),
+            source_package: None,
             dependencies: Default::default(),
             declaration: Box::new(declaration),
         }],

@@ -17,6 +17,7 @@ impl Lowering<'_> {
             JavaFilePlacement::NativeTest,
             vec![JavaFileItem::Type {
                 conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                source_package: None,
                 dependencies: Default::default(),
                 declared: vec![],
                 declaration: Box::new(declaration),

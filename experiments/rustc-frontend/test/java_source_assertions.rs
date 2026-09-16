@@ -57,9 +57,34 @@ pub(super) fn origin(tcx: TyCtxt<'_>, id: DefId, source: &RustSourceOrigin) {
 pub(super) fn package(tcx: TyCtxt<'_>, package: &TargetAstPackage<JavaDialect>) {
     assert_eq!(package.files().len(), 1);
     let file = package.files().next().unwrap();
-    let [JavaFileItem::Type { declaration, .. }] = file.items() else {
+    let [
+        JavaFileItem::Type {
+            declaration,
+            source_package: Some(source_package),
+            ..
+        },
+    ] = file.items()
+    else {
         panic!("one source facade")
     };
+    assert_eq!(
+        source_package.exports().root,
+        identity(tcx, hir::def_id::CRATE_DEF_ID.to_def_id())
+    );
+    assert_eq!(
+        *file.module(),
+        JavaPackage::RustCrate(source_package.exports().root.crate_id)
+    );
+    for origin in package
+        .generated_types()
+        .map(|value| &value.origin)
+        .chain(package.callables().map(|value| &value.origin))
+        .chain(package.values().map(|value| &value.origin))
+    {
+        if let GeneratedOrigin::RustSource(origin) = origin {
+            assert_eq!(&origin.crate_exports, source_package.exports());
+        }
+    }
     let constructors: Vec<_> = declaration
         .members
         .iter()

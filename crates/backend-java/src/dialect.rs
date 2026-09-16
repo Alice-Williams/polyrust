@@ -33,6 +33,7 @@ pub use dependency_scope::{
 mod documentation;
 mod file_checks;
 mod linker;
+mod source_package;
 mod source_registration;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]

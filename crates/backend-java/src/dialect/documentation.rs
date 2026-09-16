@@ -73,8 +73,8 @@ fn modules(
     package: &TargetAstPackage<JavaDialect>,
     projection: &mut Projection,
 ) -> Result<(), AstViolation> {
-    let metadata = CheckedRustDocumentation::check(super::source_registration::origins(package))
-        .map_err(|problem| error(&problem.to_string()))?;
+    let metadata =
+        super::source_package::metadata(package, super::source_registration::origins(package))?;
     let Some(exports) = metadata.crate_exports() else {
         return Ok(());
     };

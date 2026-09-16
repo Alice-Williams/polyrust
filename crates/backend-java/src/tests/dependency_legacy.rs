@@ -33,6 +33,7 @@ fn certificate(module: JavaPackage, spelling: &str) -> RenderReadyPackage<JavaDi
         vec![JavaFileItem::Type {
             declared: vec![GeneratedSymbolId::Type(id)],
             conformances: JavaConformanceInventory::structural().into(),
+            source_package: None,
             dependencies: Default::default(),
             declaration: Box::new(JavaTypeDeclaration {
                 declared: Some(id),

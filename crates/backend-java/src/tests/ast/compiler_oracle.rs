@@ -153,6 +153,7 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
             JavaFilePlacement::Main,
             vec![JavaFileItem::Type {
                 conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                source_package: None,
                 dependencies: Default::default(),
                 declared: vec![],
                 declaration: Box::new(declaration),
@@ -462,18 +463,21 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
         vec![
             JavaFileItem::Type {
                 conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                source_package: None,
                 dependencies: Default::default(),
                 declared: vec![],
                 declaration: Box::new(structured_record),
             },
             JavaFileItem::Type {
                 conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                source_package: None,
                 dependencies: Default::default(),
                 declared: vec![],
                 declaration: Box::new(structured_interface),
             },
             JavaFileItem::Type {
                 conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                source_package: None,
                 dependencies: Default::default(),
                 declared: vec![],
                 declaration: Box::new(super::fixture_declaration(vec![structural_method(
@@ -492,6 +496,7 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
             },
             JavaFileItem::Type {
                 conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                source_package: None,
                 dependencies: Default::default(),
                 declared: vec![
                     GeneratedSymbolId::Type(oracle_enum),

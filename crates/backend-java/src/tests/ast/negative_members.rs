@@ -34,6 +34,7 @@ fn compile_fail_fields_require_a_closed_invalid_shape() {
             crate::ast::JavaFilePlacement::NegativeTest,
             vec![crate::ast::JavaFileItem::Type {
                 conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                source_package: None,
                 dependencies: Default::default(),
                 declared: vec![],
                 declaration: Box::new(declaration),

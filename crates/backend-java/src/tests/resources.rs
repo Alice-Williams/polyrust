@@ -51,6 +51,7 @@ pub(super) fn item(declaration: JavaTypeDeclaration) -> JavaFileItem {
     JavaFileItem::Type {
         declared: vec![],
         conformances: crate::ast::JavaConformanceInventory::structural().into(),
+        source_package: None,
         dependencies: Default::default(),
         declaration: Box::new(declaration),
     }

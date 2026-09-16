@@ -122,6 +122,7 @@ pub(super) fn owner(crate_id: u64, documentation: &str, literal: JavaLiteral) ->
                 GeneratedSymbolId::Value(value),
             ],
             conformances: JavaConformanceInventory::structural().into(),
+            source_package: None,
             dependencies: Default::default(),
             declaration: Box::new(declaration),
         }],

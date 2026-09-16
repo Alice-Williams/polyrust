@@ -8,6 +8,7 @@ pub enum JavaFileItem {
     Type {
         declared: Vec<GeneratedSymbolId>,
         conformances: Box<super::conformance_inventory::JavaConformanceInventory>,
+        source_package: Option<super::JavaSourcePackage>,
         dependencies: crate::dialect::JavaDependencyBindings,
         declaration: Box<JavaTypeDeclaration>,
     },

@@ -37,6 +37,7 @@ impl Lowering<'_> {
             JavaFilePlacement::Conformance,
             vec![JavaFileItem::Type {
                 conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                source_package: None,
                 dependencies: Default::default(),
                 declared: vec![],
                 declaration: Box::new(declaration),
@@ -76,6 +77,7 @@ impl Lowering<'_> {
             JavaFilePlacement::NegativeTest,
             vec![JavaFileItem::Type {
                 conformances: crate::ast::JavaConformanceInventory::structural().into(),
+                source_package: None,
                 dependencies: Default::default(),
                 declared: vec![],
                 declaration: Box::new(declaration),

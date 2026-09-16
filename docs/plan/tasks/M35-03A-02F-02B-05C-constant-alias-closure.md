@@ -47,7 +47,7 @@ or other declaration kinds remain diagnosed, not silently omitted.
    transitive aliases to one defining identity. Keep the current production
    constructor fail-closed until both target certificate paths below exist.
 2. [C package provenance](M35-03A-02F-02B-05C-02-c-package-provenance.md)
-   — complete; Java counterpart follows. Package provenance: preserve the selected crate's export graph independently
+   — complete; Java counterpart is completed in step 5 below. Package provenance: preserve the selected crate's export graph independently
    of any owned function/field. A re-export-only crate needs no fabricated source
    declaration. C header/source and Java facade metadata must retain this explicit
    package provenance and reconcile it with every owned declaration.
@@ -62,11 +62,12 @@ or other declaration kinds remain diagnosed, not silently omitted.
    complete local/foreign binding union, retained dependency closure, documentation,
    identifier collisions and existing bounds, including zero-owned-item packages.
 5. [Java package provenance](M35-03A-02F-02B-05C-05-java-package-provenance.md)
-   — planned. Retain explicit selected-crate metadata and module documentation
+   — complete. Retain explicit selected-crate metadata and module documentation
    independently of owned Java methods/fields; reconcile all existing origins and
    reconstruct the metadata during certification. Foreign-export API admission
    remains a separate checkpoint.
-6. Java target export evidence: implement the corresponding certified foreign
+6. [Java target export evidence](M35-03A-02F-02B-05C-06-java-constant-export-evidence.md)
+   — planned. Implement the corresponding certified foreign
    binding inventory, original producer authority and export-only dependency
    closure, with separate Java 21 native and tamper proofs.
 7. Compiler lowering and schemas: register exports even when no body reads them;

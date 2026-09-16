@@ -268,6 +268,7 @@ fn package_configured(
         vec![JavaFileItem::Type {
             declared,
             conformances: JavaConformanceInventory::structural().into(),
+            source_package: None,
             dependencies,
             declaration: Box::new(declaration),
         }],
