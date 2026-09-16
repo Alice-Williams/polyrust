@@ -56,16 +56,24 @@ or other declaration kinds remain diagnosed, not silently omitted.
    alias-only package has no owned symbol to create an edge. Use typed file
    requirements, shared role/cycle checks and independently reconstructed imports.
 4. [C target export evidence](M35-03A-02F-02B-05C-04-c-constant-export-evidence.md)
-   (Java counterpart follows): certify a separate alias inventory backed by original
+   — complete (Java counterpart follows). Certify a separate alias inventory backed by original
    imported constant witnesses. Aliases point to defining symbols/paths; they do
    not enter owned constant definitions or create new producer authority. Check
    complete local/foreign binding union, retained dependency closure, documentation,
    identifier collisions and existing bounds, including zero-owned-item packages.
-5. Compiler lowering and schemas: register exports even when no body reads them;
+5. [Java package provenance](M35-03A-02F-02B-05C-05-java-package-provenance.md)
+   — planned. Retain explicit selected-crate metadata and module documentation
+   independently of owned Java methods/fields; reconcile all existing origins and
+   reconstruct the metadata during certification. Foreign-export API admission
+   remains a separate checkpoint.
+6. Java target export evidence: implement the corresponding certified foreign
+   binding inventory, original producer authority and export-only dependency
+   closure, with separate Java 21 native and tamper proofs.
+7. Compiler lowering and schemas: register exports even when no body reads them;
    preserve direct/transitive owner authority and all finite module/name bindings.
    Explicitly version new alias metadata and reconstruct it from certified target
    evidence before publication. Only then enable source foreign constant exports.
-6. End-to-end proof: native separate Rust/C/Java consumers, direct/transitive and
+8. End-to-end proof: native separate Rust/C/Java consumers, direct/transitive and
    re-export-only fixtures, stale/replaced/missing/wrong-kind controls, exact
    publication inventory, independent source mutation and Bazel invalidation,
    examples, fresh review, and complete release/lint gate.

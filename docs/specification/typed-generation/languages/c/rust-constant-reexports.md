@@ -1,7 +1,7 @@
 # Rust constant re-exports in C17
 
 - Status: explicit source-package provenance and typed file requirements implemented;
-  certified foreign exports remain planned. Existing foreign-export rejection is active.
+  certified foreign exports are implemented. Production rustc foreign-export rejection remains active.
 - Contract: [shared re-export design](../../rust-constant-reexports.md)
 
 ## Package provenance and storage
@@ -40,8 +40,8 @@ Documentation lowering accepts the graph independently of declarations. It
 validates finite graph bounds, root, module ancestry, documentation consistency
 and file routing, including graphs with no owned declarations. Rebuilding the
 shared projection during verification repeats these checks; resource accounting
-includes normalized comments. The existing nonempty-definition profile remains
-closed until the separate certified export inventory admits alias-only packages.
+includes normalized comments. The semantic profile admits zero owned definitions only when the separate
+certified export selection authenticates a nonempty foreign constant inventory.
 
 ## Certified API and metadata
 
@@ -54,6 +54,20 @@ Namespace/collision checks include the complete relevant producer inventories.
 The selected crate remains a distinct CDependencyApi owner; resolving one of its
 foreign bindings yields the original defining witness, not a newly branded
 constant whose owner is the facade. Owned constants continue using existing APIs.
+CDependencyApi::foreign_constants() returns a distinct read-only sequence of
+CForeignConstantExport values in deterministic module/name order. Each has
+private fields and module(), name() and dependency() accessors. The dependency
+is the original CDependencyConstant, not a newly owned facade constant.
+Construction remains internal to certificate-derived API inventory collection.
+
+Export selection reconciles the finite graph with registry-authenticated imports
+before projection. For each foreign binding it derives a header-owned
+DependencyValue reference, even without a body read. Independent projection
+reconstruction rejects deleted, swapped, extra or jointly altered per-unit and
+package import maps. File-layout ordering is structural; semantic profile
+admission separately requires public owned declarations or authenticated foreign
+bindings and actual owned definitions or authenticated foreign bindings.
+
 New alias schema records binding module/name/namespace and defining declaration,
 producer, symbol/header, scalar type and exact value. Reconstruct both directions
 from certified package evidence before publication.

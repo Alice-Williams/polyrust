@@ -1,5 +1,7 @@
 //! Certificate-derived dependency evidence, separate from consumer registration.
 mod constants;
+mod foreign;
+pub use foreign::CForeignConstantExport;
 mod inventory;
 use super::{CDialect, CGeneratedHeader, resources};
 use crate::ast::{CFileRef, CFunctionRef, CFunctionType, CIdentifier};
@@ -203,6 +205,7 @@ pub struct CDependencyApi {
     authority: Arc<Authority>,
     functions: BTreeMap<RustDeclarationId, CDependencyFunction>,
     constants: BTreeMap<RustDeclarationId, CDependencyConstant>,
+    foreign_constants: Vec<CForeignConstantExport>,
 }
 
 impl CDependencyApi {
@@ -245,6 +248,7 @@ impl CDependencyApi {
             authority,
             functions,
             constants,
+            foreign_constants: inventory.foreign_constants,
         })
     }
 
@@ -268,6 +272,11 @@ impl CDependencyApi {
 
     pub fn function(&self, declaration: RustDeclarationId) -> Option<&CDependencyFunction> {
         self.functions.get(&declaration)
+    }
+
+    /// Public aliases retain original defining witnesses, separate from owned constants.
+    pub fn foreign_constants(&self) -> impl Iterator<Item = &CForeignConstantExport> {
+        self.foreign_constants.iter()
     }
 
     pub fn constants(&self) -> impl Iterator<Item = &CDependencyConstant> {

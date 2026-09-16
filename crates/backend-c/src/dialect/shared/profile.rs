@@ -71,7 +71,20 @@ fn walk<'a>(
     registry: Option<&crate::ast::CRegistry>,
     mut visit: impl FnMut(&'a CSourceFile, Node<'a>, usize) -> Result<(), String>,
 ) -> Result<(), String> {
-    let mut pending: Vec<_> = ordered_sources(sources)?
+    if let Some(registry) = registry {
+        super::source_package::check(registry, sources)?;
+    }
+    let layout = layout::Layout::new(sources)?;
+    let exports = registry
+        .map(super::constant_exports::collect)
+        .transpose()?
+        .unwrap_or_default();
+    let has_foreign_exports = !exports.foreign.is_empty();
+    if !layout.has_public_declaration() && !has_foreign_exports {
+        return Err("C public header requires an exported function, scalar constant or certified foreign constant".into());
+    }
+    let mut pending: Vec<_> = layout
+        .ordered()
         .into_iter()
         .rev()
         .flat_map(|source| {
@@ -361,7 +374,7 @@ fn walk<'a>(
             },
         }
     }
-    if functions == 0 && objects == 0 {
+    if functions == 0 && objects == 0 && !has_foreign_exports {
         return Err("C shared profile requires a function or scalar constant definition".into());
     }
     inventory.finish()?;

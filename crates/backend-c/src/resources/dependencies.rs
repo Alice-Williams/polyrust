@@ -54,6 +54,9 @@ fn enqueue(
 pub(super) fn verify(package: &LinkedTargetPackage<CDialect>) -> Result<(), String> {
     let consumer = registry(package)?;
     let mut owned_crates = BTreeSet::new();
+    if let Some(source) = consumer.source_package() {
+        owned_crates.insert(source.exports().root.crate_id);
+    }
     for entry in consumer.inventory() {
         if let CGeneratedOrigin::RustSource(origin) = &entry.key.origin {
             owned_crates.insert(origin.declaration.crate_id);

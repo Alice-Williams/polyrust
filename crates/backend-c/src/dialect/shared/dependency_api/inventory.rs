@@ -14,6 +14,7 @@ pub(super) struct Inventory {
     pub implementation: CFileRef,
     pub functions: BTreeMap<RustDeclarationId, (CFunctionRef, CIdentifier)>,
     pub constants: BTreeMap<RustDeclarationId, Constant>,
+    pub foreign_constants: Vec<super::CForeignConstantExport>,
 }
 
 pub(super) struct Constant {
@@ -88,8 +89,9 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
             }
         }
     }
+    let selected = super::super::constant_exports::collect(projection.registry.registrations())?;
     let mut public = BTreeSet::new();
-    for bindings in exports.modules.values() {
+    for (module, bindings) in &exports.modules {
         for (name, target) in bindings {
             match target {
                 RustExportTarget::Module(id)
@@ -102,6 +104,12 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
                 {
                     public.insert(*id);
                 }
+                RustExportTarget::Declaration(id)
+                    if name.namespace == RustExportNamespace::Value
+                        && selected
+                            .foreign
+                            .get(&(*module, name.clone()))
+                            .is_some_and(|export| export.dependency.declaration() == *id) => {}
                 _ => {
                     return Err(
                         "C dependency export has no supported local function/constant mapping"
@@ -111,7 +119,16 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
             }
         }
     }
-    if public.is_empty() {
+    if projection
+        .registry
+        .registrations()
+        .source_package()
+        .is_some()
+        && selected.owned != public
+    {
+        return Err("C selected owned export inventory differs from source graph".into());
+    }
+    if public.is_empty() && selected.foreign.is_empty() {
         return Err("C dependency API has no public value bindings".into());
     }
     let sources = projection
@@ -192,5 +209,12 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
         implementation: implementation.module().clone(),
         functions,
         constants,
+        foreign_constants: selected
+            .foreign
+            .into_iter()
+            .map(|((module, name), export)| {
+                super::CForeignConstantExport::new(module, name, export.dependency)
+            })
+            .collect(),
     })
 }

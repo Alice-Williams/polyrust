@@ -15,6 +15,40 @@ constructor, with module documentation but no copied constant field or accessor.
 The alias resolves to the defining producer's public static final primitive
 field. No inheritance, proxy class, runtime helper or raw text is introduced.
 
+## Explicit source-package registration
+
+JavaFileItem::Type retains optional JavaSourcePackage metadata on its selected
+facade. JavaSourcePackage owns an immutable Arc<RustCrateExports> through private
+fields and exposes only a descriptive constructor and exports() accessor. It is
+not a certificate, declaration registration or witness for a foreign value.
+
+An explicit registration requires exactly one canonical public Generated.java
+compilation unit in the graph root's JavaPackage::RustCrate namespace, main
+placement, and a registered public final synthesized PackageEntryPoint class.
+Duplicated or misplaced metadata rejects. Every owned RustSource registration,
+including nested record fields, must agree with the explicit selected graph and
+crate identity. Absent metadata retains declaration-derived compatibility;
+conflicting explicit metadata must never fall back to inferred declarations.
+
+The shared documentation checker accepts the explicit graph independently of its
+origin iterator. Both empty and nonempty packages use the same bounded graph,
+ancestry, namespace, identity and documentation checks. Distinct immutable graph
+allocations are charged and compared; a repeated allocation can be memoized.
+No fabricated RustSourceOrigin is used to attach module documentation.
+
+Source registration checks and module-document lowering use this same metadata
+selection. Linking retains the exact unresolved registration, and independent
+verification reconstructs resolved documentation from the original checked
+package. Changing metadata and normalized comments together does not grant
+authority. Resource limits still cover graph entries, names, ancestries and
+documentation when no methods or fields exist.
+
+Production Rust-source assembly attaches explicit metadata unconditionally.
+An empty documented Java class may be syntactically certifiable without being a
+JavaDependencyApi: dependency API admission continues to require its separately
+validated public owned or foreign binding inventory. Package provenance alone
+does not admit foreign exports or enable a new publication schema.
+
 ## Certified API and metadata
 
 Keep owned GeneratedValue registrations, JavaImportedValue bindings and public

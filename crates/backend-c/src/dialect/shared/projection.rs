@@ -78,13 +78,28 @@ fn build(
         [_] => None,
         _ => return Err("C package has no checked file layout".into()),
     };
+    let exports = super::constant_exports::collect(registrations)?;
     let mut data = Vec::new();
     for source in files {
         let dependencies = dependencies
             .get(source.identity())
             .ok_or("C file has no exact dependency inventory")?;
-        let (file_bindings, declarations) =
+        let (mut file_bindings, declarations) =
             super::unit_bindings::project(&bindings, files, dependencies)?;
+        if registrations
+            .source_package()
+            .is_some_and(|package| package.header() == source.identity())
+        {
+            for export in exports.foreign.values() {
+                let binding = bindings
+                    .imported_values
+                    .get(&export.object)
+                    .ok_or("C exported foreign constant lacks its registered import binding")?;
+                file_bindings
+                    .imported_values
+                    .insert(export.object.clone(), binding.clone());
+            }
+        }
         let mut standards = BTreeSet::new();
         for header in dependencies.headers() {
             standards.extend(match header {

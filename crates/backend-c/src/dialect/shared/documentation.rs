@@ -8,6 +8,12 @@ use portable_codegen::{
     RustSourceNode,
 };
 mod exports;
+
+pub(super) fn check_export_graph(
+    exports: &portable_codegen::RustCrateExports,
+) -> Result<(), String> {
+    exports::graph(exports)
+}
 mod routing;
 use routing::FilePolicy;
 use std::{

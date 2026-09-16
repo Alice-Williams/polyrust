@@ -11,8 +11,8 @@ pub use catalogue::{CHeader, CKnownCall, CKnownCallForm, CKnownOperands, CSystem
 pub use dependencies::{CFileDependencies, CTagDependency, CTypeRequirement, file_dependencies};
 pub use shared::{
     CDefinedConstant, CDefinedFunction, CDependencyApi, CDependencyConstant, CDependencyFunction,
-    CDependencyPackage, CDialect, CGeneratedHeader, CHeaderGuard, CImportKind, CImportedCallable,
-    CImportedConstant, CImportedFunction, CImportedValue, CStructuralRenderer, c_defined_constants,
-    c_defined_functions, c_imported_constants, c_imported_functions, c_output_byte_bound,
-    project_c_package,
+    CDependencyPackage, CDialect, CForeignConstantExport, CGeneratedHeader, CHeaderGuard,
+    CImportKind, CImportedCallable, CImportedConstant, CImportedFunction, CImportedValue,
+    CStructuralRenderer, c_defined_constants, c_defined_functions, c_imported_constants,
+    c_imported_functions, c_output_byte_bound, project_c_package,
 };

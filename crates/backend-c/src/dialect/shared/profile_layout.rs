@@ -36,6 +36,16 @@ impl<'a> Layout<'a> {
         Ok(layout)
     }
 
+    pub(super) fn has_public_declaration(&self) -> bool {
+        match self {
+            Self::Single(_) => true,
+            Self::PublicPair { header, .. } => header
+                .items()
+                .iter()
+                .any(|item| matches!(item, CFileItem::Declaration(_))),
+        }
+    }
+
     pub(super) fn ordered(&self) -> Vec<&'a CSourceFile> {
         match self {
             Self::Single(source) => vec![source],
@@ -58,19 +68,17 @@ fn check_pair(header: &CSourceFile, implementation: &CSourceFile) -> Result<(), 
     {
         return Err("C paired profile requires .h/.c file names".into());
     }
-    let mut public = 0usize;
     for item in header.items() {
         match item {
             CFileItem::Declaration(declaration) => match declaration.kind() {
                 CDeclarationKind::FunctionPrototype {
                     function,
                     linkage: CLinkage::External,
-                } if function.file() == header.identity() => public += 1,
+                } if function.file() == header.identity() => {}
                 CDeclarationKind::ObjectDeclaration(object)
                     if object.file() == header.identity() =>
                 {
                     super::constants::object(object)?;
-                    public += 1;
                 }
                 _ => {
                     return Err(
@@ -83,9 +91,6 @@ fn check_pair(header: &CSourceFile, implementation: &CSourceFile) -> Result<(), 
                 return Err("C public header cannot contain a definition".into());
             }
         }
-    }
-    if public == 0 {
-        return Err("C public header requires an exported function or scalar constant".into());
     }
     for item in implementation.items() {
         match item {

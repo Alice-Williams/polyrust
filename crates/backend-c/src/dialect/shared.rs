@@ -1,6 +1,25 @@
 //! Checked projection of the existing C tree into the shared phase machinery.
 
 mod bindings;
+#[cfg(test)]
+#[path = "../tests/shared_constant_export_fixture.rs"]
+mod constant_export_fixture;
+#[cfg(test)]
+#[path = "../tests/shared_constant_export_native.rs"]
+mod constant_export_native_tests;
+#[cfg(test)]
+#[path = "../tests/shared_constant_export_projection.rs"]
+mod constant_export_projection_tests;
+#[cfg(test)]
+#[path = "../tests/shared_constant_export_rejections.rs"]
+mod constant_export_rejection_tests;
+#[cfg(test)]
+#[path = "../tests/shared_constant_export_resources.rs"]
+mod constant_export_resource_tests;
+#[cfg(test)]
+#[path = "../tests/shared_constant_exports.rs"]
+mod constant_export_tests;
+mod constant_exports;
 mod constant_import_view;
 mod constant_view;
 mod definition_view;
@@ -200,6 +219,7 @@ pub use definition_view::{CDefinedFunction, c_defined_functions, c_output_byte_b
 pub(crate) use dependency_api::CDependencyAuthority;
 pub use dependency_api::{
     CDependencyApi, CDependencyConstant, CDependencyFunction, CDependencyPackage,
+    CForeignConstantExport,
 };
 pub use dependency_symbols::CImportedCallable;
 pub use file_imports::{CGeneratedHeader, CHeaderGuard, CImportKind};
