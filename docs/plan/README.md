@@ -87,7 +87,7 @@ existing C types, and M35-01C preserves doc attributes before heap-owner work.
 - [M16 — CI and release gate](milestones/M16-ci-release.md) — complete
 - [M16A — Persistent GitHub Actions Bazel cache](milestones/M16A-persistent-ci-cache.md) — complete
   - [M16A-02 — Remove redundant cold release gate](tasks/M16A-02-remove-cold-gate.md) — complete
-- [M16B — Native Linux CI](milestones/M16B-native-linux-ci.md) — in progress
+- [M16B — Native Linux CI](milestones/M16B-native-linux-ci.md) — complete
 
 ### Phase 6 — Real-world compatibility
 

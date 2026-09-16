@@ -1,6 +1,6 @@
 # M16B-01 — Migrate CI to native Linux execution
 
-- Status: in-progress
+- Status: complete
 - Depends on: M16A-02
 - Blocks: return to M34A language work
 
@@ -48,3 +48,9 @@ evidence is recorded.
   Buildifier, generated-package compilation, and language linters.
 - An immediate cached replay also passes 237 of 237 tests while Bazel executes
   only Buildifier and reuses the other 236 recorded test results.
+
+## Hosted completion
+
+Run 35107402373 at 081a796 passed all jobs and saved the native cache lineage.
+See the [milestone evidence](../milestones/M16B-native-linux-ci.md#hosted-completion--2026-09-16)
+for the exact commit, log results and cache key.

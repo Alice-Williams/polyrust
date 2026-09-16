@@ -1,6 +1,6 @@
 # M16B-02 — Rust compatibility and native test ownership
 
-- Status: in-progress
+- Status: complete
 - Parent: [native Linux CI](../milestones/M16B-native-linux-ci.md)
 - Depends on: M16B-01 local implementation
 
@@ -70,5 +70,8 @@ timeout. No assertion failure was reported in that suite's partial output.
 The downstream conformance command and cache save did not run. Follow-up
 [M16B-03](M16B-03-java-native-suite-budget.md) addresses the test classification.
 
-Hosted success is still pending. This task is not complete merely because its
-local tests pass; the exact pushed SHA must finish all hosted jobs successfully.
+Replacement run 35107402373 at 081a796ce28ef429ba46ab787df284b7e88694d1
+passed every job, including native release execution and cache save. See the
+[milestone evidence](../milestones/M16B-native-linux-ci.md#hosted-completion--2026-09-16).
+The final independent CI-boundary review approved the pushed fix with no
+remaining core findings.

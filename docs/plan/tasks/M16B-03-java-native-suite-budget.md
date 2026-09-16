@@ -1,6 +1,6 @@
 # M16B-03 — Java native suite execution budget
 
-- Status: in-progress
+- Status: complete
 - Parent: [native Linux CI](../milestones/M16B-native-linux-ci.md)
 - Depends on: M16B-02 compatibility-job fix
 
@@ -47,7 +47,14 @@ is harmless. The complete suite must finish successfully before push.
   cases and no assertion failures before the 300-second timeout; no required
   tests, filters, assertions or release commands have changed.
 
-The earlier hosted failure is recorded in
-[M16B-02](M16B-02-rust-compatibility-boundary.md). Final staged-documentation
-verification and review precede push. Hosted completion remains pending; this
-local proof does not claim that the replacement GitHub run is green.
+The final isolated tree e4ad19d92579d459b185849a653000bfb31aafb1 passed all
+684 tests again in 33.044s, invocation 02717728-9667-4698-bdc1-d42cf355ede7.
+Independent Sol Extra High review approved with no core findings. The scoped
+checkpoint was committed and pushed as 081a796.
+
+Hosted run 35107402373 passed all eight jobs. The Java backend suite completed
+in 260.8s, all 684 workspace tests passed, explicit eight-target conformance
+passed and GitHub saved the cache. See the
+[milestone evidence](../milestones/M16B-native-linux-ci.md#hosted-completion--2026-09-16).
+The earlier failure remains documented in
+[M16B-02](M16B-02-rust-compatibility-boundary.md).
