@@ -6,11 +6,15 @@ mod direct_calls;
 mod eager_booleans;
 mod entry_signatures;
 mod function_signatures;
+#[cfg(any(constant_import_wrong_type, constant_import_wrong_value))]
+#[path = "../../test/constant_import_mutations.rs"]
+pub(crate) mod import_mutations;
 mod integer_bitwise;
 mod lexical_control;
 mod literal_values;
 mod local_constants;
 mod object_types;
+mod public_constant_imports;
 mod public_constant_reads;
 mod public_constants;
 mod record_initializers;
@@ -31,6 +35,7 @@ pub(crate) use lexical_control::{ControlInput, LexicalControl};
 pub(crate) use literal_values::{LiteralInput, LiteralValue, LiteralValues};
 pub(crate) use local_constants::{LocalConstantInput, LocalConstants};
 pub(crate) use object_types::{ObjectTypes, TypeInput};
+pub(crate) use public_constant_imports::{ConstantImportInput, PublicConstantImports};
 pub(crate) use public_constant_reads::{PublicConstantReadInput, PublicConstantReads};
 pub(crate) use public_constants::{ConstantDeclarationInput, PublicConstants};
 pub(crate) use record_initializers::{RecordInitializers, RecordInput};

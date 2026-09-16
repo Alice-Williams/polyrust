@@ -41,12 +41,14 @@ pub(super) fn resolve<'tcx>(
 pub(super) struct Inventory {
     pub(super) local: Vec<LocalDefId>,
     pub(super) foreign: Vec<DefId>,
+    pub(super) constants: Vec<DefId>,
 }
 
 pub(super) fn inventory(tcx: TyCtxt<'_>, roots: &[LocalDefId]) -> Result<Inventory> {
     let mut pending = VecDeque::from(roots.to_vec());
     let mut graph = HashMap::new();
     let mut foreign = BTreeMap::new();
+    let mut constants = BTreeMap::new();
     let mut remaining = 100_000;
     while let Some(function) = pending.pop_front() {
         if graph.contains_key(&function) {
@@ -59,6 +61,7 @@ pub(super) fn inventory(tcx: TyCtxt<'_>, roots: &[LocalDefId]) -> Result<Invento
             tcx,
             checked: tcx.typeck(function),
             calls: vec![],
+            constants: vec![],
             error: None,
             depth: 0,
             remaining,
@@ -68,6 +71,12 @@ pub(super) fn inventory(tcx: TyCtxt<'_>, roots: &[LocalDefId]) -> Result<Invento
             return Err(error);
         }
         remaining = visitor.remaining;
+        for definition in visitor.constants {
+            constants.insert(identity(tcx, definition), definition);
+            if constants.len() > 4096 {
+                return Err("source constant import inventory budget exceeded".into());
+            }
+        }
         let mut local = Vec::new();
         for callee in visitor.calls {
             match callee.as_local() {
@@ -89,6 +98,7 @@ pub(super) fn inventory(tcx: TyCtxt<'_>, roots: &[LocalDefId]) -> Result<Invento
     Ok(Inventory {
         local: result,
         foreign: foreign.into_values().collect(),
+        constants: constants.into_values().collect(),
     })
 }
 
@@ -122,6 +132,7 @@ struct Calls<'tcx> {
     tcx: TyCtxt<'tcx>,
     checked: &'tcx TypeckResults<'tcx>,
     calls: Vec<DefId>,
+    constants: Vec<DefId>,
     error: Option<String>,
     depth: usize,
     remaining: usize,
@@ -136,6 +147,13 @@ impl<'tcx> Visitor<'tcx> for Calls<'tcx> {
             return;
         }
         self.remaining -= 1;
+        if let Some(id) = crate::source_capabilities::ConstantImportInput::discover(
+            self.tcx,
+            self.checked,
+            expression,
+        ) {
+            self.constants.push(id);
+        }
         if matches!(expression.kind, hir::ExprKind::Call(..)) {
             match resolve(self.tcx, self.checked, expression) {
                 Ok(id) => self.calls.push(id),

@@ -1,5 +1,8 @@
 //! Executable mappings for the closed Rust-source subset, not support flags.
 mod boolean_negation;
+#[cfg(constant_import_probe)]
+#[path = "../../../test/constant_import_java_ast.rs"]
+mod constant_import_ast;
 mod direct_calls;
 mod eager_booleans;
 mod entry_signatures;
@@ -16,6 +19,7 @@ mod public_constant_ast;
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/public_constant_contract.rs"]
 mod public_constant_contract;
+mod public_constant_imports;
 mod public_constant_reads;
 mod public_constants;
 mod record_initializers;
@@ -108,6 +112,7 @@ pub(crate) use lexical_control::JavaLexicalControl;
 pub(crate) use literal_values::JavaLiteralValues;
 pub(crate) use local_constants::JavaLocalConstants;
 pub(crate) use object_types::JavaObjectTypes;
+pub(crate) use public_constant_imports::{ImportState, JavaPublicConstantImports};
 pub(crate) use public_constant_reads::JavaPublicConstantReads;
 pub(crate) use public_constants::JavaPublicConstants;
 pub(crate) use record_initializers::JavaRecordInitializers;
@@ -137,6 +142,7 @@ pub(crate) type JavaBindings = Bindings<
     JavaLocalConstants,
     JavaPublicConstants,
     JavaPublicConstantReads,
+    JavaPublicConstantImports,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -159,5 +165,6 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .local_constants(JavaLocalConstants)
         .public_constants(JavaPublicConstants)
         .public_constant_reads(JavaPublicConstantReads)
+        .public_constant_imports(JavaPublicConstantImports)
         .build()
 }

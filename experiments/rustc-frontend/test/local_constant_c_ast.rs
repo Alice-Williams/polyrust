@@ -12,6 +12,7 @@ pub(super) fn snapshot(reader: &Reader<'_>) -> String {
         registry,
         header,
         constants,
+        foreign_constants,
         file,
         function,
         functions,
@@ -35,7 +36,7 @@ pub(super) fn snapshot(reader: &Reader<'_>) -> String {
         "{:?}",
         (
             session,
-            (header, constants),
+            (header, constants, foreign_constants),
             (
                 registry,
                 file,

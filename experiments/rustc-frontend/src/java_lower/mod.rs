@@ -36,7 +36,11 @@ pub enum Selection {
     PublicApi,
 }
 
-pub(crate) type DependencyLookup<'a> = dyn Fn(DefId) -> Result<JavaDependencyFunction> + 'a;
+pub(crate) struct DependencyLookup<'a> {
+    pub function: &'a dyn Fn(DefId) -> Result<JavaDependencyFunction>,
+    pub constant:
+        &'a dyn Fn(DefId) -> Result<portable_backend_java::dialect::JavaDependencyConstant>,
+}
 
 /// Called only after successful compiler analysis and declared-input checking.
 /// This is still an unresolved target package, never permission to render.
@@ -66,6 +70,7 @@ pub(crate) struct Reader<'tcx> {
     imported: HashMap<DefId, JavaImportedCallable>,
     public_api: bool,
     constants: HashMap<DefId, constants::Constant>,
+    foreign_constants: HashMap<DefId, portable_backend_java::dialect::JavaImportedValue>,
     records: HashMap<DefId, records::Record>,
     bindings: HashMap<hir::HirId, Place>,
     origins: crate::source_origin::Cache,

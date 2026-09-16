@@ -4,7 +4,7 @@ use std::fmt::Write;
 
 impl ApiManifest {
     pub(crate) fn canonical_json(&self) -> Result<String, String> {
-        if !self.imports.is_empty() {
+        if !self.imports.is_empty() || !self.constant_imports.is_empty() {
             return Err("standalone schema cannot omit certified imports".into());
         }
         self.encode(false)
@@ -18,11 +18,15 @@ impl ApiManifest {
         let bound = self.encoded_bound()?;
         let mut text = format!(
             "{{\"schema_version\":{},\"root\":{},\"header\":{},\"implementation\":{},\"modules\":[",
-            match (bundle, self.constants.is_empty()) {
-                (false, true) => 1,
-                (true, true) => 2,
-                (false, false) => 3,
-                (true, false) => 4,
+            if !self.constant_imports.is_empty() {
+                5
+            } else {
+                match (bundle, self.constants.is_empty()) {
+                    (false, true) => 1,
+                    (true, true) => 2,
+                    (false, false) => 3,
+                    (true, false) => 4,
+                }
             },
             identity(self.exports.root),
             quote(self.header.key().path.as_str()),
@@ -98,6 +102,9 @@ impl ApiManifest {
         }
         if bundle {
             self.write_imports(&mut text)?;
+            if !self.constant_imports.is_empty() {
+                self.write_constant_imports(&mut text)?;
+            }
         }
         text.push_str("}\n");
         if text.len() > bound {
@@ -133,6 +140,9 @@ impl ApiManifest {
         }
         for constant in self.constants.values() {
             add(512 + constant.name.as_str().len())?;
+        }
+        for bytes in self.constant_import_bounds() {
+            add(bytes?)?;
         }
         for bytes in self.import_bounds() {
             add(bytes?)?;

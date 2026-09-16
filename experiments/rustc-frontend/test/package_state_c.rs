@@ -23,6 +23,7 @@ fn empty() -> State {
         foreign_functions: HashMap::new(),
         header: None,
         constants: HashMap::new(),
+        foreign_constants: HashMap::new(),
         records: HashMap::new(),
         declarations: vec![],
         origins: origin::Cache::default(),
@@ -38,6 +39,7 @@ pub(crate) fn check(tcx: TyCtxt<'_>, mut state: State, roots: &[LocalDefId]) -> 
 
     let file = state.file.clone();
     let functions = state.functions.clone();
+    let constant_imports = state.foreign_constants.clone();
     let imports = state.foreign_functions.clone();
     let exports = state.origins.exports(tcx).unwrap();
     let result = lower_functions(tcx, state, &[], None).unwrap();
@@ -52,6 +54,7 @@ pub(crate) fn check(tcx: TyCtxt<'_>, mut state: State, roots: &[LocalDefId]) -> 
     for &root in roots {
         let mut reader = state.into_reader(tcx, root).unwrap();
         assert!(std::ptr::eq(reader.checked, tcx.typeck(root)));
+        assert_eq!(reader.foreign_constants, constant_imports);
         assert_eq!(reader.root, root);
         assert_eq!(reader.function, functions[&root]);
         assert!(reader.bindings.is_empty() && reader.control_scopes.is_empty());
@@ -71,6 +74,7 @@ pub(crate) fn check(tcx: TyCtxt<'_>, mut state: State, roots: &[LocalDefId]) -> 
         state = State::from_reader(reader);
     }
     assert_eq!(state.functions, functions);
+    assert_eq!(state.foreign_constants, constant_imports);
     println!("C_PACKAGE_STATE_CHECKED\t{}", roots.len());
     state
 }

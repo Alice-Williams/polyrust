@@ -33,11 +33,9 @@ impl<'tcx> PublicConstantReadInput<'tcx> {
         if !Self::requires_reference(tcx, checked.definition()) {
             return Err("public constant read requires an exported module constant".into());
         }
-        if !checked.definition().is_local() {
-            return Err(
-                "foreign public constant reads require a certified producer mapping".into(),
-            );
-        }
+        // This is compiler provenance, not target import authority. Both executable
+        // target mappings require a pre-registered opaque producer witness for
+        // every foreign read; missing/stale identities and values remain errors.
         Ok(Self { checked })
     }
     pub(crate) fn definition(self) -> DefId {

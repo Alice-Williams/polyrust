@@ -4,7 +4,7 @@ use super::{
     CRecordInitializers, CResolvedPlaces, CScalarComparisons, CScalarConstants, CSharedBorrows,
     CShortCircuitBooleans,
 };
-use super::{CPublicConstantReads, CPublicConstants};
+use super::{CPublicConstantImports, CPublicConstantReads, CPublicConstants};
 
 #[allow(dead_code)]
 fn must_not_compile() {
@@ -25,6 +25,7 @@ fn must_not_compile() {
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
         .public_constants(CPublicConstants)
+        .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
@@ -44,6 +45,7 @@ fn must_not_compile() {
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
         .public_constants(CPublicConstants)
+        .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
@@ -63,6 +65,7 @@ fn must_not_compile() {
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
         .public_constants(CPublicConstants)
+        .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
@@ -82,6 +85,7 @@ fn must_not_compile() {
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
         .public_constants(CPublicConstants)
+        .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
@@ -101,6 +105,7 @@ fn must_not_compile() {
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
         .public_constants(CPublicConstants)
+        .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
@@ -120,6 +125,7 @@ fn must_not_compile() {
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
         .public_constants(CPublicConstants)
+        .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
@@ -139,6 +145,7 @@ fn must_not_compile() {
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
         .public_constants(CPublicConstants)
+        .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
@@ -158,6 +165,7 @@ fn must_not_compile() {
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
         .public_constants(CPublicConstants)
+        .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
@@ -177,6 +185,7 @@ fn must_not_compile() {
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
         .public_constants(CPublicConstants)
+        .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
         .build();
     Builder::new()
@@ -196,6 +205,7 @@ fn must_not_compile() {
         .scalar_constants(CScalarConstants)
         .local_constants(CLocalConstants)
         .public_constants(CPublicConstants)
+        .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
         .build();
 }

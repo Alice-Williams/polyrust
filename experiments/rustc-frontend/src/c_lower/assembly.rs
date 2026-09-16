@@ -131,6 +131,20 @@ pub(crate) fn lower(
         imports.insert(origin::identity(tcx, id), (function.clone(), proof));
         foreign_functions.insert(id, function);
     }
+    let mut foreign_constants = HashMap::new();
+    if header.is_some() {
+        for id in &inventory.constants {
+            let lookup = lookup
+                .ok_or("foreign public constant reads require a certified producer mapping")?;
+            let proof = (lookup.constant)(*id)?;
+            let input = capabilities::ConstantImportInput::read(tcx, *id)?;
+            let mut registration = capabilities::ImportState { registry, proof };
+            let object = Supports::<capabilities::PublicConstantImports>::mapping(&mappings)
+                .lower(&mut registration, input)?;
+            registry = registration.registry;
+            foreign_constants.insert(*id, (object, registration.proof));
+        }
+    }
     let mut state = package::State {
         registry,
         file,
@@ -139,6 +153,7 @@ pub(crate) fn lower(
         foreign_functions,
         header: header.clone(),
         constants: HashMap::new(),
+        foreign_constants,
         records: HashMap::new(),
         declarations: Vec::new(),
         origins,
@@ -200,7 +215,13 @@ pub(crate) fn lower(
             )
         })
         .collect();
+    let constant_imports = state
+        .foreign_constants
+        .into_iter()
+        .map(|(id, imported)| (origin::identity(tcx, id), imported))
+        .collect();
     Ok(LoweredPackage {
+        constant_imports,
         constants,
         registry: state.registry.freeze(),
         sources: files,

@@ -4,7 +4,7 @@ use super::{
     JavaLocalConstants, JavaObjectTypes, JavaRecordInitializers, JavaResolvedPlaces,
     JavaScalarComparisons, JavaScalarConstants, JavaSharedBorrows, JavaShortCircuitBooleans,
 };
-use super::{JavaPublicConstantReads, JavaPublicConstants};
+use super::{JavaPublicConstantImports, JavaPublicConstantReads, JavaPublicConstants};
 
 #[allow(dead_code)]
 fn must_not_compile() {
@@ -25,6 +25,7 @@ fn must_not_compile() {
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
         .public_constants(JavaPublicConstants)
+        .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
@@ -44,6 +45,7 @@ fn must_not_compile() {
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
         .public_constants(JavaPublicConstants)
+        .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
@@ -63,6 +65,7 @@ fn must_not_compile() {
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
         .public_constants(JavaPublicConstants)
+        .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
@@ -82,6 +85,7 @@ fn must_not_compile() {
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
         .public_constants(JavaPublicConstants)
+        .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
@@ -101,6 +105,7 @@ fn must_not_compile() {
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
         .public_constants(JavaPublicConstants)
+        .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
@@ -120,6 +125,7 @@ fn must_not_compile() {
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
         .public_constants(JavaPublicConstants)
+        .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
@@ -139,6 +145,7 @@ fn must_not_compile() {
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
         .public_constants(JavaPublicConstants)
+        .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
@@ -158,6 +165,7 @@ fn must_not_compile() {
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
         .public_constants(JavaPublicConstants)
+        .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
@@ -177,6 +185,7 @@ fn must_not_compile() {
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
         .public_constants(JavaPublicConstants)
+        .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .build();
     Builder::new()
@@ -196,6 +205,7 @@ fn must_not_compile() {
         .scalar_constants(JavaScalarConstants)
         .local_constants(JavaLocalConstants)
         .public_constants(JavaPublicConstants)
+        .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .build();
 }

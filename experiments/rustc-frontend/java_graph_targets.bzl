@@ -10,22 +10,7 @@ def java_graph_targets(name):
     Args:
         name: Compiler graph integration test name.
     """
-    sources = [
-        "src/java_main.rs",
-        "src/inputs.rs",
-        "src/source_admission.rs",
-        "src/compiler_dependencies.rs",
-        "src/metadata_cli.rs",
-        "src/metadata_dependencies.rs",
-        "src/metadata_stage.rs",
-        "src/source_check.rs",
-    ] + native.glob([
-        "src/java_graph/**/*.rs",
-        "src/java_lower/**/*.rs",
-        "src/source_check/**/*.rs",
-        "src/source_capabilities/**/*.rs",
-        "src/source_origin/**/*.rs",
-    ])
+    sources = java_graph_sources()
     dependencies = [
         ":compiler_configuration",
         ":directory_publication",
@@ -115,3 +100,22 @@ def java_graph_targets(name):
         ] + ["$(rootpath " + target + ")" for target in mutations],
         data = ["test/java_graph_check.py", ":metadata_emitter", ":java_graph_adapter"] + mutations,
     )
+
+def java_graph_sources():
+    """Production graph adapter inputs shared with typed compiler probes."""
+    return [
+        "src/java_main.rs",
+        "src/inputs.rs",
+        "src/source_admission.rs",
+        "src/compiler_dependencies.rs",
+        "src/metadata_cli.rs",
+        "src/metadata_dependencies.rs",
+        "src/metadata_stage.rs",
+        "src/source_check.rs",
+    ] + native.glob([
+        "src/java_graph/**/*.rs",
+        "src/java_lower/**/*.rs",
+        "src/source_check/**/*.rs",
+        "src/source_capabilities/**/*.rs",
+        "src/source_origin/**/*.rs",
+    ])

@@ -1,6 +1,7 @@
 //! Checked projection of the existing C tree into the shared phase machinery.
 
 mod bindings;
+mod constant_import_view;
 mod constant_view;
 mod definition_view;
 mod dependency_api;
@@ -9,6 +10,7 @@ mod dependency_symbols;
 mod documentation;
 mod file_imports;
 mod import_view;
+pub use constant_import_view::{CImportedConstant, c_imported_constants};
 mod imported_values;
 mod linking;
 mod nodes;

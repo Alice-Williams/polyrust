@@ -39,3 +39,7 @@ pub(super) fn files(state: &super::package::State) -> Result<(Vec<CFileItem>, Ve
     }
     Ok((header_items, definitions))
 }
+
+/// Imported objects retain their exact independent owner witness across bodies.
+pub(super) type ImportedConstants =
+    HashMap<DefId, (CObjectRef, portable_backend_c::dialect::CDependencyConstant)>;

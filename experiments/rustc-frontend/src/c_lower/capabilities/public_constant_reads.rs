@@ -13,6 +13,28 @@ impl Mapping for CPublicConstantReads {
         reader: &mut Reader<'tcx>,
         input: PublicConstantReadInput<'tcx>,
     ) -> Result<CValue> {
+        if !input.definition().is_local() {
+            let (object, proof) = reader
+                .foreign_constants
+                .get(&input.definition())
+                .ok_or("foreign public constant read lacks registered C producer")?;
+            let literal = crate::c_lower::constants::literal(input.value());
+            if proof.declaration() != crate::source_origin::identity(reader.tcx, input.definition())
+                || proof.value() != &literal
+                || reader
+                    .registry
+                    .imported_constant(object)
+                    .map_err(|e| e.to_string())?
+                    != proof
+            {
+                return Err("foreign C constant read disagrees with its certified producer".into());
+            }
+            let place = c(reader.expressions().global(object.clone()))?;
+            let value = c(reader.expressions().read(place))?;
+            #[cfg(constant_import_probe)]
+            super::constant_import_ast::read(reader, input, &value);
+            return Ok(value);
+        }
         let (object, value) = reader
             .constants
             .get(&input.definition())

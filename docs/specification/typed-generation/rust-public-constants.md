@@ -1,6 +1,6 @@
 # Checked Rust public scalar constants
 
-- Status: normative; single-crate source mappings implemented; multi-crate integration pending
+- Status: normative; single-crate and authenticated multi-crate reads implemented; foreign exports pending
 - Prerequisite: [local constants](rust-local-constants.md)
 - Layers: [shared dependency values](certified-dependency-values.md),
   [C17](languages/c/rust-public-constants.md),
@@ -64,6 +64,15 @@ both mappings through the typed consuming capability builder with independent
 missing/duplicate/wrong capability/context/output/input controls. Source inputs
 contain no target AST references.
 
+PublicConstantImports is a third required executable builder mapping. Its private
+compiler input retains a foreign module constant DefId, exact normalized value
+and compiler context; registration compares these with the original producer
+witness before creating an imported reference. Distinct typed function/constant
+lookups prevent treating value dependencies as callable edges. Discovery admits
+at most 4,096 distinct foreign constants within its 100,000-expression/depth-128
+budgets. These are discovery limits, not a promise that an equally large package
+fits each target AST, file, byte or resource budget; every limit still applies.
+
 ScalarConstants continues to fold private/local constants into typed literals.
 A read of an externally reachable constant must use PublicConstantReads and
 its registered value reference. Register all admitted public declarations before
@@ -76,8 +85,9 @@ Function Readers exist only while lowering actual functions. Preserve existing
 function-only and local-constant behavior. Selected-entry mode is explicitly a
 value-only projection: constants reachable from that one entry continue to fold
 through ScalarConstants, even if public. Public-package mode must register and
-reference each local public constant; foreign public reads fail closed until
-child05 provides an authenticated producer join. No package-mode fallback to
+reference each local public constant; child05B authenticates foreign public
+reads through their original checked producer witnesses. Foreign public exports
+remain rejected until child05C. No package-mode fallback to
 selected-entry folding is allowed.
 
 ## Public exports, dependencies and files

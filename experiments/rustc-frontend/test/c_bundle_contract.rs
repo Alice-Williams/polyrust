@@ -19,6 +19,24 @@ pub(super) fn check(graph: &CheckedGraph) {
         wrong_manifest.crates.get_mut(&keys[0]).unwrap().manifest = other;
         assert!(preflight(&wrong_manifest).is_err());
     }
+    for imported in graph
+        .crates
+        .values()
+        .flat_map(|member| portable_backend_c::dialect::c_imported_constants(member.api.package()))
+    {
+        let owner = imported.dependency().package_identity().root();
+        let mut missing = graph.clone();
+        missing.crates.remove(&owner);
+        assert!(preflight(&missing).is_err());
+        let mut recertified = graph.clone();
+        let member = recertified.crates.get_mut(&owner).unwrap();
+        member.api = CDependencyApi::from_certificate(member.api.package().clone()).unwrap();
+        assert!(
+            preflight(&recertified)
+                .unwrap_err()
+                .contains("exact member certificate")
+        );
+    }
     let Some(imported) = graph
         .crates
         .values()

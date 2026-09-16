@@ -12,6 +12,8 @@ load(":clone_flow_targets.bzl", "clone_flow_targets")
 load(":conditional_owned_probe_targets.bzl", "conditional_owned_probe_targets")
 load(":constant_ast_targets.bzl", "constant_ast_targets")
 load(":constant_contract_targets.bzl", "constant_contract_targets")
+load(":constant_import_probe_targets.bzl", "constant_import_probe_targets")
+load(":constant_import_targets.bzl", "constant_import_targets")
 load(":constant_targets.bzl", "constant_targets")
 load(":crate_identity_targets.bzl", "crate_identity_targets")
 load(":crate_native_targets.bzl", "crate_native_targets")
@@ -220,6 +222,13 @@ java_ast_targets(name = "java_source_ast_test")
 java_graph_targets(name = "java_graph_check_test")
 
 java_bundle_targets(name = "java_bundle")
+
+constant_import_targets(name = "constant_import_native_test")
+
+constant_import_probe_targets(
+    name = "constant_import_publication_test",
+    adapter_sources = ADAPTER_SOURCES,
+)
 
 java_fixture_targets(name = "java_fixture_native_test")
 

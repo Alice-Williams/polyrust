@@ -1,6 +1,6 @@
 # Rust public scalar constants in C17
 
-- Status: owned and imported C target mappings complete in M35-03A-02F-02B-02; owned source/bundle publication implemented; foreign source integration pending
+- Status: owned and imported C target mappings complete in M35-03A-02F-02B-02; owned source/bundle publication implemented; authenticated foreign source reads implemented; foreign exports pending
 - Parent: [shared source contract](../../rust-public-constants.md)
 - Reuse: [C package projection](rust-hir-public-packages.md)
 
@@ -150,3 +150,37 @@ before publication. Constants-only owners, mixed owners and declared unused
 dependency owners are retained. This step does not authorize foreign constant
 body reads or foreign public re-exports; those require the subsequent compiler
 join and export-closure checkpoints.
+
+## Compiler-authenticated constant imports (child05B)
+
+PublicConstantImports is a separate required executable builder slot, not an
+independent support flag. Its private ConstantImportInput retains checked Rust
+DefId, compiler context and the compiler-evaluated bool/i32/i64 value.
+The existing bounded function-body walk discovers module constant references
+without adding call-graph edges; at most 4096 distinct foreign constants are
+discovered, within the existing 100,000-expression and depth-128 walk limits.
+Independent C AST node/file/byte budgets may reject smaller generated packages;
+passing discovery alone is not target certification.
+
+The checked graph exposes distinct function and constant lookups. Constant
+lookup selects the declared compiler crate and the exact stable declaration from
+its original CDependencyApi. Import registration owns CRegistry and that opaque
+CDependencyConstant, compares compiler identity, owner, scalar read type and
+exact value, then calls CRegistry::import_constant. Imported handles and original
+witnesses survive package/Reader transitions in a separate map. Public reads
+require the matching registered object/witness and compiler value; they cannot
+promote foreign objects into owned definitions or fold them into literals.
+
+Bundle owner schema 5 adds constant_imports alongside function imports and any
+owned constants. Each record includes id, owner, header, symbol, scalar type,
+lossless value and readonly true. The manifest is reconstructed against both
+the compiler binding inventory and certified imported-constant views.
+Whole-bundle preflight requires each imported witness to match the exact retained
+producer certificate, not an independently re-certified equal-looking package.
+Owners without imported constants retain schemas 2/4; the outer index remains 1.
+Standalone publication still rejects any foreign constant without a certified
+producer graph. Public foreign re-exports remain unsupported until child05C.
+
+Child05B is implemented and its native, mutation, AST, compile-negative,
+atomic publication, cache, boundary, review and full release gates are recorded
+in the milestone evidence. Foreign public exports remain a separate checkpoint.

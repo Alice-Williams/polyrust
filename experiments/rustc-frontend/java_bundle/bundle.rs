@@ -71,6 +71,15 @@ impl<'a> PreparedBundle<'a> {
                 .flat_map(|f| f.items())
                 .flat_map(|i| i.names.keys())
             {
+                if let TargetSymbolRef::DependencyValue(value) = symbol {
+                    let proof = value.constant();
+                    let member = graph
+                        .get(&proof.package_identity().root())
+                        .ok_or("Java bundle constant owner missing")?;
+                    if member.api.constant(proof.declaration()) != Some(proof) {
+                        return Err("Java bundle constant witness replaced".into());
+                    }
+                }
                 if let TargetSymbolRef::DependencyCallable(callable) = symbol {
                     let function = callable.function();
                     let member = graph

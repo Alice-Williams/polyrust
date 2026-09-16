@@ -1,6 +1,6 @@
 # Rust public scalar constants in Java 21
 
-- Status: normative; owned source/bundle publication implemented; foreign source integration pending
+- Status: normative; owned source/bundle publication implemented; authenticated foreign source reads implemented; foreign exports pending
 - Parent: [shared source contract](../../rust-public-constants.md)
 - Reuse: [Java source packages](rust-hir-lowering.md)
 
@@ -149,7 +149,8 @@ reconstruct JavaDependencyApi from its certificate and compare values, primitive
 types, identities, export bindings and qualified paths before native consumers
 compile. No standalone Java JSON sidecar is added by this step. Cross-crate
 source joins remain child05B; foreign module constant
-reads reject before either creating output or replacing existing output.
+reads without an authenticated translated producer reject before either creating
+output or replacing existing output.
 
 ## Owned constant bundle schema
 
@@ -166,5 +167,39 @@ value and public reachability must match. Function and constant public identitie
 are checked as one complete union; record fields stay distinct from constants.
 The existing reservation and encoding sinks walk the same complete metadata.
 Whole-bundle checks retain original certificate identities for all owners,
-including unused declared members. Foreign source reads/re-exports are still
-rejected until the subsequent compiler join/export-closure checkpoints.
+including unused declared members. Child05B adds authenticated foreign source
+reads below; foreign re-exports remain rejected until child05C.
+
+## Compiler-authenticated constant imports (child05B)
+
+PublicConstantImports is a required executable consuming-builder slot. Its
+private compiler input retains a resolved public foreign module constant and
+the exact compiler-evaluated scalar value. The shared bounded HIR walk discovers
+these references separately from callable edges; the distinct-constant bound is
+4096 and does not increase the existing expression/depth budgets. Independent
+target AST/resource limits still apply after successful discovery.
+
+The graph's typed constant lookup selects the original JavaDependencyConstant
+from the source-authenticated defining crate. A dedicated registration context
+owns that witness and the current JavaDependencyScope. The mapping compares exact
+compiler declaration, owner, primitive type and literal before importing.
+Functions and constants are registered before the single scope freeze.
+Readers retain JavaImportedValue handles separately from generated values and
+emit JavaValueRef::Dependency, never a guessed field path or folded literal.
+
+Owner schema 3 adds constant_imports with defining id, owner, qualified field
+path, primitive scalar type, readonly true and lossless value. These descriptions
+enumerate used references derived from certified target nodes, not every unused
+registration retained by an arbitrary caller-built package. The dependencies
+array separately retains all registered/transitive owners, including unused ones;
+its complete original-authority checks are never conditional on emission.
+The compiler path registers exactly discovered uses. Reservation and encoding use the
+same traversal. Bundle preflight checks exact original witnesses and complete
+retained owner closure. Constant-free imports retain owner schema 1, and owned
+constant packages without imported values retain schema 2. The outer bundle
+index stays schema 1.
+
+Foreign constants without a certified translated producer still reject.
+Cross-crate public re-exports remain child05C. Child05B body-read integration is
+complete with native, mutation, AST, compile-negative, atomic, cache, boundary,
+independent review and full release-gate evidence recorded in its task.

@@ -1,6 +1,6 @@
 # M35-03A-02F-02B-05B — Authenticate foreign compiler constant reads
 
-- Status: planned
+- Status: complete
 - Parent: [multi-crate constants](M35-03A-02F-02B-05-constant-bundles.md)
 - Depends on: M35-03A-02F-02B-05A
 
@@ -65,3 +65,72 @@ separate constant-import inventory; descriptions cannot reconstruct authority.
    publication proof. Replace foreign-read rejection only for authenticated
    declared producer graphs; standard-library module constants without a
    translated producer stay rejected in public-package mode.
+
+## Evidence and review decisions
+
+- Frozen tree fb715def4f2b2fa067847a647b9111db6b7dc0a5 passed all 18 initial
+  focused tests: four-crate native Rust/C GCC+Zig O0/O2/Java21 equivalence,
+  fixture and Java bundle lints/tests, and all 14 new import compile-negative
+  controls. The native fixture's missing final newline was fixed; strict
+  warning flags were not relaxed.
+- Frozen tree cf37564ff3753210d202349ed68d2461ffa8428f passed native and atomic
+  publication tests, including actual AST reference probes, byte equality to
+  production, wrong crate/declaration/type/value, independent recertification,
+  missing/stale metadata, refreshed metadata propagation, original-owner graph
+  reconciliation and preserved absent/existing output. Replaced-owner tests
+  use the single-import intermediate crate so failure specifically exercises
+  retained original-authority checks rather than an earlier duplicate import.
+- First independent Sol Extra High review found no production correctness
+  defect. Its remaining evidence requests are accepted: source/AST probes,
+  mutations, graph closure, cache invalidation and limit tests must pass before
+  completion. New Java source probes assert call height 1 for direct scalar
+  reads and 2 only for actual intermediate calls. Native inventory asserts
+  no synthesized callable. The existing C constant-consumer composition test
+  explicitly proves zero producer frames and unchanged callable-frame costs.
+- Optional review suggestion: include unused Java registered values in the
+  reference metadata. Not adopted for this source-integration checkpoint:
+  constant_imports is explicitly the used-reference inventory, whereas
+  dependencies retains every registered/transitive owner and validates exact
+  authority even when unused. Production registers exactly discovered uses.
+  Rejecting valid unused bindings would contradict the existing consumer
+  contract; changing this descriptive scope is not needed for source safety.
+  The language specification now states both inventories' distinct meanings.
+- The manual Linux Bazel integration gate in
+  test/constant_import_cache_proof.py passed against archived tree cf37564:
+  changing the real producer initializer from 62 to 17 changed all four rmeta
+  artifacts and both generated bundles; the unchanged independent native oracle
+  failed. Restoring source restored every output hash and reused a cached passing
+  test result. Only a temporary extracted archive was mutated.
+- Real runtime-free examples were exported to the ignored host directory
+  generated/examples/foreign-constants-cf37564 (four C header/source pairs, four
+  Java facades, manifests and the Rust source fixtures).
+- Discovery and target resource limits are independent. The initial attempt to
+  publish 4096 imports correctly hit C's smaller AST node budget; it was not
+  evidence of a discovery-boundary defect. The focused compiler probe now calls
+  both production inventory walkers without rendering/certifying a target, and
+  compares their exact inventories and over-limit/depth/traversal diagnostics.
+  No production limit or strict warning flag was weakened.
+- The discovery probe passed exact 4096/4097 distinct-constant boundaries and
+  excessive depth/traversal rejection in both production walkers.
+- Full Linux dev-container command: `bazelisk
+  --output_user_root=/tmp/polyrust-m34a10w-bazel --batch test //... //:release_gate
+  --noshow_progress --noverbose_failures --test_output=errors
+  --test_summary=terse --keep_going`.
+- Frozen tree 8eb2fa9f8062f02477b8bb45b0cd84a12cdbb085: 1,089 targets,
+  736/736 tests passed, 36 executed and 700 cached, 162.721 seconds.
+  Invocation: 32e22c65-191f-4c14-b7d2-971343cface3.
+- The prior full run passed 734 tests and exposed only two build-hygiene issues:
+  missing Bazel macro argument docs and an unused verifier in the standalone
+  manifest probe. Both were fixed; verify_constants delegates to the complete
+  reconstruction path rather than suppressing a production warning.
+- A fresh independent Sol Extra High reviewer found no core correctness defect
+  or missing required feature after reviewing authority, compiler joins,
+  inventories, scope freezing, metadata, closure and the complete proof suite.
+  Its two build-hygiene observations are fixed and the full gate above is green.
+- Twenty pre-existing unrelated file hashes were verified unchanged. Generated
+  output, unrelated C ownership changes and next-step plans are excluded from
+  this milestone's scoped checkpoint. Completion documentation is rechecked in
+  the final exact-tree Linux gate before commit/push.
+
+Foreign public re-exports remain rejected until child05C. This completes
+authenticated body reads only, not all Rust constants or legacy runtime removal.

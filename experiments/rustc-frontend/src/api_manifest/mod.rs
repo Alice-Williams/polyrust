@@ -2,6 +2,8 @@
 #[cfg(public_constant_ast_probe)]
 #[path = "../../test/public_constant_manifest.rs"]
 pub(crate) mod constant_contract;
+mod constant_import_serialization;
+mod constant_imports;
 mod constants;
 #[cfg(public_package_contract)]
 #[path = "../../test/public_package_manifest_mutations.rs"]
@@ -40,6 +42,7 @@ pub(crate) struct ApiManifest {
     implementation: CFileRef,
     functions: BTreeMap<RustDeclarationId, Function>,
     imports: imports::ExpectedImports,
+    constant_imports: constant_imports::Expected,
     constants: BTreeMap<RustDeclarationId, constants::Constant>,
 }
 
@@ -63,12 +66,13 @@ impl ApiManifest {
             .map(|(id, constant)| (*id, (constant.reference.clone(), constant.value.clone())))
             .collect();
         if self
-            != &Self::with_constants(
+            != &Self::with_all_bindings(
                 api.package(),
                 self.exports.clone(),
                 &expected,
                 &self.imports,
                 &constants,
+                &self.constant_imports,
             )?
         {
             return Err("bundle manifest owner inventory disagrees".into());
@@ -104,6 +108,31 @@ impl ApiManifest {
         imported: &imports::ExpectedImports,
         expected_constants: &constants::ExpectedConstants,
     ) -> Result<Self, String> {
+        Self::with_all_bindings(
+            package,
+            exports,
+            expected,
+            imported,
+            expected_constants,
+            &BTreeMap::new(),
+        )
+    }
+
+    pub(crate) fn with_all_bindings(
+        package: &RenderReadyPackage<CDialect>,
+        exports: Arc<RustCrateExports>,
+        expected: &BTreeMap<RustDeclarationId, CFunctionRef>,
+        imported: &imports::ExpectedImports,
+        expected_constants: &constants::ExpectedConstants,
+        constant_imports: &constant_imports::Expected,
+    ) -> Result<Self, String> {
+        if constant_imports.keys().any(|id| {
+            expected.contains_key(id)
+                || imported.contains_key(id)
+                || expected_constants.contains_key(id)
+        }) {
+            return Err("API constant import and owned/callable identities overlap".into());
+        }
         if expected_constants
             .keys()
             .any(|id| expected.contains_key(id))
@@ -206,6 +235,7 @@ impl ApiManifest {
         let manifest = Self {
             constants,
             imports: imports::collect(package, exports.root, imported)?,
+            constant_imports: constant_imports::collect(package, exports.root, constant_imports)?,
             exports,
             header,
             implementation,
@@ -213,6 +243,32 @@ impl ApiManifest {
         };
         manifest.encoded_bound()?;
         Ok(manifest)
+    }
+
+    pub(crate) fn verify_all_bindings(
+        &self,
+        package: &RenderReadyPackage<CDialect>,
+        exports: Arc<RustCrateExports>,
+        expected: &BTreeMap<RustDeclarationId, CFunctionRef>,
+        imported: &imports::ExpectedImports,
+        constants: &constants::ExpectedConstants,
+        constant_imports: &constant_imports::Expected,
+    ) -> Result<(), String> {
+        if self
+            != &Self::with_all_bindings(
+                package,
+                exports,
+                expected,
+                imported,
+                constants,
+                constant_imports,
+            )?
+        {
+            return Err(
+                "API manifest differs from exact compiler/target import reconstruction".into(),
+            );
+        }
+        Ok(())
     }
 
     pub(crate) fn verify_constants(
@@ -223,12 +279,14 @@ impl ApiManifest {
         imported: &imports::ExpectedImports,
         constants: &constants::ExpectedConstants,
     ) -> Result<(), String> {
-        if self != &Self::with_constants(package, exports, expected, imported, constants)? {
-            return Err(
-                "API manifest differs from exact compiler/target constant reconstruction".into(),
-            );
-        }
-        Ok(())
+        self.verify_all_bindings(
+            package,
+            exports,
+            expected,
+            imported,
+            constants,
+            &BTreeMap::new(),
+        )
     }
 
     pub(crate) fn verify(

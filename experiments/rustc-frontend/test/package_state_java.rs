@@ -15,6 +15,7 @@ fn empty() -> State {
         imported: HashMap::new(),
         public_api: false,
         constants: HashMap::new(),
+        foreign_constants: HashMap::new(),
         records: HashMap::new(),
         origins: crate::source_origin::Cache::default(),
         remaining: 100_000,
@@ -33,6 +34,7 @@ pub(crate) fn check(tcx: TyCtxt<'_>, mut state: State, roots: &[LocalDefId]) -> 
         .iter()
         .map(|(key, value)| (*key, value.id))
         .collect();
+    let constant_imports = state.foreign_constants.clone();
     let imports = state.imported.clone();
     let original_budget = state.remaining;
     let (mut state, members) = lower_functions(tcx, state, &[]).unwrap();
@@ -45,6 +47,7 @@ pub(crate) fn check(tcx: TyCtxt<'_>, mut state: State, roots: &[LocalDefId]) -> 
     for &root in roots {
         let mut reader = state.into_reader(tcx, root).unwrap();
         assert!(std::ptr::eq(reader.checked, tcx.typeck(root)));
+        assert_eq!(reader.foreign_constants, constant_imports);
         assert_eq!(reader.functions[&root].id, functions[&root]);
         assert_eq!(reader.remaining, budget);
         assert!(reader.bindings.is_empty() && reader.scopes.is_empty());
@@ -87,6 +90,7 @@ pub(crate) fn check(tcx: TyCtxt<'_>, mut state: State, roots: &[LocalDefId]) -> 
         assert_eq!(state.remaining, 0);
     }
     state.remaining = original_budget;
+    assert_eq!(state.foreign_constants, constant_imports);
     println!("JAVA_PACKAGE_STATE_CHECKED\t{}", roots.len());
     state
 }

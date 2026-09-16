@@ -32,7 +32,7 @@ def public_constant_targets(name, c_sources):
             directory_publisher = ":directory_publisher" if language == "c" else None,
             deps = deps,
         )
-        for slot in ["declaration", "read"]:
+        for slot in ["declaration", "read", "import"]:
             for case, error in [
                 ("missing", "error[E0599]"),
                 ("duplicate", "error[E0599]"),

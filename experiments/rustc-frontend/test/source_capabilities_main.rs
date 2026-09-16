@@ -165,6 +165,9 @@ fn public_constant<'tcx>(
     expression: &'tcx rustc_hir::Expr<'tcx>,
     definition: rustc_hir::def_id::DefId,
 ) {
+    let _ = ConstantImportInput::discover(tcx, checked, expression);
+    let _ = ConstantImportInput::read(tcx, definition)
+        .map(|input| (input.tcx(), input.definition(), input.value()));
     let mut cache = source_origin::Cache::default();
     let _ = source_origin::read(
         tcx,
@@ -184,6 +187,7 @@ fn public_constant<'tcx>(
 }
 
 fn main() {
+    capability::<PublicConstantImports>();
     capability::<PublicConstants>();
     capability::<PublicConstantReads>();
     let _ = public_constant;

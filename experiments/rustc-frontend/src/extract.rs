@@ -57,7 +57,25 @@ fn certify(lowered: crate::c_lower::LoweredPackage, mode: Mode) -> Result<Progra
     let manifest = match mode {
         Mode::Entry => None,
         Mode::PublicPackage => {
-            let manifest = if !lowered.constants.is_empty() {
+            let manifest = if !lowered.constant_imports.is_empty() {
+                let manifest = ApiManifest::with_all_bindings(
+                    &package,
+                    lowered.exports.clone(),
+                    &lowered.functions,
+                    &lowered.imports,
+                    &lowered.constants,
+                    &lowered.constant_imports,
+                )?;
+                manifest.verify_all_bindings(
+                    &package,
+                    lowered.exports.clone(),
+                    &lowered.functions,
+                    &lowered.imports,
+                    &lowered.constants,
+                    &lowered.constant_imports,
+                )?;
+                manifest
+            } else if !lowered.constants.is_empty() {
                 let manifest = ApiManifest::with_constants(
                     &package,
                     lowered.exports.clone(),
@@ -107,6 +125,7 @@ fn certify(lowered: crate::c_lower::LoweredPackage, mode: Mode) -> Result<Progra
                 &lowered.functions,
                 &lowered.imports,
                 &lowered.constants,
+                &lowered.constant_imports,
             );
             Some(manifest)
         }

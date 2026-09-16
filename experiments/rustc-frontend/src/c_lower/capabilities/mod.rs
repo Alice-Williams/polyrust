@@ -1,5 +1,8 @@
 //! Narrow Rust-source capabilities, not full portable catalogue support.
 mod boolean_negation;
+#[cfg(constant_import_probe)]
+#[path = "../../../test/constant_import_c_ast.rs"]
+mod constant_import_ast;
 mod direct_calls;
 mod eager_booleans;
 mod entry_signatures;
@@ -16,6 +19,7 @@ mod public_constant_ast;
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/public_constant_contract.rs"]
 mod public_constant_contract;
+mod public_constant_imports;
 mod public_constant_reads;
 mod public_constants;
 mod record_initializers;
@@ -117,6 +121,7 @@ pub(crate) use lexical_control::CLexicalControl;
 pub(crate) use literal_values::CLiteralValues;
 pub(crate) use local_constants::CLocalConstants;
 pub(crate) use object_types::CObjectTypes;
+pub(crate) use public_constant_imports::{CPublicConstantImports, ImportState};
 pub(crate) use public_constant_reads::CPublicConstantReads;
 pub(crate) use public_constants::CPublicConstants;
 pub(crate) use record_initializers::CRecordInitializers;
@@ -148,6 +153,7 @@ pub(crate) type CBindings = Bindings<
     CLocalConstants,
     CPublicConstants,
     CPublicConstantReads,
+    CPublicConstantImports,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -170,5 +176,6 @@ pub(crate) fn c_bindings() -> CBindings {
         .local_constants(CLocalConstants)
         .public_constants(CPublicConstants)
         .public_constant_reads(CPublicConstantReads)
+        .public_constant_imports(CPublicConstantImports)
         .build()
 }

@@ -3,8 +3,8 @@ use crate::c_graph::CheckedGraph;
 use portable_backend_c::{
     ast::CLinkage,
     dialect::{
-        CStructuralRenderer, c_defined_constants, c_defined_functions, c_imported_functions,
-        c_output_byte_bound,
+        CStructuralRenderer, c_defined_constants, c_defined_functions, c_imported_constants,
+        c_imported_functions, c_output_byte_bound,
     },
 };
 use portable_codegen::{OutputContents, RustDeclarationId, render_certified_package};
@@ -57,6 +57,16 @@ pub(crate) fn preflight(graph: &CheckedGraph) -> Result<(BTreeSet<String>, u64),
                 .ok_or("bundle is missing an imported owner")?;
             if owner.api().function(proof.declaration()) != Some(proof) {
                 return Err("bundle import differs from exact member certificate".into());
+            }
+        }
+        for imported in c_imported_constants(api.package()) {
+            let proof = imported.dependency();
+            let owner = graph
+                .crates()
+                .get(&proof.package_identity().root())
+                .ok_or("bundle is missing a constant imported owner")?;
+            if owner.api().constant(proof.declaration()) != Some(proof) {
+                return Err("bundle constant import differs from exact member certificate".into());
             }
         }
         let manifest_bound = member.manifest().bundle_bound()? as u64;

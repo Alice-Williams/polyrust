@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 mod budget;
 mod bundle;
+mod constant_imports;
 mod constants;
 mod json;
 mod manifest;

@@ -21,7 +21,10 @@ use super::{
     CShortCircuitBooleans as Lazy,
 };
 #[cfg(boolean_c)]
-use super::{CPublicConstantReads as PublicReads, CPublicConstants as PublicDeclarations};
+use super::{
+    CPublicConstantImports as PublicImports, CPublicConstantReads as PublicReads,
+    CPublicConstants as PublicDeclarations,
+};
 #[cfg(boolean_java)]
 use super::{
     JavaBooleanNegation as Negate, JavaDirectCalls as Calls, JavaEagerBooleans as Eager,
@@ -32,7 +35,10 @@ use super::{
     JavaShortCircuitBooleans as Lazy,
 };
 #[cfg(boolean_java)]
-use super::{JavaPublicConstantReads as PublicReads, JavaPublicConstants as PublicDeclarations};
+use super::{
+    JavaPublicConstantImports as PublicImports, JavaPublicConstantReads as PublicReads,
+    JavaPublicConstants as PublicDeclarations,
+};
 #[cfg(boolean_c)]
 use crate::c_lower::Reader;
 #[cfg(boolean_java)]
@@ -61,6 +67,7 @@ fn missing() {
         .scalar_constants(Constants)
         .local_constants(Locals)
         .public_constants(PublicDeclarations)
+        .public_constant_imports(PublicImports)
         .public_constant_reads(PublicReads)
         .build();
 }

@@ -19,6 +19,7 @@ pub(super) enum CallTarget {
 pub(super) struct Inventory {
     pub owned: Vec<LocalDefId>,
     pub foreign: HashMap<DefId, CDependencyFunction>,
+    pub constants: Vec<DefId>,
 }
 
 pub(super) fn resolve<'tcx>(
@@ -61,6 +62,7 @@ pub(super) fn inventory(
     let mut seen = HashSet::new();
     let mut result = Vec::new();
     let mut foreign = HashMap::new();
+    let mut constants = std::collections::BTreeMap::new();
     let mut remaining = 100_000;
     while let Some(function) = pending.pop_front() {
         if !seen.insert(function) {
@@ -73,6 +75,7 @@ pub(super) fn inventory(
             tcx,
             checked: tcx.typeck(function),
             calls: vec![],
+            constants: vec![],
             error: None,
             depth: 0,
             remaining,
@@ -82,13 +85,19 @@ pub(super) fn inventory(
             return Err(error);
         }
         remaining = visitor.remaining;
+        for definition in visitor.constants {
+            constants.insert(crate::source_origin::identity(tcx, definition), definition);
+            if constants.len() > 4096 {
+                return Err("source constant import inventory budget exceeded".into());
+            }
+        }
         for target in visitor.calls {
             match target {
                 CallTarget::Local(local) => pending.push_back(local),
                 CallTarget::Foreign(id) => {
                     if let std::collections::hash_map::Entry::Vacant(entry) = foreign.entry(id) {
                         let lookup = lookup.ok_or("foreign direct calls are not implemented")?;
-                        entry.insert(lookup(id)?);
+                        entry.insert((lookup.function)(id)?);
                         if seen.len() + foreign.len() > 4096 {
                             return Err("source function inventory budget exceeded".into());
                         }
@@ -101,6 +110,7 @@ pub(super) fn inventory(
     Ok(Inventory {
         owned: result,
         foreign,
+        constants: constants.into_values().collect(),
     })
 }
 
@@ -108,6 +118,7 @@ struct Calls<'tcx> {
     tcx: TyCtxt<'tcx>,
     checked: &'tcx TypeckResults<'tcx>,
     calls: Vec<CallTarget>,
+    constants: Vec<DefId>,
     error: Option<String>,
     depth: usize,
     remaining: usize,
@@ -122,6 +133,13 @@ impl<'tcx> Visitor<'tcx> for Calls<'tcx> {
             return;
         }
         self.remaining -= 1;
+        if let Some(id) = crate::source_capabilities::ConstantImportInput::discover(
+            self.tcx,
+            self.checked,
+            expression,
+        ) {
+            self.constants.push(id);
+        }
         if matches!(expression.kind, hir::ExprKind::Call(..)) {
             match resolve(self.tcx, self.checked, expression) {
                 Ok(target) => self.calls.push(target),

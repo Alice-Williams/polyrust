@@ -8,7 +8,10 @@ use portable_codegen::{
 };
 
 pub(crate) fn owner(out: &mut impl Sink, manifest: &Manifest<'_>) -> Result<(), String> {
-    out.fixed(if manifest.owner.api.constants().len() == 0 {
+    let imports = crate::constant_imports::collect(manifest.owner.api)?;
+    out.fixed(if !imports.is_empty() {
+        "{\"schema_version\":3,\"root\":"
+    } else if manifest.owner.api.constants().len() == 0 {
         "{\"schema_version\":1,\"root\":"
     } else {
         "{\"schema_version\":2,\"root\":"
@@ -68,7 +71,11 @@ pub(crate) fn owner(out: &mut impl Sink, manifest: &Manifest<'_>) -> Result<(), 
         comma(out, position)?;
         out.id(dependency.root())?;
     }
-    out.fixed("]}\n")
+    out.fixed("]")?;
+    if !imports.is_empty() {
+        crate::constant_imports::write(out, &imports)?;
+    }
+    out.fixed("}\n")
 }
 
 pub(crate) fn index(
@@ -165,7 +172,7 @@ fn declaration(out: &mut impl Sink, description: &JavaSourceDescription<'_>) -> 
     out.fixed("}")
 }
 
-fn path(out: &mut impl Sink, path: &JavaDeclaredPath) -> Result<(), String> {
+pub(crate) fn path(out: &mut impl Sink, path: &JavaDeclaredPath) -> Result<(), String> {
     out.fixed("{\"package\":")?;
     out.string(&path.package().name())?;
     out.fixed(",\"owners\":[")?;

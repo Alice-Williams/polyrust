@@ -57,7 +57,17 @@ pub(super) fn lower(
             .collect(),
     };
     let inventory = functions::inventory(tcx, &roots)?;
-    let imported = super::foreign::register(tcx, &inventory.foreign, &mappings, lookup)?;
+    let imported = super::foreign::register(
+        tcx,
+        &inventory.foreign,
+        if entry.is_none() {
+            &inventory.constants
+        } else {
+            &[]
+        },
+        &mappings,
+        lookup,
+    )?;
     let mut builder = TargetAstBuilder::new(JavaDialect);
     let facade = builder.generated_type(GeneratedType {
         name: "Generated".into(),
@@ -125,6 +135,7 @@ pub(super) fn lower(
         imported: imported.functions,
         public_api: entry.is_none(),
         constants: HashMap::new(),
+        foreign_constants: imported.constants,
         records: HashMap::new(),
         origins,
         remaining: 100_000,

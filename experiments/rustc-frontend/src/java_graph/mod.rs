@@ -1,5 +1,8 @@
 //! Dependency-first compiler analysis joined to exact Java owner certificates.
 use crate::{metadata_cli, source_check};
+#[cfg(constant_import_probe)]
+#[path = "../../test/constant_import_java_graph.rs"]
+mod constant_import_graph;
 mod inventory;
 mod publication;
 pub(crate) use inventory::{CheckedCrate, CheckedGraph};
@@ -42,7 +45,7 @@ fn lower(sysroot: &str, arguments: &[String]) -> Result<CheckedGraph, String> {
     let graph = metadata_cli::parse(arguments)?;
     let checked =
         source_check::check::<CheckedCrate>(&graph, sysroot, |description, tcx, dependencies| {
-            let lookup = |definition: DefId| {
+            let function_lookup = |definition: DefId| {
                 let owner = dependencies
                     .get(&definition.krate)
                     .map(|item| &item.api)
@@ -61,6 +64,45 @@ fn lower(sysroot: &str, arguments: &[String]) -> Result<CheckedGraph, String> {
                 #[cfg(java_graph_wrong_declaration)]
                 let function = mutations::declaration(owner, function);
                 Ok(function)
+            };
+            let constant_lookup = |definition: DefId| {
+                let owner = dependencies
+                    .get(&definition.krate)
+                    .map(|item| &item.api)
+                    .ok_or("foreign constant has no source-authenticated owning Java package")?;
+                if owner.root().crate_id != tcx.stable_crate_id(definition.krate).as_u64() {
+                    return Err("foreign Java constant belongs to the wrong compiler crate".into());
+                }
+                let id = crate::source_origin::identity(tcx, definition);
+                let proof = owner
+                    .constant(id)
+                    .cloned()
+                    .ok_or("foreign constant is not in the certified public Java API")?;
+                #[cfg(constant_import_wrong_owner)]
+                let proof = dependencies
+                    .values()
+                    .filter(|other| other.api.root().crate_id != id.crate_id)
+                    .find_map(|other| other.api.constants().next().cloned())
+                    .unwrap_or(proof);
+                #[cfg(constant_import_wrong_declaration)]
+                let proof = owner
+                    .constants()
+                    .find(|other| other.declaration() != proof.declaration())
+                    .cloned()
+                    .ok_or("constant mutation requires another declaration")?;
+                #[cfg(constant_import_replaced_owner)]
+                let proof = {
+                    let replacement = JavaDependencyApi::from_certificate(owner.package().clone())?;
+                    replacement
+                        .constant(proof.declaration())
+                        .cloned()
+                        .ok_or("constant mutation requires a public declaration")?
+                };
+                Ok(proof)
+            };
+            let lookup = crate::java_lower::DependencyLookup {
+                function: &function_lookup,
+                constant: &constant_lookup,
             };
             let package = crate::java_lower::lower(
                 tcx,
@@ -85,7 +127,10 @@ fn lower(sysroot: &str, arguments: &[String]) -> Result<CheckedGraph, String> {
                 key: description.key().to_owned(),
             })
         })?;
-    CheckedGraph::from_checked(graph.root_key(), checked)
+    let graph = CheckedGraph::from_checked(graph.root_key(), checked)?;
+    #[cfg(constant_import_probe)]
+    constant_import_graph::check(&graph);
+    Ok(graph)
 }
 
 pub(crate) fn publish(

@@ -43,7 +43,7 @@ pub(crate) fn lower(sysroot: &str, arguments: &[String]) -> Result<CheckedGraph,
     let graph = crate::metadata_cli::parse(arguments)?;
     let checked =
         crate::source_check::check::<CheckedCrate>(&graph, sysroot, |_, tcx, dependencies| {
-            let lookup = |definition: DefId| {
+            let function_lookup = |definition: DefId| {
                 let owner = dependencies
                     .get(&definition.krate)
                     .map(|item| item.api())
@@ -64,6 +64,45 @@ pub(crate) fn lower(sysroot: &str, arguments: &[String]) -> Result<CheckedGraph,
                 #[cfg(c_graph_wrong_declaration)]
                 let proof = crate::foreign_mutations::declaration(owner, proof);
                 Ok(proof)
+            };
+            let constant_lookup = |definition: DefId| {
+                let owner = dependencies
+                    .get(&definition.krate)
+                    .map(|item| item.api())
+                    .ok_or("foreign constant has no source-authenticated owning C package")?;
+                if owner.root().crate_id != tcx.stable_crate_id(definition.krate).as_u64() {
+                    return Err("foreign C constant belongs to the wrong compiler crate".into());
+                }
+                let id = crate::source_origin::identity(tcx, definition);
+                let proof = owner
+                    .constant(id)
+                    .cloned()
+                    .ok_or("foreign constant is not in the certified public C API")?;
+                #[cfg(constant_import_wrong_owner)]
+                let proof = dependencies
+                    .values()
+                    .filter(|other| other.api().root().crate_id != id.crate_id)
+                    .find_map(|other| other.api().constants().next().cloned())
+                    .unwrap_or(proof);
+                #[cfg(constant_import_wrong_declaration)]
+                let proof = owner
+                    .constants()
+                    .find(|other| other.declaration() != proof.declaration())
+                    .cloned()
+                    .ok_or("constant mutation requires another declaration")?;
+                #[cfg(constant_import_replaced_owner)]
+                let proof = {
+                    let replacement = CDependencyApi::from_certificate(owner.package().clone())?;
+                    replacement
+                        .constant(proof.declaration())
+                        .cloned()
+                        .ok_or("constant mutation requires a public declaration")?
+                };
+                Ok(proof)
+            };
+            let lookup = crate::c_lower::ForeignLookup {
+                function: &function_lookup,
+                constant: &constant_lookup,
             };
             let program = crate::extract::dependency_program(tcx, &lookup)?;
             let manifest = program

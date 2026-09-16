@@ -50,6 +50,10 @@ pub struct LoweredPackage {
     pub exports: std::sync::Arc<portable_codegen::RustCrateExports>,
     pub constants:
         std::collections::BTreeMap<portable_codegen::RustDeclarationId, (CObjectRef, CLiteral)>,
+    pub constant_imports: std::collections::BTreeMap<
+        portable_codegen::RustDeclarationId,
+        (CObjectRef, portable_backend_c::dialect::CDependencyConstant),
+    >,
     pub functions: std::collections::BTreeMap<portable_codegen::RustDeclarationId, CFunctionRef>,
     pub imports: std::collections::BTreeMap<
         portable_codegen::RustDeclarationId,
@@ -65,8 +69,10 @@ pub fn lower(tcx: TyCtxt<'_>, selection: Selection) -> Result<LoweredPackage> {
 }
 
 /// Internal checked-driver hook; not a public unchecked import API.
-pub(crate) type ForeignLookup<'a> =
-    dyn Fn(DefId) -> Result<portable_backend_c::dialect::CDependencyFunction> + 'a;
+pub(crate) struct ForeignLookup<'a> {
+    pub function: &'a dyn Fn(DefId) -> Result<portable_backend_c::dialect::CDependencyFunction>,
+    pub constant: &'a dyn Fn(DefId) -> Result<portable_backend_c::dialect::CDependencyConstant>,
+}
 
 pub(crate) struct Reader<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -81,6 +87,7 @@ pub(crate) struct Reader<'tcx> {
     root: LocalDefId,
     header: Option<CFileRef>,
     constants: constants::OwnedConstants,
+    foreign_constants: constants::ImportedConstants,
     records: HashMap<DefId, CStructRef>,
     declarations: Vec<CFileItem>,
     bindings: HashMap<hir::HirId, CPlace>,

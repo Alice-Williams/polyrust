@@ -1,13 +1,27 @@
 //! Every new executable slot has isolated compile-negative boundary controls.
 use super::*;
 #[cfg(public_constant_c)]
-use super::{CPublicConstantReads as Reads, CPublicConstants as Declarations};
+use super::{
+    CPublicConstantImports as Imports, CPublicConstantReads as Reads,
+    CPublicConstants as Declarations,
+};
 #[cfg(public_constant_java)]
-use super::{JavaPublicConstantReads as Reads, JavaPublicConstants as Declarations};
+use super::{
+    JavaPublicConstantImports as Imports, JavaPublicConstantReads as Reads,
+    JavaPublicConstants as Declarations,
+};
 #[cfg(public_constant_c)]
 use crate::c_lower::{Reader, package::State};
 #[cfg(public_constant_java)]
 use crate::java_lower::{Reader, package::State};
+#[cfg(public_constant_import)]
+type Selected = PublicConstantImports;
+#[cfg(public_constant_import)]
+type Context<'tcx> = ImportState;
+#[cfg(all(public_constant_import, public_constant_c))]
+type Output = portable_backend_c::ast::CObjectRef;
+#[cfg(all(public_constant_import, public_constant_java))]
+type Output = portable_backend_java::dialect::JavaImportedValue;
 #[cfg(public_constant_declaration)]
 type Selected = PublicConstants;
 #[cfg(public_constant_read)]
@@ -68,10 +82,20 @@ fn missing() {
     let builder = builder.public_constant_reads(Reads);
     #[cfg(public_constant_read)]
     let builder = builder.public_constants(Declarations);
+    #[cfg(not(public_constant_import))]
+    let builder = builder.public_constant_imports(Imports);
+    #[cfg(public_constant_import)]
+    let builder = builder
+        .public_constants(Declarations)
+        .public_constant_reads(Reads);
     builder.build();
 }
 #[cfg(public_constant_duplicate)]
 fn duplicate() {
+    #[cfg(public_constant_import)]
+    let _ = Builder::new()
+        .public_constant_imports(Imports)
+        .public_constant_imports(Imports);
     #[cfg(public_constant_declaration)]
     let _ = Builder::new()
         .public_constants(Declarations)
@@ -120,6 +144,8 @@ impl Mapping for Wrong {
     public_constant_wrong_output
 ))]
 fn wrong() {
+    #[cfg(public_constant_import)]
+    let _ = Builder::new().public_constant_imports(Wrong);
     #[cfg(public_constant_declaration)]
     let _ = Builder::new().public_constants(Wrong);
     #[cfg(public_constant_read)]
@@ -131,6 +157,8 @@ fn wrong_input<'tcx>(context: &mut Context<'tcx>, input: LiteralInput<'tcx>) {
     let _ = Declarations.lower(context, input);
     #[cfg(public_constant_read)]
     let _ = Reads.lower(context, input);
+    #[cfg(public_constant_import)]
+    let _ = Imports.lower(context, input);
 }
 #[cfg(all(public_constant_private_input, public_constant_declaration))]
 fn private_declaration(tcx: rustc_middle::ty::TyCtxt<'_>) {
@@ -143,4 +171,13 @@ fn private_declaration(tcx: rustc_middle::ty::TyCtxt<'_>) {
 #[cfg(all(public_constant_private_input, public_constant_read))]
 fn private_read(checked: ConstantInput<'_>) {
     let _ = PublicConstantReadInput { checked };
+}
+
+#[cfg(all(public_constant_private_input, public_constant_import))]
+fn private_import(tcx: rustc_middle::ty::TyCtxt<'_>) {
+    let _ = ConstantImportInput {
+        tcx,
+        definition: rustc_hir::def_id::CRATE_DEF_ID.to_def_id(),
+        value: LiteralValue::I32(0),
+    };
 }
