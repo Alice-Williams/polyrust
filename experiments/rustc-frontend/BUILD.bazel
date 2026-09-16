@@ -53,6 +53,7 @@ load(":owned_record_targets.bzl", "owned_record_targets")
 load(":owned_return_targets.bzl", "owned_return_targets")
 load(":owned_scope_targets.bzl", "owned_scope_targets")
 load(":owned_selection_targets.bzl", "owned_selection_targets")
+load(":public_inventory_targets.bzl", "public_inventory_targets")
 load(":public_package_targets.bzl", "public_package_targets")
 load(":publication_probe_targets.bzl", "publication_probe_targets")
 load(":runtime_parity_targets.bzl", "runtime_parity_targets")
@@ -650,3 +651,5 @@ local_constant_contract_targets(
     name = "local_constant_contract_test",
     c_sources = ADAPTER_SOURCES,
 )
+
+public_inventory_targets(name = "public_inventory_test")

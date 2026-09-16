@@ -1,6 +1,11 @@
 //! Shared compiler metadata; target keys and analysis authority live elsewhere.
 mod exports;
 mod modules;
+#[allow(
+    dead_code,
+    reason = "Metadata-only compiler probes do not select public packages"
+)]
+pub(crate) mod public_api;
 pub(crate) use modules::Cache;
 use portable_codegen::{
     RustDeclarationId, RustSourceLocation, RustSourceNode, RustSourceOrigin, RustVisibility,

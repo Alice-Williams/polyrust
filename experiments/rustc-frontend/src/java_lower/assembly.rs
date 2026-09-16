@@ -37,7 +37,7 @@ pub(super) fn lower(
     let exports = origins.exports(tcx)?;
     let roots = match &entry {
         Some((root, _)) => vec![*root],
-        None => functions::public_roots(tcx, &exports)?,
+        None => source_origin::public_api::Inventory::read(tcx, &mut origins)?.function_roots()?,
     };
     let inventory = functions::inventory(tcx, &roots)?;
     let imported = super::foreign::register(tcx, &inventory.foreign, &mappings, lookup)?;

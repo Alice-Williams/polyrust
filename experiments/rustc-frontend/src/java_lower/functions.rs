@@ -1,7 +1,6 @@
 //! Bounded local-body discovery with separate resolved foreign declarations.
 use super::Result;
 use crate::source_origin::identity;
-use portable_codegen::{RustCrateExports, RustExportNamespace, RustExportTarget};
 use rustc_hir::{
     self as hir,
     def::{DefKind, Res},
@@ -9,7 +8,7 @@ use rustc_hir::{
     intravisit::{self, Visitor},
 };
 use rustc_middle::ty::{self, TyCtxt, TypeckResults};
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 pub(super) fn resolve<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -37,51 +36,6 @@ pub(super) fn resolve<'tcx>(
         return Err("generic or mismatched direct callee identity".into());
     }
     Ok(resolved)
-}
-
-pub(super) fn public_roots(tcx: TyCtxt<'_>, exports: &RustCrateExports) -> Result<Vec<LocalDefId>> {
-    let functions: BTreeMap<_, _> = tcx
-        .hir_body_owners()
-        .filter(|id| tcx.def_kind(*id) == DefKind::Fn)
-        .map(|id| (identity(tcx, id.to_def_id()), id))
-        .collect();
-    let mut roots = BTreeSet::new();
-    for bindings in exports.modules.values() {
-        for (name, target) in bindings {
-            match target {
-                RustExportTarget::Module(id) => {
-                    if name.namespace != RustExportNamespace::Type
-                        || id.crate_id != exports.root.crate_id
-                        || !exports.modules.contains_key(id)
-                    {
-                        return Err(
-                            "public Java package foreign or unsupported module binding".into()
-                        );
-                    }
-                }
-                RustExportTarget::Declaration(id) => {
-                    if name.namespace != RustExportNamespace::Value
-                        || id.crate_id != exports.root.crate_id
-                        || !functions.contains_key(id)
-                    {
-                        return Err(
-                            "public Java package supports only ordinary scalar function exports"
-                                .into(),
-                        );
-                    }
-                    let function = functions[id];
-                    if !tcx.effective_visibilities(()).is_exported(function) {
-                        return Err("compiler public binding is not externally reachable".into());
-                    }
-                    roots.insert(*id);
-                }
-            }
-        }
-    }
-    if roots.is_empty() {
-        return Err("public package requires an exported scalar function".into());
-    }
-    Ok(roots.into_iter().map(|id| functions[&id]).collect())
 }
 
 pub(super) struct Inventory {

@@ -27,6 +27,25 @@ evaluation, without enabling equivalent runtime arithmetic. Wider values,
 borrowed constant storage, mutable statics, public associated-constant APIs and
 generic constants remain separate work.
 
+## Shared declaration inventory
+
+C and Java use one compiler-owned public inventory, keyed and ordered by stable
+RustDeclarationId. Its closed DeclarationKind distinguishes Function from
+module Constant. The exact cached finite export graph retains every module edge
+and alias; repeated bindings deduplicate declarations, not export names. The
+inventory and declaration fields are private and cannot be built from caller
+metadata. Foreign declarations/modules and unsupported export kinds reject.
+Scanning body owners is bounded at 100,000 and unique public declarations at
+4,096. Empty public declaration inventories reject; constants-only inventories
+need no dummy function.
+
+This classification is deliberately separate from type/value admission. A
+Constant entry does not certify that its type or initializer is supported.
+Until executable declaration/read mappings and publication are complete, both
+production adapters explicitly request function_roots, which rejects any
+constant entry. Selected-entry behavior and private/local folding remain as
+before. This prerequisite is tracked in M35-03A-02F-02B-04B-01.
+
 ## Executable capability mappings
 
 Introduce PublicConstants with a private ConstantDeclarationInput constructed

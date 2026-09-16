@@ -28,7 +28,7 @@ reads and preserve private/local folding and all public export bindings/docs.
 ## Ordered implementation
 
 1. [04A — Function-independent package assembly](M35-03A-02F-02B-04A-package-assembly-state.md) — complete.
-2. [04B — Compiler public constant declarations and reads](M35-03A-02F-02B-04B-public-source-constants.md) — planned.
+2. [04B — Compiler public constant declarations and reads](M35-03A-02F-02B-04B-public-source-constants.md) — in-progress.
 
 The structural prerequisite is not evidence of source constant support. Each
 child receives its own proof and reviewed checkpoint. Parent04 completes only

@@ -1,7 +1,5 @@
 //! Register the complete admitted callable inventory, then lower each body.
-use super::{
-    LoweredPackage, Result, Selection, c, capabilities, functions, origin, package, selection,
-};
+use super::{LoweredPackage, Result, Selection, c, capabilities, functions, origin, package};
 use crate::source_admission as admission;
 use capabilities::{
     EntryInput, EntrySignatures, FunctionInput, FunctionSignatures, Mapping, Supports,
@@ -33,7 +31,8 @@ pub(crate) fn lower(
     let exports = origins.exports(tcx)?;
     let roots = match &entry {
         Some((root, _)) => vec![*root],
-        None => selection::public_roots(tcx, &exports)?,
+        None => crate::source_origin::public_api::Inventory::read(tcx, &mut origins)?
+            .function_roots()?,
     };
     let inventory = functions::inventory(tcx, &roots, lookup)?;
     let mut registry = CRegistry::new();

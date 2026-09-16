@@ -7,7 +7,6 @@ mod functions;
 mod initializers;
 mod origin;
 mod package;
-mod selection;
 mod types;
 
 use portable_backend_c::ast::*;

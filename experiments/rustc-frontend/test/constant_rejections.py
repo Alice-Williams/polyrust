@@ -9,10 +9,14 @@ def main():
     root = Path(os.environ["TEST_TMPDIR"]) / "constant-rejections"
     root.mkdir()
     cases = {
+        "constants_only": ("pub const VALUE:i64=9007199254740993;",
+                           "public package API mapping is not implemented for constant exports", True),
+        "constant_alias_only": ("mod inner { pub const VALUE:bool=true; } pub use inner::VALUE as exposed;",
+                               "public package API mapping is not implemented for constant exports", True),
         "public": ("pub const VALUE:i32=4; pub fn value()->i32 { VALUE }",
-                   ("public package API mapping is not implemented", "public Java package supports only ordinary scalar function exports"), True),
+                   "public package API mapping is not implemented", True),
         "public_alias": ("mod inner { pub const VALUE:i32=4; } pub use inner::VALUE; pub fn value()->i32 { VALUE }",
-                         ("public package API mapping is not implemented", "public Java package supports only ordinary scalar function exports"), True),
+                         "public package API mapping is not implemented", True),
         "local_unsupported": ("pub fn value()->i32 { const VALUE:u32=4; 0 }", "scalar constants support only bool, i32 and i64", True),
         "generic": ("struct S<const N:i32>; impl<const N:i32> S<N> { const VALUE:i32=N; } pub fn value()->i32 { S::<4>::VALUE }",
                     "scalar constants require nongeneric", True),
@@ -61,7 +65,7 @@ def main():
                     assert "error[E" not in result.stderr, (label, result.stderr)
                 after = {str(p.relative_to(work)): p.read_bytes() for p in work.rglob("*") if p.is_file()}
                 assert before == after and output.exists() == existing
-    print("68 atomic constant boundary rejections")
+    print(f"{len(cases) * 4} atomic constant boundary rejections")
 
 
 if __name__ == "__main__":

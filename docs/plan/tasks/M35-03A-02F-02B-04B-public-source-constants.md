@@ -1,6 +1,6 @@
 # M35-03A-02F-02B-04B — Compiler public constant declarations and reads
 
-- Status: planned
+- Status: in-progress
 - Parent: [compiler public constants](M35-03A-02F-02B-04-source-constant-mappings.md)
 - Depends on: M35-03A-02F-02B-04A
 
@@ -34,3 +34,14 @@ fail closed until supported.
 - Old public-constant rejection tests are replaced only alongside positive proof.
   All private/local constant regressions, full release/lint gates and independent
   review pass; ignored examples are exported and inspected before scoped push.
+
+## Implementation sequence
+
+1. [04B-01 — Shared typed export inventory](M35-03A-02F-02B-04B-01-export-inventory.md) — complete.
+2. Register executable public constant declarations and reads for both targets,
+   integrate owned single-crate metadata and constants-only publication, and add
+   native/compiler/mutation proof required above.
+
+The first checkpoint unifies source selection without enabling public constant
+output. This parent stays in-progress until all declaration/read and publication
+evidence passes; inventory classification alone is not capability support.
