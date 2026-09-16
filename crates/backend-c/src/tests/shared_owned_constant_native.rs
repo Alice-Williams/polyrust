@@ -2,7 +2,7 @@
 use super::{
     CDialect, CStructuralRenderer,
     bindings::CValueBinding,
-    owned_constant_fixture::{Shape, fixture},
+    owned_constant_fixture::{Shape, with_registration},
     owned_constant_tests::linked,
 };
 use portable_codegen::{OutputContents, certify_resolved_package, render_certified_package};
@@ -81,7 +81,9 @@ fn owned_constants_have_exact_native_values_and_readonly_storage() {
         "INT32_C(62)",
     ];
     for shape in [Shape::ConstantsOnly, Shape::Mixed] {
-        let fixture = fixture(shape);
+        let fixture = with_registration(shape, |registry, header, exports| {
+            registry.register_source_package(header, exports).unwrap();
+        });
         let package = linked(&fixture);
         let header = package
             .files()

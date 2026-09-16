@@ -80,8 +80,8 @@ pub use registry::{
     CInterfaceAdapterRef, CInterfaceTableRef, CInterfaceWitnessRef, CLocalRef, CLoopRef,
     CMemberBinding, CMemberOwnership, CMemberOwnershipRef, CMemberRef, CObjectRef, COwnerSlotRef,
     CParameterRef, CRegistrationKind, CRegistrationOwner, CRegistrationSummary, CRegistry,
-    CRegistryError, CScopeRef, CStructRef, CSwitchRef, CSynthesisReason, CTypedefRef, CUnionRef,
-    CWitnessMethod,
+    CRegistryError, CScopeRef, CSourcePackage, CStructRef, CSwitchRef, CSynthesisReason,
+    CTypedefRef, CUnionRef, CWitnessMethod,
 };
 pub use scalar_representation::{CIntegerWidth, CScalarRepresentation};
 pub use signatures::{CFunctionType, CParameterType, CReturnType, CReturnValue};

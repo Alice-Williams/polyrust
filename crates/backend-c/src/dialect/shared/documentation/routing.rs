@@ -1,6 +1,6 @@
 //! Compiler export membership controls which side owns module documentation.
-use crate::ast::{CFileRef, CSourceFile};
-use portable_codegen::{RustModuleDocumentation, RustSourceOrigin};
+use crate::ast::{CFileRef, CFileRole, CSourceFile, CSourcePackage};
+use portable_codegen::{RustCrateExports, RustModuleDocumentation};
 
 pub(super) enum FilePolicy<'a> {
     Single(&'a CFileRef),
@@ -22,9 +22,23 @@ impl<'a> FilePolicy<'a> {
         }
     }
 
+    pub(super) fn explicit(
+        package: &'a CSourcePackage,
+        sources: &'a [CSourceFile],
+    ) -> Result<Self, String> {
+        let implementation = sources
+            .iter()
+            .find(|file| file.identity().key().role == CFileRole::GeneratedSource)
+            .ok_or("explicit source package lacks its implementation")?;
+        Ok(Self::PublicPair {
+            header: package.header(),
+            implementation: implementation.identity(),
+        })
+    }
+
     pub(super) fn module(
         &self,
-        origin: &RustSourceOrigin,
+        exports: &RustCrateExports,
         module: &RustModuleDocumentation,
     ) -> &CFileRef {
         match self {
@@ -33,11 +47,7 @@ impl<'a> FilePolicy<'a> {
                 header,
                 implementation,
             } => {
-                if origin
-                    .crate_exports
-                    .modules
-                    .contains_key(&module.declaration)
-                {
+                if exports.modules.contains_key(&module.declaration) {
                     header
                 } else {
                     implementation

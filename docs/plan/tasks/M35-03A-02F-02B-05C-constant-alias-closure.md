@@ -46,20 +46,25 @@ or other declaration kinds remain diagnosed, not silently omitted.
    type, separate from owned LocalDefId declarations. Resolve direct, renamed and
    transitive aliases to one defining identity. Keep the current production
    constructor fail-closed until both target certificate paths below exist.
-2. Package provenance: preserve the selected crate's export graph independently
+2. [C package provenance](M35-03A-02F-02B-05C-02-c-package-provenance.md)
+   — complete; Java counterpart follows. Package provenance: preserve the selected crate's export graph independently
    of any owned function/field. A re-export-only crate needs no fabricated source
    declaration. C header/source and Java facade metadata must retain this explicit
    package provenance and reconcile it with every owned declaration.
-3. Target export evidence: certify a separate alias inventory backed by original
+3. [Symbol-independent file requirements](M35-03A-02F-02B-05C-03-file-requirements.md)
+   — planned. Preserve the implementation-to-header dependency even when an
+   alias-only package has no owned symbol to create an edge. Use typed file
+   requirements, shared role/cycle checks and independently reconstructed imports.
+4. Target export evidence: certify a separate alias inventory backed by original
    imported constant witnesses. Aliases point to defining symbols/paths; they do
    not enter owned constant definitions or create new producer authority. Check
    complete local/foreign binding union, retained dependency closure, documentation,
    identifier collisions and existing bounds, including zero-owned-item packages.
-4. Compiler lowering and schemas: register exports even when no body reads them;
+5. Compiler lowering and schemas: register exports even when no body reads them;
    preserve direct/transitive owner authority and all finite module/name bindings.
    Explicitly version new alias metadata and reconstruct it from certified target
    evidence before publication. Only then enable source foreign constant exports.
-5. End-to-end proof: native separate Rust/C/Java consumers, direct/transitive and
+6. End-to-end proof: native separate Rust/C/Java consumers, direct/transitive and
    re-export-only fixtures, stale/replaced/missing/wrong-kind controls, exact
    publication inventory, independent source mutation and Bazel invalidation,
    examples, fresh review, and complete release/lint gate.

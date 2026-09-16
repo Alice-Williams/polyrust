@@ -30,6 +30,7 @@ fn build(
     registry: CFrozenRegistry,
     mut sources: Vec<CSourceFile>,
 ) -> Result<TargetAstPackage<CDialect>, String> {
+    super::source_package::check(registry.registrations(), &sources)?;
     profile::check_registered_package(registry.registrations(), &sources)?;
     super::platform::verify_package(&sources)?;
     // Shared storage is path ordered; grammar traversal separately visits the
@@ -62,7 +63,7 @@ fn build(
         .collect();
     let mut builder = TargetAstBuilder::new(CDialect);
     let bindings = super::registration::register(&mut builder, registrations, files)?;
-    let mut documentation = super::documentation::lower_package(files)?;
+    let mut documentation = super::documentation::lower_registered_package(registrations, files)?;
     let header_grammar = match profile::ordered_sources(files)?.as_slice() {
         [header, implementation] => Some(CFileGrammar::Header(
             super::CGeneratedHeader::resolve(

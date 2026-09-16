@@ -34,6 +34,7 @@ mod owner_slots;
 mod register_interfaces;
 mod register_nominals;
 mod register_symbols;
+mod source_package;
 mod symbols;
 mod type_membership;
 
@@ -53,6 +54,7 @@ pub use nominals::{
     CAggregateRef, CEnumRef, CEnumeratorRef, CMemberRef, CStructRef, CTypedefRef, CUnionRef,
 };
 pub use owner_slots::COwnerSlotRef;
+pub use source_package::CSourcePackage;
 pub use symbols::{CFunctionRef, CLocalRef, CObjectRef, CParameterRef, CScopeRef};
 
 pub(crate) use contextual_inventory::CRegistered;
@@ -115,6 +117,7 @@ impl std::error::Error for CRegistryError {}
 pub struct CRegistry {
     scope: RegistryScope,
     files: BTreeSet<CFileRef>,
+    source_package: Option<CSourcePackage>,
     structs: BTreeMap<CStructRef, Option<Vec<CMemberRef>>>,
     unions: BTreeMap<CUnionRef, Option<Vec<CMemberRef>>>,
     enums: BTreeMap<CEnumRef, Option<Vec<CEnumeratorRef>>>,
@@ -154,6 +157,7 @@ impl CRegistry {
         Self {
             scope: RegistryScope::new(),
             files: BTreeSet::new(),
+            source_package: None,
             structs: BTreeMap::new(),
             unions: BTreeMap::new(),
             enums: BTreeMap::new(),

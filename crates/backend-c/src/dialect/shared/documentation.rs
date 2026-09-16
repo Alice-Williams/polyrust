@@ -1,11 +1,11 @@
 //! Normalize documentation into exact owner attachments before certification.
 use crate::ast::{
     CAggregateRef, CComment, CDeclarationKey, CDeclarationKind, CFileItem, CFileRef, CFunctionRef,
-    CGeneratedOrigin, CMemberRef, CObjectRef, CSourceFile, CStructRef,
+    CGeneratedOrigin, CMemberRef, CObjectRef, CRegistry, CSourceFile, CSourcePackage, CStructRef,
 };
 use portable_codegen::{
     RustCrateExports, RustDeclarationId, RustModuleAncestry, RustModuleDocumentation,
-    RustSourceNode, RustSourceOrigin,
+    RustSourceNode,
 };
 mod exports;
 mod routing;
@@ -80,11 +80,30 @@ struct Lowering<'a> {
     module_order: Vec<(usize, CDocumentationOwner)>,
 }
 
+#[cfg(test)]
 pub(super) fn lower_package(
     sources: &[CSourceFile],
 ) -> Result<BTreeMap<CFileRef, CDocumentation>, String> {
+    lower(sources, None)
+}
+
+pub(super) fn lower_registered_package(
+    registry: &CRegistry,
+    sources: &[CSourceFile],
+) -> Result<BTreeMap<CFileRef, CDocumentation>, String> {
+    super::source_package::check(registry, sources)?;
+    lower(sources, registry.source_package())
+}
+
+fn lower(
+    sources: &[CSourceFile],
+    package: Option<&CSourcePackage>,
+) -> Result<BTreeMap<CFileRef, CDocumentation>, String> {
     let mut lowering = Lowering {
-        policy: FilePolicy::new(sources)?,
+        policy: match package {
+            Some(package) => FilePolicy::explicit(package, sources)?,
+            None => FilePolicy::new(sources)?,
+        },
         modules: BTreeMap::new(),
         declarations: BTreeMap::new(),
         roots: BTreeMap::new(),
@@ -94,6 +113,9 @@ pub(super) fn lower_package(
         attributes: 0,
         module_order: Vec::new(),
     };
+    if let Some(package) = package {
+        lowering.package(package.exports())?;
+    }
     // The closed profile has one complete record declaration and one prototype
     // per function. Uses and definitions do not duplicate primary documentation.
     for item in sources.iter().flat_map(|source| source.items()) {
@@ -145,6 +167,15 @@ pub(super) fn lower_package(
 }
 
 impl Lowering<'_> {
+    fn package(&mut self, exports: &Arc<RustCrateExports>) -> Result<(), String> {
+        exports::graph(exports)?;
+        for (module, ancestry) in &exports.module_ancestries {
+            self.ancestry(exports, *module, ancestry)?;
+        }
+        self.exports.insert(exports.root.crate_id, exports.clone());
+        Ok(())
+    }
+
     fn owner(&mut self, owner: CDocumentationOwner, key: &CDeclarationKey) -> Result<(), String> {
         let CGeneratedOrigin::RustSource(origin) = &key.origin else {
             return Ok(());
@@ -163,7 +194,7 @@ impl Lowering<'_> {
             if matches!(self.policy, FilePolicy::PublicPair { .. }) {
                 exports::graph(&origin.crate_exports)?;
                 for (module, ancestry) in &origin.crate_exports.module_ancestries {
-                    self.ancestry(origin, *module, ancestry)?;
+                    self.ancestry(&origin.crate_exports, *module, ancestry)?;
                 }
             }
             self.exports
@@ -177,32 +208,34 @@ impl Lowering<'_> {
         {
             return Err("source declaration maps to conflicting documentation owners".into());
         }
-        self.ancestry(origin, origin.module, &origin.module_ancestors)?;
+        self.ancestry(
+            &origin.crate_exports,
+            origin.module,
+            &origin.module_ancestors,
+        )?;
         self.attach(owner, &origin.documentation)
     }
 
     fn ancestry(
         &mut self,
-        origin: &RustSourceOrigin,
+        exports: &RustCrateExports,
         owner: RustDeclarationId,
         ancestry: &RustModuleAncestry,
     ) -> Result<(), String> {
-        if ancestry.first().map(|module| module.declaration) != Some(origin.crate_exports.root) {
+        if ancestry.first().map(|module| module.declaration) != Some(exports.root) {
             return Err("export module documentation disagrees with the crate root".into());
         }
         let mut parent = None;
         let mut seen = BTreeSet::new();
         for (depth, module) in ancestry.iter().enumerate() {
             if depth == 0
-                && let Some(root) = self
-                    .roots
-                    .insert(origin.declaration.crate_id, module.declaration)
+                && let Some(root) = self.roots.insert(exports.root.crate_id, module.declaration)
                 && root != module.declaration
             {
                 return Err("one source crate has conflicting root modules".into());
             }
             if module.parent != parent
-                || module.declaration.crate_id != origin.declaration.crate_id
+                || module.declaration.crate_id != exports.root.crate_id
                 || !seen.insert(module.declaration)
                 || self.declarations.contains_key(&module.declaration)
             {
@@ -214,7 +247,7 @@ impl Lowering<'_> {
                     return Err("conflicting documentation for one source module".into());
                 }
             } else {
-                let file = self.policy.module(origin, module).clone();
+                let file = self.policy.module(exports, module).clone();
                 self.module_order.push((
                     depth,
                     CDocumentationOwner::Module(file.clone(), module.declaration),

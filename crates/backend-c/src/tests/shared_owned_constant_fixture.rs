@@ -26,14 +26,21 @@ pub(super) fn key(name: &str) -> CDeclarationKey {
 }
 
 pub(super) fn fixture(shape: Shape) -> Fixture {
-    build(shape, ConstantOrigins::RustSource, |_| {})
+    build(shape, ConstantOrigins::RustSource, |_| {}, |_, _, _| {})
 }
 
 pub(super) fn with_origin_changes(
     shape: Shape,
     change: impl Fn(&mut portable_codegen::RustSourceOrigin),
 ) -> Fixture {
-    build(shape, ConstantOrigins::RustSource, change)
+    build(shape, ConstantOrigins::RustSource, change, |_, _, _| {})
+}
+
+pub(super) fn with_registration(
+    shape: Shape,
+    configure: impl FnOnce(&mut CRegistry, &CFileRef, Arc<portable_codegen::RustCrateExports>),
+) -> Fixture {
+    build(shape, ConstantOrigins::RustSource, |_| {}, configure)
 }
 
 #[derive(Clone, Copy)]
@@ -43,13 +50,19 @@ enum ConstantOrigins {
 }
 
 pub(super) fn synthesized_constants_fixture() -> Fixture {
-    build(Shape::Mixed, ConstantOrigins::Synthesized, |_| {})
+    build(
+        Shape::Mixed,
+        ConstantOrigins::Synthesized,
+        |_| {},
+        |_, _, _| {},
+    )
 }
 
 fn build(
     shape: Shape,
     origins: ConstantOrigins,
     change: impl Fn(&mut portable_codegen::RustSourceOrigin),
+    configure: impl FnOnce(&mut CRegistry, &CFileRef, Arc<portable_codegen::RustCrateExports>),
 ) -> Fixture {
     let literals = [
         ("false_value", CLiteral::Bool(false)),
@@ -157,6 +170,7 @@ fn build(
             functions.push(function);
         }
     }
+    configure(&mut registry, &header, exports.clone());
     let expressions = CExpressions::new(&registry);
     let declarations = CDeclarations::new(&registry, header).unwrap();
     let definitions = CDeclarations::new(&registry, source).unwrap();

@@ -70,6 +70,9 @@ pub(crate) fn lower(
         .map_err(|error| format!("invalid C output path: {error:?}"))?,
         role: CFileRole::GeneratedSource,
     }))?;
+    if let Some(header) = &header {
+        c(registry.register_source_package(header, exports.clone()))?;
+    }
     let mut functions = HashMap::new();
     for id in &inventory.owned {
         let signature = if let Some((selected, signature)) = &entry

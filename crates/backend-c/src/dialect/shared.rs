@@ -22,6 +22,10 @@ mod registration;
 mod resolved_names;
 #[path = "../resources/hir.rs"]
 mod resources;
+mod source_package;
+#[cfg(test)]
+#[path = "../tests/shared_source_package.rs"]
+mod source_package_tests;
 #[path = "../render/hir.rs"]
 mod spelling;
 mod unit_bindings;

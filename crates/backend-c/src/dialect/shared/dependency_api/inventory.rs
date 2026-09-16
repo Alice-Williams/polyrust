@@ -59,15 +59,21 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
         header.module(),
     )
     .map_err(|error| error.message)?;
-    let first = c_defined_functions(package)
-        .map(|definition| &definition.function().key().origin)
-        .chain(c_defined_constants(package).map(|definition| &definition.object().key().origin))
-        .next()
-        .ok_or("C dependency API has no definitions")?;
-    let CGeneratedOrigin::RustSource(first_origin) = first else {
-        return Err("C dependency API requires Rust-source definition provenance".into());
+    let inferred = || {
+        let first = c_defined_functions(package)
+            .map(|definition| &definition.function().key().origin)
+            .chain(c_defined_constants(package).map(|definition| &definition.object().key().origin))
+            .next()
+            .ok_or("C dependency API has no definitions")?;
+        let CGeneratedOrigin::RustSource(first_origin) = first else {
+            return Err("C dependency API requires Rust-source definition provenance".into());
+        };
+        Ok::<_, String>(&first_origin.crate_exports)
     };
-    let exports = &first_origin.crate_exports;
+    let exports = match projection.registry.registrations().source_package() {
+        Some(source) => source.exports(),
+        None => inferred()?,
+    };
     let root = exports.root;
     for registration in projection.registry.registrations().inventory() {
         match &registration.key.origin {
