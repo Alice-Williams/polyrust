@@ -12,6 +12,13 @@ pub(super) fn check(graph: &CheckedGraph) {
     key.definition_path_hash ^= 1;
     wrong_key.crates.insert(key, value);
     assert!(preflight(&wrong_key).is_err());
+    if graph.crates.len() > 1 {
+        let mut wrong_manifest = graph.clone();
+        let keys: Vec<_> = graph.crates.keys().copied().collect();
+        let other = wrong_manifest.crates[&keys[1]].manifest.clone();
+        wrong_manifest.crates.get_mut(&keys[0]).unwrap().manifest = other;
+        assert!(preflight(&wrong_manifest).is_err());
+    }
     let Some(imported) = graph
         .crates
         .values()

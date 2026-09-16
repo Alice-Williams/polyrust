@@ -3,7 +3,8 @@ use crate::c_graph::CheckedGraph;
 use portable_backend_c::{
     ast::CLinkage,
     dialect::{
-        CStructuralRenderer, c_defined_functions, c_imported_functions, c_output_byte_bound,
+        CStructuralRenderer, c_defined_constants, c_defined_functions, c_imported_functions,
+        c_output_byte_bound,
     },
 };
 use portable_codegen::{OutputContents, RustDeclarationId, render_certified_package};
@@ -32,8 +33,18 @@ pub(crate) fn preflight(graph: &CheckedGraph) -> Result<(BTreeSet<String>, u64),
                 return Err("bundle output collision".into());
             }
         }
+        #[cfg(c_graph_constant_collision)]
+        if let Some(constant) = c_defined_constants(api.package()).next() {
+            symbols.insert(constant.name().clone());
+        }
         for function in c_defined_functions(api.package()) {
             if function.linkage() == CLinkage::External && !symbols.insert(function.name().clone())
+            {
+                return Err("bundle has duplicate external definitions".into());
+            }
+        }
+        for constant in c_defined_constants(api.package()) {
+            if constant.linkage() == CLinkage::External && !symbols.insert(constant.name().clone())
             {
                 return Err("bundle has duplicate external definitions".into());
             }

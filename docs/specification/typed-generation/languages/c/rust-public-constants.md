@@ -1,6 +1,6 @@
 # Rust public scalar constants in C17
 
-- Status: owned and imported C target mappings complete in M35-03A-02F-02B-02; single-crate source integration implemented; bundle integration pending
+- Status: owned and imported C target mappings complete in M35-03A-02F-02B-02; owned source/bundle publication implemented; foreign source integration pending
 - Parent: [shared source contract](../../rust-public-constants.md)
 - Reuse: [C package projection](rust-hir-public-packages.md)
 
@@ -123,8 +123,8 @@ Each constant records its exact identity, allocated symbol, primary header,
 implementation source, scalar type, readonly flag and value. Bool values are JSON
 booleans; i32/i64 values are canonical signed decimal strings, preserving values
 outside double precision. Metadata is reconstructed against certified objects
-and the compiler-owned expected inventory in both directions. Schema 2 bundle
-publication continues to reject owned constants until child05 extends that path.
+and the compiler-owned expected inventory in both directions. Constant-bearing bundle
+owners use schema 4 below; schema 2 remains the function-only bundle format.
 
 The manifest accepts only RenderReadyPackage<CDialect>. C profile certification
 already requires public-header const bool/i32/i64 objects with exact matching
@@ -133,3 +133,20 @@ certificate, not on unverified caller-supplied ASTs. Manifest reconstruction
 separately checks compiler identities, export completeness, files, linkage,
 values and allocated names. Repeating the profile's constness/type checker in
 the JSON layer is not a substitute for preserving this certificate boundary.
+
+## Owned constant bundle schema
+
+Child05A extends owner manifests with schema 4 for bundles containing owned
+constants. Its function/import records keep their existing structure, and
+constant records match standalone schema 3's exact identity, symbol, owner files,
+scalar type, readonly flag and lossless value representation. Owners without
+constants retain schema 2. The outer bundle index remains schema 1 because its
+member references are unchanged. Readers must dispatch explicitly by version.
+
+Whole-bundle preflight reconciles each manifest with its retained original
+CDependencyApi and counts external constant definitions in the same symbol set
+as external functions. All output names and source/metadata bytes are reserved
+before publication. Constants-only owners, mixed owners and declared unused
+dependency owners are retained. This step does not authorize foreign constant
+body reads or foreign public re-exports; those require the subsequent compiler
+join and export-closure checkpoints.

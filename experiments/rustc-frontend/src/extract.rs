@@ -106,6 +106,7 @@ fn certify(lowered: crate::c_lower::LoweredPackage, mode: Mode) -> Result<Progra
                 &manifest,
                 &lowered.functions,
                 &lowered.imports,
+                &lowered.constants,
             );
             Some(manifest)
         }

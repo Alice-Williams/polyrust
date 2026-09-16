@@ -1,6 +1,6 @@
 # Rust public scalar constants in Java 21
 
-- Status: normative; single-crate source integration implemented; bundle integration pending
+- Status: normative; owned source/bundle publication implemented; foreign source integration pending
 - Parent: [shared source contract](../../rust-public-constants.md)
 - Reuse: [Java source packages](rust-hir-lowering.md)
 
@@ -86,8 +86,9 @@ belongs to the rustc adapter and the compiler/bundle milestones.
 Producer tests use separately compiled Java21 consumers. Since javac can inline
 constant-variable reads, semantic-mutant tests recompile consumers against each
 mutant producer; running stale consumer bytecode is not sufficient evidence.
-The Java bundle projection/serialization fail closed for Constant descriptions
-until their dedicated integration milestone. Existing source kinds stay enabled.
+The Java bundle projection/serialization support Constant descriptions through
+the owned bundle schema below. Foreign compiler reads/re-exports remain separate
+integration checkpoints. Existing source kinds stay enabled.
 
 ## Consumer implementation boundary
 
@@ -147,5 +148,23 @@ The standalone adapter emits the ordinary Generated.java file. Compiler probes
 reconstruct JavaDependencyApi from its certificate and compare values, primitive
 types, identities, export bindings and qualified paths before native consumers
 compile. No standalone Java JSON sidecar is added by this step. Cross-crate
-source joins and versioned bundle output remain child05; foreign module constant
+source joins remain child05B; foreign module constant
 reads reject before either creating output or replacing existing output.
+
+## Owned constant bundle schema
+
+Child05A adds Java owner schema 2 when source descriptions include constants;
+function-only owners retain schema 1 byte layout. The outer bundle index remains
+schema 1. A constant description retains the common declaration identity, module,
+location, visibility, documentation and target field path, plus scalar type,
+readonly true and exact value. Bool is a JSON boolean; int/long values are signed
+decimal JSON strings. No signed value is serialized through floating point.
+
+Projection reconciles each Constant description with the owner's exact opaque
+JavaDependencyConstant: original source, qualified path, primitive type, literal
+value and public reachability must match. Function and constant public identities
+are checked as one complete union; record fields stay distinct from constants.
+The existing reservation and encoding sinks walk the same complete metadata.
+Whole-bundle checks retain original certificate identities for all owners,
+including unused declared members. Foreign source reads/re-exports are still
+rejected until the subsequent compiler join/export-closure checkpoints.

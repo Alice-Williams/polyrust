@@ -8,7 +8,11 @@ use portable_codegen::{
 };
 
 pub(crate) fn owner(out: &mut impl Sink, manifest: &Manifest<'_>) -> Result<(), String> {
-    out.fixed("{\"schema_version\":1,\"root\":")?;
+    out.fixed(if manifest.owner.api.constants().len() == 0 {
+        "{\"schema_version\":1,\"root\":"
+    } else {
+        "{\"schema_version\":2,\"root\":"
+    })?;
     out.id(manifest.owner.api.root())?;
     out.fixed(",\"defining_key\":")?;
     out.string(manifest.owner.key)?;
@@ -95,9 +99,7 @@ fn declaration(out: &mut impl Sink, description: &JavaSourceDescription<'_>) -> 
     out.fixed(",\"kind\":")?;
     out.string(match description.kind() {
         Kind::Function { .. } => "function",
-        Kind::Constant { .. } => {
-            return Err("Java constant serialization is not yet admitted".into());
-        }
+        Kind::Constant { .. } => "constant",
         Kind::Record => "record",
         Kind::Field { .. } => "field",
     })?;
@@ -146,8 +148,11 @@ fn declaration(out: &mut impl Sink, description: &JavaSourceDescription<'_>) -> 
             out.fixed("],\"result\":")?;
             out.string(scalar(result)?)?;
         }
-        Kind::Constant { .. } => {
-            return Err("Java constant serialization is not yet admitted".into());
+        Kind::Constant { ty, value } => {
+            out.fixed(",\"scalar\":")?;
+            out.string(scalar(ty)?)?;
+            out.fixed(",\"readonly\":true,\"value\":")?;
+            crate::constants::value(out, value)?;
         }
         Kind::Record => {}
         Kind::Field { owner, ty } => {

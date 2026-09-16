@@ -71,8 +71,20 @@ pub(crate) fn project(owner: Owner<'_>) -> Result<Manifest<'_>, String> {
                     return Err("private Java description grants a callable".into());
                 }
             }
-            Kind::Constant { .. } => {
-                return Err("Java constant bundle projection is not yet admitted".into());
+            Kind::Constant { ty, value } => {
+                scalar(ty)?;
+                let constant = api
+                    .constant(source.declaration)
+                    .ok_or("public Java constant missing")?;
+                if !source.externally_reachable
+                    || (!std::ptr::eq(constant.source(), source) && constant.source() != source)
+                    || description.target() != JavaSourceTarget::Declaration(constant.path())
+                    || constant.ty() != ty
+                    || constant.value() != value
+                {
+                    return Err("Java constant description differs from owner witness".into());
+                }
+                public.insert(source.declaration);
             }
             Kind::Record => {}
             Kind::Field { ty, .. } => {
@@ -80,8 +92,14 @@ pub(crate) fn project(owner: Owner<'_>) -> Result<Manifest<'_>, String> {
             }
         }
     }
-    if public != api.functions().map(|f| f.declaration()).collect() {
-        return Err("Java public function inventory differs".into());
+    if public
+        != api
+            .functions()
+            .map(|f| f.declaration())
+            .chain(api.constants().map(|c| c.declaration()))
+            .collect()
+    {
+        return Err("Java public declaration inventory differs".into());
     }
     for (id, module) in &modules {
         if id.crate_id != root.crate_id || module.parent.is_some_and(|p| !modules.contains_key(&p))

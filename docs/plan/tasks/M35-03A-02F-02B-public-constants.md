@@ -44,7 +44,7 @@ semantics and wider types remain separate capabilities.
 2. [02 — Certified C constant declarations and imports](M35-03A-02F-02B-02-c-constant-api.md) — complete.
 3. [03 — Certified Java constant fields and imports](M35-03A-02F-02B-03-java-constant-api.md) — complete.
 4. [04 — Compiler public constants and constants-only packages](M35-03A-02F-02B-04-source-constant-mappings.md) — complete.
-5. [05 — Multi-crate constant metadata and integration proof](M35-03A-02F-02B-05-constant-bundles.md) — planned.
+5. [05 — Multi-crate constant metadata and integration proof](M35-03A-02F-02B-05-constant-bundles.md) — in progress.
 
 Specifications precede implementation: [shared source](../../specification/typed-generation/rust-public-constants.md),
 [dependency values](../../specification/typed-generation/certified-dependency-values.md),

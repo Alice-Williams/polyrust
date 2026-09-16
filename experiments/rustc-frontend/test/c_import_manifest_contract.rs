@@ -1,16 +1,24 @@
 //! Deliberate typed inventory corruptions against real compiler/C certificates.
 use super::*;
-use portable_backend_c::dialect::{c_defined_functions, c_imported_functions};
+use portable_backend_c::dialect::{c_defined_constants, c_defined_functions, c_imported_functions};
 
 pub(crate) fn check(
     package: &RenderReadyPackage<CDialect>,
     manifest: &ApiManifest,
     owned: &BTreeMap<RustDeclarationId, CFunctionRef>,
     imported: &imports::ExpectedImports,
+    constants: &constants::ExpectedConstants,
 ) {
     let rebuild = |expected: &imports::ExpectedImports| {
-        ApiManifest::with_imports(package, manifest.exports.clone(), owned, expected)
+        ApiManifest::with_constants(
+            package,
+            manifest.exports.clone(),
+            owned,
+            expected,
+            constants,
+        )
     };
+    assert_eq!(c_defined_constants(package).count(), constants.len());
     assert_eq!(c_defined_functions(package).count(), owned.len());
     assert_eq!(c_imported_functions(package).count(), imported.len());
     assert!(
@@ -48,7 +56,13 @@ pub(crate) fn check(
     changed.imports.remove(&id);
     assert!(
         changed
-            .verify_imports(package, manifest.exports.clone(), owned, imported)
+            .verify_constants(
+                package,
+                manifest.exports.clone(),
+                owned,
+                imported,
+                constants
+            )
             .is_err()
     );
     if let Some((_, (_, other))) = imported.iter().find(|(other, _)| **other != id) {

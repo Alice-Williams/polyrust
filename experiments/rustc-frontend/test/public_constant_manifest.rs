@@ -64,6 +64,8 @@ pub(crate) fn check(
     let moved = changed.remove(&id).unwrap();
     changed.insert(foreign, moved);
     assert!(reconstruct(&changed).is_err());
-    assert!(manifest.bundle_json().is_err());
+    let bundled = manifest.bundle_json().unwrap();
+    assert!(bundled.contains("\"schema_version\":4"));
+    assert!(bundled.len() <= manifest.bundle_bound().unwrap());
     println!("PUBLIC_CONSTANT_MANIFEST_MUTATIONS\t7");
 }

@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 mod budget;
 mod bundle;
+mod constants;
 mod json;
 mod manifest;
 mod projection;
@@ -17,6 +18,10 @@ pub struct Owner<'a> {
     pub api: &'a JavaDependencyApi,
 }
 
+#[cfg(test)]
+mod constant_fixture;
+#[cfg(test)]
+mod constant_tests;
 #[cfg(test)]
 mod fixture;
 #[cfg(test)]

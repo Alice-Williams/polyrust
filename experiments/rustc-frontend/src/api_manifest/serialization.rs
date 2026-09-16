@@ -11,9 +11,6 @@ impl ApiManifest {
     }
 
     pub(crate) fn bundle_json(&self) -> Result<String, String> {
-        if !self.constants.is_empty() {
-            return Err("C public constant bundle metadata is not yet admitted".into());
-        }
         self.encode(true)
     }
 
@@ -21,12 +18,11 @@ impl ApiManifest {
         let bound = self.encoded_bound()?;
         let mut text = format!(
             "{{\"schema_version\":{},\"root\":{},\"header\":{},\"implementation\":{},\"modules\":[",
-            if bundle {
-                2
-            } else if self.constants.is_empty() {
-                1
-            } else {
-                3
+            match (bundle, self.constants.is_empty()) {
+                (false, true) => 1,
+                (true, true) => 2,
+                (false, false) => 3,
+                (true, false) => 4,
             },
             identity(self.exports.root),
             quote(self.header.key().path.as_str()),

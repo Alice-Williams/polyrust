@@ -1,6 +1,6 @@
 # M35-03A-02F-02B-05 — Multi-crate constant metadata and integration proof
 
-- Status: planned
+- Status: in-progress
 - Parent: [public constants](M35-03A-02F-02B-public-constants.md)
 - Depends on: M35-03A-02F-02B-04
 
@@ -24,3 +24,14 @@ metadata alone must not create authority.
   constant proofs remain green. Full gate, fresh review, examples and push.
 - Close parent02B/02 only when every child is complete; do not mark all
   JavaConstants value families or the overall runtime migration complete.
+
+## Ordered implementation
+
+1. [05A — Owned constant bundle publication](M35-03A-02F-02B-05A-owned-constant-bundles.md) — complete.
+2. [05B — Authenticated foreign constant reads](M35-03A-02F-02B-05B-foreign-constant-reads.md) — planned.
+3. [05C — Cross-crate export closure](M35-03A-02F-02B-05C-constant-alias-closure.md) — planned.
+
+Each child has its own complete proof, reviewed checkpoint and push. Publishing
+owned constants in a bundle does not authorize a foreign Rust read or re-export.
+The existing atomic negative guards remain until their specific path has positive
+compiler/target/native proof.
