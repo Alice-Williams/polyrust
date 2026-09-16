@@ -1,6 +1,6 @@
 # Rust constant re-exports in C17
 
-- Status: explicit source-package provenance implemented; file requirements and
+- Status: explicit source-package provenance and typed file requirements implemented;
   certified foreign exports remain planned. Existing foreign-export rejection is active.
 - Contract: [shared re-export design](../../rust-constant-reexports.md)
 

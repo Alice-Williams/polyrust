@@ -193,9 +193,15 @@ allocates nor aliases the referenced generated symbols. The dialect's
 `resolve_file_import` maps checked source/destination file facts to an import
 kind or explicitly selects no directive (for example, Java same-package access).
 
+The [typed file-requirement contract](../file-requirements.md) also permits a
+structural dependency without a symbol. A dialect derives TargetFileRequirement
+from typed AST/package metadata; shared linking authenticates the exact module
+owner and output path, applies roles/cycles and deduplicates with symbol edges.
+Unresolved requirements are not resolved-import authority.
+
 Post-link verification reconstructs the ordered file-import list from actual
-generated-symbol references and primary declaration placement, independently
-of the stored file-dependency list. Missing, extra, duplicate, retargeted and
+generated-symbol references, primary declaration placement and typed file
+requirements, independently of the stored file-dependency list. Missing, extra, duplicate, retargeted and
 kind-mutated witnesses fail. Existing visibility and cycle policies still apply.
 
 ## Package dependencies

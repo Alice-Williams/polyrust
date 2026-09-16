@@ -205,3 +205,55 @@ fn docs_without_owned_declarations_do_not_enable_empty_package_publication() {
     assert!(documentation::lower_registered_package(registry.registrations(), &files).is_ok());
     assert!(project_c_package(registry, files).is_err());
 }
+
+#[test]
+fn explicit_header_requirements_are_typed_deduplicated_and_order_independent() {
+    for shape in [Shape::ConstantsOnly, Shape::Mixed] {
+        for reverse in [false, true] {
+            let mut fixture = explicit(shape);
+            if reverse {
+                fixture.files.reverse();
+            }
+            let header = fixture
+                .registry
+                .registrations()
+                .source_package()
+                .unwrap()
+                .header()
+                .clone();
+            let raw = project_c_package(fixture.registry, fixture.files).unwrap();
+            for file in raw.files() {
+                let requirements = CDialect.file_requirements(file);
+                if file.module().key().role == CFileRole::GeneratedSource {
+                    assert_eq!(requirements.len(), 1);
+                    assert_eq!(requirements[0].module(), &header);
+                    assert_eq!(requirements[0].path(), &header.key().path);
+                } else {
+                    assert!(requirements.is_empty());
+                }
+            }
+            let checked = verify_unresolved_package(&CDialect, raw).unwrap();
+            let linked = TargetLinker::new(CDialect).link_ast(&checked).unwrap();
+            for file in linked.files() {
+                if file.module().key().role == CFileRole::GeneratedSource {
+                    assert_eq!(file.dependencies().len(), 1);
+                    assert_eq!(file.file_imports().len(), 1);
+                } else {
+                    assert!(file.dependencies().is_empty());
+                    assert!(file.file_imports().is_empty());
+                }
+            }
+            let certificate = certify_resolved_package(&CDialect, linked).unwrap();
+            let rendered = render_certified_package(&CStructuralRenderer, &certificate).unwrap();
+            let source = rendered
+                .files()
+                .iter()
+                .find(|file| file.path().ends_with(".c"))
+                .unwrap();
+            let OutputContents::Text(text) = source.contents() else {
+                panic!("C source must be text");
+            };
+            assert_eq!(text.matches("#include \"polyrust_constants.h\"").count(), 1);
+        }
+    }
+}

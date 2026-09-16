@@ -11,6 +11,11 @@ Reuse TargetFile, TargetFileId, FileItemRoots, LinkedFile and the existing
 generated-symbol/file-dependency graph. A generated symbol has one primary
 declaration file; referring to or defining it elsewhere does not declare it
 again. Cross-file visibility and cycle checks remain authoritative.
+[Explicit source-package provenance](rust-constant-reexports.md) also derives a
+[typed file requirement](../../file-requirements.md) from the source to its own
+public header, independently of whether any owned symbol creates that edge.
+Shared resolution authenticates both the registry-branded file and output path;
+it deduplicates this requirement with ordinary symbol-derived header edges.
 
 Add a distinct shared resolved-file-import witness alongside ResolvedImport.
 It retains the exact destination TargetFileId and a dialect-owned import kind.

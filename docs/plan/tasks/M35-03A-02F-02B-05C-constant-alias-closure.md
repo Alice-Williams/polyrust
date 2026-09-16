@@ -52,10 +52,11 @@ or other declaration kinds remain diagnosed, not silently omitted.
    declaration. C header/source and Java facade metadata must retain this explicit
    package provenance and reconcile it with every owned declaration.
 3. [Symbol-independent file requirements](M35-03A-02F-02B-05C-03-file-requirements.md)
-   — planned. Preserve the implementation-to-header dependency even when an
+   — complete. Preserve the implementation-to-header dependency even when an
    alias-only package has no owned symbol to create an edge. Use typed file
    requirements, shared role/cycle checks and independently reconstructed imports.
-4. Target export evidence: certify a separate alias inventory backed by original
+4. [C target export evidence](M35-03A-02F-02B-05C-04-c-constant-export-evidence.md)
+   (Java counterpart follows): certify a separate alias inventory backed by original
    imported constant witnesses. Aliases point to defining symbols/paths; they do
    not enter owned constant definitions or create new producer authority. Check
    complete local/foreign binding union, retained dependency closure, documentation,

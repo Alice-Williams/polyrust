@@ -221,6 +221,25 @@ impl LinkerDialect for CDialect {
     fn resolve_module(&self, file: &CFileRef) -> Result<CFileRef, AstViolation> {
         Ok(file.clone())
     }
+    fn file_requirements(
+        &self,
+        file: &portable_codegen::TargetFile<Self>,
+    ) -> Vec<portable_codegen::TargetFileRequirement<Self>> {
+        let [unit] = file.items() else {
+            return vec![];
+        };
+        let registry = unit.projection.registry.registrations();
+        match registry.source_package() {
+            Some(package) if file.module().key().role == crate::ast::CFileRole::GeneratedSource => {
+                vec![portable_codegen::TargetFileRequirement::new(
+                    package.header().clone(),
+                    package.header().key().path.clone(),
+                )]
+            }
+            _ => vec![],
+        }
+    }
+
     fn resolve_file_import(
         &self,
         source: &portable_codegen::TargetFile<Self>,

@@ -5,13 +5,20 @@ mod catalogue;
 mod dependency_callables;
 mod dependency_values;
 mod dialect;
+mod file_cycle;
+mod file_graph;
 mod file_imports;
+mod file_requirements;
+use file_graph::derive_and_validate_file_graph;
+#[cfg(test)]
+use file_graph::generated_symbol_is_public;
 mod import_bindings;
 mod reference_inventory;
 pub use dependency_callables::{DependencyCallableSpec, DependencySpelling};
 pub use dependency_values::{DependencyValueSpec, NoDependencyValue};
 pub use dialect::LinkerDialect;
 pub use file_imports::ResolvedFileImport;
+pub use file_requirements::TargetFileRequirement;
 
 use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef, sort_diagnostics};
 
@@ -1294,205 +1301,6 @@ fn expand_helper<D: LinkerDialect>(
     helper_references.insert(helper.clone(), references);
 }
 
-fn derive_and_validate_file_graph<D: LinkerDialect>(
-    dialect: &D,
-    package: &TargetAstPackage<D>,
-    files: &mut [RawFile<D>],
-    diagnostics: &mut Vec<Diagnostic>,
-) {
-    let mut declarations = BTreeMap::new();
-    for (file_index, file) in package.files().enumerate() {
-        let file_id = TargetFileId::from_index(file_index);
-        for declaration in file
-            .items()
-            .iter()
-            .flat_map(|item| dialect.file_item_roots(item).declarations)
-        {
-            if generated_symbol_source(package, declaration).is_none() {
-                diagnostics.push(Diagnostic::error(
-                    DiagnosticCode::UnresolvedReference,
-                    "file item declares a missing generated symbol",
-                    file.source().clone(),
-                ));
-            } else if declarations.insert(declaration, file_id).is_some() {
-                diagnostics.push(Diagnostic::error(
-                    DiagnosticCode::DuplicateDeclaration,
-                    "generated symbol is declared in more than one source file",
-                    file.source().clone(),
-                ));
-            }
-        }
-    }
-    for symbol in (0..package.generated_types().len())
-        .map(|index| GeneratedSymbolId::Type(GeneratedTypeId::from_index(index)))
-        .chain(
-            (0..package.callables().len())
-                .map(|index| GeneratedSymbolId::Callable(GeneratedCallableId::from_index(index))),
-        )
-        .chain((0..package.interface_methods().len()).map(|index| {
-            GeneratedSymbolId::InterfaceMethod(GeneratedInterfaceMethodId::from_index(index))
-        }))
-        .chain(
-            (0..package.values().len())
-                .map(|index| GeneratedSymbolId::Value(GeneratedValueId::from_index(index))),
-        )
-    {
-        if !declarations.contains_key(&symbol) {
-            diagnostics.push(Diagnostic::error(
-                DiagnosticCode::InvalidStructure,
-                "generated symbol is not placed in a source file",
-                generated_symbol_source(package, symbol)
-                    .cloned()
-                    .unwrap_or_else(|| SourceRef::logical(["target-linker", "file-graph"])),
-            ));
-        }
-    }
-
-    let mut graph = BTreeMap::new();
-    for raw_file in files.iter_mut() {
-        let from_role = package.file(raw_file.file).map(TargetFile::role);
-        let mut edges = BTreeSet::new();
-        for reference in &raw_file.references {
-            let TargetSymbolRef::Generated(symbol) = reference.symbol else {
-                continue;
-            };
-            let Some(destination) = declarations.get(&symbol).copied() else {
-                diagnostics.push(Diagnostic::error(
-                    DiagnosticCode::UnresolvedReference,
-                    "generated symbol reference has no structural source-file declaration",
-                    reference.source.clone(),
-                ));
-                continue;
-            };
-            if destination == raw_file.file {
-                continue;
-            }
-            edges.insert(destination);
-            let to_role = package.file(destination).map(TargetFile::role);
-            if violates_file_visibility(dialect, package, from_role, to_role, symbol) {
-                diagnostics.push(Diagnostic::error(
-                    DiagnosticCode::InvalidStructure,
-                    "cross-file reference violates source-role or public-API visibility",
-                    reference.source.clone(),
-                ));
-            }
-        }
-        raw_file.dependencies = edges.iter().copied().collect();
-        graph.insert(raw_file.file, edges);
-    }
-
-    if let Some(cycle) = find_file_cycle(&graph)
-        && !dialect.permits_file_cycle(&cycle)
-    {
-        diagnostics.push(Diagnostic::error(
-            DiagnosticCode::InvalidStructure,
-            "target source-file dependency graph contains a forbidden cycle",
-            SourceRef::logical(["target-linker", "file-cycle"]),
-        ));
-    }
-}
-
-fn generated_symbol_source<D: LinkerDialect>(
-    package: &TargetAstPackage<D>,
-    symbol: GeneratedSymbolId,
-) -> Option<&SourceRef> {
-    match symbol {
-        GeneratedSymbolId::Type(id) => package.generated_type(id).map(|value| &value.source),
-        GeneratedSymbolId::Callable(id) => package.callable(id).map(|value| &value.source),
-        GeneratedSymbolId::InterfaceMethod(id) => {
-            package.interface_method(id).map(|value| &value.source)
-        }
-        GeneratedSymbolId::Value(id) => package.value(id).map(|value| &value.source),
-    }
-}
-
-fn generated_symbol_is_public<D: LinkerDialect>(
-    dialect: &D,
-    package: &TargetAstPackage<D>,
-    symbol: GeneratedSymbolId,
-) -> bool {
-    match symbol {
-        GeneratedSymbolId::Type(id) => package
-            .generated_type(id)
-            .is_some_and(|value| dialect.is_public(&value.visibility)),
-        GeneratedSymbolId::Callable(id) => package
-            .callable(id)
-            .is_some_and(|value| dialect.is_public(&value.visibility)),
-        GeneratedSymbolId::InterfaceMethod(id) => package
-            .interface_method(id)
-            .and_then(|value| package.generated_type(value.owner))
-            .is_some_and(|owner| dialect.is_public(&owner.visibility)),
-        GeneratedSymbolId::Value(id) => package
-            .value(id)
-            .is_some_and(|value| dialect.is_public(&value.visibility)),
-    }
-}
-
-fn violates_file_visibility<D: LinkerDialect>(
-    dialect: &D,
-    package: &TargetAstPackage<D>,
-    from: Option<SourceRole>,
-    to: Option<SourceRole>,
-    symbol: GeneratedSymbolId,
-) -> bool {
-    let (Some(from), Some(to)) = (from, to) else {
-        return true;
-    };
-    let from_is_test = matches!(
-        from,
-        SourceRole::NativeTest | SourceRole::Conformance | SourceRole::NegativeTest
-    );
-    let to_is_test = matches!(
-        to,
-        SourceRole::NativeTest | SourceRole::Conformance | SourceRole::NegativeTest
-    );
-    (from == SourceRole::Runtime && to != SourceRole::Runtime)
-        || (!from_is_test && to_is_test)
-        || (from == SourceRole::PublicApi
-            && (to == SourceRole::Implementation
-                || !generated_symbol_is_public(dialect, package, symbol)))
-}
-
-fn find_file_cycle(
-    graph: &BTreeMap<TargetFileId, BTreeSet<TargetFileId>>,
-) -> Option<Vec<TargetFileId>> {
-    fn visit(
-        node: TargetFileId,
-        graph: &BTreeMap<TargetFileId, BTreeSet<TargetFileId>>,
-        states: &mut BTreeMap<TargetFileId, u8>,
-        stack: &mut Vec<TargetFileId>,
-    ) -> Option<Vec<TargetFileId>> {
-        match states.get(&node) {
-            Some(2) => return None,
-            Some(1) => {
-                let start = stack.iter().position(|candidate| candidate == &node)?;
-                return Some(stack[start..].to_vec());
-            }
-            _ => {}
-        }
-        states.insert(node, 1);
-        stack.push(node);
-        if let Some(edges) = graph.get(&node) {
-            for edge in edges {
-                if let Some(cycle) = visit(*edge, graph, states, stack) {
-                    return Some(cycle);
-                }
-            }
-        }
-        stack.pop();
-        states.insert(node, 2);
-        None
-    }
-
-    let mut states = BTreeMap::new();
-    for node in graph.keys() {
-        if let Some(cycle) = visit(*node, graph, &mut states, &mut Vec::new()) {
-            return Some(cycle);
-        }
-    }
-    None
-}
-
 #[derive(Clone)]
 struct BindingCandidate<D: LinkerDialect> {
     symbol: BindableSymbolId<D>,
@@ -1976,6 +1784,8 @@ pub fn verify_linked_package<D: LinkerDialect>(
     let mut declared_imports = BTreeSet::new();
     let mut expected_dependencies = BTreeMap::new();
     let mut helper_roots = BTreeSet::new();
+    let explicit_file_requirements =
+        file_requirements::derive(&package.dialect, &package.unresolved, &mut diagnostics);
     let declaration_files = package
         .unresolved
         .files()
@@ -1999,7 +1809,10 @@ pub fn verify_linked_package<D: LinkerDialect>(
         let mut physical_imports = BTreeSet::new();
         let mut expected_import_symbols =
             BTreeMap::<ResolvedImportId, BTreeSet<TargetSymbolRef<D>>>::new();
-        let mut expected_file_dependencies = BTreeSet::new();
+        let mut expected_file_dependencies = explicit_file_requirements
+            .get(&file.file)
+            .cloned()
+            .unwrap_or_default();
         for import in &file.imports {
             if !declared_imports.insert(import.id) {
                 diagnostics.push(link_error(
@@ -2101,7 +1914,7 @@ pub fn verify_linked_package<D: LinkerDialect>(
         {
             diagnostics.push(link_error(
                 DiagnosticCode::InterfaceNonconformance,
-                "cross-file dependency edges are not exactly reference-derived",
+                "cross-file dependency edges differ from symbol references and typed file requirements",
                 "file-dependencies",
             ));
         }
@@ -2495,6 +2308,9 @@ mod tests {
     mod file_import_tests {
         include!("tests/linking_file_imports.rs");
     }
+    mod file_requirement_tests {
+        include!("tests/linking_file_requirements.rs");
+    }
     use super::*;
     use crate::{
         CertifiedTemplateEngine, CertifiedTemplateId, EmbeddedTemplate, FileGroupRole,
@@ -2507,6 +2323,7 @@ mod tests {
 
     #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
     enum CatalogueMode {
+        RequiredFiles(file_requirement_tests::Mode),
         PackageDerived,
         RejectedPackage,
         EmptyPackageError,
@@ -3386,8 +3203,12 @@ mod tests {
             vec![]
         }
 
-        fn permits_file_cycle(&self, _files: &[TargetFileId]) -> bool {
-            self.0 == CatalogueMode::PermittedFileCycle
+        fn permits_file_cycle(&self, files: &[TargetFileId]) -> bool {
+            file_requirement_tests::permits(self.0, files)
+        }
+
+        fn file_requirements(&self, file: &TargetFile<Self>) -> Vec<TargetFileRequirement<Self>> {
+            file_requirement_tests::requirements(self.0, file)
         }
 
         fn resolve_file_import(
@@ -3396,6 +3217,10 @@ mod tests {
             destination: &TargetFile<Self>,
         ) -> Result<Option<Self::ImportKind>, AstViolation> {
             match self.0 {
+                CatalogueMode::RequiredFiles(file_requirement_tests::Mode::NoDirective) => Ok(None),
+                CatalogueMode::RequiredFiles(_) => {
+                    Ok(Some(ImportKind::File(destination.path().clone())))
+                }
                 CatalogueMode::GeneratedFiles | CatalogueMode::GeneratedFilesNoSpelling => {
                     Ok(Some(ImportKind::File(destination.path().clone())))
                 }
@@ -3644,6 +3469,7 @@ mod tests {
                 result.helpers.push(result.helpers[0].clone());
             }
             CatalogueMode::Normal
+            | CatalogueMode::RequiredFiles(_)
             | CatalogueMode::PackageDerived
             | CatalogueMode::RejectedPackage
             | CatalogueMode::EmptyPackageError

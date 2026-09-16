@@ -95,6 +95,13 @@ pub trait LinkerDialect:
     ) -> Result<Self::ResolvedFileItem, AstViolation>;
     fn verify_resolved_file_item(&self, item: &Self::ResolvedFileItem) -> Vec<AstViolation>;
 
+    /// File dependencies which do not consume a named symbol. Derive these
+    /// from typed AST/package metadata; the shared linker checks both the
+    /// target-owned module identity and exact output path, roles and cycles.
+    fn file_requirements(&self, _file: &TargetFile<Self>) -> Vec<TargetFileRequirement<Self>> {
+        vec![]
+    }
+
     /// Maps one checked cross-file dependency to a directive, if this dialect
     /// requires one. This does not allocate or alias generated symbol names.
     fn resolve_file_import(
