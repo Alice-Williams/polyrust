@@ -31,6 +31,11 @@ typed void foundation and checked compiler integration, with 760/760 release
 tests, original-authority/native/AST proof and clean independent review.
 Unit storage/parameters remain a separate capability.
 
+[M35-03A-02H — wrapping signed negation](M35-03A-02H-wrapping-negation.md)
+has completed its C/Java target foundation with 760/760 release tests and clean
+fresh review. The identity-checked compiler capability is next; source support
+is not yet enabled. Other arithmetic remains separate work.
+
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing

@@ -119,7 +119,7 @@ pub(super) fn dependencies(
                     pending.push(Node::Value(operand));
                 }
                 CValueKind::Unary {
-                    operator: CUnaryOperator::BitNot,
+                    operator: CUnaryOperator::BitNot | CUnaryOperator::Negate,
                     operand,
                 } if matches!(
                     operand.ty().kind(),
@@ -127,6 +127,17 @@ pub(super) fn dependencies(
                 ) =>
                 {
                     pending.push(Node::Value(operand));
+                }
+                CValueKind::Conditional {
+                    condition,
+                    then_value,
+                    else_value,
+                } => {
+                    pending.extend([
+                        Node::Value(condition),
+                        Node::Value(then_value),
+                        Node::Value(else_value),
+                    ]);
                 }
                 CValueKind::Convert {
                     conversion: CConversion::Numeric(_) | CConversion::AddConst(_),

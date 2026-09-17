@@ -60,7 +60,8 @@ impl Reader<'_> {
                 self.symbol(TargetSymbolRef::Generated(GeneratedSymbolId::Value(*id)))
             }
             JavaExprKind::Unary {
-                operator: JavaUnaryOperator::Not | JavaUnaryOperator::BitNot,
+                operator:
+                    JavaUnaryOperator::Not | JavaUnaryOperator::BitNot | JavaUnaryOperator::Negate,
                 operand,
             } => {
                 // The node charge covers punctuation; recurse so operand

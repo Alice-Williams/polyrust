@@ -288,3 +288,7 @@ mod void_native;
 #[cfg(test)]
 #[path = "../tests/shared_void_local.rs"]
 mod void_local;
+
+#[cfg(test)]
+#[path = "../tests/shared_wrapping_negation.rs"]
+mod wrapping_negation;

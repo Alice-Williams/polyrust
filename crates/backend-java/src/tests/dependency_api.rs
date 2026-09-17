@@ -184,15 +184,15 @@ fn boolean_negation_is_a_closed_dependency_expression() {
 }
 
 #[test]
-fn arithmetic_negation_remains_outside_dependency_admission() {
-    let operator = JavaUnaryOperator::Negate;
+fn arithmetic_addition_remains_outside_dependency_admission() {
     let mut fixture = functions(42);
     fixture[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
         ty: int(),
-        precedence: JavaPrecedence::Unary,
-        kind: JavaExprKind::Unary {
-            operator,
-            operand: Box::new(JavaExpr::literal(int(), JavaLiteral::I32(42))),
+        precedence: JavaPrecedence::Additive,
+        kind: JavaExprKind::Binary {
+            operator: JavaBinaryOperator::Add,
+            left: Box::new(JavaExpr::literal(int(), JavaLiteral::I32(42))),
+            right: Box::new(JavaExpr::literal(int(), JavaLiteral::I32(1))),
         },
     }))]);
     assert!(

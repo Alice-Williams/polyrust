@@ -24,7 +24,7 @@ fn builtin_bool_not_retains_body_derived_scalar_call_evidence() {
 }
 
 #[test]
-fn logical_not_on_integer_and_arithmetic_negation_remain_unadmitted() {
+fn logical_not_requires_bool_but_safe_negation_retains_purity_evidence() {
     let f = Fixture::new(&[0]);
     assert!(
         f.values()
@@ -42,7 +42,8 @@ fn logical_not_on_integer_and_arithmetic_negation_remain_unadmitted() {
         f.returning(0, f.call(1, vec![])),
         f.returning(1, value),
     ]);
-    assert_eq!(accepted(&f, &source), vec![false, false]);
+    assert_eq!(accepted(&f, &source), vec![true, true]);
+    f.registry.check_numeric_flow(&[source]).unwrap();
 }
 
 #[test]

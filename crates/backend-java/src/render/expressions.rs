@@ -8,7 +8,7 @@ use super::statements::render_block;
 use super::syntax::{binary_operator, render_literal, unary_operator};
 use crate::ast::{
     JavaCallableRef, JavaConstructorRef, JavaExpr, JavaExprKind, JavaFieldRef, JavaResolvedName,
-    JavaType, JavaValueRef,
+    JavaType, JavaUnaryOperator, JavaValueRef,
 };
 use crate::dialect::JavaDialect;
 use portable_codegen::{GeneratedSymbolId, LinkedFile, TargetSymbolRef};
@@ -54,7 +54,13 @@ pub(super) fn render_expr(
         }
         JavaExprKind::Unary { operator, operand } => {
             let operand = render_expr(operand, names, file)?;
-            Ok(format!("({}{operand})", unary_operator(*operator)))
+            // A negative literal starts with a minus token. Separate it from
+            // arithmetic negation so it cannot turn into Java decrement syntax.
+            if *operator == JavaUnaryOperator::Negate {
+                Ok(format!("(-({operand}))"))
+            } else {
+                Ok(format!("({}{operand})", unary_operator(*operator)))
+            }
         }
         JavaExprKind::Binary {
             operator,

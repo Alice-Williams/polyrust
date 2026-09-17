@@ -439,3 +439,5 @@ mod constant_exports_fixture;
 mod constant_exports_native;
 
 mod unit_results;
+
+mod wrapping_negation;

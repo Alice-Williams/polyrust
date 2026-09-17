@@ -192,6 +192,11 @@ impl Reader<'_> {
         if !self.ty(&value.ty) {
             return Err("Java dependency body contains an unadmitted value type".into());
         }
+        if matches!(value.kind, JavaExprKind::Unary { .. })
+            && value.precedence != crate::ast::JavaPrecedence::Unary
+        {
+            return Err("Java dependency unary expression requires unary precedence".into());
+        }
         match &value.kind {
             JavaExprKind::Literal(
                 JavaLiteral::I32(_) | JavaLiteral::I64(_) | JavaLiteral::Boolean(_),
@@ -210,7 +215,7 @@ impl Reader<'_> {
                 self.expression(operand, depth + 1)?;
             }
             JavaExprKind::Unary {
-                operator: JavaUnaryOperator::BitNot,
+                operator: JavaUnaryOperator::BitNot | JavaUnaryOperator::Negate,
                 operand,
             } if matches!(
                 value.ty,

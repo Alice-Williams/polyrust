@@ -15,6 +15,9 @@ mod graph_tests;
 #[path = "../tests/scalar_call_local_storage.rs"]
 mod local_storage_tests;
 #[cfg(test)]
+#[path = "../tests/scalar_call_negation.rs"]
+mod negation_tests;
+#[cfg(test)]
 #[path = "../tests/scalar_call_effects.rs"]
 mod tests;
 

@@ -45,6 +45,20 @@ impl Writer<'_> {
                 operator: CUnaryOperator::BitNot,
                 operand,
             } => format!("(~{})", self.value(operand)),
+            CValueKind::Unary {
+                operator: CUnaryOperator::Negate,
+                operand,
+            } => format!("(-{})", self.value(operand)),
+            CValueKind::Conditional {
+                condition,
+                then_value,
+                else_value,
+            } => format!(
+                "({} ? {} : {})",
+                self.value(condition),
+                self.value(then_value),
+                self.value(else_value)
+            ),
             CValueKind::Binary {
                 operator,
                 left,

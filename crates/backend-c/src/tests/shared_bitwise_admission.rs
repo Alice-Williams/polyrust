@@ -75,7 +75,11 @@ fn admitted(scalar: CScalarType, op: Op) -> bool {
         Ok(_) => true,
         Err(errors) => {
             assert!(
-                errors.iter().any(|e| e.message.contains("profile")),
+                errors.iter().any(|e| e.message.contains("profile"))
+                    || matches!(op, Op::Unary(CUnaryOperator::Negate))
+                        && errors.iter().any(|e| e
+                            .message
+                            .contains("C signed arithmetic is not proved representable")),
                 "{errors:?}"
             );
             false

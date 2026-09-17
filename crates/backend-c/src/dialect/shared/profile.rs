@@ -269,7 +269,7 @@ fn walk<'a>(
                         add(Node::Value(operand));
                     }
                     CValueKind::Unary {
-                        operator: CUnaryOperator::BitNot,
+                        operator: CUnaryOperator::BitNot | CUnaryOperator::Negate,
                         operand,
                     } if matches!(
                         operand.ty().kind(),
@@ -286,6 +286,38 @@ fn walk<'a>(
                     ) =>
                     {
                         add(Node::Value(operand));
+                    }
+                    CValueKind::Conditional {
+                        condition,
+                        then_value,
+                        else_value,
+                    } if matches!(
+                        condition.ty().kind(),
+                        CObjectTypeKind::Scalar(CScalarType::Bool)
+                    ) && [then_value.as_ref(), else_value.as_ref(), value]
+                        .iter()
+                        .all(|child| {
+                            matches!(
+                                child.ty().kind(),
+                                CObjectTypeKind::Scalar(
+                                    CScalarType::I32 | CScalarType::Int | CScalarType::I64
+                                )
+                            )
+                        })
+                        && matches!(
+                            (then_value.ty().kind(), else_value.ty().kind()),
+                            (
+                                CObjectTypeKind::Scalar(CScalarType::I64),
+                                CObjectTypeKind::Scalar(CScalarType::I64)
+                            ) | (
+                                CObjectTypeKind::Scalar(CScalarType::I32 | CScalarType::Int),
+                                CObjectTypeKind::Scalar(CScalarType::I32 | CScalarType::Int)
+                            )
+                        ) =>
+                    {
+                        add(Node::Value(condition));
+                        add(Node::Value(then_value));
+                        add(Node::Value(else_value));
                     }
                     CValueKind::Binary {
                         operator:

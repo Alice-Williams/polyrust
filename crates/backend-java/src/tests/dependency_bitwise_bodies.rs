@@ -46,9 +46,7 @@ fn exact_bitwise_operands_and_results_are_required_by_dependency_bodies() {
                 };
                 assert_eq!(
                     admitted(value),
-                    operator == JavaUnaryOperator::BitNot
-                        && left != JavaPrimitive::Boolean
-                        && left == result,
+                    left != JavaPrimitive::Boolean && left == result,
                     "{left:?} {operator:?} {result:?}"
                 );
             }
