@@ -1,6 +1,6 @@
 # M35-03A-02N — Binary64 arithmetic
 
-- Status: in-progress
+- Status: complete
 - Parent: [scalar parity](M35-03A-02-scalar-parity.md)
 - Depends on: [truncation](M35-03A-02M-floating-truncation.md)
 - Specification: [checked arithmetic](../../specification/typed-generation/rust-floating-arithmetic.md)
@@ -10,7 +10,7 @@
 1. [02N-01 — Independent arithmetic oracle](M35-03A-02N-01-arithmetic-oracle.md) — complete.
 2. [02N-02 — C target arithmetic](M35-03A-02N-02-c-arithmetic.md) — complete.
 3. [02N-03 — Java target arithmetic](M35-03A-02N-03-java-arithmetic.md) — complete.
-4. [02N-04 — Checked Rust capability](M35-03A-02N-04-compiler-arithmetic.md).
+4. [02N-04 — Checked Rust capability](M35-03A-02N-04-compiler-arithmetic.md) — complete.
 
 Each checkpoint needs a focused tested tree, independent review and its own
 commit. The oracle alone admits no new generated operation. Complete C/Java
@@ -27,3 +27,11 @@ oracle and native Rust. Public/private crate boundaries, authenticated imports,
 resource accounting and atomic unsupported-source rejection remain intact.
 No copied runtime, custom arithmetic library, raw fragment or disabled test.
 Remainder, fused operations, casts, assignments and other widths remain separate.
+
+## Completion
+
+All four ordered checkpoints are implemented, locally tested and independently
+reviewed. The source integration passed all 879 release/lint targets and two
+clean final reviews; exact receipts and repaired proof findings are in 02N-04.
+Remainder is the next separate floating arithmetic gap, not implicitly admitted.
+No legacy runtime family is removed by this checkpoint.

@@ -39,6 +39,26 @@ fn expected<'tcx>(reader: &Reader<'tcx>, source: &'tcx hir::Expr<'tcx>) -> JavaE
                 },
             }
         }
+        hir::ExprKind::Binary(operator, left, right) => {
+            let (operator, precedence) = match operator.node {
+                hir::BinOpKind::Add => (JavaBinaryOperator::Add, JavaPrecedence::Additive),
+                hir::BinOpKind::Sub => (JavaBinaryOperator::Subtract, JavaPrecedence::Additive),
+                hir::BinOpKind::Mul => {
+                    (JavaBinaryOperator::Multiply, JavaPrecedence::Multiplicative)
+                }
+                hir::BinOpKind::Div => (JavaBinaryOperator::Divide, JavaPrecedence::Multiplicative),
+                _ => panic!("arithmetic operator"),
+            };
+            JavaExpr {
+                ty: double,
+                precedence,
+                kind: JavaExprKind::Binary {
+                    operator,
+                    left: Box::new(expected(reader, left)),
+                    right: Box::new(expected(reader, right)),
+                },
+            }
+        }
         hir::ExprKind::Call(callee, arguments) => {
             let hir::ExprKind::Path(ref path) = callee.kind else {
                 panic!("callee")
@@ -106,6 +126,17 @@ fn expanded(value: &JavaExpr, prelude: &[JavaStmt], depth: usize) -> JavaExpr {
                 operand: Box::new(expanded(operand, prelude, depth + 1)),
             }
         }
+        JavaExprKind::Binary {
+            operator,
+            left,
+            right,
+        } => {
+            result.kind = JavaExprKind::Binary {
+                operator: *operator,
+                left: Box::new(expanded(left, prelude, depth + 1)),
+                right: Box::new(expanded(right, prelude, depth + 1)),
+            };
+        }
         JavaExprKind::Call {
             callable,
             receiver: None,
@@ -137,6 +168,46 @@ pub(super) fn check<'tcx>(
         wanted,
         "exact operand dataflow, not only call presence"
     );
+    if let JavaExprKind::Binary {
+        operator,
+        left,
+        right,
+    } = &operand.kind
+    {
+        let mut wrong = operand.clone();
+        wrong.kind = JavaExprKind::Binary {
+            operator: if *operator == JavaBinaryOperator::Add {
+                JavaBinaryOperator::Subtract
+            } else {
+                JavaBinaryOperator::Add
+            },
+            left: left.clone(),
+            right: right.clone(),
+        };
+        assert_ne!(
+            expanded(&wrong, &reader.prelude, 0),
+            wanted,
+            "wrong actual operator must fail the source reconstruction"
+        );
+        if expanded(left, &reader.prelude, 0) != expanded(right, &reader.prelude, 0) {
+            let mut detached = reader.prelude.clone();
+            let JavaStmt::Local { value, .. } = detached.last_mut().unwrap() else {
+                panic!("right temporary")
+            };
+            *value = Some(left.as_ref().clone());
+            assert_eq!(
+                &detached[..detached.len() - 1],
+                &reader.prelude[..reader.prelude.len() - 1]
+            );
+            assert_ne!(
+                expanded(operand, &detached, 0),
+                wanted,
+                "right result disconnected while all original calls remain"
+            );
+            #[cfg(arithmetic_ast_probe)]
+            eprintln!("ARITHMETIC_DETACHED\tjava");
+        }
+    }
     if let hir::ExprKind::Call(_, [argument]) = source.kind
         && matches!(argument.kind, hir::ExprKind::Path(_))
     {

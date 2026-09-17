@@ -1,3 +1,5 @@
+use super::JavaFloatingNaN as NaN;
+use super::JavaFloatingNegation as Floating;
 use super::JavaUnitEffects as Unit;
 use super::JavaWrappingNegation as Wrapping;
 use super::{
@@ -5,6 +7,10 @@ use super::{
     JavaFunctionSignatures, JavaIntegerBitwise, JavaLexicalControl, JavaLiteralValues,
     JavaLocalConstants, JavaObjectTypes, JavaRecordInitializers, JavaResolvedPlaces,
     JavaScalarComparisons, JavaScalarConstants, JavaSharedBorrows, JavaShortCircuitBooleans,
+};
+use super::{
+    JavaFloatingAbsolute as Absolute, JavaFloatingArithmetic as Arithmetic,
+    JavaFloatingTruncation as Truncation,
 };
 use super::{JavaPublicConstantImports, JavaPublicConstantReads, JavaPublicConstants};
 
@@ -31,6 +37,11 @@ fn must_not_compile() {
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
+        .floating_nan(NaN)
+        .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -53,6 +64,11 @@ fn must_not_compile() {
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
+        .floating_nan(NaN)
+        .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -75,6 +91,11 @@ fn must_not_compile() {
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
+        .floating_nan(NaN)
+        .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -97,6 +118,11 @@ fn must_not_compile() {
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
+        .floating_nan(NaN)
+        .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -119,6 +145,11 @@ fn must_not_compile() {
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
+        .floating_nan(NaN)
+        .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -141,6 +172,11 @@ fn must_not_compile() {
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
+        .floating_nan(NaN)
+        .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -163,6 +199,11 @@ fn must_not_compile() {
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
+        .floating_nan(NaN)
+        .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -185,6 +226,11 @@ fn must_not_compile() {
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
+        .floating_nan(NaN)
+        .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -207,6 +253,11 @@ fn must_not_compile() {
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
+        .floating_nan(NaN)
+        .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -229,5 +280,10 @@ fn must_not_compile() {
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
+        .floating_nan(NaN)
+        .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
+        .floating_absolute(Absolute)
         .build();
 }

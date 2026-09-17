@@ -37,7 +37,10 @@ use super::{
     CShortCircuitBooleans as Lazy,
 };
 #[cfg(lazy_c)]
-use super::{CFloatingAbsolute as Absolute, CFloatingTruncation as Truncation};
+use super::{
+    CFloatingAbsolute as Absolute, CFloatingArithmetic as Arithmetic,
+    CFloatingTruncation as Truncation,
+};
 #[cfg(lazy_c)]
 use super::{
     CPublicConstantImports as PublicImports, CPublicConstantReads as PublicReads,
@@ -53,7 +56,10 @@ use super::{
     JavaShortCircuitBooleans as Lazy,
 };
 #[cfg(lazy_java)]
-use super::{JavaFloatingAbsolute as Absolute, JavaFloatingTruncation as Truncation};
+use super::{
+    JavaFloatingAbsolute as Absolute, JavaFloatingArithmetic as Arithmetic,
+    JavaFloatingTruncation as Truncation,
+};
 #[cfg(lazy_java)]
 use super::{
     JavaPublicConstantImports as PublicImports, JavaPublicConstantReads as PublicReads,
@@ -94,6 +100,7 @@ fn missing() {
         .floating_negation(Floating)
         .floating_nan(NaN)
         .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
         .floating_absolute(Absolute)
         .build();
 }

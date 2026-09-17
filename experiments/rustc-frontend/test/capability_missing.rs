@@ -8,7 +8,10 @@ use super::{
     CRecordInitializers, CResolvedPlaces, CScalarComparisons, CScalarConstants, CSharedBorrows,
     CShortCircuitBooleans,
 };
-use super::{CFloatingAbsolute as Absolute, CFloatingTruncation as Truncation};
+use super::{
+    CFloatingAbsolute as Absolute, CFloatingArithmetic as Arithmetic,
+    CFloatingTruncation as Truncation,
+};
 use super::{CPublicConstantImports, CPublicConstantReads, CPublicConstants};
 
 #[allow(dead_code)]
@@ -37,6 +40,7 @@ fn must_not_compile() {
         .floating_negation(Floating)
         .floating_nan(NaN)
         .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -63,6 +67,7 @@ fn must_not_compile() {
         .floating_negation(Floating)
         .floating_nan(NaN)
         .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -89,6 +94,7 @@ fn must_not_compile() {
         .floating_negation(Floating)
         .floating_nan(NaN)
         .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -115,6 +121,7 @@ fn must_not_compile() {
         .floating_negation(Floating)
         .floating_nan(NaN)
         .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -141,6 +148,7 @@ fn must_not_compile() {
         .floating_negation(Floating)
         .floating_nan(NaN)
         .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -167,6 +175,7 @@ fn must_not_compile() {
         .floating_negation(Floating)
         .floating_nan(NaN)
         .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -193,6 +202,7 @@ fn must_not_compile() {
         .floating_negation(Floating)
         .floating_nan(NaN)
         .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -219,6 +229,7 @@ fn must_not_compile() {
         .floating_negation(Floating)
         .floating_nan(NaN)
         .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -245,6 +256,7 @@ fn must_not_compile() {
         .floating_negation(Floating)
         .floating_nan(NaN)
         .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -271,6 +283,7 @@ fn must_not_compile() {
         .floating_negation(Floating)
         .floating_nan(NaN)
         .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
         .floating_absolute(Absolute)
         .build();
 }

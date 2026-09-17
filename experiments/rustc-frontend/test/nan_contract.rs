@@ -40,6 +40,7 @@ fn missing() {
         .floating_negation(CFloatingNegation)
         .floating_truncation(CFloatingTruncation)
         .floating_absolute(CFloatingAbsolute)
+        .floating_arithmetic(CFloatingArithmetic)
         .build();
 }
 
@@ -70,6 +71,7 @@ fn missing() {
         .floating_negation(JavaFloatingNegation)
         .floating_truncation(JavaFloatingTruncation)
         .floating_absolute(JavaFloatingAbsolute)
+        .floating_arithmetic(JavaFloatingArithmetic)
         .build();
 }
 

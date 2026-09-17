@@ -1,6 +1,6 @@
 # Checked binary64 arithmetic
 
-- Status: accepted staged contract; source admission not implemented
+- Status: implemented and verified, with two clean independent reviews (02N-04)
 - Plan: [02N](../../plan/tasks/M35-03A-02N-floating-arithmetic.md)
 
 ## Semantics and boundary
@@ -48,3 +48,33 @@ layers of evidence; one does not replace the other.
 References: [Rust operators](https://doc.rust-lang.org/reference/expressions/operator-expr.html),
 [Rust f64](https://doc.rust-lang.org/std/primitive.f64.html), and
 [Java SE 21 floating evaluation](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html#jls-15.4).
+
+## Source acceptance and proof targets
+
+The checked source builder now requires 26 executable capability mappings.
+FloatingArithmetic is not a marker: it consumes the private ArithmeticInput,
+the original Reader context, and returns the target's typed value. Missing,
+duplicate, wrong-capability/context/output/input registrations and witness
+forgery are compile-negative cases for both languages; source-only consumers
+remain independent of either backend.
+
+`arithmetic_native_test` exercises three original crates, a public nested
+module, a private helper, authenticated original-owner imports and all four
+operators. The independent oracle covers 3,217 input pairs and 45,038 observations
+per target execution, including nested division and non-fused multiply/add.
+Nine compiling test-copy faults cover wrong operator, reversed subtraction,
+zero-sign loss, additive/multiplicative grouping, division grouping, FMA and
+dropped/duplicated/reordered calls. Pure packages carry no math library.
+
+`arithmetic_ast_test` observes canonical HIR and original TypeckResults,
+rejects copied nodes/wrong contexts, reconstructs exact target dataflow and
+checks per-operand ordered call sequences. Probe output must be byte-identical
+to production. Its separately compiled composition clients exercise arithmetic
+inside negation, absolute value, NaN inspection and truncation; only the latter
+introduces the already specified C math-library requirement.
+
+`arithmetic_rejection_test` checks valid but unsupported Rust atomically,
+including existing-output sentinels. Integer arithmetic, f32, overloaded/reference
+operators, remainder, casts, mutable assignment, fused methods, floating constants
+and generic calls remain unsupported. Rejection may occur in an earlier
+capability/signature check; it must not publish partial target output.

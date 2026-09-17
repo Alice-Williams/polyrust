@@ -14,7 +14,7 @@ CASES = {
     "other_method": ("pub fn value(v:f64)->bool {v.is_infinite()}", "expression mapping is not implemented"),
     "cast": ("pub fn value(v:i64)->bool {(v as f64).is_nan()}", "expression mapping is not implemented"),
     "constant": ("const V:f64=1.0; pub fn value()->bool {V.is_nan()}", "constants support only"),
-    "arithmetic": ("pub fn value(v:f64)->bool {(v+1.0).is_nan()}", "only comparison binary operators"),
+    "remainder": ("pub fn value(v:f64)->bool {(v%1.0).is_nan()}", "only comparison binary operators"),
     "indirect": ("pub fn value(v:f64)->bool {let f:fn(f64)->bool=f64::is_nan; f(v)}", "direct calls require resolved ordinary functions"),
     "generic": ("fn forward<T>(v:T)->T {v} pub fn value(v:f64)->bool {forward(v).is_nan()}", "generic or mismatched direct callee identity"),
 }

@@ -264,7 +264,25 @@ fn truncation<'tcx>(
         let _ = input.receiver();
     }
 }
+fn arithmetic<'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+) {
+    if let Ok(input) = ArithmeticInput::read(tcx, checked, expression) {
+        let _ = input.require_context(tcx, checked);
+        let _ = (input.operator(), input.left(), input.right());
+    }
+}
 fn main() {
+    capability::<FloatingArithmetic>();
+    let _ = arithmetic;
+    let _ = [
+        FloatingArithmeticOperator::Add,
+        FloatingArithmeticOperator::Subtract,
+        FloatingArithmeticOperator::Multiply,
+        FloatingArithmeticOperator::Divide,
+    ];
     capability::<FloatingTruncation>();
     let _ = truncation;
     capability::<FloatingAbsolute>();

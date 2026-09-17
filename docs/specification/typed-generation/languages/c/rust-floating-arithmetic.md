@@ -1,6 +1,6 @@
 # C17 binary64 arithmetic mapping
 
-- Status: target foundation implemented and verified (02N-02); Rust source admission pending 02N-04
+- Status: target foundation implemented and verified (02N-02); Rust source integration verified with 879 release/lint tests and two clean reviews (02N-04)
 - Parent: [shared arithmetic](../../rust-floating-arithmetic.md)
 
 ## Target AST
@@ -37,3 +37,17 @@ remain diagnostic; arithmetic admission is not permission for all C operators.
 
 Reference: [N1570](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf),
 5.2.4.2.2, 6.5.5, 6.5.6 and Annex F; concrete claims remain pinned-profile tested.
+
+## Checked source integration
+
+The executable FloatingArithmetic slot maps only the canonical checked
+ArithmeticInput. It validates the original compiler context, materializes the
+left operand completely before beginning the right, then constructs the
+structural operator node. Compiler-owned built-in identity and exact f64 types
+exclude overloaded operators and implicit conversion. Nested arithmetic,
+ordinary calls, immutable locals and admitted inspection/negation compose.
+
+Source proofs are separate from the earlier hand-built target tests:
+`arithmetic_native_test`, `arithmetic_ast_test`, `arithmetic_contract_test`
+and `arithmetic_rejection_test`. The three-crate example is exported as actual
+unmodified generated files by the native test, not a handwritten illustration.

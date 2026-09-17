@@ -17,14 +17,20 @@ use super::JavaUnitEffects as Unit;
 use super::JavaWrappingNegation as Wrapping;
 use super::*;
 #[cfg(public_constant_c)]
-use super::{CFloatingAbsolute as Absolute, CFloatingTruncation as Truncation};
+use super::{
+    CFloatingAbsolute as Absolute, CFloatingArithmetic as Arithmetic,
+    CFloatingTruncation as Truncation,
+};
 #[cfg(public_constant_c)]
 use super::{
     CPublicConstantImports as Imports, CPublicConstantReads as Reads,
     CPublicConstants as Declarations,
 };
 #[cfg(public_constant_java)]
-use super::{JavaFloatingAbsolute as Absolute, JavaFloatingTruncation as Truncation};
+use super::{
+    JavaFloatingAbsolute as Absolute, JavaFloatingArithmetic as Arithmetic,
+    JavaFloatingTruncation as Truncation,
+};
 #[cfg(public_constant_java)]
 use super::{
     JavaPublicConstantImports as Imports, JavaPublicConstantReads as Reads,
@@ -114,6 +120,7 @@ fn missing() {
         .floating_negation(Floating)
         .floating_nan(NaN)
         .floating_truncation(Truncation)
+        .floating_arithmetic(Arithmetic)
         .floating_absolute(Absolute);
     #[cfg(all(public_constant_complete_control, public_constant_declaration))]
     let builder = builder.public_constants(Declarations);

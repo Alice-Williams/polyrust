@@ -38,6 +38,7 @@ mod slots;
 mod wrapping_contract;
 
 mod floating_absolute;
+mod floating_arithmetic;
 mod floating_nan;
 mod floating_negation;
 mod floating_truncation;
@@ -128,6 +129,7 @@ pub(crate) use direct_calls::JavaDirectCalls;
 pub(crate) use eager_booleans::JavaEagerBooleans;
 pub(crate) use entry_signatures::JavaEntrySignatures;
 pub(crate) use floating_absolute::JavaFloatingAbsolute;
+pub(crate) use floating_arithmetic::JavaFloatingArithmetic;
 pub(crate) use floating_nan::JavaFloatingNaN;
 pub(crate) use floating_negation::JavaFloatingNegation;
 pub(crate) use floating_truncation::JavaFloatingTruncation;
@@ -176,6 +178,7 @@ pub(crate) type JavaBindings = Bindings<
     JavaFloatingNaN,
     JavaFloatingAbsolute,
     JavaFloatingTruncation,
+    JavaFloatingArithmetic,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -205,6 +208,7 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .floating_nan(JavaFloatingNaN)
         .floating_absolute(JavaFloatingAbsolute)
         .floating_truncation(JavaFloatingTruncation)
+        .floating_arithmetic(JavaFloatingArithmetic)
         .build()
 }
 
@@ -242,3 +246,12 @@ mod truncation_contract;
 #[cfg(truncation_ast_probe)]
 #[path = "../../../test/truncation_java_ast.rs"]
 mod truncation_ast;
+
+#[cfg(arithmetic_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/arithmetic_contract.rs"]
+mod arithmetic_contract;
+
+#[cfg(arithmetic_ast_probe)]
+#[path = "../../../test/arithmetic_java_ast.rs"]
+mod arithmetic_ast;

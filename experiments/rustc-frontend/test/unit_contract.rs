@@ -40,6 +40,7 @@ fn missing() {
         .floating_nan(CFloatingNaN)
         .floating_truncation(CFloatingTruncation)
         .floating_absolute(CFloatingAbsolute)
+        .floating_arithmetic(CFloatingArithmetic)
         .build();
 }
 
@@ -70,6 +71,7 @@ fn missing() {
         .floating_nan(JavaFloatingNaN)
         .floating_truncation(JavaFloatingTruncation)
         .floating_absolute(JavaFloatingAbsolute)
+        .floating_arithmetic(JavaFloatingArithmetic)
         .build();
 }
 

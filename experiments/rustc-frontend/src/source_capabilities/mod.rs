@@ -7,6 +7,7 @@ mod direct_calls;
 mod eager_booleans;
 mod entry_signatures;
 mod floating_absolute;
+mod floating_arithmetic;
 mod floating_nan;
 mod floating_negation;
 mod floating_truncation;
@@ -66,3 +67,7 @@ pub(crate) use floating_nan::{FloatingNaN, NaNInput};
 pub(crate) use floating_absolute::{AbsoluteInput, FloatingAbsolute};
 
 pub(crate) use floating_truncation::{FloatingTruncation, TruncationInput};
+
+pub(crate) use floating_arithmetic::{
+    ArithmeticInput, FloatingArithmetic, FloatingArithmeticOperator,
+};

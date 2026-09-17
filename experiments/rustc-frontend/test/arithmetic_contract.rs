@@ -1,19 +1,19 @@
-//! Each negative changes exactly one wrapping-negation mapping boundary.
-#[cfg(wrapping_c)]
-use super::CWrappingNegation as Wrapping;
-#[cfg(wrapping_java)]
-use super::JavaWrappingNegation as Wrapping;
+//! Each negative changes exactly one arithmetic mapping boundary.
+#[cfg(arithmetic_c)]
+use super::CFloatingArithmetic as Floating;
+#[cfg(arithmetic_java)]
+use super::JavaFloatingArithmetic as Floating;
 use super::*;
-#[cfg(wrapping_c)]
+#[cfg(arithmetic_c)]
 use crate::c_lower::Reader;
-#[cfg(wrapping_java)]
+#[cfg(arithmetic_java)]
 use crate::java_lower::Reader;
-#[cfg(wrapping_c)]
+#[cfg(arithmetic_c)]
 type Output = portable_backend_c::ast::CValue;
-#[cfg(wrapping_java)]
+#[cfg(arithmetic_java)]
 type Output = crate::java_lower::Value;
 
-#[cfg(all(wrapping_missing, wrapping_c))]
+#[cfg(all(arithmetic_missing, arithmetic_c))]
 fn missing() {
     Builder::new()
         .literal_values(CLiteralValues)
@@ -36,15 +36,15 @@ fn missing() {
         .public_constant_reads(CPublicConstantReads)
         .public_constant_imports(CPublicConstantImports)
         .unit_effects(CUnitEffects)
+        .wrapping_negation(CWrappingNegation)
         .floating_negation(CFloatingNegation)
         .floating_nan(CFloatingNaN)
-        .floating_truncation(CFloatingTruncation)
         .floating_absolute(CFloatingAbsolute)
-        .floating_arithmetic(CFloatingArithmetic)
+        .floating_truncation(CFloatingTruncation)
         .build();
 }
 
-#[cfg(all(wrapping_missing, wrapping_java))]
+#[cfg(all(arithmetic_missing, arithmetic_java))]
 fn missing() {
     Builder::new()
         .literal_values(JavaLiteralValues)
@@ -67,72 +67,72 @@ fn missing() {
         .public_constant_reads(JavaPublicConstantReads)
         .public_constant_imports(JavaPublicConstantImports)
         .unit_effects(JavaUnitEffects)
+        .wrapping_negation(JavaWrappingNegation)
         .floating_negation(JavaFloatingNegation)
         .floating_nan(JavaFloatingNaN)
-        .floating_truncation(JavaFloatingTruncation)
         .floating_absolute(JavaFloatingAbsolute)
-        .floating_arithmetic(JavaFloatingArithmetic)
+        .floating_truncation(JavaFloatingTruncation)
         .build();
 }
 
-#[cfg(wrapping_duplicate)]
+#[cfg(arithmetic_duplicate)]
 fn duplicate() {
     Builder::new()
-        .wrapping_negation(Wrapping)
-        .wrapping_negation(Wrapping);
+        .floating_arithmetic(Floating)
+        .floating_arithmetic(Floating);
 }
 #[cfg(any(
-    wrapping_wrong_capability,
-    wrapping_wrong_context,
-    wrapping_wrong_output
+    arithmetic_wrong_capability,
+    arithmetic_wrong_context,
+    arithmetic_wrong_output
 ))]
 #[derive(Clone, Copy)]
 struct Wrong;
 #[cfg(any(
-    wrapping_wrong_capability,
-    wrapping_wrong_context,
-    wrapping_wrong_output
+    arithmetic_wrong_capability,
+    arithmetic_wrong_context,
+    arithmetic_wrong_output
 ))]
 impl Mapping for Wrong {
-    #[cfg(wrapping_wrong_capability)]
+    #[cfg(arithmetic_wrong_capability)]
     type Capability = LiteralValues;
-    #[cfg(not(wrapping_wrong_capability))]
-    type Capability = WrappingNegation;
-    #[cfg(wrapping_wrong_context)]
+    #[cfg(not(arithmetic_wrong_capability))]
+    type Capability = FloatingArithmetic;
+    #[cfg(arithmetic_wrong_context)]
     type Context<'tcx> = ();
-    #[cfg(not(wrapping_wrong_context))]
+    #[cfg(not(arithmetic_wrong_context))]
     type Context<'tcx> = Reader<'tcx>;
-    #[cfg(wrapping_wrong_output)]
+    #[cfg(arithmetic_wrong_output)]
     type Output = ();
-    #[cfg(not(wrapping_wrong_output))]
+    #[cfg(not(arithmetic_wrong_output))]
     type Output = Output;
     fn lower<'tcx>(
         &self,
         _: &mut Self::Context<'tcx>,
         _: <Self::Capability as Capability>::Input<'tcx>,
     ) -> Result<Self::Output, String> {
-        Err("deliberately wrong wrapping-negation mapping".into())
+        Err("deliberately wrong arithmetic-value mapping".into())
     }
 }
 #[cfg(any(
-    wrapping_wrong_capability,
-    wrapping_wrong_context,
-    wrapping_wrong_output
+    arithmetic_wrong_capability,
+    arithmetic_wrong_context,
+    arithmetic_wrong_output
 ))]
 fn wrong() {
-    Builder::new().wrapping_negation(Wrong);
+    Builder::new().floating_arithmetic(Wrong);
 }
-#[cfg(wrapping_wrong_input)]
+#[cfg(arithmetic_wrong_input)]
 fn wrong_input<'tcx>(reader: &mut Reader<'tcx>, expression: &'tcx rustc_hir::Expr<'tcx>) {
     let input = LiteralInput::read(reader.tcx, reader.checked, expression).unwrap();
-    let _ = Wrapping.lower(reader, input);
+    let _ = Floating.lower(reader, input);
 }
-#[cfg(wrapping_private_input)]
+#[cfg(arithmetic_private_input)]
 fn private_input<'tcx>(expression: &'tcx rustc_hir::Expr<'tcx>) {
-    let _ = WrappingInput {
+    let _ = ArithmeticInput {
         source: expression,
-        receiver: expression,
-        definition: expression.hir_id.owner.def_id.to_def_id(),
-        width: WrappingWidth::I32,
+        operator: FloatingArithmeticOperator::Add,
+        left: expression,
+        right: expression,
     };
 }

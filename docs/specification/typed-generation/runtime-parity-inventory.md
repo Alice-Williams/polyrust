@@ -191,3 +191,19 @@ These extend partial floating-point coverage, not complete replacement of
 JavaFloatingPointArithmetic or JavaFloatingPointInspection. Track completion
 and exact gate receipts in the corresponding operation tasks; full_features
 remains empty and the legacy runtime cannot yet be removed.
+
+## Binary64 arithmetic increment
+
+[02N](../../plan/tasks/M35-03A-02N-floating-arithmetic.md) adds checked built-in
+f64 addition, subtraction, multiplication and division through the private
+canonical ArithmeticInput and executable C/Java FloatingArithmetic slots.
+Three actual Rust crates produce ordinary runtime-free C/Java packages; 45,038
+exact observations per target run, independent call traces and nine compiling
+fault controls cover grouping, separate rounding and once-only ordered operands.
+Canonical AST/dataflow probes, fourteen negative mapping contracts, forty
+atomic unsupported-source cases and strict native composition clients accompany
+the source mapping. The full 879-test release/lint gate passes.
+
+This is still partial JavaFloatingPointArithmetic coverage: remainder is not
+admitted. It neither marks a broad legacy family fully migrated nor authorizes
+removing its runtime implementation; full_features remains empty.

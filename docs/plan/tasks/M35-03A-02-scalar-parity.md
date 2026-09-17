@@ -59,9 +59,11 @@ C system-library manifests, 858 release/lint tests and clean independent reviews
 Native value/category/trace controls and actual three-crate examples are included.
 Other floating inspection and binary arithmetic remain separate work.
 
-[02N — binary64 arithmetic](M35-03A-02N-floating-arithmetic.md) is next:
-an independent rational oracle, then separate C/Java target foundations and
-checked source capability integration. No new arithmetic is admitted by planning.
+[02N — binary64 arithmetic](M35-03A-02N-floating-arithmetic.md) now has its
+independent rational oracle, separate C/Java target foundations and checked
+source capability integration complete. All 879 release/lint tests pass and
+two independent final reviews are clean. Remainder and other scalar families
+remain separate.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

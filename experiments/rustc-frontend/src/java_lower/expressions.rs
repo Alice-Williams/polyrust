@@ -98,6 +98,22 @@ impl<'tcx> Reader<'tcx> {
                             .lower(reader, BorrowInput(value))
                     }
                     hir::ExprKind::Binary(operator, ..)
+                        if matches!(
+                            operator.node,
+                            hir::BinOpKind::Add
+                                | hir::BinOpKind::Sub
+                                | hir::BinOpKind::Mul
+                                | hir::BinOpKind::Div
+                        ) && matches!(
+                            reader.checked.expr_ty(value).kind(),
+                            rustc_middle::ty::Float(rustc_middle::ty::FloatTy::F64)
+                        ) =>
+                    {
+                        let input = ArithmeticInput::read(reader.tcx, reader.checked, value)?;
+                        Supports::<FloatingArithmetic>::mapping(&reader.mappings)
+                            .lower(reader, input)
+                    }
+                    hir::ExprKind::Binary(operator, ..)
                         if matches!(operator.node, hir::BinOpKind::And | hir::BinOpKind::Or) =>
                     {
                         let input = LazyBooleanInput::read(reader.checked, value)?;

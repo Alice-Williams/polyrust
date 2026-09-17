@@ -22,6 +22,17 @@ fn expected<'tcx>(reader: &Reader<'tcx>, source: &'tcx hir::Expr<'tcx>) -> CValu
             e.unary(CUnaryOperator::Negate, expected(reader, operand))
                 .unwrap()
         }
+        hir::ExprKind::Binary(operator, left, right) => {
+            let operator = match operator.node {
+                hir::BinOpKind::Add => CBinaryOperator::Add,
+                hir::BinOpKind::Sub => CBinaryOperator::Subtract,
+                hir::BinOpKind::Mul => CBinaryOperator::Multiply,
+                hir::BinOpKind::Div => CBinaryOperator::Divide,
+                _ => panic!("arithmetic operator"),
+            };
+            e.binary(operator, expected(reader, left), expected(reader, right))
+                .unwrap()
+        }
         hir::ExprKind::Call(callee, arguments) => {
             let hir::ExprKind::Path(ref path) = callee.kind else {
                 panic!("callee path")
@@ -80,6 +91,17 @@ fn expanded(reader: &Reader<'_>, value: &CValue, prelude: &[CStatement], depth: 
         CValueKind::Unary { operator, operand } => e
             .unary(*operator, expanded(reader, operand, prelude, depth + 1))
             .unwrap(),
+        CValueKind::Binary {
+            operator,
+            left,
+            right,
+        } => e
+            .binary(
+                *operator,
+                expanded(reader, left, prelude, depth + 1),
+                expanded(reader, right, prelude, depth + 1),
+            )
+            .unwrap(),
         CValueKind::Call(call) => e
             .call_value(
                 call.callable().clone(),
@@ -105,6 +127,53 @@ pub(super) fn check<'tcx>(
         wanted,
         "exact operand dataflow, not only call presence"
     );
+    if let CValueKind::Binary {
+        operator,
+        left,
+        right,
+    } = operand.kind()
+    {
+        let wrong = if *operator == CBinaryOperator::Add {
+            CBinaryOperator::Subtract
+        } else {
+            CBinaryOperator::Add
+        };
+        let e = reader.expressions();
+        let changed = e
+            .binary(wrong, left.as_ref().clone(), right.as_ref().clone())
+            .unwrap();
+        assert_ne!(
+            expanded(reader, &changed, &reader.prelude, 0),
+            wanted,
+            "wrong actual operator must fail the source reconstruction"
+        );
+        if expanded(reader, left, &reader.prelude, 0) != expanded(reader, right, &reader.prelude, 0)
+        {
+            let mut detached = reader.prelude.clone();
+            let CStatementKind::Declare(last) = detached.last().unwrap().kind() else {
+                panic!("right temporary")
+            };
+            *detached.last_mut().unwrap() = reader
+                .statements()
+                .unwrap()
+                .declare(
+                    last.local().clone(),
+                    Some(e.expression_initializer(left.as_ref().clone()).unwrap()),
+                )
+                .unwrap();
+            assert_eq!(
+                &detached[..detached.len() - 1],
+                &reader.prelude[..reader.prelude.len() - 1]
+            );
+            assert_ne!(
+                expanded(reader, operand, &detached, 0),
+                wanted,
+                "right result disconnected while all original calls remain"
+            );
+            #[cfg(arithmetic_ast_probe)]
+            eprintln!("ARITHMETIC_DETACHED\tc");
+        }
+    }
     if let hir::ExprKind::Call(_, [argument]) = source.kind
         && matches!(argument.kind, hir::ExprKind::Path(_))
     {

@@ -38,6 +38,7 @@ mod slots;
 mod wrapping_contract;
 
 mod floating_absolute;
+mod floating_arithmetic;
 mod floating_nan;
 mod floating_negation;
 mod floating_truncation;
@@ -137,6 +138,7 @@ pub(crate) use direct_calls::CDirectCalls;
 pub(crate) use eager_booleans::CEagerBooleans;
 pub(crate) use entry_signatures::CEntrySignatures;
 pub(crate) use floating_absolute::CFloatingAbsolute;
+pub(crate) use floating_arithmetic::CFloatingArithmetic;
 pub(crate) use floating_nan::CFloatingNaN;
 pub(crate) use floating_negation::CFloatingNegation;
 pub(crate) use floating_truncation::CFloatingTruncation;
@@ -187,6 +189,7 @@ pub(crate) type CBindings = Bindings<
     CFloatingNaN,
     CFloatingAbsolute,
     CFloatingTruncation,
+    CFloatingArithmetic,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -216,6 +219,7 @@ pub(crate) fn c_bindings() -> CBindings {
         .floating_nan(CFloatingNaN)
         .floating_absolute(CFloatingAbsolute)
         .floating_truncation(CFloatingTruncation)
+        .floating_arithmetic(CFloatingArithmetic)
         .build()
 }
 
@@ -253,3 +257,12 @@ mod truncation_contract;
 #[cfg(truncation_ast_probe)]
 #[path = "../../../test/truncation_c_ast.rs"]
 mod truncation_ast;
+
+#[cfg(arithmetic_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/arithmetic_contract.rs"]
+mod arithmetic_contract;
+
+#[cfg(arithmetic_ast_probe)]
+#[path = "../../../test/arithmetic_c_ast.rs"]
+mod arithmetic_ast;
