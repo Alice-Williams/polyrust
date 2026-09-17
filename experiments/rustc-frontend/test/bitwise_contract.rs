@@ -1,5 +1,7 @@
 //! Independent negative controls for the new executable slot and checked input.
 #[cfg(bitwise_c)]
+use super::CFloatingNaN as NaN;
+#[cfg(bitwise_c)]
 use super::CFloatingNegation as Floating;
 #[cfg(bitwise_c)]
 use super::CLocalConstants as Locals;
@@ -9,6 +11,8 @@ use super::CScalarConstants as Constants;
 use super::CUnitEffects as Unit;
 #[cfg(bitwise_c)]
 use super::CWrappingNegation as Wrapping;
+#[cfg(bitwise_java)]
+use super::JavaFloatingNaN as NaN;
 #[cfg(bitwise_java)]
 use super::JavaFloatingNegation as Floating;
 #[cfg(bitwise_java)]
@@ -80,6 +84,7 @@ fn missing() {
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
+        .floating_nan(NaN)
         .build();
 }
 

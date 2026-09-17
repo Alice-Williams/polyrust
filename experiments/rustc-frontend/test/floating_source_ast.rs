@@ -5,7 +5,7 @@ use rustc_hir::{
     def_id::DefId,
     intravisit::{self, Visitor},
 };
-use rustc_middle::ty::{TyCtxt, TypeckResults};
+use rustc_middle::ty::TypeckResults;
 
 pub(super) fn calls<'tcx>(
     checked: &TypeckResults<'tcx>,
@@ -32,12 +32,4 @@ pub(super) fn calls<'tcx>(
     };
     calls.visit_expr(receiver);
     calls.identities
-}
-
-pub(super) fn checked_input<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    checked: &TypeckResults<'tcx>,
-    input: &crate::source_capabilities::FloatingInput<'tcx>,
-) {
-    input.probe(tcx, checked);
 }

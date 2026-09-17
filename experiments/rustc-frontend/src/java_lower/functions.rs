@@ -158,8 +158,16 @@ impl<'tcx> Visitor<'tcx> for Calls<'tcx> {
             self.tcx,
             self.checked,
             expression,
-        ) {
-            Ok(input) => input.is_some(),
+        )
+        .and_then(|input| {
+            if input.is_some() {
+                Ok(true)
+            } else {
+                crate::source_capabilities::NaNInput::discover(self.tcx, self.checked, expression)
+                    .map(|input| input.is_some())
+            }
+        }) {
+            Ok(admitted) => admitted,
             Err(error) => {
                 self.error = Some(error);
                 return;

@@ -130,7 +130,7 @@ pub(super) fn check<'tcx>(
     reader: &Reader<'tcx>,
     source: &'tcx hir::Expr<'tcx>,
     operand: &JavaExpr,
-) {
+) -> bool {
     let wanted = expected(reader, source);
     assert_eq!(
         expanded(operand, &reader.prelude, 0),
@@ -154,6 +154,8 @@ pub(super) fn check<'tcx>(
             wanted,
             "disconnected result must fail"
         );
-        eprintln!("FLOATING_DETACHED\tjava");
+        true
+    } else {
+        false
     }
 }

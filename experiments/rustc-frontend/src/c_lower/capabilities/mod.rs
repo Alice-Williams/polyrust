@@ -37,6 +37,7 @@ mod slots;
 #[path = "../../../test/wrapping_contract.rs"]
 mod wrapping_contract;
 
+mod floating_nan;
 mod floating_negation;
 #[cfg(unit_contract)]
 #[allow(dead_code, unused_imports)]
@@ -133,6 +134,7 @@ pub(crate) use boolean_negation::CBooleanNegation;
 pub(crate) use direct_calls::CDirectCalls;
 pub(crate) use eager_booleans::CEagerBooleans;
 pub(crate) use entry_signatures::CEntrySignatures;
+pub(crate) use floating_nan::CFloatingNaN;
 pub(crate) use floating_negation::CFloatingNegation;
 pub(crate) use function_signatures::CFunctionSignatures;
 pub(crate) use integer_bitwise::CIntegerBitwise;
@@ -178,6 +180,7 @@ pub(crate) type CBindings = Bindings<
     CUnitEffects,
     CWrappingNegation,
     CFloatingNegation,
+    CFloatingNaN,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -204,6 +207,7 @@ pub(crate) fn c_bindings() -> CBindings {
         .unit_effects(CUnitEffects)
         .wrapping_negation(CWrappingNegation)
         .floating_negation(CFloatingNegation)
+        .floating_nan(CFloatingNaN)
         .build()
 }
 
@@ -214,3 +218,12 @@ mod floating_ast;
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/floating_contract.rs"]
 mod floating_contract;
+
+#[cfg(nan_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/nan_contract.rs"]
+mod nan_contract;
+
+#[cfg(nan_ast_probe)]
+#[path = "../../../test/nan_c_ast.rs"]
+mod nan_ast;

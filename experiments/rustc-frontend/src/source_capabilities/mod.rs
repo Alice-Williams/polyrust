@@ -6,6 +6,7 @@ mod contracts;
 mod direct_calls;
 mod eager_booleans;
 mod entry_signatures;
+mod floating_nan;
 mod floating_negation;
 mod function_signatures;
 #[cfg(any(constant_import_wrong_type, constant_import_wrong_value))]
@@ -57,3 +58,5 @@ pub(crate) use unit_effects::{UnitEffects, UnitInput, UnitOperation};
 pub(crate) use wrapping_negation::{WrappingInput, WrappingNegation, WrappingWidth};
 
 pub(crate) use floating_negation::{FloatingInput, FloatingNegation};
+
+pub(crate) use floating_nan::{FloatingNaN, NaNInput};

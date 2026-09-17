@@ -46,6 +46,9 @@ load(":local_constant_targets.bzl", "local_constant_targets")
 load(":metadata_action_targets.bzl", "metadata_action_targets")
 load(":metadata_agreement_targets.bzl", "metadata_agreement_targets")
 load(":metadata_analysis_tests.bzl", "metadata_analysis_tests")
+load(":nan_ast_targets.bzl", "nan_ast_targets")
+load(":nan_contract_targets.bzl", "nan_contract_targets")
+load(":nan_targets.bzl", "nan_targets")
 load(":nested_correspondence_targets.bzl", "nested_correspondence_targets")
 load(":nested_owned_probe_targets.bzl", "nested_owned_probe_targets")
 load(":nested_record_targets.bzl", "nested_record_targets")
@@ -744,3 +747,15 @@ floating_ast_targets(
 )
 
 floating_targets(name = "floating_fixture_clippy_test")
+
+nan_contract_targets(
+    name = "nan_contract_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+nan_targets(name = "nan_fixture_clippy_test")
+
+nan_ast_targets(
+    name = "nan_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)

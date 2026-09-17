@@ -1,5 +1,5 @@
 //! Java primitive type/precedence, single local receiver and callable identity.
-use super::FloatingInput;
+use super::NaNInput;
 use crate::java_lower::Reader;
 use portable_backend_java::ast::*;
 #[path = "floating_java_dataflow.rs"]
@@ -7,29 +7,33 @@ mod dataflow;
 #[path = "floating_source_ast.rs"]
 mod source;
 
-pub(super) fn check<'tcx>(
+pub(super) fn observe<'tcx>(
     reader: &Reader<'tcx>,
-    input: &FloatingInput<'tcx>,
+    input: &NaNInput<'tcx>,
     value: &JavaExpr,
     start: usize,
 ) {
     input.probe(reader.tcx, reader.checked);
-    let primitive = JavaPrimitive::Double;
-    assert_eq!(value.ty, JavaType::primitive(primitive));
-    assert_eq!(value.precedence, JavaPrecedence::Unary);
-    let JavaExprKind::Unary {
-        operator: JavaUnaryOperator::Negate,
-        operand,
+    assert_eq!(value.ty, JavaType::primitive(JavaPrimitive::Boolean));
+    assert_eq!(value.precedence, JavaPrecedence::Equality);
+    let JavaExprKind::Binary {
+        operator: JavaBinaryOperator::NotEqual,
+        left: operand,
+        right,
     } = &value.kind
     else {
-        panic!("primitive negation")
+        panic!("primitive inequality")
     };
-    assert_eq!(operand.ty, value.ty);
+    assert_eq!(
+        operand, right,
+        "both sides read the same single receiver local"
+    );
+    assert_eq!(operand.ty, JavaType::primitive(JavaPrimitive::Double));
     let JavaExprKind::Value(JavaValueRef::Local(local)) = &operand.kind else {
         panic!("pure receiver local")
     };
-    if dataflow::check(reader, input.operand(), operand) {
-        eprintln!("FLOATING_DETACHED\tjava");
+    if dataflow::check(reader, input.receiver(), operand) {
+        eprintln!("NAN_DETACHED\tjava");
     }
     let prelude = &reader.prelude[start..];
     let JavaStmt::Local {
@@ -58,7 +62,7 @@ pub(super) fn check<'tcx>(
             actual.push(callable.clone());
         }
     }
-    let expected: Vec<_> = source::calls(reader.checked, input.operand())
+    let expected: Vec<_> = source::calls(reader.checked, input.receiver())
         .into_iter()
         .map(|id| match id.as_local() {
             Some(id) => {
@@ -72,5 +76,5 @@ pub(super) fn check<'tcx>(
         })
         .collect();
     assert_eq!(actual, expected, "exact receiver calls and original owners");
-    eprintln!("FLOATING_AST\tjava\tF64");
+    eprintln!("NAN_AST\tjava\tF64");
 }

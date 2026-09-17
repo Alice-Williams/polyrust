@@ -509,3 +509,8 @@ compiler integration are complete and verified.
 The admitted binary64 values, signatures, records, literals and comparisons are
 specified separately in [binary64 values](rust-binary64-values.md). Floating
 negation does not imply other floating operations or constant support.
+
+[Binary64 NaN classification](rust-floating-nan.md) separately authenticates the
+standard inherent f64 method/associated call. Its executable FloatingNaN mapping
+compares two reads of one materialized Double receiver with NotEqual and a
+Boolean result. It introduces no wrapper, import or custom runtime.

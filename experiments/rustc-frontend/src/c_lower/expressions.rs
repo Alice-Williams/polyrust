@@ -3,11 +3,11 @@ use super::{
     Reader, Result, c,
     capabilities::{
         BitwiseInput, BooleanNegation, BorrowInput, CallInput, ComparisonInput, ConstantInput,
-        DirectCalls, EagerBooleanInput, EagerBooleans, FloatingInput, FloatingNegation,
-        IntegerBitwise, LazyBooleanInput, LiteralInput, LiteralValues, Mapping, NegationInput,
-        PlaceInput, PublicConstantReadInput, PublicConstantReads, ResolvedPlaces,
-        ScalarComparisons, ScalarConstants, SharedBorrows, ShortCircuitBooleans, Supports,
-        WrappingInput, WrappingNegation,
+        DirectCalls, EagerBooleanInput, EagerBooleans, FloatingInput, FloatingNaN,
+        FloatingNegation, IntegerBitwise, LazyBooleanInput, LiteralInput, LiteralValues, Mapping,
+        NaNInput, NegationInput, PlaceInput, PublicConstantReadInput, PublicConstantReads,
+        ResolvedPlaces, ScalarComparisons, ScalarConstants, SharedBorrows, ShortCircuitBooleans,
+        Supports, WrappingInput, WrappingNegation,
     },
 };
 use portable_backend_c::ast::{CPlace, CValue};
@@ -16,6 +16,9 @@ use rustc_hir as hir;
 impl<'tcx> Reader<'tcx> {
     pub(super) fn expr(&mut self, value: &'tcx hir::Expr<'tcx>) -> Result<CValue> {
         self.ty(self.checked.expr_ty(value))?;
+        if let Some(input) = NaNInput::discover(self.tcx, self.checked, value)? {
+            return Supports::<FloatingNaN>::mapping(&self.mappings).lower(self, input);
+        }
         if let Some(input) = WrappingInput::discover(self.tcx, self.checked, value)? {
             return Supports::<WrappingNegation>::mapping(&self.mappings).lower(self, input);
         }

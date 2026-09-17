@@ -37,6 +37,7 @@ fn missing() {
         .public_constant_imports(CPublicConstantImports)
         .wrapping_negation(CWrappingNegation)
         .floating_negation(CFloatingNegation)
+        .floating_nan(CFloatingNaN)
         .build();
 }
 
@@ -64,6 +65,7 @@ fn missing() {
         .public_constant_imports(JavaPublicConstantImports)
         .wrapping_negation(JavaWrappingNegation)
         .floating_negation(JavaFloatingNegation)
+        .floating_nan(JavaFloatingNaN)
         .build();
 }
 

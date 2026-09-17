@@ -1,19 +1,19 @@
-//! Each negative changes exactly one wrapping-negation mapping boundary.
-#[cfg(wrapping_c)]
-use super::CWrappingNegation as Wrapping;
-#[cfg(wrapping_java)]
-use super::JavaWrappingNegation as Wrapping;
+//! Each negative changes exactly one nan-negation mapping boundary.
+#[cfg(nan_c)]
+use super::CFloatingNaN as Floating;
+#[cfg(nan_java)]
+use super::JavaFloatingNaN as Floating;
 use super::*;
-#[cfg(wrapping_c)]
+#[cfg(nan_c)]
 use crate::c_lower::Reader;
-#[cfg(wrapping_java)]
+#[cfg(nan_java)]
 use crate::java_lower::Reader;
-#[cfg(wrapping_c)]
+#[cfg(nan_c)]
 type Output = portable_backend_c::ast::CValue;
-#[cfg(wrapping_java)]
+#[cfg(nan_java)]
 type Output = crate::java_lower::Value;
 
-#[cfg(all(wrapping_missing, wrapping_c))]
+#[cfg(all(nan_missing, nan_c))]
 fn missing() {
     Builder::new()
         .literal_values(CLiteralValues)
@@ -36,12 +36,12 @@ fn missing() {
         .public_constant_reads(CPublicConstantReads)
         .public_constant_imports(CPublicConstantImports)
         .unit_effects(CUnitEffects)
+        .wrapping_negation(CWrappingNegation)
         .floating_negation(CFloatingNegation)
-        .floating_nan(CFloatingNaN)
         .build();
 }
 
-#[cfg(all(wrapping_missing, wrapping_java))]
+#[cfg(all(nan_missing, nan_java))]
 fn missing() {
     Builder::new()
         .literal_values(JavaLiteralValues)
@@ -64,69 +64,54 @@ fn missing() {
         .public_constant_reads(JavaPublicConstantReads)
         .public_constant_imports(JavaPublicConstantImports)
         .unit_effects(JavaUnitEffects)
+        .wrapping_negation(JavaWrappingNegation)
         .floating_negation(JavaFloatingNegation)
-        .floating_nan(JavaFloatingNaN)
         .build();
 }
 
-#[cfg(wrapping_duplicate)]
+#[cfg(nan_duplicate)]
 fn duplicate() {
-    Builder::new()
-        .wrapping_negation(Wrapping)
-        .wrapping_negation(Wrapping);
+    Builder::new().floating_nan(Floating).floating_nan(Floating);
 }
-#[cfg(any(
-    wrapping_wrong_capability,
-    wrapping_wrong_context,
-    wrapping_wrong_output
-))]
+#[cfg(any(nan_wrong_capability, nan_wrong_context, nan_wrong_output))]
 #[derive(Clone, Copy)]
 struct Wrong;
-#[cfg(any(
-    wrapping_wrong_capability,
-    wrapping_wrong_context,
-    wrapping_wrong_output
-))]
+#[cfg(any(nan_wrong_capability, nan_wrong_context, nan_wrong_output))]
 impl Mapping for Wrong {
-    #[cfg(wrapping_wrong_capability)]
+    #[cfg(nan_wrong_capability)]
     type Capability = LiteralValues;
-    #[cfg(not(wrapping_wrong_capability))]
-    type Capability = WrappingNegation;
-    #[cfg(wrapping_wrong_context)]
+    #[cfg(not(nan_wrong_capability))]
+    type Capability = FloatingNaN;
+    #[cfg(nan_wrong_context)]
     type Context<'tcx> = ();
-    #[cfg(not(wrapping_wrong_context))]
+    #[cfg(not(nan_wrong_context))]
     type Context<'tcx> = Reader<'tcx>;
-    #[cfg(wrapping_wrong_output)]
+    #[cfg(nan_wrong_output)]
     type Output = ();
-    #[cfg(not(wrapping_wrong_output))]
+    #[cfg(not(nan_wrong_output))]
     type Output = Output;
     fn lower<'tcx>(
         &self,
         _: &mut Self::Context<'tcx>,
         _: <Self::Capability as Capability>::Input<'tcx>,
     ) -> Result<Self::Output, String> {
-        Err("deliberately wrong wrapping-negation mapping".into())
+        Err("deliberately wrong nan-negation mapping".into())
     }
 }
-#[cfg(any(
-    wrapping_wrong_capability,
-    wrapping_wrong_context,
-    wrapping_wrong_output
-))]
+#[cfg(any(nan_wrong_capability, nan_wrong_context, nan_wrong_output))]
 fn wrong() {
-    Builder::new().wrapping_negation(Wrong);
+    Builder::new().floating_nan(Wrong);
 }
-#[cfg(wrapping_wrong_input)]
+#[cfg(nan_wrong_input)]
 fn wrong_input<'tcx>(reader: &mut Reader<'tcx>, expression: &'tcx rustc_hir::Expr<'tcx>) {
     let input = LiteralInput::read(reader.tcx, reader.checked, expression).unwrap();
-    let _ = Wrapping.lower(reader, input);
+    let _ = Floating.lower(reader, input);
 }
-#[cfg(wrapping_private_input)]
+#[cfg(nan_private_input)]
 fn private_input<'tcx>(expression: &'tcx rustc_hir::Expr<'tcx>) {
-    let _ = WrappingInput {
+    let _ = NaNInput {
         source: expression,
         receiver: expression,
         definition: expression.hir_id.owner.def_id.to_def_id(),
-        width: WrappingWidth::I32,
     };
 }

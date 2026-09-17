@@ -94,7 +94,11 @@ fn expanded(reader: &Reader<'_>, value: &CValue, prelude: &[CStatement], depth: 
     }
 }
 
-pub(super) fn check<'tcx>(reader: &Reader<'tcx>, source: &'tcx hir::Expr<'tcx>, operand: &CValue) {
+pub(super) fn check<'tcx>(
+    reader: &Reader<'tcx>,
+    source: &'tcx hir::Expr<'tcx>,
+    operand: &CValue,
+) -> bool {
     let wanted = expected(reader, source);
     assert_eq!(
         expanded(reader, operand, &reader.prelude, 0),
@@ -133,6 +137,8 @@ pub(super) fn check<'tcx>(reader: &Reader<'tcx>, source: &'tcx hir::Expr<'tcx>, 
             wanted,
             "disconnected result must fail"
         );
-        eprintln!("FLOATING_DETACHED\tc");
+        true
+    } else {
+        false
     }
 }

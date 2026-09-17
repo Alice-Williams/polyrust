@@ -45,6 +45,9 @@ independent review. Floating arithmetic/constants/casts remain separate work.
 [02J — built-in binary64 negation](M35-03A-02J-floating-negation.md) is complete:
 primitive target admission and canonical compiler integration, 804/804 release
 tests, exact value/dataflow/atomic proof and clean independent reviews.
+[02K — binary64 NaN classification](M35-03A-02K-floating-nan.md) is complete:
+standard inherent method/associated forms, original receiver and owner proof,
+822/822 release tests, exported examples and clean independent reviews.
 Remaining floating inspection and arithmetic require separate bounded contracts.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
