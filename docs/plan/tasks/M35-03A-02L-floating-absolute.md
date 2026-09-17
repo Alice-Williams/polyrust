@@ -1,6 +1,6 @@
 # M35-03A-02L — Built-in binary64 absolute value
 
-- Status: in-progress
+- Status: complete
 - Parent: [scalar parity](M35-03A-02-scalar-parity.md)
 - Depends on: [NaN classification](M35-03A-02K-floating-nan.md)
 
@@ -11,6 +11,8 @@
    Extend C's shared certified profile only for Bool condition and exact F64
    branch/result identity. Verify existing Java primitive conditional support.
 2. [02L-02 — checked source absolute value](M35-03A-02L-02-compiler-absolute.md).
+   Complete, with 840/840 Linux release tests, native/AST/atomic proof and
+   reviewed ordinary-call preservation controls.
    Authenticate standard inherent f64::abs method/associated calls, add the
    executable typed mapping and complete native/AST/atomic proof.
 

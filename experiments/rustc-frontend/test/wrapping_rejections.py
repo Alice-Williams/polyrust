@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 CASES = {
-    "checked_neg": ("pub fn value(v: i32) -> i32 { v.abs() }", "expression mapping is not implemented"),
+    "checked_abs": ("pub fn value(v: i32) -> i32 { v.abs() }", "Floating absolute value supports only exact f64"),
     "extra_argument": ("pub fn value(v: i32) -> i32 { v.wrapping_add(1) }", "expression mapping is not implemented"),
     "lookalike_extra_argument": ("trait Fake { fn wrapping_neg(self, extra: i32) -> i32; } impl Fake for bool { fn wrapping_neg(self, extra: i32) -> i32 { extra } } pub fn value(v: bool) -> i32 { v.wrapping_neg(1) }", "wrapping negation takes no extra arguments"),
     "borrow_adjustment": ("pub fn value(v: i32) -> i32 { (&v).wrapping_neg() }", "nongeneric unadjusted by-value"),

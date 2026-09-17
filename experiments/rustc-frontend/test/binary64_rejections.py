@@ -19,7 +19,7 @@ def main():
         "integer_negate": ("pub fn value(v:i64)->i64 {-v}", "only negative scalar literals", True),
         "cast": ("pub fn value(v:i64)->f64 {v as f64}", "expression mapping is not implemented", True),
         "narrow": ("pub fn value(v:f64)->i64 {v as i64}", "expression mapping is not implemented", True),
-        "method": ("pub fn value(v:f64)->f64 {v.abs()}", "expression mapping is not implemented", True),
+        "method": ("pub fn value(v:f64)->f64 {v.floor()}", "expression mapping is not implemented", True),
         "nonfinite": ("#![allow(overflowing_literals)]\npub fn value()->f64 {1e400}", "nonfinite f64 literals", True),
         "constant": ("pub const VALUE:f64=1.0; pub fn value()->f64 {VALUE}", "constants support only", True),
         "local_constant": ("pub fn value()->f64 {const V:f64=1.0; V}", "constants support only", True),

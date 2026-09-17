@@ -1,5 +1,7 @@
 //! Every new executable slot has isolated compile-negative boundary controls.
 #[cfg(public_constant_c)]
+use super::CFloatingAbsolute as Absolute;
+#[cfg(public_constant_c)]
 use super::CFloatingNaN as NaN;
 #[cfg(public_constant_c)]
 use super::CFloatingNegation as Floating;
@@ -7,6 +9,8 @@ use super::CFloatingNegation as Floating;
 use super::CUnitEffects as Unit;
 #[cfg(public_constant_c)]
 use super::CWrappingNegation as Wrapping;
+#[cfg(public_constant_java)]
+use super::JavaFloatingAbsolute as Absolute;
 #[cfg(public_constant_java)]
 use super::JavaFloatingNaN as NaN;
 #[cfg(public_constant_java)]
@@ -108,7 +112,8 @@ fn missing() {
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
-        .floating_nan(NaN);
+        .floating_nan(NaN)
+        .floating_absolute(Absolute);
     #[cfg(all(public_constant_complete_control, public_constant_declaration))]
     let builder = builder.public_constants(Declarations);
     #[cfg(all(public_constant_complete_control, public_constant_read))]

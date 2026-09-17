@@ -1,3 +1,4 @@
+use super::CFloatingAbsolute as Absolute;
 use super::CFloatingNaN as NaN;
 use super::CFloatingNegation as Floating;
 use super::CUnitEffects as Unit;
@@ -35,6 +36,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -59,6 +61,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -83,6 +86,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -107,6 +111,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -131,6 +136,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -155,6 +161,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -179,6 +186,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -203,6 +211,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -227,6 +236,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_absolute(Absolute)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -251,5 +261,6 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_absolute(Absolute)
         .build();
 }

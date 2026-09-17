@@ -37,6 +37,7 @@ mod slots;
 #[path = "../../../test/wrapping_contract.rs"]
 mod wrapping_contract;
 
+mod floating_absolute;
 mod floating_nan;
 mod floating_negation;
 #[cfg(unit_contract)]
@@ -134,6 +135,7 @@ pub(crate) use boolean_negation::CBooleanNegation;
 pub(crate) use direct_calls::CDirectCalls;
 pub(crate) use eager_booleans::CEagerBooleans;
 pub(crate) use entry_signatures::CEntrySignatures;
+pub(crate) use floating_absolute::CFloatingAbsolute;
 pub(crate) use floating_nan::CFloatingNaN;
 pub(crate) use floating_negation::CFloatingNegation;
 pub(crate) use function_signatures::CFunctionSignatures;
@@ -181,6 +183,7 @@ pub(crate) type CBindings = Bindings<
     CWrappingNegation,
     CFloatingNegation,
     CFloatingNaN,
+    CFloatingAbsolute,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -208,6 +211,7 @@ pub(crate) fn c_bindings() -> CBindings {
         .wrapping_negation(CWrappingNegation)
         .floating_negation(CFloatingNegation)
         .floating_nan(CFloatingNaN)
+        .floating_absolute(CFloatingAbsolute)
         .build()
 }
 
@@ -227,3 +231,12 @@ mod nan_contract;
 #[cfg(nan_ast_probe)]
 #[path = "../../../test/nan_c_ast.rs"]
 mod nan_ast;
+
+#[cfg(absolute_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/absolute_contract.rs"]
+mod absolute_contract;
+
+#[cfg(absolute_ast_probe)]
+#[path = "../../../test/absolute_c_ast.rs"]
+mod absolute_ast;

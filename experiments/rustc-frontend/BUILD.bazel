@@ -1,6 +1,9 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_clippy_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load(":absolute_ast_targets.bzl", "absolute_ast_targets")
+load(":absolute_contract_targets.bzl", "absolute_contract_targets")
+load(":absolute_targets.bzl", "absolute_targets")
 load(":binary64_ast_targets.bzl", "binary64_ast_targets")
 load(":binary64_targets.bzl", "binary64_targets")
 load(":bitwise_ast_targets.bzl", "bitwise_ast_targets")
@@ -759,3 +762,15 @@ nan_ast_targets(
     name = "nan_ast_test",
     c_sources = ADAPTER_SOURCES,
 )
+
+absolute_contract_targets(
+    name = "absolute_contract_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+absolute_ast_targets(
+    name = "absolute_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+absolute_targets(name = "absolute_fixture_clippy_test")

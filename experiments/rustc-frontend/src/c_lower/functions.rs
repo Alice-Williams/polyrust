@@ -150,7 +150,18 @@ impl<'tcx> Visitor<'tcx> for Calls<'tcx> {
                 Ok(true)
             } else {
                 crate::source_capabilities::NaNInput::discover(self.tcx, self.checked, expression)
-                    .map(|input| input.is_some())
+                    .and_then(|input| {
+                        if input.is_some() {
+                            Ok(true)
+                        } else {
+                            crate::source_capabilities::AbsoluteInput::discover(
+                                self.tcx,
+                                self.checked,
+                                expression,
+                            )
+                            .map(|input| input.is_some())
+                        }
+                    })
             }
         }) {
             Ok(admitted) => admitted,

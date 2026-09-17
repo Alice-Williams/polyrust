@@ -1,6 +1,6 @@
 # M35-03A-02L-02 — Checked Rust binary64 absolute-value mapping
 
-- Status: planned
+- Status: complete
 - Parent: [absolute value](M35-03A-02L-floating-absolute.md)
 - Depends on: [target conditional foundation](M35-03A-02L-01-floating-conditional.md)
 
@@ -35,3 +35,41 @@ The renderer performs only structural emission.
   compiler contracts and atomic unsupported-neighbor rejection remain enforced.
 - Prior bundles unchanged, full Linux release/lint tests and fresh independent
   review pass before a scoped commit/push. Only partial parity is recorded.
+
+## Implementation and evidence
+
+- Exact implementation tree 286e29bd096624b75d064161981f5d02c17bbc6b passed
+  Linux Bazel test //... //:release_gate: 840/840 tests across 1,280 targets,
+  3 executed and 837 cached, 74.100 seconds.
+  Invocation: 820aa51f-0cb8-4758-a271-4977d71304ad.
+- Both builders have a required executable FloatingAbsolute slot with exact
+  Reader/input/output bounds. Existing missing-capability controls explicitly
+  install it so they retain their original independent failure cause.
+- Native proof compares 578 results across 72 raw binary64 inputs and two
+  literal results, three original Rust crates, GCC14/Zig C17 O0/O2 and Java21
+  strict lint. Seven value/trace faults are detected. Standard abs and a
+  same-named ordinary free function remain distinct: exact middle import IDs,
+  leaf B/root A traces and value-preserving ordinary-call replacement/duplicate
+  controls close the review-discovered non-vacuity gap.
+- Each target passes seven read-only AST observations, canonical/context/
+  copied-HIR controls and two retained-call disconnected-result controls.
+  Observed and production output bytes are identical. Fourteen independent
+  compile-negative contracts and 48 atomic unsupported-source cases pass.
+- The first full gate caught an older i32::abs rejection expecting the generic
+  unsupported-expression diagnostic. Its unchanged source now correctly
+  expects the new exact f64-only primitive diagnostic; no tests were disabled.
+- All 138 files in the earlier 18 bundle baseline and both preceding
+  floating-negation and NaN-classification pairs are byte-identical.
+  Twenty-four actual example files are exported at
+  generated/examples/floating-absolute-286e29bd; generated C/Java directories
+  are byte-identical to the tested unmodified bundles.
+- Sol Extra High library_import_review accepted the ordinary-call proof fix
+  and found no other core or required-proof findings. Fresh independent
+  binary64_targets_review also found no further core/proof issue. Its inventory
+  classification observation is corrected: legacy FloatAbs belongs to
+  JavaFloatingPointInspection, not JavaFloatingPointArithmetic.
+- Optional extra source spellings/nested abs cases and more stage-specific
+  diagnostics are deferred: canonical method/associated identity, composition,
+  exact AST/dataflow and independent failure contracts already cover this
+  bounded operation. No NaN sign/payload, general arithmetic, full floating
+  inspection or runtime-retirement claim is made.

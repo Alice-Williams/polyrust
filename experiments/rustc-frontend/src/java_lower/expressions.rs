@@ -26,8 +26,11 @@ impl<'tcx> Reader<'tcx> {
     pub(super) fn expr(&mut self, value: &'tcx hir::Expr<'tcx>) -> Result<Value> {
         self.bounded(|reader| {
             reader.ty(reader.checked.expr_ty(value))?;
-            let result = if let Some(input) = NaNInput::discover(reader.tcx, reader.checked, value)?
+            let result = if let Some(input) =
+                AbsoluteInput::discover(reader.tcx, reader.checked, value)?
             {
+                Supports::<FloatingAbsolute>::mapping(&reader.mappings).lower(reader, input)?
+            } else if let Some(input) = NaNInput::discover(reader.tcx, reader.checked, value)? {
                 Supports::<FloatingNaN>::mapping(&reader.mappings).lower(reader, input)?
             } else if let Some(input) = WrappingInput::discover(reader.tcx, reader.checked, value)?
             {

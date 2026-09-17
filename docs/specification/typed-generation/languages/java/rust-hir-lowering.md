@@ -514,3 +514,9 @@ negation does not imply other floating operations or constant support.
 standard inherent f64 method/associated call. Its executable FloatingNaN mapping
 compares two reads of one materialized Double receiver with NotEqual and a
 Boolean result. It introduces no wrapper, import or custom runtime.
+
+[Binary64 absolute value](rust-floating-absolute.md) authenticates standard
+inherent f64::abs method/associated calls. FloatingAbsolute materializes one
+Double receiver and constructs positive-zero equality and nested sign selection
+with primitive Double conditional branches, without Math imports or helpers.
+The shared contract retains category-only NaN observations.

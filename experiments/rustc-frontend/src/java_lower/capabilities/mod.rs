@@ -37,6 +37,7 @@ mod slots;
 #[path = "../../../test/wrapping_contract.rs"]
 mod wrapping_contract;
 
+mod floating_absolute;
 mod floating_nan;
 mod floating_negation;
 #[cfg(unit_contract)]
@@ -125,6 +126,7 @@ pub(crate) use boolean_negation::JavaBooleanNegation;
 pub(crate) use direct_calls::JavaDirectCalls;
 pub(crate) use eager_booleans::JavaEagerBooleans;
 pub(crate) use entry_signatures::JavaEntrySignatures;
+pub(crate) use floating_absolute::JavaFloatingAbsolute;
 pub(crate) use floating_nan::JavaFloatingNaN;
 pub(crate) use floating_negation::JavaFloatingNegation;
 pub(crate) use function_signatures::JavaFunctionSignatures;
@@ -170,6 +172,7 @@ pub(crate) type JavaBindings = Bindings<
     JavaWrappingNegation,
     JavaFloatingNegation,
     JavaFloatingNaN,
+    JavaFloatingAbsolute,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -197,6 +200,7 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .wrapping_negation(JavaWrappingNegation)
         .floating_negation(JavaFloatingNegation)
         .floating_nan(JavaFloatingNaN)
+        .floating_absolute(JavaFloatingAbsolute)
         .build()
 }
 
@@ -216,3 +220,12 @@ mod nan_contract;
 #[cfg(nan_ast_probe)]
 #[path = "../../../test/nan_java_ast.rs"]
 mod nan_ast;
+
+#[cfg(absolute_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/absolute_contract.rs"]
+mod absolute_contract;
+
+#[cfg(absolute_ast_probe)]
+#[path = "../../../test/absolute_java_ast.rs"]
+mod absolute_ast;

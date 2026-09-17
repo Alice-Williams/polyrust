@@ -1,6 +1,6 @@
 # Rust f64::abs in C17
 
-- Status: normative bounded design; implementation pending
+- Status: bounded implementation verified; see M35-03A-02L-02 evidence
 - Contract: [shared](../../rust-floating-absolute.md)
 
 ## Certified target foundation

@@ -1,5 +1,7 @@
 //! Independent negative controls for the new executable slot and checked input.
 #[cfg(lazy_c)]
+use super::CFloatingAbsolute as Absolute;
+#[cfg(lazy_c)]
 use super::CFloatingNaN as NaN;
 #[cfg(lazy_c)]
 use super::CFloatingNegation as Floating;
@@ -13,6 +15,8 @@ use super::CScalarConstants as Constants;
 use super::CUnitEffects as Unit;
 #[cfg(lazy_c)]
 use super::CWrappingNegation as Wrapping;
+#[cfg(lazy_java)]
+use super::JavaFloatingAbsolute as Absolute;
 #[cfg(lazy_java)]
 use super::JavaFloatingNaN as NaN;
 #[cfg(lazy_java)]
@@ -89,6 +93,7 @@ fn missing() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_absolute(Absolute)
         .build();
 }
 

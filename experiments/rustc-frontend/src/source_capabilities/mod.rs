@@ -6,6 +6,7 @@ mod contracts;
 mod direct_calls;
 mod eager_booleans;
 mod entry_signatures;
+mod floating_absolute;
 mod floating_nan;
 mod floating_negation;
 mod function_signatures;
@@ -60,3 +61,5 @@ pub(crate) use wrapping_negation::{WrappingInput, WrappingNegation, WrappingWidt
 pub(crate) use floating_negation::{FloatingInput, FloatingNegation};
 
 pub(crate) use floating_nan::{FloatingNaN, NaNInput};
+
+pub(crate) use floating_absolute::{AbsoluteInput, FloatingAbsolute};

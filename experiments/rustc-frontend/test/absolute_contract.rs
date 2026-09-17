@@ -1,19 +1,19 @@
-//! Each negative changes exactly one nan-negation mapping boundary.
-#[cfg(nan_c)]
-use super::CFloatingNaN as Floating;
-#[cfg(nan_java)]
-use super::JavaFloatingNaN as Floating;
+//! Each negative changes exactly one absolute-value mapping boundary.
+#[cfg(absolute_c)]
+use super::CFloatingAbsolute as Floating;
+#[cfg(absolute_java)]
+use super::JavaFloatingAbsolute as Floating;
 use super::*;
-#[cfg(nan_c)]
+#[cfg(absolute_c)]
 use crate::c_lower::Reader;
-#[cfg(nan_java)]
+#[cfg(absolute_java)]
 use crate::java_lower::Reader;
-#[cfg(nan_c)]
+#[cfg(absolute_c)]
 type Output = portable_backend_c::ast::CValue;
-#[cfg(nan_java)]
+#[cfg(absolute_java)]
 type Output = crate::java_lower::Value;
 
-#[cfg(all(nan_missing, nan_c))]
+#[cfg(all(absolute_missing, absolute_c))]
 fn missing() {
     Builder::new()
         .literal_values(CLiteralValues)
@@ -38,11 +38,11 @@ fn missing() {
         .unit_effects(CUnitEffects)
         .wrapping_negation(CWrappingNegation)
         .floating_negation(CFloatingNegation)
-        .floating_absolute(CFloatingAbsolute)
+        .floating_nan(CFloatingNaN)
         .build();
 }
 
-#[cfg(all(nan_missing, nan_java))]
+#[cfg(all(absolute_missing, absolute_java))]
 fn missing() {
     Builder::new()
         .literal_values(JavaLiteralValues)
@@ -67,51 +67,65 @@ fn missing() {
         .unit_effects(JavaUnitEffects)
         .wrapping_negation(JavaWrappingNegation)
         .floating_negation(JavaFloatingNegation)
-        .floating_absolute(JavaFloatingAbsolute)
+        .floating_nan(JavaFloatingNaN)
         .build();
 }
 
-#[cfg(nan_duplicate)]
+#[cfg(absolute_duplicate)]
 fn duplicate() {
-    Builder::new().floating_nan(Floating).floating_nan(Floating);
+    Builder::new()
+        .floating_absolute(Floating)
+        .floating_absolute(Floating);
 }
-#[cfg(any(nan_wrong_capability, nan_wrong_context, nan_wrong_output))]
+#[cfg(any(
+    absolute_wrong_capability,
+    absolute_wrong_context,
+    absolute_wrong_output
+))]
 #[derive(Clone, Copy)]
 struct Wrong;
-#[cfg(any(nan_wrong_capability, nan_wrong_context, nan_wrong_output))]
+#[cfg(any(
+    absolute_wrong_capability,
+    absolute_wrong_context,
+    absolute_wrong_output
+))]
 impl Mapping for Wrong {
-    #[cfg(nan_wrong_capability)]
+    #[cfg(absolute_wrong_capability)]
     type Capability = LiteralValues;
-    #[cfg(not(nan_wrong_capability))]
-    type Capability = FloatingNaN;
-    #[cfg(nan_wrong_context)]
+    #[cfg(not(absolute_wrong_capability))]
+    type Capability = FloatingAbsolute;
+    #[cfg(absolute_wrong_context)]
     type Context<'tcx> = ();
-    #[cfg(not(nan_wrong_context))]
+    #[cfg(not(absolute_wrong_context))]
     type Context<'tcx> = Reader<'tcx>;
-    #[cfg(nan_wrong_output)]
+    #[cfg(absolute_wrong_output)]
     type Output = ();
-    #[cfg(not(nan_wrong_output))]
+    #[cfg(not(absolute_wrong_output))]
     type Output = Output;
     fn lower<'tcx>(
         &self,
         _: &mut Self::Context<'tcx>,
         _: <Self::Capability as Capability>::Input<'tcx>,
     ) -> Result<Self::Output, String> {
-        Err("deliberately wrong nan-negation mapping".into())
+        Err("deliberately wrong absolute-value mapping".into())
     }
 }
-#[cfg(any(nan_wrong_capability, nan_wrong_context, nan_wrong_output))]
+#[cfg(any(
+    absolute_wrong_capability,
+    absolute_wrong_context,
+    absolute_wrong_output
+))]
 fn wrong() {
-    Builder::new().floating_nan(Wrong);
+    Builder::new().floating_absolute(Wrong);
 }
-#[cfg(nan_wrong_input)]
+#[cfg(absolute_wrong_input)]
 fn wrong_input<'tcx>(reader: &mut Reader<'tcx>, expression: &'tcx rustc_hir::Expr<'tcx>) {
     let input = LiteralInput::read(reader.tcx, reader.checked, expression).unwrap();
     let _ = Floating.lower(reader, input);
 }
-#[cfg(nan_private_input)]
+#[cfg(absolute_private_input)]
 fn private_input<'tcx>(expression: &'tcx rustc_hir::Expr<'tcx>) {
-    let _ = NaNInput {
+    let _ = AbsoluteInput {
         source: expression,
         receiver: expression,
         definition: expression.hir_id.owner.def_id.to_def_id(),

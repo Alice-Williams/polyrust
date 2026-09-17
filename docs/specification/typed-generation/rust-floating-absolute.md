@@ -1,6 +1,6 @@
 # Checked Rust binary64 absolute value
 
-- Status: normative bounded design; implementation pending
+- Status: bounded implementation verified; see M35-03A-02L-02 evidence
 - Plan: [M35-03A-02L](../../plan/tasks/M35-03A-02L-floating-absolute.md)
 - Targets: [C17](languages/c/rust-floating-absolute.md), [Java21](languages/java/rust-floating-absolute.md)
 

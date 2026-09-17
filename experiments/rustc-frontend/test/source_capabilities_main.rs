@@ -244,7 +244,19 @@ fn nan<'tcx>(
         let _ = input.receiver();
     }
 }
+fn absolute<'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+) {
+    if let Ok(Some(input)) = AbsoluteInput::discover(tcx, checked, expression) {
+        let _ = input.require_context(tcx, checked);
+        let _ = input.receiver();
+    }
+}
 fn main() {
+    capability::<FloatingAbsolute>();
+    let _ = absolute;
     capability::<FloatingNaN>();
     let _ = nan;
     capability::<FloatingNegation>();

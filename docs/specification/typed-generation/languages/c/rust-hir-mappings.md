@@ -126,6 +126,7 @@ not aliases for the complete portable capability catalogue:
 | FunctionSignatures | ordinary local or authenticated foreign compiler DefId and scalar-parameter / scalar-or-unit-result signature facts | CFunctionType |
 | DirectCalls | resolved ordinary scalar-result call HIR expression | CValue plus scope-owned typed evaluation declarations |
 | WrappingNegation | private canonical built-in method input, exact I32/I64 width and receiver | One evaluation temporary, typed MIN equality/conditional/negation, exact I32 normalization; see [wrapping contract](rust-wrapping-negation.md) |
+| FloatingAbsolute | private canonical AbsoluteInput retaining the authenticated core f64::abs receiver | One F64 local, positive-zero equality and nested sign selection with exact F64 conditional branches; see [absolute contract](rust-floating-absolute.md) |
 | FloatingNaN | private canonical NaNInput retaining the authenticated core f64 method and receiver | One F64 local, primitive NotEqual self-comparison and Int-to-Bool conversion; see [NaN contract](rust-floating-nan.md) |
 | FloatingNegation | private canonical FloatingInput, original TypeckResults and exact unadjusted built-in f64 operand/result | One evaluation temporary and exact F64 unary Negate; see [floating contract](rust-floating-negation.md) |
 | UnitEffects | private checked UnitInput with closed empty/call/block/conditional operation and HIR scope | Typed effect statements; ordinary void calls and no value temporary |
