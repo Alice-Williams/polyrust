@@ -270,6 +270,30 @@ impl Reader<'_> {
                 right,
             } if matches!(
                 operator,
+                JavaBinaryOperator::Add
+                    | JavaBinaryOperator::Subtract
+                    | JavaBinaryOperator::Multiply
+                    | JavaBinaryOperator::Divide
+            ) && value.ty == JavaType::primitive(JavaPrimitive::Double)
+                && left.ty == value.ty
+                && right.ty == value.ty
+                && value.precedence
+                    == match operator {
+                        JavaBinaryOperator::Add | JavaBinaryOperator::Subtract => {
+                            JavaPrecedence::Additive
+                        }
+                        _ => JavaPrecedence::Multiplicative,
+                    } =>
+            {
+                self.expression(left, depth + 1)?;
+                self.expression(right, depth + 1)?;
+            }
+            JavaExprKind::Binary {
+                operator,
+                left,
+                right,
+            } if matches!(
+                operator,
                 JavaBinaryOperator::Equal
                     | JavaBinaryOperator::NotEqual
                     | JavaBinaryOperator::Less
@@ -400,3 +424,7 @@ mod i64_tests;
 #[cfg(test)]
 #[path = "../../tests/dependency_bitwise_bodies.rs"]
 mod bitwise_tests;
+
+#[cfg(test)]
+#[path = "../../tests/dependency_arithmetic_bodies.rs"]
+mod arithmetic_tests;

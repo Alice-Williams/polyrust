@@ -81,7 +81,11 @@ impl Reader<'_> {
                     | JavaBinaryOperator::GreaterEqual
                     | JavaBinaryOperator::BitAnd
                     | JavaBinaryOperator::BitOr
-                    | JavaBinaryOperator::BitXor,
+                    | JavaBinaryOperator::BitXor
+                    | JavaBinaryOperator::Add
+                    | JavaBinaryOperator::Subtract
+                    | JavaBinaryOperator::Multiply
+                    | JavaBinaryOperator::Divide,
                 left,
                 right,
             } => {

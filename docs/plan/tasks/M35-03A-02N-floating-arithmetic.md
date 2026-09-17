@@ -9,7 +9,7 @@
 
 1. [02N-01 — Independent arithmetic oracle](M35-03A-02N-01-arithmetic-oracle.md) — complete.
 2. [02N-02 — C target arithmetic](M35-03A-02N-02-c-arithmetic.md) — complete.
-3. [02N-03 — Java target arithmetic](M35-03A-02N-03-java-arithmetic.md).
+3. [02N-03 — Java target arithmetic](M35-03A-02N-03-java-arithmetic.md) — complete.
 4. [02N-04 — Checked Rust capability](M35-03A-02N-04-compiler-arithmetic.md).
 
 Each checkpoint needs a focused tested tree, independent review and its own

@@ -136,7 +136,12 @@ rust_test(
     compile_data = ["//crates/build:testdata/registration.poly.json"],
     crate_name = "portable_backend_java",
     crate_root = "src/lib.rs",
-    data = ["@bazel_tools//tools/jdk:current_java_runtime"],
+    data = [
+        "test/arithmetic_mutations.py",
+        "test/binary64_arithmetic.py",
+        "//experiments/rustc-frontend:arithmetic_oracle_support",
+        "@bazel_tools//tools/jdk:current_java_runtime",
+    ],
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = [

@@ -44,6 +44,8 @@ FIXTURE_ALLOWLIST = {
     "crates/backend-java/test/JavaConsumerTest.java",
     "crates/backend-java/test/JavaInterfaceConsumerTest.java",
     "crates/backend-java/test/check_mapping_contract.py",
+    "crates/backend-java/test/binary64_arithmetic.py",
+    "crates/backend-java/test/arithmetic_mutations.py",
 }
 
 
@@ -411,6 +413,14 @@ impl ::portable_codegen::StructuralImportRenderer<CDialect> for Imports {
                      "crates/backend-c/src/constants_layout_probe.c"]:
         if not target_template_offenders(adjacent, "#include <stdint.h>\n"):
             raise AssertionError("constants/layout oracle exception admitted an adjacent template")
+    for name in ["binary64_arithmetic.py", "arithmetic_mutations.py"]:
+        arithmetic_harness = "crates/backend-java/test/" + name
+        if target_template_offenders(arithmetic_harness, "import re\n"):
+            raise AssertionError("test-only Java arithmetic harness imports were rejected")
+        for adjacent in [arithmetic_harness + ".copy", "crates/backend-java/src/" + name,
+                         "crates/backend-java/test/other_arithmetic.py"]:
+            if not target_template_offenders(adjacent, "import forbidden\n"):
+                raise AssertionError("Java arithmetic exception admitted an adjacent template")
     harness = "crates/backend-java/test/check_mapping_contract.py"
     if target_template_offenders(harness, "from pathlib import Path\n"):
         raise AssertionError("compiler-contract harness imports were rejected")
