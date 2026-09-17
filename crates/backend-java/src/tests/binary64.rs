@@ -199,3 +199,6 @@ mod negation;
 
 #[path = "binary64_conditional.rs"]
 mod conditional;
+
+#[path = "binary64_rounding.rs"]
+mod rounding;

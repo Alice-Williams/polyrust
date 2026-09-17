@@ -109,6 +109,20 @@ impl Reader<'_> {
                     JavaCallableRef::Dependency(value) => {
                         TargetSymbolRef::DependencyCallable(value.clone())
                     }
+                    JavaCallableRef::Known {
+                        callable,
+                        signature,
+                    } if matches!(
+                        callable,
+                        crate::dialect::JavaKnownCallable::MathFloor
+                            | crate::dialect::JavaKnownCallable::MathCeil
+                    ) && signature == &callable.signature() =>
+                    {
+                        // Match structural emission: resolved owner plus catalogue member.
+                        self.budget.add(1)?;
+                        self.spelling(callable.name())?;
+                        TargetSymbolRef::KnownType(callable.owner())
+                    }
                     _ => return Err("source reservation encountered an unsupported call".into()),
                 };
                 self.symbol(symbol)?;

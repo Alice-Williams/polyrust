@@ -17,7 +17,10 @@ category-only contract. Do not use a long/int cast or positive-zero replacement.
 
 Closed dependency-body admission permits only these two new known callables,
 retains argument traversal and checks exact catalogue signatures. Actual
-resolved callable names contribute to source-byte reservation. Bounds and name
+resolved owner-type names, the separator, and catalogue-owned method names
+contribute to source-byte reservation at every call, matching the existing
+structural renderer. For this implicit java.lang type the owner renders as Math;
+normal qualifier-shadowing checks remain mandatory. Bounds and name
 collision resolution remain enforced. Other known calls remain unadmitted;
 a generic pure-signature flag grants no permission.
 

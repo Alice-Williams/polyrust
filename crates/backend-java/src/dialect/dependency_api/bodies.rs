@@ -180,6 +180,14 @@ impl Reader<'_> {
             JavaCallableRef::Dependency(callable) => {
                 self.imported_height = self.imported_height.max(callable.function().call_height());
             }
+            JavaCallableRef::Known {
+                callable,
+                signature,
+            } if matches!(
+                callable,
+                crate::dialect::JavaKnownCallable::MathFloor
+                    | crate::dialect::JavaKnownCallable::MathCeil
+            ) && signature == &callable.signature() => {}
             _ => return Err("Java dependency call requires a certified direct target".into()),
         }
         for argument in arguments {
@@ -191,6 +199,11 @@ impl Reader<'_> {
         self.charge(depth)?;
         if !self.ty(&value.ty) {
             return Err("Java dependency body contains an unadmitted value type".into());
+        }
+        if matches!(value.kind, JavaExprKind::Call { .. })
+            && value.precedence != JavaPrecedence::Primary
+        {
+            return Err("Java dependency call requires primary precedence".into());
         }
         if matches!(value.kind, JavaExprKind::Unary { .. })
             && value.precedence != crate::ast::JavaPrecedence::Unary
