@@ -65,6 +65,9 @@ source capability integration complete. All 879 release/lint tests pass and
 two independent final reviews are clean. Remainder and other scalar families
 remain separate.
 
+[02O — binary64 truncating remainder](M35-03A-02O-floating-remainder.md)
+follows 02N with its own oracle, C/Java target and compiler checkpoints.
+
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing

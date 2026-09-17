@@ -45,7 +45,9 @@ contract as every other target.
   values/comparisons, negation, NaN classification, absolute value and truncation.
   Binary64 arithmetic (02N), including checked source integration, is complete
   with all 879 release/lint tests passing and two clean independent reviews.
-  Remaining parity gaps must be implemented before legacy runtime removal.
+  Truncating remainder (02O) has a verified independent oracle; target and
+  compiler mappings remain. Remaining parity gaps must be implemented before
+  legacy runtime removal.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the
