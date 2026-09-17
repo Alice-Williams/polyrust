@@ -5,12 +5,16 @@ use super::CIntegerBitwise as IntegerBits;
 use super::CLocalConstants as Locals;
 #[cfg(eager_c)]
 use super::CScalarConstants as Constants;
+#[cfg(eager_c)]
+use super::CUnitEffects as Unit;
 #[cfg(eager_java)]
 use super::JavaIntegerBitwise as IntegerBits;
 #[cfg(eager_java)]
 use super::JavaLocalConstants as Locals;
 #[cfg(eager_java)]
 use super::JavaScalarConstants as Constants;
+#[cfg(eager_java)]
+use super::JavaUnitEffects as Unit;
 use super::*;
 #[cfg(eager_c)]
 use super::{
@@ -69,6 +73,7 @@ fn missing() {
         .public_constants(PublicDeclarations)
         .public_constant_imports(PublicImports)
         .public_constant_reads(PublicReads)
+        .unit_effects(Unit)
         .build();
 }
 

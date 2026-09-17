@@ -1,6 +1,6 @@
 # M35-03A-02G — Unit function results and effect-only calls
 
-- Status: in-progress
+- Status: complete
 - Parent: [scalar parity](M35-03A-02-scalar-parity.md)
 - Depends on: M35-03A-02F
 - Specifications: [shared](../../specification/typed-generation/rust-unit-results.md),
@@ -21,10 +21,12 @@ authority; unit is an effect-only result, not a scalar value.
    complete: shared C primitive-result vocabulary, bounded C/Java source/dependency
    profiles, ordinary typed void statements/returns and native target proof.
    Exact-tree release gate: 742/742 tests; fresh independent review: no findings.
-2. 02G-02 — Compiler unit effects and publication: checked UnitInput and real
+2. [02G-02 — Compiler unit effects and publication](M35-03A-02G-02-compiler-unit-effects.md): checked UnitInput and real
    executable mappings/builder slots, signature/body/call integration, versioned
-   metadata and real multi-crate native/source-order proof. Write its bounded
-   task before implementation; target readiness alone cannot enable Rust admission.
+   metadata and real multi-crate native/source-order proof. Its bounded
+   task is complete: all 760 release tests pass; a fresh independent Sol Extra
+   High review found no findings. Actual generated packages are exported outside
+   Docker under ignored generated/examples/unit-results-597b335/.
 
 ## Definition of done
 

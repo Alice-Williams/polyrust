@@ -100,6 +100,34 @@ fn unit_results_preserve_call_heights_and_real_void_types() {
 }
 
 #[test]
+fn unit_results_conditionals_without_else_retain_calls_and_source_bound() {
+    let owner = chain().remove(0);
+    let (scope, callable) =
+        JavaDependencyScope::new().import(owner.functions().next().unwrap().clone());
+    let mut methods = functions(false, None);
+    methods[0].body.statements.insert(
+        0,
+        JavaStmt::If {
+            condition: JavaExpr::literal(f::boolean(), JavaLiteral::Boolean(true)),
+            then_block: JavaBlock::new(vec![JavaStmt::Expression(call(&callable))]),
+            else_block: None,
+        },
+    );
+    let mut unbound = functions(false, None);
+    unbound[0].body = methods[0].body.clone();
+    rejected(f::package(76, unbound));
+    let certificate = f::certify(f::package_with_dependencies(76, methods, scope.finish()));
+    let api = JavaDependencyApi::from_certificate(certificate).unwrap();
+    assert_eq!(api.functions().next().unwrap().call_height(), 2);
+    let output = render_certified_package(&JavaStructuralRenderer, api.package()).unwrap();
+    let OutputContents::Text(text) = output.files()[0].contents() else {
+        panic!("Java source")
+    };
+    assert!(text.len() as u64 <= api.source_byte_bound().unwrap());
+    assert_eq!(text.matches("Generated.operation(input);").count(), 1);
+}
+
+#[test]
 fn unit_results_reject_value_returns_void_values_and_invalid_storage() {
     for scalar in [false, true] {
         let mut methods = functions(scalar, None);

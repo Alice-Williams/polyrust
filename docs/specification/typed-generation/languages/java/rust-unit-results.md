@@ -1,6 +1,6 @@
 # Rust unit results in Java 21
 
-- Status: normative design; implementation in progress
+- Status: implemented and independently reviewed (M35-03A-02G)
 - Contract: [shared unit results](../../rust-unit-results.md)
 
 ## Target representation
@@ -32,8 +32,10 @@ through existing materialization. Unit conditionals lower to ordinary if blocks;
 no result local is needed. Unit completion emits a bare return or falls through
 as specified by the typed control mapping.
 
-Unit-aware owner metadata uses a new explicit schema, keeping prior scalar-only
-versions unchanged. Function result encoding admits unit independently of scalar
+Unit-aware owner metadata uses schema 5 if any retained owned function,
+including private functions, returns primitive void. Its result is encoded as
+unit; parameters, fields and constants remain bool/i32/i64. Existing scalar-only
+schemas 1 through 4 and the bundle-index schema stay unchanged. Function result encoding admits unit independently of scalar
 parameters and constant values. Reconstruct metadata from the original certified
 method/signature, not from rendered Java or a caller-supplied type string.
 

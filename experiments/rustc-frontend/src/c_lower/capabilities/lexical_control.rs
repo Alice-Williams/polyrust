@@ -1,5 +1,8 @@
 //! Scope-owned lets, nested tail blocks, if/else and scalar returns.
-use super::{ControlInput, LexicalControl, LocalConstantInput, LocalConstants, Mapping, Supports};
+use super::{
+    ControlCompletion, ControlInput, LexicalControl, LocalConstantInput, LocalConstants, Mapping,
+    Supports,
+};
 use crate::c_lower::{Reader, Result, c};
 use portable_backend_c::ast::*;
 use portable_codegen::RustSourceNode;
@@ -44,8 +47,10 @@ impl Mapping for CLexicalControl {
         }
         let previous_scope = reader.active_scope.replace(scope.clone());
         let mut statements = match value.kind {
-            hir::ExprKind::Block(block, None) => Self::block(reader, block, &scope, value.hir_id)?,
-            _ => Self::returning(reader, value, value.hir_id)?,
+            hir::ExprKind::Block(block, None) => {
+                Self::block(reader, block, &scope, value.hir_id, input.completion)?
+            }
+            _ => Self::returning(reader, value, value.hir_id, input.completion)?,
         };
         if parent.is_none() {
             // Explicit typed normalization, never a renderer-invented statement.
@@ -62,6 +67,8 @@ impl Mapping for CLexicalControl {
             return Err("undrained lexical evaluation prelude".into());
         }
         reader.active_scope = previous_scope;
+        #[cfg(unit_ast_probe)]
+        super::unit_effects::ast::completion(reader, &input, &statements);
         c(reader.statements()?.block(scope, statements))
     }
 }
@@ -72,9 +79,14 @@ impl CLexicalControl {
         block: &'tcx hir::Block<'tcx>,
         scope: &CScopeRef,
         source_scope: hir::HirId,
+        completion: ControlCompletion,
     ) -> Result<Vec<CStatement>> {
         let mut result = Vec::new();
         for statement in block.stmts {
+            if let hir::StmtKind::Expr(value) | hir::StmtKind::Semi(value) = statement.kind {
+                result.extend(reader.unit(value, source_scope)?);
+                continue;
+            }
             if matches!(statement.kind, hir::StmtKind::Item(_)) {
                 let input = LocalConstantInput::read(reader.tcx, statement)?;
                 Supports::<LocalConstants>::mapping(&reader.mappings).lower(reader, input)?;
@@ -107,11 +119,11 @@ impl CLexicalControl {
             let address = c(reader.expressions().address_of(place))?;
             result.push(c(reader.statements()?.discard(address))?);
         }
-        result.extend(Self::returning(
-            reader,
-            block.expr.ok_or("expected a tail result")?,
-            source_scope,
-        )?);
+        if let Some(tail) = block.expr {
+            result.extend(Self::returning(reader, tail, source_scope, completion)?);
+        } else if completion == ControlCompletion::Return {
+            result.push(c(reader.statements()?.return_statement(None))?);
+        }
         Ok(result)
     }
 
@@ -119,7 +131,19 @@ impl CLexicalControl {
         reader: &mut Reader<'tcx>,
         value: &'tcx hir::Expr<'tcx>,
         source_scope: hir::HirId,
+        completion: ControlCompletion,
     ) -> Result<Vec<CStatement>> {
+        if matches!(reader.checked.expr_ty(value).kind(), rustc_middle::ty::Tuple(fields) if fields.is_empty())
+        {
+            let mut statements = reader.unit(value, source_scope)?;
+            if completion == ControlCompletion::Return {
+                statements.push(c(reader.statements()?.return_statement(None))?);
+            }
+            return Ok(statements);
+        }
+        if completion == ControlCompletion::Effect {
+            return Err("effect-only block requires a unit result".into());
+        }
         let mut prelude = Vec::new();
         let statement = match value.kind {
             hir::ExprKind::Block(_, None) => {

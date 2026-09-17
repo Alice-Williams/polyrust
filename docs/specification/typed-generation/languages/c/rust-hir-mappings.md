@@ -120,10 +120,11 @@ not aliases for the complete portable capability catalogue:
 | IntegerBitwise | checked private BitwiseInput retaining exact-width operands and closed complement/And/Or/Xor shape | CValue with exact-width result normalization |
 | EagerBooleans | checked private EagerBooleanInput retaining Bool operands and closed And/Or/Xor operator | CValue with Int-to-Bool normalization |
 | RecordInitializers | complete scalar-field struct HIR initializer | CInitializer |
-| LexicalControl | returning HIR expression with optional parent HIR identity | CBlock |
+| LexicalControl | HIR expression, optional parent HIR identity and Return/Effect completion | CBlock |
 | EntrySignatures | selected compiler function identity and signature facts | CFunctionType |
-| FunctionSignatures | ordinary local or authenticated foreign compiler DefId and scalar signature facts | CFunctionType |
-| DirectCalls | resolved ordinary call HIR expression | CValue plus scope-owned typed evaluation declarations |
+| FunctionSignatures | ordinary local or authenticated foreign compiler DefId and scalar-parameter / scalar-or-unit-result signature facts | CFunctionType |
+| DirectCalls | resolved ordinary scalar-result call HIR expression | CValue plus scope-owned typed evaluation declarations |
+| UnitEffects | private checked UnitInput with closed empty/call/block/conditional operation and HIR scope | Typed effect statements; ordinary void calls and no value temporary |
 
 Each binding has associated input/context/output types and an executable lower
 method. A consuming typed-slot builder permits one registration per capability;

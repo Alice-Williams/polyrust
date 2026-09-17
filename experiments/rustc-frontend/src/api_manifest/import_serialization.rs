@@ -6,7 +6,7 @@ use super::{
 use portable_backend_c::ast::*;
 use std::fmt::Write;
 
-fn scalar(ty: &CObjectType) -> Result<&'static str, String> {
+pub(super) fn scalar(ty: &CObjectType) -> Result<&'static str, String> {
     match ty.kind() {
         CObjectTypeKind::Scalar(CScalarType::I32) => Ok("i32"),
         CObjectTypeKind::Scalar(CScalarType::I64) => Ok("i64"),
@@ -22,14 +22,11 @@ impl ApiManifest {
             if index != 0 {
                 text.push(',');
             }
-            let CReturnType::Value(result) = proof.signature().return_type() else {
-                return Err("import manifest requires a scalar return".into());
-            };
             write!(text,
                 "{{\"id\":{},\"owner\":{},\"header\":{},\"symbol\":{},\"return\":{},\"parameters\":[",
                 identity(*id), identity(proof.package_identity().root()),
                 quote(proof.public_header().include_path()), quote(proof.symbol().as_str()),
-                quote(scalar(result.declared_type())?)).unwrap();
+                quote(super::function_results::result(proof.signature().return_type())?)).unwrap();
             for (index, parameter) in proof.signature().parameters().iter().enumerate() {
                 if index != 0 {
                     text.push(',');

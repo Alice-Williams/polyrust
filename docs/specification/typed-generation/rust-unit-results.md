@@ -1,6 +1,6 @@
 # Checked Rust unit results
 
-- Status: normative design; implementation in progress
+- Status: implemented and independently reviewed (M35-03A-02G)
 - Scope: function results and effect-only expressions, not general zero-sized storage
 - Implementations: [C17](languages/c/rust-unit-results.md), [Java21](languages/java/rust-unit-results.md)
 
@@ -35,6 +35,8 @@ Unit calls retain registered local or original certified imported callable
 authority. Evaluate scalar arguments exactly once in Rust source order before
 the call, retain the call as an effect statement, and never assign a void call
 to a temporary. Tail unit effects precede a bare return or ordinary completion.
+ControlCompletion::Return and ControlCompletion::Effect distinguish return
+contexts from statement blocks; only return completion can append a bare return.
 Conditional effects remain in their branch. All call-graph, source traversal,
 depth, package and target resource limits still apply.
 

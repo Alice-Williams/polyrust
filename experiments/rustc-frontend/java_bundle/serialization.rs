@@ -1,4 +1,8 @@
-use crate::{json::Sink, manifest::Manifest, projection::scalar};
+use crate::{
+    json::Sink,
+    manifest::Manifest,
+    projection::{function_result, scalar},
+};
 use portable_backend_java::{
     ast::JavaDeclaredPath,
     dialect::{JavaSourceDescription, JavaSourceDescriptionKind as Kind, JavaSourceTarget},
@@ -9,7 +13,13 @@ use portable_codegen::{
 
 pub(crate) fn owner(out: &mut impl Sink, manifest: &Manifest<'_>) -> Result<(), String> {
     let imports = crate::constant_imports::collect(manifest.owner.api)?;
-    out.fixed(if !manifest.foreign_constants.is_empty() {
+    let unit_results = manifest.declarations.iter().any(|description| {
+        matches!(description.kind(), Kind::Function { result, .. }
+            if *result == portable_backend_java::ast::JavaType::primitive(portable_backend_java::ast::JavaPrimitive::Void))
+    });
+    out.fixed(if unit_results {
+        "{\"schema_version\":5,\"root\":"
+    } else if !manifest.foreign_constants.is_empty() {
         "{\"schema_version\":4,\"root\":"
     } else if !imports.is_empty() {
         "{\"schema_version\":3,\"root\":"
@@ -158,7 +168,7 @@ fn declaration(out: &mut impl Sink, description: &JavaSourceDescription<'_>) -> 
                 out.string(scalar(&parameter.ty)?)?;
             }
             out.fixed("],\"result\":")?;
-            out.string(scalar(result)?)?;
+            out.string(function_result(result)?)?;
         }
         Kind::Constant { ty, value } => {
             out.fixed(",\"scalar\":")?;

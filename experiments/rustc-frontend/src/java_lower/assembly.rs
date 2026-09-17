@@ -245,6 +245,10 @@ fn target_signature(
         invocation: JavaInvocationKind::Static,
         receiver: None,
         parameters: signature.parameters.iter().map(ty).collect::<Result<_>>()?,
-        return_type: ty(&signature.result)?,
+        return_type: if signature.result == JavaType::primitive(JavaPrimitive::Void) {
+            TargetTypeRef::Primitive(JavaPrimitive::Void)
+        } else {
+            ty(&signature.result)?
+        },
     })
 }

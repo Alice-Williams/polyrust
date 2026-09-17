@@ -3,10 +3,14 @@
 use super::CLocalConstants as Locals;
 #[cfg(bitwise_c)]
 use super::CScalarConstants as Constants;
+#[cfg(bitwise_c)]
+use super::CUnitEffects as Unit;
 #[cfg(bitwise_java)]
 use super::JavaLocalConstants as Locals;
 #[cfg(bitwise_java)]
 use super::JavaScalarConstants as Constants;
+#[cfg(bitwise_java)]
+use super::JavaUnitEffects as Unit;
 use super::*;
 #[cfg(bitwise_c)]
 use super::{
@@ -65,6 +69,7 @@ fn missing() {
         .public_constants(PublicDeclarations)
         .public_constant_imports(PublicImports)
         .public_constant_reads(PublicReads)
+        .unit_effects(Unit)
         .build();
 }
 

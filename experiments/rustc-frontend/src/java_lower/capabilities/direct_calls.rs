@@ -12,10 +12,23 @@ impl Mapping for JavaDirectCalls {
     type Output = Value;
 
     fn lower<'tcx>(&self, reader: &mut Reader<'tcx>, input: CallInput<'tcx>) -> Result<Value> {
-        let target = functions::resolve(reader.tcx, reader.checked, input.0)?;
+        let expression = reader.prepare_direct_call(input.0)?;
+        let plan = TypePlan::scalar(&expression.ty)?;
+        #[cfg(java_ast_probe)]
+        super::super::expression_assertions::call(reader, input.0, &expression);
+        reader.materialize(Value::new(plan, expression)?)
+    }
+}
+
+impl<'tcx> Reader<'tcx> {
+    pub(super) fn prepare_direct_call(
+        &mut self,
+        source: &'tcx hir::Expr<'tcx>,
+    ) -> Result<JavaExpr> {
+        let target = functions::resolve(self.tcx, self.checked, source)?;
         let (callable, signature) = match target.as_local() {
             Some(id) => {
-                let function = reader
+                let function = self
                     .functions
                     .get(&id)
                     .ok_or("direct callee signature was not registered")?;
@@ -28,7 +41,7 @@ impl Mapping for JavaDirectCalls {
                 )
             }
             None => {
-                let function = reader
+                let function = self
                     .imported
                     .get(&target)
                     .ok_or("foreign callee certificate was not registered")?;
@@ -38,7 +51,7 @@ impl Mapping for JavaDirectCalls {
                 )
             }
         };
-        let hir::ExprKind::Call(_, arguments) = input.0.kind else {
+        let hir::ExprKind::Call(_, arguments) = source.kind else {
             unreachable!()
         };
         if arguments.len() != signature.parameters.len() {
@@ -46,24 +59,20 @@ impl Mapping for JavaDirectCalls {
         }
         let mut values = Vec::new();
         for (argument, ty) in arguments.iter().zip(&signature.parameters) {
-            let value = reader.expr(argument)?;
+            let value = self.expr(argument)?;
             if value.plan() != &TypePlan::scalar(ty)? {
                 return Err("source call argument representation mismatch".into());
             }
-            values.push(reader.materialize(value)?.into_expression());
+            values.push(self.materialize(value)?.into_expression());
         }
-        let plan = TypePlan::scalar(&signature.result)?;
-        let expression = JavaExpr {
-            ty: plan.java_type(),
+        Ok(JavaExpr {
+            ty: signature.result,
             precedence: JavaPrecedence::Primary,
             kind: JavaExprKind::Call {
                 callable,
                 receiver: None,
                 arguments: values,
             },
-        };
-        #[cfg(java_ast_probe)]
-        super::super::expression_assertions::call(reader, input.0, &expression);
-        reader.materialize(Value::new(plan, expression)?)
+        })
     }
 }

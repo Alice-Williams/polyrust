@@ -12,11 +12,22 @@ impl Mapping for CDirectCalls {
     type Output = CValue;
 
     fn lower<'tcx>(&self, reader: &mut Reader<'tcx>, input: CallInput<'tcx>) -> Result<CValue> {
-        let expression = input.0;
-        let target = functions::resolve(reader.tcx, reader.checked, expression)?;
+        let (function, values) = reader.prepare_direct_call(input.0)?;
+        let callable = c(reader.expressions().direct(function))?;
+        let call = c(reader.expressions().call_value(callable, values))?;
+        reader.materialize(call)
+    }
+}
+
+impl<'tcx> Reader<'tcx> {
+    pub(super) fn prepare_direct_call(
+        &mut self,
+        expression: &'tcx hir::Expr<'tcx>,
+    ) -> Result<(CFunctionRef, Vec<CValue>)> {
+        let target = functions::resolve(self.tcx, self.checked, expression)?;
         let function = match target {
-            functions::CallTarget::Local(id) => reader.functions.get(&id),
-            functions::CallTarget::Foreign(id) => reader.foreign_functions.get(&id),
+            functions::CallTarget::Local(id) => self.functions.get(&id),
+            functions::CallTarget::Foreign(id) => self.foreign_functions.get(&id),
         }
         .cloned()
         .ok_or("direct callee signature was not registered")?;
@@ -26,16 +37,12 @@ impl Mapping for CDirectCalls {
         let mut values = Vec::with_capacity(arguments.len());
         for argument in arguments {
             // Even a pure scalar argument is fixed before the next argument.
-            let value = reader.expr(argument)?;
-            values.push(reader.materialize(value)?);
+            let value = self.expr(argument)?;
+            values.push(self.materialize(value)?);
         }
-        let callable = c(reader.expressions().direct(function))?;
-        let call = c(reader.expressions().call_value(callable, values))?;
-        reader.materialize(call)
+        Ok((function, values))
     }
-}
 
-impl Reader<'_> {
     fn materialize(&mut self, value: CValue) -> Result<CValue> {
         let scope = self
             .active_scope

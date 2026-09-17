@@ -1,3 +1,4 @@
+use super::CUnitEffects as Unit;
 use super::{
     Builder, CBooleanNegation, CDirectCalls, CEagerBooleans, CEntrySignatures, CFunctionSignatures,
     CIntegerBitwise, CLexicalControl, CLiteralValues, CLocalConstants, CObjectTypes,
@@ -27,6 +28,7 @@ fn must_not_compile() {
         .public_constants(CPublicConstants)
         .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
+        .unit_effects(Unit)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -47,6 +49,7 @@ fn must_not_compile() {
         .public_constants(CPublicConstants)
         .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
+        .unit_effects(Unit)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -67,6 +70,7 @@ fn must_not_compile() {
         .public_constants(CPublicConstants)
         .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
+        .unit_effects(Unit)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -87,6 +91,7 @@ fn must_not_compile() {
         .public_constants(CPublicConstants)
         .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
+        .unit_effects(Unit)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -107,6 +112,7 @@ fn must_not_compile() {
         .public_constants(CPublicConstants)
         .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
+        .unit_effects(Unit)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -127,6 +133,7 @@ fn must_not_compile() {
         .public_constants(CPublicConstants)
         .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
+        .unit_effects(Unit)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -147,6 +154,7 @@ fn must_not_compile() {
         .public_constants(CPublicConstants)
         .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
+        .unit_effects(Unit)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -167,6 +175,7 @@ fn must_not_compile() {
         .public_constants(CPublicConstants)
         .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
+        .unit_effects(Unit)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -187,6 +196,7 @@ fn must_not_compile() {
         .public_constants(CPublicConstants)
         .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
+        .unit_effects(Unit)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -207,5 +217,6 @@ fn must_not_compile() {
         .public_constants(CPublicConstants)
         .public_constant_imports(CPublicConstantImports)
         .public_constant_reads(CPublicConstantReads)
+        .unit_effects(Unit)
         .build();
 }

@@ -1,4 +1,7 @@
-use super::{ControlInput, LexicalControl, LocalConstantInput, LocalConstants, Mapping, Supports};
+use super::{
+    ControlCompletion, ControlInput, LexicalControl, LocalConstantInput, LocalConstants, Mapping,
+    Supports,
+};
 use crate::java_lower::{Place, Reader, Result, TypePlan, Value};
 use portable_backend_java::ast::{JavaBlock, JavaExpr, JavaLocalFinality, JavaStmt};
 use rustc_ast::BindingMode;
@@ -30,9 +33,14 @@ impl Mapping for JavaLexicalControl {
         let previous_bindings = reader.bindings.clone();
         let result = match input.expression.kind {
             hir::ExprKind::Block(block, None) => {
-                Self::block(reader, block, input.expression.hir_id)
+                Self::block(reader, block, input.expression.hir_id, input.completion)
             }
-            _ => Self::returning(reader, input.expression, input.expression.hir_id),
+            _ => Self::returning(
+                reader,
+                input.expression,
+                input.expression.hir_id,
+                input.completion,
+            ),
         };
         reader.active_scope = previous_scope;
         reader.bindings = previous_bindings;
@@ -48,6 +56,8 @@ impl Mapping for JavaLexicalControl {
         if !reader.prelude.is_empty() {
             return Err("undrained lexical evaluation prelude".into());
         }
+        #[cfg(unit_ast_probe)]
+        super::unit_effects::ast::completion(reader, &input, &statements);
         Ok(JavaBlock::new(statements))
     }
 }
@@ -57,9 +67,14 @@ impl JavaLexicalControl {
         reader: &mut Reader<'tcx>,
         block: &'tcx hir::Block<'tcx>,
         scope: hir::HirId,
+        completion: ControlCompletion,
     ) -> Result<Vec<JavaStmt>> {
         let mut statements = Vec::new();
         for statement in block.stmts {
+            if let hir::StmtKind::Expr(value) | hir::StmtKind::Semi(value) = statement.kind {
+                statements.extend(reader.unit(value, scope)?);
+                continue;
+            }
             if matches!(statement.kind, hir::StmtKind::Item(_)) {
                 let input = LocalConstantInput::read(reader.tcx, statement)?;
                 Supports::<LocalConstants>::mapping(&reader.mappings).lower(reader, input)?;
@@ -98,11 +113,11 @@ impl JavaLexicalControl {
                 value: Some(value.into_expression()),
             });
         }
-        statements.extend(Self::returning(
-            reader,
-            block.expr.ok_or("expected a tail result")?,
-            scope,
-        )?);
+        if let Some(tail) = block.expr {
+            statements.extend(Self::returning(reader, tail, scope, completion)?);
+        } else if completion == ControlCompletion::Return {
+            statements.push(JavaStmt::Return(None));
+        }
         Ok(statements)
     }
 
@@ -110,7 +125,19 @@ impl JavaLexicalControl {
         reader: &mut Reader<'tcx>,
         expression: &'tcx hir::Expr<'tcx>,
         scope: hir::HirId,
+        completion: ControlCompletion,
     ) -> Result<Vec<JavaStmt>> {
+        if matches!(reader.checked.expr_ty(expression).kind(), rustc_middle::ty::Tuple(fields) if fields.is_empty())
+        {
+            let mut statements = reader.unit(expression, scope)?;
+            if completion == ControlCompletion::Return {
+                statements.push(JavaStmt::Return(None));
+            }
+            return Ok(statements);
+        }
+        if completion == ControlCompletion::Effect {
+            return Err("effect-only block requires a unit result".into());
+        }
         let mut statements = Vec::new();
         match expression.kind {
             hir::ExprKind::Block(_, None) => {

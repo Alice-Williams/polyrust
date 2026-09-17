@@ -21,7 +21,7 @@ target has full replacement evidence for any broad legacy capability family.
 | Functionality | Rust-source C | Rust-source Java | Remaining work |
 | --- | --- | --- | --- |
 | Values and comparisons | i32/i64/bool literals and evaluated constant reads, scalar comparison, immutable places, built-in bool negation, lazy/eager operators and signed integer bitwise operations | Same source subset | f64/char/unit, public/local constant declarations, type aliases, integer and float operations: M35-03A-02 |
-| Functions and modules | Closed typed signatures/direct calls, crate-owned headers and implementations | Closed typed signatures/direct calls, crate-owned Java packages | Wider signatures, methods and migrated consumers: M35-03A-03/06 |
+| Functions and modules | Closed scalar/unit-result signatures and value/effect calls, crate-owned headers and implementations | Same signatures/calls with crate-owned Java packages | Wider signatures, methods and migrated consumers: M35-03A-03/06 |
 | Records and control | Closed scalar-field records/shared borrows, local bindings, structured branches | Same source subset | Owned shapes, enums, interfaces, loops and patterns: M35-02 then M35-03A-03 |
 | Text, Unicode and bytes | No general replacement mapping | No general replacement mapping | All legacy operations and explicit encoding/indexing policies: M35-03A-04 |
 | Lists, options and results | No general replacement mapping | No general replacement mapping | Container operations, nested values and failure propagation: M35-03A-05 |
@@ -141,3 +141,14 @@ through the ScalarConstants slot. Native two-crate, exact-literal/provenance,
 compile-contract and atomic-rejection tests accompany the implementation.
 Public/local declarations remain 02F-02 work; this is not full constant parity
 or permission to remove the legacy constant/runtime entry points.
+
+## Unit-result increment
+
+[M35-03A-02G](../../plan/tasks/M35-03A-02G-unit-results.md) adds checked Rust
+unit function results and effect-only direct calls/blocks/conditionals, mapped
+to ordinary C/Java void. This is partial JavaUnitValues coverage, not unit
+storage/parameters or full family parity. `unit_ast_test`, `unit_native_test`,
+`unit_rejection_test` and `unit_contract_test` prove typed mapping, three-crate
+ABI/behavior, call/condition order, atomic rejection and builder/input privacy.
+Typed target void tests retain original-owner/signature/resource controls.
+Legacy custom runtimes remain until the other inventory gaps are closed.

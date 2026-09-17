@@ -71,6 +71,9 @@ load(":short_circuit_targets.bzl", "short_circuit_targets")
 load(":source_capability_targets.bzl", "source_capability_targets")
 load(":source_check_targets.bzl", "source_check_targets")
 load(":source_origin_targets.bzl", "source_origin_targets")
+load(":unit_ast_targets.bzl", "unit_ast_targets")
+load(":unit_contract_targets.bzl", "unit_contract_targets")
+load(":unit_targets.bzl", "unit_targets")
 
 COPTS = [
     "-std=c17",
@@ -118,6 +121,18 @@ short_circuit_targets(name = "short_circuit_clippy_test")
 bitwise_targets(name = "bitwise_clippy_test")
 
 eager_targets(name = "eager_clippy_test")
+
+unit_targets(name = "unit_clippy_test")
+
+unit_ast_targets(
+    name = "unit_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+unit_contract_targets(
+    name = "unit_contract_test",
+    c_sources = ADAPTER_SOURCES,
+)
 
 eager_contract_targets(
     name = "eager_contract_test",

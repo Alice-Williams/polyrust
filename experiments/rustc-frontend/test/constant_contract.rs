@@ -3,10 +3,14 @@
 use super::CIntegerBitwise as IntegerBits;
 #[cfg(constant_c)]
 use super::CLocalConstants as Locals;
+#[cfg(constant_c)]
+use super::CUnitEffects as Unit;
 #[cfg(constant_java)]
 use super::JavaIntegerBitwise as IntegerBits;
 #[cfg(constant_java)]
 use super::JavaLocalConstants as Locals;
+#[cfg(constant_java)]
+use super::JavaUnitEffects as Unit;
 use super::*;
 #[cfg(constant_c)]
 use super::{
@@ -65,6 +69,7 @@ fn missing() {
         .public_constants(PublicDeclarations)
         .public_constant_imports(PublicImports)
         .public_constant_reads(PublicReads)
+        .unit_effects(Unit)
         .build();
 }
 

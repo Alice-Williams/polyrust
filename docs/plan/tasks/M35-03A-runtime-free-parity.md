@@ -70,3 +70,9 @@ original producer authority, alias-only crates, native C/Java consumers,
 publication mutation controls and actual Bazel invalidation/restoration proof.
 Wider constant families and other parity tasks remain open; this does not
 authorize deleting the existing constant capability or custom runtimes.
+
+[M35-03A-02G](M35-03A-02G-unit-results.md) now provides checked Rust unit
+function results, direct effect calls and structured unit control as ordinary
+C/Java void. Three-crate native/order/ABI proof, typed AST/registration/negative
+checks and all 760 release tests pass; a fresh independent review is clean.
+This does not cover general unit storage or authorize runtime retirement.

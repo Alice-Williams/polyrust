@@ -75,7 +75,7 @@ pub(crate) fn project(owner: Owner<'_>) -> Result<Manifest<'_>, String> {
         }
         match description.kind() {
             Kind::Function { parameters, result } => {
-                scalar(result)?;
+                function_result(result)?;
                 for parameter in parameters {
                     scalar(&parameter.ty)?;
                 }
@@ -199,5 +199,14 @@ pub(crate) fn scalar(ty: &JavaType) -> Result<&'static str, String> {
         Ok("bool")
     } else {
         Err("unsupported Java manifest scalar".into())
+    }
+}
+
+/// A result may be unit; parameters, fields and constants remain scalar-only.
+pub(crate) fn function_result(ty: &JavaType) -> Result<&'static str, String> {
+    if *ty == JavaType::primitive(portable_backend_java::ast::JavaPrimitive::Void) {
+        Ok("unit")
+    } else {
+        scalar(ty)
     }
 }

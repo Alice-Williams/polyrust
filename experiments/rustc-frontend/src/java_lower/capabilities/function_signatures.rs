@@ -1,7 +1,7 @@
 //! Compiler scalar signatures map to the existing Java method signature.
 use super::{FunctionInput, FunctionSignatures, Mapping};
 use crate::java_lower::{Result, TypePlan};
-use portable_backend_java::ast::JavaMethodSignature;
+use portable_backend_java::ast::{JavaMethodSignature, JavaPrimitive, JavaType};
 use rustc_abi::ExternAbi;
 use rustc_hir::def::DefKind;
 use rustc_middle::ty;
@@ -40,7 +40,10 @@ impl Mapping for JavaFunctionSignatures {
                 .iter()
                 .map(|ty| scalar(*ty))
                 .collect::<Result<_>>()?,
-            result: scalar(signature.output())?,
+            result: match signature.output().kind() {
+                ty::Tuple(fields) if fields.is_empty() => JavaType::primitive(JavaPrimitive::Void),
+                _ => scalar(signature.output())?,
+            },
             checked_exceptions: vec![],
             nullable_result: false,
             // The complete body/call-graph admission permits only immutable

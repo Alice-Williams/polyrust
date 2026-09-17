@@ -32,11 +32,13 @@ impl Reader<'_> {
                 JavaStmt::If {
                     condition,
                     then_block,
-                    else_block: Some(else_block),
+                    else_block,
                 } => {
                     self.expression(condition, depth + 1)?;
                     self.block(then_block, depth + 1)?;
-                    self.block(else_block, depth + 1)?;
+                    if let Some(else_block) = else_block {
+                        self.block(else_block, depth + 1)?;
+                    }
                 }
                 _ => return Err("source reservation encountered an unsupported statement".into()),
             }

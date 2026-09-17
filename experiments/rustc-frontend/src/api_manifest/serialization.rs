@@ -16,6 +16,7 @@ impl ApiManifest {
 
     fn encode(&self, bundle: bool) -> Result<String, String> {
         let bound = self.encoded_bound()?;
+        let unit_results = self.has_unit_results();
         let foreign: BTreeSet<_> = self
             .foreign_constants
             .iter()
@@ -23,7 +24,9 @@ impl ApiManifest {
             .collect();
         let mut text = format!(
             "{{\"schema_version\":{},\"root\":{},\"header\":{},\"implementation\":{},\"modules\":[",
-            if !self.foreign_constants.is_empty() {
+            if unit_results {
+                7
+            } else if !self.foreign_constants.is_empty() {
                 6
             } else if !self.constant_imports.is_empty() {
                 5
@@ -86,7 +89,7 @@ impl ApiManifest {
             };
             write!(
                 text,
-                "{{\"id\":{},\"symbol\":{},\"primary\":{},\"implementation\":{},\"linkage\":{}}}",
+                "{{\"id\":{},\"symbol\":{},\"primary\":{},\"implementation\":{},\"linkage\":{}",
                 identity(*id),
                 quote(function.name.as_str()),
                 quote(function.reference.file().key().path.as_str()),
@@ -94,6 +97,10 @@ impl ApiManifest {
                 quote(linkage)
             )
             .unwrap();
+            if unit_results {
+                super::function_results::signature(&mut text, function.reference.signature())?;
+            }
+            text.push('}');
         }
         text.push(']');
         if !self.constants.is_empty() {
@@ -149,6 +156,13 @@ impl ApiManifest {
         }
         for function in self.functions.values() {
             add(512 + function.name.as_str().len())?;
+            add(function
+                .reference
+                .signature()
+                .parameters()
+                .len()
+                .checked_mul(8)
+                .ok_or("API function signature byte overflow")?)?;
         }
         for constant in self.constants.values() {
             add(512 + constant.name.as_str().len())?;

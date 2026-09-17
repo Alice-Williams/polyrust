@@ -40,7 +40,10 @@ impl Mapping for CFunctionSignatures {
             .map(|ty| c(CParameterType::new(scalar(*ty)?)))
             .collect::<Result<_>>()?;
         Ok(CFunctionType::new(
-            CReturnType::Value(c(CReturnValue::new(scalar(signature.output())?))?),
+            match signature.output().kind() {
+                ty::Tuple(fields) if fields.is_empty() => CReturnType::Void,
+                _ => CReturnType::Value(c(CReturnValue::new(scalar(signature.output())?))?),
+            },
             parameters,
         ))
     }

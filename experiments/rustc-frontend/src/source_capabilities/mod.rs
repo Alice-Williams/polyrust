@@ -23,6 +23,7 @@ mod scalar_comparisons;
 mod scalar_constants;
 mod shared_borrows;
 mod short_circuit_booleans;
+mod unit_effects;
 
 pub(crate) use boolean_negation::{BooleanNegation, NegationInput};
 pub(crate) use contracts::{Capability, Mapping, Supports};
@@ -31,7 +32,7 @@ pub(crate) use eager_booleans::{EagerBooleanInput, EagerBooleanOperator, EagerBo
 pub(crate) use entry_signatures::{EntryInput, EntrySignatures};
 pub(crate) use function_signatures::{FunctionInput, FunctionSignatures};
 pub(crate) use integer_bitwise::{BitwiseInput, BitwiseOperands, BitwiseOperator, IntegerBitwise};
-pub(crate) use lexical_control::{ControlInput, LexicalControl};
+pub(crate) use lexical_control::{ControlCompletion, ControlInput, LexicalControl};
 pub(crate) use literal_values::{LiteralInput, LiteralValue, LiteralValues};
 pub(crate) use local_constants::{LocalConstantInput, LocalConstants};
 pub(crate) use object_types::{ObjectTypes, TypeInput};
@@ -46,3 +47,5 @@ pub(crate) use shared_borrows::{BorrowInput, SharedBorrows};
 pub(crate) use short_circuit_booleans::{
     LazyBooleanInput, LazyBooleanOperator, ShortCircuitBooleans,
 };
+
+pub(crate) use unit_effects::{UnitEffects, UnitInput, UnitOperation};

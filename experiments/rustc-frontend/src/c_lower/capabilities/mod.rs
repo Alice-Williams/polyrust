@@ -29,6 +29,11 @@ mod scalar_constants;
 mod shared_borrows;
 mod short_circuit_booleans;
 mod slots;
+#[cfg(unit_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/unit_contract.rs"]
+mod unit_contract;
+mod unit_effects;
 
 #[cfg(local_constant_contract)]
 #[allow(dead_code, unused_imports)]
@@ -131,6 +136,7 @@ pub(crate) use scalar_constants::CScalarConstants;
 pub(crate) use shared_borrows::CSharedBorrows;
 pub(crate) use short_circuit_booleans::CShortCircuitBooleans;
 pub(crate) use slots::{Bindings, Builder};
+pub(crate) use unit_effects::CUnitEffects;
 
 pub(crate) use crate::source_capabilities::*;
 
@@ -154,6 +160,7 @@ pub(crate) type CBindings = Bindings<
     CPublicConstants,
     CPublicConstantReads,
     CPublicConstantImports,
+    CUnitEffects,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -177,5 +184,6 @@ pub(crate) fn c_bindings() -> CBindings {
         .public_constants(CPublicConstants)
         .public_constant_reads(CPublicConstantReads)
         .public_constant_imports(CPublicConstantImports)
+        .unit_effects(CUnitEffects)
         .build()
 }

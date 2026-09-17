@@ -97,7 +97,12 @@ No support class or runtime helper is introduced.
 Literal, scalar-constant, comparison, Boolean-negation, short-circuit Boolean, integer-bitwise, eager-Boolean, borrow, call and record-initializer mappings produce planned
 Java values. ObjectTypes produces the representation plan; ResolvedPlaces produces
 a planned place; LexicalControl produces JavaBlock. EntrySignatures and
-FunctionSignatures produce JavaMethodSignature from compiler signatures. Every
+FunctionSignatures produce JavaMethodSignature from compiler signatures, including
+ordinary void for a checked unit result (parameters remain scalar). UnitEffects
+maps private checked UnitInput into Java statements, never a Java value or unit
+wrapper. LexicalControl carries Return/Effect completion so statement blocks do
+not return from their containing function. See the [unit-result contract](rust-unit-results.md).
+Every
 builder slot constrains both its compiler input capability and exact Java-owned
 context/output. Shared compiler contracts contain none of these Java types.
 

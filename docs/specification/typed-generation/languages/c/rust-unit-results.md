@@ -1,6 +1,6 @@
 # Rust unit results in C17
 
-- Status: normative design; implementation in progress
+- Status: implemented and independently reviewed (M35-03A-02G)
 - Contract: [shared unit results](../../rust-unit-results.md)
 
 ## Target representation
@@ -37,8 +37,11 @@ C UnitEffects emits existing typed statements. Evaluate and materialize scalar
 arguments before constructing the void call; no temporary receives its result.
 Keep normal extern prototypes/public headers and private internal linkage.
 
-Unit-aware C owner metadata uses a new explicit schema, retaining existing
-scalar-only versions. Callable results distinguish unit from bool/i32/i64;
+Unit-aware C owner metadata uses schema 7 whenever an owned or imported
+function returns unit, retaining scalar-only schemas 1 through 6 unchanged.
+In schema 7 every owned function also has a return and parameters description;
+return may be unit, bool, i32 or i64, while parameters remain bool/i32/i64.
+The existing imported-function return field gains unit only under schema 7. Callable results distinguish unit from bool/i32/i64;
 parameters remain scalar-only. Standalone and bundled publication reconstruct
 these signatures from the original registered function and producer witness.
 Do not discover return types by reading emitted source or a JSON description.

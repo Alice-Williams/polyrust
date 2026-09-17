@@ -13,6 +13,7 @@ pub(crate) mod contract;
 #[cfg(constant_export_manifest_probe)]
 #[path = "../../test/constant_export_manifest.rs"]
 pub(crate) mod export_contract;
+mod function_results;
 mod import_serialization;
 mod imports;
 #[cfg(c_graph_inventory_contract)]

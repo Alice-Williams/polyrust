@@ -26,9 +26,9 @@ and exact typed mapper probes. Other scalar families remain outstanding.
 for bool/i32/i64 reads, local/public declarations, authenticated imports and
 aliases, with native/atomic/cache/review evidence. Wider families remain open.
 
-[M35-03A-02G — unit function results](M35-03A-02G-unit-results.md) is in
-progress: typed void target foundation is complete (742/742 release tests);
-checked compiler integration remains the next bounded checkpoint.
+[M35-03A-02G — unit function results](M35-03A-02G-unit-results.md) is complete:
+typed void foundation and checked compiler integration, with 760/760 release
+tests, original-authority/native/AST proof and clean independent review.
 Unit storage/parameters remain a separate capability.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,

@@ -137,9 +137,43 @@ impl<'tcx> Reader<'tcx> {
         expression: &'tcx hir::Expr<'tcx>,
         parent: Option<hir::HirId>,
     ) -> Result<portable_backend_java::ast::JavaBlock> {
+        self.control(expression, parent, ControlCompletion::Return)
+    }
+
+    pub(super) fn effect_branch(
+        &mut self,
+        expression: &'tcx hir::Expr<'tcx>,
+        parent: hir::HirId,
+    ) -> Result<portable_backend_java::ast::JavaBlock> {
+        self.control(expression, Some(parent), ControlCompletion::Effect)
+    }
+
+    pub(super) fn unit(
+        &mut self,
+        expression: &'tcx hir::Expr<'tcx>,
+        scope: hir::HirId,
+    ) -> Result<Vec<JavaStmt>> {
         self.bounded(|reader| {
-            Supports::<LexicalControl>::mapping(&reader.mappings)
-                .lower(reader, ControlInput { expression, parent })
+            let input = UnitInput::read(reader.checked, expression, scope)?;
+            Supports::<UnitEffects>::mapping(&reader.mappings).lower(reader, input)
+        })
+    }
+
+    fn control(
+        &mut self,
+        expression: &'tcx hir::Expr<'tcx>,
+        parent: Option<hir::HirId>,
+        completion: ControlCompletion,
+    ) -> Result<portable_backend_java::ast::JavaBlock> {
+        self.bounded(|reader| {
+            Supports::<LexicalControl>::mapping(&reader.mappings).lower(
+                reader,
+                ControlInput {
+                    expression,
+                    parent,
+                    completion,
+                },
+            )
         })
     }
 

@@ -21,7 +21,7 @@ cases = {
     "foreign_module": (entry + "pub use core::cmp as dependency;", "foreign or unsupported module"),
     "generic": ("pub fn generic<T>(value: T) -> i32 { 1 }", "nongeneric ordinary"),
     "u64": ("pub fn wide(value: u64) -> u64 { value }", "only i32, i64 and bool"),
-    "unit": ("pub fn empty() {}", "only i32, i64 and bool"),
+    "unit_parameter": ("pub fn empty(value: ()) {}", "only i32, i64 and bool"),
     "async": ("pub async fn later() -> i32 { 1 }", "only i32, i64 and bool"),
     "extern": ('pub extern "C" fn foreign() -> i32 { 1 }', "ordinary Rust signatures"),
     "unsafe": ("pub unsafe fn forbidden() -> i32 { 1 }", "unsafe"),

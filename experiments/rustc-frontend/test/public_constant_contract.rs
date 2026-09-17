@@ -1,4 +1,8 @@
 //! Every new executable slot has isolated compile-negative boundary controls.
+#[cfg(public_constant_c)]
+use super::CUnitEffects as Unit;
+#[cfg(public_constant_java)]
+use super::JavaUnitEffects as Unit;
 use super::*;
 #[cfg(public_constant_c)]
 use super::{

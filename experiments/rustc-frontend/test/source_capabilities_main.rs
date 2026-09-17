@@ -77,7 +77,7 @@ fn function(input: FunctionInput<'_>) {
     let _ = (input.tcx, input.function);
 }
 fn control(input: ControlInput<'_>) {
-    let _ = (input.expression, input.parent);
+    let _ = (input.expression, input.parent, input.completion);
 }
 fn object(input: TypeInput<'_>) {
     let _ = input.0;
@@ -186,7 +186,31 @@ fn public_constant<'tcx>(
     }
 }
 
+fn unit<'tcx>(
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+) {
+    let _ = UnitInput::read(checked, expression, expression.hir_id).map(|input| {
+        let _ = input.scope();
+        match input.operation() {
+            UnitOperation::Empty => {}
+            UnitOperation::Call(expression) | UnitOperation::Block(expression) => {
+                let _ = expression;
+            }
+            UnitOperation::Conditional {
+                condition,
+                then_value,
+                else_value,
+            } => {
+                let _ = (condition, then_value, else_value);
+            }
+        }
+    });
+}
 fn main() {
+    capability::<UnitEffects>();
+    let _ = unit;
+    let _ = [ControlCompletion::Return, ControlCompletion::Effect];
     capability::<PublicConstantImports>();
     capability::<PublicConstants>();
     capability::<PublicConstantReads>();

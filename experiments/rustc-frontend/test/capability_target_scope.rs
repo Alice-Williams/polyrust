@@ -8,5 +8,6 @@ fn must_not_compile<'tcx>(expression: &'tcx hir::Expr<'tcx>, scope: CScopeRef) {
     let _ = ControlInput {
         expression,
         parent: Some(scope),
+        completion: super::ControlCompletion::Return,
     };
 }
