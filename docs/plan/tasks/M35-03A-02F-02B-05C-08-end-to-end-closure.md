@@ -123,3 +123,9 @@ action does not prohibit reusing a previously cached result for its new key.
   documentation-only tree is release-gated again before scoped commit/push.
   Existing ownership edits remain excluded. No legacy runtime or old corpus
   gate is deleted.
+
+## CI follow-up
+
+[08A — read-only scratch copies](M35-03A-02F-02B-05C-08A-ci-scratch-permissions.md)
+addresses the ordinary-runner permission failure exposed by run 35169696731.
+The root-container receipts above remain valid but did not prove this permission boundary.

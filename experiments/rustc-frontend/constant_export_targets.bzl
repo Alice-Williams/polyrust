@@ -56,5 +56,20 @@ def constant_export_targets(name):
         size = "large",
         srcs = ["test/java_source_native.sh"],
         args = ["$(rootpath test/constant_export_native.py)"] + ["$(rootpath " + target + ")" for target in artifacts],
-        data = ["test/constant_export_native.py", "@bazel_tools//tools/jdk:current_java_runtime"] + artifacts,
+        data = ["test/constant_export_native.py", "test/constant_export_scratch.py", "@bazel_tools//tools/jdk:current_java_runtime"] + artifacts,
+    )
+
+    sh_test(
+        name = "constant_export_scratch_test",
+        srcs = ["test/java_source_native.sh"],
+        args = [
+            "$(rootpath test/constant_export_scratch_test.py)",
+            "$(rootpath test/constant_export_scratch.py)",
+            "$(rootpath test/constant_export_native.py)",
+        ],
+        data = [
+            "test/constant_export_native.py",
+            "test/constant_export_scratch.py",
+            "test/constant_export_scratch_test.py",
+        ],
     )

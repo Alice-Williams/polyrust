@@ -7,6 +7,8 @@ import shutil
 import subprocess
 import sys
 
+from constant_export_scratch import writable_copy
+
 NAMES = ["FALSE", "TRUE", "I32_MIN", "I32_MAX", "I64_MIN", "I64_MAX",
          "FORWARD", "WIDE", "NEGATIVE_WIDE", "COMPUTED", "EXTRA",
          "RENAMED", "OWN", "read"]
@@ -141,7 +143,7 @@ def schema_controls(work, c_dir, j_dir):
     for language, original in [("c", c_dir), ("java", j_dir)]:
         for level in ["index", "owner"]:
             trial = work / f"bad-schema-{language}-{level}"
-            shutil.copytree(original, trial)
+            writable_copy(original, trial)
             root, _ = inventory(trial)
             name = "bundle.json" if level == "index" else "polyrust_" + root.split(":")[0] + ".api.json"
             manifest = trial / name
@@ -175,7 +177,7 @@ def main():
             assert not any("runtime" in path.name.lower() for path in original.rglob("*"))
             for mutant in [False, True]:
                 trial = work / f"{target}-{mixed}-{mutant}"
-                shutil.copytree(original, trial)
+                writable_copy(original, trial)
                 source = trial / (c[computed]["implementation"] if target == "c" else java[computed]["source"])
                 replacement = 17 if TRUTH[9] != 17 else 29
                 if mutant:
@@ -230,7 +232,7 @@ def main():
                     assert (result.splitlines() == list(map(str, truth))) != mutant
                 if not mutant and os.environ.get("TEST_UNDECLARED_OUTPUTS_DIR"):
                     artifact = Path(os.environ["TEST_UNDECLARED_OUTPUTS_DIR"]) / f"{target}-aliases-{mixed}"
-                    shutil.copytree(original, artifact)
+                    writable_copy(original, artifact)
                     shutil.copy2(consumer, artifact / consumer.name)
     print("Alias-only/mixed source graphs: exact manifests; Rust, GCC/Zig O0/O2, Java21; independent producer mutation")
 
