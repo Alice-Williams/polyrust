@@ -204,15 +204,39 @@ fn build(
     let probe_locals: Vec<_> = scopes
         .iter()
         .map(|scope| {
-            probe.map(|_| {
-                (
-                    registry
-                        .register_local(scope, key("left"), CObjectType::scalar(CScalarType::F64))
-                        .unwrap(),
-                    registry
-                        .register_local(scope, key("right"), CObjectType::scalar(CScalarType::F64))
-                        .unwrap(),
-                )
+            probe
+                .filter(|mode| !matches!(mode, Probe::MaterializedCalls))
+                .map(|_| {
+                    (
+                        registry
+                            .register_local(
+                                scope,
+                                key("left"),
+                                CObjectType::scalar(CScalarType::F64),
+                            )
+                            .unwrap(),
+                        registry
+                            .register_local(
+                                scope,
+                                key("right"),
+                                CObjectType::scalar(CScalarType::F64),
+                            )
+                            .unwrap(),
+                    )
+                })
+        })
+        .collect();
+    let call_locals: Vec<_> = scopes
+        .iter()
+        .map(|scope| {
+            matches!(probe, Some(Probe::MaterializedCalls)).then(|| {
+                registry
+                    .register_local(
+                        scope,
+                        key("call_result"),
+                        CObjectType::scalar(CScalarType::F64),
+                    )
+                    .unwrap()
             })
         })
         .collect();
@@ -256,7 +280,23 @@ fn build(
                     } else {
                         input
                     };
-                    let body_items = if let Some((left, right)) = &probe_locals[index] {
+                    let body_items = if let Some(local) = &call_locals[index] {
+                        vec![
+                            statements
+                                .declare(
+                                    local.clone(),
+                                    Some(expressions.expression_initializer(value).unwrap()),
+                                )
+                                .unwrap(),
+                            statements
+                                .return_statement(Some(
+                                    expressions
+                                        .read(expressions.local(local.clone()).unwrap())
+                                        .unwrap(),
+                                ))
+                                .unwrap(),
+                        ]
+                    } else if let Some((left, right)) = &probe_locals[index] {
                         let left_value = if matches!(probe, Some(Probe::DropLeft)) {
                             expressions
                                 .read(expressions.parameter(parameters[index].clone()).unwrap())
@@ -354,6 +394,7 @@ pub(super) enum Probe {
     Ordered,
     DropLeft,
     Reversed,
+    MaterializedCalls,
 }
 
 pub(super) fn double_probe(dependency: CDependencyFunction, mode: Probe) -> Fixture {
@@ -369,5 +410,24 @@ pub(super) fn double_probe(dependency: CDependencyFunction, mode: Probe) -> Fixt
         None,
         None,
         Some(mode),
+    )
+}
+
+pub(super) fn materialized_double_calls(
+    crate_id: u64,
+    dependencies: &[CDependencyFunction],
+) -> Fixture {
+    build(
+        PackageIdentity {
+            crate_id,
+            file_stem: format!("polyrust_dep_{crate_id}"),
+            definition_base: 10,
+        },
+        &vec![CScalarType::F64; dependencies.len()],
+        dependencies,
+        &(0..dependencies.len()).map(Some).collect::<Vec<_>>(),
+        None,
+        None,
+        Some(Probe::MaterializedCalls),
     )
 }

@@ -274,6 +274,16 @@ fn walk<'a>(
                         add(Node::Value(operand));
                     }
                     CValueKind::Unary {
+                        operator: CUnaryOperator::Negate,
+                        operand,
+                    } if matches!(
+                        operand.ty().kind(),
+                        CObjectTypeKind::Scalar(CScalarType::F64)
+                    ) && value.ty() == operand.ty() =>
+                    {
+                        add(Node::Value(operand));
+                    }
+                    CValueKind::Unary {
                         operator: CUnaryOperator::BitNot | CUnaryOperator::Negate,
                         operand,
                     } if matches!(

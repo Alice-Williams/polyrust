@@ -218,6 +218,14 @@ impl Reader<'_> {
                 self.expression(operand, depth + 1)?;
             }
             JavaExprKind::Unary {
+                operator: JavaUnaryOperator::Negate,
+                operand,
+            } if value.ty == JavaType::primitive(JavaPrimitive::Double)
+                && operand.ty == value.ty =>
+            {
+                self.expression(operand, depth + 1)?;
+            }
+            JavaExprKind::Unary {
                 operator: JavaUnaryOperator::BitNot | JavaUnaryOperator::Negate,
                 operand,
             } if matches!(

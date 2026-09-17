@@ -42,6 +42,10 @@ a dependency-free finite literal witness, C/Java target proof and checked
 compiler value/comparison integration, with 786/786 release tests and clean
 independent review. Floating arithmetic/constants/casts remain separate work.
 
+The next bounded operation is [02J — built-in binary64 negation](M35-03A-02J-floating-negation.md),
+with target proof complete (786/786 release tests and clean independent review)
+and a separate checked compiler integration checkpoint next.
+
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing

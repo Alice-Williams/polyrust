@@ -124,7 +124,7 @@ fn finite_literal_cannot_claim_a_narrower_type() {
 mod native;
 
 #[test]
-fn closed_double_owner_does_not_admit_arithmetic_casts_or_negation() {
+fn closed_double_owner_admits_negation_not_binary_arithmetic_or_casts() {
     for operator in [
         JavaBinaryOperator::Add,
         JavaBinaryOperator::Subtract,
@@ -182,7 +182,7 @@ fn closed_double_owner_does_not_admit_arithmetic_casts_or_negation() {
             operand: Box::new(literal),
         },
     }))]);
-    assert!(JavaDependencyApi::from_certificate(f::certify(f::package(91, declarations))).is_err());
+    assert!(JavaDependencyApi::from_certificate(f::certify(f::package(91, declarations))).is_ok());
 }
 
 #[path = "binary64_comparisons.rs"]
@@ -193,3 +193,6 @@ mod records;
 
 #[path = "binary64_trace.rs"]
 mod trace;
+
+#[path = "binary64_negation.rs"]
+mod negation;

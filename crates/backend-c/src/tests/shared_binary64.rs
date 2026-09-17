@@ -233,10 +233,17 @@ fn floating_arithmetic_cannot_enter_the_closed_c_profile() {
             portable_binary64::FiniteBinary64::from_bits(1).unwrap(),
         ))
         .unwrap();
-    let values = [
+    assert!(
         expressions
-            .unary(CUnaryOperator::Negate, literal.clone())
-            .unwrap(),
+            .unary(CUnaryOperator::LogicalNot, literal.clone())
+            .is_err()
+    );
+    assert!(
+        expressions
+            .unary(CUnaryOperator::BitNot, literal.clone())
+            .is_err()
+    );
+    let values = [
         expressions
             .binary(CBinaryOperator::Add, literal.clone(), literal.clone())
             .unwrap(),
@@ -303,3 +310,6 @@ mod records;
 
 #[path = "shared_binary64_trace.rs"]
 mod trace;
+
+#[path = "shared_binary64_negation.rs"]
+mod negation;
