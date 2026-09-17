@@ -73,6 +73,10 @@ impl Writer<'_> {
                 right,
             } => {
                 let op = match operator {
+                    CBinaryOperator::Add => "+",
+                    CBinaryOperator::Subtract => "-",
+                    CBinaryOperator::Multiply => "*",
+                    CBinaryOperator::Divide => "/",
                     CBinaryOperator::Equal => "==",
                     CBinaryOperator::NotEqual => "!=",
                     CBinaryOperator::Less => "<",

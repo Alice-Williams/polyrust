@@ -3,8 +3,12 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_clippy_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
-def arithmetic_oracle_targets():
-    """Compare integer/rational expectations with the pinned Rust reference."""
+def arithmetic_oracle_targets(name):
+    """Compare integer/rational expectations with the pinned Rust reference.
+
+    Args:
+        name: Name of the test-only shared arithmetic oracle filegroup.
+    """
     rust_binary(
         name = "rust_arithmetic_reference",
         srcs = ["fixtures/reference_arithmetic.rs"],
@@ -28,4 +32,15 @@ def arithmetic_oracle_targets():
             "test/arithmetic_oracle_test.py",
             ":rust_arithmetic_reference",
         ],
+    )
+
+    native.filegroup(
+        name = name,
+        testonly = True,
+        srcs = [
+            "test/arithmetic_oracle.py",
+            "test/arithmetic_cases.py",
+            "test/short_circuit_mutations.py",
+        ],
+        visibility = ["//crates/backend-c:__pkg__", "//crates/backend-java:__pkg__"],
     )

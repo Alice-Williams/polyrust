@@ -152,7 +152,12 @@ rust_test(
     ],
     crate_name = "portable_backend_c",
     crate_root = "src/lib.rs",
-    data = ["//tools/c:zig_native_oracle"],
+    data = [
+        "test/arithmetic_mutations.py",
+        "test/binary64_arithmetic.py",
+        "//experiments/rustc-frontend:arithmetic_oracle_support",
+        "//tools/c:zig_native_oracle",
+    ],
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = [

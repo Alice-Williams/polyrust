@@ -376,6 +376,21 @@ fn walk<'a>(
                         add(Node::Value(right));
                     }
                     CValueKind::Binary {
+                        operator:
+                            CBinaryOperator::Add
+                            | CBinaryOperator::Subtract
+                            | CBinaryOperator::Multiply
+                            | CBinaryOperator::Divide,
+                        left,
+                        right,
+                    } if left.ty().kind() == &CObjectTypeKind::Scalar(CScalarType::F64)
+                        && right.ty() == left.ty()
+                        && value.ty() == left.ty() =>
+                    {
+                        add(Node::Value(left));
+                        add(Node::Value(right));
+                    }
+                    CValueKind::Binary {
                         operator,
                         left,
                         right,

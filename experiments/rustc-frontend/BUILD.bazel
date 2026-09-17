@@ -791,4 +791,4 @@ truncation_ast_targets(
     c_sources = ADAPTER_SOURCES,
 )
 
-arithmetic_oracle_targets()
+arithmetic_oracle_targets(name = "arithmetic_oracle_support")

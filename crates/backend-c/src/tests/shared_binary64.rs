@@ -220,7 +220,7 @@ fn binary64_platform_checks_cannot_be_removed_or_changed() {
 mod native;
 
 #[test]
-fn floating_arithmetic_cannot_enter_the_closed_c_profile() {
+fn floating_conversions_and_mixed_operations_cannot_enter_the_closed_c_profile() {
     let source = fixture(&[1]);
     let declarations = CDeclarations::new(
         source.registry.registrations(),
@@ -244,12 +244,6 @@ fn floating_arithmetic_cannot_enter_the_closed_c_profile() {
             .is_err()
     );
     let values = [
-        expressions
-            .binary(CBinaryOperator::Add, literal.clone(), literal.clone())
-            .unwrap(),
-        expressions
-            .binary(CBinaryOperator::Multiply, literal.clone(), literal.clone())
-            .unwrap(),
         expressions
             .numeric_conversion(CScalarType::I32, literal.clone())
             .unwrap(),
@@ -319,3 +313,6 @@ mod conditional;
 
 #[path = "shared_binary64_truncation.rs"]
 mod truncation;
+
+#[path = "shared_binary64_arithmetic.rs"]
+mod arithmetic;

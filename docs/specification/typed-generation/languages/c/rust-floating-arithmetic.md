@@ -1,6 +1,6 @@
 # C17 binary64 arithmetic mapping
 
-- Status: staged contract; target/source admission not implemented
+- Status: target foundation implemented and verified (02N-02); Rust source admission pending 02N-04
 - Parent: [shared arithmetic](../../rust-floating-arithmetic.md)
 
 ## Target AST
