@@ -1,5 +1,5 @@
 //! Compiler-evaluated scalar reads; no initializer interpreter or target syntax.
-use super::{Capability, LiteralValue};
+use super::{Capability, ScalarConstantValue};
 use rustc_hir::{
     self as hir,
     def::{DefKind, Res},
@@ -12,7 +12,7 @@ pub(crate) struct ScalarConstants;
 /// Construction retains compiler provenance and is confined to this module.
 #[derive(Clone, Copy)]
 pub(crate) struct ConstantInput<'tcx> {
-    value: LiteralValue,
+    value: ScalarConstantValue,
     _definition: DefId,
     _expression: &'tcx hir::Expr<'tcx>,
 }
@@ -76,7 +76,7 @@ impl<'tcx> ConstantInput<'tcx> {
         self._definition
     }
 
-    pub(crate) fn value(self) -> LiteralValue {
+    pub(crate) fn value(self) -> ScalarConstantValue {
         self.value
     }
 

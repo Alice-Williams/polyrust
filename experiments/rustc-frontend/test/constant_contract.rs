@@ -138,7 +138,7 @@ fn wrong_input<'tcx>(reader: &mut Reader<'tcx>, expression: &'tcx rustc_hir::Exp
 #[cfg(constant_private_input)]
 fn private_input<'tcx>(expression: &'tcx rustc_hir::Expr<'tcx>) {
     let _ = ConstantInput {
-        value: LiteralValue::I32(0),
+        value: ScalarConstantValue::I32(0),
         _definition: rustc_hir::def_id::CRATE_DEF_ID.to_def_id(),
         _expression: expression,
     };

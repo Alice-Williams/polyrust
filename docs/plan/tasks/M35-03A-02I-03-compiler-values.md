@@ -1,6 +1,6 @@
 # M35-03A-02I-03 — Checked Rust f64 value mappings
 
-- Status: planned
+- Status: in-progress
 - Parent: [binary64 values](M35-03A-02I-binary64-values.md)
 - Depends on: [target foundation](M35-03A-02I-02-target-values.md)
 
@@ -30,3 +30,13 @@ it; old scalar-only package bytes/schemas remain unchanged.
 - Actual examples are exported outside Docker without committing generated
   output. Full Linux release/lint gate and a fresh independent review pass.
 - No replacement-family completion or runtime retirement is claimed.
+
+## Implementation order
+
+Completed prerequisite: [03A — Closed constant value domain](M35-03A-02I-03A-constant-domain.md).
+Literal and constant witnesses now use distinct enums, preserving the closed
+constant domain before literal support is widened.
+Then extend checked compiler literal evaluation, source representations and
+capability mappings, followed by metadata/native/negative/probe proof. Each
+independently completed child has its own passing checkpoint; this parent
+remains incomplete until the full source-equivalence contract is demonstrated.

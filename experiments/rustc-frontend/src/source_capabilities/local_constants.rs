@@ -1,5 +1,5 @@
 //! Block-local const declarations have compiler identity but no runtime storage.
-use super::{Capability, LiteralValue, constant_evaluation};
+use super::{Capability, ScalarConstantValue, constant_evaluation};
 use rustc_hir::{self as hir, def::DefKind, def_id::DefId};
 use rustc_middle::ty::TyCtxt;
 
@@ -7,7 +7,7 @@ pub(crate) struct LocalConstants;
 
 #[derive(Clone, Copy)]
 pub(crate) struct LocalConstantInput<'tcx> {
-    value: LiteralValue,
+    value: ScalarConstantValue,
     _definition: DefId,
     _statement: &'tcx hir::Stmt<'tcx>,
 }
@@ -41,7 +41,7 @@ impl<'tcx> LocalConstantInput<'tcx> {
         })
     }
 
-    pub(crate) fn value(self) -> LiteralValue {
+    pub(crate) fn value(self) -> ScalarConstantValue {
         self.value
     }
 

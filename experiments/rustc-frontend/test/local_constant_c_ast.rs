@@ -1,5 +1,5 @@
 //! Read-only observation around the actual declaration mapping.
-use super::{LiteralValue, LocalConstantInput};
+use super::{LocalConstantInput, ScalarConstantValue};
 use crate::c_lower::Reader;
 use rustc_middle::ty;
 
@@ -84,9 +84,9 @@ pub(super) fn check(reader: &Reader<'_>, input: LocalConstantInput<'_>, before: 
         )
         .expect("checked scalar constant type");
     match input.value() {
-        LiteralValue::Bool(_) => assert!(matches!(declared.kind(), ty::Bool)),
-        LiteralValue::I32(_) => assert!(matches!(declared.kind(), ty::Int(ty::IntTy::I32))),
-        LiteralValue::I64(_) => assert!(matches!(declared.kind(), ty::Int(ty::IntTy::I64))),
+        ScalarConstantValue::Bool(_) => assert!(matches!(declared.kind(), ty::Bool)),
+        ScalarConstantValue::I32(_) => assert!(matches!(declared.kind(), ty::Int(ty::IntTy::I32))),
+        ScalarConstantValue::I64(_) => assert!(matches!(declared.kind(), ty::Int(ty::IntTy::I64))),
     }
     eprintln!(
         "LOCAL_CONSTANT_AST\tc\t{:?}\t{:?}",

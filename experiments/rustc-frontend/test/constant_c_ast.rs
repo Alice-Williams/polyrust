@@ -1,5 +1,5 @@
 //! Observe the actual mapper result and resolved compiler origin.
-use super::{ConstantInput, LiteralValue};
+use super::{ConstantInput, ScalarConstantValue};
 use crate::c_lower::Reader;
 use portable_backend_c::ast::*;
 
@@ -16,9 +16,9 @@ pub(super) fn check<'tcx>(reader: &Reader<'tcx>, input: ConstantInput<'tcx>, val
         Some(definition)
     );
     let (scalar, literal) = match input.value() {
-        LiteralValue::I32(v) => (CScalarType::I32, CLiteral::Signed(CSignedLiteral::I32(v))),
-        LiteralValue::I64(v) => (CScalarType::I64, CLiteral::Signed(CSignedLiteral::I64(v))),
-        LiteralValue::Bool(v) => (CScalarType::Bool, CLiteral::Bool(v)),
+        ScalarConstantValue::I32(v) => (CScalarType::I32, CLiteral::Signed(CSignedLiteral::I32(v))),
+        ScalarConstantValue::I64(v) => (CScalarType::I64, CLiteral::Signed(CSignedLiteral::I64(v))),
+        ScalarConstantValue::Bool(v) => (CScalarType::Bool, CLiteral::Bool(v)),
     };
     assert_eq!(value.ty().kind(), &CObjectTypeKind::Scalar(scalar));
     assert_eq!(value.kind(), &CValueKind::Literal(literal));

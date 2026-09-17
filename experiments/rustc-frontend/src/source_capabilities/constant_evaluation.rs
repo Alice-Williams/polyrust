@@ -1,5 +1,5 @@
 //! Shared compiler definition admission/evaluation for reads and declarations.
-use super::LiteralValue;
+use super::ScalarConstantValue;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 pub(super) fn evaluate<'tcx>(
     tcx: TyCtxt<'tcx>,
     definition: DefId,
-) -> Result<(Ty<'tcx>, LiteralValue), String> {
+) -> Result<(Ty<'tcx>, ScalarConstantValue), String> {
     let kind = tcx.def_kind(definition);
     if !matches!(
         kind,
@@ -43,13 +43,13 @@ pub(super) fn evaluate<'tcx>(
         .ok_or("compiler constant is not a scalar integer")?;
     // These signed/Boolean decoders assert their input width; guard it first.
     let value = match (ty.kind(), scalar.size().bytes()) {
-        (ty::Bool, 1) => LiteralValue::Bool(
+        (ty::Bool, 1) => ScalarConstantValue::Bool(
             scalar
                 .try_to_bool()
                 .map_err(|_| "invalid compiler Boolean scalar")?,
         ),
-        (ty::Int(ty::IntTy::I32), 4) => LiteralValue::I32(scalar.to_i32()),
-        (ty::Int(ty::IntTy::I64), 8) => LiteralValue::I64(scalar.to_i64()),
+        (ty::Int(ty::IntTy::I32), 4) => ScalarConstantValue::I32(scalar.to_i32()),
+        (ty::Int(ty::IntTy::I64), 8) => ScalarConstantValue::I64(scalar.to_i64()),
         _ => return Err("compiler constant scalar width disagrees with its type".into()),
     };
     Ok((ty, value))

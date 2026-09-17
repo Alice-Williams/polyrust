@@ -1,5 +1,5 @@
 //! Compiler-authenticated public scalar declarations, independent of target syntax.
-use super::{Capability, LiteralValue, constant_evaluation};
+use super::{Capability, ScalarConstantValue, constant_evaluation};
 use crate::source_origin::{
     identity,
     public_api::{DeclarationKind, Inventory},
@@ -13,7 +13,7 @@ pub(crate) struct PublicConstants;
 pub(crate) struct ConstantDeclarationInput<'tcx> {
     tcx: TyCtxt<'tcx>,
     definition: DefId,
-    value: LiteralValue,
+    value: ScalarConstantValue,
 }
 
 impl Capability for PublicConstants {
@@ -48,7 +48,7 @@ impl<'tcx> ConstantDeclarationInput<'tcx> {
     pub(crate) fn definition(self) -> DefId {
         self.definition
     }
-    pub(crate) fn value(self) -> LiteralValue {
+    pub(crate) fn value(self) -> ScalarConstantValue {
         self.value
     }
 }

@@ -1,5 +1,5 @@
 //! Public package reads retain a checked definition rather than choosing a name.
-use super::{Capability, ConstantInput, LiteralValue};
+use super::{Capability, ConstantInput, ScalarConstantValue};
 use rustc_hir::{self as hir, def::DefKind, def_id::DefId};
 use rustc_middle::ty::{TyCtxt, TypeckResults};
 
@@ -41,7 +41,7 @@ impl<'tcx> PublicConstantReadInput<'tcx> {
     pub(crate) fn definition(self) -> DefId {
         self.checked.definition()
     }
-    pub(crate) fn value(self) -> LiteralValue {
+    pub(crate) fn value(self) -> ScalarConstantValue {
         self.checked.value()
     }
 }

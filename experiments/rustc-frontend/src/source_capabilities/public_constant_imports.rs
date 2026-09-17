@@ -1,5 +1,5 @@
 //! Foreign compiler declarations must still be joined to an original target owner.
-use super::{Capability, LiteralValue, PublicConstantReadInput, constant_evaluation};
+use super::{Capability, PublicConstantReadInput, ScalarConstantValue, constant_evaluation};
 use rustc_hir::{
     self as hir,
     def::{DefKind, Res},
@@ -13,7 +13,7 @@ pub(crate) struct PublicConstantImports;
 pub(crate) struct ConstantImportInput<'tcx> {
     tcx: TyCtxt<'tcx>,
     definition: DefId,
-    value: LiteralValue,
+    value: ScalarConstantValue,
 }
 
 impl Capability for PublicConstantImports {
@@ -61,7 +61,7 @@ impl<'tcx> ConstantImportInput<'tcx> {
     pub(crate) fn definition(self) -> DefId {
         self.definition
     }
-    pub(crate) fn value(self) -> LiteralValue {
+    pub(crate) fn value(self) -> ScalarConstantValue {
         self.value
     }
 }

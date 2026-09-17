@@ -1,5 +1,5 @@
 //! Independently inspect compiler-to-certified public field and callable identities.
-use crate::source_capabilities::{ConstantDeclarationInput, LiteralValue};
+use crate::source_capabilities::{ConstantDeclarationInput, ScalarConstantValue};
 use crate::source_origin::{
     Cache,
     public_api::{DeclarationKind, Inventory},
@@ -27,9 +27,11 @@ pub(super) fn check(tcx: TyCtxt<'_>, certificate: &RenderReadyPackage<JavaDialec
                 .unwrap();
                 let constant = api.constant(*id).unwrap();
                 let (ty, value) = match input.value() {
-                    LiteralValue::Bool(v) => (JavaPrimitive::Boolean, JavaLiteral::Boolean(v)),
-                    LiteralValue::I32(v) => (JavaPrimitive::Int, JavaLiteral::I32(v)),
-                    LiteralValue::I64(v) => (JavaPrimitive::Long, JavaLiteral::I64(v)),
+                    ScalarConstantValue::Bool(v) => {
+                        (JavaPrimitive::Boolean, JavaLiteral::Boolean(v))
+                    }
+                    ScalarConstantValue::I32(v) => (JavaPrimitive::Int, JavaLiteral::I32(v)),
+                    ScalarConstantValue::I64(v) => (JavaPrimitive::Long, JavaLiteral::I64(v)),
                 };
                 assert_eq!(constant.value(), &value);
                 assert_eq!(constant.ty(), &JavaType::primitive(ty));

@@ -1,6 +1,7 @@
 //! Shared compiler input contracts; target mappings own context and output.
 mod boolean_negation;
 mod constant_evaluation;
+mod constant_values;
 mod contracts;
 mod direct_calls;
 mod eager_booleans;
@@ -27,6 +28,7 @@ mod unit_effects;
 mod wrapping_negation;
 
 pub(crate) use boolean_negation::{BooleanNegation, NegationInput};
+pub(crate) use constant_values::ScalarConstantValue;
 pub(crate) use contracts::{Capability, Mapping, Supports};
 pub(crate) use direct_calls::{CallInput, DirectCalls};
 pub(crate) use eager_booleans::{EagerBooleanInput, EagerBooleanOperator, EagerBooleans};

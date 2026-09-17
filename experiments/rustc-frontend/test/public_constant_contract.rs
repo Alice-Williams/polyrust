@@ -180,7 +180,7 @@ fn private_declaration(tcx: rustc_middle::ty::TyCtxt<'_>) {
     let _ = ConstantDeclarationInput {
         tcx,
         definition: rustc_hir::def_id::CRATE_DEF_ID.to_def_id(),
-        value: LiteralValue::I32(0),
+        value: ScalarConstantValue::I32(0),
     };
 }
 #[cfg(all(public_constant_private_input, public_constant_read))]
@@ -193,6 +193,6 @@ fn private_import(tcx: rustc_middle::ty::TyCtxt<'_>) {
     let _ = ConstantImportInput {
         tcx,
         definition: rustc_hir::def_id::CRATE_DEF_ID.to_def_id(),
-        value: LiteralValue::I32(0),
+        value: ScalarConstantValue::I32(0),
     };
 }

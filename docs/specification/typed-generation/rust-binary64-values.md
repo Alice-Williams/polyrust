@@ -50,3 +50,13 @@ NaNs/infinities are legal f64 input values; nonfinite literal/constant generatio
 remains unsupported until mapped through typed standard-language constructs.
 The Rust f64 documentation explains why arithmetic cannot generally promise
 NaN payload preservation ([f64](https://doc.rust-lang.org/std/primitive.f64.html)).
+
+## Separate literal and constant domains
+
+Source literal witnesses use LiteralValue. Compiler-evaluated constant reads,
+local/public declarations and imports instead use a distinct ScalarConstantValue
+with only Bool, I32 and I64 variants. It is not a type alias and neither domain
+implicitly converts to the other. C and Java constant mappings exhaustively
+consume the narrower enum. Extending literal support therefore cannot silently
+extend constant witnesses or their mappings; floating constants require an
+explicit later change to this separate contract and its native proof.

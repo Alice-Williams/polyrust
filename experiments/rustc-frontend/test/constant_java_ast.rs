@@ -1,5 +1,5 @@
 //! Observe the actual mapper result and resolved compiler origin.
-use super::{ConstantInput, LiteralValue};
+use super::{ConstantInput, ScalarConstantValue};
 use crate::java_lower::Reader;
 use portable_backend_java::ast::*;
 
@@ -20,9 +20,9 @@ pub(super) fn check<'tcx>(
         Some(definition)
     );
     let (primitive, literal) = match input.value() {
-        LiteralValue::I32(v) => (JavaPrimitive::Int, JavaLiteral::I32(v)),
-        LiteralValue::I64(v) => (JavaPrimitive::Long, JavaLiteral::I64(v)),
-        LiteralValue::Bool(v) => (JavaPrimitive::Boolean, JavaLiteral::Boolean(v)),
+        ScalarConstantValue::I32(v) => (JavaPrimitive::Int, JavaLiteral::I32(v)),
+        ScalarConstantValue::I64(v) => (JavaPrimitive::Long, JavaLiteral::I64(v)),
+        ScalarConstantValue::Bool(v) => (JavaPrimitive::Boolean, JavaLiteral::Boolean(v)),
     };
     let expression = value.clone().into_expression();
     assert_eq!(expression.ty, JavaType::primitive(primitive));

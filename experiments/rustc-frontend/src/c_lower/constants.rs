@@ -1,17 +1,17 @@
 //! Owned scalar constant inventory and ordinary header/source declarations.
 use super::{Result, c};
-use crate::source_capabilities::LiteralValue;
+use crate::source_capabilities::ScalarConstantValue;
 use portable_backend_c::ast::*;
 use rustc_hir::def_id::DefId;
 use std::collections::HashMap;
 
-pub(crate) type OwnedConstants = HashMap<DefId, (CObjectRef, LiteralValue)>;
+pub(crate) type OwnedConstants = HashMap<DefId, (CObjectRef, ScalarConstantValue)>;
 
-pub(super) fn literal(value: LiteralValue) -> CLiteral {
+pub(super) fn literal(value: ScalarConstantValue) -> CLiteral {
     match value {
-        LiteralValue::Bool(value) => CLiteral::Bool(value),
-        LiteralValue::I32(value) => CLiteral::Signed(CSignedLiteral::I32(value)),
-        LiteralValue::I64(value) => CLiteral::Signed(CSignedLiteral::I64(value)),
+        ScalarConstantValue::Bool(value) => CLiteral::Bool(value),
+        ScalarConstantValue::I32(value) => CLiteral::Signed(CSignedLiteral::I32(value)),
+        ScalarConstantValue::I64(value) => CLiteral::Signed(CSignedLiteral::I64(value)),
     }
 }
 

@@ -15,6 +15,7 @@ mod source_origin;
 #[path = "../src/source_capabilities/mod.rs"]
 mod source_capabilities;
 use source_capabilities::*;
+mod constant_domains;
 
 #[derive(Clone, Copy)]
 struct NumericMapping;
@@ -219,6 +220,7 @@ fn wrapping<'tcx>(
     }
 }
 fn main() {
+    let _ = (constant_domains::distinct, constant_domains::witnesses);
     capability::<WrappingNegation>();
     let _ = wrapping;
     let _ = [WrappingWidth::I32, WrappingWidth::I64];
