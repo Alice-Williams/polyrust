@@ -1,6 +1,6 @@
 # Rust binary64 values and finite literals
 
-- Status: finite value foundation implemented; target/source integration specified
+- Status: finite value and C/Java target foundations implemented; Rust-source integration pending
 - Plan: [M35-03A-02I](../../plan/tasks/M35-03A-02I-binary64-values.md)
 - Targets: [C17](languages/c/rust-binary64-values.md),
   [Java21](languages/java/rust-binary64-values.md)

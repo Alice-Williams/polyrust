@@ -125,17 +125,27 @@ impl Fixture {
     }
 
     pub fn with_nominal_origin(replacement: Option<GeneratedOrigin<JavaDialect>>) -> Self {
-        Self::build(replacement, origin(), Facade::Harness)
+        Self::build(replacement, origin(), Facade::Harness, int())
     }
 
     pub fn with_metadata(metadata: RustSourceOrigin, facade: Facade) -> Self {
-        Self::build(None, metadata, facade)
+        Self::build(None, metadata, facade, int())
+    }
+
+    pub fn with_double_metadata(metadata: RustSourceOrigin, facade: Facade) -> Self {
+        Self::build(
+            None,
+            metadata,
+            facade,
+            JavaType::primitive(JavaPrimitive::Double),
+        )
     }
 
     fn build(
         replacement: Option<GeneratedOrigin<JavaDialect>>,
         metadata: RustSourceOrigin,
         facade: Facade,
+        value_type: JavaType,
     ) -> Self {
         let mut builder = TargetAstBuilder::new(JavaDialect);
         let facade_id = builder.generated_type(GeneratedType {
@@ -156,7 +166,7 @@ impl Fixture {
         let mut parameters = Vec::new();
         let mut components = Vec::new();
         let mut assignments = Vec::new();
-        for (hash, spelling, ty) in [(3, "value", int()), (4, "flag", boolean())] {
+        for (hash, spelling, ty) in [(3, "value", value_type.clone()), (4, "flag", boolean())] {
             let mut field_origin = metadata.clone();
             field_origin.declaration = id(hash);
             parameters.push(JavaParameter {
@@ -202,7 +212,7 @@ impl Fixture {
         let cell = || JavaExpr::local(cell_type.clone(), name("cell"));
         let mut inspect = method(
             "inspect",
-            int(),
+            value_type.clone(),
             vec![
                 JavaStmt::Local {
                     finality: JavaLocalFinality::Final,
@@ -214,17 +224,17 @@ impl Fixture {
                         kind: JavaExprKind::New {
                             constructor: JavaConstructorRef::Generated {
                                 owner: record_id,
-                                parameters: vec![int(), boolean()],
+                                parameters: vec![value_type.clone(), boolean()],
                             },
                             arguments: vec![
-                                JavaExpr::local(int(), name("value")),
+                                JavaExpr::local(value_type.clone(), name("value")),
                                 JavaExpr::local(boolean(), name("flag")),
                             ],
                         },
                     }),
                 },
                 JavaStmt::Return(Some(JavaExpr {
-                    ty: int(),
+                    ty: value_type.clone(),
                     precedence: JavaPrecedence::Conditional,
                     kind: JavaExprKind::Conditional {
                         condition: Box::new(field(
@@ -234,10 +244,22 @@ impl Fixture {
                         )),
                         when_true: Box::new(field(
                             cell(),
-                            reference(record_id, 3, "value", int()),
-                            int(),
+                            reference(record_id, 3, "value", value_type.clone()),
+                            value_type.clone(),
                         )),
-                        when_false: Box::new(JavaExpr::literal(int(), JavaLiteral::I32(-1))),
+                        when_false: Box::new(JavaExpr::literal(
+                            value_type.clone(),
+                            if value_type == int() {
+                                JavaLiteral::I32(-1)
+                            } else {
+                                JavaLiteral::F64(
+                                    portable_binary64::FiniteBinary64::from_bits(
+                                        0xbff0_0000_0000_0000,
+                                    )
+                                    .unwrap(),
+                                )
+                            },
+                        )),
                     },
                 })),
             ],

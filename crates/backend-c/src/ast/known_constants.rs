@@ -19,6 +19,7 @@ pub enum CKnownConstant {
     DoubleMinExponent,
     DoubleMaxExponent,
     FloatEvaluationMethod,
+    DoubleHasSubnormals,
     EndOfFile,
     StandardInput,
     StandardOutput,
@@ -37,6 +38,7 @@ impl CKnownConstant {
             | Self::DoubleMantissaDigits
             | Self::DoubleMinExponent
             | Self::DoubleMaxExponent
+            | Self::DoubleHasSubnormals
             | Self::FloatEvaluationMethod
             | Self::EndOfFile => CScalarType::Int,
             Self::U32Max => CScalarType::U32,
@@ -69,6 +71,7 @@ impl CKnownConstant {
             | Self::DoubleMantissaDigits
             | Self::DoubleMinExponent
             | Self::DoubleMaxExponent
+            | Self::DoubleHasSubnormals
             | Self::FloatEvaluationMethod
             | Self::EndOfFile => true,
         }

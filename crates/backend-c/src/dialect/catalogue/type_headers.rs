@@ -45,6 +45,7 @@ impl CKnownConstant {
             | Self::DoubleMantissaDigits
             | Self::DoubleMinExponent
             | Self::DoubleMaxExponent
+            | Self::DoubleHasSubnormals
             | Self::FloatEvaluationMethod => CHeader::Float,
             Self::EndOfFile | Self::StandardInput | Self::StandardOutput | Self::StandardError => {
                 CHeader::Stdio

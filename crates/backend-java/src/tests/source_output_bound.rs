@@ -167,9 +167,13 @@ fn unmeasured_shapes_do_not_receive_a_small_fallback() {
         budget: Budget::new(),
         names: &names,
     };
+    reader
+        .ty(&JavaType::primitive(JavaPrimitive::Double))
+        .unwrap();
+    assert_eq!(reader.budget.bytes(), 7);
     assert!(
         reader
-            .ty(&JavaType::primitive(JavaPrimitive::Double))
+            .ty(&JavaType::primitive(JavaPrimitive::Byte))
             .is_err()
     );
     assert!(

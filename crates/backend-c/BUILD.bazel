@@ -127,6 +127,7 @@ rust_library(
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = [
+        "//crates/binary64:portable_binary64",
         "//crates/check:portable_check",
         "//crates/codegen:portable_codegen",
         "//crates/core-ir:portable_core_ir",
@@ -154,6 +155,7 @@ rust_test(
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = [
+        "//crates/binary64:portable_binary64",
         "//crates/check:portable_check",
         "//crates/codegen:portable_codegen",
         "//crates/core-ir:portable_core_ir",

@@ -87,9 +87,16 @@ impl CNullPointer {
     }
 }
 
+/// Finite floating literals require the checked semantic witness, not raw floats.
+///
+/// ```compile_fail
+/// use portable_backend_c::ast::CLiteral;
+/// let unchecked = CLiteral::F64(f64::NAN);
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CLiteral {
     Bool(bool),
+    F64(portable_binary64::FiniteBinary64),
     Signed(CSignedLiteral),
     Unsigned(CUnsignedLiteral),
     CharByte(u8),
@@ -99,6 +106,7 @@ pub enum CLiteral {
 impl CLiteral {
     pub fn ty(&self) -> CObjectType {
         let scalar = match self {
+            Self::F64(_) => CScalarType::F64,
             Self::Bool(_) => CScalarType::Bool,
             Self::Signed(value) => value.scalar_type(),
             Self::Unsigned(value) => value.scalar_type(),

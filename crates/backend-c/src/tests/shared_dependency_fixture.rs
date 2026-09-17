@@ -35,6 +35,23 @@ pub(super) fn fixture(
     )
 }
 
+/// Comparison fixtures retain exact floating parameters and Boolean results.
+pub(super) fn boolean_results(crate_id: u64, count: usize) -> Fixture {
+    build(
+        PackageIdentity {
+            crate_id,
+            file_stem: format!("polyrust_dep_{crate_id}"),
+            definition_base: 10,
+        },
+        &vec![CScalarType::F64; count],
+        &[],
+        &vec![None; count],
+        None,
+        Some(&vec![CScalarType::Bool; count]),
+        None,
+    )
+}
+
 pub(super) struct PackageIdentity {
     pub crate_id: u64,
     pub file_stem: String,
@@ -47,7 +64,7 @@ pub(super) fn configured(
     dependencies: &[CDependencyFunction],
     calls: &[Option<usize>],
 ) -> Fixture {
-    build(identity, scalars, dependencies, calls, None)
+    build(identity, scalars, dependencies, calls, None, None, None)
 }
 
 pub(super) fn named(
@@ -66,6 +83,8 @@ pub(super) fn named(
         dependencies,
         calls,
         Some(names),
+        None,
+        None,
     )
 }
 
@@ -75,6 +94,8 @@ fn build(
     dependencies: &[CDependencyFunction],
     calls: &[Option<usize>],
     names: Option<&[&str]>,
+    results: Option<&[CScalarType]>,
+    probe: Option<Probe>,
 ) -> Fixture {
     let crate_id = identity.crate_id;
     assert_eq!(scalars.len(), calls.len());
@@ -157,7 +178,13 @@ fn build(
                     })),
                 },
                 CFunctionType::new(
-                    CReturnType::Value(CReturnValue::new(ty.clone()).unwrap()),
+                    CReturnType::Value(
+                        CReturnValue::new(results.map_or_else(
+                            || ty.clone(),
+                            |results| CObjectType::scalar(results[index]),
+                        ))
+                        .unwrap(),
+                    ),
                     vec![CParameterType::new(ty).unwrap()],
                 ),
             )
@@ -174,6 +201,21 @@ fn build(
         );
         functions.push(function);
     }
+    let probe_locals: Vec<_> = scopes
+        .iter()
+        .map(|scope| {
+            probe.map(|_| {
+                (
+                    registry
+                        .register_local(scope, key("left"), CObjectType::scalar(CScalarType::F64))
+                        .unwrap(),
+                    registry
+                        .register_local(scope, key("right"), CObjectType::scalar(CScalarType::F64))
+                        .unwrap(),
+                )
+            })
+        })
+        .collect();
     let expressions = CExpressions::new(&registry);
     let declarations = CDeclarations::new(&registry, header).unwrap();
     let header = declarations
@@ -208,15 +250,71 @@ fn build(
                                 vec![input],
                             )
                             .unwrap()
+                    } else if results.is_some_and(|results| results[index] != scalars[index]) {
+                        assert_eq!(results.unwrap()[index], CScalarType::Bool);
+                        expressions.literal(CLiteral::Bool(false)).unwrap()
                     } else {
                         input
                     };
-                    let body = statements
-                        .block(
-                            scopes[index].clone(),
-                            vec![statements.return_statement(Some(value)).unwrap()],
-                        )
-                        .unwrap();
+                    let body_items = if let Some((left, right)) = &probe_locals[index] {
+                        let left_value = if matches!(probe, Some(Probe::DropLeft)) {
+                            expressions
+                                .read(expressions.parameter(parameters[index].clone()).unwrap())
+                                .unwrap()
+                        } else {
+                            value
+                        };
+                        let zero = expressions
+                            .literal(CLiteral::F64(
+                                portable_binary64::FiniteBinary64::from_bits(0).unwrap(),
+                            ))
+                            .unwrap();
+                        let right_value = expressions
+                            .call_value(
+                                expressions.direct(imported[0].clone()).unwrap(),
+                                vec![zero],
+                            )
+                            .unwrap();
+                        let left_decl = statements
+                            .declare(
+                                left.clone(),
+                                Some(expressions.expression_initializer(left_value).unwrap()),
+                            )
+                            .unwrap();
+                        let right_decl = statements
+                            .declare(
+                                right.clone(),
+                                Some(expressions.expression_initializer(right_value).unwrap()),
+                            )
+                            .unwrap();
+                        let mut items = if matches!(probe, Some(Probe::Reversed)) {
+                            vec![right_decl, left_decl]
+                        } else {
+                            vec![left_decl, right_decl]
+                        };
+                        items.push(
+                            statements
+                                .discard(
+                                    expressions
+                                        .read(expressions.local(right.clone()).unwrap())
+                                        .unwrap(),
+                                )
+                                .unwrap(),
+                        );
+                        items.push(
+                            statements
+                                .return_statement(Some(
+                                    expressions
+                                        .read(expressions.local(left.clone()).unwrap())
+                                        .unwrap(),
+                                ))
+                                .unwrap(),
+                        );
+                        items
+                    } else {
+                        vec![statements.return_statement(Some(value)).unwrap()]
+                    };
+                    let body = statements.block(scopes[index].clone(), body_items).unwrap();
                     CFileItem::Definition(
                         declarations
                             .function_definition(
@@ -249,4 +347,27 @@ pub(super) fn api(crate_id: u64, scalars: &[CScalarType]) -> CDependencyApi {
     let fixture = fixture(crate_id, scalars, &[], &vec![None; scalars.len()]);
     let certificate = certify_resolved_package(&CDialect, linked(&fixture)).unwrap();
     CDependencyApi::from_certificate(certificate).unwrap()
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(super) enum Probe {
+    Ordered,
+    DropLeft,
+    Reversed,
+}
+
+pub(super) fn double_probe(dependency: CDependencyFunction, mode: Probe) -> Fixture {
+    build(
+        PackageIdentity {
+            crate_id: 95,
+            file_stem: "polyrust_dep_95".into(),
+            definition_base: 10,
+        },
+        &[CScalarType::F64],
+        &[dependency],
+        &[Some(0)],
+        None,
+        None,
+        Some(mode),
+    )
 }

@@ -112,6 +112,7 @@ fn build(
                 }
                 CHeader::Stdint => &[CStdType::I32][..],
                 CHeader::Stddef => &[CStdType::Size][..],
+                CHeader::Float => &[][..],
                 _ => return Err("header is outside the first C profile".into()),
             });
         }
@@ -120,6 +121,12 @@ fn build(
             bindings: file_bindings,
             declarations,
             standards,
+            standard_libraries: dependencies
+                .headers()
+                .iter()
+                .copied()
+                .filter(|header| *header == CHeader::Float)
+                .collect(),
             documentation: documentation
                 .remove(source.identity())
                 .ok_or("C file has no documentation projection")?,

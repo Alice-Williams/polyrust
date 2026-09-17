@@ -7,6 +7,7 @@ pub(super) fn literal_matches_type(literal: &JavaLiteral, ty: &JavaType) -> bool
     match literal {
         JavaLiteral::Boolean(_) => *ty == JavaType::Primitive(JavaPrimitive::Boolean),
         JavaLiteral::I32(_) => *ty == JavaType::Primitive(JavaPrimitive::Int),
+        JavaLiteral::F64(_) => *ty == JavaType::Primitive(JavaPrimitive::Double),
         JavaLiteral::I64(_) => *ty == JavaType::Primitive(JavaPrimitive::Long),
         JavaLiteral::CharScalar(_) => *ty == JavaType::primitive(JavaPrimitive::Int),
         JavaLiteral::String(_) | JavaLiteral::Utf16Units(_) => {

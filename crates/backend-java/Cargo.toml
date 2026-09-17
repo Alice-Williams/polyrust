@@ -12,6 +12,7 @@ autoexamples = false
 name = "portable_backend_java"
 
 [dependencies]
+portable_binary64.workspace = true
 portable_check.workspace = true
 portable_codegen.workspace = true
 portable_core_ir.workspace = true

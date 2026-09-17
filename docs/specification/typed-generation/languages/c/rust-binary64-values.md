@@ -1,6 +1,6 @@
 # Rust binary64 values in C17
 
-- Status: specified; target implementation pending
+- Status: target foundation implemented and verified; Rust-source admission pending
 - Contract: [shared](../../rust-binary64-values.md)
 
 ## Typed representation and rendering
@@ -31,3 +31,19 @@ assumptions and test subnormal transport/comparison explicitly. Bitwise
 consumer inspection uses memcpy in handwritten tests, never pointer punning
 or a generated helper. Preserve finite bits and signed zero; check nonfinite
 input classification/comparison without claiming NaN payload identity.
+
+## Unnamed standard-library imports
+
+Platform constants retain typed CKnownConstant identities. Their dependency
+inventory derives the Float standard-library requirement; it must not be
+represented by an invented named type or a prewritten include string.
+The shared linker collects file_standard_libraries from checked file metadata,
+deduplicates and orders the identities, then asks the backend to resolve each
+to a typed import kind. Its private-constructed ResolvedLibraryImport retains
+both identity and directive kind. Certification reconstructs and compares the
+complete list, rejecting insertion, deletion, duplication or changed origin.
+
+The C renderer iterates named, generated-file and unnamed-library imports
+through the same directive printer. Resource accounting includes all three.
+Only the Float library is admitted on this unnamed path in the current C
+profile; other existing headers retain their named-symbol dependencies.

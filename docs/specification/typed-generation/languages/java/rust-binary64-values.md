@@ -1,6 +1,6 @@
 # Rust binary64 values in Java 21
 
-- Status: specified; target implementation pending
+- Status: target foundation implemented and verified; Rust-source admission pending
 - Contract: [shared](../../rust-binary64-values.md)
 
 ## Typed representation and rendering

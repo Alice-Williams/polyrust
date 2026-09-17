@@ -47,7 +47,11 @@ pub(super) fn is_integer_constant_expression(value: &CValue) -> bool {
 fn is_arithmetic_constant_expression(value: &CValue) -> bool {
     match value.kind() {
         V::Literal(
-            CLiteral::Bool(_) | CLiteral::Signed(_) | CLiteral::Unsigned(_) | CLiteral::CharByte(_),
+            CLiteral::Bool(_)
+            | CLiteral::Signed(_)
+            | CLiteral::Unsigned(_)
+            | CLiteral::CharByte(_)
+            | CLiteral::F64(_),
         )
         | V::Enumerator(_)
         | V::SizeOf(_)

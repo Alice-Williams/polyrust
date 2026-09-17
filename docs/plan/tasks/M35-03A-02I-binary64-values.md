@@ -29,3 +29,10 @@ infinity input transport/comparison follow the explicit shared contract.
 No decimal tolerance, float narrowing, integer-payload runtime wrapper, copied
 helper, bit reinterpretation escape or weakened existing test is acceptable.
 All child proof receipts must identify exact tested/reviewed trees.
+
+## Progress
+
+The finite witness and C/Java target foundations are complete, including the
+separately reviewed typed library-import prerequisite. Their child receipts
+identify exact tested/reviewed trees. Checked Rust-source integration (02I-03)
+remains pending; no general floating arithmetic or runtime retirement is claimed.

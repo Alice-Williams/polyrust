@@ -218,6 +218,21 @@ impl LinkerDialect for CDialect {
             symbols: unit.symbols(),
         }
     }
+    fn file_standard_libraries(&self, file: &portable_codegen::TargetFile<Self>) -> Vec<CHeader> {
+        file.items()
+            .iter()
+            .flat_map(|unit| unit.data.standard_libraries.iter().copied())
+            .collect()
+    }
+    fn resolve_standard_library_import(
+        &self,
+        library: &CHeader,
+    ) -> Result<Self::ImportKind, AstViolation> {
+        match library {
+            CHeader::Float => Ok(super::CImportKind::Standard(*library)),
+            _ => Err(violation("unnamed C library is outside the closed profile")),
+        }
+    }
     fn resolve_module(&self, file: &CFileRef) -> Result<CFileRef, AstViolation> {
         Ok(file.clone())
     }

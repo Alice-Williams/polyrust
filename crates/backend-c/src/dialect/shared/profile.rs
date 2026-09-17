@@ -31,7 +31,11 @@ fn scalar(ty: &CObjectType) -> bool {
     matches!(
         ty.kind(),
         CObjectTypeKind::Scalar(
-            CScalarType::I32 | CScalarType::I64 | CScalarType::Int | CScalarType::Bool
+            CScalarType::I32
+                | CScalarType::I64
+                | CScalarType::Int
+                | CScalarType::Bool
+                | CScalarType::F64
         )
     )
 }
@@ -245,7 +249,8 @@ fn walk<'a>(
                         }
                     }
                     CValueKind::Literal(
-                        CLiteral::Bool(_)
+                        CLiteral::F64(_)
+                        | CLiteral::Bool(_)
                         | CLiteral::Signed(
                             CSignedLiteral::I32(_)
                             | CSignedLiteral::I64(_)
@@ -365,6 +370,7 @@ fn walk<'a>(
                                         | CScalarType::Int
                                         | CScalarType::I32
                                         | CScalarType::I64
+                                        | CScalarType::F64
                                 )
                             )
                         {
@@ -413,7 +419,11 @@ fn walk<'a>(
             }
             Node::Type(ty) => match ty.kind() {
                 CObjectTypeKind::Scalar(
-                    CScalarType::I32 | CScalarType::I64 | CScalarType::Int | CScalarType::Bool,
+                    CScalarType::I32
+                    | CScalarType::I64
+                    | CScalarType::Int
+                    | CScalarType::Bool
+                    | CScalarType::F64,
                 )
                 | CObjectTypeKind::Struct(_) => {}
                 CObjectTypeKind::Pointer(CPointerTarget::Object(pointee)) => {

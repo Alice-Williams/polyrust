@@ -77,8 +77,23 @@ pub fn metadata() -> RustSourceOrigin {
 }
 
 pub fn fixture(facade: Facade) -> Fixture {
+    scalar_fixture(facade, false)
+}
+pub fn binary64_fixture(facade: Facade) -> Fixture {
+    scalar_fixture(facade, true)
+}
+fn scalar_fixture(facade: Facade, wide: bool) -> Fixture {
     let metadata = metadata();
-    let mut fixture = Fixture::with_metadata(metadata.clone(), facade);
+    let scalar = if wide {
+        JavaPrimitive::Double
+    } else {
+        JavaPrimitive::Int
+    };
+    let mut fixture = if wide {
+        Fixture::with_double_metadata(metadata.clone(), facade)
+    } else {
+        Fixture::with_metadata(metadata.clone(), facade)
+    };
     for (index, component) in fixture.record.record_components.iter_mut().enumerate() {
         let JavaRecordComponentOrigin::RustSource(field) = &mut component.origin else {
             unreachable!()
@@ -104,10 +119,10 @@ pub fn fixture(facade: Facade) -> Fixture {
             invocation: JavaInvocationKind::Static,
             receiver: None,
             parameters: vec![
-                TargetTypeRef::Primitive(JavaPrimitive::Int),
+                TargetTypeRef::Primitive(scalar),
                 TargetTypeRef::Primitive(JavaPrimitive::Boolean),
             ],
-            return_type: TargetTypeRef::Primitive(JavaPrimitive::Int),
+            return_type: TargetTypeRef::Primitive(scalar),
         },
         visibility: JavaVisibility::Public,
         origin: GeneratedOrigin::RustSource(Arc::new(origin)),

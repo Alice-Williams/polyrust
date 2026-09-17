@@ -1,7 +1,7 @@
 //! Only linker-owned imports reach directive spelling.
 use super::super::CDialect;
 use crate::dialect::CImportKind;
-use portable_codegen::{ResolvedFileImport, ResolvedImport};
+use portable_codegen::{ResolvedFileImport, ResolvedImport, ResolvedLibraryImport};
 use std::fmt::Write;
 
 pub(super) struct CImports;
@@ -11,14 +11,16 @@ impl ::portable_codegen::StructuralImportRenderer<CDialect> for CImports {
         &self,
         imports: &[ResolvedImport<CDialect>],
         file_imports: &[ResolvedFileImport<CDialect>],
+        library_imports: &[ResolvedLibraryImport<CDialect>],
     ) -> String {
-        let mut text = String::new();
-        let mut seen = std::collections::BTreeSet::new();
-        for kind in imports
+        let kinds = imports
             .iter()
             .map(ResolvedImport::kind)
             .chain(file_imports.iter().map(ResolvedFileImport::kind))
-        {
+            .chain(library_imports.iter().map(ResolvedLibraryImport::kind));
+        let mut text = String::new();
+        let mut seen = std::collections::BTreeSet::new();
+        for kind in kinds {
             if !seen.insert(kind) {
                 continue;
             }

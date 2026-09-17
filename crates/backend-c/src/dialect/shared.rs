@@ -37,6 +37,7 @@ mod linking;
 mod nodes;
 mod package;
 mod platform;
+mod platform_binary64;
 mod profile;
 mod projection;
 mod registration;
@@ -292,3 +293,7 @@ mod void_local;
 #[cfg(test)]
 #[path = "../tests/shared_wrapping_negation.rs"]
 mod wrapping_negation;
+
+#[cfg(test)]
+#[path = "../tests/shared_binary64.rs"]
+mod binary64;

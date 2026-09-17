@@ -25,6 +25,7 @@ pub(super) fn account(
         .iter()
         .map(|import| import.kind())
         .chain(file.file_imports().iter().map(|import| import.kind()))
+        .chain(file.library_imports().iter().map(|import| import.kind()))
     {
         let bytes = match kind {
             CImportKind::Standard(header) => header.spelling().len(),
@@ -38,7 +39,10 @@ pub(super) fn account(
                 .ok_or("C import byte overflow")?,
         )?;
     }
-    if !file.imports().is_empty() || !file.file_imports().is_empty() {
+    if !file.imports().is_empty()
+        || !file.file_imports().is_empty()
+        || !file.library_imports().is_empty()
+    {
         add(&mut measured.source_bound, 1)?;
     }
     Ok(())

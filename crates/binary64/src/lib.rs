@@ -67,7 +67,8 @@ impl core::error::Error for NonFiniteBinary64 {}
 /// use portable_binary64::FiniteBinary64;
 /// let invalid = FiniteBinary64 { bits: 0x7ff0_0000_0000_0000 };
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// Ordering, like equality, compares representations rather than numeric values.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FiniteBinary64 {
     bits: u64,
 }

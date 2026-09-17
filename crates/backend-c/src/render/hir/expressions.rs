@@ -8,6 +8,14 @@ impl Writer<'_> {
     pub(super) fn value(&self, value: &CValue) -> String {
         match value.kind() {
             CValueKind::Call(call) => self.call(call),
+            CValueKind::Literal(CLiteral::F64(value)) => {
+                let parts = value.parts();
+                let token = format!("0x{:x}.0p{}", parts.significand(), parts.exponent());
+                match parts.sign() {
+                    portable_binary64::Binary64Sign::Positive => token,
+                    portable_binary64::Binary64Sign::Negative => format!("(-{token})"),
+                }
+            }
             CValueKind::Literal(CLiteral::Bool(value)) => if *value { "1" } else { "0" }.into(),
             CValueKind::Literal(CLiteral::Signed(CSignedLiteral::I64(value))) => {
                 let literal = if *value == i64::MIN {

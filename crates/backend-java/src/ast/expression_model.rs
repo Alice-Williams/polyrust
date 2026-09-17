@@ -56,11 +56,18 @@ pub enum JavaBinaryOperator {
     ShiftRight,
 }
 
+/// A raw floating payload cannot bypass finite-literal validation.
+///
+/// ```compile_fail
+/// use portable_backend_java::ast::JavaLiteral;
+/// let unchecked = JavaLiteral::F64(f64::INFINITY);
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JavaLiteral {
     Boolean(bool),
     I32(i32),
     I64(i64),
+    F64(portable_binary64::FiniteBinary64),
     CharScalar(u32),
     String(String),
     /// Exact UTF-16 code units used only by generated boundary conformance tests.

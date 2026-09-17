@@ -13,6 +13,14 @@ pub(super) fn render_literal(value: &JavaLiteral) -> String {
     match value {
         JavaLiteral::Boolean(value) => value.to_string(),
         JavaLiteral::I32(value) => value.to_string(),
+        JavaLiteral::F64(value) => {
+            let parts = value.parts();
+            let token = format!("0x{:x}.0p{}d", parts.significand(), parts.exponent());
+            match parts.sign() {
+                portable_binary64::Binary64Sign::Positive => token,
+                portable_binary64::Binary64Sign::Negative => format!("(-{token})"),
+            }
+        }
         JavaLiteral::I64(value) => format!("{value}L"),
         JavaLiteral::CharScalar(value) => value.to_string(),
         JavaLiteral::String(value) => java_string(value),

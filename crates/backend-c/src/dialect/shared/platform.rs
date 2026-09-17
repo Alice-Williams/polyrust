@@ -1,4 +1,5 @@
 //! Exact typed layout assertions for the current Linux LP64 no-call profile.
+use super::platform_binary64::Binary64Property;
 use crate::ast::*;
 use std::collections::BTreeSet;
 
@@ -8,6 +9,7 @@ pub(super) enum Object {
     Int,
     I32,
     I64,
+    F64,
     Size,
     Pointer,
 }
@@ -15,6 +17,7 @@ pub(super) enum Object {
 pub(super) enum Query {
     Size,
     Alignment,
+    Binary64(Binary64Property),
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) struct Check {
@@ -29,6 +32,7 @@ impl Object {
             Self::Int => CObjectType::scalar(CScalarType::Int),
             Self::I32 => CObjectType::scalar(CScalarType::I32),
             Self::I64 => CObjectType::scalar(CScalarType::I64),
+            Self::F64 => CObjectType::scalar(CScalarType::F64),
             Self::Size => CObjectType::scalar(CScalarType::Size),
             Self::Pointer => CObjectType::pointer(CPointerTarget::Void(CConstness::Unqualified)),
         }
@@ -42,6 +46,7 @@ impl Object {
             CObjectTypeKind::Scalar(CScalarType::Int) => Ok(Self::Int),
             CObjectTypeKind::Scalar(CScalarType::I32) => Ok(Self::I32),
             CObjectTypeKind::Scalar(CScalarType::I64) => Ok(Self::I64),
+            CObjectTypeKind::Scalar(CScalarType::F64) => Ok(Self::F64),
             CObjectTypeKind::Scalar(CScalarType::Size) => Ok(Self::Size),
             CObjectTypeKind::Pointer(CPointerTarget::Void(CConstness::Unqualified)) => {
                 Ok(Self::Pointer)
@@ -53,7 +58,7 @@ impl Object {
         match self {
             Self::Bool => 1,
             Self::Int | Self::I32 => 4,
-            Self::I64 | Self::Size | Self::Pointer => 8,
+            Self::I64 | Self::F64 | Self::Size | Self::Pointer => 8,
         }
     }
 }
@@ -69,6 +74,11 @@ fn required(sources: &[CSourceFile]) -> BTreeSet<Check> {
     if crate::dialect::dependencies::source_scalars(sources).contains(&CScalarType::I64) {
         objects.push(Object::I64);
     }
+    let floating =
+        crate::dialect::dependencies::source_scalars(sources).contains(&CScalarType::F64);
+    if floating {
+        objects.push(Object::F64);
+    }
     objects
         .into_iter()
         .flat_map(|object| {
@@ -76,6 +86,15 @@ fn required(sources: &[CSourceFile]) -> BTreeSet<Check> {
                 .into_iter()
                 .map(move |query| Check { object, query })
         })
+        .chain(
+            Binary64Property::ALL
+                .into_iter()
+                .filter(move |_| floating)
+                .map(|property| Check {
+                    object: Object::F64,
+                    query: Query::Binary64(property),
+                }),
+        )
         .collect()
 }
 
@@ -88,6 +107,20 @@ pub(super) fn classify(assertion: &CStaticAssertion) -> Result<Check, String> {
     else {
         return Err("C platform assertion requires an exact layout equality".into());
     };
+    if let CValueKind::KnownConstant(constant) = left.kind() {
+        let property = Binary64Property::ALL
+            .into_iter()
+            .find(|property| property.constant() == *constant)
+            .ok_or("unknown binary64 platform property")?;
+        if !matches!(right.kind(), CValueKind::Literal(CLiteral::Signed(CSignedLiteral::Int(value))) if *value == property.expected())
+        {
+            return Err("incorrect binary64 platform property".into());
+        }
+        return Ok(Check {
+            object: Object::F64,
+            query: Query::Binary64(property),
+        });
+    }
     let (query, ty) = match left.kind() {
         CValueKind::SizeOf(ty) => (Query::Size, ty),
         CValueKind::AlignOf(ty) => (Query::Alignment, ty),
@@ -183,13 +216,16 @@ fn install_checked(
         let query = match check.query {
             Query::Size => expressions.size_of(check.object.ty()),
             Query::Alignment => expressions.align_of(check.object.ty()),
+            Query::Binary64(property) => Ok(expressions.known_constant(property.constant())),
         }
         .map_err(|e| e.to_string())?;
-        let expected = expressions
-            .literal(CLiteral::Unsigned(CUnsignedLiteral::Size(
-                check.object.bytes(),
-            )))
-            .map_err(|e| e.to_string())?;
+        let literal = match check.query {
+            Query::Binary64(property) => CLiteral::Signed(CSignedLiteral::Int(property.expected())),
+            Query::Size | Query::Alignment => {
+                CLiteral::Unsigned(CUnsignedLiteral::Size(check.object.bytes()))
+            }
+        };
+        let expected = expressions.literal(literal).map_err(|e| e.to_string())?;
         let condition = expressions
             .binary(CBinaryOperator::Equal, query, expected)
             .map_err(|e| e.to_string())?;

@@ -23,6 +23,7 @@ pub(super) struct CUnitData {
     pub bindings: CBindings,
     pub declarations: Vec<portable_codegen::GeneratedSymbolId>,
     pub standards: BTreeSet<CStdType>,
+    pub standard_libraries: BTreeSet<crate::dialect::CHeader>,
     pub documentation: CDocumentation,
 }
 

@@ -220,6 +220,7 @@ fn java_switch_literal_is_compatible(literal: &JavaLiteral, selector: &JavaType)
         JavaLiteral::String(_) => *selector == JavaType::known(JavaKnownType::String),
         JavaLiteral::Boolean(_)
         | JavaLiteral::I64(_)
+        | JavaLiteral::F64(_)
         | JavaLiteral::Utf16Units(_)
         | JavaLiteral::InternalNull(_) => false,
     }
@@ -232,6 +233,7 @@ fn java_switch_constant(literal: &JavaLiteral) -> Option<JavaSwitchConstant> {
         JavaLiteral::String(value) => Some(JavaSwitchConstant::String(value.clone())),
         JavaLiteral::Boolean(_)
         | JavaLiteral::I64(_)
+        | JavaLiteral::F64(_)
         | JavaLiteral::Utf16Units(_)
         | JavaLiteral::InternalNull(_) => None,
     }

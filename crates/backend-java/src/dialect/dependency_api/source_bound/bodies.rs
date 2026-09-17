@@ -49,7 +49,10 @@ impl Reader<'_> {
         self.budget.node(depth)?;
         match &value.kind {
             JavaExprKind::Literal(
-                JavaLiteral::I32(_) | JavaLiteral::I64(_) | JavaLiteral::Boolean(_),
+                JavaLiteral::I32(_)
+                | JavaLiteral::I64(_)
+                | JavaLiteral::Boolean(_)
+                | JavaLiteral::F64(_),
             )
             | JavaExprKind::Value(JavaValueRef::This) => Ok(()),
             JavaExprKind::Value(JavaValueRef::Dependency(imported)) => {

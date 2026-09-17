@@ -25,7 +25,10 @@ Linked claims are not authority. A package with any inserted, removed,
 duplicated or rewritten library directive cannot become RenderReadyPackage.
 
 A consuming backend must render these witnesses through its normal import
-printer and account for them in output/resource bounds. The shared linker
+printer and account for them in output/resource bounds. StructuralImportRenderer
+receives separate typed slices for symbol imports, generated-file imports and
+unnamed library imports. Directive spelling stays inside that renderer contract;
+a backend combines and deduplicates only their already-resolved import kinds. The shared linker
 does not infer that an arbitrary backend printer consumes a new import kind;
 each opting-in plugin must prove its own implementation and tests. Backends
 with the default empty policy preserve their existing output.

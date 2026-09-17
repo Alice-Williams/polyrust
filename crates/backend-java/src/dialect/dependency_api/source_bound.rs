@@ -70,7 +70,10 @@ impl Reader<'_> {
     fn ty(&mut self, ty: &JavaType) -> Result<(), String> {
         match ty {
             JavaType::Primitive(
-                JavaPrimitive::Int | JavaPrimitive::Long | JavaPrimitive::Boolean,
+                JavaPrimitive::Int
+                | JavaPrimitive::Long
+                | JavaPrimitive::Boolean
+                | JavaPrimitive::Double,
             ) => self.budget.add(7),
             JavaType::Reference(JavaTypeName::Generated(id)) => {
                 self.symbol(TargetSymbolRef::Generated(GeneratedSymbolId::Type(*id)))

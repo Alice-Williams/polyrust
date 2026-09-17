@@ -199,7 +199,10 @@ impl Reader<'_> {
         }
         match &value.kind {
             JavaExprKind::Literal(
-                JavaLiteral::I32(_) | JavaLiteral::I64(_) | JavaLiteral::Boolean(_),
+                JavaLiteral::I32(_)
+                | JavaLiteral::I64(_)
+                | JavaLiteral::Boolean(_)
+                | JavaLiteral::F64(_),
             )
             | JavaExprKind::Value(JavaValueRef::Local(_)) => {}
             JavaExprKind::Value(JavaValueRef::Dependency(imported))

@@ -11,6 +11,7 @@ pub(in crate::ownership) fn evaluate(
     value: &CValue,
 ) -> Result<CNumber, E> {
     match value.kind() {
+        V::Literal(CLiteral::F64(value)) => Ok(CNumber::Double(f64::from_bits(value.to_bits()))),
         V::Literal(literal) => literal_value(literal).map(CNumber::Integer),
         V::KnownConstant(value) => known(*value).map(CNumber::Integer),
         V::Enumerator(value) => {
@@ -98,7 +99,7 @@ pub(in crate::ownership) fn literal_value(literal: &CLiteral) -> Result<CInteger
             U::U32(value) => i128::from(*value),
             U::U64(value) | U::Size(value) => i128::from(*value),
         },
-        CLiteral::NullPointer(_) => return Err(E::ExpectedNumericConstant),
+        CLiteral::F64(_) | CLiteral::NullPointer(_) => return Err(E::ExpectedNumericConstant),
     };
     let ty = literal.ty();
     let CObjectTypeKind::Scalar(ty) = ty.kind() else {

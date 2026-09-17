@@ -175,6 +175,7 @@ dependencies = [
 name = "polyrust-backend-c"
 version = "0.1.0"
 dependencies = [
+ "polyrust-binary64",
  "polyrust-build",
  "polyrust-check",
  "polyrust-codegen",
@@ -206,6 +207,7 @@ dependencies = [
 name = "polyrust-backend-java"
 version = "0.1.0"
 dependencies = [
+ "polyrust-binary64",
  "polyrust-build",
  "polyrust-check",
  "polyrust-codegen",

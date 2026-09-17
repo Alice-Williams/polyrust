@@ -27,7 +27,9 @@ pub(super) struct Constant {
 fn scalar(ty: &CObjectType) -> bool {
     matches!(
         ty.kind(),
-        CObjectTypeKind::Scalar(CScalarType::I32 | CScalarType::I64 | CScalarType::Bool)
+        CObjectTypeKind::Scalar(
+            CScalarType::I32 | CScalarType::I64 | CScalarType::Bool | CScalarType::F64
+        )
     )
 }
 

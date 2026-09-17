@@ -41,7 +41,12 @@ pub(super) struct Inventory {
 pub(super) fn scalar(ty: &JavaType) -> bool {
     matches!(
         ty,
-        JavaType::Primitive(JavaPrimitive::Int | JavaPrimitive::Long | JavaPrimitive::Boolean)
+        JavaType::Primitive(
+            JavaPrimitive::Int
+                | JavaPrimitive::Long
+                | JavaPrimitive::Boolean
+                | JavaPrimitive::Double
+        )
     )
 }
 

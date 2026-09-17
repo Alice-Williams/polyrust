@@ -78,6 +78,7 @@ pub(super) fn verify_payload(literal: &JavaLiteral) -> Vec<AstViolation> {
         JavaLiteral::Boolean(_)
         | JavaLiteral::I32(_)
         | JavaLiteral::I64(_)
+        | JavaLiteral::F64(_)
         | JavaLiteral::CharScalar(_)
         | JavaLiteral::InternalNull(_) => true,
     };

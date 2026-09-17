@@ -56,8 +56,15 @@ pub(super) fn file(file: &LinkedFile<super::CDialect>) -> String {
         let name = guard.identifier().as_str();
         writeln!(text, "#ifndef {name}\n#define {name}\n").unwrap();
     }
-    text.push_str(&imports::CImports.render_imports(file.imports(), file.file_imports()));
-    if !file.imports().is_empty() || !file.file_imports().is_empty() {
+    text.push_str(&imports::CImports.render_imports(
+        file.imports(),
+        file.file_imports(),
+        file.library_imports(),
+    ));
+    if !file.imports().is_empty()
+        || !file.file_imports().is_empty()
+        || !file.library_imports().is_empty()
+    {
         text.push('\n');
     }
     text.push_str(&unit_text(unit));

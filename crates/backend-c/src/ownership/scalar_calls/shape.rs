@@ -19,7 +19,11 @@ fn scalar(ty: &CObjectType) -> bool {
     matches!(
         ty.kind(),
         CObjectTypeKind::Scalar(
-            CScalarType::I32 | CScalarType::I64 | CScalarType::Int | CScalarType::Bool
+            CScalarType::I32
+                | CScalarType::I64
+                | CScalarType::Int
+                | CScalarType::Bool
+                | CScalarType::F64
         )
     )
 }
@@ -93,7 +97,8 @@ pub(super) fn dependencies(
             },
             Node::Value(value) => match value.kind() {
                 CValueKind::Literal(
-                    CLiteral::Bool(_)
+                    CLiteral::F64(_)
+                    | CLiteral::Bool(_)
                     | CLiteral::Signed(
                         CSignedLiteral::I32(_) | CSignedLiteral::I64(_) | CSignedLiteral::Int(_),
                     ),
