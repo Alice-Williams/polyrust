@@ -4,7 +4,9 @@ mod constants;
 pub use constants::JavaDependencyConstant;
 mod descriptions;
 mod exports;
+mod foreign;
 mod inventory;
+pub use foreign::JavaForeignConstantExport;
 mod records;
 mod source_bound;
 pub use descriptions::{JavaSourceDescription, JavaSourceDescriptionKind, JavaSourceTarget};
@@ -157,6 +159,7 @@ pub struct JavaDependencyApi {
     owner: JavaDependencyPackage,
     functions: BTreeMap<RustDeclarationId, JavaDependencyFunction>,
     constants: BTreeMap<RustDeclarationId, JavaDependencyConstant>,
+    foreign_constants: Vec<JavaForeignConstantExport>,
 }
 
 impl JavaDependencyApi {
@@ -217,6 +220,7 @@ impl JavaDependencyApi {
             owner,
             functions,
             constants,
+            foreign_constants: inventory.foreign_constants,
         })
     }
     pub fn root(&self) -> RustDeclarationId {
@@ -227,6 +231,9 @@ impl JavaDependencyApi {
     }
     pub fn package(&self) -> &RenderReadyPackage<JavaDialect> {
         &self.owner.0.package
+    }
+    pub fn foreign_constants(&self) -> impl ExactSizeIterator<Item = &JavaForeignConstantExport> {
+        self.foreign_constants.iter()
     }
     pub fn constants(&self) -> impl ExactSizeIterator<Item = &JavaDependencyConstant> {
         self.constants.values()

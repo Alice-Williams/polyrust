@@ -35,6 +35,7 @@ pub(super) struct Inventory {
     pub namespace: JavaPackage,
     pub functions: BTreeMap<RustDeclarationId, Function>,
     pub constants: BTreeMap<RustDeclarationId, Constant>,
+    pub foreign_constants: Vec<super::JavaForeignConstantExport>,
 }
 
 pub(super) fn scalar(ty: &JavaType) -> bool {
@@ -119,19 +120,37 @@ pub(super) fn collect_with_budget(
     {
         return Err("Java dependency facade identity or shape disagrees".into());
     }
-    let first = item
-        .source_inventory
-        .iter()
-        .find_map(|(_, value)| match value.origin() {
-            GeneratedOrigin::RustSource(origin) => Some(origin),
-            _ => None,
-        })
-        .ok_or("Java dependency API has no source declarations")?;
-    let exports = &first.crate_exports;
+    let JavaFileItem::Type {
+        source_package,
+        dependencies,
+        ..
+    } = &item.item
+    else {
+        unreachable!()
+    };
+    let exports = match source_package {
+        Some(source) => source.exports(),
+        None => {
+            &item
+                .source_inventory
+                .iter()
+                .find_map(|(_, value)| match value.origin() {
+                    GeneratedOrigin::RustSource(origin) => Some(origin),
+                    _ => None,
+                })
+                .ok_or("Java dependency API has no source declarations")?
+                .crate_exports
+        }
+    };
+    let selected = if source_package.is_some() {
+        super::super::constant_exports::collect(exports, dependencies)?
+    } else {
+        super::super::constant_exports::Selection::default()
+    };
     if exports.root.crate_id != crate_id {
         return Err("Java dependency export owner disagrees".into());
     }
-    let public = public_bindings(exports)?;
+    let public = public_bindings(exports, &selected)?;
     let mut agreement = Agreement::new(exports);
     let mut expected = BTreeSet::from([GeneratedSymbolId::Type(facade_id)]);
     for (_, value) in item.source_inventory.iter() {
@@ -292,12 +311,22 @@ pub(super) fn collect_with_budget(
         namespace: *file.module(),
         functions,
         constants,
+        foreign_constants: selected
+            .foreign
+            .into_iter()
+            .map(|((module, name), value)| {
+                super::JavaForeignConstantExport::new(module, name, value.constant().clone())
+            })
+            .collect(),
     })
 }
 
-fn public_bindings(exports: &RustCrateExports) -> Result<BTreeSet<RustDeclarationId>, String> {
+fn public_bindings(
+    exports: &RustCrateExports,
+    selected: &super::super::constant_exports::Selection,
+) -> Result<BTreeSet<RustDeclarationId>, String> {
     let mut public = BTreeSet::new();
-    for bindings in exports.modules.values() {
+    for (module, bindings) in &exports.modules {
         for (name, target) in bindings {
             match target {
                 RustExportTarget::Module(id)
@@ -310,6 +339,12 @@ fn public_bindings(exports: &RustCrateExports) -> Result<BTreeSet<RustDeclaratio
                 {
                     public.insert(*id);
                 }
+                RustExportTarget::Declaration(id)
+                    if name.namespace == RustExportNamespace::Value
+                        && selected
+                            .foreign
+                            .get(&(*module, name.clone()))
+                            .is_some_and(|value| value.constant().declaration() == *id) => {}
                 _ => {
                     return Err(
                         "Java dependency export has no supported local scalar function/constant mapping"
@@ -319,7 +354,7 @@ fn public_bindings(exports: &RustCrateExports) -> Result<BTreeSet<RustDeclaratio
             }
         }
     }
-    if public.is_empty() {
+    if public.is_empty() && selected.foreign.is_empty() {
         return Err("Java dependency API has no public function/constant bindings".into());
     }
     Ok(public)

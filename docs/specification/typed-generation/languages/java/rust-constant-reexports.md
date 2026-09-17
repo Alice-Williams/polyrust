@@ -1,7 +1,6 @@
 # Rust constant re-exports in Java 21
 
-- Status: explicit package provenance implemented; certified foreign exports are
-  planned. Production rustc foreign-export rejection remains active.
+- Status: explicit package provenance and certified foreign exports implemented. Production rustc foreign-export rejection remains active.
 - Contract: [shared re-export design](../../rust-constant-reexports.md)
 
 ## Package provenance and fields

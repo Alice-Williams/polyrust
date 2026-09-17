@@ -20,11 +20,12 @@ mod arena_nodes;
 pub use arena_nodes::{JavaArenaExpression, JavaArenaStatement};
 mod ast_binding;
 mod catalogue;
+pub(crate) mod constant_exports;
 mod declaration_paths;
 mod dependency_api;
 pub use dependency_api::{
     JavaDependencyApi, JavaDependencyConstant, JavaDependencyFunction, JavaDependencyPackage,
-    JavaSourceDescription, JavaSourceDescriptionKind, JavaSourceTarget,
+    JavaForeignConstantExport, JavaSourceDescription, JavaSourceDescriptionKind, JavaSourceTarget,
 };
 mod dependency_scope;
 pub use dependency_scope::{

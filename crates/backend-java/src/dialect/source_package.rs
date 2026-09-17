@@ -79,14 +79,27 @@ pub(super) fn metadata<'a>(
         Some(source) => CheckedRustDocumentation::check_with_exports(source.exports(), origins),
         None => CheckedRustDocumentation::check(origins),
     };
-    checked.map_err(|problem| {
+    let checked = checked.map_err(|problem| {
         let code = if matches!(problem, portable_codegen::RustDocumentationError::Budget(_)) {
             DiagnosticCode::TargetResourceLimit
         } else {
             DiagnosticCode::InvalidStructure
         };
         AstViolation::new(code, problem.to_string())
-    })
+    })?;
+    // Metadata budgets and coherence run before selecting foreign witnesses.
+    for item in package.files().flat_map(|file| file.items()) {
+        if let JavaFileItem::Type {
+            source_package: Some(source),
+            dependencies,
+            ..
+        } = item
+        {
+            super::constant_exports::collect(source.exports(), dependencies)
+                .map_err(|message| error(&message))?;
+        }
+    }
+    Ok(checked)
 }
 
 #[cfg(test)]

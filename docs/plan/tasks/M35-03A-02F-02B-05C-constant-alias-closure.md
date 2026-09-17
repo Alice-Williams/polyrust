@@ -67,10 +67,10 @@ or other declaration kinds remain diagnosed, not silently omitted.
    reconstruct the metadata during certification. Foreign-export API admission
    remains a separate checkpoint.
 6. [Java target export evidence](M35-03A-02F-02B-05C-06-java-constant-export-evidence.md)
-   — planned. Implement the corresponding certified foreign
+   — complete. Implemented the corresponding certified foreign
    binding inventory, original producer authority and export-only dependency
    closure, with separate Java 21 native and tamper proofs.
-7. Compiler lowering and schemas: register exports even when no body reads them;
+7. [Compiler lowering and schemas](M35-03A-02F-02B-05C-07-compiler-publication.md): register exports even when no body reads them;
    preserve direct/transitive owner authority and all finite module/name bindings.
    Explicitly version new alias metadata and reconstruct it from certified target
    evidence before publication. Only then enable source foreign constant exports.

@@ -112,7 +112,24 @@ impl JavaFileItem {
     pub fn symbols(&self) -> Vec<TargetSymbolRef<JavaDialect>> {
         let mut symbols = BTreeSet::new();
         match self {
-            Self::Type { declaration, .. } => declaration.symbols(&mut symbols),
+            Self::Type {
+                declaration,
+                source_package,
+                dependencies,
+                ..
+            } => {
+                declaration.symbols(&mut symbols);
+                if let Some(source) = source_package {
+                    symbols.extend(
+                        crate::dialect::constant_exports::references(
+                            source.exports(),
+                            dependencies,
+                        )
+                        .into_iter()
+                        .map(TargetSymbolRef::DependencyValue),
+                    );
+                }
+            }
             Self::RuntimeMembers { helper, members } => {
                 for member in members {
                     member.symbols(&mut symbols);
