@@ -3,10 +3,11 @@ use super::{
     Reader, Result, c,
     capabilities::{
         BitwiseInput, BooleanNegation, BorrowInput, CallInput, ComparisonInput, ConstantInput,
-        DirectCalls, EagerBooleanInput, EagerBooleans, IntegerBitwise, LazyBooleanInput,
-        LiteralInput, LiteralValues, Mapping, NegationInput, PlaceInput, PublicConstantReadInput,
-        PublicConstantReads, ResolvedPlaces, ScalarComparisons, ScalarConstants, SharedBorrows,
-        ShortCircuitBooleans, Supports, WrappingInput, WrappingNegation,
+        DirectCalls, EagerBooleanInput, EagerBooleans, FloatingInput, FloatingNegation,
+        IntegerBitwise, LazyBooleanInput, LiteralInput, LiteralValues, Mapping, NegationInput,
+        PlaceInput, PublicConstantReadInput, PublicConstantReads, ResolvedPlaces,
+        ScalarComparisons, ScalarConstants, SharedBorrows, ShortCircuitBooleans, Supports,
+        WrappingInput, WrappingNegation,
     },
 };
 use portable_backend_c::ast::{CPlace, CValue};
@@ -23,6 +24,16 @@ impl<'tcx> Reader<'tcx> {
             return c(self.expressions().read(place));
         }
         match value.kind {
+            hir::ExprKind::Unary(hir::UnOp::Neg, operand)
+                if !matches!(operand.kind, hir::ExprKind::Lit(_))
+                    && matches!(
+                        self.checked.expr_ty(value).kind(),
+                        rustc_middle::ty::Float(rustc_middle::ty::FloatTy::F64)
+                    ) =>
+            {
+                let input = FloatingInput::read(self.tcx, self.checked, value)?;
+                Supports::<FloatingNegation>::mapping(&self.mappings).lower(self, input)
+            }
             hir::ExprKind::Unary(hir::UnOp::Not, _)
                 if !matches!(self.checked.expr_ty(value).kind(), rustc_middle::ty::Bool) =>
             {

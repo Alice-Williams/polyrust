@@ -1,6 +1,6 @@
 # Checked Rust binary64 unary negation
 
-- Status: target foundation complete; compiler integration specified
+- Status: implemented and verified for the bounded f64 unary-negation contract
 - Plan: [M35-03A-02J](../../plan/tasks/M35-03A-02J-floating-negation.md)
 - Targets: [C17](languages/c/rust-floating-negation.md), [Java21](languages/java/rust-floating-negation.md)
 
@@ -37,3 +37,17 @@ The compiler checkpoint adds real multi-crate native/AST/compile-negative and
 atomic-rejection proof. Native oracles use independent integer-bit expectations;
 test-only dropped/duplicated calls and sign-loss mutants establish observability.
 Broader FloatNeg legacy parity is not inferred from an operation name alone.
+
+## Executable compiler implementation
+
+FloatingInput::read authenticates the exact HIR node and original TypeckResults
+before querying operand/result types. Both are unadjusted built-in f64; a
+type-dependent operator definition rejects overloaded Neg. Private fields retain
+the canonical source and operand, and require_context repeats that validation
+at the mapping boundary.
+
+Both consuming builders now require FloatingNegation's actual Reader-to-value
+mapping independently of WrappingNegation. The traversal selects this capability
+for non-literal unary-minus f64 operands. Negative literals retain LiteralValues,
+including compiler rounding and negative zero; signed integer non-literal
+negation remains unsupported outside its explicit wrapping capability.

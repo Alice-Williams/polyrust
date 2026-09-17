@@ -16,7 +16,7 @@ def main():
     cases = {
         "f32": ("pub fn value(v:f32)->f32 {v}", "signatures support only", True),
         "add": ("pub fn value(v:f64)->f64 {v+1.0}", "only comparison binary operators", True),
-        "negate": ("pub fn value(v:f64)->f64 {-v}", "only negative scalar literals", True),
+        "integer_negate": ("pub fn value(v:i64)->i64 {-v}", "only negative scalar literals", True),
         "cast": ("pub fn value(v:i64)->f64 {v as f64}", "expression mapping is not implemented", True),
         "narrow": ("pub fn value(v:f64)->i64 {v as i64}", "expression mapping is not implemented", True),
         "method": ("pub fn value(v:f64)->f64 {v.abs()}", "expression mapping is not implemented", True),

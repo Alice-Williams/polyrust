@@ -6,6 +6,7 @@ mod contracts;
 mod direct_calls;
 mod eager_booleans;
 mod entry_signatures;
+mod floating_negation;
 mod function_signatures;
 #[cfg(any(constant_import_wrong_type, constant_import_wrong_value))]
 #[path = "../../test/constant_import_mutations.rs"]
@@ -54,3 +55,5 @@ pub(crate) use short_circuit_booleans::{
 pub(crate) use unit_effects::{UnitEffects, UnitInput, UnitOperation};
 
 pub(crate) use wrapping_negation::{WrappingInput, WrappingNegation, WrappingWidth};
+
+pub(crate) use floating_negation::{FloatingInput, FloatingNegation};

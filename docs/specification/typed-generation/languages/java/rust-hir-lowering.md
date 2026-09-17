@@ -496,3 +496,16 @@ retains compiler identity and exact primitive literal types at each read.
 Forward references and nested shadowing use rustc resolution, not target names.
 Unknown local item kinds and unsupported constant types reject atomically.
 Public exports, borrows and generic constants remain outside this extension.
+
+## Built-in floating negation
+
+[FloatingNegation](rust-floating-negation.md) maps the private canonical compiler
+input through a required executable builder slot to primitive Double unary
+Negate. Its original operand is lowered once and materialized before use.
+The [shared source contract](../../rust-floating-negation.md) excludes overloaded
+Neg, f32, casts and general floating arithmetic. Target proof and the bounded checked
+compiler integration are complete and verified.
+
+The admitted binary64 values, signatures, records, literals and comparisons are
+specified separately in [binary64 values](rust-binary64-values.md). Floating
+negation does not imply other floating operations or constant support.

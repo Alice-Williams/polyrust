@@ -12,11 +12,12 @@ The implementation names below are authoritative. Older specification shorthand
 | --- | --- | --- |
 | i32 | CObjectType with CScalarType::I32 | Exact fixed width; not implementation-sized int |
 | i64 | CObjectType with CScalarType::I64 and CStdType::I64 | Exact int64_t identity, stdint dependency and conditional LP64 size/alignment obligations |
+| f64 | CObjectType with CScalarType::F64 | Exact binary64 double under the [admitted target profile](rust-binary64-values.md); no implicit arithmetic support |
 | bool | CObjectType with CScalarType::Bool | Native _Bool; comparisons may require explicit conversion from C int |
-| Nonempty, non-generic no-Drop struct with only i32/i64/bool fields | CStructRef, CMemberRef and CObjectType::structure | Private value layout; distinct nominal owners even for identical fields |
+| Nonempty, non-generic no-Drop struct with only i32/i64/bool/f64 fields | CStructRef, CMemberRef and CObjectType::structure | Private value layout; distinct nominal owners even for identical fields |
 | Shared reference to an admitted local object | CObjectType::pointer, CPointerTarget::Object, CConstness::Const on the pointee | Preserve reference depth, target type and qualifiers; not nullable ownership |
 | Function signature | CFunctionType, CParameterType, CReturnType and CReturnValue | Exact prototype; no variadics, unspecified-argument declarations or callable casts |
-| Integer/bool literal | CLiteral and CSignedLiteral where applicable | Use checked literal constructors and exact minimum-value spelling |
+| Integer/bool/finite-f64 literal | CLiteral, CSignedLiteral and FiniteBinary64 where applicable | Use checked literal constructors, exact minimum-value spelling and compiler-rounded finite binary64 payloads |
 | Type alias | Compiler-normalized type plus original declaration provenance | No alias-based admission bypass; alias provenance is not pointer/layout proof |
 
 Until the alias-use provenance row is implemented, the intermediate compiler
@@ -34,7 +35,7 @@ its own private representation and no cross-language memory sharing.
 
 Packed/custom-aligned representations, unions and address/layout observation
 are not implicitly admitted because their fields happen to be scalar.
-Additional widths, floats, chars, unit, arrays and unsized types require
+Additional widths, f32, chars, unit storage, arrays and unsized types require
 separate explicit mappings even if the C AST already represents them.
 
 ## Declarations, expressions and control
@@ -111,7 +112,7 @@ not aliases for the complete portable capability catalogue:
 | ObjectTypes | compiler Ty | CObjectType plus registered nominal declarations |
 | LocalConstants | private compiler-derived LocalConstantInput retaining the item statement/DefId and exact bool/i32/i64 value | Unit output; validate the declaration and erase it without runtime storage |
 | ScalarConstants | private evaluated ConstantInput retaining compiler DefId/expression and exact bool/i32/i64 value | Ordinary typed literal CValue, no runtime storage |
-| LiteralValues | private checked LiteralInput with typed bool/i32/i64 value and compiler-session lifetime | CValue |
+| LiteralValues | private checked LiteralInput with typed bool/i32/i64/finite-f64 value and compiler-session lifetime | CValue |
 | ResolvedPlaces | resolved path/field/dereference HIR expression and adjustments | CPlace |
 | SharedBorrows | immutable built-in borrow HIR expression | CValue |
 | ScalarComparisons | resolved scalar-comparison HIR expression | CValue |
@@ -125,6 +126,7 @@ not aliases for the complete portable capability catalogue:
 | FunctionSignatures | ordinary local or authenticated foreign compiler DefId and scalar-parameter / scalar-or-unit-result signature facts | CFunctionType |
 | DirectCalls | resolved ordinary scalar-result call HIR expression | CValue plus scope-owned typed evaluation declarations |
 | WrappingNegation | private canonical built-in method input, exact I32/I64 width and receiver | One evaluation temporary, typed MIN equality/conditional/negation, exact I32 normalization; see [wrapping contract](rust-wrapping-negation.md) |
+| FloatingNegation | private canonical FloatingInput, original TypeckResults and exact unadjusted built-in f64 operand/result | One evaluation temporary and exact F64 unary Negate; see [floating contract](rust-floating-negation.md) |
 | UnitEffects | private checked UnitInput with closed empty/call/block/conditional operation and HIR scope | Typed effect statements; ordinary void calls and no value temporary |
 
 Each binding has associated input/context/output types and an executable lower
@@ -211,3 +213,12 @@ Its executable C mapping returns unit: no local, static object, prelude, helper
 or import is registered. Constant reads remain exact typed literals resolved by
 compiler DefId, including forward references and nested same-name definitions.
 Other local item kinds reject; public constant exports remain a separate step.
+
+## Built-in floating negation
+
+[FloatingNegation](rust-floating-negation.md) is independent of wrapping signed
+negation. Its private canonical compiler input maps through a required executable
+builder slot to exact F64 unary Negate, with one materialized operand and no
+custom runtime. The [shared source contract](../../rust-floating-negation.md)
+limits admission to unadjusted built-in f64 unary minus. Target proof and the bounded checked
+compiler integration are complete and verified.

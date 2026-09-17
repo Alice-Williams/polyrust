@@ -37,6 +37,7 @@ mod slots;
 #[path = "../../../test/wrapping_contract.rs"]
 mod wrapping_contract;
 
+mod floating_negation;
 #[cfg(unit_contract)]
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/unit_contract.rs"]
@@ -123,6 +124,7 @@ pub(crate) use boolean_negation::JavaBooleanNegation;
 pub(crate) use direct_calls::JavaDirectCalls;
 pub(crate) use eager_booleans::JavaEagerBooleans;
 pub(crate) use entry_signatures::JavaEntrySignatures;
+pub(crate) use floating_negation::JavaFloatingNegation;
 pub(crate) use function_signatures::JavaFunctionSignatures;
 pub(crate) use integer_bitwise::JavaIntegerBitwise;
 pub(crate) use lexical_control::JavaLexicalControl;
@@ -164,6 +166,7 @@ pub(crate) type JavaBindings = Bindings<
     JavaPublicConstantImports,
     JavaUnitEffects,
     JavaWrappingNegation,
+    JavaFloatingNegation,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -189,5 +192,14 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .public_constant_imports(JavaPublicConstantImports)
         .unit_effects(JavaUnitEffects)
         .wrapping_negation(JavaWrappingNegation)
+        .floating_negation(JavaFloatingNegation)
         .build()
 }
+
+#[cfg(floating_ast_probe)]
+#[path = "../../../test/floating_java_ast.rs"]
+mod floating_ast;
+#[cfg(floating_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/floating_contract.rs"]
+mod floating_contract;

@@ -1,6 +1,6 @@
 # Rust binary64 unary negation in Java21
 
-- Status: target foundation complete; compiler integration specified
+- Status: implemented and verified for the bounded f64 unary-negation contract
 - Contract: [shared](../../rust-floating-negation.md)
 
 ## Target mapping
@@ -25,3 +25,11 @@ an independent sign-bit oracle. Source/classfile limits and two-slot Double
 signatures remain checked. Counterfeit operand/result types or precedence reject.
 Test-only no-negation/zero-minus and dropped/duplicated-call faults must fail
 their respective value or trace oracles.
+
+## Compiler adapter
+
+JavaFloatingNegation consumes the private checked FloatingInput and validates
+its Reader context. Lower the original operand once, materialize it under the
+existing prelude mechanism, require TypePlan::F64, and construct primitive
+Double Unary Negate with Unary precedence. Value::new verifies representation
+agreement. Imported calls retain their original Java dependency witnesses.

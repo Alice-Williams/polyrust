@@ -34,6 +34,16 @@ impl<'tcx> Reader<'tcx> {
                 reader.place(value)?.value()
             } else {
                 match value.kind {
+                    hir::ExprKind::Unary(hir::UnOp::Neg, operand)
+                        if !matches!(operand.kind, hir::ExprKind::Lit(_))
+                            && matches!(
+                                reader.checked.expr_ty(value).kind(),
+                                rustc_middle::ty::Float(rustc_middle::ty::FloatTy::F64)
+                            ) =>
+                    {
+                        let input = FloatingInput::read(reader.tcx, reader.checked, value)?;
+                        Supports::<FloatingNegation>::mapping(&reader.mappings).lower(reader, input)
+                    }
                     hir::ExprKind::Unary(hir::UnOp::Not, _)
                         if !matches!(
                             reader.checked.expr_ty(value).kind(),

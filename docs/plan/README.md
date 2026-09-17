@@ -39,7 +39,7 @@ contract as every other target.
 ### Current priority — Rust compiler frontend experiment
 
 - [M35 — Rust compiler frontend proof](milestones/M35-rustc-frontend-proof.md) — in progress
-- [M35-03A — Runtime-free C/Java parity and cleanup](tasks/M35-03A-runtime-free-parity.md) — inventory/guards and bounded Boolean/i64/bitwise/bool-i32-i64-constant steps complete, including authenticated cross-crate aliases, cache proof and unit-result C/Java compiler integration; wrapping-negation target foundation and checked compiler integration are complete; binary64 finite-literal/target foundations and checked Rust C/Java value/comparison integration are complete, with exact native/AST/atomic proof and actual exported examples; built-in binary64 negation target proof is complete and compiler integration is next; remaining functionality must be implemented before legacy removal
+- [M35-03A — Runtime-free C/Java parity and cleanup](tasks/M35-03A-runtime-free-parity.md) — inventory/guards and bounded Boolean/i64/bitwise/bool-i32-i64-constant steps complete, including authenticated cross-crate aliases, cache proof and unit-result C/Java compiler integration; wrapping-negation target foundation and checked compiler integration are complete; binary64 finite-literal/target foundations and checked Rust C/Java value/comparison integration are complete, with exact native/AST/atomic proof and actual exported examples; built-in binary64 negation target proof and checked compiler integration are complete with 804/804 release tests and clean independent reviews; remaining functionality must be implemented before legacy removal
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

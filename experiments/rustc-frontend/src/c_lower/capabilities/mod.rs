@@ -37,6 +37,7 @@ mod slots;
 #[path = "../../../test/wrapping_contract.rs"]
 mod wrapping_contract;
 
+mod floating_negation;
 #[cfg(unit_contract)]
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/unit_contract.rs"]
@@ -132,6 +133,7 @@ pub(crate) use boolean_negation::CBooleanNegation;
 pub(crate) use direct_calls::CDirectCalls;
 pub(crate) use eager_booleans::CEagerBooleans;
 pub(crate) use entry_signatures::CEntrySignatures;
+pub(crate) use floating_negation::CFloatingNegation;
 pub(crate) use function_signatures::CFunctionSignatures;
 pub(crate) use integer_bitwise::CIntegerBitwise;
 pub(crate) use lexical_control::CLexicalControl;
@@ -175,6 +177,7 @@ pub(crate) type CBindings = Bindings<
     CPublicConstantImports,
     CUnitEffects,
     CWrappingNegation,
+    CFloatingNegation,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -200,5 +203,14 @@ pub(crate) fn c_bindings() -> CBindings {
         .public_constant_imports(CPublicConstantImports)
         .unit_effects(CUnitEffects)
         .wrapping_negation(CWrappingNegation)
+        .floating_negation(CFloatingNegation)
         .build()
 }
+
+#[cfg(floating_ast_probe)]
+#[path = "../../../test/floating_c_ast.rs"]
+mod floating_ast;
+#[cfg(floating_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/floating_contract.rs"]
+mod floating_contract;

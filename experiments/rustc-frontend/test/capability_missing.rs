@@ -1,3 +1,4 @@
+use super::CFloatingNegation as Floating;
 use super::CUnitEffects as Unit;
 use super::CWrappingNegation as Wrapping;
 use super::{
@@ -31,6 +32,7 @@ fn must_not_compile() {
         .public_constant_reads(CPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -53,6 +55,7 @@ fn must_not_compile() {
         .public_constant_reads(CPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -75,6 +78,7 @@ fn must_not_compile() {
         .public_constant_reads(CPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -97,6 +101,7 @@ fn must_not_compile() {
         .public_constant_reads(CPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -119,6 +124,7 @@ fn must_not_compile() {
         .public_constant_reads(CPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -141,6 +147,7 @@ fn must_not_compile() {
         .public_constant_reads(CPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -163,6 +170,7 @@ fn must_not_compile() {
         .public_constant_reads(CPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -185,6 +193,7 @@ fn must_not_compile() {
         .public_constant_reads(CPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -207,6 +216,7 @@ fn must_not_compile() {
         .public_constant_reads(CPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -229,5 +239,6 @@ fn must_not_compile() {
         .public_constant_reads(CPublicConstantReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
         .build();
 }

@@ -42,9 +42,10 @@ a dependency-free finite literal witness, C/Java target proof and checked
 compiler value/comparison integration, with 786/786 release tests and clean
 independent review. Floating arithmetic/constants/casts remain separate work.
 
-The next bounded operation is [02J — built-in binary64 negation](M35-03A-02J-floating-negation.md),
-with target proof complete (786/786 release tests and clean independent review)
-and a separate checked compiler integration checkpoint next.
+[02J — built-in binary64 negation](M35-03A-02J-floating-negation.md) is complete:
+primitive target admission and canonical compiler integration, 804/804 release
+tests, exact value/dataflow/atomic proof and clean independent reviews.
+Remaining floating inspection and arithmetic require separate bounded contracts.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

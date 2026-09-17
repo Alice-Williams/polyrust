@@ -1,5 +1,7 @@
 //! Independent negative controls for the new executable slot and checked input.
 #[cfg(bitwise_c)]
+use super::CFloatingNegation as Floating;
+#[cfg(bitwise_c)]
 use super::CLocalConstants as Locals;
 #[cfg(bitwise_c)]
 use super::CScalarConstants as Constants;
@@ -7,6 +9,8 @@ use super::CScalarConstants as Constants;
 use super::CUnitEffects as Unit;
 #[cfg(bitwise_c)]
 use super::CWrappingNegation as Wrapping;
+#[cfg(bitwise_java)]
+use super::JavaFloatingNegation as Floating;
 #[cfg(bitwise_java)]
 use super::JavaLocalConstants as Locals;
 #[cfg(bitwise_java)]
@@ -75,6 +79,7 @@ fn missing() {
         .public_constant_reads(PublicReads)
         .unit_effects(Unit)
         .wrapping_negation(Wrapping)
+        .floating_negation(Floating)
         .build();
 }
 
