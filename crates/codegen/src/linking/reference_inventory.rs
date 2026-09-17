@@ -1,7 +1,7 @@
 //! Reconstruct reference membership from original roots, never linked claims.
 use super::{
     LinkedTargetPackage, LinkerDialect, collect_references, derive_and_validate_file_graph,
-    expand_file_helpers, file_imports,
+    expand_file_helpers, file_imports, library_imports,
 };
 use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef};
 
@@ -62,5 +62,6 @@ pub(super) fn verify<D: LinkerDialect>(
             .file(expected.file)
             .expect("canonical inventory was collected from this unresolved package");
         file_imports::verify(package, actual, source, expected.dependencies, diagnostics);
+        library_imports::verify(package, actual, source, diagnostics);
     }
 }

@@ -83,6 +83,20 @@ pub trait LinkerDialect:
     fn expression_references(&self, expression: &Self::Expression) -> Vec<TargetSymbolRef<Self>>;
     fn statement_references(&self, statement: &Self::Statement) -> Vec<TargetSymbolRef<Self>>;
     fn file_item_roots(&self, item: &Self::FileItem) -> FileItemRoots<Self>;
+    /// Standard libraries required without introducing a named import binding.
+    /// Derive the identities from typed AST metadata, never a renderer preamble.
+    fn file_standard_libraries(&self, _file: &TargetFile<Self>) -> Vec<Self::StandardLibrary> {
+        vec![]
+    }
+    fn resolve_standard_library_import(
+        &self,
+        _library: &Self::StandardLibrary,
+    ) -> Result<Self::ImportKind, AstViolation> {
+        Err(AstViolation::new(
+            DiagnosticCode::InvalidStructure,
+            "dialect does not admit unnamed standard-library imports",
+        ))
+    }
     fn resolve_module(
         &self,
         module: &Self::ModuleDeclaration,

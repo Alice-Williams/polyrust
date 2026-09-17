@@ -1,6 +1,6 @@
 # M35-03A-02I-02 — Certified C/Java binary64 target values
 
-- Status: planned
+- Status: in-progress
 - Parent: [binary64 values](M35-03A-02I-binary64-values.md)
 - Depends on: [finite witness](M35-03A-02I-01-finite-literals.md)
 - Specifications: [C](../../specification/typed-generation/languages/c/rust-binary64-values.md),
@@ -31,3 +31,11 @@ predicate; float arithmetic/conversion must not leak through a broad match.
   calls are caught by bit/trace oracles. No numeric epsilon is used.
 - Full Linux release/lint gate and fresh independent review pass before push.
   Rust-source admission stays unchanged in this checkpoint.
+
+## Integration prerequisite
+
+Inspection found that the shared linker supports named symbol imports and
+generated-file imports, but not an unnamed standard-library requirement.
+[M35-03A-02I-02A](M35-03A-02I-02A-library-imports.md) adds that independently
+reviewed boundary first. The remaining C/Java target implementation stays in
+progress until every parent exit criterion has its own evidence.

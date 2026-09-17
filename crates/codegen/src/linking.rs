@@ -9,6 +9,7 @@ mod file_cycle;
 mod file_graph;
 mod file_imports;
 mod file_requirements;
+mod library_imports;
 use file_graph::derive_and_validate_file_graph;
 #[cfg(test)]
 use file_graph::generated_symbol_is_public;
@@ -19,6 +20,7 @@ pub use dependency_values::{DependencyValueSpec, NoDependencyValue};
 pub use dialect::LinkerDialect;
 pub use file_imports::ResolvedFileImport;
 pub use file_requirements::TargetFileRequirement;
+pub use library_imports::ResolvedLibraryImport;
 
 use portable_diagnostics::{Diagnostic, DiagnosticCode, SourceRef, sort_diagnostics};
 
@@ -627,6 +629,7 @@ pub struct LinkedFile<D: LinkerDialect> {
     references: Vec<LinkedReference<D>>,
     imports: Vec<ResolvedImport<D>>,
     file_imports: Vec<ResolvedFileImport<D>>,
+    library_imports: Vec<ResolvedLibraryImport<D>>,
     forward_declarations: Vec<GeneratedSymbolId>,
     helpers: Vec<D::HelperId>,
 }
@@ -675,6 +678,10 @@ impl<D: LinkerDialect> LinkedFile<D> {
 
     pub fn imports(&self) -> &[ResolvedImport<D>] {
         &self.imports
+    }
+
+    pub fn library_imports(&self) -> &[ResolvedLibraryImport<D>] {
+        &self.library_imports
     }
 
     pub fn file_imports(&self) -> &[ResolvedFileImport<D>] {
@@ -988,6 +995,8 @@ impl<D: LinkerDialect> TargetLinker<D> {
                 raw_file.dependencies.iter().copied(),
                 &mut diagnostics,
             );
+            let library_imports =
+                library_imports::derive(&self.dialect, source_file, &mut diagnostics);
             files.push(LinkedFile {
                 file: raw_file.file,
                 path: source_file.path().clone(),
@@ -1001,6 +1010,7 @@ impl<D: LinkerDialect> TargetLinker<D> {
                 references,
                 imports,
                 file_imports,
+                library_imports,
                 forward_declarations,
                 helpers: raw_file.helpers,
             });
@@ -2305,6 +2315,9 @@ mod tests {
     mod dependency_tests {
         include!("tests/linking_dependency_callables.rs");
     }
+    mod library_import_tests {
+        include!("tests/linking_library_imports.rs");
+    }
     mod file_import_tests {
         include!("tests/linking_file_imports.rs");
     }
@@ -2323,6 +2336,7 @@ mod tests {
 
     #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
     enum CatalogueMode {
+        RequiredLibraries(bool),
         RequiredFiles(file_requirement_tests::Mode),
         PackageDerived,
         RejectedPackage,
@@ -3211,6 +3225,27 @@ mod tests {
             file_requirement_tests::requirements(self.0, file)
         }
 
+        fn file_standard_libraries(&self, _file: &TargetFile<Self>) -> Vec<StandardLibrary> {
+            match self.0 {
+                CatalogueMode::RequiredLibraries(false) => {
+                    vec![StandardLibrary::Time, StandardLibrary::Time]
+                }
+                CatalogueMode::RequiredLibraries(true) => vec![StandardLibrary::Runtime],
+                _ => vec![],
+            }
+        }
+        fn resolve_standard_library_import(
+            &self,
+            library: &StandardLibrary,
+        ) -> Result<ImportKind, AstViolation> {
+            match library {
+                StandardLibrary::Time => Ok(ImportKind::Value),
+                StandardLibrary::Runtime => Err(AstViolation::new(
+                    DiagnosticCode::InvalidStructure,
+                    "unsupported library",
+                )),
+            }
+        }
         fn resolve_file_import(
             &self,
             _source: &TargetFile<Self>,
@@ -3469,6 +3504,7 @@ mod tests {
                 result.helpers.push(result.helpers[0].clone());
             }
             CatalogueMode::Normal
+            | CatalogueMode::RequiredLibraries(_)
             | CatalogueMode::RequiredFiles(_)
             | CatalogueMode::PackageDerived
             | CatalogueMode::RejectedPackage
