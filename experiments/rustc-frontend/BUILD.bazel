@@ -4,6 +4,7 @@ load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load(":absolute_ast_targets.bzl", "absolute_ast_targets")
 load(":absolute_contract_targets.bzl", "absolute_contract_targets")
 load(":absolute_targets.bzl", "absolute_targets")
+load(":arithmetic_oracle_targets.bzl", "arithmetic_oracle_targets")
 load(":binary64_ast_targets.bzl", "binary64_ast_targets")
 load(":binary64_targets.bzl", "binary64_targets")
 load(":bitwise_ast_targets.bzl", "bitwise_ast_targets")
@@ -789,3 +790,5 @@ truncation_ast_targets(
     name = "truncation_ast_test",
     c_sources = ADAPTER_SOURCES,
 )
+
+arithmetic_oracle_targets()
