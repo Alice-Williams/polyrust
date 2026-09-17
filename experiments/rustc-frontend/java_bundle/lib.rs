@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 mod budget;
 mod bundle;
+mod constant_exports;
 mod constant_imports;
 mod constants;
 mod json;
@@ -29,3 +30,8 @@ mod fixture;
 mod inventory_tests;
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod alias_fixture;
+#[cfg(test)]
+mod alias_tests;

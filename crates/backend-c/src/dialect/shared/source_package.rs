@@ -49,3 +49,23 @@ pub(super) fn check(registry: &CRegistry, sources: &[CSourceFile]) -> Result<(),
     }
     Ok(())
 }
+
+/// Borrow explicit descriptive provenance from an already certified C package.
+/// This cannot create declarations, imports, or dependency authority.
+pub fn c_source_package(
+    package: &portable_codegen::RenderReadyPackage<super::CDialect>,
+) -> Option<&crate::ast::CSourcePackage> {
+    package
+        .ast()
+        .files()
+        .iter()
+        .flat_map(|file| file.items())
+        .next()
+        .and_then(|unit| {
+            unit.unit
+                .projection
+                .registry
+                .registrations()
+                .source_package()
+        })
+}

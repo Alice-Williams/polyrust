@@ -38,8 +38,16 @@ struct Probe {
 
 fn check(tcx: TyCtxt<'_>) -> Result<usize> {
     let mut cache = source_origin::Cache::default();
-    let inventory = source_origin::public_api::Inventory::read(tcx, &mut cache)?;
-    let roots = inventory.function_roots()?;
+    let inventory =
+        source_origin::public_api::Inventory::read_with_constant_reexports(tcx, &mut cache)?;
+    let roots = inventory
+        .declarations()
+        .values()
+        .filter(|declaration| {
+            declaration.kind() == source_origin::public_api::DeclarationKind::Function
+        })
+        .map(|declaration| declaration.definition())
+        .collect::<Vec<_>>();
     let c = c_inventory::inventory(tcx, &roots, None);
     let java = java_inventory::inventory(tcx, &roots);
     match (c, java) {
@@ -47,7 +55,12 @@ fn check(tcx: TyCtxt<'_>) -> Result<usize> {
             assert_eq!(c.owned, java.local);
             assert!(c.foreign.is_empty() && java.foreign.is_empty());
             assert_eq!(c.constants, java.constants);
-            Ok(c.constants.len())
+            let combined = inventory.constant_imports(tcx, &c.constants)?;
+            assert_eq!(combined, inventory.constant_imports(tcx, &java.constants)?);
+            let mut reversed = c.constants.clone();
+            reversed.reverse();
+            assert_eq!(combined, inventory.constant_imports(tcx, &reversed)?);
+            Ok(combined.len())
         }
         (Err(c), Err(java)) => {
             assert_eq!(c, java);

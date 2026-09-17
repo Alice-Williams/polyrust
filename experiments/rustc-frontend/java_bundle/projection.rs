@@ -1,23 +1,50 @@
 use crate::{Owner, manifest::Manifest};
 use portable_backend_java::{
-    ast::JavaType,
+    ast::{JavaFileItem, JavaType},
     dialect::{JavaSourceDescriptionKind as Kind, JavaSourceTarget},
 };
 use portable_codegen::{
-    RustDeclarationId, RustExportNamespace, RustExportTarget, RustModuleAncestry,
+    RustCrateExports, RustDeclarationId, RustExportNamespace, RustExportTarget, RustModuleAncestry,
     RustModuleDocumentation,
 };
 use std::collections::{BTreeMap, BTreeSet};
+
+pub(crate) fn exports(
+    api: &portable_backend_java::dialect::JavaDependencyApi,
+) -> Result<&RustCrateExports, String> {
+    for file in api.package().ast().files() {
+        for item in file.items() {
+            if let JavaFileItem::Type {
+                source_package: Some(source),
+                ..
+            } = &item.item
+            {
+                return Ok(source.exports().as_ref());
+            }
+        }
+    }
+    api.source_descriptions()?
+        .first()
+        .map(|description| description.source().crate_exports.as_ref())
+        .ok_or("Java owner has no certified source-package graph".into())
+}
 
 pub(crate) fn project(owner: Owner<'_>) -> Result<Manifest<'_>, String> {
     let api = owner.api;
     let root = api.root();
     let source_bound = api.source_byte_bound()?;
     let declarations = api.source_descriptions()?;
-    let first = declarations
-        .first()
-        .ok_or("Java owner has no source descriptions")?;
-    let exports = first.source().crate_exports.as_ref();
+    let exports = exports(api)?;
+    let foreign_constants = crate::constant_exports::collect(api)?;
+    let foreign_bindings: BTreeMap<_, _> = foreign_constants
+        .iter()
+        .map(|export| {
+            (
+                (export.module(), export.name()),
+                export.dependency().declaration(),
+            )
+        })
+        .collect();
     if exports.root != root {
         return Err("Java export root disagrees".into());
     }
@@ -119,6 +146,8 @@ pub(crate) fn project(owner: Owner<'_>) -> Result<Manifest<'_>, String> {
                 RustExportTarget::Module(id)
                     if id.crate_id == root.crate_id && modules.contains_key(id) => {}
                 RustExportTarget::Declaration(id) if ids.contains(id) => {}
+                RustExportTarget::Declaration(id)
+                    if foreign_bindings.get(&(*module, name)) == Some(id) => {}
                 _ => return Err("Java export target is outside retained inventory".into()),
             }
         }
@@ -131,6 +160,7 @@ pub(crate) fn project(owner: Owner<'_>) -> Result<Manifest<'_>, String> {
         ),
         filename: format!("polyrust_{:016x}.api.json", root.crate_id),
         declarations,
+        foreign_constants,
         modules,
         exports,
         source_bound,

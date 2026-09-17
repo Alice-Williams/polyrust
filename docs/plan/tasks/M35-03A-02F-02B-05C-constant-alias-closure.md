@@ -44,8 +44,8 @@ or other declaration kinds remain diagnosed, not silently omitted.
    — complete. Retain checked DefId bindings alongside the finite shared
    export graph; expose a distinct private foreign-module-constant declaration
    type, separate from owned LocalDefId declarations. Resolve direct, renamed and
-   transitive aliases to one defining identity. Keep the current production
-   constructor fail-closed until both target certificate paths below exist.
+   transitive aliases to one defining identity. The standalone constructor stays
+   strict; authenticated bundle admission is integrated in step 7.
 2. [C package provenance](M35-03A-02F-02B-05C-02-c-package-provenance.md)
    — complete; Java counterpart is completed in step 5 below. Package provenance: preserve the selected crate's export graph independently
    of any owned function/field. A re-export-only crate needs no fabricated source
@@ -70,11 +70,13 @@ or other declaration kinds remain diagnosed, not silently omitted.
    — complete. Implemented the corresponding certified foreign
    binding inventory, original producer authority and export-only dependency
    closure, with separate Java 21 native and tamper proofs.
-7. [Compiler lowering and schemas](M35-03A-02F-02B-05C-07-compiler-publication.md): register exports even when no body reads them;
+7. [Compiler lowering and schemas](M35-03A-02F-02B-05C-07-compiler-publication.md)
+   — complete. Register exports even when no body reads them;
    preserve direct/transitive owner authority and all finite module/name bindings.
    Explicitly version new alias metadata and reconstruct it from certified target
-   evidence before publication. Only then enable source foreign constant exports.
-8. End-to-end proof: native separate Rust/C/Java consumers, direct/transitive and
+   evidence before publication. Authenticated source bundle foreign constant
+   exports are now enabled; standalone foreign-owner publication stays rejected.
+8. [End-to-end proof](M35-03A-02F-02B-05C-08-end-to-end-closure.md): native separate Rust/C/Java consumers, direct/transitive and
    re-export-only fixtures, stale/replaced/missing/wrong-kind controls, exact
    publication inventory, independent source mutation and Bazel invalidation,
    examples, fresh review, and complete release/lint gate.

@@ -1,6 +1,8 @@
 # Rust constant re-exports in Java 21
 
-- Status: explicit package provenance and certified foreign exports implemented. Production rustc foreign-export rejection remains active.
+- Status: explicit provenance, certified foreign exports, checked compiler
+  lowering and alias-aware bundle publication implemented. Standalone foreign
+  owner publication remains rejected.
 - Contract: [shared re-export design](../../rust-constant-reexports.md)
 
 ## Package provenance and fields
@@ -79,6 +81,22 @@ Its owned source descriptions are empty; its source-byte bound still covers all
 rendered bytes. Owner closure validation uses the selected RustCrate namespace
 even without a source method or field. Missing, conflicting, stale or
 wrong-consumer producer authority cannot be repaired by matching a string name.
+
+Alias-bearing owner metadata uses schema_version 4 (the bundle index remains
+version 1). Its constant_exports array is ordered by (module, namespace, name);
+each entry records module, namespace, name, id (defining declaration), owner
+(original producer root), path, scalar, readonly: true and lossless value.
+constant_imports describes actual declaration/expression references, not aliases
+that exist only as file dependency roots. Both arrays may reference the same
+defining constant. The complete dependencies inventory covers their union and
+all frozen retained authorities. Non-alias owners keep schemas 1/2/3 unchanged.
+
+Projection obtains the selected graph from certified explicit source-package
+metadata, falling back to a source description only for existing implicit
+packages. Empty declarations are legitimate for an alias-only owner.
+Projection and reservation retain exact certificate-derived alias views and
+reconstruct them before encoding; changing names, paths, witnesses or the whole
+descriptive projection cannot grant authority.
 
 Version the alias-bearing owner schema explicitly. Keep used expression imports
 separate from export-only aliases; the dependencies inventory covers both.

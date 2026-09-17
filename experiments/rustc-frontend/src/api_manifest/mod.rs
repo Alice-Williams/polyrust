@@ -2,12 +2,17 @@
 #[cfg(public_constant_ast_probe)]
 #[path = "../../test/public_constant_manifest.rs"]
 pub(crate) mod constant_contract;
+mod constant_export_serialization;
+mod constant_exports;
 mod constant_import_serialization;
 mod constant_imports;
 mod constants;
 #[cfg(public_package_contract)]
 #[path = "../../test/public_package_manifest_mutations.rs"]
 pub(crate) mod contract;
+#[cfg(constant_export_manifest_probe)]
+#[path = "../../test/constant_export_manifest.rs"]
+pub(crate) mod export_contract;
 mod import_serialization;
 mod imports;
 #[cfg(c_graph_inventory_contract)]
@@ -43,6 +48,8 @@ pub(crate) struct ApiManifest {
     functions: BTreeMap<RustDeclarationId, Function>,
     imports: imports::ExpectedImports,
     constant_imports: constant_imports::Expected,
+    used_constant_imports: constant_imports::Expected,
+    foreign_constants: Vec<portable_backend_c::dialect::CForeignConstantExport>,
     constants: BTreeMap<RustDeclarationId, constants::Constant>,
 }
 
@@ -159,8 +166,18 @@ impl ApiManifest {
                 return Err("API manifest file is not owned by the expected source crate".into());
             }
         }
+        let foreign_constants = constant_exports::collect(package, &exports)?;
+        let foreign: BTreeMap<_, _> = foreign_constants
+            .iter()
+            .map(|binding| {
+                (
+                    (binding.module(), binding.name()),
+                    binding.dependency().declaration(),
+                )
+            })
+            .collect();
         let mut public = BTreeSet::new();
-        for bindings in exports.modules.values() {
+        for (module, bindings) in &exports.modules {
             for (name, target) in bindings {
                 match target {
                     RustExportTarget::Module(id)
@@ -175,11 +192,13 @@ impl ApiManifest {
                     {
                         public.insert(*id);
                     }
+                    RustExportTarget::Declaration(id)
+                        if foreign.get(&(*module, name)) == Some(id) => {}
                     _ => return Err("API manifest contains an unmapped compiler export".into()),
                 }
             }
         }
-        if public.is_empty() {
+        if public.is_empty() && foreign_constants.is_empty() {
             return Err("API manifest has no public declarations".into());
         }
         let mut functions = BTreeMap::new();
@@ -232,10 +251,21 @@ impl ApiManifest {
             expected_constants,
             &public,
         )?;
+        let constant_imports = constant_imports::collect(package, exports.root, constant_imports)?;
+        let used_constant_imports = portable_backend_c::dialect::c_used_imported_constants(package)
+            .map(|imported| {
+                (
+                    imported.dependency().declaration(),
+                    (imported.object().clone(), imported.dependency().clone()),
+                )
+            })
+            .collect();
         let manifest = Self {
+            foreign_constants,
+            used_constant_imports,
             constants,
             imports: imports::collect(package, exports.root, imported)?,
-            constant_imports: constant_imports::collect(package, exports.root, constant_imports)?,
+            constant_imports,
             exports,
             header,
             implementation,

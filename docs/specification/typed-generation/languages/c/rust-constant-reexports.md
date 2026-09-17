@@ -1,7 +1,8 @@
 # Rust constant re-exports in C17
 
-- Status: explicit source-package provenance and typed file requirements implemented;
-  certified foreign exports are implemented. Production rustc foreign-export rejection remains active.
+- Status: explicit provenance, certified foreign exports, checked compiler
+  lowering and alias-aware bundle publication implemented. Standalone foreign
+  owner publication remains rejected.
 - Contract: [shared re-export design](../../rust-constant-reexports.md)
 
 ## Package provenance and storage
@@ -67,6 +68,15 @@ reconstruction rejects deleted, swapped, extra or jointly altered per-unit and
 package import maps. File-layout ordering is structural; semantic profile
 admission separately requires public owned declarations or authenticated foreign
 bindings and actual owned definitions or authenticated foreign bindings.
+
+Alias-bearing bundled owner metadata uses schema_version 6; non-alias packages
+retain versions 1 through 5. The bundle index stays version 1. constant_exports
+records each module/namespace/name binding in deterministic order with id,
+original owner, symbol, defining header, scalar type, readonly and lossless value.
+constant_imports remains the inventory of actual expression-used constants;
+export-only aliases are not misreported as body reads. The same constant may
+occur in both. Preflight reconciles their union against original member
+certificates. Standalone output cannot omit required foreign owners.
 
 New alias schema records binding module/name/namespace and defining declaration,
 producer, symbol/header, scalar type and exact value. Reconstruct both directions

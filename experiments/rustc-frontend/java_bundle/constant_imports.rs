@@ -8,20 +8,27 @@ pub(crate) fn collect(
     api: &JavaDependencyApi,
 ) -> Result<BTreeMap<RustDeclarationId, &JavaDependencyConstant>, String> {
     let mut constants = BTreeMap::new();
-    for symbol in api
+    for item in api
         .package()
         .ast()
         .files()
         .iter()
         .flat_map(|file| file.items())
-        .flat_map(|item| item.names.keys())
     {
-        if let TargetSymbolRef::DependencyValue(value) = symbol {
-            let proof = value.constant();
-            if let Some(previous) = constants.insert(proof.declaration(), proof)
-                && previous != proof
-            {
-                return Err("conflicting Java constant import authorities".into());
+        let portable_backend_java::ast::JavaFileItem::Type { declaration, .. } = &item.item else {
+            return Err("Java owner constant imports require a typed facade".into());
+        };
+        // Body/declaration traversal intentionally excludes file-only export roots.
+        let mut used = std::collections::BTreeSet::new();
+        declaration.symbols(&mut used);
+        for symbol in item.names.keys().filter(|symbol| used.contains(*symbol)) {
+            if let TargetSymbolRef::DependencyValue(value) = symbol {
+                let proof = value.constant();
+                if let Some(previous) = constants.insert(proof.declaration(), proof)
+                    && previous != proof
+                {
+                    return Err("conflicting Java constant import authorities".into());
+                }
             }
         }
     }

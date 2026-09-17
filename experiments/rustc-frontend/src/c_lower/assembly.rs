@@ -30,10 +30,14 @@ pub(crate) fn lower(
     let mut origins = origin::Cache::default();
     let exports = origins.exports(tcx)?;
     let public_inventory = if entry.is_none() {
-        Some(crate::source_origin::public_api::Inventory::read(
-            tcx,
-            &mut origins,
-        )?)
+        Some(if lookup.is_some() {
+            crate::source_origin::public_api::Inventory::read_with_constant_reexports(
+                tcx,
+                &mut origins,
+            )?
+        } else {
+            crate::source_origin::public_api::Inventory::read(tcx, &mut origins)?
+        })
     } else {
         None
     };
@@ -51,6 +55,11 @@ pub(crate) fn lower(
             .collect(),
     };
     let inventory = functions::inventory(tcx, &roots, lookup)?;
+    let constant_imports = public_inventory
+        .as_ref()
+        .map(|public| public.constant_imports(tcx, &inventory.constants))
+        .transpose()?
+        .unwrap_or_default();
     let mut registry = CRegistry::new();
     let header = if entry.is_none() {
         Some(c(registry.register_file(CFileKey {
@@ -136,7 +145,7 @@ pub(crate) fn lower(
     }
     let mut foreign_constants = HashMap::new();
     if header.is_some() {
-        for id in &inventory.constants {
+        for id in &constant_imports {
             let lookup = lookup
                 .ok_or("foreign public constant reads require a certified producer mapping")?;
             let proof = (lookup.constant)(*id)?;

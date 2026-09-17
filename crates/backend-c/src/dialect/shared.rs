@@ -29,7 +29,9 @@ mod dependency_symbols;
 mod documentation;
 mod file_imports;
 mod import_view;
-pub use constant_import_view::{CImportedConstant, c_imported_constants};
+pub use constant_import_view::{
+    CImportedConstant, c_imported_constants, c_used_imported_constants,
+};
 mod imported_values;
 mod linking;
 mod nodes;
@@ -42,6 +44,7 @@ mod resolved_names;
 #[path = "../resources/hir.rs"]
 mod resources;
 mod source_package;
+pub use source_package::c_source_package;
 #[cfg(test)]
 #[path = "../tests/shared_source_package.rs"]
 mod source_package_tests;
@@ -266,3 +269,7 @@ impl TargetDialect for CDialect {
         resources::resolved(package)
     }
 }
+
+#[cfg(test)]
+#[path = "../tests/shared_constant_reference_view.rs"]
+mod constant_reference_view_tests;

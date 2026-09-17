@@ -1,7 +1,7 @@
 # Checked Rust cross-crate constant re-exports
 
-- Status: compiler classification implemented; source publication stays fail-closed
-  until target integration.
+- Status: checked compiler inventory, C/Java lowering and alias-aware bundle
+  publication implemented; end-to-end closure remains in progress.
 - Parent: [public constants](rust-public-constants.md)
 - Implementations: [C17](languages/c/rust-constant-reexports.md),
   [Java21](languages/java/rust-constant-reexports.md)
@@ -23,10 +23,11 @@ they are owned local declarations.
 The extended inventory admits only public ordinary foreign module constants in
 the value namespace. Foreign functions, modules, associated constants, types and
 other unsupported exported kinds remain diagnosed. Classification is not scalar
-type/value admission and not a target certificate. The existing production
-inventory constructor stays strict until both target mappings and publication
-checks are implemented. The extended constructor is initially exercised only
-by compiler probes.
+type/value admission and not a target certificate. The standalone inventory constructor stays strict. Authenticated C/Java bundle
+assembly uses the extended inventory and deterministically unions foreign exports
+with expression-used imports, deduplicating by defining identity. Every member is
+authenticated against its original producer certificate before output. The union
+retains the 4096-constant limit; classification alone cannot bypass target checks.
 
 ## Finite graph and ownership
 

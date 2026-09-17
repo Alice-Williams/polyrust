@@ -36,10 +36,14 @@ pub(super) fn lower(
     let mut origins = source_origin::Cache::default();
     let exports = origins.exports(tcx)?;
     let public_inventory = if entry.is_none() {
-        Some(crate::source_origin::public_api::Inventory::read(
-            tcx,
-            &mut origins,
-        )?)
+        Some(if lookup.is_some() {
+            crate::source_origin::public_api::Inventory::read_with_constant_reexports(
+                tcx,
+                &mut origins,
+            )?
+        } else {
+            crate::source_origin::public_api::Inventory::read(tcx, &mut origins)?
+        })
     } else {
         None
     };
@@ -57,14 +61,15 @@ pub(super) fn lower(
             .collect(),
     };
     let inventory = functions::inventory(tcx, &roots)?;
+    let constant_imports = public_inventory
+        .as_ref()
+        .map(|public| public.constant_imports(tcx, &inventory.constants))
+        .transpose()?
+        .unwrap_or_default();
     let imported = super::foreign::register(
         tcx,
         &inventory.foreign,
-        if entry.is_none() {
-            &inventory.constants
-        } else {
-            &[]
-        },
+        &constant_imports,
         &mappings,
         lookup,
     )?;

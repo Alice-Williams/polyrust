@@ -1,6 +1,6 @@
 //! Borrowed source facts: these private values cannot become callable authority.
 use crate::Owner;
-use portable_backend_java::dialect::JavaSourceDescription;
+use portable_backend_java::dialect::{JavaForeignConstantExport, JavaSourceDescription};
 use portable_codegen::{RustCrateExports, RustDeclarationId, RustModuleDocumentation};
 use std::collections::BTreeMap;
 
@@ -9,6 +9,7 @@ pub(crate) struct Manifest<'a> {
     pub(crate) source: String,
     pub(crate) filename: String,
     pub(crate) declarations: Vec<JavaSourceDescription<'a>>,
+    pub(crate) foreign_constants: Vec<&'a JavaForeignConstantExport>,
     pub(crate) modules: BTreeMap<RustDeclarationId, &'a RustModuleDocumentation>,
     pub(crate) exports: &'a RustCrateExports,
     pub(crate) source_bound: u64,
@@ -19,6 +20,7 @@ impl Manifest<'_> {
     pub(crate) fn verify_owner(&self) -> Result<(), String> {
         let expected = crate::projection::project(self.owner)?;
         if self.source != expected.source
+            || self.foreign_constants != expected.foreign_constants
             || self.filename != expected.filename
             || self.source_bound != expected.source_bound
             || !std::ptr::eq(self.exports, expected.exports)

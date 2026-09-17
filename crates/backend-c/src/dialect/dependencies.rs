@@ -132,3 +132,13 @@ pub fn file_dependencies(
     result.sort_by(|left, right| left.file.key().cmp(right.file.key()));
     Ok(result)
 }
+
+/// Structural object references only; package-provenance export roots are not
+/// source items. The certificate-only public view calls this after admission.
+pub(crate) fn object_references(file: &CSourceFile) -> BTreeSet<CObjectRef> {
+    let mut dependencies = CFileDependencies::new(file.identity().clone());
+    for item in file.items() {
+        dependencies.item(item);
+    }
+    dependencies.objects
+}

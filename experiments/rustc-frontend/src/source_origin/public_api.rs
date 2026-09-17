@@ -1,4 +1,5 @@
 //! Closed compiler declaration inventory; target capability admission is separate.
+mod constant_imports;
 mod foreign_constants;
 use super::{Cache, Result, identity};
 pub(crate) use foreign_constants::ForeignConstantDeclaration;
@@ -46,7 +47,7 @@ impl Inventory {
         Self::read_policy(tcx, cache, Policy::OwnedOnly)
     }
 
-    /// Extended classification only; production lowering remains on read().
+    /// Extended classification; authenticated bundle lowering still requires target proofs.
     pub(crate) fn read_with_constant_reexports(tcx: TyCtxt<'_>, cache: &mut Cache) -> Result<Self> {
         Self::read_policy(tcx, cache, Policy::ForeignConstants)
     }

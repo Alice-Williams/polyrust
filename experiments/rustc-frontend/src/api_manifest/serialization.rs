@@ -16,9 +16,16 @@ impl ApiManifest {
 
     fn encode(&self, bundle: bool) -> Result<String, String> {
         let bound = self.encoded_bound()?;
+        let foreign: BTreeSet<_> = self
+            .foreign_constants
+            .iter()
+            .map(|binding| binding.dependency().declaration())
+            .collect();
         let mut text = format!(
             "{{\"schema_version\":{},\"root\":{},\"header\":{},\"implementation\":{},\"modules\":[",
-            if !self.constant_imports.is_empty() {
+            if !self.foreign_constants.is_empty() {
+                6
+            } else if !self.constant_imports.is_empty() {
                 5
             } else {
                 match (bundle, self.constants.is_empty()) {
@@ -48,7 +55,9 @@ impl ApiManifest {
                 };
                 let (kind, id) = match target {
                     RustExportTarget::Module(id) => ("module", id),
-                    RustExportTarget::Declaration(id) if self.constants.contains_key(id) => {
+                    RustExportTarget::Declaration(id)
+                        if self.constants.contains_key(id) || foreign.contains(id) =>
+                    {
                         ("constant", id)
                     }
                     RustExportTarget::Declaration(id) => ("function", id),
@@ -102,8 +111,11 @@ impl ApiManifest {
         }
         if bundle {
             self.write_imports(&mut text)?;
-            if !self.constant_imports.is_empty() {
+            if !self.used_constant_imports.is_empty() {
                 self.write_constant_imports(&mut text)?;
+            }
+            if !self.foreign_constants.is_empty() {
+                self.write_constant_exports(&mut text)?;
             }
         }
         text.push_str("}\n");
@@ -140,6 +152,9 @@ impl ApiManifest {
         }
         for constant in self.constants.values() {
             add(512 + constant.name.as_str().len())?;
+        }
+        for bytes in self.constant_export_bounds() {
+            add(bytes?)?;
         }
         for bytes in self.constant_import_bounds() {
             add(bytes?)?;

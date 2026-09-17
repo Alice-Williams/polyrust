@@ -9,7 +9,9 @@ use portable_codegen::{
 
 pub(crate) fn owner(out: &mut impl Sink, manifest: &Manifest<'_>) -> Result<(), String> {
     let imports = crate::constant_imports::collect(manifest.owner.api)?;
-    out.fixed(if !imports.is_empty() {
+    out.fixed(if !manifest.foreign_constants.is_empty() {
+        "{\"schema_version\":4,\"root\":"
+    } else if !imports.is_empty() {
         "{\"schema_version\":3,\"root\":"
     } else if manifest.owner.api.constants().len() == 0 {
         "{\"schema_version\":1,\"root\":"
@@ -74,6 +76,9 @@ pub(crate) fn owner(out: &mut impl Sink, manifest: &Manifest<'_>) -> Result<(), 
     out.fixed("]")?;
     if !imports.is_empty() {
         crate::constant_imports::write(out, &imports)?;
+    }
+    if !manifest.foreign_constants.is_empty() {
+        crate::constant_exports::write(out, &manifest.foreign_constants)?;
     }
     out.fixed("}\n")
 }

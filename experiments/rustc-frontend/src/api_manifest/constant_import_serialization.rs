@@ -8,7 +8,7 @@ use std::fmt::Write;
 impl ApiManifest {
     pub(super) fn write_constant_imports(&self, text: &mut String) -> Result<(), String> {
         text.push_str(",\"constant_imports\":[");
-        for (position, (id, (_, proof))) in self.constant_imports.iter().enumerate() {
+        for (position, (id, (_, proof))) in self.used_constant_imports.iter().enumerate() {
             if position != 0 {
                 text.push(',');
             }
@@ -25,7 +25,7 @@ impl ApiManifest {
     pub(super) fn constant_import_bounds(
         &self,
     ) -> impl Iterator<Item = Result<usize, String>> + '_ {
-        self.constant_imports.values().map(|(_, proof)| {
+        self.used_constant_imports.values().map(|(_, proof)| {
             proof
                 .symbol()
                 .as_str()

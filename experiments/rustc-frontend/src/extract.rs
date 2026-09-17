@@ -127,6 +127,8 @@ fn certify(lowered: crate::c_lower::LoweredPackage, mode: Mode) -> Result<Progra
                 &lowered.constants,
                 &lowered.constant_imports,
             );
+            #[cfg(constant_export_manifest_probe)]
+            crate::api_manifest::export_contract::check(&package, &manifest);
             Some(manifest)
         }
     };
