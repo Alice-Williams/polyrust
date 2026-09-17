@@ -263,6 +263,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "polyrust-binary64"
+version = "0.1.0"
+
+[[package]]
 name = "polyrust-build"
 version = "0.1.0"
 dependencies = [

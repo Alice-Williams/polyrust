@@ -37,6 +37,11 @@ capability, with 778/778 release tests and clean fresh compiler review.
 Method/associated i32/i64 wrapping_neg retain exact receiver evaluation and
 original dependencies. Other arithmetic remains separate work.
 
+The next bounded family is
+[M35-03A-02I — binary64 values](M35-03A-02I-binary64-values.md), split into a
+dependency-free finite literal witness, target proof and checked compiler
+integration before arithmetic is admitted.
+
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing

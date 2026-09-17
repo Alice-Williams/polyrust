@@ -8,6 +8,7 @@ members = [
     "crates/backend-rust",
     "crates/backend-typescript",
     "crates/benchmark",
+    "crates/binary64",
     "crates/build",
     "crates/check",
     "crates/cli",
@@ -50,6 +51,7 @@ portable_backend_java = { package = "polyrust-backend-java", path = "crates/back
 portable_backend_python = { package = "polyrust-backend-python", path = "crates/backend-python" }
 portable_backend_rust = { package = "polyrust-backend-rust", path = "crates/backend-rust" }
 portable_backend_typescript = { package = "polyrust-backend-typescript", path = "crates/backend-typescript" }
+portable_binary64 = { package = "polyrust-binary64", path = "crates/binary64" }
 portable_build = { package = "polyrust-build", path = "crates/build" }
 portable_check = { package = "polyrust-check", path = "crates/check" }
 portable_codegen = { package = "polyrust-codegen", path = "crates/codegen" }

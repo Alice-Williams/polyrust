@@ -1,0 +1,29 @@
+load("@rules_rust//rust:defs.bzl", "rust_doc_test", "rust_library", "rust_test")
+
+exports_files(["Cargo.toml"])
+
+rust_library(
+    name = "portable_binary64",
+    srcs = ["src/lib.rs"],
+    crate_name = "portable_binary64",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "portable_binary64_test",
+    srcs = [
+        "src/lib.rs",
+        "src/tests.rs",
+    ],
+    crate_name = "portable_binary64",
+    crate_root = "src/lib.rs",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+)
+
+rust_doc_test(
+    name = "portable_binary64_doc_test",
+    crate = ":portable_binary64",
+    visibility = ["//visibility:public"],
+)
