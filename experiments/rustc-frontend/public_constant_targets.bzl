@@ -33,6 +33,22 @@ def public_constant_targets(name, c_sources):
             deps = deps,
         )
         for slot in ["declaration", "read", "import"]:
+            # Restore only the omitted slot in the same fixture. This positive
+            # compile control prevents unrelated missing slots masking failure.
+            compiler_adapter(
+                name = "public_constant_" + language + "_" + slot + "_complete_control",
+                crate_root = root,
+                srcs = sources + ["test/public_constant_contract.rs"],
+                rustc_cfgs = [
+                    "public_constant_contract",
+                    "public_constant_" + language,
+                    "public_constant_" + slot,
+                    "public_constant_missing",
+                    "public_constant_complete_control",
+                ],
+                directory_publisher = ":directory_publisher" if language == "c" else None,
+                deps = deps,
+            )
             for case, error in [
                 ("missing", "error[E0599]"),
                 ("duplicate", "error[E0599]"),

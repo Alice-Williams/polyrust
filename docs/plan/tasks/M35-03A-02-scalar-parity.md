@@ -32,9 +32,10 @@ tests, original-authority/native/AST proof and clean independent review.
 Unit storage/parameters remain a separate capability.
 
 [M35-03A-02H — wrapping signed negation](M35-03A-02H-wrapping-negation.md)
-has completed its C/Java target foundation with 760/760 release tests and clean
-fresh review. The identity-checked compiler capability is next; source support
-is not yet enabled. Other arithmetic remains separate work.
+is complete: certified C/Java target foundation and identity-checked source
+capability, with 778/778 release tests and clean fresh compiler review.
+Method/associated i32/i64 wrapping_neg retain exact receiver evaluation and
+original dependencies. Other arithmetic remains separate work.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

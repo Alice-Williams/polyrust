@@ -74,6 +74,9 @@ load(":source_origin_targets.bzl", "source_origin_targets")
 load(":unit_ast_targets.bzl", "unit_ast_targets")
 load(":unit_contract_targets.bzl", "unit_contract_targets")
 load(":unit_targets.bzl", "unit_targets")
+load(":wrapping_ast_targets.bzl", "wrapping_ast_targets")
+load(":wrapping_contract_targets.bzl", "wrapping_contract_targets")
+load(":wrapping_targets.bzl", "wrapping_targets")
 
 COPTS = [
     "-std=c17",
@@ -123,6 +126,18 @@ bitwise_targets(name = "bitwise_clippy_test")
 eager_targets(name = "eager_clippy_test")
 
 unit_targets(name = "unit_clippy_test")
+
+wrapping_targets(name = "wrapping_fixture_clippy_test")
+
+wrapping_ast_targets(
+    name = "wrapping_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+wrapping_contract_targets(
+    name = "wrapping_contract_test",
+    c_sources = ADAPTER_SOURCES,
+)
 
 unit_ast_targets(
     name = "unit_ast_test",

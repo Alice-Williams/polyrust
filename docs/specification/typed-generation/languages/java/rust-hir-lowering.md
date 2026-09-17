@@ -94,7 +94,15 @@ Both operands are materialized left to right, without lazy branch substitution.
 The dependency gate and source reservation traverse these operations explicitly.
 No support class or runtime helper is introduced.
 
-Literal, scalar-constant, comparison, Boolean-negation, short-circuit Boolean, integer-bitwise, eager-Boolean, borrow, call and record-initializer mappings produce planned
+The [wrapping-negation extension](rust-wrapping-negation.md) registers
+WrappingNegation with private canonical primitive-method identity and exact
+I32/I64 input. Its executable mapping materializes one receiver and returns
+typed int/long Unary Negate with matching precedence. Standard-library method
+discovery does not invent a target dependency; ordinary receiver calls retain
+original producer authority. Other arithmetic and user-defined methods are
+not implied by this capability.
+
+Literal, scalar-constant, wrapping-negation, comparison, Boolean-negation, short-circuit Boolean, integer-bitwise, eager-Boolean, borrow, call and record-initializer mappings produce planned
 Java values. ObjectTypes produces the representation plan; ResolvedPlaces produces
 a planned place; LexicalControl produces JavaBlock. EntrySignatures and
 FunctionSignatures produce JavaMethodSignature from compiler signatures, including

@@ -29,11 +29,20 @@ mod scalar_constants;
 mod shared_borrows;
 mod short_circuit_booleans;
 mod slots;
+#[cfg(wrapping_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/wrapping_contract.rs"]
+mod wrapping_contract;
+
 #[cfg(unit_contract)]
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/unit_contract.rs"]
 mod unit_contract;
 mod unit_effects;
+#[cfg(wrapping_ast_probe)]
+#[path = "../../../test/wrapping_java_ast.rs"]
+mod wrapping_ast;
+mod wrapping_negation;
 
 #[cfg(local_constant_contract)]
 #[allow(dead_code, unused_imports)]
@@ -128,6 +137,7 @@ pub(crate) use shared_borrows::JavaSharedBorrows;
 pub(crate) use short_circuit_booleans::JavaShortCircuitBooleans;
 pub(crate) use slots::{Bindings, Builder};
 pub(crate) use unit_effects::JavaUnitEffects;
+pub(crate) use wrapping_negation::JavaWrappingNegation;
 
 pub(crate) type JavaBindings = Bindings<
     JavaLiteralValues,
@@ -150,6 +160,7 @@ pub(crate) type JavaBindings = Bindings<
     JavaPublicConstantReads,
     JavaPublicConstantImports,
     JavaUnitEffects,
+    JavaWrappingNegation,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -174,5 +185,6 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .public_constant_reads(JavaPublicConstantReads)
         .public_constant_imports(JavaPublicConstantImports)
         .unit_effects(JavaUnitEffects)
+        .wrapping_negation(JavaWrappingNegation)
         .build()
 }

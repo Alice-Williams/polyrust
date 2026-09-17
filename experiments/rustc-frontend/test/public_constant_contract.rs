@@ -1,8 +1,12 @@
 //! Every new executable slot has isolated compile-negative boundary controls.
 #[cfg(public_constant_c)]
 use super::CUnitEffects as Unit;
+#[cfg(public_constant_c)]
+use super::CWrappingNegation as Wrapping;
 #[cfg(public_constant_java)]
 use super::JavaUnitEffects as Unit;
+#[cfg(public_constant_java)]
+use super::JavaWrappingNegation as Wrapping;
 use super::*;
 #[cfg(public_constant_c)]
 use super::{
@@ -92,6 +96,13 @@ fn missing() {
     let builder = builder
         .public_constants(Declarations)
         .public_constant_reads(Reads);
+    let builder = builder.unit_effects(Unit).wrapping_negation(Wrapping);
+    #[cfg(all(public_constant_complete_control, public_constant_declaration))]
+    let builder = builder.public_constants(Declarations);
+    #[cfg(all(public_constant_complete_control, public_constant_read))]
+    let builder = builder.public_constant_reads(Reads);
+    #[cfg(all(public_constant_complete_control, public_constant_import))]
+    let builder = builder.public_constant_imports(Imports);
     builder.build();
 }
 #[cfg(public_constant_duplicate)]

@@ -124,6 +124,7 @@ not aliases for the complete portable capability catalogue:
 | EntrySignatures | selected compiler function identity and signature facts | CFunctionType |
 | FunctionSignatures | ordinary local or authenticated foreign compiler DefId and scalar-parameter / scalar-or-unit-result signature facts | CFunctionType |
 | DirectCalls | resolved ordinary scalar-result call HIR expression | CValue plus scope-owned typed evaluation declarations |
+| WrappingNegation | private canonical built-in method input, exact I32/I64 width and receiver | One evaluation temporary, typed MIN equality/conditional/negation, exact I32 normalization; see [wrapping contract](rust-wrapping-negation.md) |
 | UnitEffects | private checked UnitInput with closed empty/call/block/conditional operation and HIR scope | Typed effect statements; ordinary void calls and no value temporary |
 
 Each binding has associated input/context/output types and an executable lower

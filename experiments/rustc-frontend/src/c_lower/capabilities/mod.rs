@@ -29,11 +29,20 @@ mod scalar_constants;
 mod shared_borrows;
 mod short_circuit_booleans;
 mod slots;
+#[cfg(wrapping_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/wrapping_contract.rs"]
+mod wrapping_contract;
+
 #[cfg(unit_contract)]
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/unit_contract.rs"]
 mod unit_contract;
 mod unit_effects;
+#[cfg(wrapping_ast_probe)]
+#[path = "../../../test/wrapping_c_ast.rs"]
+mod wrapping_ast;
+mod wrapping_negation;
 
 #[cfg(local_constant_contract)]
 #[allow(dead_code, unused_imports)]
@@ -137,6 +146,7 @@ pub(crate) use shared_borrows::CSharedBorrows;
 pub(crate) use short_circuit_booleans::CShortCircuitBooleans;
 pub(crate) use slots::{Bindings, Builder};
 pub(crate) use unit_effects::CUnitEffects;
+pub(crate) use wrapping_negation::CWrappingNegation;
 
 pub(crate) use crate::source_capabilities::*;
 
@@ -161,6 +171,7 @@ pub(crate) type CBindings = Bindings<
     CPublicConstantReads,
     CPublicConstantImports,
     CUnitEffects,
+    CWrappingNegation,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -185,5 +196,6 @@ pub(crate) fn c_bindings() -> CBindings {
         .public_constant_reads(CPublicConstantReads)
         .public_constant_imports(CPublicConstantImports)
         .unit_effects(CUnitEffects)
+        .wrapping_negation(CWrappingNegation)
         .build()
 }

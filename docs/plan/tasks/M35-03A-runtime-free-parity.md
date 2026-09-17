@@ -76,3 +76,10 @@ function results, direct effect calls and structured unit control as ordinary
 C/Java void. Three-crate native/order/ABI proof, typed AST/registration/negative
 checks and all 760 release tests pass; a fresh independent review is clean.
 This does not cover general unit storage or authorize runtime retirement.
+
+[M35-03A-02H](M35-03A-02H-wrapping-negation.md) adds actual core i32/i64
+wrapping_neg methods through an executable private-input capability. Guarded C
+and primitive Java need no helper runtime. Both target and compiler checkpoints
+passed their native/lint/release gates and fresh independent reviews; compiler
+proof covers 52,500 result values and value-preserving receiver-call faults.
+Other arithmetic and the larger parity inventory still prevent legacy removal.

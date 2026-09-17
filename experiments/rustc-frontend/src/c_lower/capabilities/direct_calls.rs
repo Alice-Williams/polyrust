@@ -43,7 +43,7 @@ impl<'tcx> Reader<'tcx> {
         Ok((function, values))
     }
 
-    fn materialize(&mut self, value: CValue) -> Result<CValue> {
+    pub(super) fn materialize(&mut self, value: CValue) -> Result<CValue> {
         let scope = self
             .active_scope
             .clone()

@@ -6,7 +6,7 @@ use super::{
         DirectCalls, EagerBooleanInput, EagerBooleans, IntegerBitwise, LazyBooleanInput,
         LiteralInput, LiteralValues, Mapping, NegationInput, PlaceInput, PublicConstantReadInput,
         PublicConstantReads, ResolvedPlaces, ScalarComparisons, ScalarConstants, SharedBorrows,
-        ShortCircuitBooleans, Supports,
+        ShortCircuitBooleans, Supports, WrappingInput, WrappingNegation,
     },
 };
 use portable_backend_c::ast::{CPlace, CValue};
@@ -15,6 +15,9 @@ use rustc_hir as hir;
 impl<'tcx> Reader<'tcx> {
     pub(super) fn expr(&mut self, value: &'tcx hir::Expr<'tcx>) -> Result<CValue> {
         self.ty(self.checked.expr_ty(value))?;
+        if let Some(input) = WrappingInput::discover(self.tcx, self.checked, value)? {
+            return Supports::<WrappingNegation>::mapping(&self.mappings).lower(self, input);
+        }
         if !self.checked.expr_adjustments(value).is_empty() {
             let place = self.place(value)?;
             return c(self.expressions().read(place));

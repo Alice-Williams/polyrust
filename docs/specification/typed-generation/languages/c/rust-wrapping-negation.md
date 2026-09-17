@@ -1,6 +1,6 @@
 # Rust wrapping negation in C17
 
-- Status: target foundation implemented (M35-03A-02H-01); compiler integration planned (02H-02)
+- Status: implemented and independently reviewed (M35-03A-02H-01/02)
 - Contract: [shared](../../rust-wrapping-negation.md)
 
 ## Typed mapping

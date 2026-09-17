@@ -24,6 +24,7 @@ mod scalar_constants;
 mod shared_borrows;
 mod short_circuit_booleans;
 mod unit_effects;
+mod wrapping_negation;
 
 pub(crate) use boolean_negation::{BooleanNegation, NegationInput};
 pub(crate) use contracts::{Capability, Mapping, Supports};
@@ -49,3 +50,5 @@ pub(crate) use short_circuit_booleans::{
 };
 
 pub(crate) use unit_effects::{UnitEffects, UnitInput, UnitOperation};
+
+pub(crate) use wrapping_negation::{WrappingInput, WrappingNegation, WrappingWidth};

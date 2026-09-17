@@ -1,6 +1,6 @@
 # Rust wrapping negation in Java 21
 
-- Status: target foundation implemented (M35-03A-02H-01); compiler integration planned (02H-02)
+- Status: implemented and independently reviewed (M35-03A-02H-01/02)
 - Contract: [shared](../../rust-wrapping-negation.md)
 
 ## Typed mapping
@@ -31,4 +31,5 @@ are generated.
 Typed unary/result/precedence and nested-call/source-bound assertions; separately
 compiled Java 21 producers/clients with strict lint; independent boundary and
 deterministic modular truth and deliberate wrong-operation/width controls.
-Compiler source admission is deferred until the checked capability exists.
+Checked compiler source admission is implemented through WrappingNegation;
+other arithmetic is not admitted by this extension.

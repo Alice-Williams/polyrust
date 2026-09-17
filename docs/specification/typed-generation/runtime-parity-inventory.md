@@ -20,7 +20,7 @@ target has full replacement evidence for any broad legacy capability family.
 
 | Functionality | Rust-source C | Rust-source Java | Remaining work |
 | --- | --- | --- | --- |
-| Values and comparisons | i32/i64/bool literals and evaluated constant reads, scalar comparison, immutable places, built-in bool negation, lazy/eager operators and signed integer bitwise operations | Same source subset | f64/char/unit, public/local constant declarations, type aliases, integer and float operations: M35-03A-02 |
+| Values and comparisons | i32/i64/bool literals and evaluated constant reads, scalar comparison, immutable places, built-in bool negation, lazy/eager operators, signed integer bitwise operations and i32/i64 wrapping negation | Same source subset | f64/char/unit storage, wider constants, type aliases and remaining integer/float operations: M35-03A-02 |
 | Functions and modules | Closed scalar/unit-result signatures and value/effect calls, crate-owned headers and implementations | Same signatures/calls with crate-owned Java packages | Wider signatures, methods and migrated consumers: M35-03A-03/06 |
 | Records and control | Closed scalar-field records/shared borrows, local bindings, structured branches | Same source subset | Owned shapes, enums, interfaces, loops and patterns: M35-02 then M35-03A-03 |
 | Text, Unicode and bytes | No general replacement mapping | No general replacement mapping | All legacy operations and explicit encoding/indexing policies: M35-03A-04 |
@@ -152,3 +152,17 @@ storage/parameters or full family parity. `unit_ast_test`, `unit_native_test`,
 ABI/behavior, call/condition order, atomic rejection and builder/input privacy.
 Typed target void tests retain original-owner/signature/resource controls.
 Legacy custom runtimes remain until the other inventory gaps are closed.
+
+## Wrapping-negation increment
+
+[M35-03A-02H](../../plan/tasks/M35-03A-02H-wrapping-negation.md) adds partial
+JavaWrappingIntegerArithmetic coverage: actual built-in i32/i64 wrapping_neg,
+not ordinary potentially overflowing unary minus. The compiler's private
+canonical witness maps through the typed builder to guarded C and native Java.
+wrapping_native_test compares 52,500 values from 8,750 boundary/random inputs
+against Rust and independent modular truth, with separately compiled owners,
+GCC/Zig O0/O2, GCC UBSan and Java 21 strict lint. Value-preserving receiver
+drop/duplicate mutations fail trace checks. wrapping_ast_test proves exact
+node shape, width, receiver count and identity; wrapping_contract_test and
+wrapping_rejection_test enforce compile/atomic boundaries. All 778 test targets
+and fresh review pass. No full legacy family is retired by this increment.

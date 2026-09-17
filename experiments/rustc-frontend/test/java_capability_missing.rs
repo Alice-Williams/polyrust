@@ -1,4 +1,5 @@
 use super::JavaUnitEffects as Unit;
+use super::JavaWrappingNegation as Wrapping;
 use super::{
     Builder, JavaBooleanNegation, JavaDirectCalls, JavaEagerBooleans, JavaEntrySignatures,
     JavaFunctionSignatures, JavaIntegerBitwise, JavaLexicalControl, JavaLiteralValues,
@@ -29,6 +30,7 @@ fn must_not_compile() {
         .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
+        .wrapping_negation(Wrapping)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -50,6 +52,7 @@ fn must_not_compile() {
         .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
+        .wrapping_negation(Wrapping)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -71,6 +74,7 @@ fn must_not_compile() {
         .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
+        .wrapping_negation(Wrapping)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -92,6 +96,7 @@ fn must_not_compile() {
         .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
+        .wrapping_negation(Wrapping)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -113,6 +118,7 @@ fn must_not_compile() {
         .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
+        .wrapping_negation(Wrapping)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -134,6 +140,7 @@ fn must_not_compile() {
         .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
+        .wrapping_negation(Wrapping)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -155,6 +162,7 @@ fn must_not_compile() {
         .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
+        .wrapping_negation(Wrapping)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -176,6 +184,7 @@ fn must_not_compile() {
         .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
+        .wrapping_negation(Wrapping)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -197,6 +206,7 @@ fn must_not_compile() {
         .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
+        .wrapping_negation(Wrapping)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -218,5 +228,6 @@ fn must_not_compile() {
         .public_constant_imports(JavaPublicConstantImports)
         .public_constant_reads(JavaPublicConstantReads)
         .unit_effects(Unit)
+        .wrapping_negation(Wrapping)
         .build();
 }

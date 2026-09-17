@@ -1,6 +1,6 @@
 # Checked Rust wrapping signed negation
 
-- Status: target foundation implemented (M35-03A-02H-01); compiler integration planned (02H-02)
+- Status: implemented and independently reviewed (M35-03A-02H-01/02)
 - Implementations: [C17](languages/c/rust-wrapping-negation.md),
   [Java21](languages/java/rust-wrapping-negation.md)
 - Plan: [M35-03A-02H](../../plan/tasks/M35-03A-02H-wrapping-negation.md)
@@ -23,7 +23,9 @@ built-in inherent method identity, exact signed-width enum and source operand.
 Validate checked type, safe nongeneric signature and supported receiver
 adjustments. A textual method name alone is insufficient authority. Resolve the
 same actual DefId for method and associated-function syntax; reject unproven
-forms. The pinned rustc remains the type/ownership checker.
+forms. Previously supported ordinary functions keep their direct-call semantics
+regardless of spelling; a name collision never upgrades one to this capability.
+The pinned rustc remains the type/ownership checker.
 
 ## Mapping and rendering
 

@@ -140,7 +140,20 @@ impl<'tcx> Visitor<'tcx> for Calls<'tcx> {
         ) {
             self.constants.push(id);
         }
-        if matches!(expression.kind, hir::ExprKind::Call(..)) {
+        let builtin = match crate::source_capabilities::WrappingInput::discover(
+            self.tcx,
+            self.checked,
+            expression,
+        ) {
+            Ok(input) => input.is_some(),
+            Err(error) => {
+                self.error = Some(error);
+                return;
+            }
+        };
+        // Keep walking the receiver: its ordinary calls still need inventory
+        // and original producer authority even though the primitive itself does not.
+        if !builtin && matches!(expression.kind, hir::ExprKind::Call(..)) {
             match resolve(self.tcx, self.checked, expression) {
                 Ok(target) => self.calls.push(target),
                 Err(error) => {

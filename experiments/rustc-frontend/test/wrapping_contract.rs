@@ -1,19 +1,19 @@
-//! Each negative changes exactly one unit mapping boundary.
-#[cfg(unit_c)]
-use super::CUnitEffects as Unit;
-#[cfg(unit_java)]
-use super::JavaUnitEffects as Unit;
+//! Each negative changes exactly one wrapping-negation mapping boundary.
+#[cfg(wrapping_c)]
+use super::CWrappingNegation as Wrapping;
+#[cfg(wrapping_java)]
+use super::JavaWrappingNegation as Wrapping;
 use super::*;
-#[cfg(unit_c)]
+#[cfg(wrapping_c)]
 use crate::c_lower::Reader;
-#[cfg(unit_java)]
+#[cfg(wrapping_java)]
 use crate::java_lower::Reader;
-#[cfg(unit_c)]
-type Output = Vec<portable_backend_c::ast::CStatement>;
-#[cfg(unit_java)]
-type Output = Vec<portable_backend_java::ast::JavaStmt>;
+#[cfg(wrapping_c)]
+type Output = portable_backend_c::ast::CValue;
+#[cfg(wrapping_java)]
+type Output = crate::java_lower::Value;
 
-#[cfg(all(unit_missing, unit_c))]
+#[cfg(all(wrapping_missing, wrapping_c))]
 fn missing() {
     Builder::new()
         .literal_values(CLiteralValues)
@@ -35,11 +35,11 @@ fn missing() {
         .public_constants(CPublicConstants)
         .public_constant_reads(CPublicConstantReads)
         .public_constant_imports(CPublicConstantImports)
-        .wrapping_negation(CWrappingNegation)
+        .unit_effects(CUnitEffects)
         .build();
 }
 
-#[cfg(all(unit_missing, unit_java))]
+#[cfg(all(wrapping_missing, wrapping_java))]
 fn missing() {
     Builder::new()
         .literal_values(JavaLiteralValues)
@@ -61,52 +61,68 @@ fn missing() {
         .public_constants(JavaPublicConstants)
         .public_constant_reads(JavaPublicConstantReads)
         .public_constant_imports(JavaPublicConstantImports)
-        .wrapping_negation(JavaWrappingNegation)
+        .unit_effects(JavaUnitEffects)
         .build();
 }
 
-#[cfg(unit_duplicate)]
+#[cfg(wrapping_duplicate)]
 fn duplicate() {
-    Builder::new().unit_effects(Unit).unit_effects(Unit);
+    Builder::new()
+        .wrapping_negation(Wrapping)
+        .wrapping_negation(Wrapping);
 }
-#[cfg(any(unit_wrong_capability, unit_wrong_context, unit_wrong_output))]
+#[cfg(any(
+    wrapping_wrong_capability,
+    wrapping_wrong_context,
+    wrapping_wrong_output
+))]
 #[derive(Clone, Copy)]
 struct Wrong;
-#[cfg(any(unit_wrong_capability, unit_wrong_context, unit_wrong_output))]
+#[cfg(any(
+    wrapping_wrong_capability,
+    wrapping_wrong_context,
+    wrapping_wrong_output
+))]
 impl Mapping for Wrong {
-    #[cfg(unit_wrong_capability)]
+    #[cfg(wrapping_wrong_capability)]
     type Capability = LiteralValues;
-    #[cfg(not(unit_wrong_capability))]
-    type Capability = UnitEffects;
-    #[cfg(unit_wrong_context)]
+    #[cfg(not(wrapping_wrong_capability))]
+    type Capability = WrappingNegation;
+    #[cfg(wrapping_wrong_context)]
     type Context<'tcx> = ();
-    #[cfg(not(unit_wrong_context))]
+    #[cfg(not(wrapping_wrong_context))]
     type Context<'tcx> = Reader<'tcx>;
-    #[cfg(unit_wrong_output)]
+    #[cfg(wrapping_wrong_output)]
     type Output = ();
-    #[cfg(not(unit_wrong_output))]
+    #[cfg(not(wrapping_wrong_output))]
     type Output = Output;
     fn lower<'tcx>(
         &self,
         _: &mut Self::Context<'tcx>,
         _: <Self::Capability as Capability>::Input<'tcx>,
     ) -> Result<Self::Output, String> {
-        Err("deliberately wrong unit mapping".into())
+        Err("deliberately wrong wrapping-negation mapping".into())
     }
 }
-#[cfg(any(unit_wrong_capability, unit_wrong_context, unit_wrong_output))]
+#[cfg(any(
+    wrapping_wrong_capability,
+    wrapping_wrong_context,
+    wrapping_wrong_output
+))]
 fn wrong() {
-    Builder::new().unit_effects(Wrong);
+    Builder::new().wrapping_negation(Wrong);
 }
-#[cfg(unit_wrong_input)]
+#[cfg(wrapping_wrong_input)]
 fn wrong_input<'tcx>(reader: &mut Reader<'tcx>, expression: &'tcx rustc_hir::Expr<'tcx>) {
     let input = LiteralInput::read(reader.checked, expression).unwrap();
-    let _ = Unit.lower(reader, input);
+    let _ = Wrapping.lower(reader, input);
 }
-#[cfg(unit_private_input)]
+#[cfg(wrapping_private_input)]
 fn private_input<'tcx>(expression: &'tcx rustc_hir::Expr<'tcx>) {
-    let _ = UnitInput {
-        operation: UnitOperation::Empty,
-        scope: expression.hir_id,
+    let _ = WrappingInput {
+        source: expression,
+        receiver: expression,
+        definition: expression.hir_id.owner.def_id.to_def_id(),
+        width: WrappingWidth::I32,
     };
 }

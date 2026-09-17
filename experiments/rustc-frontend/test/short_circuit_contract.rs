@@ -7,6 +7,8 @@ use super::CLocalConstants as Locals;
 use super::CScalarConstants as Constants;
 #[cfg(lazy_c)]
 use super::CUnitEffects as Unit;
+#[cfg(lazy_c)]
+use super::CWrappingNegation as Wrapping;
 #[cfg(lazy_java)]
 use super::JavaIntegerBitwise as Bits;
 #[cfg(lazy_java)]
@@ -15,6 +17,8 @@ use super::JavaLocalConstants as Locals;
 use super::JavaScalarConstants as Constants;
 #[cfg(lazy_java)]
 use super::JavaUnitEffects as Unit;
+#[cfg(lazy_java)]
+use super::JavaWrappingNegation as Wrapping;
 use super::*;
 #[cfg(lazy_c)]
 use super::{
@@ -74,6 +78,7 @@ fn missing() {
         .public_constant_imports(PublicImports)
         .public_constant_reads(PublicReads)
         .unit_effects(Unit)
+        .wrapping_negation(Wrapping)
         .build();
 }
 

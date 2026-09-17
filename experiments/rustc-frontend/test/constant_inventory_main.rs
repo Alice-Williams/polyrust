@@ -1,6 +1,7 @@
 //! Exercise the production discovery walkers independently of target AST limits.
 #![feature(rustc_private)]
 #![forbid(unsafe_code)]
+extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_driver;
 extern crate rustc_hir;

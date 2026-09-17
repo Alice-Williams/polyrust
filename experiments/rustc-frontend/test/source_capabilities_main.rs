@@ -2,6 +2,7 @@
 #![feature(rustc_private)]
 #![forbid(unsafe_code)]
 
+extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_driver;
 extern crate rustc_hir;
@@ -207,7 +208,20 @@ fn unit<'tcx>(
         }
     });
 }
+fn wrapping<'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+) {
+    if let Ok(Some(input)) = WrappingInput::discover(tcx, checked, expression) {
+        let _ = input.require_context(tcx, checked);
+        let _ = (input.receiver(), input.width());
+    }
+}
 fn main() {
+    capability::<WrappingNegation>();
+    let _ = wrapping;
+    let _ = [WrappingWidth::I32, WrappingWidth::I64];
     capability::<UnitEffects>();
     let _ = unit;
     let _ = [ControlCompletion::Return, ControlCompletion::Effect];

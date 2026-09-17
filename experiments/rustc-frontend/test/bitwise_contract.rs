@@ -5,12 +5,16 @@ use super::CLocalConstants as Locals;
 use super::CScalarConstants as Constants;
 #[cfg(bitwise_c)]
 use super::CUnitEffects as Unit;
+#[cfg(bitwise_c)]
+use super::CWrappingNegation as Wrapping;
 #[cfg(bitwise_java)]
 use super::JavaLocalConstants as Locals;
 #[cfg(bitwise_java)]
 use super::JavaScalarConstants as Constants;
 #[cfg(bitwise_java)]
 use super::JavaUnitEffects as Unit;
+#[cfg(bitwise_java)]
+use super::JavaWrappingNegation as Wrapping;
 use super::*;
 #[cfg(bitwise_c)]
 use super::{
@@ -70,6 +74,7 @@ fn missing() {
         .public_constant_imports(PublicImports)
         .public_constant_reads(PublicReads)
         .unit_effects(Unit)
+        .wrapping_negation(Wrapping)
         .build();
 }
 
