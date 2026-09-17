@@ -113,7 +113,11 @@ impl JavaStmt {
                 }
             }
             Self::Expression(value) | Self::Throw(value) | Self::ThrowAssertion(value) => {
-                violations.extend(value.verify(context));
+                violations.extend(if matches!(self, Self::Expression(_)) {
+                    value.verify_statement(context)
+                } else {
+                    value.verify(context)
+                });
                 if matches!(self, Self::Expression(_)) && !is_java_statement_expression(value) {
                     violations.push(AstViolation::new(
                         DiagnosticCode::InvalidStructure,

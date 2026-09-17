@@ -25,7 +25,10 @@ impl Reader<'_> {
                     self.expression(target, depth + 1)?;
                     self.expression(value, depth + 1)?;
                 }
-                JavaStmt::Return(Some(value)) => self.expression(value, depth + 1)?,
+                JavaStmt::Return(Some(value)) | JavaStmt::Expression(value) => {
+                    self.expression(value, depth + 1)?
+                }
+                JavaStmt::Return(None) => {}
                 JavaStmt::If {
                     condition,
                     then_block,

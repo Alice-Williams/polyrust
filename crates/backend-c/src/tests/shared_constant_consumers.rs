@@ -142,7 +142,11 @@ fn constant_catalogue_and_resolved_binding_mutations_reject() {
         let spec = &mut changed.dependency_values[0];
         match fault {
             Fault::Name => spec.name = CIdentifier::new("poly_invented").unwrap(),
-            Fault::Type => spec.ty = TargetTypeRef::Primitive(CScalarType::I64),
+            Fault::Type => {
+                spec.ty = TargetTypeRef::Primitive(crate::dialect::CPrimitiveType::Scalar(
+                    CScalarType::I64,
+                ))
+            }
             Fault::Owner => spec.owner = other.clone(),
             Fault::Import => {
                 spec.spelling =

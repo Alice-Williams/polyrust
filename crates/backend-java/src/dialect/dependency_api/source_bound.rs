@@ -138,7 +138,11 @@ impl Reader<'_> {
                         return Err("source reservation encountered an unsupported method".into());
                     }
                     self.symbol(TargetSymbolRef::Generated(GeneratedSymbolId::Callable(id)))?;
-                    self.ty(&value.return_type)?;
+                    if value.return_type == JavaType::primitive(JavaPrimitive::Void) {
+                        self.budget.add(4)?;
+                    } else {
+                        self.ty(&value.return_type)?;
+                    }
                     self.parameters(&value.parameters, depth + 1)?;
                     self.block(
                         value.body.as_ref().ok_or("source method body missing")?,

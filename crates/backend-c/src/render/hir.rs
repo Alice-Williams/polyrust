@@ -184,9 +184,6 @@ impl Writer<'_> {
         linkage: CLinkage,
         parameters: Option<&[CParameterRef]>,
     ) -> String {
-        let CReturnType::Value(result) = function.signature().return_type() else {
-            unreachable!("checked scalar return")
-        };
         let parameters = function
             .signature()
             .parameters()
@@ -209,10 +206,11 @@ impl Writer<'_> {
         } else {
             parameters.join(", ")
         };
-        let declaration = self.declarator(
-            result.declared_type(),
-            &format!("{}({parameters})", self.names.functions[function].as_str()),
-        );
+        let name = format!("{}({parameters})", self.names.functions[function].as_str());
+        let declaration = match function.signature().return_type() {
+            CReturnType::Value(result) => self.declarator(result.declared_type(), &name),
+            CReturnType::Void => format!("void {name}"),
+        };
         match linkage {
             CLinkage::Internal => format!("static {declaration}"),
             CLinkage::External => declaration,

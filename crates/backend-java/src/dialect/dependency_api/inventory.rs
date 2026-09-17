@@ -234,7 +234,8 @@ pub(super) fn collect_with_budget(
                     || !method.modifiers.contains(&JavaModifier::Static)
                     || !method.annotations.is_empty()
                     || !method.type_parameters.is_empty()
-                    || !scalar(&method.return_type)
+                    || !(scalar(&method.return_type)
+                        || method.return_type == JavaType::primitive(JavaPrimitive::Void))
                     || method
                         .parameters
                         .iter()

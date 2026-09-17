@@ -36,6 +36,12 @@ impl<'ast> Engine<'_, 'ast> {
     }
 
     pub(super) fn effect(&mut self, call: &'ast CCall, state: &mut State) -> Result<(), E> {
+        if self.context.scalar_call(call.callable()) {
+            for argument in call.arguments() {
+                self.expression(argument, state)?;
+            }
+            return Ok(());
+        }
         if call.callable().kind() != &CCallableKind::Known(CKnownCall::Release) {
             return Err(E::UnprovedStorageCall);
         }

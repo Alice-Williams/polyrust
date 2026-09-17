@@ -2,9 +2,10 @@
 
 use crate::ast::{
     CAggregateRef, CBinaryOperator, CBlock, CCallableKind, CConversion, CDeclarationKind,
-    CDefinitionKind, CFileItem, CFunctionRef, CInitializer, CInitializerKind, CLinkage, CLiteral,
-    CObjectType, CObjectTypeKind, CPlace, CPlaceKind, CPointerTarget, CReturnType, CScalarType,
-    CSignedLiteral, CSourceFile, CStatement, CStatementKind, CUnaryOperator, CValue, CValueKind,
+    CDefinitionKind, CEffect, CFileItem, CFunctionRef, CInitializer, CInitializerKind, CLinkage,
+    CLiteral, CObjectType, CObjectTypeKind, CPlace, CPlaceKind, CPointerTarget, CReturnType,
+    CScalarType, CSignedLiteral, CSourceFile, CStatement, CStatementKind, CUnaryOperator, CValue,
+    CValueKind,
 };
 
 #[path = "profile_constants.rs"]
@@ -20,6 +21,7 @@ pub(super) enum Node<'a> {
     Block(&'a CBlock),
     Statement(&'a CStatement),
     Value(&'a CValue),
+    Effect(&'a CEffect),
     Place(&'a CPlace),
     Initializer(&'a CInitializer),
     Type(&'a CObjectType),
@@ -187,6 +189,8 @@ fn walk<'a>(
                     add(Node::Place(place));
                     add(Node::Value(value));
                 }
+                CStatementKind::Evaluate(effect) => add(Node::Effect(effect)),
+                CStatementKind::Return(None) => {}
                 CStatementKind::Discard(value) | CStatementKind::Return(Some(value)) => {
                     add(Node::Value(value))
                 }
@@ -211,6 +215,19 @@ fn walk<'a>(
                         }
                     }
                     _ => return Err("C initializer is outside the first shared profile".into()),
+                }
+            }
+            Node::Effect(effect) => {
+                let call = effect.call();
+                let CCallableKind::Direct(function) = call.callable().kind() else {
+                    return Err("C shared effect profile requires resolved direct calls".into());
+                };
+                signature(function)?;
+                if !matches!(function.signature().return_type(), CReturnType::Void) {
+                    return Err("C effect call requires a void result".into());
+                }
+                for argument in call.arguments() {
+                    add(Node::Value(argument));
                 }
             }
             Node::Value(value) => {
@@ -382,17 +399,20 @@ fn walk<'a>(
 }
 
 fn signature(function: &CFunctionRef) -> Result<(), String> {
-    let CReturnType::Value(result) = function.signature().return_type() else {
-        return Err("first C profile requires scalar function returns".into());
+    let admitted_result = match function.signature().return_type() {
+        CReturnType::Void => true,
+        CReturnType::Value(result) => scalar(result.declared_type()),
     };
-    if !scalar(result.declared_type())
+    if !admitted_result
         || function
             .signature()
             .parameters()
             .iter()
             .any(|parameter| !scalar(parameter.declared_type()))
     {
-        return Err("first C shared profile admits only scalar parameters and returns".into());
+        return Err(
+            "first C shared profile admits scalar parameters and scalar/void returns".into(),
+        );
     }
     Ok(())
 }

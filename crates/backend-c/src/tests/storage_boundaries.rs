@@ -230,7 +230,7 @@ fn allocation_registration_and_void_conversion_cannot_invent_allocation_evidence
 }
 
 #[test]
-fn registered_generated_call_signature_does_not_establish_storage_effects() {
+fn void_call_requires_a_closed_body_not_just_a_registered_signature() {
     let mut f = Fixture::new(&[]);
     let callee = f
         .registry
@@ -249,6 +249,12 @@ fn registered_generated_call_signature_does_not_establish_storage_effects() {
         .call_effect(f.values().direct(callee.clone()).unwrap(), vec![])
         .unwrap();
     let mut source = f.source(vec![f.ast().evaluate(call).unwrap()]);
+    assert_eq!(
+        f.registry.check_storage_paths(&[source.clone()]),
+        Err(CSafetyError::Context(
+            CContextError::MissingRegistrationOccurrence
+        ))
+    );
     source.items.insert(
         0,
         CFileItem::Definition(
@@ -266,8 +272,6 @@ fn registered_generated_call_signature_does_not_establish_storage_effects() {
                 .unwrap(),
         ),
     );
-    assert_eq!(
-        f.registry.check_storage_paths(&[source]),
-        Err(CSafetyError::UnprovedStorageCall)
-    );
+    // The actual empty definition now supplies a closed, no-storage-effect proof.
+    f.registry.check_storage_paths(&[source]).unwrap();
 }

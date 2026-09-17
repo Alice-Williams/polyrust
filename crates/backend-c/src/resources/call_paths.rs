@@ -114,9 +114,15 @@ impl Inventory {
                 .ok_or("missing C frame owner")?;
             *frame = frame.add(Storage::from(after).subtract(Storage::from(before))?)?;
         }
-        if let Node::Value(value) = node
-            && let CValueKind::Call(call) = value.kind()
-        {
+        let call = match node {
+            Node::Value(value) => match value.kind() {
+                CValueKind::Call(call) => Some(call),
+                _ => None,
+            },
+            Node::Effect(effect) => Some(effect.call()),
+            _ => None,
+        };
+        if let Some(call) = call {
             let CCallableKind::Direct(target) = call.callable().kind() else {
                 return Err("C stack profile requires resolved direct calls".into());
             };

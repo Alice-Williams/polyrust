@@ -200,7 +200,29 @@ impl JavaExpr {
         } else {
             JavaTypeUse::Value
         };
-        let mut violations = self.ty.verify(expression_type_use);
+        self.verify_with_type_use(context, expression_type_use)
+    }
+
+    /// Only statement-position calls may have no resulting value.
+    pub(super) fn verify_statement(
+        &self,
+        context: &TargetAstContext<'_, JavaDialect>,
+    ) -> Vec<AstViolation> {
+        if matches!(self.kind, JavaExprKind::Call { .. })
+            && self.ty == JavaType::primitive(JavaPrimitive::Void)
+        {
+            self.verify_with_type_use(context, JavaTypeUse::Return)
+        } else {
+            self.verify(context)
+        }
+    }
+
+    fn verify_with_type_use(
+        &self,
+        context: &TargetAstContext<'_, JavaDialect>,
+        usage: JavaTypeUse,
+    ) -> Vec<AstViolation> {
+        let mut violations = self.ty.verify(usage);
         match &self.kind {
             JavaExprKind::Literal(literal) => {
                 violations.extend(super::literal_limits::verify_literal(literal, &self.ty));

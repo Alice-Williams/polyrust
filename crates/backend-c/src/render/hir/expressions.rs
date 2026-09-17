@@ -7,20 +7,7 @@ use crate::ast::{
 impl Writer<'_> {
     pub(super) fn value(&self, value: &CValue) -> String {
         match value.kind() {
-            CValueKind::Call(call) => {
-                let CCallableKind::Direct(function) = call.callable().kind() else {
-                    unreachable!("checked direct-call profile");
-                };
-                format!(
-                    "{}({})",
-                    self.names.functions[function.as_ref()].as_str(),
-                    call.arguments()
-                        .iter()
-                        .map(|value| self.value(value))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-            }
+            CValueKind::Call(call) => self.call(call),
             CValueKind::Literal(CLiteral::Bool(value)) => if *value { "1" } else { "0" }.into(),
             CValueKind::Literal(CLiteral::Signed(CSignedLiteral::I64(value))) => {
                 let literal = if *value == i64::MIN {
@@ -90,6 +77,20 @@ impl Writer<'_> {
             }
             _ => unreachable!("checked expression profile"),
         }
+    }
+    pub(super) fn call(&self, call: &crate::ast::CCall) -> String {
+        let CCallableKind::Direct(function) = call.callable().kind() else {
+            unreachable!("checked direct-call profile");
+        };
+        format!(
+            "{}({})",
+            self.names.functions[function.as_ref()].as_str(),
+            call.arguments()
+                .iter()
+                .map(|value| self.value(value))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
     }
     pub(super) fn place(&self, place: &CPlace) -> String {
         match place.kind() {

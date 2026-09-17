@@ -233,8 +233,8 @@ pub use package::CProjectedUnit;
 pub use projection::project_c_package;
 pub use spelling::CStructuralRenderer;
 pub use vocabulary::{
-    CDialect, CFileGrammar, CInvocation, CNamespace, CSharedTypeKind, CStdType, CUnavailable,
-    CVisibility,
+    CDialect, CFileGrammar, CInvocation, CNamespace, CPrimitiveType, CSharedTypeKind, CStdType,
+    CUnavailable, CVisibility,
 };
 
 use portable_codegen::{
@@ -273,3 +273,18 @@ impl TargetDialect for CDialect {
 #[cfg(test)]
 #[path = "../tests/shared_constant_reference_view.rs"]
 mod constant_reference_view_tests;
+
+#[cfg(test)]
+#[path = "../tests/shared_void_fixture.rs"]
+mod void_fixture;
+#[cfg(test)]
+#[path = "../tests/shared_void_tests.rs"]
+mod void_tests;
+
+#[cfg(test)]
+#[path = "../tests/shared_void_native.rs"]
+mod void_native;
+
+#[cfg(test)]
+#[path = "../tests/shared_void_local.rs"]
+mod void_local;

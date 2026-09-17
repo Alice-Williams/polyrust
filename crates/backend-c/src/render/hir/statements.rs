@@ -26,6 +26,10 @@ impl Writer<'_> {
                 CStatementKind::Discard(value) => {
                     writeln!(text, "(void) {};", self.value(value)).unwrap();
                 }
+                CStatementKind::Evaluate(effect) => {
+                    writeln!(text, "{};", self.call(effect.call())).unwrap();
+                }
+                CStatementKind::Return(None) => text.push_str("return;\n"),
                 CStatementKind::Return(Some(value)) => {
                     writeln!(text, "return {};", self.value(value)).unwrap();
                 }

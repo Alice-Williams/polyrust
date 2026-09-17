@@ -77,7 +77,9 @@ impl CBindings {
         match ty.kind() {
             CObjectTypeKind::Scalar(CScalarType::I32) => TargetTypeRef::Known(CStdType::I32),
             CObjectTypeKind::Scalar(CScalarType::I64) => TargetTypeRef::Known(CStdType::I64),
-            CObjectTypeKind::Scalar(value) => TargetTypeRef::Primitive(*value),
+            CObjectTypeKind::Scalar(value) => {
+                TargetTypeRef::Primitive(super::CPrimitiveType::Scalar(*value))
+            }
             CObjectTypeKind::Struct(value) => TargetTypeRef::Generated(self.types[value]),
             // The exact qualified pointer tree and registered pointee are kept,
             // not encoded in a string or replaced by an opaque erased pointer.
@@ -85,8 +87,9 @@ impl CBindings {
         }
     }
     pub fn signature(&self, function: &CFunctionRef) -> TargetCallableSignature<CDialect> {
-        let CReturnType::Value(result) = function.signature().return_type() else {
-            unreachable!("profile admits only scalar value returns");
+        let return_type = match function.signature().return_type() {
+            CReturnType::Value(result) => self.ty(result.declared_type()),
+            CReturnType::Void => TargetTypeRef::Primitive(super::CPrimitiveType::Void),
         };
         TargetCallableSignature {
             invocation: CInvocation::Function,
@@ -97,7 +100,7 @@ impl CBindings {
                 .iter()
                 .map(|p| self.ty(p.declared_type()))
                 .collect(),
-            return_type: self.ty(result.declared_type()),
+            return_type,
         }
     }
 }

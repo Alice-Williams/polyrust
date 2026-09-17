@@ -3,6 +3,13 @@
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CDialect;
 
+/// Shared type vocabulary distinguishes a callable result from C object types.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum CPrimitiveType {
+    Scalar(crate::ast::CScalarType),
+    Void,
+}
+
 /// Categories not admitted by this profile have no constructible sentinel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CUnavailable {}

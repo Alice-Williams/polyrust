@@ -110,7 +110,8 @@ fn rebuild(package: &TargetAstPackage<CDialect>, mutation: Mutation) -> TargetAs
     for value in package.values() {
         let mut value = value.clone();
         if matches!(mutation, Mutation::ValueType) {
-            value.ty = TargetTypeRef::Primitive(CScalarType::Bool);
+            value.ty =
+                TargetTypeRef::Primitive(crate::dialect::CPrimitiveType::Scalar(CScalarType::Bool));
         }
         builder.value(value);
     }

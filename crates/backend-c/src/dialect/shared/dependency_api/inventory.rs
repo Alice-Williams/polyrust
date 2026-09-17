@@ -32,7 +32,11 @@ fn scalar(ty: &CObjectType) -> bool {
 }
 
 fn signature(function: &CFunctionRef) -> bool {
-    matches!(function.signature().return_type(), CReturnType::Value(value) if scalar(value.declared_type()))
+    let result = match function.signature().return_type() {
+        CReturnType::Void => true,
+        CReturnType::Value(value) => scalar(value.declared_type()),
+    };
+    result
         && function
             .signature()
             .parameters()
@@ -174,7 +178,7 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
         if exported {
             if !signature(function) || !closed.contains(function) {
                 return Err(
-                    "C dependency function lacks the closed i32/i64/bool scalar-call proof".into(),
+                    "C dependency function lacks the closed i32/i64/bool-parameter/scalar-or-void-result proof".into(),
                 );
             }
             if !symbols.insert(definition.name().clone()) {

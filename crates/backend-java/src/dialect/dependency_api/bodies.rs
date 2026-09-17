@@ -121,6 +121,8 @@ impl Reader<'_> {
                     self.expression(value, depth + 1)?;
                 }
                 JavaStmt::Return(Some(value)) => self.expression(value, depth + 1)?,
+                JavaStmt::Return(None) => {}
+                JavaStmt::Expression(value) => self.effect(value, depth + 1)?,
                 JavaStmt::If {
                     condition,
                     then_block,
@@ -134,6 +136,53 @@ impl Reader<'_> {
             }
         }
         self.mutable_bools = outer_mutable_bools;
+        Ok(())
+    }
+    fn effect(&mut self, value: &JavaExpr, depth: usize) -> Result<(), String> {
+        self.charge(depth)?;
+        if value.ty != JavaType::primitive(JavaPrimitive::Void) {
+            return Err("Java dependency effect requires a void call".into());
+        }
+        let JavaExprKind::Call {
+            callable,
+            receiver: None,
+            arguments,
+        } = &value.kind
+        else {
+            return Err("Java dependency effect requires a direct call".into());
+        };
+        self.call(callable, arguments, depth)
+    }
+    fn call(
+        &mut self,
+        callable: &JavaCallableRef,
+        arguments: &[JavaExpr],
+        depth: usize,
+    ) -> Result<(), String> {
+        match callable {
+            JavaCallableRef::Generated {
+                symbol,
+                signature: actual,
+            } => {
+                let method = self
+                    .methods
+                    .get(symbol)
+                    .ok_or("Java dependency call has no closed local definition")?;
+                if actual != &signature(method) {
+                    return Err(
+                        "Java dependency call signature disagrees with its definition".into(),
+                    );
+                }
+                self.calls.insert(*symbol);
+            }
+            JavaCallableRef::Dependency(callable) => {
+                self.imported_height = self.imported_height.max(callable.function().call_height());
+            }
+            _ => return Err("Java dependency call requires a certified direct target".into()),
+        }
+        for argument in arguments {
+            self.expression(argument, depth + 1)?;
+        }
         Ok(())
     }
     fn expression(&mut self, value: &JavaExpr, depth: usize) -> Result<(), String> {
@@ -213,37 +262,11 @@ impl Reader<'_> {
                 self.expression(when_false, depth + 1)?;
             }
             JavaExprKind::Call {
-                callable:
-                    JavaCallableRef::Generated {
-                        symbol,
-                        signature: actual,
-                    },
+                callable,
                 receiver: None,
                 arguments,
             } => {
-                let method = self
-                    .methods
-                    .get(symbol)
-                    .ok_or("Java dependency call has no closed local definition")?;
-                if actual != &signature(method) {
-                    return Err(
-                        "Java dependency call signature disagrees with its definition".into(),
-                    );
-                }
-                self.calls.insert(*symbol);
-                for argument in arguments {
-                    self.expression(argument, depth + 1)?;
-                }
-            }
-            JavaExprKind::Call {
-                callable: JavaCallableRef::Dependency(callable),
-                receiver: None,
-                arguments,
-            } => {
-                self.imported_height = self.imported_height.max(callable.function().call_height());
-                for argument in arguments {
-                    self.expression(argument, depth + 1)?;
-                }
+                self.call(callable, arguments, depth)?;
             }
             JavaExprKind::New {
                 constructor: JavaConstructorRef::Generated { owner, .. },

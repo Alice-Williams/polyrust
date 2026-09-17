@@ -81,17 +81,11 @@ impl Inventory {
                 _ => {}
             },
             Node::Value(value) => {
-                if let CValueKind::Call(call) = value.kind()
-                    && let CCallableKind::Direct(function) = call.callable().kind()
-                {
-                    if !self.prototypes.contains(function.as_ref())
-                        && !self.imports.contains(function.as_ref())
-                    {
-                        return Err("strict C profile requires a prototype before each call".into());
-                    }
-                    self.used_functions.insert(function.as_ref().clone());
+                if let CValueKind::Call(call) = value.kind() {
+                    self.call(call)?;
                 }
             }
+            Node::Effect(effect) => self.call(effect.call())?,
             Node::Type(ty) => {
                 if let CObjectTypeKind::Struct(record) = ty.kind()
                     && !self.records.contains(record)
@@ -100,6 +94,18 @@ impl Inventory {
                 }
             }
             _ => {}
+        }
+        Ok(())
+    }
+
+    fn call(&mut self, call: &crate::ast::CCall) -> Result<(), String> {
+        if let CCallableKind::Direct(function) = call.callable().kind() {
+            if !self.prototypes.contains(function.as_ref())
+                && !self.imports.contains(function.as_ref())
+            {
+                return Err("strict C profile requires a prototype before each call".into());
+            }
+            self.used_functions.insert(function.as_ref().clone());
         }
         Ok(())
     }

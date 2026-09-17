@@ -53,7 +53,11 @@ fn changed(package: &TargetAstPackage<CDialect>, mutation: Mutation) -> TargetAs
         if index == 0 {
             match mutation {
                 Mutation::Name => value.name = "different_constant".into(),
-                Mutation::Type => value.ty = TargetTypeRef::Primitive(CScalarType::Bool),
+                Mutation::Type => {
+                    value.ty = TargetTypeRef::Primitive(crate::dialect::CPrimitiveType::Scalar(
+                        CScalarType::Bool,
+                    ))
+                }
                 Mutation::Visibility => value.visibility = CVisibility::Private,
                 _ => {}
             }

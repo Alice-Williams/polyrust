@@ -1,10 +1,10 @@
 //! A typed compilation-unit payload, never source text or a second C AST.
 
 use super::{
-    CDialect, CFileGrammar, CInvocation, CProjectedUnit, CSharedTypeKind, CStdType, CUnavailable,
-    CVisibility, projection, violation,
+    CDialect, CFileGrammar, CInvocation, CPrimitiveType, CProjectedUnit, CSharedTypeKind, CStdType,
+    CUnavailable, CVisibility, projection, violation,
 };
-use crate::ast::{CFileRef, CFileRole, CObjectType, CScalarType, CSynthesisReason};
+use crate::ast::{CFileRef, CFileRole, CObjectType, CSynthesisReason};
 use portable_codegen::{
     AstViolation, ResolvedReference, TargetAstContext, TargetAstPackage, TargetCallableSignature,
     TargetExprId, TargetExpressionNode, TargetFile, TargetFileItemNode, TargetStatementNode,
@@ -48,7 +48,7 @@ impl TargetFileItemNode<CDialect> for CProjectedUnit {
 }
 
 impl TypedAstDialect for CDialect {
-    type PrimitiveType = CScalarType;
+    type PrimitiveType = CPrimitiveType;
     type KnownType = CStdType;
     type RuntimeType = CUnavailable;
     type ConstructedType = CObjectType;
@@ -74,6 +74,12 @@ impl TypedAstDialect for CDialect {
     fn verify_signature(&self, signature: &TargetCallableSignature<Self>) -> Vec<AstViolation> {
         if signature.receiver.is_some() {
             vec![violation("C functions cannot have a receiver")]
+        } else if signature
+            .parameters
+            .iter()
+            .any(|ty| matches!(ty, TargetTypeRef::Primitive(CPrimitiveType::Void)))
+        {
+            vec![violation("C void is not a parameter type")]
         } else {
             vec![]
         }

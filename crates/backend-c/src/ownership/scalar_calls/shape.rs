@@ -1,8 +1,8 @@
 //! Closed local-storage syntax used only to derive scalar call effects.
 use crate::ast::{
-    CBlock, CCallableKind, CConversion, CFunctionRef, CInitializer, CInitializerKind, CLiteral,
-    CObjectType, CObjectTypeKind, CPlace, CPlaceKind, CReturnType, CScalarType, CSignedLiteral,
-    CStatement, CStatementKind, CUnaryOperator, CValue, CValueKind,
+    CBlock, CCall, CCallableKind, CConversion, CFunctionRef, CInitializer, CInitializerKind,
+    CLiteral, CObjectType, CObjectTypeKind, CPlace, CPlaceKind, CReturnType, CScalarType,
+    CSignedLiteral, CStatement, CStatementKind, CUnaryOperator, CValue, CValueKind,
 };
 use std::collections::BTreeSet;
 
@@ -12,6 +12,7 @@ enum Node<'a> {
     Initializer(&'a CInitializer),
     Value(&'a CValue),
     Place(&'a CPlace),
+    Call(&'a CCall),
 }
 
 fn scalar(ty: &CObjectType) -> bool {
@@ -24,12 +25,14 @@ fn scalar(ty: &CObjectType) -> bool {
 }
 
 fn signature(function: &CFunctionRef) -> bool {
-    matches!(function.signature().return_type(), CReturnType::Value(value) if scalar(value.declared_type()))
-        && function
-            .signature()
-            .parameters()
-            .iter()
-            .all(|p| scalar(p.declared_type()))
+    (match function.signature().return_type() {
+        CReturnType::Void => true,
+        CReturnType::Value(value) => scalar(value.declared_type()),
+    }) && function
+        .signature()
+        .parameters()
+        .iter()
+        .all(|p| scalar(p.declared_type()))
 }
 
 pub(super) fn dependencies(
@@ -66,6 +69,8 @@ pub(super) fn dependencies(
                 CStatementKind::Discard(value) | CStatementKind::Return(Some(value)) => {
                     pending.push(Node::Value(value))
                 }
+                CStatementKind::Return(None) => {}
+                CStatementKind::Evaluate(effect) => pending.push(Node::Call(effect.call())),
                 CStatementKind::If {
                     condition,
                     then_block,
@@ -127,18 +132,19 @@ pub(super) fn dependencies(
                     conversion: CConversion::Numeric(_) | CConversion::AddConst(_),
                     operand,
                 } => pending.push(Node::Value(operand)),
-                CValueKind::Call(call) => {
-                    let CCallableKind::Direct(callee) = call.callable().kind() else {
-                        return None;
-                    };
-                    if !signature(callee) {
-                        return None;
-                    }
-                    edges.insert(callee.as_ref().clone());
-                    pending.extend(call.arguments().iter().map(Node::Value));
-                }
+                CValueKind::Call(call) => pending.push(Node::Call(call)),
                 _ => return None,
             },
+            Node::Call(call) => {
+                let CCallableKind::Direct(callee) = call.callable().kind() else {
+                    return None;
+                };
+                if !signature(callee) {
+                    return None;
+                }
+                edges.insert(callee.as_ref().clone());
+                pending.extend(call.arguments().iter().map(Node::Value));
+            }
             Node::Place(place) => match place.kind() {
                 CPlaceKind::Local(_) | CPlaceKind::Parameter(_) => {}
                 CPlaceKind::Member { base, .. } => pending.push(Node::Place(base)),
