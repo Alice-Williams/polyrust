@@ -1,6 +1,6 @@
 # M35-03A-02F-02B — Public scalar constant APIs
 
-- Status: in-progress
+- Status: complete
 - Parent: [M35-03A-02F-02](M35-03A-02F-02-constant-declarations.md)
 - Depends on: M35-03A-02F-02A
 
@@ -44,10 +44,18 @@ semantics and wider types remain separate capabilities.
 2. [02 — Certified C constant declarations and imports](M35-03A-02F-02B-02-c-constant-api.md) — complete.
 3. [03 — Certified Java constant fields and imports](M35-03A-02F-02B-03-java-constant-api.md) — complete.
 4. [04 — Compiler public constants and constants-only packages](M35-03A-02F-02B-04-source-constant-mappings.md) — complete.
-5. [05 — Multi-crate constant metadata and integration proof](M35-03A-02F-02B-05-constant-bundles.md) — in progress.
+5. [05 — Multi-crate constant metadata and integration proof](M35-03A-02F-02B-05-constant-bundles.md) — complete.
 
 Specifications precede implementation: [shared source](../../specification/typed-generation/rust-public-constants.md),
 [dependency values](../../specification/typed-generation/certified-dependency-values.md),
 [C17](../../specification/typed-generation/languages/c/rust-public-constants.md), and
 [Java21](../../specification/typed-generation/languages/java/rust-public-constants.md).
 Each child has independent exit evidence and a separate reviewed commit/push.
+
+## Closure evidence
+
+All five children are complete for public nongeneric module bool/i32/i64
+constants. See [final integration proof](M35-03A-02F-02B-05C-08-end-to-end-closure.md)
+for the cross-language proof map, exact release receipts, cache invalidation,
+review and examples. Wider types, statics, storage-address semantics and public
+associated constants remain outside this bounded capability.

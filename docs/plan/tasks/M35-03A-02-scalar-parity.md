@@ -22,8 +22,9 @@ is complete, including native value/trace controls and direct mapper AST probes.
 is complete, with exhaustive truth tables, native eager/lazy evaluation controls
 and exact typed mapper probes. Other scalar families remain outstanding.
 
-[M35-03A-02F — scalar constants](M35-03A-02F-scalar-constants.md) is in progress,
-split into compiler-evaluated reads and explicit public/local declarations.
+[M35-03A-02F — scalar constants](M35-03A-02F-scalar-constants.md) is complete
+for bool/i32/i64 reads, local/public declarations, authenticated imports and
+aliases, with native/atomic/cache/review evidence. Wider families remain open.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

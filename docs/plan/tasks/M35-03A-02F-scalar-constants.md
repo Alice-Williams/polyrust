@@ -1,6 +1,6 @@
 # M35-03A-02F — Scalar constant parity
 
-- Status: in-progress
+- Status: complete
 - Parent: [M35-03A-02](M35-03A-02-scalar-parity.md)
 - Depends on: M35-03A-02E
 
@@ -14,10 +14,19 @@ unsupported runtime arithmetic, arbitrary casts, storage or generic source.
 ## Ordered work and definition of done
 
 1. [02F-01 — Checked scalar constant reads](M35-03A-02F-01-constant-reads.md) — complete.
-2. [02F-02 — Public and local constant declarations](M35-03A-02F-02-constant-declarations.md) — in progress, local declarations first.
+2. [02F-02 — Public and local constant declarations](M35-03A-02F-02-constant-declarations.md) — complete.
 
 Both steps need native Rust/C/Java equality, exact typed AST evidence, atomic
 rejection, resource/identity checks, independent review and isolated green
 Bazel/lint gates. Do not claim complete JavaConstants catalogue parity from
 private constant folding alone. Wider constant types follow their owning type
 capabilities; this family initially concerns bool/i32/i64.
+
+## Closure evidence
+
+Compiler-evaluated reads and explicit local/public scalar declarations are
+complete. The [final public integration proof](M35-03A-02F-02B-05C-08-end-to-end-closure.md)
+records original producer authority, aliases, exact Rust/C/Java values,
+publication negatives, cache invalidation, review and full release evidence.
+The supported family remains bool/i32/i64; completing it does not complete
+all scalar operations or permit deleting unfinished legacy capability families.

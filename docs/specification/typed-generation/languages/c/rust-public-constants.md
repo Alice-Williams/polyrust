@@ -1,6 +1,7 @@
 # Rust public scalar constants in C17
 
-- Status: owned and imported C target mappings complete in M35-03A-02F-02B-02; owned source/bundle publication implemented; authenticated foreign source reads implemented; foreign exports pending
+- Status: owned/imported target mappings, source/bundle publication and
+  authenticated foreign constant reads/re-exports implemented.
 - Parent: [shared source contract](../../rust-public-constants.md)
 - Reuse: [C package projection](rust-hir-public-packages.md)
 
@@ -179,8 +180,10 @@ Whole-bundle preflight requires each imported witness to match the exact retaine
 producer certificate, not an independently re-certified equal-looking package.
 Owners without imported constants retain schemas 2/4; the outer index remains 1.
 Standalone publication still rejects any foreign constant without a certified
-producer graph. Public foreign re-exports remain unsupported until child05C.
+producer graph. Child05C extends alias-bearing owners with schema 6 and certified
+export-only references; see [constant re-exports](rust-constant-reexports.md).
 
 Child05B is implemented and its native, mutation, AST, compile-negative,
 atomic publication, cache, boundary, review and full release gates are recorded
-in the milestone evidence. Foreign public exports remain a separate checkpoint.
+in the milestone evidence. Child05C's separate compiler/publication checkpoint
+implements foreign public exports without copied objects or synthetic accessors.

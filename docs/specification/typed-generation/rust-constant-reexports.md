@@ -1,7 +1,8 @@
 # Checked Rust cross-crate constant re-exports
 
 - Status: checked compiler inventory, C/Java lowering and alias-aware bundle
-  publication implemented; end-to-end closure remains in progress.
+  publication implemented with end-to-end native, mutation and Bazel cache proof
+  for the bounded bool/i32/i64 profile.
 - Parent: [public constants](rust-public-constants.md)
 - Implementations: [C17](languages/c/rust-constant-reexports.md),
   [Java21](languages/java/rust-constant-reexports.md)

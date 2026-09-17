@@ -1,6 +1,6 @@
 # M35-03A-02F-02B-05C — Preserve cross-crate constant exports and close proof
 
-- Status: in-progress
+- Status: complete
 - Parent: [multi-crate constants](M35-03A-02F-02B-05-constant-bundles.md)
 - Depends on: M35-03A-02F-02B-05B
 - Specifications: [shared](../../specification/typed-generation/rust-constant-reexports.md),
@@ -76,7 +76,8 @@ or other declaration kinds remain diagnosed, not silently omitted.
    Explicitly version new alias metadata and reconstruct it from certified target
    evidence before publication. Authenticated source bundle foreign constant
    exports are now enabled; standalone foreign-owner publication stays rejected.
-8. [End-to-end proof](M35-03A-02F-02B-05C-08-end-to-end-closure.md): native separate Rust/C/Java consumers, direct/transitive and
+8. [End-to-end proof](M35-03A-02F-02B-05C-08-end-to-end-closure.md)
+   — complete: native separate Rust/C/Java consumers, direct/transitive and
    re-export-only fixtures, stale/replaced/missing/wrong-kind controls, exact
    publication inventory, independent source mutation and Bazel invalidation,
    examples, fresh review, and complete release/lint gate.
@@ -85,3 +86,12 @@ Finite cycles in local module aliases are represented as graph edges and need
 not be rejected or expanded into paths. Cyclic crate dependency graphs and
 unbounded/over-budget expansion remain rejected. Producer declaration docs stay
 on the producer; facade/module docs remain with the re-exporting crate.
+
+## Closure
+
+All eight ordered children are complete. Child 07 records real checked-source
+alias publication, exact original authority, native/atomic/metadata controls and
+fresh review. Child 08 records actual Bazel invalidation, independent old/new
+truth, restoration cache reuse, schema controls and complete release receipts.
+This closes only ordinary bool/i32/i64 constant aliases, not arbitrary Rust
+exports, wider values or legacy runtime retirement.

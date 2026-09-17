@@ -1,6 +1,6 @@
 # M35-03A-02F-02 — Public and block-local scalar constants
 
-- Status: in-progress
+- Status: complete
 - Parent: [M35-03A-02F](M35-03A-02F-scalar-constants.md)
 - Depends on: M35-03A-02F-01
 
@@ -20,7 +20,7 @@ statement or storage identity. Use compiler resolution, not a textual scope map.
 Ordered children:
 
 1. [02F-02A — Block-local declarations](M35-03A-02F-02A-local-constants.md) — complete.
-2. [02F-02B — Public constant APIs](M35-03A-02F-02B-public-constants.md) — in progress; shared dependency values first.
+2. [02F-02B — Public constant APIs](M35-03A-02F-02B-public-constants.md) — complete.
 
 Each child has its own gate/review/commit. This parent is complete only after
 both local declaration semantics and public/dependency APIs have evidence.
@@ -36,3 +36,11 @@ both local declaration semantics and public/dependency APIs have evidence.
   native equality, stale-metadata negatives and atomic-publication tests.
 - Per-language specification, independent reviews, exported examples and full
   isolated Bazel/lint gates precede the dedicated commit/push.
+
+## Closure evidence
+
+Both block-local declarations (02A) and public/dependency declarations (02B)
+are complete for bool/i32/i64. The
+[final integration proof](M35-03A-02F-02B-05C-08-end-to-end-closure.md) retains
+local/private regression gates alongside native public consumers, alias identity,
+certificate mutations, exact metadata, cache evidence and generated examples.

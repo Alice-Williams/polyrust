@@ -24,7 +24,7 @@ def run(command):
 
 def inventory(directory):
     index = json.loads((directory / "bundle.json").read_text())
-    assert index["schema_version"] == 1
+    assert index["schema_version"] == 1, "bundle index schema mismatch"
     return index["root"], {item["root"]: json.loads((directory / item["manifest"]).read_text())
                           for item in index["members"]}
 
@@ -73,7 +73,7 @@ def evidence(c_dir, j_dir, mixed):
               for value in jj.get("constant_exports", [])}
         assert set(ce) == set(je)
         if ce:
-            assert cc["schema_version"] == 6 and jj["schema_version"] == 4
+            assert cc["schema_version"] == 6 and jj["schema_version"] == 4, "alias owner schema mismatch"
             assert len(ce) == 12  # Eleven constants plus renamed/nested binding.
             assert not {value["id"] for value in cc.get("constants", [])} & {value["id"] for value in ce.values()}
             assert not {value["id"] for value in jj["declarations"]} & {value["id"] for value in je.values()}
@@ -135,6 +135,30 @@ def evidence(c_dir, j_dir, mixed):
     return root, c, java, cexpressions, jexpressions, computed_owner
 
 
+def schema_controls(work, c_dir, j_dir):
+    # These are output-validator controls, not a nonexistent manifest input API.
+    evidence(c_dir, j_dir, False)
+    for language, original in [("c", c_dir), ("java", j_dir)]:
+        for level in ["index", "owner"]:
+            trial = work / f"bad-schema-{language}-{level}"
+            shutil.copytree(original, trial)
+            root, _ = inventory(trial)
+            name = "bundle.json" if level == "index" else "polyrust_" + root.split(":")[0] + ".api.json"
+            manifest = trial / name
+            before = manifest.read_text()
+            changed, count = re.subn(r'"schema_version":\d+', '"schema_version":999', before, count=1)
+            assert count == 1 and changed != before
+            manifest.write_text(changed)
+            try:
+                evidence(trial if language == "c" else c_dir,
+                         trial if language == "java" else j_dir, False)
+            except AssertionError as error:
+                expected = "bundle index schema mismatch" if level == "index" else "alias owner schema mismatch"
+                assert str(error) == expected, (language, level, error)
+            else:
+                raise AssertionError(("unknown schema accepted", language, level))
+
+
 def main():
     cm, jm, cr, jr, reference, zig = [Path(value).resolve() for value in sys.argv[1:]]
     assert run([reference]).splitlines() == list(map(str, TRUTH))
@@ -143,6 +167,7 @@ def main():
     assert len(jdks) == 1
     work = Path(os.environ["TEST_TMPDIR"]) / "constant-exports-native"
     work.mkdir()
+    schema_controls(work, cm, jm)
     for mixed, c_dir, j_dir in [(False, cm, jm), (True, cr, jr)]:
         root, c, java, cexpr, jexpr, computed = evidence(c_dir, j_dir, mixed)
         truth = TRUTH if mixed else TRUTH[:11]
@@ -152,8 +177,10 @@ def main():
                 trial = work / f"{target}-{mixed}-{mutant}"
                 shutil.copytree(original, trial)
                 source = trial / (c[computed]["implementation"] if target == "c" else java[computed]["source"])
+                replacement = 17 if TRUTH[9] != 17 else 29
                 if mutant:
-                    changed, count = re.subn(r"(?<![\w])62(?![\w])", "17", source.read_text())
+                    changed, count = re.subn(r"(?<![\w])" + str(TRUTH[9]) + r"(?![\w])",
+                                             str(replacement), source.read_text())
                     assert count == 1
                     source.write_text(changed)
                 results = []
@@ -197,7 +224,7 @@ def main():
                             binary = trial / "consumer"
                             run([compiler, *objects, "-o", binary])
                             results.append(run([binary]))
-                expected = [17 if mutant and value == 62 else value for value in truth]
+                expected = [replacement if mutant and value == TRUTH[9] else value for value in truth]
                 for result in results:
                     assert result.splitlines() == list(map(str, expected))
                     assert (result.splitlines() == list(map(str, truth))) != mutant

@@ -1,6 +1,7 @@
 # Rust public scalar constants in Java 21
 
-- Status: normative; owned source/bundle publication implemented; authenticated foreign source reads implemented; foreign exports pending
+- Status: normative; owned source/bundle publication and authenticated foreign
+  constant reads/re-exports implemented.
 - Parent: [shared source contract](../../rust-public-constants.md)
 - Reuse: [Java source packages](rust-hir-lowering.md)
 
@@ -168,7 +169,8 @@ are checked as one complete union; record fields stay distinct from constants.
 The existing reservation and encoding sinks walk the same complete metadata.
 Whole-bundle checks retain original certificate identities for all owners,
 including unused declared members. Child05B adds authenticated foreign source
-reads below; foreign re-exports remain rejected until child05C.
+reads below; child05C adds certified public foreign aliases under owner schema 4,
+as specified in [constant re-exports](rust-constant-reexports.md).
 
 ## Compiler-authenticated constant imports (child05B)
 
@@ -193,13 +195,15 @@ enumerate used references derived from certified target nodes, not every unused
 registration retained by an arbitrary caller-built package. The dependencies
 array separately retains all registered/transitive owners, including unused ones;
 its complete original-authority checks are never conditional on emission.
-The compiler path registers exactly discovered uses. Reservation and encoding use the
-same traversal. Bundle preflight checks exact original witnesses and complete
+The compiler path registers the union of discovered reads and public foreign
+constant exports. Only actual typed references appear in constant_imports;
+export-only references appear in constant_exports. Reservation and encoding use
+the same traversal. Bundle preflight checks exact original witnesses and complete
 retained owner closure. Constant-free imports retain owner schema 1, and owned
 constant packages without imported values retain schema 2. The outer bundle
 index stays schema 1.
 
 Foreign constants without a certified translated producer still reject.
-Cross-crate public re-exports remain child05C. Child05B body-read integration is
+Cross-crate public re-exports are implemented by child05C. Child05B body-read integration is
 complete with native, mutation, AST, compile-negative, atomic, cache, boundary,
 independent review and full release-gate evidence recorded in its task.

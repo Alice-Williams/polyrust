@@ -1,6 +1,7 @@
 # Checked Rust public scalar constants
 
-- Status: normative; single-crate and authenticated multi-crate reads implemented; foreign exports pending
+- Status: normative; single-crate APIs, authenticated multi-crate reads and
+  foreign constant re-exports implemented for bool/i32/i64.
 - Prerequisite: [local constants](rust-local-constants.md)
 - Layers: [shared dependency values](certified-dependency-values.md),
   [C17](languages/c/rust-public-constants.md),
@@ -34,10 +35,13 @@ RustDeclarationId. Its closed DeclarationKind distinguishes Function from
 module Constant. The exact cached finite export graph retains every module edge
 and alias; repeated bindings deduplicate declarations, not export names. The
 inventory and declaration fields are private and cannot be built from caller
-metadata. Foreign declarations/modules and unsupported export kinds reject.
+metadata. Authenticated bundle selection separately retains foreign module
+constants through original producer witnesses, as specified in
+[constant re-exports](rust-constant-reexports.md). Foreign modules and other
+unsupported exported kinds reject. Standalone foreign-owner publication rejects.
 Scanning body owners is bounded at 100,000 and unique public declarations at
-4,096. Empty public declaration inventories reject; constants-only inventories
-need no dummy function.
+4,096 across owned/foreign declarations. An entirely empty public API rejects;
+constants-only and authenticated alias-only inventories need no dummy function.
 
 This classification is deliberately separate from type/value admission. A
 Constant entry does not certify that its type or initializer is supported.
@@ -86,9 +90,9 @@ function-only and local-constant behavior. Selected-entry mode is explicitly a
 value-only projection: constants reachable from that one entry continue to fold
 through ScalarConstants, even if public. Public-package mode must register and
 reference each local public constant; child05B authenticates foreign public
-reads through their original checked producer witnesses. Foreign public exports
-remain rejected until child05C. No package-mode fallback to
-selected-entry folding is allowed.
+reads through their original checked producer witnesses. Child05C adds foreign
+public constant exports through the same authenticated mappings, including when
+no body reads them. No package-mode fallback to selected-entry folding is allowed.
 
 ## Public exports, dependencies and files
 
@@ -106,8 +110,9 @@ output is published. Metadata is descriptive, never a replacement certificate.
 
 Extend versioned C/Java manifests explicitly with typed constant descriptions
 and value references. Encode signed values losslessly (including JavaScript's
-unsafe integer range) under an explicit schema; readers reject old/incomplete or
-unsupported schemas rather than guessing. Add fixtures proving boundary values
+unsafe integer range) under an explicit schema; artifact consumers dispatch by
+supported version and reject incomplete/unknown versions rather than guessing.
+Manifests are output descriptions, not an accepted compiler/certificate input. Add fixtures proving boundary values
 round-trip exactly and producer-value changes invalidate dependent generation.
 
 ## Completion proof

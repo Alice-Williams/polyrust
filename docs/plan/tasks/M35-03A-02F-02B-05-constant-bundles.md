@@ -1,6 +1,6 @@
 # M35-03A-02F-02B-05 — Multi-crate constant metadata and integration proof
 
-- Status: in-progress
+- Status: complete
 - Parent: [public constants](M35-03A-02F-02B-public-constants.md)
 - Depends on: M35-03A-02F-02B-04
 
@@ -29,9 +29,19 @@ metadata alone must not create authority.
 
 1. [05A — Owned constant bundle publication](M35-03A-02F-02B-05A-owned-constant-bundles.md) — complete.
 2. [05B — Authenticated foreign constant reads](M35-03A-02F-02B-05B-foreign-constant-reads.md) — complete.
-3. [05C — Cross-crate export closure](M35-03A-02F-02B-05C-constant-alias-closure.md) — in-progress.
+3. [05C — Cross-crate export closure](M35-03A-02F-02B-05C-constant-alias-closure.md) — complete.
 
 Each child has its own complete proof, reviewed checkpoint and push. Publishing
 owned constants in a bundle does not authorize a foreign Rust read or re-export.
 The existing atomic negative guards remain until their specific path has positive
 compiler/target/native proof.
+
+## Closure evidence
+
+Owned publication (05A), authenticated reads (05B) and alias closure (05C)
+have separate reviewed/gated checkpoints. The final
+[05C-08 receipt](M35-03A-02F-02B-05C-08-end-to-end-closure.md) maps all proof
+obligations, exact 741-test release trees, native and mutation controls, real
+Bazel invalidation/restoration, and inspectable generated artifacts. Manifests
+remain descriptions, not authority-bearing input. No wider constant family or
+legacy runtime retirement is claimed.

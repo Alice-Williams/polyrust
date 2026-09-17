@@ -64,6 +64,9 @@ alone does not complete scalar parity or authorize removing legacy constants.
 
 Block-local scalar declarations are implemented and verified in
 [M35-03A-02F-02A](M35-03A-02F-02A-local-constants.md), with an explicit unit-output
-mapping and shared compiler evaluator. Public constants remain
-[M35-03A-02F-02B](M35-03A-02F-02B-public-constants.md). Neither partial extension
-authorizes deletion of the existing constant capability or custom runtimes.
+mapping and shared compiler evaluator. Public bool/i32/i64 constants are now
+complete in [M35-03A-02F-02B](M35-03A-02F-02B-public-constants.md), including
+original producer authority, alias-only crates, native C/Java consumers,
+publication mutation controls and actual Bazel invalidation/restoration proof.
+Wider constant families and other parity tasks remain open; this does not
+authorize deleting the existing constant capability or custom runtimes.
