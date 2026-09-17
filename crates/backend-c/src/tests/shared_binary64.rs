@@ -313,3 +313,6 @@ mod trace;
 
 #[path = "shared_binary64_negation.rs"]
 mod negation;
+
+#[path = "shared_binary64_conditional.rs"]
+mod conditional;

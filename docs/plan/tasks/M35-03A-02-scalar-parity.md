@@ -48,7 +48,10 @@ tests, exact value/dataflow/atomic proof and clean independent reviews.
 [02K — binary64 NaN classification](M35-03A-02K-floating-nan.md) is complete:
 standard inherent method/associated forms, original receiver and owner proof,
 822/822 release tests, exported examples and clean independent reviews.
-Remaining floating inspection and arithmetic require separate bounded contracts.
+The next bounded gap is [02L — binary64 absolute value](M35-03A-02L-floating-absolute.md),
+whose typed conditional target foundation is complete (822/822 release tests,
+two clean reviews). Checked compiler integration is next. Other floating inspection
+and arithmetic require separate bounded contracts.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

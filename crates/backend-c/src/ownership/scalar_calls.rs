@@ -9,6 +9,9 @@ mod boundary_tests;
 #[path = "../tests/scalar_call_fixture.rs"]
 mod fixture;
 #[cfg(test)]
+#[path = "../tests/scalar_call_floating_conditional.rs"]
+mod floating_conditional_tests;
+#[cfg(test)]
 #[path = "../tests/scalar_call_graphs.rs"]
 mod graph_tests;
 #[cfg(test)]

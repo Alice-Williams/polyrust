@@ -196,3 +196,6 @@ mod trace;
 
 #[path = "binary64_negation.rs"]
 mod negation;
+
+#[path = "binary64_conditional.rs"]
+mod conditional;

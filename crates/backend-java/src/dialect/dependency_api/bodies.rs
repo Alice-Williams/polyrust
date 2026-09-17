@@ -2,9 +2,9 @@
 use super::inventory::{scalar, signature};
 use crate::ast::{
     JavaBinaryOperator, JavaBlock, JavaCallableRef, JavaConstructorRef, JavaExpr, JavaExprKind,
-    JavaFieldRef, JavaIdentifier, JavaLiteral, JavaLocalFinality, JavaMethod, JavaPrimitive,
-    JavaRecordComponentOrigin, JavaStmt, JavaType, JavaTypeDeclaration, JavaTypeName,
-    JavaUnaryOperator, JavaValueRef,
+    JavaFieldRef, JavaIdentifier, JavaLiteral, JavaLocalFinality, JavaMethod, JavaPrecedence,
+    JavaPrimitive, JavaRecordComponentOrigin, JavaStmt, JavaType, JavaTypeDeclaration,
+    JavaTypeName, JavaUnaryOperator, JavaValueRef,
 };
 use portable_codegen::{GeneratedCallableId, GeneratedSymbolId, GeneratedTypeId, GeneratedValueId};
 use std::collections::{BTreeMap, BTreeSet};
@@ -274,7 +274,7 @@ impl Reader<'_> {
                 condition,
                 when_true,
                 when_false,
-            } => {
+            } if value.precedence == JavaPrecedence::Conditional => {
                 self.expression(condition, depth + 1)?;
                 self.expression(when_true, depth + 1)?;
                 self.expression(when_false, depth + 1)?;

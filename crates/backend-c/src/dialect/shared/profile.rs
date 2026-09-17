@@ -306,6 +306,19 @@ fn walk<'a>(
                         condition,
                         then_value,
                         else_value,
+                    } if condition.ty().kind() == &CObjectTypeKind::Scalar(CScalarType::Bool)
+                        && value.ty().kind() == &CObjectTypeKind::Scalar(CScalarType::F64)
+                        && then_value.ty() == value.ty()
+                        && else_value.ty() == value.ty() =>
+                    {
+                        add(Node::Value(condition));
+                        add(Node::Value(then_value));
+                        add(Node::Value(else_value));
+                    }
+                    CValueKind::Conditional {
+                        condition,
+                        then_value,
+                        else_value,
                     } if matches!(
                         condition.ty().kind(),
                         CObjectTypeKind::Scalar(CScalarType::Bool)
