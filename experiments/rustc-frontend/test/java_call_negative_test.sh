@@ -39,7 +39,7 @@ reject method 'expression mapping is not implemented' '
 struct Value { input: i32 }
 impl Value { fn get(&self) -> i32 { self.input } }
 pub fn score(input: i32) -> i32 { let value = Value { input }; value.get() }'
-reject pointer_signature 'signatures support only i32, i64 and bool' '
+reject pointer_signature 'signatures support only i32, i64, bool and f64' '
 fn helper(value: &i32) -> i32 { *value }
 pub fn score(value: i32) -> i32 { helper(&value) }'
 reject foreign_abi 'ordinary Rust signatures' '

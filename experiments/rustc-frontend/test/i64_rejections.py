@@ -13,14 +13,14 @@ def main():
     c, java = sys.argv[1:]
     root = Path(os.environ["TEST_TMPDIR"]) / "i64-rejections"
     root.mkdir()
-    signature = "direct-call signatures support only i32, i64 and bool"
+    signature = "direct-call signatures support only i32, i64, bool and f64"
     cases = {
         "u64": ("pub fn value(v: u64) -> u64 { v }", signature, True),
         "i128": ("pub fn value(v: i128) -> i128 { v }", signature, True),
-        "float": ("pub fn value(v: f64) -> f64 { v }", signature, True),
+        "float": ("pub fn value(v: f32) -> f32 { v }", signature, True),
         "cast": ("pub fn value(v: i64) -> i64 { (v as i32) as i64 }", "expression mapping is not implemented", True),
         "arithmetic": ("pub fn value(v: i64) -> i64 { v + 1 }", "only comparison binary operators", True),
-        "negate": ("pub fn value(v: i64) -> i64 { -v }", "only negative integer literals", True),
+        "negate": ("pub fn value(v: i64) -> i64 { -v }", "only negative scalar literals", True),
         "mutable": ("pub fn value(v: i64) -> i64 { let mut x = v; x = 2; x }", "only plain immutable bindings", True),
         "positive_overflow": ("pub fn value() -> i64 { 9223372036854775808i64 }", "literal out of range for", False),
         "negative_overflow": ("pub fn value() -> i64 { -9223372036854775809i64 }", "literal out of range for", False),

@@ -21,6 +21,7 @@ impl Mapping for CObjectTypes {
             ty::Int(ty::IntTy::I32) => Ok(CObjectType::scalar(CScalarType::I32)),
             ty::Int(ty::IntTy::I64) => Ok(CObjectType::scalar(CScalarType::I64)),
             ty::Bool => Ok(CObjectType::scalar(CScalarType::Bool)),
+            ty::Float(ty::FloatTy::F64) => Ok(CObjectType::scalar(CScalarType::F64)),
             ty::Ref(_, pointee, rustc_hir::Mutability::Not) => {
                 let pointee = c(reader.ty(*pointee)?.with_constness(CConstness::Const))?;
                 Ok(CObjectType::pointer(CPointerTarget::Object(Box::new(
@@ -66,7 +67,9 @@ impl Mapping for CObjectTypes {
                         .map_err(|_| "record field normalization failed")?;
                     if !matches!(
                         field_type.kind(),
-                        ty::Int(ty::IntTy::I32 | ty::IntTy::I64) | ty::Bool
+                        ty::Int(ty::IntTy::I32 | ty::IntTy::I64)
+                            | ty::Bool
+                            | ty::Float(ty::FloatTy::F64)
                     ) {
                         return Err("only scalar record fields are implemented".into());
                     }

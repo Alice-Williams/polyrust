@@ -30,6 +30,7 @@ impl Mapping for NumericMapping {
                 LiteralValue::I32(_) => 1,
                 LiteralValue::I64(_) => 2,
                 LiteralValue::Bool(_) => 3,
+                LiteralValue::F64(_) => 4,
             })
     }
 }
@@ -107,10 +108,14 @@ fn negation<'tcx>(
 fn capability<C: Capability>() {}
 
 fn literal<'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
     checked: &rustc_middle::ty::TypeckResults<'tcx>,
     expression: &'tcx rustc_hir::Expr<'tcx>,
 ) {
-    let _ = LiteralInput::read(checked, expression).map(|input| input.value());
+    let _ = LiteralInput::read(tcx, checked, expression).map(|input| {
+        input.require_context(tcx, checked).unwrap();
+        input.value()
+    });
 }
 
 fn lazy_boolean<'tcx>(

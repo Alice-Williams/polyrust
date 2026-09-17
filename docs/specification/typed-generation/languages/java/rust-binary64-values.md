@@ -1,6 +1,6 @@
 # Rust binary64 values in Java 21
 
-- Status: target foundation implemented and verified; Rust-source admission pending
+- Status: target foundation and checked Rust-source mappings implemented and verified
 - Contract: [shared](../../rust-binary64-values.md)
 
 ## Typed representation and rendering
@@ -28,3 +28,22 @@ than payload identity. Consumer use of Double.longBitsToDouble and
 doubleToRawLongBits is test instrumentation, not generated runtime machinery.
 Arithmetic, casts, nonfinite constant construction and float methods remain
 separate capabilities with their own semantic proof.
+
+## Checked Rust-source mapping
+
+TypePlan::F64 retains exact source representation independently of the target
+JavaType::Primitive(Double). ObjectTypes, ordinary FunctionSignatures and private
+immutable record fields map only rustc FloatTy::F64. Existing shared-borrow plans
+preserve their referent while erasing references into immutable Java values.
+This does not broaden the public reference ABI or the entry-harness signature.
+
+LiteralValues consumes the shared finite witness in its original checked
+function context and constructs JavaLiteral::F64. ScalarComparisons requires
+matching representations, materializes left before right and emits one of the
+six primitive comparison operators. Only Bool ordering uses the existing
+integer conversion; Double comparisons introduce no conversion or helper.
+
+Owner manifests use version 6 when described function parameters/results or
+record fields include f64. Older schemas and bytes remain unchanged otherwise.
+Slot accounting remains two slots per Double, including imported signatures;
+native proof compiles the 255-slot boundary and rejects 256 slots atomically.

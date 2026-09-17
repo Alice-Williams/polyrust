@@ -1,4 +1,7 @@
 //! Narrow Rust-source capabilities, not full portable catalogue support.
+#[cfg(binary64_ast_probe)]
+#[path = "../../../test/binary64_c_ast.rs"]
+mod binary64_ast;
 mod boolean_negation;
 #[cfg(constant_import_probe)]
 #[path = "../../../test/constant_import_c_ast.rs"]

@@ -16,6 +16,7 @@ def java_graph_targets(name):
         ":directory_publication",
         ":java_bundle",
         "//crates/backend-java:portable_backend_java",
+        "//crates/binary64:portable_binary64",
         "//crates/codegen:portable_codegen",
         "//crates/diagnostics:portable_diagnostics",
     ]

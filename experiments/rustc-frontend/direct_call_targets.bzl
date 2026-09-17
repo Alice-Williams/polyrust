@@ -61,7 +61,7 @@ def direct_call_targets(name):
         name = "direct_calls_adapter",
         srcs = ["src/inputs.rs", "test/direct_call_main.rs", "test/direct_call_assertions.rs"] + ["src/source_admission.rs"] + native.glob(["src/c_lower/**/*.rs", "src/source_capabilities/**/*.rs", "src/source_origin/**/*.rs"]),
         crate_root = "test/direct_call_main.rs",
-        deps = ["//crates/backend-c:portable_backend_c", "//crates/codegen:portable_codegen"],
+        deps = ["//crates/backend-c:portable_backend_c", "//crates/binary64:portable_binary64", "//crates/codegen:portable_codegen"],
     )
     sh_test(
         name = "direct_calls_ast_test",

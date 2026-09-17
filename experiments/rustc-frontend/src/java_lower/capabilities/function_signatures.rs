@@ -31,7 +31,8 @@ impl Mapping for JavaFunctionSignatures {
             ty::Int(ty::IntTy::I32) => Ok(TypePlan::I32.java_type()),
             ty::Int(ty::IntTy::I64) => Ok(TypePlan::I64.java_type()),
             ty::Bool => Ok(TypePlan::Bool.java_type()),
-            _ => Err("direct-call signatures support only i32, i64 and bool".to_owned()),
+            ty::Float(ty::FloatTy::F64) => Ok(TypePlan::F64.java_type()),
+            _ => Err("direct-call signatures support only i32, i64, bool and f64".to_owned()),
         };
         Ok(JavaMethodSignature {
             receiver: None,

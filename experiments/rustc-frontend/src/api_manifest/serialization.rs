@@ -16,7 +16,8 @@ impl ApiManifest {
 
     fn encode(&self, bundle: bool) -> Result<String, String> {
         let bound = self.encoded_bound()?;
-        let unit_results = self.has_unit_results();
+        let binary64 = self.has_binary64_signatures();
+        let typed_signatures = binary64 || self.has_unit_results();
         let foreign: BTreeSet<_> = self
             .foreign_constants
             .iter()
@@ -24,7 +25,9 @@ impl ApiManifest {
             .collect();
         let mut text = format!(
             "{{\"schema_version\":{},\"root\":{},\"header\":{},\"implementation\":{},\"modules\":[",
-            if unit_results {
+            if binary64 {
+                8
+            } else if typed_signatures {
                 7
             } else if !self.foreign_constants.is_empty() {
                 6
@@ -97,7 +100,7 @@ impl ApiManifest {
                 quote(linkage)
             )
             .unwrap();
-            if unit_results {
+            if typed_signatures {
                 super::function_results::signature(&mut text, function.reference.signature())?;
             }
             text.push('}');

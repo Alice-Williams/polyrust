@@ -17,7 +17,7 @@ def source_capability_targets(name):
         name = "source_capabilities_probe",
         crate_root = "test/source_capabilities_main.rs",
         srcs = sources,
-        deps = ["//crates/codegen:portable_codegen"],
+        deps = ["//crates/binary64:portable_binary64", "//crates/codegen:portable_codegen"],
     )
     sh_test(
         name = name,
@@ -33,5 +33,5 @@ def source_capability_targets(name):
             srcs = sources,
             rustc_cfg = "constant_domain_" + direction,
             expected_error = "error[E0308]",
-            deps = ["//crates/codegen:portable_codegen"],
+            deps = ["//crates/binary64:portable_binary64", "//crates/codegen:portable_codegen"],
         )

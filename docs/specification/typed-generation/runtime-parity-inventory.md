@@ -20,7 +20,7 @@ target has full replacement evidence for any broad legacy capability family.
 
 | Functionality | Rust-source C | Rust-source Java | Remaining work |
 | --- | --- | --- | --- |
-| Values and comparisons | i32/i64/bool literals and evaluated constant reads, scalar comparison, immutable places, built-in bool negation, lazy/eager operators, signed integer bitwise operations and i32/i64 wrapping negation | Same source subset | f64/char/unit storage, wider constants, type aliases and remaining integer/float operations: M35-03A-02 |
+| Values and comparisons | i32/i64/bool literals and evaluated constant reads, scalar comparison, immutable places, built-in bool negation, lazy/eager operators, signed integer bitwise operations, i32/i64 wrapping negation and finite f64 literals/transport/comparisons | Same source subset | char/unit storage, wider constants, type aliases and remaining integer/float operations: M35-03A-02 |
 | Functions and modules | Closed scalar/unit-result signatures and value/effect calls, crate-owned headers and implementations | Same signatures/calls with crate-owned Java packages | Wider signatures, methods and migrated consumers: M35-03A-03/06 |
 | Records and control | Closed scalar-field records/shared borrows, local bindings, structured branches | Same source subset | Owned shapes, enums, interfaces, loops and patterns: M35-02 then M35-03A-03 |
 | Text, Unicode and bytes | No general replacement mapping | No general replacement mapping | All legacy operations and explicit encoding/indexing policies: M35-03A-04 |
@@ -166,3 +166,15 @@ drop/duplicate mutations fail trace checks. wrapping_ast_test proves exact
 node shape, width, receiver count and identity; wrapping_contract_test and
 wrapping_rejection_test enforce compile/atomic boundaries. All 778 test targets
 and fresh review pass. No full legacy family is retired by this increment.
+
+[M35-03A-02I](../../plan/tasks/M35-03A-02I-binary64-values.md) adds partial
+JavaF64Values and exact float comparison coverage. Checked rustc evaluation
+constructs private finite witnesses; the targets render primitive hexadecimal
+double literals, not bit-wrapper runtimes. Three-crate native proof compares
+31,548 results across Rust/Java/GCC/Zig, with exact finite bits, nonfinite
+classification/comparisons and call-order/count fault detection. AST probes
+check original compiler/target identities and output equivalence; 52 atomic
+boundary cases and exact Java slot limits pass. The full gate passes 786 tests,
+and 138 files across 18 old bundles are byte-identical. Floating constants,
+arithmetic, casts, methods and NaN payload preservation remain outside this
+increment; full_features remains empty and no legacy runtime is removed.

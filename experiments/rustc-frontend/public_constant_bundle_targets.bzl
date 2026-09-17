@@ -54,7 +54,7 @@ def public_constant_bundle_targets(name, adapter_sources):
         srcs = adapter_sources,
         rustc_cfg = "c_graph_constant_collision",
         directory_publisher = ":directory_publisher",
-        deps = [":compiler_configuration", ":directory_publication", "//crates/backend-c:portable_backend_c", "//crates/codegen:portable_codegen"],
+        deps = [":compiler_configuration", ":directory_publication", "//crates/backend-c:portable_backend_c", "//crates/binary64:portable_binary64", "//crates/codegen:portable_codegen"],
     )
     publication = [
         ":adapter",

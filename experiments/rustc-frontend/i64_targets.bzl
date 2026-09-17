@@ -80,6 +80,7 @@ def i64_targets(name, c_sources):
             deps = [
                 ":compiler_configuration",
                 "//crates/backend-" + language + ":portable_backend_" + language,
+                "//crates/binary64:portable_binary64",
                 "//crates/codegen:portable_codegen",
                 "//crates/diagnostics:portable_diagnostics",
             ] + ([":directory_publication"] if language == "c" else []),

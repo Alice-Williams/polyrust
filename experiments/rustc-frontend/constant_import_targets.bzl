@@ -70,7 +70,7 @@ def constant_import_targets(name):
         name = "constant_inventory_probe",
         crate_root = "test/constant_inventory_main.rs",
         srcs = ["test/constant_inventory_main.rs", "src/c_lower/functions.rs", "src/java_lower/functions.rs"] + native.glob(["src/source_capabilities/**/*.rs", "src/source_origin/**/*.rs"]),
-        deps = ["//crates/backend-c:portable_backend_c", "//crates/codegen:portable_codegen"],
+        deps = ["//crates/backend-c:portable_backend_c", "//crates/binary64:portable_binary64", "//crates/codegen:portable_codegen"],
     )
     sh_test(
         name = "constant_import_limits_test",

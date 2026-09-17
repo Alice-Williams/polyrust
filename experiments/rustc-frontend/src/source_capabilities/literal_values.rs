@@ -1,8 +1,9 @@
 //! Exact scalar literal interpretation, shared before target-specific lowering.
 use super::Capability;
+use portable_binary64::FiniteBinary64;
 use rustc_ast::LitKind;
 use rustc_hir as hir;
-use rustc_middle::ty::{self, TypeckResults};
+use rustc_middle::ty::{self, TyCtxt, TypeckResults};
 
 pub(crate) struct LiteralValues;
 
@@ -11,6 +12,7 @@ pub(crate) enum LiteralValue {
     I32(i32),
     I64(i64),
     Bool(bool),
+    F64(FiniteBinary64),
 }
 
 #[derive(Clone, Copy)]
@@ -25,9 +27,19 @@ impl Capability for LiteralValues {
 
 impl<'tcx> LiteralInput<'tcx> {
     pub(crate) fn read(
+        tcx: TyCtxt<'tcx>,
         checked: &TypeckResults<'tcx>,
-        expression: &'tcx hir::Expr<'tcx>,
+        expression: &hir::Expr<'tcx>,
     ) -> Result<Self, String> {
+        let hir::Node::Expr(canonical) = tcx.hir_node(expression.hir_id) else {
+            return Err("literal requires a canonical HIR expression".into());
+        };
+        if !std::ptr::eq(canonical, expression)
+            || !std::ptr::eq(checked, tcx.typeck(expression.hir_id.owner.def_id))
+        {
+            return Err("literal requires its original checked function and HIR node".into());
+        }
+        let expression = canonical;
         if !checked.expr_adjustments(expression).is_empty()
             || checked.type_dependent_def_id(expression.hir_id).is_some()
         {
@@ -37,7 +49,7 @@ impl<'tcx> LiteralInput<'tcx> {
             hir::ExprKind::Lit(literal) => (literal, false),
             hir::ExprKind::Unary(hir::UnOp::Neg, operand) => {
                 let hir::ExprKind::Lit(literal) = operand.kind else {
-                    return Err("only negative integer literals are implemented".into());
+                    return Err("only negative scalar literals are implemented".into());
                 };
                 if !checked.expr_adjustments(operand).is_empty()
                     || checked.expr_ty(operand) != checked.expr_ty(expression)
@@ -64,6 +76,27 @@ impl<'tcx> LiteralInput<'tcx> {
                     _ => unreachable!("closed integer type match"),
                 }
             }
+            (LitKind::Float(..), ty::Float(ty::FloatTy::F64)) => {
+                let evaluated = tcx
+                    .at(expression.span)
+                    .lit_to_const(ty::LitToConstInput {
+                        lit: literal.node,
+                        ty: Some(checked.expr_ty(expression)),
+                        neg: negative,
+                    })
+                    .ok_or("compiler could not evaluate f64 literal")?;
+                let scalar = tcx
+                    .valtree_to_const_val(evaluated)
+                    .try_to_scalar_int()
+                    .ok_or("compiler f64 literal is not scalar bits")?;
+                if scalar.size().bytes() != 8 {
+                    return Err("compiler f64 literal width differs".into());
+                }
+                LiteralValue::F64(
+                    FiniteBinary64::from_bits(scalar.to_u64())
+                        .map_err(|_| "nonfinite f64 literals are not implemented")?,
+                )
+            }
             _ => return Err("literal is not implemented".into()),
         };
         Ok(Self {
@@ -72,7 +105,23 @@ impl<'tcx> LiteralInput<'tcx> {
         })
     }
 
+    pub(crate) fn require_context(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        checked: &TypeckResults<'tcx>,
+    ) -> Result<(), String> {
+        if std::ptr::eq(checked, tcx.typeck(self._expression.hir_id.owner.def_id)) {
+            Ok(())
+        } else {
+            Err("literal mapping requires its original checked function".into())
+        }
+    }
+
     pub(crate) fn value(self) -> LiteralValue {
         self.value
     }
 }
+
+#[cfg(binary64_ast_probe)]
+#[path = "../../test/binary64_input_probe.rs"]
+mod binary64_input_probe;

@@ -70,6 +70,7 @@ def documentation_targets(name, copts):
         crate_root = "test/documentation_main.rs",
         deps = [
             "//crates/backend-c:portable_backend_c",
+            "//crates/binary64:portable_binary64",
             "//crates/codegen:portable_codegen",
         ],
     )
@@ -110,6 +111,7 @@ def documentation_targets(name, copts):
         crate_root = "test/documentation_sharing_main.rs",
         deps = [
             "//crates/backend-c:portable_backend_c",
+            "//crates/binary64:portable_binary64",
             "//crates/codegen:portable_codegen",
         ],
     )

@@ -15,7 +15,7 @@ CASES = {
     "indirect": ("pub fn value(v: i32) -> i32 { let f: fn(i32) -> i32 = i32::wrapping_neg; f(v) }", "direct calls require resolved ordinary functions"),
     "generic": ("fn forward<T>(v: T) -> T { v } pub fn value(v: i32) -> i32 { forward(v).wrapping_neg() }", "generic or mismatched direct callee identity"),
     "unsafe": ("unsafe fn forward(v: i32) -> i32 { v } pub fn value(v: i32) -> i32 { unsafe { forward(v) }.wrapping_neg() }", "declaration of an `unsafe` function"),
-    "ordinary_minus": ("pub fn value(v: i32) -> i32 { -v }", "only negative integer literals"),
+    "ordinary_minus": ("pub fn value(v: i32) -> i32 { -v }", "only negative scalar literals"),
 }
 for WIDTH in ["i8", "i16", "i128", "isize", "u8", "u16", "u32", "u64", "u128", "usize"]:
     CASES[WIDTH] = (f"pub fn value(v: {WIDTH}) -> {WIDTH} {{ v.wrapping_neg() }}",

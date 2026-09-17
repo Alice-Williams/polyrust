@@ -1,6 +1,6 @@
 # Rust binary64 values and finite literals
 
-- Status: finite value and C/Java target foundations implemented; Rust-source integration pending
+- Status: finite literals and checked Rust-source C/Java value/comparison mappings implemented and verified
 - Plan: [M35-03A-02I](../../plan/tasks/M35-03A-02I-binary64-values.md)
 - Targets: [C17](languages/c/rust-binary64-values.md),
   [Java21](languages/java/rust-binary64-values.md)
@@ -60,3 +60,22 @@ implicitly converts to the other. C and Java constant mappings exhaustively
 consume the narrower enum. Extending literal support therefore cannot silently
 extend constant witnesses or their mappings; floating constants require an
 explicit later change to this separate contract and its native proof.
+
+## Compiler admission and package metadata
+
+LiteralInput admits rustc Float literals checked as exactly f64, including a
+built-in unary negative literal with no adjustments or overload. It queries
+rustc's literal evaluator with the checked type and sign; only an eight-byte
+scalar whose bits construct FiniteBinary64 is accepted. It never reparses the
+decimal token or computes the sign in host floating arithmetic.
+
+Existing entry-harness fn(i32) -> i32 selection remains unchanged. Ordinary
+checked source functions may transport f64 through signatures, immutable locals,
+plain record fields and resolved shared references. This does not introduce a
+public reference ABI, mutable floating storage, floating arithmetic or constants.
+
+When serialized metadata includes f64, C uses owner schema 8 (including explicit
+function parameter/result types), and Java uses owner schema 6. Bundle indexes
+retain schema 1. Packages without new type spellings retain their previous
+metadata versions and bytes. These descriptive strings convey no authority:
+dependency calls still require the original typed producer certificates.

@@ -61,6 +61,7 @@ impl<'tcx> Reader<'tcx> {
                 ty::Int(ty::IntTy::I32) => TypePlan::I32,
                 ty::Int(ty::IntTy::I64) => TypePlan::I64,
                 ty::Bool => TypePlan::Bool,
+                ty::Float(ty::FloatTy::F64) => TypePlan::F64,
                 _ => return Err("only scalar record fields are implemented".into()),
             };
             let ty = plan.java_type();

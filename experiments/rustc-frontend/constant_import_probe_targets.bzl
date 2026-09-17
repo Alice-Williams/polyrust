@@ -19,6 +19,7 @@ def constant_import_probe_targets(name, adapter_sources):
             ":compiler_configuration",
             ":directory_publication",
             "//crates/backend-" + language + ":portable_backend_" + language,
+            "//crates/binary64:portable_binary64",
             "//crates/codegen:portable_codegen",
             "//crates/diagnostics:portable_diagnostics",
         ] + ([":java_bundle"] if language == "java" else [])

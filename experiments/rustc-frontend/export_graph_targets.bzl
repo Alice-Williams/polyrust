@@ -21,6 +21,7 @@ def export_graph_targets(name):
         crate_root = "test/export_graph_main.rs",
         deps = [
             "//crates/backend-c:portable_backend_c",
+            "//crates/binary64:portable_binary64",
             "//crates/codegen:portable_codegen",
         ],
     )

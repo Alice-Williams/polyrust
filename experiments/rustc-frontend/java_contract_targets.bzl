@@ -31,6 +31,7 @@ def java_contract_targets(name):
             deps = [
                 ":compiler_configuration",
                 "//crates/backend-java:portable_backend_java",
+                "//crates/binary64:portable_binary64",
                 "//crates/codegen:portable_codegen",
                 "//crates/diagnostics:portable_diagnostics",
             ],

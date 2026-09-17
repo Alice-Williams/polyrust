@@ -1,6 +1,6 @@
 //! Version-seven result metadata preserves the object/result distinction.
 use super::{ApiManifest, import_serialization::scalar, serialization::quote};
-use portable_backend_c::ast::{CFunctionType, CReturnType};
+use portable_backend_c::ast::{CFunctionType, CObjectTypeKind, CReturnType, CScalarType};
 
 pub(super) fn result(ty: &CReturnType) -> Result<&'static str, String> {
     match ty {
@@ -21,7 +21,27 @@ pub(super) fn signature(text: &mut String, signature: &CFunctionType) -> Result<
     text.push(']');
     Ok(())
 }
+fn has_binary64(signature: &CFunctionType) -> bool {
+    let is_f64 = |ty: &portable_backend_c::ast::CObjectType| {
+        matches!(ty.kind(), CObjectTypeKind::Scalar(CScalarType::F64))
+    };
+    signature
+        .parameters()
+        .iter()
+        .any(|parameter| is_f64(parameter.declared_type()))
+        || matches!(signature.return_type(), CReturnType::Value(value) if is_f64(value.declared_type()))
+}
+
 impl ApiManifest {
+    pub(super) fn has_binary64_signatures(&self) -> bool {
+        self.functions
+            .values()
+            .any(|function| has_binary64(function.reference.signature()))
+            || self
+                .imports
+                .values()
+                .any(|(_, proof)| has_binary64(proof.signature()))
+    }
     pub(super) fn has_unit_results(&self) -> bool {
         self.functions.values().any(|function| {
             matches!(

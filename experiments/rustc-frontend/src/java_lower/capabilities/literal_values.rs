@@ -12,12 +12,17 @@ impl Mapping for JavaLiteralValues {
     type Context<'tcx> = Reader<'tcx>;
     type Output = Value;
 
-    fn lower<'tcx>(&self, _: &mut Reader<'tcx>, input: LiteralInput<'tcx>) -> Result<Value> {
+    fn lower<'tcx>(&self, reader: &mut Reader<'tcx>, input: LiteralInput<'tcx>) -> Result<Value> {
+        input.require_context(reader.tcx, reader.checked)?;
         let (plan, literal) = match input.value() {
             LiteralValue::I32(value) => (TypePlan::I32, JavaLiteral::I32(value)),
             LiteralValue::I64(value) => (TypePlan::I64, JavaLiteral::I64(value)),
             LiteralValue::Bool(value) => (TypePlan::Bool, JavaLiteral::Boolean(value)),
+            LiteralValue::F64(value) => (TypePlan::F64, JavaLiteral::F64(value)),
         };
-        Value::new(plan.clone(), JavaExpr::literal(plan.java_type(), literal))
+        let value = Value::new(plan.clone(), JavaExpr::literal(plan.java_type(), literal))?;
+        #[cfg(binary64_ast_probe)]
+        super::binary64_ast::check(reader, input, &value);
+        Ok(value)
     }
 }

@@ -15,6 +15,7 @@ impl Mapping for JavaObjectTypes {
             ty::Int(ty::IntTy::I32) => Ok(TypePlan::I32),
             ty::Int(ty::IntTy::I64) => Ok(TypePlan::I64),
             ty::Bool => Ok(TypePlan::Bool),
+            ty::Float(ty::FloatTy::F64) => Ok(TypePlan::F64),
             ty::Ref(_, referent, rustc_hir::Mutability::Not) => {
                 Ok(TypePlan::Shared(Box::new(reader.ty(*referent)?)))
             }

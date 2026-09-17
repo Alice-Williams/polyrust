@@ -31,7 +31,7 @@ def c_graph_targets(name, adapter_sources):
         srcs = adapter_sources + ["test/c_import_manifest_contract.rs", "test/c_bundle_contract.rs"],
         crate_root = "src/main.rs",
         rustc_cfg = "c_graph_inventory_contract",
-        deps = [":compiler_configuration", ":directory_publication", "//crates/backend-c:portable_backend_c", "//crates/codegen:portable_codegen"],
+        deps = [":compiler_configuration", ":directory_publication", "//crates/backend-c:portable_backend_c", "//crates/binary64:portable_binary64", "//crates/codegen:portable_codegen"],
     )
     for case in ["owner", "declaration", "signature"]:
         target = "c_graph_wrong_" + case
@@ -40,7 +40,7 @@ def c_graph_targets(name, adapter_sources):
             srcs = adapter_sources + ["test/c_foreign_mutations.rs"],
             crate_root = "src/main.rs",
             rustc_cfg = target,
-            deps = [":compiler_configuration", ":directory_publication", "//crates/backend-c:portable_backend_c", "//crates/codegen:portable_codegen"],
+            deps = [":compiler_configuration", ":directory_publication", "//crates/backend-c:portable_backend_c", "//crates/binary64:portable_binary64", "//crates/codegen:portable_codegen"],
         )
         mutations.append(":" + target)
     sh_test(

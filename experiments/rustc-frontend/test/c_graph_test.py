@@ -183,7 +183,7 @@ accept(unary)
 integer_unary = add("integer_unary", "pub fn invert(v: i32) -> i32 { !v }\n")
 accept(integer_unary)
 arithmetic_unary = add("arithmetic_unary", "pub fn invert(v: i32) -> i32 { -v }\n")
-reject(arithmetic_unary, "only negative integer literals")
+reject(arithmetic_unary, "only negative scalar literals")
 conditional_argument = add("conditional_argument",
     "pub fn identity(v: i32) -> i32 { dep::identity(if v < 0 { 0 } else { v }) }\n",
     [("dep", "leaf")])
@@ -192,7 +192,7 @@ wide = add("wide", "pub fn identity(v: u64) -> u64 { v }\n")
 emit(wide)
 wide_unused = add("wide_unused", "pub fn identity(v: i32) -> i32 { v }\n",
                   [("dep", "wide")])
-reject(wide_unused, "direct-call signatures support only i32, i64 and bool")
+reject(wide_unused, "direct-call signatures support only i32, i64, bool and f64")
 
 # A newly certified leaf cannot authenticate a consumer loading stale metadata.
 leaf["source"].write_text("/// Changed docs.\n" + leaf_text)

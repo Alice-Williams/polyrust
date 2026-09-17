@@ -1,6 +1,6 @@
 # M35-03A-02I — Exact binary64 values before floating arithmetic
 
-- Status: in-progress
+- Status: complete
 - Parent: [scalar parity](M35-03A-02-scalar-parity.md)
 - Depends on: [wrapping negation](M35-03A-02H-wrapping-negation.md)
 - Specification: [shared](../../specification/typed-generation/rust-binary64-values.md)
@@ -35,4 +35,6 @@ All child proof receipts must identify exact tested/reviewed trees.
 The finite witness and C/Java target foundations are complete, including the
 separately reviewed typed library-import prerequisite. Their child receipts
 identify exact tested/reviewed trees. Checked Rust-source integration (02I-03)
-remains pending; no general floating arithmetic or runtime retirement is claimed.
+is complete with 786/786 release tests, three-crate native/AST/atomic proof,
+unchanged bytes across 18 prior bundles and actual exported examples. No general
+floating arithmetic, wider constant support or runtime retirement is claimed.

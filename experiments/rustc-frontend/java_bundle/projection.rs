@@ -191,14 +191,12 @@ fn add_ancestry<'a>(
 
 pub(crate) fn scalar(ty: &JavaType) -> Result<&'static str, String> {
     use portable_backend_java::ast::JavaPrimitive;
-    if *ty == JavaType::primitive(JavaPrimitive::Int) {
-        Ok("i32")
-    } else if *ty == JavaType::primitive(JavaPrimitive::Long) {
-        Ok("i64")
-    } else if *ty == JavaType::primitive(JavaPrimitive::Boolean) {
-        Ok("bool")
-    } else {
-        Err("unsupported Java manifest scalar".into())
+    match ty {
+        JavaType::Primitive(JavaPrimitive::Int) => Ok("i32"),
+        JavaType::Primitive(JavaPrimitive::Long) => Ok("i64"),
+        JavaType::Primitive(JavaPrimitive::Boolean) => Ok("bool"),
+        JavaType::Primitive(JavaPrimitive::Double) => Ok("f64"),
+        _ => Err("unsupported Java manifest scalar".into()),
     }
 }
 

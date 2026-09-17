@@ -35,7 +35,7 @@ impl Mapping for CScalarComparisons {
         for operand in [left, right] {
             if !matches!(
                 reader.checked.expr_ty_adjusted(operand).kind(),
-                ty::Int(ty::IntTy::I32 | ty::IntTy::I64) | ty::Bool
+                ty::Int(ty::IntTy::I32 | ty::IntTy::I64) | ty::Bool | ty::Float(ty::FloatTy::F64)
             ) {
                 return Err("only scalar comparisons are implemented".into());
             }
@@ -50,11 +50,16 @@ impl Mapping for CScalarComparisons {
             _ => return Err("only comparison binary operators are implemented".into()),
         };
         // Calls on either side materialize into the source-ordered prelude.
+        #[cfg(binary64_ast_probe)]
+        let start = reader.prelude.len();
         let left = reader.expr(left)?;
         let right = reader.expr(right)?;
         let result = c(reader.expressions().binary(operator, left, right))?;
-        c(reader
+        let result = c(reader
             .expressions()
-            .numeric_conversion(CScalarType::Bool, result))
+            .numeric_conversion(CScalarType::Bool, result))?;
+        #[cfg(binary64_ast_probe)]
+        super::binary64_ast::comparison(reader, expression, &result, start);
+        Ok(result)
     }
 }

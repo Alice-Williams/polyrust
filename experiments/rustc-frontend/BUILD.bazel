@@ -1,6 +1,8 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_clippy_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load(":binary64_ast_targets.bzl", "binary64_ast_targets")
+load(":binary64_targets.bzl", "binary64_targets")
 load(":bitwise_ast_targets.bzl", "bitwise_ast_targets")
 load(":bitwise_contract_targets.bzl", "bitwise_contract_targets")
 load(":bitwise_targets.bzl", "bitwise_targets")
@@ -109,6 +111,13 @@ ADAPTER_SOURCES = [
     "src/output/**/*.rs",
     "src/source_check/**/*.rs",
 ])
+
+binary64_ast_targets(
+    name = "binary64_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+binary64_targets(name = "binary64_source_clippy_test")
 
 crate_identity_targets(name = "crate_identity_test")
 
@@ -288,6 +297,7 @@ compiler_adapter(
         ":compiler_configuration",
         ":directory_publication",
         "//crates/backend-c:portable_backend_c",
+        "//crates/binary64:portable_binary64",
         "//crates/codegen:portable_codegen",
     ],
 )
@@ -304,6 +314,7 @@ compiler_adapter(
             ":compiler_configuration",
             ":directory_publication",
             "//crates/backend-c:portable_backend_c",
+            "//crates/binary64:portable_binary64",
             "//crates/codegen:portable_codegen",
         ],
     )
@@ -541,6 +552,7 @@ compiler_adapter(
     crate_root = "test/provenance_main.rs",
     deps = [
         "//crates/backend-c:portable_backend_c",
+        "//crates/binary64:portable_binary64",
         "//crates/codegen:portable_codegen",
     ],
 )
@@ -622,6 +634,7 @@ compiler_adapter(
     crate_root = "test/mapping_main.rs",
     deps = [
         "//crates/backend-c:portable_backend_c",
+        "//crates/binary64:portable_binary64",
         "//crates/codegen:portable_codegen",
     ],
 )

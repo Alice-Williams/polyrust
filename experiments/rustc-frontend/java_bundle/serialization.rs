@@ -17,7 +17,26 @@ pub(crate) fn owner(out: &mut impl Sink, manifest: &Manifest<'_>) -> Result<(), 
         matches!(description.kind(), Kind::Function { result, .. }
             if *result == portable_backend_java::ast::JavaType::primitive(portable_backend_java::ast::JavaPrimitive::Void))
     });
-    out.fixed(if unit_results {
+    let binary64 = manifest.declarations.iter().any(|description| {
+        let is_f64 = |ty: &portable_backend_java::ast::JavaType| {
+            matches!(
+                ty,
+                portable_backend_java::ast::JavaType::Primitive(
+                    portable_backend_java::ast::JavaPrimitive::Double
+                )
+            )
+        };
+        match description.kind() {
+            Kind::Function { parameters, result } => {
+                is_f64(result) || parameters.iter().any(|parameter| is_f64(&parameter.ty))
+            }
+            Kind::Field { ty, .. } => is_f64(ty),
+            Kind::Record | Kind::Constant { .. } => false,
+        }
+    });
+    out.fixed(if binary64 {
+        "{\"schema_version\":6,\"root\":"
+    } else if unit_results {
         "{\"schema_version\":5,\"root\":"
     } else if !manifest.foreign_constants.is_empty() {
         "{\"schema_version\":4,\"root\":"

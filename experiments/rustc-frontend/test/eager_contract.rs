@@ -121,7 +121,7 @@ fn wrong() {
 
 #[cfg(eager_wrong_input)]
 fn wrong_input<'tcx>(reader: &mut Reader<'tcx>, expression: &'tcx rustc_hir::Expr<'tcx>) {
-    let input = LiteralInput::read(reader.checked, expression).unwrap();
+    let input = LiteralInput::read(reader.tcx, reader.checked, expression).unwrap();
     let _ = Bits.lower(reader, input);
 }
 

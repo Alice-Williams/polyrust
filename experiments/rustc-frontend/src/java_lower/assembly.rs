@@ -239,6 +239,7 @@ fn target_signature(
         TypePlan::I32 => Ok(TargetTypeRef::Primitive(JavaPrimitive::Int)),
         TypePlan::I64 => Ok(TargetTypeRef::Primitive(JavaPrimitive::Long)),
         TypePlan::Bool => Ok(TargetTypeRef::Primitive(JavaPrimitive::Boolean)),
+        TypePlan::F64 => Ok(TargetTypeRef::Primitive(JavaPrimitive::Double)),
         _ => Err("non-scalar callable signature".to_owned()),
     };
     Ok(TargetCallableSignature {

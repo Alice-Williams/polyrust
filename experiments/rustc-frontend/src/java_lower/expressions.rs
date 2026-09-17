@@ -72,7 +72,7 @@ impl<'tcx> Reader<'tcx> {
                     hir::ExprKind::Call(..) => Supports::<DirectCalls>::mapping(&reader.mappings)
                         .lower(reader, CallInput(value)),
                     hir::ExprKind::Lit(_) | hir::ExprKind::Unary(hir::UnOp::Neg, _) => {
-                        let input = LiteralInput::read(reader.checked, value)?;
+                        let input = LiteralInput::read(reader.tcx, reader.checked, value)?;
                         Supports::<LiteralValues>::mapping(&reader.mappings).lower(reader, input)
                     }
                     hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, _) => {

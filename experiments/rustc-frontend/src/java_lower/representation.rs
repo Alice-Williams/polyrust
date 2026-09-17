@@ -8,6 +8,7 @@ pub(crate) enum TypePlan {
     I32,
     I64,
     Bool,
+    F64,
     Record(GeneratedTypeId),
     Shared(Box<TypePlan>),
 }
@@ -18,6 +19,7 @@ impl TypePlan {
             Self::I32 => JavaType::primitive(JavaPrimitive::Int),
             Self::I64 => JavaType::primitive(JavaPrimitive::Long),
             Self::Bool => JavaType::primitive(JavaPrimitive::Boolean),
+            Self::F64 => JavaType::primitive(JavaPrimitive::Double),
             Self::Record(id) => JavaType::Reference(JavaTypeName::Generated(*id)),
             Self::Shared(referent) => referent.java_type(),
         }
@@ -28,7 +30,8 @@ impl TypePlan {
             JavaType::Primitive(JavaPrimitive::Int) => Ok(Self::I32),
             JavaType::Primitive(JavaPrimitive::Long) => Ok(Self::I64),
             JavaType::Primitive(JavaPrimitive::Boolean) => Ok(Self::Bool),
-            _ => Err("source signature requires an i32/i64/bool representation".into()),
+            JavaType::Primitive(JavaPrimitive::Double) => Ok(Self::F64),
+            _ => Err("source signature requires an i32/i64/bool/f64 representation".into()),
         }
     }
 }

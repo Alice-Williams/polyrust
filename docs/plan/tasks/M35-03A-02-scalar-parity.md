@@ -37,10 +37,10 @@ capability, with 778/778 release tests and clean fresh compiler review.
 Method/associated i32/i64 wrapping_neg retain exact receiver evaluation and
 original dependencies. Other arithmetic remains separate work.
 
-The next bounded family is
-[M35-03A-02I — binary64 values](M35-03A-02I-binary64-values.md), split into a
-dependency-free finite literal witness, target proof and checked compiler
-integration before arithmetic is admitted.
+[M35-03A-02I — binary64 values](M35-03A-02I-binary64-values.md) is complete:
+a dependency-free finite literal witness, C/Java target proof and checked
+compiler value/comparison integration, with 786/786 release tests and clean
+independent review. Floating arithmetic/constants/casts remain separate work.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

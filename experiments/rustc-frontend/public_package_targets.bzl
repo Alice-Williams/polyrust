@@ -37,7 +37,7 @@ def public_package_targets(name):
         srcs = ["src/inputs.rs", "test/public_package_main.rs", "test/public_package_manifest_mutations.rs", "test/package_state_c.rs"] + ["src/source_admission.rs"] + native.glob(["src/c_lower/**/*.rs", "src/source_capabilities/**/*.rs", "src/source_origin/**/*.rs", "src/api_manifest/**/*.rs"]),
         crate_root = "test/public_package_main.rs",
         rustc_cfg = "public_package_contract",
-        deps = ["//crates/backend-c:portable_backend_c", "//crates/codegen:portable_codegen"],
+        deps = ["//crates/backend-c:portable_backend_c", "//crates/binary64:portable_binary64", "//crates/codegen:portable_codegen"],
     )
     sh_test(
         name = "public_package_manifest_test",

@@ -13,11 +13,16 @@ impl Mapping for CLiteralValues {
     type Output = CValue;
 
     fn lower<'tcx>(&self, reader: &mut Reader<'tcx>, input: LiteralInput<'tcx>) -> Result<CValue> {
+        input.require_context(reader.tcx, reader.checked)?;
         let literal = match input.value() {
             LiteralValue::I32(value) => CLiteral::Signed(CSignedLiteral::I32(value)),
             LiteralValue::I64(value) => CLiteral::Signed(CSignedLiteral::I64(value)),
             LiteralValue::Bool(value) => CLiteral::Bool(value),
+            LiteralValue::F64(value) => CLiteral::F64(value),
         };
-        c(reader.expressions().literal(literal))
+        let value = c(reader.expressions().literal(literal))?;
+        #[cfg(binary64_ast_probe)]
+        super::binary64_ast::check(reader, input, &value);
+        Ok(value)
     }
 }

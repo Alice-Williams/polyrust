@@ -17,7 +17,7 @@ def main():
         "block_left": ("pub fn value(a: bool,b: bool) -> bool { ({ a }) & b }", "expression mapping is not implemented", True),
         "block_right": ("pub fn value(a: bool,b: bool) -> bool { a | { b } }", "expression mapping is not implemented", True),
         "write": ("pub fn value(a: bool,b: bool) -> bool { let mut c=a; c &= b; c }", "only plain immutable bindings are implemented", True),
-        "u32": ("pub fn value(a: u32,b: u32) -> u32 { a & b }", "only i32, i64 and bool", True),
+        "u32": ("pub fn value(a: u32,b: u32) -> u32 { a & b }", "only i32, i64, bool and f64", True),
         "arithmetic": ("pub fn value(a: i32,b: i32) -> bool { a + b > 0 }", "only comparison binary operators", True),
     }
     for label, (code, diagnostic, valid) in cases.items():

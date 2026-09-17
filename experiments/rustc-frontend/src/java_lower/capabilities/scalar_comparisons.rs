@@ -36,7 +36,7 @@ impl Mapping for JavaScalarComparisons {
         for operand in [left, right] {
             if !matches!(
                 reader.checked.expr_ty_adjusted(operand).kind(),
-                ty::Int(ty::IntTy::I32 | ty::IntTy::I64) | ty::Bool
+                ty::Int(ty::IntTy::I32 | ty::IntTy::I64) | ty::Bool | ty::Float(ty::FloatTy::F64)
             ) {
                 return Err("only scalar comparisons are implemented".into());
             }
@@ -50,6 +50,8 @@ impl Mapping for JavaScalarComparisons {
             hir::BinOpKind::Ge => (Op::GreaterEqual, JavaPrecedence::Relational, true),
             _ => return Err("only comparison binary operators are implemented".into()),
         };
+        #[cfg(binary64_ast_probe)]
+        let start = reader.prelude.len();
         let left = reader.expr(left)?;
         let left = reader.materialize(left)?;
         let right = reader.expr(right)?;
@@ -72,6 +74,8 @@ impl Mapping for JavaScalarComparisons {
                 },
             },
         )?;
+        #[cfg(binary64_ast_probe)]
+        super::binary64_ast::comparison(reader, expression, &result, start);
         #[cfg(java_ast_probe)]
         super::super::expression_assertions::comparison(reader, expression, &result);
         Ok(result)

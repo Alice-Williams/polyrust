@@ -9,8 +9,8 @@ def main():
     root = Path(os.environ["TEST_TMPDIR"]) / "bitwise-rejections"
     root.mkdir()
     cases = {
-        "u32": ("pub fn value(v: u32) -> u32 { !v }", "only i32, i64 and bool", True),
-        "i16": ("pub fn value(v: i16) -> i16 { !v }", "only i32, i64 and bool", True),
+        "u32": ("pub fn value(v: u32) -> u32 { !v }", "only i32, i64, bool and f64", True),
+        "i16": ("pub fn value(v: i16) -> i16 { !v }", "only i32, i64, bool and f64", True),
         "shift": ("pub fn value(v: i64) -> i64 { v << 1 }", "only comparison binary operators", True),
         "cast": ("pub fn value(v: i64) -> i64 { (v as i32) as i64 }", "expression mapping is not implemented", True),
         "bool_and": ("pub fn value(a: bool,b: bool) -> bool { (&a) & b }", "eager Boolean input requires", True),

@@ -20,6 +20,7 @@ def constant_export_probe_targets(name, adapter_sources):
             ":compiler_configuration",
             ":directory_publication",
             "//crates/backend-c:portable_backend_c",
+            "//crates/binary64:portable_binary64",
             "//crates/codegen:portable_codegen",
             "//crates/diagnostics:portable_diagnostics",
         ],

@@ -1,4 +1,7 @@
 //! Executable mappings for the closed Rust-source subset, not support flags.
+#[cfg(binary64_ast_probe)]
+#[path = "../../../test/binary64_java_ast.rs"]
+mod binary64_ast;
 mod boolean_negation;
 #[cfg(constant_import_probe)]
 #[path = "../../../test/constant_import_java_ast.rs"]
