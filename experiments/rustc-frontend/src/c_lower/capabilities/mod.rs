@@ -40,6 +40,7 @@ mod wrapping_contract;
 mod floating_absolute;
 mod floating_nan;
 mod floating_negation;
+mod floating_truncation;
 #[cfg(unit_contract)]
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/unit_contract.rs"]
@@ -138,6 +139,7 @@ pub(crate) use entry_signatures::CEntrySignatures;
 pub(crate) use floating_absolute::CFloatingAbsolute;
 pub(crate) use floating_nan::CFloatingNaN;
 pub(crate) use floating_negation::CFloatingNegation;
+pub(crate) use floating_truncation::CFloatingTruncation;
 pub(crate) use function_signatures::CFunctionSignatures;
 pub(crate) use integer_bitwise::CIntegerBitwise;
 pub(crate) use lexical_control::CLexicalControl;
@@ -184,6 +186,7 @@ pub(crate) type CBindings = Bindings<
     CFloatingNegation,
     CFloatingNaN,
     CFloatingAbsolute,
+    CFloatingTruncation,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -212,6 +215,7 @@ pub(crate) fn c_bindings() -> CBindings {
         .floating_negation(CFloatingNegation)
         .floating_nan(CFloatingNaN)
         .floating_absolute(CFloatingAbsolute)
+        .floating_truncation(CFloatingTruncation)
         .build()
 }
 
@@ -240,3 +244,12 @@ mod absolute_contract;
 #[cfg(absolute_ast_probe)]
 #[path = "../../../test/absolute_c_ast.rs"]
 mod absolute_ast;
+
+#[cfg(truncation_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/truncation_contract.rs"]
+mod truncation_contract;
+
+#[cfg(truncation_ast_probe)]
+#[path = "../../../test/truncation_c_ast.rs"]
+mod truncation_ast;

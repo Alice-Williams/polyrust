@@ -36,3 +36,13 @@ Target foundations do not by themselves admit Rust source or establish full
 arithmetic parity.
 
 Source reference: [Rust f64::trunc](https://doc.rust-lang.org/std/primitive.f64.html#method.trunc).
+
+## Standard-library identity
+
+Do not assume that every primitive method belongs to core. The published
+[Rust trunc source](https://doc.rust-lang.org/src/std/num/f64.rs.html)
+places this inherent method in std. Authenticate the pinned compiler's original
+DefId, exact primitive implementation and checked signature. A compiler language
+item from the actual standard library can anchor its crate identity; a crate
+name or same-spelled user method cannot. Confirm that anchor through the pinned
+compiler AST probes before admitting the operation.

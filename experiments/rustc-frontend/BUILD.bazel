@@ -82,6 +82,9 @@ load(":short_circuit_targets.bzl", "short_circuit_targets")
 load(":source_capability_targets.bzl", "source_capability_targets")
 load(":source_check_targets.bzl", "source_check_targets")
 load(":source_origin_targets.bzl", "source_origin_targets")
+load(":truncation_ast_targets.bzl", "truncation_ast_targets")
+load(":truncation_contract_targets.bzl", "truncation_contract_targets")
+load(":truncation_targets.bzl", "truncation_targets")
 load(":unit_ast_targets.bzl", "unit_ast_targets")
 load(":unit_contract_targets.bzl", "unit_contract_targets")
 load(":unit_targets.bzl", "unit_targets")
@@ -774,3 +777,15 @@ absolute_ast_targets(
 )
 
 absolute_targets(name = "absolute_fixture_clippy_test")
+
+truncation_targets(name = "truncation_fixtures_clippy_test")
+
+truncation_contract_targets(
+    name = "truncation_contract_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+truncation_ast_targets(
+    name = "truncation_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)

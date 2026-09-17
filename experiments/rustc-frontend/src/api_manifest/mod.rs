@@ -20,6 +20,10 @@ mod imports;
 #[path = "../../test/c_import_manifest_contract.rs"]
 pub(crate) mod inventory_contract;
 mod serialization;
+mod system_libraries;
+#[cfg(truncation_ast_probe)]
+#[path = "../../test/truncation_manifest.rs"]
+pub(crate) mod truncation_contract;
 use portable_backend_c::{
     ast::*,
     dialect::{CDialect, c_defined_functions},
@@ -44,6 +48,7 @@ struct Function {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ApiManifest {
     exports: Arc<RustCrateExports>,
+    system_libraries: BTreeSet<portable_backend_c::dialect::CSystemLibrary>,
     header: CFileRef,
     implementation: CFileRef,
     functions: BTreeMap<RustDeclarationId, Function>,
@@ -262,6 +267,7 @@ impl ApiManifest {
             })
             .collect();
         let manifest = Self {
+            system_libraries: portable_backend_c::dialect::c_system_libraries(package)?,
             foreign_constants,
             used_constant_imports,
             constants,

@@ -2,8 +2,8 @@
 from binary64_oracle import VALUES
 
 
-def java_consumer(literals, calls):
-    values = ",".join(f"0x{bits:016x}L" for bits in VALUES)
+def java_consumer(literals, calls, inputs=VALUES):
+    values = ",".join(f"0x{bits:016x}L" for bits in inputs)
     return ("""public final class Consumer {
 static void observe(double value) {
     if (Double.isNaN(value)) System.out.println("nan");
@@ -16,8 +16,8 @@ public static void main(String[] args) {
             + "\n".join(f"observe({call});" for call in calls) + "} } }\n")
 
 
-def c_consumer(literals, calls, headers):
-    values = ",".join(f"UINT64_C(0x{bits:016x})" for bits in VALUES)
+def c_consumer(literals, calls, headers, inputs=VALUES):
+    values = ",".join(f"UINT64_C(0x{bits:016x})" for bits in inputs)
     return ("""#include <stdint.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -36,5 +36,5 @@ static double decode(uint64_t bits) {
 """ + headers + "\nint main(void) {\nif (fegetround() != FE_TONEAREST) return 2;\n"
             + "\n".join(f"observe({call});" for call in literals)
             + "\nconst uint64_t values[] = {" + values + "};\n"
-            + f"for(int i=0;i<{len(VALUES)};i++) {{ double a=decode(values[i]);\n"
+            + f"for(int i=0;i<{len(inputs)};i++) {{ double a=decode(values[i]);\n"
             + "\n".join(f"observe({call});" for call in calls) + "} return 0; }\n")

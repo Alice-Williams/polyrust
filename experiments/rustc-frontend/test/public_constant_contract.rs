@@ -1,7 +1,5 @@
 //! Every new executable slot has isolated compile-negative boundary controls.
 #[cfg(public_constant_c)]
-use super::CFloatingAbsolute as Absolute;
-#[cfg(public_constant_c)]
 use super::CFloatingNaN as NaN;
 #[cfg(public_constant_c)]
 use super::CFloatingNegation as Floating;
@@ -9,8 +7,6 @@ use super::CFloatingNegation as Floating;
 use super::CUnitEffects as Unit;
 #[cfg(public_constant_c)]
 use super::CWrappingNegation as Wrapping;
-#[cfg(public_constant_java)]
-use super::JavaFloatingAbsolute as Absolute;
 #[cfg(public_constant_java)]
 use super::JavaFloatingNaN as NaN;
 #[cfg(public_constant_java)]
@@ -21,10 +17,14 @@ use super::JavaUnitEffects as Unit;
 use super::JavaWrappingNegation as Wrapping;
 use super::*;
 #[cfg(public_constant_c)]
+use super::{CFloatingAbsolute as Absolute, CFloatingTruncation as Truncation};
+#[cfg(public_constant_c)]
 use super::{
     CPublicConstantImports as Imports, CPublicConstantReads as Reads,
     CPublicConstants as Declarations,
 };
+#[cfg(public_constant_java)]
+use super::{JavaFloatingAbsolute as Absolute, JavaFloatingTruncation as Truncation};
 #[cfg(public_constant_java)]
 use super::{
     JavaPublicConstantImports as Imports, JavaPublicConstantReads as Reads,
@@ -113,6 +113,7 @@ fn missing() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_truncation(Truncation)
         .floating_absolute(Absolute);
     #[cfg(all(public_constant_complete_control, public_constant_declaration))]
     let builder = builder.public_constants(Declarations);

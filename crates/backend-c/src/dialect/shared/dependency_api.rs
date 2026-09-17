@@ -301,3 +301,11 @@ impl CDependencyApi {
         self.constants.get(&declaration)
     }
 }
+
+/// Derive link requirements from this exact certified package and its original
+/// imported owners. This grants no authority to deserialize or replace owners.
+pub fn c_system_libraries(
+    package: &RenderReadyPackage<CDialect>,
+) -> Result<std::collections::BTreeSet<crate::dialect::CSystemLibrary>, String> {
+    system_libraries::collect(package)
+}

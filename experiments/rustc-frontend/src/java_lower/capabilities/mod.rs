@@ -40,6 +40,7 @@ mod wrapping_contract;
 mod floating_absolute;
 mod floating_nan;
 mod floating_negation;
+mod floating_truncation;
 #[cfg(unit_contract)]
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/unit_contract.rs"]
@@ -129,6 +130,7 @@ pub(crate) use entry_signatures::JavaEntrySignatures;
 pub(crate) use floating_absolute::JavaFloatingAbsolute;
 pub(crate) use floating_nan::JavaFloatingNaN;
 pub(crate) use floating_negation::JavaFloatingNegation;
+pub(crate) use floating_truncation::JavaFloatingTruncation;
 pub(crate) use function_signatures::JavaFunctionSignatures;
 pub(crate) use integer_bitwise::JavaIntegerBitwise;
 pub(crate) use lexical_control::JavaLexicalControl;
@@ -173,6 +175,7 @@ pub(crate) type JavaBindings = Bindings<
     JavaFloatingNegation,
     JavaFloatingNaN,
     JavaFloatingAbsolute,
+    JavaFloatingTruncation,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -201,6 +204,7 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .floating_negation(JavaFloatingNegation)
         .floating_nan(JavaFloatingNaN)
         .floating_absolute(JavaFloatingAbsolute)
+        .floating_truncation(JavaFloatingTruncation)
         .build()
 }
 
@@ -229,3 +233,12 @@ mod absolute_contract;
 #[cfg(absolute_ast_probe)]
 #[path = "../../../test/absolute_java_ast.rs"]
 mod absolute_ast;
+
+#[cfg(truncation_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/truncation_contract.rs"]
+mod truncation_contract;
+
+#[cfg(truncation_ast_probe)]
+#[path = "../../../test/truncation_java_ast.rs"]
+mod truncation_ast;

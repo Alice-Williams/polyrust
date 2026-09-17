@@ -1,4 +1,3 @@
-use super::CFloatingAbsolute as Absolute;
 use super::CFloatingNaN as NaN;
 use super::CFloatingNegation as Floating;
 use super::CUnitEffects as Unit;
@@ -9,6 +8,7 @@ use super::{
     CRecordInitializers, CResolvedPlaces, CScalarComparisons, CScalarConstants, CSharedBorrows,
     CShortCircuitBooleans,
 };
+use super::{CFloatingAbsolute as Absolute, CFloatingTruncation as Truncation};
 use super::{CPublicConstantImports, CPublicConstantReads, CPublicConstants};
 
 #[allow(dead_code)]
@@ -36,6 +36,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_truncation(Truncation)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -61,6 +62,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_truncation(Truncation)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -86,6 +88,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_truncation(Truncation)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -111,6 +114,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_truncation(Truncation)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -136,6 +140,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_truncation(Truncation)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -161,6 +166,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_truncation(Truncation)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -186,6 +192,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_truncation(Truncation)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -211,6 +218,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_truncation(Truncation)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -236,6 +244,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_truncation(Truncation)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -261,6 +270,7 @@ fn must_not_compile() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_truncation(Truncation)
         .floating_absolute(Absolute)
         .build();
 }

@@ -9,6 +9,7 @@ mod entry_signatures;
 mod floating_absolute;
 mod floating_nan;
 mod floating_negation;
+mod floating_truncation;
 mod function_signatures;
 #[cfg(any(constant_import_wrong_type, constant_import_wrong_value))]
 #[path = "../../test/constant_import_mutations.rs"]
@@ -63,3 +64,5 @@ pub(crate) use floating_negation::{FloatingInput, FloatingNegation};
 pub(crate) use floating_nan::{FloatingNaN, NaNInput};
 
 pub(crate) use floating_absolute::{AbsoluteInput, FloatingAbsolute};
+
+pub(crate) use floating_truncation::{FloatingTruncation, TruncationInput};

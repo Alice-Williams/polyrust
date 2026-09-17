@@ -178,3 +178,16 @@ boundary cases and exact Java slot limits pass. The full gate passes 786 tests,
 and 138 files across 18 old bundles are byte-identical. Floating constants,
 arithmetic, casts, methods and NaN payload preservation remain outside this
 increment; full_features remains empty and no legacy runtime is removed.
+
+## Binary64 inspection increments
+
+The subsequent bounded source mappings add primitive negation (02J), standard
+inherent NaN classification (02K), absolute value (02L), and truncation (02M).
+Each has a private compiler witness, executable C/Java mappings, native
+value/category and call-count controls, AST/dataflow observations and unsupported
+source diagnostics. Truncation additionally carries certificate-derived C
+system-library metadata through package publication and consumer linking.
+These extend partial floating-point coverage, not complete replacement of
+JavaFloatingPointArithmetic or JavaFloatingPointInspection. Track completion
+and exact gate receipts in the corresponding operation tasks; full_features
+remains empty and the legacy runtime cannot yet be removed.

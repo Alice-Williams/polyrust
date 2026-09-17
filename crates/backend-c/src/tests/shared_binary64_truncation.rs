@@ -75,6 +75,10 @@ fn truncation_headers_and_transitive_link_libraries_are_certificate_derived() {
             owner.system_libraries(),
             &BTreeSet::from([CSystemLibrary::Math])
         );
+        assert_eq!(
+            &crate::dialect::c_system_libraries(owner.package()).unwrap(),
+            owner.system_libraries()
+        );
         for function in owner.functions() {
             assert_eq!(
                 function.package_identity().system_libraries(),

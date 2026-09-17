@@ -129,6 +129,8 @@ fn certify(lowered: crate::c_lower::LoweredPackage, mode: Mode) -> Result<Progra
             );
             #[cfg(constant_export_manifest_probe)]
             crate::api_manifest::export_contract::check(&package, &manifest);
+            #[cfg(truncation_ast_probe)]
+            crate::api_manifest::truncation_contract::check(&package, &manifest);
             Some(manifest)
         }
     };

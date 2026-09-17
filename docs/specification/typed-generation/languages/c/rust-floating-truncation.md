@@ -34,10 +34,20 @@ probes before extending that supported environment.
 
 ## Package boundary
 
-The source integration checkpoint serializes and authenticates the library
-closure in the package manifest and has native consumers derive link options
-from it. Target foundation exposes typed evidence but does not enable source
-truncation until that publication path is ready. The structural formatter may
+C API manifest schema 9 is selected exactly when the certified system-library
+closure is nonempty. It includes `"system_libraries":["m"]`, sorted and unique,
+and the existing typed function signatures (including void and Boolean results).
+The closed identity `m` denotes CSystemLibrary::Math, not an arbitrary linker
+argument. Consumers map it to their toolchain's math-library option. They reject
+missing, empty, unknown, duplicate or extra requirements for this schema.
+
+The closure is rederived from the exact certificate at construction, checked
+against retained metadata on verification, and rechecked against the owning
+dependency API before publication. Direct and transitive imports retain original
+owner authority. Metadata byte reservations include the library field. Existing
+packages with no library requirement retain their earlier schema and exact bytes;
+absence there means no required system library. This is descriptive output
+metadata, never an alternative authority for constructing checked target AST. The structural formatter may
 print a catalogue callable name in existing call syntax. It must not choose the
 mapping, add dependencies or implement rounding semantics.
 

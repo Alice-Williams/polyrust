@@ -1,7 +1,5 @@
 //! Independent negative controls for the new executable slot and checked input.
 #[cfg(constant_c)]
-use super::CFloatingAbsolute as Absolute;
-#[cfg(constant_c)]
 use super::CFloatingNaN as NaN;
 #[cfg(constant_c)]
 use super::CFloatingNegation as Floating;
@@ -13,8 +11,6 @@ use super::CLocalConstants as Locals;
 use super::CUnitEffects as Unit;
 #[cfg(constant_c)]
 use super::CWrappingNegation as Wrapping;
-#[cfg(constant_java)]
-use super::JavaFloatingAbsolute as Absolute;
 #[cfg(constant_java)]
 use super::JavaFloatingNaN as NaN;
 #[cfg(constant_java)]
@@ -37,6 +33,8 @@ use super::{
     CSharedBorrows as Borrows, CShortCircuitBooleans as Lazy,
 };
 #[cfg(constant_c)]
+use super::{CFloatingAbsolute as Absolute, CFloatingTruncation as Truncation};
+#[cfg(constant_c)]
 use super::{
     CPublicConstantImports as PublicImports, CPublicConstantReads as PublicReads,
     CPublicConstants as PublicDeclarations,
@@ -50,6 +48,8 @@ use super::{
     JavaScalarComparisons as Comparisons, JavaScalarConstants as Constants,
     JavaSharedBorrows as Borrows, JavaShortCircuitBooleans as Lazy,
 };
+#[cfg(constant_java)]
+use super::{JavaFloatingAbsolute as Absolute, JavaFloatingTruncation as Truncation};
 #[cfg(constant_java)]
 use super::{
     JavaPublicConstantImports as PublicImports, JavaPublicConstantReads as PublicReads,
@@ -89,6 +89,7 @@ fn missing() {
         .wrapping_negation(Wrapping)
         .floating_negation(Floating)
         .floating_nan(NaN)
+        .floating_truncation(Truncation)
         .floating_absolute(Absolute)
         .build();
 }

@@ -254,7 +254,19 @@ fn absolute<'tcx>(
         let _ = input.receiver();
     }
 }
+fn truncation<'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+) {
+    if let Ok(Some(input)) = TruncationInput::discover(tcx, checked, expression) {
+        let _ = input.require_context(tcx, checked);
+        let _ = input.receiver();
+    }
+}
 fn main() {
+    capability::<FloatingTruncation>();
+    let _ = truncation;
     capability::<FloatingAbsolute>();
     let _ = absolute;
     capability::<FloatingNaN>();

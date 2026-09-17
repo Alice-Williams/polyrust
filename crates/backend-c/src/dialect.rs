@@ -15,5 +15,5 @@ pub use shared::{
     CImportKind, CImportedCallable, CImportedConstant, CImportedFunction, CImportedValue,
     CPrimitiveType, CStructuralRenderer, c_defined_constants, c_defined_functions,
     c_imported_constants, c_imported_functions, c_output_byte_bound, c_source_package,
-    c_used_imported_constants, project_c_package,
+    c_system_libraries, c_used_imported_constants, project_c_package,
 };

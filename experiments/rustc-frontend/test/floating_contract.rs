@@ -38,6 +38,7 @@ fn missing() {
         .unit_effects(CUnitEffects)
         .wrapping_negation(CWrappingNegation)
         .floating_nan(CFloatingNaN)
+        .floating_truncation(CFloatingTruncation)
         .floating_absolute(CFloatingAbsolute)
         .build();
 }
@@ -67,6 +68,7 @@ fn missing() {
         .unit_effects(JavaUnitEffects)
         .wrapping_negation(JavaWrappingNegation)
         .floating_nan(JavaFloatingNaN)
+        .floating_truncation(JavaFloatingTruncation)
         .floating_absolute(JavaFloatingAbsolute)
         .build();
 }

@@ -223,7 +223,7 @@ pub use definition_view::{CDefinedFunction, c_defined_functions, c_output_byte_b
 pub(crate) use dependency_api::CDependencyAuthority;
 pub use dependency_api::{
     CDependencyApi, CDependencyConstant, CDependencyFunction, CDependencyPackage,
-    CForeignConstantExport,
+    CForeignConstantExport, c_system_libraries,
 };
 pub use dependency_symbols::CImportedCallable;
 pub use file_imports::{CGeneratedHeader, CHeaderGuard, CImportKind};
