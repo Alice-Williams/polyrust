@@ -162,13 +162,14 @@ pub(super) fn dependencies(
                 _ => return None,
             },
             Node::Call(call) => {
-                let CCallableKind::Direct(callee) = call.callable().kind() else {
-                    return None;
-                };
-                if !signature(callee) {
-                    return None;
+                match call.callable().kind() {
+                    CCallableKind::Direct(callee) if signature(callee) => {
+                        edges.insert(callee.as_ref().clone());
+                    }
+                    // No generated-storage effect; arguments still retain every edge.
+                    CCallableKind::Known(crate::dialect::CKnownCall::FloatTruncate) => {}
+                    _ => return None,
                 }
-                edges.insert(callee.as_ref().clone());
                 pending.extend(call.arguments().iter().map(Node::Value));
             }
             Node::Place(place) => match place.kind() {

@@ -229,7 +229,7 @@ impl LinkerDialect for CDialect {
         library: &CHeader,
     ) -> Result<Self::ImportKind, AstViolation> {
         match library {
-            CHeader::Float => Ok(super::CImportKind::Standard(*library)),
+            CHeader::Float | CHeader::Math => Ok(super::CImportKind::Standard(*library)),
             _ => Err(violation("unnamed C library is outside the closed profile")),
         }
     }

@@ -101,12 +101,14 @@ impl Writer<'_> {
         }
     }
     pub(super) fn call(&self, call: &crate::ast::CCall) -> String {
-        let CCallableKind::Direct(function) = call.callable().kind() else {
-            unreachable!("checked direct-call profile");
+        let name = match call.callable().kind() {
+            CCallableKind::Direct(function) => self.names.functions[function.as_ref()].as_str(),
+            CCallableKind::Known(callable) => callable.spelling(),
+            CCallableKind::Indirect { .. } => unreachable!("checked call profile"),
         };
         format!(
             "{}({})",
-            self.names.functions[function.as_ref()].as_str(),
+            name,
             call.arguments()
                 .iter()
                 .map(|value| self.value(value))

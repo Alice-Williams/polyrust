@@ -53,6 +53,11 @@ certified F64 conditionals and checked compiler integration, 840/840 release
 tests, exact magnitude/NaN-category/ordinary-call proof and actual examples. Other floating inspection
 and arithmetic require separate bounded contracts.
 
+[02M — binary64 truncation](M35-03A-02M-floating-truncation.md) is in progress:
+C typed standard-call/dependency foundation, Java rounding-call foundation, then
+checked source and manifest integration. No truncation source claim is made
+until all three reviewed checkpoints pass.
+
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing

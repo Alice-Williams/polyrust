@@ -8,8 +8,9 @@
 These profiles apply only after the closed scalar/record/shared-local grammar
 and all existing C checks pass. The baseline has no generated calls. The
 direct-call extension below admits an acyclic graph of defined scalar callees.
-Neither admits heap allocations, callbacks, loops, recursive records or foreign
-callees. Extending the grammar requires extending the resource model before
+Neither admits heap allocations, callbacks, loops, recursive records or arbitrary
+foreign callees. The bounded standard-call extension below is separately measured.
+Extending the grammar requires extending the resource model before
 certification, not reusing a narrower profile's assumptions.
 
 ## Measurement authority
@@ -180,3 +181,27 @@ and node limits exactly and one over while each individual file still fits.
 Independent native consumers and retained-frame evidence follow the
 [public-package contract](rust-hir-public-packages.md). Actual Rust package-mode
 mapping and manifest parity remain subsequent M35-01D-03C/D obligations.
+
+
+## Bounded standard truncation extension
+
+M35-03A-02M-01 adds only the catalogue-owned FloatTruncate call. Its existing
+typed signature and exact dependency traversal remain mandatory. The catalogue
+supplies a nonzero 64 KiB native stack reserve selected after guarded-stack and
+watermark measurements of the actual rendered three-package call path, including
+GCC14/Zig O0/O2 and GCC ASan/UBSan. Observed total worker use was 6,264..9,152 bytes;
+generated function reports were 8..48 bytes. Guard-page faults and a one-byte
+allowance are negative controls. No arbitrary external call obtains a bound.
+
+The per-function estimate adds the maximum known-call reserve in that body,
+then ordinary direct/imported call paths compose the resulting bounds. Charging
+a library reserve and an ordinary callee on disjoint paths is conservative.
+Sequential standard calls share one reserve. For the older no-direct-edge
+whole-unit policy, add the maximum known-call reserve to the whole-unit estimate.
+All arithmetic remains checked. Neither the 1 MiB budget nor its complete-path
+meaning is weakened. Actual-AST chain boundaries, exact/one-over budget controls
+and missing/one-byte-cost mutations keep this extra charge observable.
+
+See [truncation mapping](rust-floating-truncation.md) for the supported-platform
+boundary. This empirical reserve requires renewed native evidence if the
+supported library/runtime, compiler or instrumentation profile changes.

@@ -82,6 +82,7 @@ pub(super) struct Inventory {
     current: Option<CFunctionRef>,
     frames: BTreeMap<CFunctionRef, Storage>,
     edges: BTreeMap<CFunctionRef, BTreeSet<CFunctionRef>>,
+    library_frames: BTreeMap<CFunctionRef, std::num::NonZeroU64>,
 }
 
 impl Inventory {
@@ -123,14 +124,25 @@ impl Inventory {
             _ => None,
         };
         if let Some(call) = call {
-            let CCallableKind::Direct(target) = call.callable().kind() else {
-                return Err("C stack profile requires resolved direct calls".into());
-            };
             let owner = self.current.as_ref().ok_or("C call has no frame owner")?;
-            self.edges
-                .get_mut(owner)
-                .ok_or("missing C call inventory")?
-                .insert(target.as_ref().clone());
+            match call.callable().kind() {
+                CCallableKind::Direct(target) => {
+                    self.edges
+                        .get_mut(owner)
+                        .ok_or("missing C call inventory")?
+                        .insert(target.as_ref().clone());
+                }
+                CCallableKind::Known(callable) => {
+                    let reserve = callable
+                        .stack_bound_bytes()
+                        .ok_or("C known call lacks a supported nonzero stack reserve")?;
+                    self.library_frames
+                        .entry(owner.clone())
+                        .and_modify(|old| *old = (*old).max(reserve))
+                        .or_insert(reserve);
+                }
+                _ => return Err("C stack profile requires an admitted call".into()),
+            }
         }
         Ok(())
     }
@@ -147,10 +159,30 @@ impl Inventory {
         let shared = Storage::from(total).subtract(bodies)?;
         // Charge non-body syntax to every frame conservatively. This preserves
         // the existing single-function policy, including its fixed allowances.
+        let library_max = self
+            .library_frames
+            .values()
+            .map(|value| value.get())
+            .max()
+            .unwrap_or(0);
         let frames = self
             .frames
             .into_iter()
-            .map(|(function, frame)| Ok((function, frame.add(shared)?.bound()?)))
+            .map(|(function, frame)| {
+                // Sequential standard calls do not have simultaneous frames.
+                // Charging the reserve to its caller even on a separate direct
+                // call path is conservative; no lifetime overlap is assumed.
+                let reserve = self
+                    .library_frames
+                    .get(&function)
+                    .map_or(0, |value| value.get());
+                let bound = frame
+                    .add(shared)?
+                    .bound()?
+                    .checked_add(reserve)
+                    .ok_or("C library stack reserve overflow")?;
+                Ok((function, bound))
+            })
             .collect::<Result<BTreeMap<_, _>, String>>()?;
         if frames.is_empty() {
             return Ok((frames, 0));
@@ -175,6 +207,8 @@ impl Inventory {
         // Preserve the older, stricter whole-unit no-call policy unchanged.
         let bound = if self.edges.values().all(BTreeSet::is_empty) {
             frame_bound(total)?
+                .checked_add(library_max)
+                .ok_or("C whole-unit library stack reserve overflow")?
         } else {
             worst
         };

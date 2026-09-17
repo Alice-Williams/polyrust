@@ -32,6 +32,7 @@ DIRECTIVE = re.compile(
 FIXTURE_ALLOWLIST = {
     "crates/backend-c/test/abi_model_probe.c",
     "crates/backend-c/test/known_calls_probe.c",
+    "crates/backend-c/test/trunc_stack_probe.c",
     "crates/backend-c/test/constants_layout_probe.c",
     "crates/backend-c/test/abi_shapes_test.c",
     "crates/backend-c/test/c_consumer_test.c",
@@ -386,6 +387,13 @@ impl ::portable_codegen::StructuralImportRenderer<CDialect> for Imports {
                      "crates/backend-c/src/known_calls_probe.c"]:
         if not target_template_offenders(adjacent, "#include <math.h>\n"):
             raise AssertionError("known-call oracle exception admitted an adjacent template")
+    stack_probe = "crates/backend-c/test/trunc_stack_probe.c"
+    if target_template_offenders(stack_probe, "#include <pthread.h>\n"):
+        raise AssertionError("test-only guarded stack probe includes were rejected")
+    for adjacent in [stack_probe + ".copy", "crates/backend-c/test/other_stack_probe.c",
+                     "crates/backend-c/src/trunc_stack_probe.c"]:
+        if not target_template_offenders(adjacent, "#include <pthread.h>\n"):
+            raise AssertionError("guarded stack fixture exception admitted an adjacent template")
     constants_probe = "crates/backend-c/test/constants_layout_probe.c"
     if target_template_offenders(constants_probe, "#include <stdint.h>\n"):
         raise AssertionError("independent constants/layout oracle includes were rejected")

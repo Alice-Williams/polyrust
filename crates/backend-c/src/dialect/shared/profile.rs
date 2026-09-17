@@ -238,12 +238,15 @@ fn walk<'a>(
                 add(Node::Type(value.ty()));
                 match value.kind() {
                     CValueKind::Call(call) => {
-                        let CCallableKind::Direct(function) = call.callable().kind() else {
-                            return Err(
-                                "C shared call profile requires resolved direct calls".into()
-                            );
-                        };
-                        signature(function)?;
+                        match call.callable().kind() {
+                            CCallableKind::Direct(function) => signature(function)?,
+                            CCallableKind::Known(crate::dialect::CKnownCall::FloatTruncate) => {}
+                            _ => {
+                                return Err(
+                                    "C shared call profile requires an admitted target".into()
+                                );
+                            }
+                        }
                         for argument in call.arguments() {
                             add(Node::Value(argument));
                         }

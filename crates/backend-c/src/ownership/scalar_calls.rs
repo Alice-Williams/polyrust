@@ -1,6 +1,9 @@
 //! Private effect evidence derived from definitions, never a registered pure flag.
 //! This is not a numeric, termination, stack or rendering certificate.
 mod shape;
+#[cfg(test)]
+#[path = "../tests/scalar_call_truncation.rs"]
+mod truncation_tests;
 
 #[cfg(test)]
 #[path = "../tests/scalar_call_boundaries.rs"]
@@ -103,6 +106,7 @@ impl ScalarCalls {
     pub(super) fn accepts(&self, callable: &crate::ast::CCallable) -> bool {
         match callable.kind() {
             CCallableKind::Direct(function) => self.closed.contains(function.as_ref()),
+            CCallableKind::Known(crate::dialect::CKnownCall::FloatTruncate) => true,
             CCallableKind::Indirect { .. } | CCallableKind::Known(_) => false,
         }
     }

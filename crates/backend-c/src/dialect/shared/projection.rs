@@ -112,7 +112,7 @@ fn build(
                 }
                 CHeader::Stdint => &[CStdType::I32][..],
                 CHeader::Stddef => &[CStdType::Size][..],
-                CHeader::Float => &[][..],
+                CHeader::Float | CHeader::Math => &[][..],
                 _ => return Err("header is outside the first C profile".into()),
             });
         }
@@ -125,7 +125,7 @@ fn build(
                 .headers()
                 .iter()
                 .copied()
-                .filter(|header| *header == CHeader::Float)
+                .filter(|header| matches!(header, CHeader::Float | CHeader::Math))
                 .collect(),
             documentation: documentation
                 .remove(source.identity())

@@ -316,3 +316,6 @@ mod negation;
 
 #[path = "shared_binary64_conditional.rs"]
 mod conditional;
+
+#[path = "shared_binary64_truncation.rs"]
+mod truncation;

@@ -3,6 +3,7 @@ mod constants;
 mod foreign;
 pub use foreign::CForeignConstantExport;
 mod inventory;
+mod system_libraries;
 use super::{CDialect, CGeneratedHeader, resources};
 use crate::ast::{CFileRef, CFunctionRef, CFunctionType, CIdentifier};
 pub use constants::CDependencyConstant;
@@ -20,6 +21,7 @@ struct Authority {
     header: CGeneratedHeader,
     implementation: CFileRef,
     stack_bound_bytes: u64,
+    system_libraries: std::collections::BTreeSet<crate::dialect::CSystemLibrary>,
 }
 
 /// Opaque certificate identity retained inside imported callable references.
@@ -76,6 +78,11 @@ impl CDependencyPackage {
                 super::c_defined_constants(&self.authority.0.package)
                     .map(|definition| definition.name()),
             )
+    }
+
+    /// System libraries needed to link this original package and its dependencies.
+    pub fn system_libraries(&self) -> &std::collections::BTreeSet<crate::dialect::CSystemLibrary> {
+        &self.authority.0.system_libraries
     }
 
     pub fn root(&self) -> RustDeclarationId {
@@ -212,8 +219,10 @@ impl CDependencyApi {
     pub fn from_certificate(package: RenderReadyPackage<CDialect>) -> Result<Self, String> {
         let inventory = inventory::collect(&package)?;
         let measured = resources::measure_package(package.ast())?;
+        let system_libraries = system_libraries::collect(&package)?;
         let authority = Arc::new(Authority {
             package,
+            system_libraries,
             root: inventory.root,
             header: inventory.header,
             implementation: inventory.implementation,
@@ -250,6 +259,11 @@ impl CDependencyApi {
             constants,
             foreign_constants: inventory.foreign_constants,
         })
+    }
+
+    /// Certificate-derived union, including original imported-owner requirements.
+    pub fn system_libraries(&self) -> &std::collections::BTreeSet<crate::dialect::CSystemLibrary> {
+        &self.authority.system_libraries
     }
 
     pub fn root(&self) -> RustDeclarationId {

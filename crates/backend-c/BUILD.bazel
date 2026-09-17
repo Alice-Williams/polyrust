@@ -147,6 +147,7 @@ rust_test(
         "src/runtime.c",
         "src/runtime.h",
         "test/abi-shapes.poly.json",
+        "test/trunc_stack_probe.c",
         "//crates/build:testdata/registration.poly.json",
     ],
     crate_name = "portable_backend_c",
