@@ -56,6 +56,7 @@ load(":metadata_analysis_tests.bzl", "metadata_analysis_tests")
 load(":nan_ast_targets.bzl", "nan_ast_targets")
 load(":nan_contract_targets.bzl", "nan_contract_targets")
 load(":nan_targets.bzl", "nan_targets")
+load(":negative_zero_targets.bzl", "negative_zero_targets")
 load(":nested_correspondence_targets.bzl", "nested_correspondence_targets")
 load(":nested_owned_probe_targets.bzl", "nested_owned_probe_targets")
 load(":nested_record_targets.bzl", "nested_record_targets")
@@ -813,6 +814,8 @@ arithmetic_ast_targets(
 )
 
 remainder_oracle_targets(name = "remainder_oracle_support")
+
+negative_zero_targets(name = "negative_zero_source_clippy_test")
 
 remainder_source_targets(name = "remainder_source_clippy_test")
 

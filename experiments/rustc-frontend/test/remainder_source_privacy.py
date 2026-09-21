@@ -28,11 +28,12 @@ def java_privacy(run, work, runtime, classes, source, declaration):
     run([runtime / "javac", *flags, "-cp", exposed_classes, "-d", exposed_classes, exposed, consumer])
 
 
-def c_privacy(run, work, compiler, flags, source, leaf_object, symbol, label):
+def c_privacy(run, work, compiler, flags, source, leaf_object, symbol, label,
+              argument="0.0", expected="0.0"):
     changed = work / ("privacy-" + label)
     changed.mkdir()
     consumer = changed / "private.c"
-    consumer.write_text(f"extern double {symbol}(double);\nint main(void) {{ return {symbol}(0.0) != 0.0; }}\n")
+    consumer.write_text(f"extern double {symbol}(double);\nint main(void) {{ return {symbol}({argument}) != {expected}; }}\n")
     client = changed / "private.o"
     run([compiler, *flags, "-c", consumer, "-o", client])
     rejected([compiler, client, leaf_object, "-o", changed / "forbidden"], symbol)

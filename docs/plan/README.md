@@ -50,6 +50,11 @@ contract as every other target.
   API/privacy/docs proof and all 900 release/lint targets passing.
   Remaining parity gaps must be implemented before
   legacy runtime removal.
+  [Negative-zero composition (02P)](tasks/M35-03A-02P-negative-zero-composition.md)
+  is complete: 86,017 native/upstream/bit-oracle cases, 903 passing release/lint
+  targets and clean independent review. It reuses ordinary Rust operations
+  without a new compiler capability or custom runtime; wider scalar parity
+  remains the active workstream.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

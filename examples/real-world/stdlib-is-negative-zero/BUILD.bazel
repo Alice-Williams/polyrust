@@ -11,6 +11,7 @@ exports_files(
         "compare.mjs",
         "native_test.sh",
         "src/lib.rs",
+        "rust-source/lib.rs",
     ],
     visibility = ["//visibility:public"],
 )

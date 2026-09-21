@@ -221,3 +221,16 @@ inventories and external privacy failures have mutation-sensitive controls.
 All 900 release/lint targets pass; operation task 02O-04 records exact tree,
 review and gate receipts. Integer %, Euclidean remainder, overloaded Rem and
 f32 remain outside this capability. Wider legacy parity remains incomplete.
+
+## Negative-zero composition proof
+
+[02P](../../plan/tasks/M35-03A-02P-negative-zero-composition.md) expresses the
+existing Apache-2.0 stdlib numeric predicate as ordinary Rust: compare with
+zero, lazily call a private reciprocal function and compare its result with
+zero. It reuses existing checked mappings and adds no special frontend form,
+capability, runtime helper or standard math-library dependency.
+The additive proof compares 86,017 raw-bit inputs with native Rust, upstream
+JavaScript, an independent bit oracle and strict C/Java consumers. Per-input
+native traces and compiling eager/duplicate-call mutations exercise laziness.
+This does not replace the old eight-language example path yet; legacy corpus
+gates remain enabled and full_features remains empty.

@@ -71,6 +71,13 @@ All 900 release/lint targets pass; native Rust traces, exact imports/docs and
 external privacy controls accompany the checked source proof. Other scalar
 families remain open.
 
+[02P — negative-zero composition](M35-03A-02P-negative-zero-composition.md)
+is complete: the existing Apache-2.0 real-world predicate is expressed as
+ordinary Rust, using existing comparison, lazy conjunction, calls and division.
+Its dedicated C/Java source proof is additive to the existing eight-language
+corpus until the later cutover; it does not widen frontend admission. All 903
+release/lint targets pass and the independent review is clean.
+
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing
