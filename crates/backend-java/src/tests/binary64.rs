@@ -124,7 +124,7 @@ fn finite_literal_cannot_claim_a_narrower_type() {
 mod native;
 
 #[test]
-fn closed_double_owner_admits_negation_not_remainder_or_casts() {
+fn closed_double_owner_requires_precedence_and_rejects_narrowing_casts() {
     {
         let operator = JavaBinaryOperator::Remainder;
         let mut declarations = functions(&[1]);
@@ -200,3 +200,6 @@ mod rounding;
 
 #[path = "binary64_arithmetic.rs"]
 mod arithmetic;
+
+#[path = "binary64_remainder.rs"]
+mod remainder;

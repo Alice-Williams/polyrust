@@ -274,6 +274,7 @@ impl Reader<'_> {
                     | JavaBinaryOperator::Subtract
                     | JavaBinaryOperator::Multiply
                     | JavaBinaryOperator::Divide
+                    | JavaBinaryOperator::Remainder
             ) && value.ty == JavaType::primitive(JavaPrimitive::Double)
                 && left.ty == value.ty
                 && right.ty == value.ty

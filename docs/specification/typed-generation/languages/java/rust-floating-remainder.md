@@ -1,6 +1,6 @@
 # Java21 binary64 remainder mapping
 
-- Status: specified; not admitted in the source-bound target body profile
+- Status: target foundation implemented and verified; Rust-source admission pending
 - Parent: [shared remainder](../../rust-floating-remainder.md)
 
 ## Typed mapping
@@ -21,3 +21,8 @@ quotients and subnormal results; compiling family/order/value faults must fail.
 
 [Java SE21, 15.17.3](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html#jls-15.17.3)
 defines the truncating quotient convention and nontrapping floating result.
+
+The dependency-body profile and source reservation now accept this exact typed
+node. Private-reader type/precedence matrices, public certification, native
+value/trace controls and full repository gates are recorded in
+[02O-03](../../../../plan/tasks/M35-03A-02O-03-java-remainder.md).

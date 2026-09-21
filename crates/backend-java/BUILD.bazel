@@ -139,7 +139,9 @@ rust_test(
     data = [
         "test/arithmetic_mutations.py",
         "test/binary64_arithmetic.py",
+        "test/binary64_remainder.py",
         "//experiments/rustc-frontend:arithmetic_oracle_support",
+        "//experiments/rustc-frontend:remainder_oracle_support",
         "@bazel_tools//tools/jdk:current_java_runtime",
     ],
     edition = "2024",

@@ -9,7 +9,7 @@
 
 1. [02O-01 — Independent remainder oracle](M35-03A-02O-01-remainder-oracle.md) — complete.
 2. [02O-02 — C remainder foundation](M35-03A-02O-02-c-remainder.md) — complete.
-3. [02O-03 — Java remainder foundation](M35-03A-02O-03-java-remainder.md).
+3. [02O-03 — Java remainder foundation](M35-03A-02O-03-java-remainder.md) — complete.
 4. [02O-04 — Checked source integration](M35-03A-02O-04-compiler-remainder.md).
 
 Each checkpoint requires an isolated tested tree, independent review and a

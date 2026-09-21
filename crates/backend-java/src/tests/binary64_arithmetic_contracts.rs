@@ -42,7 +42,7 @@ fn arithmetic_requires_exact_type_operator_and_precedence() {
             assert!(!admitted(changed));
         }
     }
-    assert!(!admitted(fixture::binary(
+    assert!(admitted(fixture::binary(
         JavaBinaryOperator::Remainder,
         fixture::literal(0),
         fixture::literal(1)
@@ -89,7 +89,7 @@ fn nested_arithmetic_cannot_hide_unregistered_or_wrong_arity_imports() {
 fn arithmetic_recursively_rejects_unadmitted_operand_shapes() {
     let remainder = fixture::binary(
         JavaBinaryOperator::Remainder,
-        fixture::literal(0),
+        JavaExpr::literal(f::int(), JavaLiteral::I32(0)),
         fixture::literal(1),
     );
     let cast = JavaExpr {

@@ -69,7 +69,6 @@ fn floating_arithmetic_reader_requires_exact_operands_results_and_precedence() {
                             left == JavaPrimitive::Double
                                 && right == left
                                 && result == left
-                                && operator != JavaBinaryOperator::Remainder
                                 && precedence == expected_precedence,
                             "{left:?} {operator:?} {right:?} -> {result:?}, {precedence:?}"
                         );

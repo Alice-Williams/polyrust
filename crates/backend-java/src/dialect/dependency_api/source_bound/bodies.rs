@@ -85,7 +85,8 @@ impl Reader<'_> {
                     | JavaBinaryOperator::Add
                     | JavaBinaryOperator::Subtract
                     | JavaBinaryOperator::Multiply
-                    | JavaBinaryOperator::Divide,
+                    | JavaBinaryOperator::Divide
+                    | JavaBinaryOperator::Remainder,
                 left,
                 right,
             } => {
