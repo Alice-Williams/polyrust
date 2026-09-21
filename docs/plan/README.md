@@ -55,6 +55,10 @@ contract as every other target.
   targets and clean independent review. It reuses ordinary Rust operations
   without a new compiler capability or custom runtime; wider scalar parity
   remains the active workstream.
+  [Wrapping addition (02Q)](tasks/M35-03A-02Q-wrapping-addition.md) is in progress.
+  Its independent oracle is complete: 15,790 native Rust cases, 906 passing
+  release/lint targets and clean review. The C target safety foundation is next,
+  followed by separate Java target and checked compiler checkpoints.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the
