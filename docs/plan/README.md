@@ -62,6 +62,7 @@ existing C types, and M35-01C preserves doc attributes before heap-owner work.
 ### Phase 0 — Reproducible foundation
 
 - [M00 — Linux/Bazel development environment](milestones/M00-development-environment.md) — complete
+- [M00A — Local development storage budget](tasks/M00A-development-storage-budget.md) — in progress
 
 ### Phase 1 — Semantic spine
 

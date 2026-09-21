@@ -1,0 +1,3 @@
+/tools/bazel text eol=lf
+/tools/dev/*.sh text eol=lf
+/tools/dev/*.py text eol=lf

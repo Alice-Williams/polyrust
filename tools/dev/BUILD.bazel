@@ -1,0 +1,12 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+sh_test(
+    name = "storage_budget_test",
+    srcs = ["storage_budget_test.sh"],
+    data = [
+        "cache_budget.py",
+        "storage_budget_test.py",
+        "storage_guard.py",
+    ],
+    tags = ["policy"],
+)

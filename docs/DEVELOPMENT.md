@@ -37,6 +37,38 @@ docker run --rm --interactive --tty `
 
 Inside the container, the repository is `/workspace`.
 
+## Local storage budgets
+
+Run builds through `bazel` (the container's Bazelisk symlink) or `bazelisk`.
+The checked-in `tools/bazel` hook automatically applies local storage policy
+when `/workspace` is a mounted directory in a Docker container. Do not bypass
+this hook with `BAZELISK_SKIP_WRAPPER`, a directly downloaded Bazel binary, or an
+older candidate snapshot without the hook. GitHub Actions is passed through
+unchanged and retains its existing persistent caches and cached test results.
+
+- Artifact cache: **50 GB** (decimal), oldest entries evicted before and after
+  builds; entries older than 14 days are also evicted. Both AC and CAS entries
+  remain cacheable, including test results. A running build can temporarily
+  exceed this cache target; this is an eviction budget, not a filesystem quota.
+- Docker filesystem: local builds are refused/stopped at **200 GB used**.
+- Host drive: local builds require at least **150 GB free** on the filesystem
+  containing `/workspace`. Checks run before, during (every two seconds), and
+  at the end of a build. Already-running writes can overshoot these thresholds.
+- Local Bazel invocations use batch mode and a shared lock to prevent cache
+  maintenance from overlapping other guarded builds. Termination stops the
+  batch process group; source files and output bases are never pruned.
+
+These are **build guards, not a hard limit on Docker's virtual-disk capacity**.
+Other containers and direct/unwrapped commands can still consume disk space.
+Deleting cache files also does not necessarily shrink the host VHDX file.
+Keep only active build output bases: after a candidate is completed, inspect
+and explicitly remove its disposable outputs, never its source snapshot.
+
+New Dev Containers mount the named Bazel volumes at `/var/tmp/polyrust-cache`,
+matching `.bazelrc`. Existing containers retain their original mounts until
+recreated; do not recreate an existing container without preserving its work.
+Focused verification: `bazelisk test //tools/dev:storage_budget_test`.
+
 ## Verify Step 0
 
 ```bash

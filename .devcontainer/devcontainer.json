@@ -12,7 +12,7 @@
     "source=polyrust-cargo-registry,target=/usr/local/cargo/registry,type=volume",
     "source=polyrust-cargo-git,target=/usr/local/cargo/git,type=volume",
     "source=polyrust-bazelisk-cache,target=/root/.cache/bazelisk,type=volume",
-    "source=polyrust-bazel-repository,target=/root/.cache/bazel-repository,type=volume",
-    "source=polyrust-bazel-disk,target=/root/.cache/bazel-disk,type=volume"
+    "source=polyrust-bazel-repository,target=/var/tmp/polyrust-cache/bazel-repository,type=volume",
+    "source=polyrust-bazel-disk,target=/var/tmp/polyrust-cache/bazel-disk,type=volume"
   ]
 }
