@@ -14,7 +14,7 @@ CASES = {
     "other_method": ("pub fn value(v:f64)->f64 {v.floor()}", "expression mapping is not implemented"),
     "cast": ("pub fn value(v:i64)->f64 {(v as f64).trunc()}", "expression mapping is not implemented"),
     "constant": ("const V:f64=1.0; pub fn value()->f64 {V.trunc()}", "constants support only"),
-    "remainder": ("pub fn value(v:f64)->f64 {(v%1.0).trunc()}", "only comparison binary operators"),
+    "euclidean_remainder": ("pub fn value(v:f64)->f64 {(v.rem_euclid(1.0)).trunc()}", "expression mapping is not implemented"),
     "indirect": ("pub fn value(v:f64)->f64 {let f:fn(f64)->f64=f64::trunc; f(v)}", "direct calls require resolved ordinary functions"),
     "generic": ("fn forward<T>(v:T)->T {v} pub fn value(v:f64)->f64 {forward(v).trunc()}", "generic or mismatched direct callee identity"),
 }

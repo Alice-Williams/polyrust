@@ -98,6 +98,17 @@ impl<'tcx> Reader<'tcx> {
                             .lower(reader, BorrowInput(value))
                     }
                     hir::ExprKind::Binary(operator, ..)
+                        if operator.node == hir::BinOpKind::Rem
+                            && matches!(
+                                reader.checked.expr_ty(value).kind(),
+                                rustc_middle::ty::Float(rustc_middle::ty::FloatTy::F64)
+                            ) =>
+                    {
+                        let input = RemainderInput::read(reader.tcx, reader.checked, value)?;
+                        Supports::<FloatingRemainder>::mapping(&reader.mappings)
+                            .lower(reader, input)
+                    }
+                    hir::ExprKind::Binary(operator, ..)
                         if matches!(
                             operator.node,
                             hir::BinOpKind::Add

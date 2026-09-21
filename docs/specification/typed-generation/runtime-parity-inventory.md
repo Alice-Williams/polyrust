@@ -204,6 +204,20 @@ Canonical AST/dataflow probes, fourteen negative mapping contracts, forty
 atomic unsupported-source cases and strict native composition clients accompany
 the source mapping. The full 879-test release/lint gate passes.
 
-This is still partial JavaFloatingPointArithmetic coverage: remainder is not
-admitted. It neither marks a broad legacy family fully migrated nor authorizes
-removing its runtime implementation; full_features remains empty.
+The following increment adds remainder. Neither increment marks a broad legacy
+family fully migrated or authorizes removing its runtime implementation;
+full_features remains empty.
+
+## Binary64 truncating remainder increment
+
+[02O](../../plan/tasks/M35-03A-02O-floating-remainder.md) adds built-in f64 %
+through a separate private RemainderInput and executable FloatingRemainder
+binding. C uses its typed standard fmod catalogue and certificate-derived -lm;
+Java uses primitive double %. No custom runtime artifact is introduced.
+Three source crates produce 22,832 target observations against 11,416 native
+Rust cases and an independent integer/rational oracle. Actual Rust operand
+traces, six compiling semantic faults, exact import/declaration/documentation
+inventories and external privacy failures have mutation-sensitive controls.
+All 900 release/lint targets pass; operation task 02O-04 records exact tree,
+review and gate receipts. Integer %, Euclidean remainder, overloaded Rem and
+f32 remain outside this capability. Wider legacy parity remains incomplete.

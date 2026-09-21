@@ -10,7 +10,7 @@ use super::{
 };
 use super::{
     JavaFloatingAbsolute as Absolute, JavaFloatingArithmetic as Arithmetic,
-    JavaFloatingTruncation as Truncation,
+    JavaFloatingRemainder as Remainder, JavaFloatingTruncation as Truncation,
 };
 use super::{JavaPublicConstantImports, JavaPublicConstantReads, JavaPublicConstants};
 
@@ -41,6 +41,7 @@ fn must_not_compile() {
         .floating_nan(NaN)
         .floating_truncation(Truncation)
         .floating_arithmetic(Arithmetic)
+        .floating_remainder(Remainder)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -68,6 +69,7 @@ fn must_not_compile() {
         .floating_nan(NaN)
         .floating_truncation(Truncation)
         .floating_arithmetic(Arithmetic)
+        .floating_remainder(Remainder)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -95,6 +97,7 @@ fn must_not_compile() {
         .floating_nan(NaN)
         .floating_truncation(Truncation)
         .floating_arithmetic(Arithmetic)
+        .floating_remainder(Remainder)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -122,6 +125,7 @@ fn must_not_compile() {
         .floating_nan(NaN)
         .floating_truncation(Truncation)
         .floating_arithmetic(Arithmetic)
+        .floating_remainder(Remainder)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -149,6 +153,7 @@ fn must_not_compile() {
         .floating_nan(NaN)
         .floating_truncation(Truncation)
         .floating_arithmetic(Arithmetic)
+        .floating_remainder(Remainder)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -176,6 +181,7 @@ fn must_not_compile() {
         .floating_nan(NaN)
         .floating_truncation(Truncation)
         .floating_arithmetic(Arithmetic)
+        .floating_remainder(Remainder)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -203,6 +209,7 @@ fn must_not_compile() {
         .floating_nan(NaN)
         .floating_truncation(Truncation)
         .floating_arithmetic(Arithmetic)
+        .floating_remainder(Remainder)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -230,6 +237,7 @@ fn must_not_compile() {
         .floating_nan(NaN)
         .floating_truncation(Truncation)
         .floating_arithmetic(Arithmetic)
+        .floating_remainder(Remainder)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -257,6 +265,7 @@ fn must_not_compile() {
         .floating_nan(NaN)
         .floating_truncation(Truncation)
         .floating_arithmetic(Arithmetic)
+        .floating_remainder(Remainder)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -284,6 +293,7 @@ fn must_not_compile() {
         .floating_nan(NaN)
         .floating_truncation(Truncation)
         .floating_arithmetic(Arithmetic)
+        .floating_remainder(Remainder)
         .floating_absolute(Absolute)
         .build();
 }

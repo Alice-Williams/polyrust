@@ -274,7 +274,19 @@ fn arithmetic<'tcx>(
         let _ = (input.operator(), input.left(), input.right());
     }
 }
+fn remainder<'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+) {
+    if let Ok(input) = RemainderInput::read(tcx, checked, expression) {
+        let _ = input.require_context(tcx, checked);
+        let _ = (input.left(), input.right());
+    }
+}
 fn main() {
+    capability::<FloatingRemainder>();
+    let _ = remainder;
     capability::<FloatingArithmetic>();
     let _ = arithmetic;
     let _ = [

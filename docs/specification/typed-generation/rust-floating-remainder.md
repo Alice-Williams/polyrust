@@ -1,6 +1,6 @@
 # Checked binary64 truncating remainder
 
-- Status: accepted staged contract; source admission not implemented
+- Status: implemented and verified for the bounded checked f64 source contract
 - Plan: [02O](../../plan/tasks/M35-03A-02O-floating-remainder.md)
 
 ## Semantics

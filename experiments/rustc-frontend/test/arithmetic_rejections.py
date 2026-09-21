@@ -9,7 +9,7 @@ CASES = {
     "i64": ("pub fn value(a:i64,b:i64)->i64 {a+b}", "only comparison binary operators"),
     "borrowed_add": ("pub fn value(a:f64,b:f64)->f64 {&a+&b}", "unadjusted built-in f64"),
     "overloaded": ("struct Fake {value:f64} impl std::ops::Add for Fake {type Output=f64; fn add(self,rhs:Self)->f64 {self.value+rhs.value}} pub fn value(a:f64,b:f64)->f64 {Fake{value:a}+Fake{value:b}}", "unadjusted built-in f64"),
-    "remainder": ("pub fn value(a:f64,b:f64)->f64 {a%b}", "only comparison binary operators"),
+    "euclidean_remainder": ("pub fn value(a:f64,b:f64)->f64 {a.rem_euclid(b)}", "expression mapping is not implemented"),
     "cast": ("pub fn value(a:i64,b:f64)->f64 {(a as f64)+b}", "expression mapping is not implemented"),
     "assignment": ("pub fn value(mut a:f64,b:f64)->f64 {a+=b;a}", "only plain immutable parameters"),
     "fused": ("pub fn value(a:f64,b:f64)->f64 {a.mul_add(b,-1.0)}", "expression mapping is not implemented"),

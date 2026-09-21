@@ -41,6 +41,7 @@ mod floating_absolute;
 mod floating_arithmetic;
 mod floating_nan;
 mod floating_negation;
+mod floating_remainder;
 mod floating_truncation;
 #[cfg(unit_contract)]
 #[allow(dead_code, unused_imports)]
@@ -141,6 +142,7 @@ pub(crate) use floating_absolute::CFloatingAbsolute;
 pub(crate) use floating_arithmetic::CFloatingArithmetic;
 pub(crate) use floating_nan::CFloatingNaN;
 pub(crate) use floating_negation::CFloatingNegation;
+pub(crate) use floating_remainder::CFloatingRemainder;
 pub(crate) use floating_truncation::CFloatingTruncation;
 pub(crate) use function_signatures::CFunctionSignatures;
 pub(crate) use integer_bitwise::CIntegerBitwise;
@@ -190,6 +192,7 @@ pub(crate) type CBindings = Bindings<
     CFloatingAbsolute,
     CFloatingTruncation,
     CFloatingArithmetic,
+    CFloatingRemainder,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -220,6 +223,7 @@ pub(crate) fn c_bindings() -> CBindings {
         .floating_absolute(CFloatingAbsolute)
         .floating_truncation(CFloatingTruncation)
         .floating_arithmetic(CFloatingArithmetic)
+        .floating_remainder(CFloatingRemainder)
         .build()
 }
 
@@ -266,3 +270,12 @@ mod arithmetic_contract;
 #[cfg(arithmetic_ast_probe)]
 #[path = "../../../test/arithmetic_c_ast.rs"]
 mod arithmetic_ast;
+
+#[cfg(remainder_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/remainder_contract.rs"]
+mod remainder_contract;
+
+#[cfg(remainder_ast_probe)]
+#[path = "../../../test/remainder_c_ast.rs"]
+mod remainder_ast;

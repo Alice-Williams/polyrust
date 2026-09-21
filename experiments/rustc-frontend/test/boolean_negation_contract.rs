@@ -39,7 +39,7 @@ use super::{
 #[cfg(boolean_c)]
 use super::{
     CFloatingAbsolute as Absolute, CFloatingArithmetic as Arithmetic,
-    CFloatingTruncation as Truncation,
+    CFloatingRemainder as Remainder, CFloatingTruncation as Truncation,
 };
 #[cfg(boolean_c)]
 use super::{
@@ -58,7 +58,7 @@ use super::{
 #[cfg(boolean_java)]
 use super::{
     JavaFloatingAbsolute as Absolute, JavaFloatingArithmetic as Arithmetic,
-    JavaFloatingTruncation as Truncation,
+    JavaFloatingRemainder as Remainder, JavaFloatingTruncation as Truncation,
 };
 #[cfg(boolean_java)]
 use super::{
@@ -101,6 +101,7 @@ fn missing() {
         .floating_nan(NaN)
         .floating_truncation(Truncation)
         .floating_arithmetic(Arithmetic)
+        .floating_remainder(Remainder)
         .floating_absolute(Absolute)
         .build();
 }

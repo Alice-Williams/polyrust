@@ -47,6 +47,10 @@ fn expected<'tcx>(reader: &Reader<'tcx>, source: &'tcx hir::Expr<'tcx>) -> JavaE
                     (JavaBinaryOperator::Multiply, JavaPrecedence::Multiplicative)
                 }
                 hir::BinOpKind::Div => (JavaBinaryOperator::Divide, JavaPrecedence::Multiplicative),
+                hir::BinOpKind::Rem => (
+                    JavaBinaryOperator::Remainder,
+                    JavaPrecedence::Multiplicative,
+                ),
                 _ => panic!("arithmetic operator"),
             };
             JavaExpr {
@@ -206,6 +210,8 @@ pub(super) fn check<'tcx>(
             );
             #[cfg(arithmetic_ast_probe)]
             eprintln!("ARITHMETIC_DETACHED\tjava");
+            #[cfg(remainder_ast_probe)]
+            eprintln!("REMAINDER_DETACHED\tjava");
         }
     }
     if let hir::ExprKind::Call(_, [argument]) = source.kind

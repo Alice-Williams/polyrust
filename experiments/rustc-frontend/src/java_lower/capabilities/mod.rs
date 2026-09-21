@@ -41,6 +41,7 @@ mod floating_absolute;
 mod floating_arithmetic;
 mod floating_nan;
 mod floating_negation;
+mod floating_remainder;
 mod floating_truncation;
 #[cfg(unit_contract)]
 #[allow(dead_code, unused_imports)]
@@ -132,6 +133,7 @@ pub(crate) use floating_absolute::JavaFloatingAbsolute;
 pub(crate) use floating_arithmetic::JavaFloatingArithmetic;
 pub(crate) use floating_nan::JavaFloatingNaN;
 pub(crate) use floating_negation::JavaFloatingNegation;
+pub(crate) use floating_remainder::JavaFloatingRemainder;
 pub(crate) use floating_truncation::JavaFloatingTruncation;
 pub(crate) use function_signatures::JavaFunctionSignatures;
 pub(crate) use integer_bitwise::JavaIntegerBitwise;
@@ -179,6 +181,7 @@ pub(crate) type JavaBindings = Bindings<
     JavaFloatingAbsolute,
     JavaFloatingTruncation,
     JavaFloatingArithmetic,
+    JavaFloatingRemainder,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -209,6 +212,7 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .floating_absolute(JavaFloatingAbsolute)
         .floating_truncation(JavaFloatingTruncation)
         .floating_arithmetic(JavaFloatingArithmetic)
+        .floating_remainder(JavaFloatingRemainder)
         .build()
 }
 
@@ -255,3 +259,12 @@ mod arithmetic_contract;
 #[cfg(arithmetic_ast_probe)]
 #[path = "../../../test/arithmetic_java_ast.rs"]
 mod arithmetic_ast;
+
+#[cfg(remainder_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/remainder_contract.rs"]
+mod remainder_contract;
+
+#[cfg(remainder_ast_probe)]
+#[path = "../../../test/remainder_java_ast.rs"]
+mod remainder_ast;

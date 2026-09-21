@@ -45,9 +45,10 @@ contract as every other target.
   values/comparisons, negation, NaN classification, absolute value and truncation.
   Binary64 arithmetic (02N), including checked source integration, is complete
   with all 879 release/lint tests passing and two clean independent reviews.
-  Truncating remainder (02O) has a verified independent oracle and C/Java target
-  foundations (882 release/lint targets passed); checked compiler integration
-  remains. Remaining parity gaps must be implemented before
+  Truncating remainder (02O) is complete through checked compiler integration,
+  with an independent oracle, measured Rust/target traces, mutation-sensitive
+  API/privacy/docs proof and all 900 release/lint targets passing.
+  Remaining parity gaps must be implemented before
   legacy runtime removal.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work

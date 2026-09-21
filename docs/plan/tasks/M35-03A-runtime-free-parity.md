@@ -47,8 +47,10 @@ controls. M35-03A-02D adds built-in i32/i64 complement and bitwise and/or/xor,
 with independent native oracles, call-order mutations and typed AST probes.
 M35-03A-02E adds built-in eager bool And/Or/Xor with exhaustive value/trace
 controls, lazy-composition and real imported-call proofs.
-Implementation parity remains incomplete: arithmetic, floating-point,
-char/unit values and the other capability families remain outstanding.
+Implementation parity remains incomplete: remaining integer operations,
+char/general unit storage, wider constants and the other capability families
+remain outstanding. The later bounded floating-point increments are recorded
+in the scalar plan; this historical list is not their current status.
 
 Legacy C embeds runtime.c/runtime.h and always requests runtime.core. Its
 portable generator remains active in CLI, conformance, benchmarks and examples.

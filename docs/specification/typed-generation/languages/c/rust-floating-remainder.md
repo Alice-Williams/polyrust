@@ -1,6 +1,6 @@
 # C17 binary64 remainder mapping
 
-- Status: target foundation implemented and verified; Rust-source admission pending
+- Status: target foundation and checked Rust-source integration verified
 - Parent: [shared remainder](../../rust-floating-remainder.md)
 
 ## Typed mapping

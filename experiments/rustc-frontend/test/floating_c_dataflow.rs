@@ -22,6 +22,12 @@ fn expected<'tcx>(reader: &Reader<'tcx>, source: &'tcx hir::Expr<'tcx>) -> CValu
             e.unary(CUnaryOperator::Negate, expected(reader, operand))
                 .unwrap()
         }
+        hir::ExprKind::Binary(operator, left, right) if operator.node == hir::BinOpKind::Rem => e
+            .call_value(
+                e.known(portable_backend_c::dialect::CKnownCall::FloatRemainder),
+                vec![expected(reader, left), expected(reader, right)],
+            )
+            .unwrap(),
         hir::ExprKind::Binary(operator, left, right) => {
             let operator = match operator.node {
                 hir::BinOpKind::Add => CBinaryOperator::Add,
@@ -172,6 +178,59 @@ pub(super) fn check<'tcx>(
             );
             #[cfg(arithmetic_ast_probe)]
             eprintln!("ARITHMETIC_DETACHED\tc");
+        }
+    }
+    if let CValueKind::Call(call) = operand.kind()
+        && matches!(
+            call.callable().kind(),
+            CCallableKind::Known(portable_backend_c::dialect::CKnownCall::FloatRemainder)
+        )
+    {
+        let [left, right] = call.arguments() else {
+            panic!("remainder arguments")
+        };
+        let e = reader.expressions();
+        let wrong = e
+            .binary(CBinaryOperator::Divide, left.clone(), right.clone())
+            .unwrap();
+        assert_ne!(
+            expanded(reader, &wrong, &reader.prelude, 0),
+            wanted,
+            "replacing the actual remainder call with division must fail"
+        );
+        if expanded(reader, left, &reader.prelude, 0) != expanded(reader, right, &reader.prelude, 0)
+        {
+            let swapped = e
+                .call_value(call.callable().clone(), vec![right.clone(), left.clone()])
+                .unwrap();
+            assert_ne!(
+                expanded(reader, &swapped, &reader.prelude, 0),
+                wanted,
+                "swapping actual catalogue arguments must fail"
+            );
+            let mut detached = reader.prelude.clone();
+            let CStatementKind::Declare(last) = detached.last().unwrap().kind() else {
+                panic!("right temporary")
+            };
+            *detached.last_mut().unwrap() = reader
+                .statements()
+                .unwrap()
+                .declare(
+                    last.local().clone(),
+                    Some(e.expression_initializer(left.clone()).unwrap()),
+                )
+                .unwrap();
+            assert_eq!(
+                &detached[..detached.len() - 1],
+                &reader.prelude[..reader.prelude.len() - 1]
+            );
+            assert_ne!(
+                expanded(reader, operand, &detached, 0),
+                wanted,
+                "right result disconnected while original calls remain"
+            );
+            #[cfg(remainder_ast_probe)]
+            eprintln!("REMAINDER_DETACHED\tc");
         }
     }
     if let hir::ExprKind::Call(_, [argument]) = source.kind

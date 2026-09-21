@@ -78,7 +78,10 @@ load(":public_constant_targets.bzl", "public_constant_targets")
 load(":public_inventory_targets.bzl", "public_inventory_targets")
 load(":public_package_targets.bzl", "public_package_targets")
 load(":publication_probe_targets.bzl", "publication_probe_targets")
+load(":remainder_ast_targets.bzl", "remainder_ast_targets")
+load(":remainder_contract_targets.bzl", "remainder_contract_targets")
 load(":remainder_oracle_targets.bzl", "remainder_oracle_targets")
+load(":remainder_source_targets.bzl", "remainder_source_targets")
 load(":runtime_parity_targets.bzl", "runtime_parity_targets")
 load(":scalar_box_targets.bzl", "scalar_box_targets")
 load(":short_circuit_ast_targets.bzl", "short_circuit_ast_targets")
@@ -810,3 +813,15 @@ arithmetic_ast_targets(
 )
 
 remainder_oracle_targets(name = "remainder_oracle_support")
+
+remainder_source_targets(name = "remainder_source_clippy_test")
+
+remainder_ast_targets(
+    name = "remainder_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+remainder_contract_targets(
+    name = "remainder_contract_test",
+    c_sources = ADAPTER_SOURCES,
+)

@@ -10,6 +10,7 @@ mod floating_absolute;
 mod floating_arithmetic;
 mod floating_nan;
 mod floating_negation;
+mod floating_remainder;
 mod floating_truncation;
 mod function_signatures;
 #[cfg(any(constant_import_wrong_type, constant_import_wrong_value))]
@@ -71,3 +72,5 @@ pub(crate) use floating_truncation::{FloatingTruncation, TruncationInput};
 pub(crate) use floating_arithmetic::{
     ArithmeticInput, FloatingArithmetic, FloatingArithmeticOperator,
 };
+
+pub(crate) use floating_remainder::{FloatingRemainder, RemainderInput};

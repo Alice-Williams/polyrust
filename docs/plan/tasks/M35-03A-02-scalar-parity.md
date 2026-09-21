@@ -66,7 +66,10 @@ two independent final reviews are clean. Remainder and other scalar families
 remain separate.
 
 [02O — binary64 truncating remainder](M35-03A-02O-floating-remainder.md)
-follows 02N with its own oracle, C/Java target and compiler checkpoints.
+is complete through its own oracle, C/Java target and compiler checkpoints.
+All 900 release/lint targets pass; native Rust traces, exact imports/docs and
+external privacy controls accompany the checked source proof. Other scalar
+families remain open.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

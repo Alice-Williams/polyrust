@@ -5,10 +5,11 @@ use super::{
         AbsoluteInput, ArithmeticInput, BitwiseInput, BooleanNegation, BorrowInput, CallInput,
         ComparisonInput, ConstantInput, DirectCalls, EagerBooleanInput, EagerBooleans,
         FloatingAbsolute, FloatingArithmetic, FloatingInput, FloatingNaN, FloatingNegation,
-        FloatingTruncation, IntegerBitwise, LazyBooleanInput, LiteralInput, LiteralValues, Mapping,
-        NaNInput, NegationInput, PlaceInput, PublicConstantReadInput, PublicConstantReads,
-        ResolvedPlaces, ScalarComparisons, ScalarConstants, SharedBorrows, ShortCircuitBooleans,
-        Supports, TruncationInput, WrappingInput, WrappingNegation,
+        FloatingRemainder, FloatingTruncation, IntegerBitwise, LazyBooleanInput, LiteralInput,
+        LiteralValues, Mapping, NaNInput, NegationInput, PlaceInput, PublicConstantReadInput,
+        PublicConstantReads, RemainderInput, ResolvedPlaces, ScalarComparisons, ScalarConstants,
+        SharedBorrows, ShortCircuitBooleans, Supports, TruncationInput, WrappingInput,
+        WrappingNegation,
     },
 };
 use portable_backend_c::ast::{CPlace, CValue};
@@ -85,6 +86,16 @@ impl<'tcx> Reader<'tcx> {
             hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, _) => {
                 let mapping = Supports::<SharedBorrows>::mapping(&self.mappings);
                 mapping.lower(self, BorrowInput(value))
+            }
+            hir::ExprKind::Binary(operator, ..)
+                if operator.node == hir::BinOpKind::Rem
+                    && matches!(
+                        self.checked.expr_ty(value).kind(),
+                        rustc_middle::ty::Float(rustc_middle::ty::FloatTy::F64)
+                    ) =>
+            {
+                let input = RemainderInput::read(self.tcx, self.checked, value)?;
+                Supports::<FloatingRemainder>::mapping(&self.mappings).lower(self, input)
             }
             hir::ExprKind::Binary(operator, ..)
                 if matches!(

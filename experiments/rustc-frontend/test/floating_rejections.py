@@ -16,7 +16,7 @@ def main():
         "method": ("use std::ops::Neg; pub fn value(v:f64)->f64 {v.neg()}", "expression mapping is not implemented"),
         "integer": ("pub fn value(v:i64)->i64 {-v}", "only negative scalar literals"),
         "cast": ("pub fn value(v:i64)->f64 {-(v as f64)}", "expression mapping is not implemented"),
-        "remainder": ("pub fn value(v:f64)->f64 {-(v%1.0)}", "only comparison binary operators"),
+        "euclidean_remainder": ("pub fn value(v:f64)->f64 {-(v.rem_euclid(1.0))}", "expression mapping is not implemented"),
         "nonfinite": ("#![allow(overflowing_literals)]\npub fn value()->f64 {-1e400}", "nonfinite f64 literals"),
         "constant": ("const V:f64=1.0; pub fn value()->f64 {-V}", "constants support only"),
     }
