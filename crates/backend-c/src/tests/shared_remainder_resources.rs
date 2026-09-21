@@ -37,7 +37,10 @@ fn graph(count: usize, repetitions: usize) -> LinkedTargetPackage<CDialect> {
             let statements = CStatements::new(registry.registrations(), function.clone()).unwrap();
             let operand = e.read(e.parameter(parameters[0].clone()).unwrap()).unwrap();
             let call = e
-                .call_value(e.known(CKnownCall::FloatTruncate), vec![operand])
+                .call_value(
+                    e.known(CKnownCall::FloatRemainder),
+                    vec![operand.clone(), operand],
+                )
                 .unwrap();
             let mut contents = vec![statements.discard(call).unwrap(); repetitions];
             contents.extend_from_slice(body.statements());
@@ -57,7 +60,10 @@ fn graph(count: usize, repetitions: usize) -> LinkedTargetPackage<CDialect> {
 
 #[test]
 fn known_stack_cost_is_nonzero_once_per_frame_and_transitive() {
-    let reserve = CKnownCall::FloatTruncate.stack_bound_bytes().unwrap().get();
+    let reserve = CKnownCall::FloatRemainder
+        .stack_bound_bytes()
+        .unwrap()
+        .get();
     assert_eq!(reserve, 65536);
     for known in CKnownCall::ALL {
         assert_eq!(
@@ -82,13 +88,16 @@ fn known_stack_cost_is_nonzero_once_per_frame_and_transitive() {
         .iter()
         .map(|owner| owner.functions().next().unwrap().stack_bound_bytes())
         .collect();
-    assert!(bounds[0] > reserve);
-    assert!(bounds[1] > bounds[0] && bounds[2] > bounds[1]);
+    assert!(bounds[0] < reserve);
+    assert!(bounds[1] > reserve && bounds[2] > bounds[1]);
 }
 
 #[test]
-fn actual_truncation_call_chain_budget_and_missing_cost_mutants() {
-    let reserve = CKnownCall::FloatTruncate.stack_bound_bytes().unwrap().get();
+fn actual_remainder_call_chain_budget_and_missing_cost_mutants() {
+    let reserve = CKnownCall::FloatRemainder
+        .stack_bound_bytes()
+        .unwrap()
+        .get();
     let limit = resources::policy::CResourceKind::NativeFrameBytes.limit();
     let mut previous = None;
     for count in 1..32 {
@@ -108,7 +117,7 @@ fn actual_truncation_call_chain_budget_and_missing_cost_mutants() {
                 .any(|error| error.code == DiagnosticCode::TargetResourceLimit
                     && error.message.contains("NativeFrameBytes"))
         );
-        let source = portable_diagnostics::SourceRef::logical(["c", "truncation-cost-control"]);
+        let source = portable_diagnostics::SourceRef::logical(["c", "remainder-cost-control"]);
         let mut missing = measured.total.clone();
         missing.frame_bound -= count as u64 * reserve;
         assert!(
@@ -131,7 +140,7 @@ fn actual_truncation_call_chain_budget_and_missing_cost_mutants() {
                 .any(|error| error.kind() == resources::policy::CResourceKind::NativeFrameBytes)
         );
         eprintln!(
-            "truncation stack chain: {} admitted, {count} rejected at {}, preceding {}",
+            "remainder stack chain: {} admitted, {count} rejected at {}, preceding {}",
             count - 1,
             measured.total.frame_bound,
             previous.unwrap()

@@ -316,3 +316,6 @@ mod truncation;
 
 #[path = "shared_binary64_arithmetic.rs"]
 mod arithmetic;
+
+#[path = "shared_binary64_remainder.rs"]
+mod remainder;

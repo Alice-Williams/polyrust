@@ -109,11 +109,9 @@ fn truncation_headers_and_transitive_link_libraries_are_certificate_derived() {
 }
 
 #[test]
-fn unrelated_standard_call_and_invalid_truncation_arguments_reject() {
+fn admitted_remainder_and_invalid_truncation_arguments_are_distinct() {
     let remainder = fixture(105, CKnownCall::FloatRemainder);
-    assert!(
-        crate::dialect::project_c_package(remainder.registry.clone(), remainder.files).is_err()
-    );
+    assert!(crate::dialect::project_c_package(remainder.registry.clone(), remainder.files).is_ok());
     let f = f::fixture(106, &[CScalarType::F64], &[], &[None]);
     let e = CExpressions::new(f.registry.registrations());
     let call = || e.known(CKnownCall::FloatTruncate);

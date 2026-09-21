@@ -1,6 +1,6 @@
 # C17 binary64 remainder mapping
 
-- Status: specified; not admitted in the shared source-package profile
+- Status: target foundation implemented and verified; Rust-source admission pending
 - Parent: [shared remainder](../../rust-floating-remainder.md)
 
 ## Typed mapping
@@ -25,3 +25,9 @@ categories. errno and floating flags are not observed by this profile.
 [N1570](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf), 7.12.10.1
 and F.10.7.1, specifies fmod and the IEC 60559 cases; arbitrary ISO C library
 implementations are not covered merely because their function is named fmod.
+
+The certified profile now admits the exact catalogue call and reserves 64 KiB
+for its supported library stack usage. Recursive admission and source/resource
+accounting retain both operands and original dependency authority. The native,
+mutation, guarded-stack and full-gate evidence is recorded in
+[02O-02](../../../../plan/tasks/M35-03A-02O-02-c-remainder.md).

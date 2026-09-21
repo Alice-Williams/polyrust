@@ -128,16 +128,15 @@ impl CKnownCall {
 
     /// Conservative supported-Linux-profile reserve, not a caller purity flag.
     /// Guarded 64 KiB stacks and 256 KiB watermark probes cover the actual
-    /// truncation/import chain under GCC/Zig O0/O2 and GCC ASan/UBSan.
+    /// truncation and remainder/import chains under GCC/Zig O0/O2 and GCC ASan/UBSan.
     /// Other library calls need their own evidence before resource admission.
     pub(crate) const fn stack_bound_bytes(self) -> Option<std::num::NonZeroU64> {
         match self {
-            Self::FloatTruncate => std::num::NonZeroU64::new(64 * 1024),
+            Self::FloatTruncate | Self::FloatRemainder => std::num::NonZeroU64::new(64 * 1024),
             Self::Allocate
             | Self::Release
             | Self::CopyBytes
             | Self::CompareBytes
-            | Self::FloatRemainder
             | Self::IsNan
             | Self::SignBit
             | Self::WriteBytes

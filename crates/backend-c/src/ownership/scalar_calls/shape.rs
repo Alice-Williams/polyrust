@@ -167,7 +167,10 @@ pub(super) fn dependencies(
                         edges.insert(callee.as_ref().clone());
                     }
                     // No generated-storage effect; arguments still retain every edge.
-                    CCallableKind::Known(crate::dialect::CKnownCall::FloatTruncate) => {}
+                    CCallableKind::Known(
+                        crate::dialect::CKnownCall::FloatTruncate
+                        | crate::dialect::CKnownCall::FloatRemainder,
+                    ) => {}
                     _ => return None,
                 }
                 pending.extend(call.arguments().iter().map(Node::Value));

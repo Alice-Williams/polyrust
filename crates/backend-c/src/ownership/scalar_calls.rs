@@ -106,7 +106,10 @@ impl ScalarCalls {
     pub(super) fn accepts(&self, callable: &crate::ast::CCallable) -> bool {
         match callable.kind() {
             CCallableKind::Direct(function) => self.closed.contains(function.as_ref()),
-            CCallableKind::Known(crate::dialect::CKnownCall::FloatTruncate) => true,
+            CCallableKind::Known(
+                crate::dialect::CKnownCall::FloatTruncate
+                | crate::dialect::CKnownCall::FloatRemainder,
+            ) => true,
             CCallableKind::Indirect { .. } | CCallableKind::Known(_) => false,
         }
     }

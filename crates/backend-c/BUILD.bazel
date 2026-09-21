@@ -155,7 +155,11 @@ rust_test(
     data = [
         "test/arithmetic_mutations.py",
         "test/binary64_arithmetic.py",
+        "test/remainder_native.py",
+        "test/remainder_stack.py",
+        "test/remainder_stack_probe.c",
         "//experiments/rustc-frontend:arithmetic_oracle_support",
+        "//experiments/rustc-frontend:remainder_oracle_support",
         "//tools/c:zig_native_oracle",
     ],
     edition = "2024",

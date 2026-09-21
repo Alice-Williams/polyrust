@@ -240,7 +240,10 @@ fn walk<'a>(
                     CValueKind::Call(call) => {
                         match call.callable().kind() {
                             CCallableKind::Direct(function) => signature(function)?,
-                            CCallableKind::Known(crate::dialect::CKnownCall::FloatTruncate) => {}
+                            CCallableKind::Known(
+                                crate::dialect::CKnownCall::FloatTruncate
+                                | crate::dialect::CKnownCall::FloatRemainder,
+                            ) => {}
                             _ => {
                                 return Err(
                                     "C shared call profile requires an admitted target".into()

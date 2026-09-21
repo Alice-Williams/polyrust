@@ -37,9 +37,15 @@ fn truncation_argument_retains_exact_original_generated_edge() {
         }
         assert!(proof.accepts(&e.known(CKnownCall::FloatTruncate)));
         for other in CKnownCall::ALL {
-            if other != CKnownCall::FloatTruncate {
+            if !matches!(
+                other,
+                CKnownCall::FloatTruncate | CKnownCall::FloatRemainder
+            ) {
                 assert!(!proof.accepts(&e.known(other)), "{other:?}");
             }
         }
     }
 }
+
+#[path = "scalar_call_remainder.rs"]
+mod remainder;

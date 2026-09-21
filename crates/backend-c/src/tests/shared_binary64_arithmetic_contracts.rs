@@ -33,11 +33,6 @@ fn adjacent_scalar_operations_remain_outside_arithmetic_admission() {
         e.numeric_conversion(CScalarType::F64, integer).unwrap(),
         e.numeric_conversion(CScalarType::I32, zero.clone())
             .unwrap(),
-        e.call_value(
-            e.known(crate::dialect::CKnownCall::FloatRemainder),
-            vec![zero.clone(), zero],
-        )
-        .unwrap(),
     ];
     for value in bad {
         let mut files = source.files.clone();
