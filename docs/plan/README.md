@@ -98,6 +98,13 @@ contract as every other target.
   original Rust/oracle inputs, measured operand calls, five compiling faults,
   seven compositions and exact typed/atomic/API/privacy checks. Actual packages
   are exported, prior output/WIP is unchanged, and wider migration remains open.
+  [Finite f64 constants (02U)](tasks/M35-03A-02U-finite-f64-constants.md) is the
+  next bounded increment: independent bit truth, separate C/Java constant
+  foundations, then checked source declarations/reads/imports. Nonfinite
+  constants and type-alias uses remain excluded; no broader parity is claimed.
+  The independent oracle is complete: 24,566 finite patterns plus ten computed
+  constants, real native fault controls, all 991 release/lint targets passing
+  and clean independent review. C/Java foundations and source admission remain.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

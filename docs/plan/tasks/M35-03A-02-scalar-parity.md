@@ -106,6 +106,13 @@ compositions, typed/atomic/API/privacy proof and actual exported packages
 accompany the increment. Checked narrowing remains a distinct future
 failure/result contract, not an unchecked cast substitute.
 
+[02U — finite f64 constants](M35-03A-02U-finite-f64-constants.md) next extends
+the separate compiler constant domain without conflating it with literal
+inputs. Its independent oracle precedes separately gated C/Java constant
+foundations and checked source/alias/import integration. The oracle checkpoint
+is complete with all 991 release/lint targets passing and clean independent
+review; target and source changes have not yet been admitted.
+
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing

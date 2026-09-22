@@ -38,6 +38,7 @@ load(":eager_ast_targets.bzl", "eager_ast_targets")
 load(":eager_contract_targets.bzl", "eager_contract_targets")
 load(":eager_targets.bzl", "eager_targets")
 load(":export_graph_targets.bzl", "export_graph_targets")
+load(":finite_constant_oracle_targets.bzl", "finite_constant_oracle_targets")
 load(":floating_ast_targets.bzl", "floating_ast_targets")
 load(":floating_contract_targets.bzl", "floating_contract_targets")
 load(":floating_targets.bzl", "floating_targets")
@@ -840,6 +841,8 @@ wrapping_sub_oracle_targets(name = "wrapping_sub_oracle_test")
 wrapping_mul_oracle_targets(name = "wrapping_mul_oracle_test")
 
 widening_oracle_targets(name = "widening_oracle_test")
+
+finite_constant_oracle_targets(name = "finite_constant_oracle_test")
 
 widening_ast_targets(
     name = "widening_ast_test",
