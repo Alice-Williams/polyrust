@@ -15,6 +15,13 @@ fn local_read(value: &CValue, local: &CLocalRef) -> bool {
         matches!(place.kind(), CPlaceKind::Local(found) if found == local))
 }
 fn correct(source: &f::Fixture) -> bool {
+    correct_operation(source, CBinaryOperator::Add)
+}
+
+pub(in crate::dialect::shared) fn correct_operation(
+    source: &f::Fixture,
+    operation: CBinaryOperator,
+) -> bool {
     source.files[1].items().iter().all(|item| {
         let CFileItem::Definition(definition) = item else {
             return false;
@@ -73,14 +80,15 @@ fn correct(source: &f::Fixture) -> bool {
             return false;
         };
         let CValueKind::Binary {
-            operator: CBinaryOperator::Add,
+            operator,
             left,
             right,
         } = value.kind()
         else {
             return false;
         };
-        if value.ty().kind() != &CObjectTypeKind::Scalar(unsigned)
+        if *operator != operation
+            || value.ty().kind() != &CObjectTypeKind::Scalar(unsigned)
             || !conversion(left, unsigned).is_some_and(|v| local_read(v, a.local()))
             || !conversion(right, unsigned).is_some_and(|v| local_read(v, b.local()))
         {
@@ -147,8 +155,14 @@ fn correct(source: &f::Fixture) -> bool {
 #[test]
 fn wrapping_addition_shape_detects_safe_faults_and_missing_exact_normalization() {
     for width in [CScalarType::I32, CScalarType::I64] {
-        let build =
-            |variant| fixture::build_widths(701, &[], fixture::Body::Addition(variant), &[width]);
+        let build = |variant| {
+            fixture::build_widths(
+                701,
+                &[],
+                fixture::Body::Arithmetic(Operation::Add, variant),
+                &[width],
+            )
+        };
         assert!(correct(&build(Variant::Valid)));
         for variant in [
             Variant::WrongOperand,
@@ -169,7 +183,7 @@ fn wrapping_addition_shape_detects_safe_faults_and_missing_exact_normalization()
             Variant::HighLimit,
             Variant::LowLimit,
             Variant::WrongGuardValue,
-            Variant::SignedAdd,
+            Variant::SignedArithmetic,
             Variant::UnguardedCast,
         ] {
             assert!(!correct(&build(variant)), "{width:?} {variant:?}");

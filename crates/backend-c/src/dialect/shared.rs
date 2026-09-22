@@ -299,5 +299,13 @@ mod wrapping_negation;
 mod wrapping_addition;
 
 #[cfg(test)]
+#[path = "../tests/shared_wrapping_integer.rs"]
+mod wrapping_integer;
+
+#[cfg(test)]
+#[path = "../tests/shared_wrapping_subtraction.rs"]
+mod wrapping_subtraction;
+
+#[cfg(test)]
 #[path = "../tests/shared_binary64.rs"]
 mod binary64;

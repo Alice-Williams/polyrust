@@ -2,14 +2,28 @@
 use super::*;
 
 #[derive(Clone, Copy, Debug)]
-pub(super) enum Variant {
+pub(in crate::dialect::shared) enum Operation {
+    Add,
+    Subtract,
+}
+impl Operation {
+    fn operator(self) -> CBinaryOperator {
+        match self {
+            Self::Add => CBinaryOperator::Add,
+            Self::Subtract => CBinaryOperator::Subtract,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(in crate::dialect::shared) enum Variant {
     Valid,
     MissingGuard,
     ReversedGuard,
     HighLimit,
     LowLimit,
     WrongGuardValue,
-    SignedAdd,
+    SignedArithmetic,
     UnguardedCast,
     MissingNormalization,
     WrongOperand,
@@ -17,13 +31,16 @@ pub(super) enum Variant {
     NestedComplement(usize),
     NestedMultiply,
     BoundaryLiterals,
+    ReversedOperands,
+    WrongOperation,
 }
 
-pub(super) fn build(
+pub(in crate::dialect::shared) fn build(
     e: &CExpressions<'_>,
     s: &CStatements<'_>,
     locals: &[CLocalRef; 3],
     inputs: Vec<CValue>,
+    operation: Operation,
     variant: Variant,
 ) -> (Vec<CStatement>, CValue) {
     let CObjectTypeKind::Scalar(signed) = inputs[0].ty().kind() else {
@@ -68,14 +85,25 @@ pub(super) fn build(
         })
         .collect();
     let read = |index: usize| e.read(e.local(locals[index].clone()).unwrap()).unwrap();
-    let left = read(0);
-    let right = if matches!(variant, Variant::WrongOperand) {
+    let mut left = read(0);
+    let mut right = if matches!(variant, Variant::WrongOperand) {
         read(0)
     } else {
         read(1)
     };
-    let sum = if matches!(variant, Variant::SignedAdd) {
-        let sum = e.binary(CBinaryOperator::Add, left, right).unwrap();
+    if matches!(variant, Variant::ReversedOperands) {
+        std::mem::swap(&mut left, &mut right);
+    }
+    let operator = if matches!(variant, Variant::WrongOperation) {
+        match operation {
+            Operation::Add => CBinaryOperator::Subtract,
+            Operation::Subtract => CBinaryOperator::Add,
+        }
+    } else {
+        operation.operator()
+    };
+    let sum = if matches!(variant, Variant::SignedArithmetic) {
+        let sum = e.binary(operator, left, right).unwrap();
         // I32 promotion produces Int. Normalize before the matching unsigned cast.
         let sum = if signed == CScalarType::I32 {
             e.numeric_conversion(signed, sum).unwrap()
@@ -111,7 +139,7 @@ pub(super) fn build(
                 .unwrap();
         }
         e.binary(
-            CBinaryOperator::Add,
+            operator,
             e.numeric_conversion(unsigned, left).unwrap(),
             right,
         )

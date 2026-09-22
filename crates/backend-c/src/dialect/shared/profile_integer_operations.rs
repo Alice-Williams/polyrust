@@ -14,7 +14,7 @@ pub(super) fn visit<'a>(value: &'a CValue, add: &mut impl FnMut(Node<'a>)) -> bo
             add(Node::Value(operand));
         }
         CValueKind::Binary {
-            operator: B::Add,
+            operator: B::Add | B::Subtract,
             left,
             right,
         } if unsigned(left) && left.ty() == right.ty() && value.ty() == left.ty() => {
@@ -64,3 +64,7 @@ fn scalar(value: &CValue) -> Option<S> {
 fn unsigned(value: &CValue) -> bool {
     matches!(scalar(value), Some(S::U32 | S::U64))
 }
+
+#[cfg(test)]
+#[path = "../../tests/shared_wrapping_subtraction_profile.rs"]
+mod subtraction_tests;

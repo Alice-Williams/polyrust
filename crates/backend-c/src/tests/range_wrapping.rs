@@ -5,6 +5,35 @@ use crate::ast::{CBinaryOperator as B, CScalarType as T, CUnaryOperator as U};
 use crate::ownership::{CSafetyError as E, constants::limits};
 
 #[test]
+fn wrapping_subtraction_never_turns_unsigned_underflow_into_nonwrapping_evidence() {
+    for (unsigned, signed, maximum) in [
+        (T::U32, T::I32, i128::from(u32::MAX)),
+        (T::U64, T::I64, i128::from(u64::MAX)),
+    ] {
+        let wrapped = Range::exact(number(unsigned, 0))
+            .binary(B::Subtract, Range::exact(number(unsigned, 1)))
+            .unwrap();
+        assert_eq!(
+            wrapped,
+            CTransfer::MayWrap(interval(unsigned, maximum, maximum))
+        );
+        assert_eq!(wrapped.range().convert(signed), Err(E::IntegerRange));
+        assert!(matches!(
+            interval(unsigned, 0, maximum)
+                .binary(B::Subtract, interval(unsigned, 0, maximum))
+                .unwrap(),
+            CTransfer::MayWrap(_)
+        ));
+        assert_eq!(
+            interval(unsigned, 1, maximum)
+                .binary(B::Subtract, interval(unsigned, 0, 1))
+                .unwrap(),
+            CTransfer::NonWrapping(interval(unsigned, 0, maximum))
+        );
+    }
+}
+
+#[test]
 fn size_boundary_arithmetic_distinguishes_representable_progress_from_modulo_results() {
     let max = i128::from(u64::MAX);
     let cases = [

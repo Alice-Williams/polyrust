@@ -8,7 +8,7 @@
 ## Ordered checkpoints
 
 1. [02R-01 — Independent subtraction oracle](M35-03A-02R-01-subtraction-oracle.md) — complete.
-2. [02R-02 — C target safety foundation](M35-03A-02R-02-c-subtraction.md).
+2. [02R-02 — C target safety foundation](M35-03A-02R-02-c-subtraction.md) — complete.
 3. [02R-03 — Java target foundation](M35-03A-02R-03-java-subtraction.md).
 4. [02R-04 — Checked compiler integration](M35-03A-02R-04-compiler-subtraction.md).
 

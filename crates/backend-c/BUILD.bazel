@@ -162,6 +162,7 @@ rust_test(
         "//experiments/rustc-frontend:arithmetic_oracle_support",
         "//experiments/rustc-frontend:remainder_oracle_support",
         "//experiments/rustc-frontend:wrapping_add_oracle_support",
+        "//experiments/rustc-frontend:wrapping_sub_oracle_support",
         "//tools/c:zig_native_oracle",
     ],
     edition = "2024",

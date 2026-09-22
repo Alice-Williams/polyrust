@@ -2,10 +2,17 @@
 from pathlib import Path
 import subprocess
 import sys
+import re
+import shutil
 
-ROOT, ZIG, ORACLE = [Path(arg).resolve() for arg in sys.argv[1:]]
+ROOT, ZIG, ORACLE = [Path(arg).resolve() for arg in sys.argv[1:4]]
+MODE = sys.argv[4] if len(sys.argv) == 5 else "addition"
+assert MODE in ["addition", "subtraction"] and len(sys.argv) in [4, 5]
 sys.path.insert(0, str(ORACLE))
-from wrapping_add_oracle import CASES, result
+if MODE == "subtraction":
+    from wrapping_sub_oracle import CASES, result, faulty
+else:
+    from wrapping_add_oracle import CASES, result
 
 STEMS = ["polyrust_wrapping_701", "polyrust_wrapping_702"]
 FLAGS = ["-std=c17", "-Wall", "-Wextra", "-Wpedantic", "-Werror",
@@ -43,6 +50,9 @@ def expected(variant):
     values = []
     for width, left, right in CASES:
         value = result(left, left if variant == "wrong-operand" else right, width)
+        if variant in ["wrong-operation", "reversed-operands", "narrow"]:
+            fault = {"wrong-operation": "add", "reversed-operands": "reverse", "narrow": "narrow"}[variant]
+            value = faulty(left, right, width, fault)
         if variant == "wrong-result" and value < 0:
             value += 1
         values.extend([str(value)] * 2)
@@ -53,7 +63,26 @@ def main():
     assert run(["gcc-14", "-dumpfullversion"]).stdout.strip() == "14.2.0"
     inputs = "".join(f"{width} {left} {right}\n" for width, left, right in CASES)
     truth = expected("valid")
-    for variant in ["valid", "boundary-literals", "wrong-operand", "wrong-result"]:
+    variants = ["valid", "boundary-literals", "wrong-operand", "wrong-result"]
+    if MODE == "subtraction":
+        variants += ["wrong-operation", "reversed-operands", "narrow"]
+        directory = ROOT / "narrow"
+        shutil.copytree(ROOT / "valid", directory)
+        producer = directory / (STEMS[0] + ".c")
+        text = producer.read_text()
+        for width in [32, 64]:
+            # Deliberate test-only mutation: truncate then unsigned sign-extend
+            # at half width. Every arithmetic step remains defined C.
+            mask, sign = (1 << (width // 2)) - 1, 1 << (width // 2 - 1)
+            pattern = rf"(\buint{width}_t \w+\s*=\s*)([^;\n]+);"
+            def narrow(match):
+                expression = match[2]
+                return (match[1] + f"((( {expression} ) & UINT{width}_C({mask})) "
+                        f"^ UINT{width}_C({sign})) - UINT{width}_C({sign});")
+            text, count = re.subn(pattern, narrow, text)
+            assert count == 1, (width, "exact typed unsigned result local")
+        producer.write_text(text)
+    for variant in variants:
         directory = ROOT / variant
         assert {p.name for p in directory.iterdir()} == {
             stem + suffix for stem in STEMS for suffix in [".c", ".h"]
@@ -86,7 +115,8 @@ def main():
                     assert output.stdout == wanted, (variant, label, "modular values")
                     assert output.stderr == "", (variant, label, "sanitizer/diagnostics")
     print(f"{len(CASES)} pairs, both owners; GCC14/Zig O0/O2 + GCC UBSan; "
-          "full unsigned literal boundaries; two typed safe-fault packages differ from independent truth")
+          f"{MODE}; full unsigned literal boundaries; {len(variants) - 2} compiling "
+          "safe-fault packages differ from independent truth")
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ fn wrapping_addition_recurses_into_unsigned_children_and_enforces_depth_budget()
         let source = fixture::build_widths(
             701,
             &[],
-            fixture::Body::Addition(Variant::NestedComplement(32)),
+            fixture::Body::Arithmetic(Operation::Add, Variant::NestedComplement(32)),
             &[width],
         );
         api(&source);
@@ -15,8 +15,12 @@ fn wrapping_addition_recurses_into_unsigned_children_and_enforces_depth_budget()
             (Variant::NestedMultiply, "only scalar comparisons"),
             (Variant::NestedComplement(128), "verifier budget exceeded"),
         ] {
-            let source =
-                fixture::build_widths(701, &[], fixture::Body::Addition(variant), &[width]);
+            let source = fixture::build_widths(
+                701,
+                &[],
+                fixture::Body::Arithmetic(Operation::Add, variant),
+                &[width],
+            );
             let errors = project_c_package(source.registry, source.files).unwrap_err();
             assert!(
                 errors.iter().any(|error| error.message.contains(message)),

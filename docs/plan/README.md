@@ -64,8 +64,10 @@ contract as every other target.
   [Wrapping subtraction (02R)](tasks/M35-03A-02R-wrapping-subtraction.md) is the
   next bounded scalar increment. Its independent oracle is complete: 15,790
   signed differences, two native Rust configurations, five detected fault families,
-  927 passing release/lint targets and clean review. C/Java target foundations
-  and checked source admission remain separate planned steps.
+  927 passing release/lint targets and clean review. The C target foundation is
+  also complete: exact unsigned subtraction and guarded signed reconstruction,
+  six new tests, native safe-fault controls and all 927 release/lint targets
+  passing. Java target support and checked source admission remain separate steps.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

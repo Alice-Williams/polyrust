@@ -1,27 +1,18 @@
 //! Target-only signed wrapping addition: checked normal ASTs, no helper/runtime.
-use super::{
-    CDependencyApi, CDependencyFunction, CDialect, dependency_fixture as f, project_c_package,
-};
+use super::{CDependencyApi, dependency_fixture as f, project_c_package};
 use crate::{ast::*, dialect::CStructuralRenderer};
 use portable_codegen::*;
 
-#[path = "shared_wrapping_addition_body.rs"]
-mod body;
-use body::Variant;
+use super::wrapping_integer::{self as common, Operation, Variant, fixture};
 #[path = "shared_wrapping_addition_contracts.rs"]
 mod contracts;
-#[path = "shared_wrapping_addition_fixture.rs"]
-mod fixture;
 #[path = "shared_wrapping_addition_native.rs"]
 mod native;
 #[path = "shared_wrapping_addition_shape.rs"]
-mod shape;
+pub(super) mod shape;
 
 fn api(source: &f::Fixture) -> CDependencyApi {
-    CDependencyApi::from_certificate(
-        certify_resolved_package(&CDialect, f::linked(source)).unwrap(),
-    )
-    .unwrap()
+    common::api(source)
 }
 
 #[test]
@@ -34,11 +25,15 @@ fn wrapping_addition_proves_both_signed_casts_and_rejects_unsafe_guards() {
             Variant::HighLimit,
             Variant::LowLimit,
             Variant::WrongGuardValue,
-            Variant::SignedAdd,
+            Variant::SignedArithmetic,
             Variant::UnguardedCast,
         ] {
-            let source =
-                fixture::build_widths(701, &[], fixture::Body::Addition(variant), &[width]);
+            let source = fixture::build_widths(
+                701,
+                &[],
+                fixture::Body::Arithmetic(Operation::Add, variant),
+                &[width],
+            );
             source
                 .registry
                 .registrations()
@@ -52,7 +47,7 @@ fn wrapping_addition_proves_both_signed_casts_and_rejects_unsafe_guards() {
                 let errors = result.expect_err("unsafe integer construction must reject");
                 assert!(
                     errors.iter().any(|error| {
-                        if matches!(variant, Variant::SignedAdd) {
+                        if matches!(variant, Variant::SignedArithmetic) {
                             error.message.contains("only scalar comparisons")
                         } else {
                             error.message.contains(
@@ -81,10 +76,7 @@ fn wrapping_addition_internal_unsigned_values_do_not_admit_unsigned_source_signa
 }
 
 fn chain(variant: Variant) -> Vec<CDependencyApi> {
-    let producer = api(&fixture::build(701, &[], fixture::Body::Addition(variant)));
-    let imports: Vec<CDependencyFunction> = producer.functions().cloned().collect();
-    let consumer = api(&fixture::build(702, &imports, fixture::Body::Forward));
-    vec![producer, consumer]
+    common::chain(Operation::Add, variant)
 }
 
 #[test]
@@ -95,7 +87,11 @@ fn wrapping_addition_keeps_original_authority_and_bounded_runtime_free_packages(
         &owners[0].functions().cloned().collect::<Vec<_>>(),
         fixture::Body::Forward,
     );
-    let source = fixture::build(701, &[], fixture::Body::Addition(Variant::Valid));
+    let source = fixture::build(
+        701,
+        &[],
+        fixture::Body::Arithmetic(Operation::Add, Variant::Valid),
+    );
     assert!(
         CExpressions::new(source.registry.registrations())
             .direct(foreign.imported[0].clone())

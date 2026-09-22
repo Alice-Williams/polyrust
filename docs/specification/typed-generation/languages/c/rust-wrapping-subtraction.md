@@ -1,6 +1,6 @@
 # Rust wrapping subtraction in C17
 
-- Status: planned; target/source admission unchanged
+- Status: target foundation complete; compiler-source admission unchanged
 - Contract: [shared](../../rust-wrapping-subtraction.md)
 
 ## Typed lowering
@@ -29,3 +29,11 @@ O0/O2 producer/client compilation, standalone headers and GCC UBSan. Compare eve
 corpus result with independent modular truth; detect reversed subtraction, addition,
 narrowing and disconnected operands. Dependencies derive from typed symbols, without
 runtime/math-library support. Source admission follows a separate gated checkpoint.
+
+## Test structure
+
+Addition and subtraction reuse operation-parameterized, test-only integer body
+and package fixtures. Their semantic shape assertions and required mutation cases
+remain operation-specific. Shared fixture code is not a production lowering or
+trusted certification path. Native clients stay handwritten test code; actual
+producer packages are rendered from certified typed ASTs.

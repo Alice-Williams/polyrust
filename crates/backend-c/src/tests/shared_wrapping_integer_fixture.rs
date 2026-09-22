@@ -3,8 +3,8 @@ use super::*;
 use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Clone, Copy)]
-pub(super) enum Body {
-    Addition(Variant),
+pub(in crate::dialect::shared) enum Body {
+    Arithmetic(Operation, Variant),
     Forward,
 }
 fn key(name: &str) -> CDeclarationKey {
@@ -13,7 +13,7 @@ fn key(name: &str) -> CDeclarationKey {
         origin: CGeneratedOrigin::Synthesized(CSynthesisReason::OwnershipAdapter),
     }
 }
-pub(super) fn build(
+pub(in crate::dialect::shared) fn build(
     crate_id: u64,
     dependencies: &[crate::dialect::CDependencyFunction],
     mode: Body,
@@ -26,7 +26,7 @@ pub(super) fn build(
     )
 }
 
-pub(super) fn build_widths(
+pub(in crate::dialect::shared) fn build_widths(
     crate_id: u64,
     dependencies: &[crate::dialect::CDependencyFunction],
     mode: Body,
@@ -122,7 +122,7 @@ pub(super) fn build_widths(
         let scope = registry
             .register_scope(&function, None, key("body"))
             .unwrap();
-        locals.push(matches!(mode, Body::Addition(_)).then(|| {
+        locals.push(matches!(mode, Body::Arithmetic(..)).then(|| {
             [
                 registry
                     .register_local(&scope, key("left_value"), ty.clone())
@@ -180,9 +180,14 @@ pub(super) fn build_widths(
                             e.call_value(e.direct(imported[index].clone()).unwrap(), inputs)
                                 .unwrap(),
                         ),
-                        Body::Addition(variant) => {
-                            body::build(&e, &s, locals[index].as_ref().unwrap(), inputs, variant)
-                        }
+                        Body::Arithmetic(operation, variant) => body::build(
+                            &e,
+                            &s,
+                            locals[index].as_ref().unwrap(),
+                            inputs,
+                            operation,
+                            variant,
+                        ),
                     };
                     let mut statements = statements;
                     statements.push(s.return_statement(Some(value)).unwrap());
