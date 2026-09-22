@@ -22,8 +22,8 @@ pub(super) fn read<'tcx>(
         crate::source_origin::identity(reader.tcx, input.definition())
     );
     assert_eq!(
-        proof.value().literal(),
-        Some(crate::c_lower::constants::literal(input.value()))
+        proof.value(),
+        &crate::c_lower::constants::value(input.value())
     );
     assert_eq!(value.ty(), proof.read_type());
     assert_eq!(place.ty().constness(), CConstness::Const);

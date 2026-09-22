@@ -18,7 +18,7 @@ def main():
         "cast": ("pub fn value(v:i64)->f64 {-(v as f64)}", "signed widening supports only an unadjusted i32 operand cast to i64"),
         "euclidean_remainder": ("pub fn value(v:f64)->f64 {-(v.rem_euclid(1.0))}", "expression mapping is not implemented"),
         "nonfinite": ("#![allow(overflowing_literals)]\npub fn value()->f64 {-1e400}", "nonfinite f64 literals"),
-        "constant": ("const V:f64=f64::INFINITY; pub fn value()->f64 {-V}", "nonfinite f64 constants"),
+        "constant": ("const V:f64=f64::NAN; pub fn value()->f64 {-V}", "NaN f64 constants"),
     }
     for label, (text, diagnostic) in cases.items():
         source = root / (label + ".rs")

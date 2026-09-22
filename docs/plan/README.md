@@ -132,7 +132,12 @@ contract as every other target.
   Java foundation is complete too: exact standard-field inventory and aliases,
   separate native compilation with inlining-sensitive faults, all 1,006
   release/lint targets passing and clean broad review. Checked Rust-source
-  infinity admission is the next checkpoint; wider migration remains open.
+  integration is complete too: 39 original reads, 66 target observations per
+  configuration, typed/atomic/API/privacy proof, three compiling faults and
+  actual exported packages. All 1,012 release/lint targets pass and broad review
+  is clean. Producer-sign changes invalidate seven affected actions; restoring
+  source recovers original hashes and a cached native pass. Existing output/WIP
+  is unchanged; NaN constants and wider migration remain open.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

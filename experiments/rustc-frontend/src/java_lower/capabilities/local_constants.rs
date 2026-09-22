@@ -21,7 +21,8 @@ impl Mapping for JavaLocalConstants {
             ScalarConstantValue::Bool(_)
             | ScalarConstantValue::I32(_)
             | ScalarConstantValue::I64(_)
-            | ScalarConstantValue::F64(_) => Ok(()),
+            | ScalarConstantValue::F64(_)
+            | ScalarConstantValue::Infinity(_) => Ok(()),
         };
         #[cfg(local_constant_ast_probe)]
         super::local_constant_ast::check(_reader, input, &before);

@@ -76,7 +76,7 @@ impl ApiManifest {
         let constants = self
             .constants
             .iter()
-            .map(|(id, constant)| (*id, (constant.reference.clone(), constant.value.clone())))
+            .map(|(id, constant)| (*id, (constant.reference.clone(), constant.value)))
             .collect();
         if self
             != &Self::with_all_bindings(

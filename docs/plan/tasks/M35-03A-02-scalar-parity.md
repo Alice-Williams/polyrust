@@ -132,8 +132,12 @@ compiling-fault proof, all 1,005 release/lint targets passing and clean broad
 review. Java foundation is complete too: exact standard fields, typed signed
 inventory and original alias/import authority, native Java21 normal/-Xint proof
 with recompiled fault dependents, all 1,006 release/lint targets passing and
-clean broad review. Existing output/WIP is unchanged. Source admission stays
-pending; neither target foundation widens the compiler's finite constant gate.
+clean broad review. Checked source integration is complete too: 39 original
+Rust reads, 66 target observations/configuration, typed authority/atomic controls
+and three compiling faults pass. All 1,012 release/lint targets pass, broad
+review is clean, and actual producer-sign invalidation/restored cache reuse is
+proven. Real packages are exported; all 462 prior generated output hashes and
+38 unrelated WIP hashes remain unchanged. NaN constants and wider parity stay open.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

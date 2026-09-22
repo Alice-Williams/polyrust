@@ -19,15 +19,39 @@ pub(super) fn check<'tcx>(
             .opt_def_id(),
         Some(definition)
     );
-    let (primitive, literal) = match input.value() {
-        ScalarConstantValue::I32(v) => (JavaPrimitive::Int, JavaLiteral::I32(v)),
-        ScalarConstantValue::I64(v) => (JavaPrimitive::Long, JavaLiteral::I64(v)),
-        ScalarConstantValue::Bool(v) => (JavaPrimitive::Boolean, JavaLiteral::Boolean(v)),
-        ScalarConstantValue::F64(v) => (JavaPrimitive::Double, JavaLiteral::F64(v)),
+    let (primitive, kind) = match input.value() {
+        ScalarConstantValue::I32(v) => (
+            JavaPrimitive::Int,
+            JavaExprKind::Literal(JavaLiteral::I32(v)),
+        ),
+        ScalarConstantValue::I64(v) => (
+            JavaPrimitive::Long,
+            JavaExprKind::Literal(JavaLiteral::I64(v)),
+        ),
+        ScalarConstantValue::Bool(v) => (
+            JavaPrimitive::Boolean,
+            JavaExprKind::Literal(JavaLiteral::Boolean(v)),
+        ),
+        ScalarConstantValue::F64(v) => (
+            JavaPrimitive::Double,
+            JavaExprKind::Literal(JavaLiteral::F64(v)),
+        ),
+        ScalarConstantValue::Infinity(sign) => (
+            JavaPrimitive::Double,
+            JavaExprKind::Value(JavaValueRef::KnownField(match sign {
+                portable_binary64::Binary64Sign::Positive => {
+                    portable_backend_java::dialect::JavaKnownField::DoublePositiveInfinity
+                }
+                portable_binary64::Binary64Sign::Negative => {
+                    portable_backend_java::dialect::JavaKnownField::DoubleNegativeInfinity
+                }
+            })),
+        ),
     };
     let expression = value.clone().into_expression();
     assert_eq!(expression.ty, JavaType::primitive(primitive));
-    assert_eq!(expression.kind, JavaExprKind::Literal(literal));
+    assert_eq!(expression.precedence, JavaPrecedence::Primary);
+    assert_eq!(expression.kind, kind);
     eprintln!(
         "CONSTANT_AST\tjava\t{}\t{:?}",
         reader.tcx.def_path_str(definition),

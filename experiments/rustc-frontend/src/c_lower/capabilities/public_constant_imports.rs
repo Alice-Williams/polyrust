@@ -22,13 +22,12 @@ impl Mapping for CPublicConstantImports {
         let value = input.value();
         #[cfg(any(constant_import_wrong_type, constant_import_wrong_value))]
         let value = crate::source_capabilities::import_mutations::value(value);
-        let literal = constants::literal(value);
-        let expected = c(CExpressions::new(&state.registry).literal(literal.clone()))?;
+        let expected = constants::value(value);
         let id = crate::source_origin::identity(input.tcx(), input.definition());
         if state.proof.declaration() != id
             || state.proof.package_identity().root().crate_id != id.crate_id
-            || state.proof.read_type() != expected.ty()
-            || state.proof.value().literal().as_ref() != Some(&literal)
+            || state.proof.read_type() != &expected.ty()
+            || state.proof.value() != &expected
         {
             return Err(
                 "foreign compiler identity/type/value differs from C constant certificate".into(),

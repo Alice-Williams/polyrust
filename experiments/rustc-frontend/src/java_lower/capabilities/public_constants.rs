@@ -32,7 +32,7 @@ impl Mapping for JavaPublicConstants {
             "constant{:016x}",
             origin.declaration.definition_path_hash
         ))?;
-        let (plan, literal) = constants::literal(input.value());
+        let (plan, expression) = constants::expression(input.value());
         let ty = plan.java_type();
         let id = state.builder.value(GeneratedValue {
             name: name.as_str().into(),
@@ -50,7 +50,7 @@ impl Mapping for JavaPublicConstants {
             ],
             ty: ty.clone(),
             name,
-            initializer: Some(JavaExpr::literal(ty, literal)),
+            initializer: Some(expression),
         };
         state.constants.insert(
             input.definition(),

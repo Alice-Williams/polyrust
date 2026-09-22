@@ -48,8 +48,10 @@ pub struct LoweredPackage {
     pub registry: CFrozenRegistry,
     pub sources: Vec<CSourceFile>,
     pub exports: std::sync::Arc<portable_codegen::RustCrateExports>,
-    pub constants:
-        std::collections::BTreeMap<portable_codegen::RustDeclarationId, (CObjectRef, CLiteral)>,
+    pub constants: std::collections::BTreeMap<
+        portable_codegen::RustDeclarationId,
+        (CObjectRef, CScalarConstantValue),
+    >,
     pub constant_imports: std::collections::BTreeMap<
         portable_codegen::RustDeclarationId,
         (CObjectRef, portable_backend_c::dialect::CDependencyConstant),

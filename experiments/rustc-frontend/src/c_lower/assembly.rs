@@ -223,7 +223,7 @@ pub(crate) fn lower(
         .map(|(id, (object, value))| {
             (
                 origin::identity(tcx, id),
-                (object, super::constants::literal(value)),
+                (object, super::constants::value(value)),
             )
         })
         .collect();

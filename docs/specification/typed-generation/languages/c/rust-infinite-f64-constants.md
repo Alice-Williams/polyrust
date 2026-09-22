@@ -1,6 +1,6 @@
 # Rust signed-infinity constants in C17
 
-- Status: target foundation complete; checked source admission pending
+- Status: target foundation and checked source integration complete
 - Contract: [shared](../../rust-infinite-f64-constants.md)
 
 ## Representation and catalogue
@@ -49,9 +49,14 @@ retained, and native exact-bit tests establish both HUGE_VAL signs for the
 pinned compilers. Floating expressions are not inserted into `_Static_assert`
 as if they were integer constant expressions.
 
-Until the separate source-integration checkpoint, compiler manifests and
-public constant joins explicitly require the finite-literal projection. Thus
-the target API change does not prematurely admit infinity in Rust input.
+Checked source joins now compare the complete CScalarConstantValue, including
+the infinity sign, against the original compiler definition and producer
+certificate. Manifests serialize exact infinity bits without a finite-literal
+projection. Local declarations remain compile-time declarations; ordinary
+reads lower to typed values and public reads retain original object identity.
+Scalar call-effect derivation recognizes only the DoubleInfinity known
+constant as a storage-free leaf; missing callees and standard-stream pointers
+still cannot obtain body-derived evidence.
 
 ## Required evidence
 

@@ -11,11 +11,51 @@ pub(crate) struct Constant {
     pub field: JavaField,
     pub value: ScalarConstantValue,
 }
-pub(super) fn literal(value: ScalarConstantValue) -> (super::TypePlan, JavaLiteral) {
-    match value {
-        ScalarConstantValue::Bool(value) => (super::TypePlan::Bool, JavaLiteral::Boolean(value)),
-        ScalarConstantValue::I32(value) => (super::TypePlan::I32, JavaLiteral::I32(value)),
-        ScalarConstantValue::I64(value) => (super::TypePlan::I64, JavaLiteral::I64(value)),
-        ScalarConstantValue::F64(value) => (super::TypePlan::F64, JavaLiteral::F64(value)),
+pub(super) fn value(input: ScalarConstantValue) -> (super::TypePlan, JavaScalarConstantValue) {
+    match input {
+        ScalarConstantValue::Bool(value) => (
+            super::TypePlan::Bool,
+            JavaScalarConstantValue::Boolean(value),
+        ),
+        ScalarConstantValue::I32(value) => {
+            (super::TypePlan::I32, JavaScalarConstantValue::I32(value))
+        }
+        ScalarConstantValue::I64(value) => {
+            (super::TypePlan::I64, JavaScalarConstantValue::I64(value))
+        }
+        ScalarConstantValue::F64(value) => {
+            (super::TypePlan::F64, JavaScalarConstantValue::F64(value))
+        }
+        ScalarConstantValue::Infinity(sign) => (
+            super::TypePlan::F64,
+            JavaScalarConstantValue::Infinity(sign),
+        ),
     }
+}
+pub(super) fn expression(input: ScalarConstantValue) -> (super::TypePlan, JavaExpr) {
+    let (plan, value) = value(input);
+    let literal = match value {
+        JavaScalarConstantValue::Boolean(value) => JavaLiteral::Boolean(value),
+        JavaScalarConstantValue::I32(value) => JavaLiteral::I32(value),
+        JavaScalarConstantValue::I64(value) => JavaLiteral::I64(value),
+        JavaScalarConstantValue::F64(value) => JavaLiteral::F64(value),
+        JavaScalarConstantValue::Infinity(sign) => {
+            let field = match sign {
+                portable_binary64::Binary64Sign::Positive => {
+                    portable_backend_java::dialect::JavaKnownField::DoublePositiveInfinity
+                }
+                portable_binary64::Binary64Sign::Negative => {
+                    portable_backend_java::dialect::JavaKnownField::DoubleNegativeInfinity
+                }
+            };
+            let expression = JavaExpr {
+                ty: plan.java_type(),
+                precedence: JavaPrecedence::Primary,
+                kind: JavaExprKind::Value(JavaValueRef::KnownField(field)),
+            };
+            return (plan, expression);
+        }
+    };
+    let expression = JavaExpr::literal(plan.java_type(), literal);
+    (plan, expression)
 }

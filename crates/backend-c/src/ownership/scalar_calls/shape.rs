@@ -97,6 +97,9 @@ pub(super) fn dependencies(
                 _ => return None,
             },
             Node::Value(value) => match value.kind() {
+                // A typed floating macro is a scalar value, not a storage read.
+                // Do not admit pointer-valued standard streams through this rule.
+                CValueKind::KnownConstant(crate::ast::CKnownConstant::DoubleInfinity) => {}
                 CValueKind::Literal(
                     CLiteral::F64(_)
                     | CLiteral::Bool(_)

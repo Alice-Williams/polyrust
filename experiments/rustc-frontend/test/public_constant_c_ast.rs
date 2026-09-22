@@ -43,6 +43,16 @@ pub(super) fn read<'tcx>(
         super::ScalarConstantValue::F64(v) => super::ScalarConstantValue::F64(
             portable_binary64::FiniteBinary64::from_bits(v.to_bits() ^ (1_u64 << 63)).unwrap(),
         ),
+        super::ScalarConstantValue::Infinity(sign) => {
+            super::ScalarConstantValue::Infinity(match sign {
+                portable_binary64::Binary64Sign::Positive => {
+                    portable_binary64::Binary64Sign::Negative
+                }
+                portable_binary64::Binary64Sign::Negative => {
+                    portable_binary64::Binary64Sign::Positive
+                }
+            })
+        }
     };
     assert!(super::CPublicConstantReads.lower(reader, input).is_err());
     reader.constants.insert(input.definition(), saved.clone());

@@ -20,7 +20,7 @@ target has full replacement evidence for any broad legacy capability family.
 
 | Functionality | Rust-source C | Rust-source Java | Remaining work |
 | --- | --- | --- | --- |
-| Values and comparisons | i32/i64/bool literals and evaluated constant reads, scalar comparison, immutable places, built-in bool negation, lazy/eager operators, signed integer bitwise operations, i32/i64 wrapping negation and finite f64 literals/constants/transport/comparisons | Same source subset | char/unit storage, nonfinite/wider constants, type aliases and remaining integer/float operations: M35-03A-02 |
+| Values and comparisons | i32/i64/bool literals and evaluated constant reads, scalar comparison, immutable places, built-in bool negation, lazy/eager operators, signed integer bitwise operations, i32/i64 wrapping negation, finite f64 literals/transport/comparisons and finite/signed-infinity constants | Same source subset | char/unit storage, NaN/wider constants, type aliases and remaining integer/float operations: M35-03A-02 |
 | Functions and modules | Closed scalar/unit-result signatures and value/effect calls, crate-owned headers and implementations | Same signatures/calls with crate-owned Java packages | Wider signatures, methods and migrated consumers: M35-03A-03/06 |
 | Records and control | Closed scalar-field records/shared borrows, local bindings, structured branches | Same source subset | Owned shapes, enums, interfaces, loops and patterns: M35-02 then M35-03A-03 |
 | Text, Unicode and bytes | No general replacement mapping | No general replacement mapping | All legacy operations and explicit encoding/indexing policies: M35-03A-04 |
@@ -302,3 +302,22 @@ zero-sign changes invalidate affected Bazel outputs and restoration reuses
 cached passing tests. Four actual packages are exported and hash-verified;
 all 423 prior generated files and 38 unrelated WIP hashes remain unchanged.
 This is partial Constants coverage; full_features remains empty.
+
+## Signed-infinity constant integration
+
+[02V](../../plan/tasks/M35-03A-02V-infinite-f64-constants.md) extends the distinct
+checked constant domain with Infinity(Binary64Sign), preserving the finite
+literal invariant. Both targets use existing standard-symbol ASTs: C's typed
+HUGE_VAL/negation and Java's typed Double infinity fields. Public declarations,
+private/local/inherent reads, exact producer certificates, imports and aliases
+retain original identity. No copied runtime or new rendering escape hatch exists.
+
+Native integration proof passes 39 original Rust reads and 66 target observations
+per configuration, including three compiling producer faults with recompiled
+dependents, exact docs/privacy and symbol-derived dependency inventories.
+All 1,012 release/lint targets pass and broad independent review is clean.
+Actual producer-sign changes rerun seven affected actions while the independent
+producer stays cached; restoration recovers original hashes and cached native
+success. Actual packages are exported and old generated output/WIP is unchanged.
+NaN constants, f32 and wider storage/constant forms remain rejected. This remains
+partial Constants coverage; full_features stays empty and legacy gates remain.

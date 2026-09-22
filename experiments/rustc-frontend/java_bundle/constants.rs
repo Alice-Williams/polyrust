@@ -6,9 +6,18 @@ pub(crate) fn certified_value(
     out: &mut impl Sink,
     constant: &JavaScalarConstantValue,
 ) -> Result<(), String> {
-    let literal = constant
-        .literal()
-        .ok_or("nonfinite Java source constants are not admitted yet")?;
+    let literal = match constant {
+        JavaScalarConstantValue::Boolean(value) => JavaLiteral::Boolean(*value),
+        JavaScalarConstantValue::I32(value) => JavaLiteral::I32(*value),
+        JavaScalarConstantValue::I64(value) => JavaLiteral::I64(*value),
+        JavaScalarConstantValue::F64(value) => JavaLiteral::F64(*value),
+        JavaScalarConstantValue::Infinity(sign) => {
+            return out.string(match sign {
+                portable_binary64::Binary64Sign::Positive => "0x7ff0000000000000",
+                portable_binary64::Binary64Sign::Negative => "0xfff0000000000000",
+            });
+        }
+    };
     value(out, &literal)
 }
 
@@ -28,18 +37,25 @@ mod tests {
     use crate::json::{Encoder, Reservation};
 
     #[test]
-    fn infinity_inventory_cannot_cross_the_finite_source_manifest_boundary() {
-        for sign in [
-            portable_binary64::Binary64Sign::Positive,
-            portable_binary64::Binary64Sign::Negative,
+    fn infinity_metadata_preserves_exact_signed_bits_and_reservation() {
+        for (sign, text) in [
+            (
+                portable_binary64::Binary64Sign::Positive,
+                "\"0x7ff0000000000000\"",
+            ),
+            (
+                portable_binary64::Binary64Sign::Negative,
+                "\"0xfff0000000000000\"",
+            ),
         ] {
             let constant = JavaScalarConstantValue::Infinity(sign);
             let mut reservation = Reservation::default();
-            assert!(certified_value(&mut reservation, &constant).is_err());
-            assert_eq!(reservation.0.0, 0);
-            let mut encoder = Encoder::new(100);
-            assert!(certified_value(&mut encoder, &constant).is_err());
-            assert_eq!(encoder.finish(), "");
+            certified_value(&mut reservation, &constant).unwrap();
+            assert!(reservation.0.0 >= text.len() as u64);
+            let mut encoder = Encoder::new(reservation.0.0);
+            certified_value(&mut encoder, &constant).unwrap();
+            assert_eq!(encoder.finish(), text);
+            assert!(certified_value(&mut Encoder::new(text.len() as u64 - 1), &constant).is_err());
         }
     }
 

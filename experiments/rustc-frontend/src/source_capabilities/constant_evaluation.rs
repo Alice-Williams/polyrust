@@ -1,6 +1,6 @@
 //! Shared compiler definition admission/evaluation for reads and declarations.
 use super::ScalarConstantValue;
-use portable_binary64::FiniteBinary64;
+use portable_binary64::{FiniteBinary64, NonFiniteBinary64};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -34,7 +34,7 @@ pub(super) fn evaluate<'tcx>(
         ty.kind(),
         ty::Bool | ty::Int(ty::IntTy::I32 | ty::IntTy::I64) | ty::Float(ty::FloatTy::F64)
     ) {
-        return Err("scalar constants support only bool, i32, i64 and finite f64".into());
+        return Err("scalar constants support only bool, i32, i64 and non-NaN f64".into());
     }
     let evaluated = tcx
         .const_eval_poly(definition)
@@ -51,10 +51,13 @@ pub(super) fn evaluate<'tcx>(
         ),
         (ty::Int(ty::IntTy::I32), 4) => ScalarConstantValue::I32(scalar.to_i32()),
         (ty::Int(ty::IntTy::I64), 8) => ScalarConstantValue::I64(scalar.to_i64()),
-        (ty::Float(ty::FloatTy::F64), 8) => ScalarConstantValue::F64(
-            FiniteBinary64::from_bits(scalar.to_u64())
-                .map_err(|_| "nonfinite f64 constants are not implemented")?,
-        ),
+        (ty::Float(ty::FloatTy::F64), 8) => match FiniteBinary64::from_bits(scalar.to_u64()) {
+            Ok(value) => ScalarConstantValue::F64(value),
+            Err(NonFiniteBinary64::Infinity(sign)) => ScalarConstantValue::Infinity(sign),
+            Err(NonFiniteBinary64::NaN) => {
+                return Err("NaN f64 constants are not implemented".into());
+            }
+        },
         _ => return Err("compiler constant scalar width disagrees with its type".into()),
     };
     Ok((ty, value))

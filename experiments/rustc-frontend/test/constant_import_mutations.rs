@@ -5,9 +5,10 @@ use super::ScalarConstantValue;
 pub(crate) fn value(original: ScalarConstantValue) -> ScalarConstantValue {
     match original {
         ScalarConstantValue::Bool(v) => ScalarConstantValue::I32(i32::from(v)),
-        ScalarConstantValue::I32(_) | ScalarConstantValue::I64(_) | ScalarConstantValue::F64(_) => {
-            ScalarConstantValue::Bool(false)
-        }
+        ScalarConstantValue::I32(_)
+        | ScalarConstantValue::I64(_)
+        | ScalarConstantValue::F64(_)
+        | ScalarConstantValue::Infinity(_) => ScalarConstantValue::Bool(false),
     }
 }
 #[cfg(constant_import_wrong_value)]
@@ -19,5 +20,9 @@ pub(crate) fn value(original: ScalarConstantValue) -> ScalarConstantValue {
         ScalarConstantValue::F64(v) => ScalarConstantValue::F64(
             portable_binary64::FiniteBinary64::from_bits(v.to_bits() ^ (1_u64 << 63)).unwrap(),
         ),
+        ScalarConstantValue::Infinity(sign) => ScalarConstantValue::Infinity(match sign {
+            portable_binary64::Binary64Sign::Positive => portable_binary64::Binary64Sign::Negative,
+            portable_binary64::Binary64Sign::Negative => portable_binary64::Binary64Sign::Positive,
+        }),
     }
 }

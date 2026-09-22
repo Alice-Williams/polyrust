@@ -20,10 +20,31 @@ pub(super) fn declaration(
             JavaModifier::Final
         ]
     );
-    assert!(matches!(
-        constant.field.initializer.as_ref().unwrap().kind,
-        JavaExprKind::Literal(_)
-    ));
+    let initializer = constant.field.initializer.as_ref().unwrap();
+    match input.value() {
+        super::ScalarConstantValue::Infinity(sign) => {
+            let expected = match sign {
+                portable_binary64::Binary64Sign::Positive => {
+                    portable_backend_java::dialect::JavaKnownField::DoublePositiveInfinity
+                }
+                portable_binary64::Binary64Sign::Negative => {
+                    portable_backend_java::dialect::JavaKnownField::DoubleNegativeInfinity
+                }
+            };
+            assert_eq!(
+                initializer.kind,
+                JavaExprKind::Value(JavaValueRef::KnownField(expected))
+            );
+            assert_eq!(initializer.ty, JavaType::primitive(JavaPrimitive::Double));
+            assert_eq!(initializer.precedence, JavaPrecedence::Primary);
+        }
+        super::ScalarConstantValue::Bool(_)
+        | super::ScalarConstantValue::I32(_)
+        | super::ScalarConstantValue::I64(_)
+        | super::ScalarConstantValue::F64(_) => {
+            assert!(matches!(initializer.kind, JavaExprKind::Literal(_)));
+        }
+    }
     println!("PUBLIC_CONSTANT_DECL\tjava\t{:?}", input.value());
 }
 pub(super) fn read<'tcx>(
@@ -51,6 +72,16 @@ pub(super) fn read<'tcx>(
         super::ScalarConstantValue::F64(v) => super::ScalarConstantValue::F64(
             portable_binary64::FiniteBinary64::from_bits(v.to_bits() ^ (1_u64 << 63)).unwrap(),
         ),
+        super::ScalarConstantValue::Infinity(sign) => {
+            super::ScalarConstantValue::Infinity(match sign {
+                portable_binary64::Binary64Sign::Positive => {
+                    portable_binary64::Binary64Sign::Negative
+                }
+                portable_binary64::Binary64Sign::Negative => {
+                    portable_binary64::Binary64Sign::Positive
+                }
+            })
+        }
     };
     assert!(super::JavaPublicConstantReads.lower(reader, input).is_err());
     reader.constants.insert(input.definition(), saved.clone());

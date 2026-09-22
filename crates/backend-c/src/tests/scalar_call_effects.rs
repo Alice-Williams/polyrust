@@ -84,6 +84,58 @@ fn accepted(f: &Fixture, source: &CSourceFile) -> Vec<bool> {
 }
 
 #[test]
+fn infinity_leaves_retain_transitive_body_evidence_but_not_missing_callees() {
+    for negative in [false, true] {
+        for defined in [false, true] {
+            let f = Fixture::with_result(
+                &[vec![], vec![], vec![]],
+                CObjectType::scalar(CScalarType::F64),
+            );
+            let mut value = f.values().known_constant(CKnownConstant::DoubleInfinity);
+            if negative {
+                value = f.values().unary(CUnaryOperator::Negate, value).unwrap();
+            }
+            let mut bodies = vec![
+                f.returning(0, f.call(1, vec![])),
+                f.returning(1, f.call(2, vec![])),
+            ];
+            if defined {
+                bodies.push(f.returning(2, value));
+            }
+            let source = f.source(bodies);
+            let summary = ScalarCalls::derive(std::slice::from_ref(&source));
+            for function in &f.functions {
+                assert_eq!(
+                    summary.accepts(&f.values().direct(function.clone()).unwrap()),
+                    defined,
+                );
+            }
+            assert_eq!(f.registry.check_storage_paths(&[source]).is_ok(), defined);
+        }
+    }
+}
+
+#[test]
+fn standard_stream_pointer_cannot_gain_scalar_call_evidence() {
+    for constant in [
+        CKnownConstant::StandardInput,
+        CKnownConstant::StandardOutput,
+        CKnownConstant::StandardError,
+    ] {
+        let f = Fixture::new(&[0, 0]);
+        let mut body = vec![
+            f.statements(1)
+                .discard(f.values().known_constant(constant))
+                .unwrap(),
+        ];
+        body.extend(f.returning(1, f.literal(1)));
+        let source = f.source(vec![f.returning(0, f.call(1, vec![])), body]);
+        assert_eq!(accepted(&f, &source), vec![false; 2]);
+        assert!(f.registry.check_storage_paths(&[source]).is_err());
+    }
+}
+
+#[test]
 fn initialized_bool_local_assignment_retains_transitive_call_evidence() {
     use super::fixture::key;
     let boolean = CObjectType::scalar(CScalarType::Bool);

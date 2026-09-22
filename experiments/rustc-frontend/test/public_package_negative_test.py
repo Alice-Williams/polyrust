@@ -11,7 +11,7 @@ entry = "pub fn entry() -> i32 { 1 }\n"
 cases = {
     "empty": ("fn private() -> i32 { 1 }", "requires an exported"),
     "struct": (entry + "pub struct Public { pub value: i32 }", "API mapping"),
-    "constant_unsupported": (entry + "pub const VALUE: u32 = 1;", "scalar constants support only bool, i32, i64 and finite f64"),
+    "constant_unsupported": (entry + "pub const VALUE: u32 = 1;", "scalar constants support only bool, i32, i64 and non-NaN f64"),
     "static": (entry + "pub static VALUE: i32 = 1;", "API mapping"),
     "enum": (entry + "pub enum Public { One, Two }", "API mapping"),
     "type_alias": (entry + "pub type Number = i32;", "API mapping"),

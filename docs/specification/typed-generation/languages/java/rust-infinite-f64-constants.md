@@ -1,6 +1,6 @@
 # Rust signed-infinity constants in Java21
 
-- Status: target foundation complete; checked source admission remains disabled
+- Status: target foundation and checked source integration complete
 - Contract: [shared](../../rust-infinite-f64-constants.md)
 
 ## Representation and catalogue
@@ -39,8 +39,12 @@ output bytes before compiler source admission.
 The inventory is JavaScalarConstantValue: Boolean, I32, I64, finite F64 and
 Infinity(Binary64Sign). Only exact Primary-precedence known-field expressions
 produce the infinity variant; casts, negations and arbitrary expressions are
-not constant inventory syntax. Existing finite compiler joins and manifest
-serializers use an explicit finite-literal projection which fails for infinity.
+not constant inventory syntax. Checked source joins compare the full typed
+value and original compiler declaration against the producer certificate.
+Owned/imported/exported manifests serialize exact signed infinity bits,
+without projecting a standard field into a finite literal. Source constant
+reads and public initializers use exhaustive typed expression construction;
+the renderer and standard-field name resolution remain unchanged.
 
 Name handling retains the existing conservative rejection of value bindings
 that shadow Double or java in standard-field expressions. Reservation charges

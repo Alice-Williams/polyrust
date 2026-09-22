@@ -32,7 +32,8 @@ pub(super) fn check(graph: &CheckedGraph) {
                 bindings.iter().any(|(name, target)|
                 matches!(target, portable_codegen::RustExportTarget::Declaration(id) if *id == path)
                 && (matches!(name.name.as_str(), "read_left" | "read_right")
-                    || (member.key == "proof.finite.constant.root" && name.name == "read_private")))
+                    || (matches!(member.key.as_str(), "proof.finite.constant.root" | "proof.infinite.constant.root")
+                        && name.name == "read_private")))
             });
             assert_eq!(
                 function.call_height(),

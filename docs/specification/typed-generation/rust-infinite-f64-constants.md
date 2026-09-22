@@ -1,6 +1,6 @@
 # Checked Rust signed-infinity constants
 
-- Status: independent oracle and C/Java target foundations complete; checked source admission pending
+- Status: oracle, target foundations and checked source integration complete
 - Plan: [02V](../../plan/tasks/M35-03A-02V-infinite-f64-constants.md)
 - Targets: [C17](languages/c/rust-infinite-f64-constants.md), [Java21](languages/java/rust-infinite-f64-constants.md)
 

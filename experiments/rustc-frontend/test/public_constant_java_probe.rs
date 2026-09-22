@@ -28,13 +28,23 @@ pub(super) fn check(tcx: TyCtxt<'_>, certificate: &RenderReadyPackage<JavaDialec
                 let constant = api.constant(*id).unwrap();
                 let (ty, value) = match input.value() {
                     ScalarConstantValue::Bool(v) => {
-                        (JavaPrimitive::Boolean, JavaLiteral::Boolean(v))
+                        (JavaPrimitive::Boolean, JavaScalarConstantValue::Boolean(v))
                     }
-                    ScalarConstantValue::I32(v) => (JavaPrimitive::Int, JavaLiteral::I32(v)),
-                    ScalarConstantValue::I64(v) => (JavaPrimitive::Long, JavaLiteral::I64(v)),
-                    ScalarConstantValue::F64(v) => (JavaPrimitive::Double, JavaLiteral::F64(v)),
+                    ScalarConstantValue::I32(v) => {
+                        (JavaPrimitive::Int, JavaScalarConstantValue::I32(v))
+                    }
+                    ScalarConstantValue::I64(v) => {
+                        (JavaPrimitive::Long, JavaScalarConstantValue::I64(v))
+                    }
+                    ScalarConstantValue::F64(v) => {
+                        (JavaPrimitive::Double, JavaScalarConstantValue::F64(v))
+                    }
+                    ScalarConstantValue::Infinity(sign) => (
+                        JavaPrimitive::Double,
+                        JavaScalarConstantValue::Infinity(sign),
+                    ),
                 };
-                assert_eq!(constant.value().literal(), Some(value));
+                assert_eq!(constant.value(), &value);
                 assert_eq!(constant.ty(), &JavaType::primitive(ty));
                 assert_eq!(constant.source().declaration, *id);
                 assert!(constant.source().externally_reachable);

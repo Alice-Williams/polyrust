@@ -6,17 +6,17 @@ import sys
 
 
 def main():
-    scalar = "scalar constants support only bool, i32, i64 and finite f64"
-    nonfinite = "nonfinite f64 constants are not implemented"
+    scalar = "scalar constants support only bool, i32, i64 and non-NaN f64"
+    nonfinite = "NaN f64 constants are not implemented"
     cases = {
-        "positive_infinity": ("pub const V:f64=f64::INFINITY;", nonfinite),
-        "negative_infinity": ("pub const V:f64=f64::NEG_INFINITY;", nonfinite),
+        "positive_payload_nan": ("pub const V:f64=f64::from_bits(0x7ff8000000000001);", nonfinite),
+        "negative_payload_nan": ("pub const V:f64=f64::from_bits(0xfff8000000000001);", nonfinite),
         "nan": ("pub const V:f64=f64::NAN;", nonfinite),
         "signalling_nan": ("pub const V:f64=f64::from_bits(0x7ff0000000000001);", nonfinite),
         "negative_nan": ("pub const V:f64=f64::from_bits(0xfff8000000000001);", nonfinite),
-        "overflow": ("pub const V:f64=f64::MAX*2.0;", nonfinite),
+        "infinity_difference_nan": ("pub const V:f64=f64::INFINITY-f64::INFINITY;", nonfinite),
         "nonfinite_private": ("const V:f64=f64::NAN; pub fn value()->f64{V}", nonfinite),
-        "nonfinite_unused_local": ("pub fn value()->f64{const V:f64=f64::INFINITY; 0.0}", nonfinite),
+        "nan_unused_local": ("pub fn value()->f64{const V:f64=f64::NAN; 0.0}", nonfinite),
         "nonfinite_alias": ("mod m{pub const V:f64=f64::NAN;} pub use m::V;", nonfinite),
         "public_f32": ("pub const V:f32=1.0;", scalar),
         "unused_local_f32": ("pub fn value()->f64{const V:f32=1.0; 0.0}", scalar),

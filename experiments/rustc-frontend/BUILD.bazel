@@ -47,6 +47,8 @@ load(":floating_targets.bzl", "floating_targets")
 load(":foreign_export_targets.bzl", "foreign_export_targets")
 load(":i64_targets.bzl", "i64_targets")
 load(":infinite_constant_oracle_targets.bzl", "infinite_constant_oracle_targets")
+load(":infinite_constant_probe_targets.bzl", "infinite_constant_probe_targets")
+load(":infinite_constant_source_targets.bzl", "infinite_constant_source_targets")
 load(":java_ast_targets.bzl", "java_ast_targets")
 load(":java_bundle_targets.bzl", "java_bundle_targets")
 load(":java_contract_targets.bzl", "java_contract_targets")
@@ -848,6 +850,13 @@ widening_oracle_targets(name = "widening_oracle_test")
 finite_constant_oracle_targets(name = "finite_constant_oracle_test")
 
 infinite_constant_oracle_targets(name = "infinite_constant_oracle_test")
+
+infinite_constant_source_targets(name = "infinite_constant_source_native_test")
+
+infinite_constant_probe_targets(
+    name = "infinite_constant_source_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)
 
 finite_constant_source_targets(name = "finite_constant_source_native_test")
 

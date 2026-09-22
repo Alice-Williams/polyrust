@@ -37,9 +37,7 @@ impl Mapping for CPublicConstants {
             tcx.def_span(input.definition()),
             &spelling,
         )?;
-        let ty = c(CExpressions::new(&state.registry).literal(constants::literal(input.value())))?
-            .ty()
-            .clone();
+        let ty = constants::value(input.value()).ty();
         let ty = c(ty.with_constness(CConstness::Const))?;
         let object = c(state.registry.register_object(&header, key, ty))?;
         state

@@ -31,19 +31,18 @@ pub(crate) fn check(
     assert!(reconstruct(&absent).is_err());
     let mut changed = expected.clone();
     let wrong_value = match value {
-        CLiteral::Bool(v) => CLiteral::Bool(!v),
-        CLiteral::Signed(CSignedLiteral::I32(v)) => {
-            CLiteral::Signed(CSignedLiteral::I32(v.wrapping_add(1)))
-        }
-        CLiteral::Signed(CSignedLiteral::I64(v)) => {
-            CLiteral::Signed(CSignedLiteral::I64(v.wrapping_add(1)))
-        }
-        CLiteral::F64(v) => CLiteral::F64(
+        CScalarConstantValue::Bool(v) => CScalarConstantValue::Bool(!v),
+        CScalarConstantValue::I32(v) => CScalarConstantValue::I32(v.wrapping_add(1)),
+        CScalarConstantValue::I64(v) => CScalarConstantValue::I64(v.wrapping_add(1)),
+        CScalarConstantValue::F64(v) => CScalarConstantValue::F64(
             portable_binary64::FiniteBinary64::from_bits(v.to_bits() ^ (1_u64 << 63)).unwrap(),
         ),
-        _ => panic!("scalar"),
+        CScalarConstantValue::Infinity(sign) => CScalarConstantValue::Infinity(match sign {
+            portable_binary64::Binary64Sign::Positive => portable_binary64::Binary64Sign::Negative,
+            portable_binary64::Binary64Sign::Negative => portable_binary64::Binary64Sign::Positive,
+        }),
     };
-    changed.insert(id, (object.clone(), wrong_value.clone()));
+    changed.insert(id, (object.clone(), wrong_value));
     assert!(reconstruct(&changed).is_err());
     let mut altered = manifest.clone();
     altered.constants.get_mut(&id).unwrap().value = wrong_value;

@@ -14,12 +14,12 @@ pub(super) fn read<'tcx>(
     };
     assert_eq!(imported, &reader.foreign_constants[&input.definition()]);
     let proof = imported.constant();
-    let (_, literal) = crate::java_lower::constants::literal(input.value());
+    let (_, expected) = crate::java_lower::constants::value(input.value());
     assert_eq!(
         proof.declaration(),
         crate::source_origin::identity(reader.tcx, input.definition())
     );
-    assert_eq!(proof.value().literal(), Some(literal));
+    assert_eq!(proof.value(), &expected);
     assert_eq!(proof.ty(), &expression.ty);
     assert!(!reader.constants.contains_key(&input.definition()));
     let saved = reader

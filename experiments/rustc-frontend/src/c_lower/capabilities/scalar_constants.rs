@@ -1,8 +1,7 @@
-//! Fold checked constants into ordinary C literal nodes, never runtime storage.
+//! Fold checked constants into typed scalar syntax, never runtime storage.
 use super::{ConstantInput, Mapping, ScalarConstants};
-use crate::c_lower::{Reader, Result, c};
-use crate::source_capabilities::ScalarConstantValue;
-use portable_backend_c::ast::{CLiteral, CSignedLiteral, CValue};
+use crate::c_lower::{Reader, Result, constants};
+use portable_backend_c::ast::CValue;
 
 #[derive(Clone, Copy)]
 pub(crate) struct CScalarConstants;
@@ -13,13 +12,7 @@ impl Mapping for CScalarConstants {
     type Output = CValue;
 
     fn lower<'tcx>(&self, reader: &mut Reader<'tcx>, input: ConstantInput<'tcx>) -> Result<CValue> {
-        let literal = match input.value() {
-            ScalarConstantValue::I32(value) => CLiteral::Signed(CSignedLiteral::I32(value)),
-            ScalarConstantValue::I64(value) => CLiteral::Signed(CSignedLiteral::I64(value)),
-            ScalarConstantValue::Bool(value) => CLiteral::Bool(value),
-            ScalarConstantValue::F64(value) => CLiteral::F64(value),
-        };
-        let value = c(reader.expressions().literal(literal))?;
+        let value = constants::expression(&reader.registry, input.value())?;
         #[cfg(constant_ast_probe)]
         super::constant_ast::check(reader, input, &value);
         Ok(value)

@@ -23,12 +23,12 @@ impl Mapping for JavaPublicConstantImports {
         let value = input.value();
         #[cfg(any(constant_import_wrong_type, constant_import_wrong_value))]
         let value = crate::source_capabilities::import_mutations::value(value);
-        let (plan, literal) = constants::literal(value);
+        let (plan, expected) = constants::value(value);
         let id = crate::source_origin::identity(input.tcx(), input.definition());
         if state.proof.declaration() != id
             || state.proof.package_identity().root().crate_id != id.crate_id
             || state.proof.ty() != &plan.java_type()
-            || state.proof.value().literal().as_ref() != Some(&literal)
+            || state.proof.value() != &expected
         {
             return Err(
                 "foreign compiler identity/type/value differs from Java constant certificate"

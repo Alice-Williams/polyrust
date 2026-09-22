@@ -13,7 +13,7 @@ CASES = {
     "extra_argument": ("trait Fake {fn trunc(self, extra:bool)->bool;} impl Fake for bool {fn trunc(self, extra:bool)->bool {extra}} pub fn value(v:bool)->bool {v.trunc(true)}", "Floating truncation takes no extra arguments"),
     "other_method": ("pub fn value(v:f64)->f64 {v.floor()}", "expression mapping is not implemented"),
     "cast": ("pub fn value(v:i64)->f64 {(v as f64).trunc()}", "signed widening supports only an unadjusted i32 operand cast to i64"),
-    "constant": ("const V:f64=f64::INFINITY; pub fn value()->f64 {V.trunc()}", "nonfinite f64 constants"),
+    "constant": ("const V:f64=f64::NAN; pub fn value()->f64 {V.trunc()}", "NaN f64 constants"),
     "euclidean_remainder": ("pub fn value(v:f64)->f64 {(v.rem_euclid(1.0)).trunc()}", "expression mapping is not implemented"),
     "indirect": ("pub fn value(v:f64)->f64 {let f:fn(f64)->f64=f64::trunc; f(v)}", "direct calls require resolved ordinary functions"),
     "generic": ("fn forward<T>(v:T)->T {v} pub fn value(v:f64)->f64 {forward(v).trunc()}", "generic or mismatched direct callee identity"),

@@ -11,7 +11,7 @@ pub(crate) fn check(package: &RenderReadyPackage<CDialect>, manifest: &ApiManife
     let constants = manifest
         .constants
         .iter()
-        .map(|(id, constant)| (*id, (constant.reference.clone(), constant.value.clone())))
+        .map(|(id, constant)| (*id, (constant.reference.clone(), constant.value)))
         .collect();
     let verify = |candidate: &ApiManifest| {
         candidate.verify_all_bindings(

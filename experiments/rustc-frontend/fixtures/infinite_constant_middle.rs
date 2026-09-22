@@ -1,0 +1,15 @@
+//! Alias-only facade; infinity constants retain their original producer.
+pub use constants::{
+    ALIAS_NEGATIVE, ALIAS_POSITIVE, BITS_NEGATIVE, BITS_POSITIVE, NAMED_NEGATIVE, NAMED_POSITIVE,
+    NEGATE_NEGATIVE, NEGATE_POSITIVE, NEGATIVE_ADD_OVERFLOW, NEGATIVE_DIV_OVERFLOW,
+    NEGATIVE_MUL_OVERFLOW, NEGATIVE_OVER_NEGATIVE_ZERO, NEGATIVE_OVER_POSITIVE_ZERO,
+    NEGATIVE_TIMES_NEGATIVE, POSITIVE_ADD_OVERFLOW, POSITIVE_DIV_OVERFLOW, POSITIVE_MUL_OVERFLOW,
+    POSITIVE_OVER_NEGATIVE_ZERO, POSITIVE_OVER_POSITIVE_ZERO, POSITIVE_TIMES_NEGATIVE,
+};
+pub use second::NEGATIVE as OTHER_NEGATIVE;
+pub use second::SAME_VALUE as OTHER_SAME;
+/// Original module identity survives aliases and a finite module cycle.
+pub mod nested {
+    pub use super::NAMED_POSITIVE as AGAIN;
+    pub use crate::nested as cycle;
+}

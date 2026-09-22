@@ -7,12 +7,36 @@ use std::collections::HashMap;
 
 pub(crate) type OwnedConstants = HashMap<DefId, (CObjectRef, ScalarConstantValue)>;
 
-pub(super) fn literal(value: ScalarConstantValue) -> CLiteral {
-    match value {
-        ScalarConstantValue::Bool(value) => CLiteral::Bool(value),
-        ScalarConstantValue::I32(value) => CLiteral::Signed(CSignedLiteral::I32(value)),
-        ScalarConstantValue::I64(value) => CLiteral::Signed(CSignedLiteral::I64(value)),
-        ScalarConstantValue::F64(value) => CLiteral::F64(value),
+pub(super) fn value(input: ScalarConstantValue) -> CScalarConstantValue {
+    match input {
+        ScalarConstantValue::Bool(value) => CScalarConstantValue::Bool(value),
+        ScalarConstantValue::I32(value) => CScalarConstantValue::I32(value),
+        ScalarConstantValue::I64(value) => CScalarConstantValue::I64(value),
+        ScalarConstantValue::F64(value) => CScalarConstantValue::F64(value),
+        ScalarConstantValue::Infinity(sign) => CScalarConstantValue::Infinity(sign),
+    }
+}
+
+pub(super) fn expression(registry: &CRegistry, input: ScalarConstantValue) -> Result<CValue> {
+    let expressions = CExpressions::new(registry);
+    match input {
+        ScalarConstantValue::Bool(value) => c(expressions.literal(CLiteral::Bool(value))),
+        ScalarConstantValue::I32(value) => {
+            c(expressions.literal(CLiteral::Signed(CSignedLiteral::I32(value))))
+        }
+        ScalarConstantValue::I64(value) => {
+            c(expressions.literal(CLiteral::Signed(CSignedLiteral::I64(value))))
+        }
+        ScalarConstantValue::F64(value) => c(expressions.literal(CLiteral::F64(value))),
+        ScalarConstantValue::Infinity(sign) => {
+            let value = expressions.known_constant(CKnownConstant::DoubleInfinity);
+            match sign {
+                portable_binary64::Binary64Sign::Positive => Ok(value),
+                portable_binary64::Binary64Sign::Negative => {
+                    c(expressions.unary(CUnaryOperator::Negate, value))
+                }
+            }
+        }
     }
 }
 
@@ -27,7 +51,7 @@ pub(super) fn files(state: &super::package::State) -> Result<(Vec<CFileItem>, Ve
             object.file().clone(),
         ))?
         .object_declaration(object.clone()))?));
-        let value = c(CExpressions::new(&state.registry).literal(literal(*value)))?;
+        let value = expression(&state.registry, *value)?;
         definitions.push(CFileItem::Definition(c(c(CDeclarations::new(
             &state.registry,
             state.file.clone(),

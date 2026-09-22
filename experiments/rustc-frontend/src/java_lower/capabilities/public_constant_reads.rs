@@ -19,10 +19,10 @@ impl Mapping for JavaPublicConstantReads {
                 .foreign_constants
                 .get(&input.definition())
                 .ok_or("foreign public constant read lacks registered Java producer")?;
-            let (plan, literal) = constants::literal(input.value());
+            let (plan, expected) = constants::value(input.value());
             let proof = imported.constant();
             if proof.declaration() != crate::source_origin::identity(reader.tcx, input.definition())
-                || proof.value().literal().as_ref() != Some(&literal)
+                || proof.value() != &expected
                 || proof.ty() != &plan.java_type()
             {
                 return Err(
@@ -48,7 +48,7 @@ impl Mapping for JavaPublicConstantReads {
         if constant.definition != input.definition() || constant.value != input.value() {
             return Err("Java constant read disagrees with registered compiler value".into());
         }
-        let (plan, _) = constants::literal(input.value());
+        let (plan, _) = constants::value(input.value());
         let value = Value::new(
             plan.clone(),
             JavaExpr {
