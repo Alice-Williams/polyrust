@@ -20,6 +20,7 @@ pub enum CKnownConstant {
     DoubleMaxExponent,
     FloatEvaluationMethod,
     DoubleHasSubnormals,
+    DoubleInfinity,
     EndOfFile,
     StandardInput,
     StandardOutput,
@@ -45,6 +46,7 @@ impl CKnownConstant {
             Self::I64Min | Self::I64Max => CScalarType::I64,
             Self::U64Max => CScalarType::U64,
             Self::SizeMax => CScalarType::Size,
+            Self::DoubleInfinity => CScalarType::F64,
             Self::StandardInput | Self::StandardOutput | Self::StandardError => {
                 return CObjectType::pointer(CPointerTarget::Object(Box::new(CObjectType::known(
                     CKnownObject::File,
@@ -56,7 +58,10 @@ impl CKnownConstant {
 
     pub const fn is_integer_constant_expression(self) -> bool {
         match self {
-            Self::StandardInput | Self::StandardOutput | Self::StandardError => false,
+            Self::DoubleInfinity
+            | Self::StandardInput
+            | Self::StandardOutput
+            | Self::StandardError => false,
             Self::CharBit
             | Self::IntMin
             | Self::IntMax
@@ -75,5 +80,9 @@ impl CKnownConstant {
             | Self::FloatEvaluationMethod
             | Self::EndOfFile => true,
         }
+    }
+
+    pub const fn is_arithmetic_constant_expression(self) -> bool {
+        matches!(self, Self::DoubleInfinity) || self.is_integer_constant_expression()
     }
 }

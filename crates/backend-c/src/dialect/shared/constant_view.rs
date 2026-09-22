@@ -1,8 +1,8 @@
-//! Constant views borrow only the exact certified source and resolved spelling.
+//! Constant views project only the exact certified source and resolved spelling.
 use super::{CDialect, bindings::CValueBinding};
 use crate::ast::{
     CDefinitionKind, CExpressions, CFileItem, CFileRef, CIdentifier, CInitializerKind, CLinkage,
-    CLiteral, CObjectRef, CObjectType, CValueKind,
+    CObjectRef, CObjectType, CScalarConstantValue,
 };
 use portable_codegen::RenderReadyPackage;
 
@@ -20,7 +20,7 @@ use portable_codegen::RenderReadyPackage;
 pub struct CDefinedConstant<'a> {
     object: &'a CObjectRef,
     name: &'a CIdentifier,
-    value: &'a CLiteral,
+    value: CScalarConstantValue,
     implementation: &'a CFileRef,
     linkage: CLinkage,
     read_type: CObjectType,
@@ -33,8 +33,8 @@ impl<'a> CDefinedConstant<'a> {
     pub fn name(&self) -> &'a CIdentifier {
         self.name
     }
-    pub fn value(&self) -> &'a CLiteral {
-        self.value
+    pub fn value(&self) -> &CScalarConstantValue {
+        &self.value
     }
     pub fn implementation(&self) -> &'a CFileRef {
         self.implementation
@@ -81,9 +81,8 @@ pub fn c_defined_constants(
                     let CInitializerKind::Expression(value) = initializer.kind() else {
                         unreachable!("certified scalar constant initializer");
                     };
-                    let CValueKind::Literal(value) = value.kind() else {
-                        unreachable!("certified exact scalar literal");
-                    };
+                    let value = CScalarConstantValue::from_expression(value)
+                        .expect("certified exact scalar constant");
                     let expressions =
                         CExpressions::new(unit.unit.projection.registry.registrations());
                     let read = expressions

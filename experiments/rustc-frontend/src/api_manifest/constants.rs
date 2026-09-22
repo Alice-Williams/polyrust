@@ -26,6 +26,10 @@ pub(super) fn collect(
             return Err("API constant lacks compiler provenance".into());
         };
         let id = origin.declaration;
+        let value = definition
+            .value()
+            .literal()
+            .ok_or("nonfinite C source constants are not admitted yet")?;
         if origin.node != RustSourceNode::Declaration
             || id.crate_id != exports.root.crate_id
             || &origin.crate_exports != exports
@@ -34,18 +38,18 @@ pub(super) fn collect(
             || reference.file() != header
             || definition.implementation() != implementation
             || definition.linkage() != CLinkage::External
-            || expected.get(&id) != Some(&(reference.clone(), definition.value().clone()))
+            || expected.get(&id) != Some(&(reference.clone(), value.clone()))
         {
             return Err("API manifest compiler/constant/file/value mapping disagrees".into());
         }
-        scalar(definition.value())?;
+        scalar(&value)?;
         if constants
             .insert(
                 id,
                 Constant {
                     reference: reference.clone(),
                     name: definition.name().clone(),
-                    value: definition.value().clone(),
+                    value,
                 },
             )
             .is_some()
@@ -76,4 +80,14 @@ pub(super) fn scalar(value: &CLiteral) -> Result<(&'static str, String), String>
         )),
         _ => Err("API constant is outside the scalar profile".into()),
     }
+}
+
+pub(super) fn certified_scalar(
+    value: &portable_backend_c::ast::CScalarConstantValue,
+) -> Result<(&'static str, String), String> {
+    scalar(
+        &value
+            .literal()
+            .ok_or("nonfinite C source constants are not admitted yet")?,
+    )
 }

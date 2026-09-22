@@ -1,5 +1,6 @@
 //! One authority for standard identities, signatures and operand obligations.
 
+mod constant_spellings;
 mod known_calls;
 mod operands;
 mod signatures;

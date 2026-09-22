@@ -56,7 +56,7 @@ fn is_arithmetic_constant_expression(value: &CValue) -> bool {
         | V::Enumerator(_)
         | V::SizeOf(_)
         | V::AlignOf(_) => true,
-        V::KnownConstant(value) => value.is_integer_constant_expression(),
+        V::KnownConstant(value) => value.is_arithmetic_constant_expression(),
         V::Unary { operand, .. } => is_arithmetic_constant_expression(operand),
         V::Binary { left, right, .. } => {
             is_arithmetic_constant_expression(left) && is_arithmetic_constant_expression(right)

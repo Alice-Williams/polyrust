@@ -59,7 +59,7 @@ fn finite_constants_keep_bits_types_original_alias_authority_and_bounds() {
     assert_eq!(original.constants().count(), bits.len());
     assert_eq!(original.functions().count(), 0);
     for (value, bits) in original.constants().zip(bits) {
-        assert_eq!(value.value(), &literal(bits));
+        assert_eq!(value.value().literal(), Some(literal(bits)));
         assert_eq!(value.read_type(), &CObjectType::scalar(CScalarType::F64));
         assert_eq!(value.object().ty().constness(), CConstness::Const);
         assert_eq!(value.package_identity().stack_bound_bytes(), 0);

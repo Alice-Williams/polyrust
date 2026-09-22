@@ -125,6 +125,11 @@ contract as every other target.
   classification patterns, actual value faults and independently observed
   predicates pass at both Rust settings. All 1,004 release/lint targets pass,
   whole-scope/hardening reviews are clean and existing output/WIP is unchanged.
+  Its C foundation is now complete: typed standard constants, exact signed
+  inventory/import facts, inferred math.h without libm, native compiling-fault
+  proof and all 1,005 release/lint targets passing. Broad independent review is
+  clean; all 462 previous output hashes and 38 unrelated WIP hashes are unchanged.
+  Java and checked source admission remain separate next checkpoints.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

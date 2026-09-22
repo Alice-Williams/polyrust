@@ -20,7 +20,7 @@ impl Mapping for CPublicConstantReads {
                 .ok_or("foreign public constant read lacks registered C producer")?;
             let literal = crate::c_lower::constants::literal(input.value());
             if proof.declaration() != crate::source_origin::identity(reader.tcx, input.definition())
-                || proof.value() != &literal
+                || proof.value().literal().as_ref() != Some(&literal)
                 || reader
                     .registry
                     .imported_constant(object)

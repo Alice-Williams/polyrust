@@ -321,3 +321,7 @@ mod binary64;
 #[cfg(test)]
 #[path = "../tests/shared_finite_constants.rs"]
 mod finite_constants;
+
+#[cfg(test)]
+#[path = "../tests/shared_infinite_constants.rs"]
+mod infinite_constants;

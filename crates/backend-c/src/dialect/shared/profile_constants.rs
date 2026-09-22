@@ -1,7 +1,7 @@
 //! Bounded ordinary scalar constant objects, separate from owned-value globals.
 use crate::ast::{
-    CConstness, CFileRole, CInitializer, CInitializerKind, CLiteral, CObjectRef, CObjectTypeKind,
-    CScalarType, CSignedLiteral, CValueKind,
+    CConstness, CFileRole, CInitializer, CInitializerKind, CObjectRef, CObjectTypeKind,
+    CScalarConstantValue, CScalarType,
 };
 
 pub(super) fn object(object: &CObjectRef) -> Result<(), String> {
@@ -27,24 +27,10 @@ pub(super) fn initializer(
 ) -> Result<(), String> {
     object(object_ref)?;
     let CInitializerKind::Expression(value) = initializer.kind() else {
-        return Err("C scalar constant requires an exact scalar literal initializer".into());
+        return Err("C scalar constant requires an exact scalar constant initializer".into());
     };
-    let matches_type = matches!(
-        (object_ref.ty().kind(), value.kind()),
-        (
-            CObjectTypeKind::Scalar(CScalarType::Bool),
-            CValueKind::Literal(CLiteral::Bool(_))
-        ) | (
-            CObjectTypeKind::Scalar(CScalarType::I32),
-            CValueKind::Literal(CLiteral::Signed(CSignedLiteral::I32(_)))
-        ) | (
-            CObjectTypeKind::Scalar(CScalarType::I64),
-            CValueKind::Literal(CLiteral::Signed(CSignedLiteral::I64(_)))
-        ) | (
-            CObjectTypeKind::Scalar(CScalarType::F64),
-            CValueKind::Literal(CLiteral::F64(_))
-        )
-    );
+    let matches_type = CScalarConstantValue::from_expression(value)
+        .is_some_and(|constant| object_ref.ty().kind() == constant.ty().kind());
     if !matches_type {
         return Err(
             "C scalar constant initializer must match its exact declared scalar type".into(),

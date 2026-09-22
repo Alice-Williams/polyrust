@@ -28,7 +28,7 @@ impl Mapping for CPublicConstantImports {
         if state.proof.declaration() != id
             || state.proof.package_identity().root().crate_id != id.crate_id
             || state.proof.read_type() != expected.ty()
-            || state.proof.value() != &literal
+            || state.proof.value().literal().as_ref() != Some(&literal)
         {
             return Err(
                 "foreign compiler identity/type/value differs from C constant certificate".into(),

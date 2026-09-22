@@ -44,22 +44,9 @@ pub(super) fn collect(
             return Err("C dependency constant/provenance/file/linkage inventory disagrees".into());
         }
         let read_type = definition.read_type();
-        if read_type.constness() != CConstness::Unqualified
-            || !matches!(
-                (read_type.kind(), definition.value()),
-                (
-                    CObjectTypeKind::Scalar(CScalarType::Bool),
-                    CLiteral::Bool(_)
-                ) | (
-                    CObjectTypeKind::Scalar(CScalarType::I32),
-                    CLiteral::Signed(CSignedLiteral::I32(_))
-                ) | (
-                    CObjectTypeKind::Scalar(CScalarType::I64),
-                    CLiteral::Signed(CSignedLiteral::I64(_))
-                ) | (CObjectTypeKind::Scalar(CScalarType::F64), CLiteral::F64(_))
-            )
+        if read_type.constness() != CConstness::Unqualified || read_type != definition.value().ty()
         {
-            return Err("C dependency constant lacks an exact bool/i32/i64/f64 literal".into());
+            return Err("C dependency constant lacks an exact bool/i32/i64/f64 value".into());
         }
         if !symbols.insert(definition.name().clone()) {
             return Err("C dependency public symbols are not distinct".into());
@@ -69,7 +56,7 @@ pub(super) fn collect(
             Constant {
                 object: object.clone(),
                 symbol: definition.name().clone(),
-                value: definition.value().clone(),
+                value: *definition.value(),
                 read_type,
             },
         );

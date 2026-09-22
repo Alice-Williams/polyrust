@@ -15,6 +15,7 @@ mod call_construction;
 mod call_model;
 mod comments;
 mod constant_expressions;
+mod constant_values;
 pub(crate) mod contextual;
 mod control_construction;
 mod declaration_construction;
@@ -54,6 +55,7 @@ include!("tests/modules.rs");
 pub use crate::ownership::CSafetyError;
 pub use call_model::{CCall, CCallContract, CCallable, CCallableKind, CEffect};
 pub use comments::{CAssertDiagnostic, CComment};
+pub use constant_values::CScalarConstantValue;
 pub use contextual::CContextError;
 pub use declaration_construction::CDeclarations;
 pub use declaration_model::{

@@ -1,6 +1,6 @@
 //! Opaque constant evidence retains its independent producer certificate.
 use super::{Authority, CDependencyAuthority, CDependencyPackage};
-use crate::ast::{CFileRef, CIdentifier, CLiteral, CObjectRef, CObjectType};
+use crate::ast::{CFileRef, CIdentifier, CObjectRef, CObjectType, CScalarConstantValue};
 use crate::dialect::CGeneratedHeader;
 use portable_codegen::RustDeclarationId;
 use std::{cmp::Ordering, sync::Arc};
@@ -22,7 +22,7 @@ pub struct CDependencyConstant {
     declaration: RustDeclarationId,
     object: CObjectRef,
     symbol: CIdentifier,
-    value: CLiteral,
+    value: CScalarConstantValue,
     read_type: CObjectType,
 }
 
@@ -51,7 +51,7 @@ impl CDependencyConstant {
     pub fn symbol(&self) -> &CIdentifier {
         &self.symbol
     }
-    pub fn value(&self) -> &CLiteral {
+    pub fn value(&self) -> &CScalarConstantValue {
         &self.value
     }
     pub fn read_type(&self) -> &CObjectType {

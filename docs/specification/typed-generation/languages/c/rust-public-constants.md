@@ -46,8 +46,11 @@ functions. Existing function and record safety checks still run when present.
 
 Child02B-01 replaces the function-only producer API with a complete certified
 function-and-constant inventory. Read-only CDefinedConstant views and opaque
-CDependencyConstant witnesses retain the actual registered const object, literal,
+CDependencyConstant witnesses retain the actual registered const object, exact scalar value,
 unqualified read type, source identity, allocated symbol and owning files.
+The value is a CScalarConstantValue inventory projection from certified syntax,
+not a caller-supplied literal or name/value pairing. Its finite-literal projection
+is partial: target infinity constants cannot be converted into finite literals.
 Constants-only producers have zero function frames, not a fabricated function.
 Synthesized constants cannot stand in for Rust public declaration provenance.
 Owned consumers check their resolved names against every direct and transitive

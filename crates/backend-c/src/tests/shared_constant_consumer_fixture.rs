@@ -159,7 +159,9 @@ pub(super) fn named(
                     .unwrap()
             };
             match usage {
-                Usage::Unused => expressions.literal(values[index].value().clone()).unwrap(),
+                Usage::Unused => expressions
+                    .literal(values[index].value().literal().unwrap())
+                    .unwrap(),
                 Usage::Difference
                     if values[index].read_type().kind()
                         != &CObjectTypeKind::Scalar(CScalarType::Bool) =>

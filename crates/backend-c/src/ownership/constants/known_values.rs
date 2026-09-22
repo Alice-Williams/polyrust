@@ -19,7 +19,7 @@ pub(super) fn known(value: K) -> Result<CInteger, E> {
         K::FloatEvaluationMethod => 0,
         K::DoubleHasSubnormals => 1,
         K::EndOfFile => -1,
-        K::StandardInput | K::StandardOutput | K::StandardError => {
+        K::DoubleInfinity | K::StandardInput | K::StandardOutput | K::StandardError => {
             return Err(E::ExpectedNumericConstant);
         }
     };

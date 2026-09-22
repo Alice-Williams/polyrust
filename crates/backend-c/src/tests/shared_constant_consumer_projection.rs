@@ -98,7 +98,9 @@ fn imported_places_reject_writes_and_the_shared_profile_rejects_address_borrows(
         statements
             .assign(
                 place.clone(),
-                expressions.literal(value.value().clone()).unwrap()
+                expressions
+                    .literal(value.value().literal().unwrap())
+                    .unwrap()
             )
             .is_err()
     );

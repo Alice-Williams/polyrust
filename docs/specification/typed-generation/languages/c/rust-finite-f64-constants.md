@@ -10,6 +10,9 @@ in the shared constant profile. Retain public-header identity, definition
 linkage, exact declared type, certified platform requirements, import authority
 and all source/stack/resource bounds. Extend the corresponding dependency
 constant inventory and views without weakening other scalar checks.
+Those views carry CScalarConstantValue::F64 with the same exact finite payload;
+the separate [infinity foundation](rust-infinite-f64-constants.md) uses its own
+inventory variant and does not widen CLiteral::F64.
 
 Use the existing typed hexadecimal binary64 literal renderer. Ordinary public
 header declarations and source definitions must compile separately; there is

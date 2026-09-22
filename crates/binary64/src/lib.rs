@@ -19,7 +19,7 @@
 const FRACTION_MASK: u64 = (1_u64 << 52) - 1;
 const EXPONENT_MASK: u64 = 0x7ff;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Binary64Sign {
     Positive,
     Negative,

@@ -126,7 +126,10 @@ extends the distinct constant domain to two exact signed values using typed
 standard C/Java constants. Oracle, target foundations and source admission
 are separately gated; NaN constants remain outside this increment.
 The independent oracle is complete with all 1,004 release/lint tests passing
-and clean whole-scope/hardening reviews. Target and source admission stay pending.
+and clean whole-scope/hardening reviews. The C foundation is complete too:
+typed standard constants, exact signed inventory/import facts, native bit and
+compiling-fault proof, all 1,005 release/lint targets passing and clean broad
+review. Existing output/WIP is unchanged. Java and source admission stay pending.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

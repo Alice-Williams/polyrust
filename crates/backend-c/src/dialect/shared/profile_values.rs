@@ -14,6 +14,7 @@ pub(super) fn visit<'a>(value: &'a CValue, add: &mut impl FnMut(Node<'a>)) -> Re
         return Ok(());
     }
     match value.kind() {
+        CValueKind::KnownConstant(crate::ast::CKnownConstant::DoubleInfinity) => {}
         CValueKind::Call(call) => {
             match call.callable().kind() {
                 CCallableKind::Direct(function) => signature(function)?,

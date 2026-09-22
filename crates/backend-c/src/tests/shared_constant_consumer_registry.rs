@@ -44,8 +44,10 @@ fn imports_are_foreign_readonly_objects_never_owned_declarations() {
             .object_definition(
                 object.clone(),
                 CLinkage::External,
-                ast.expression_initializer(ast.literal(dependency.value().clone()).unwrap())
-                    .unwrap()
+                ast.expression_initializer(
+                    ast.literal(dependency.value().literal().unwrap()).unwrap()
+                )
+                .unwrap()
             )
             .is_err()
     );

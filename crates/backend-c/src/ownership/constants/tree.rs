@@ -12,6 +12,9 @@ pub(in crate::ownership) fn evaluate(
 ) -> Result<CNumber, E> {
     match value.kind() {
         V::Literal(literal) => literal_number(literal),
+        V::KnownConstant(crate::ast::CKnownConstant::DoubleInfinity) => {
+            Ok(CNumber::Double(f64::INFINITY))
+        }
         V::KnownConstant(value) => known(*value).map(CNumber::Integer),
         V::Enumerator(value) => {
             CInteger::checked(CScalarType::Int, i128::from(value.value())).map(CNumber::Integer)
@@ -86,6 +89,18 @@ pub(in crate::ownership) fn literal_number(literal: &CLiteral) -> Result<CNumber
     match literal {
         CLiteral::F64(value) => Ok(CNumber::Double(f64::from_bits(value.to_bits()))),
         _ => literal_value(literal).map(CNumber::Integer),
+    }
+}
+
+pub(in crate::ownership) fn scalar_constant_number(
+    value: &crate::ast::CScalarConstantValue,
+) -> Result<CNumber, E> {
+    match value {
+        crate::ast::CScalarConstantValue::Infinity(sign) => Ok(CNumber::Double(match sign {
+            portable_binary64::Binary64Sign::Positive => f64::INFINITY,
+            portable_binary64::Binary64Sign::Negative => f64::NEG_INFINITY,
+        })),
+        _ => literal_number(&value.literal().expect("finite scalar constant")),
     }
 }
 

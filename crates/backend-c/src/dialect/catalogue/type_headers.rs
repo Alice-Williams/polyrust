@@ -34,6 +34,7 @@ impl CKnownConstant {
     pub const fn header(self) -> CHeader {
         match self {
             Self::CharBit | Self::IntMin | Self::IntMax => CHeader::Limits,
+            Self::DoubleInfinity => CHeader::Math,
             Self::I32Min
             | Self::I32Max
             | Self::U32Max

@@ -25,7 +25,7 @@ impl<'a> Engine<'a, '_> {
                 if let CPlaceKind::Global(object) = place.kind()
                     && let Ok(dependency) = self.registry.imported_constant(object)
                 {
-                    let number = constants::literal_number(dependency.value())?;
+                    let number = constants::scalar_constant_number(dependency.value())?;
                     return Ok(Some(Number::domain(NumericDomain::exact(number))));
                 }
                 let key = self.exact_place(place, state)?;

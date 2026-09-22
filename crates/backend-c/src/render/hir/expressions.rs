@@ -8,6 +8,7 @@ impl Writer<'_> {
     pub(super) fn value(&self, value: &CValue) -> String {
         match value.kind() {
             CValueKind::Call(call) => self.call(call),
+            CValueKind::KnownConstant(known) => known.spelling().into(),
             CValueKind::Literal(CLiteral::F64(value)) => {
                 let parts = value.parts();
                 let token = format!("0x{:x}.0p{}", parts.significand(), parts.exponent());

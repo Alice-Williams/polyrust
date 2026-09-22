@@ -12,7 +12,7 @@ without weakening FiniteBinary64, admitting NaNs or adding copied runtimes.
 Use typed standard C/Java constants and preserve original producer authority.
 
 1. [02V-01 — Independent oracle](M35-03A-02V-01-constant-oracle.md) — complete; 1,004 release/lint tests pass and whole-scope/hardening reviews are clean.
-2. [02V-02 — C foundation](M35-03A-02V-02-c-constants.md).
+2. [02V-02 — C foundation](M35-03A-02V-02-c-constants.md) — complete; all 1,005 release/lint tests pass and broad independent review is clean.
 3. [02V-03 — Java foundation](M35-03A-02V-03-java-constants.md).
 4. [02V-04 — Checked source integration](M35-03A-02V-04-compiler-constants.md).
 

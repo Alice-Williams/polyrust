@@ -1,6 +1,6 @@
 # Rust signed-infinity constants in C17
 
-- Status: planned
+- Status: target foundation complete; checked source admission pending
 - Contract: [shared](../../rust-infinite-f64-constants.md)
 
 ## Representation and catalogue
@@ -25,6 +25,33 @@ nonconstant initializers. Retain public-header/definition linkage, owner
 registration, original producer references and output/resource bounds.
 Imported numeric facts must accurately permit infinity; never label it finite.
 Ordinary const double objects are not integer constant expressions.
+
+## Concrete typed mapping
+
+`CKnownConstant::DoubleInfinity` owns the F64 type and arithmetic-constant
+category. The standard catalogue binds that identity to `HUGE_VAL` and
+`CHeader::Math`; the dependency visitor requests the header from the node.
+The renderer only spells that identity or recursively renders typed negation.
+There is no caller-supplied macro text or separate import list in lowering.
+
+`CScalarConstantValue` has Bool, I32, I64, finite F64 and Infinity sign variants.
+Certificate-derived constant views and dependency descriptors carry this
+inventory value, not an alleged nonfinite `CLiteral`. Its exact initializer
+projection accepts no folding, casts, double negation or arbitrary macros.
+The finite-literal projection returns None for infinity. Ownership numeric
+analysis evaluates both owned syntax and imported evidence as exact signed
+infinities; integer conversions remain rejected by numeric safety checking.
+
+The supported execution profile remains pinned Linux LP64 GCC14/Zig with
+binary64 semantics, not every C17 implementation whose double has eight bytes.
+Existing generated radix/mantissa/exponent/subnormal/evaluation assertions are
+retained, and native exact-bit tests establish both HUGE_VAL signs for the
+pinned compilers. Floating expressions are not inserted into `_Static_assert`
+as if they were integer constant expressions.
+
+Until the separate source-integration checkpoint, compiler manifests and
+public constant joins explicitly require the finite-literal projection. Thus
+the target API change does not prematurely admit infinity in Rust input.
 
 ## Required evidence
 

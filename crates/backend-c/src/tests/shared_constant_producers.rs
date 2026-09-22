@@ -79,7 +79,7 @@ fn reversed_file_order_does_not_change_constant_views_or_symbols() {
                 (
                     constant.declaration(),
                     constant.symbol().clone(),
-                    constant.value().clone(),
+                    *constant.value(),
                     constant.object().clone(),
                     constant.read_type().clone(),
                 )
@@ -131,8 +131,8 @@ fn same_registration_and_declaration_can_retain_distinct_literal_certificates() 
     let after = changed.constant(declaration).unwrap();
     assert_eq!(before.object(), after.object());
     assert_eq!(before.symbol(), after.symbol());
-    assert_eq!(before.value(), &CLiteral::Signed(CSignedLiteral::I32(62)));
-    assert_eq!(after.value(), &CLiteral::Signed(CSignedLiteral::I32(17)));
+    assert_eq!(before.value(), &CScalarConstantValue::I32(62));
+    assert_eq!(after.value(), &CScalarConstantValue::I32(17));
     assert_ne!(before, after);
     assert_ne!(before.cmp(after), std::cmp::Ordering::Equal);
     assert_ne!(before.package_identity(), after.package_identity());

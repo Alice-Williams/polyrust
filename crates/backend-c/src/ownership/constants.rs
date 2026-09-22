@@ -6,7 +6,7 @@ mod numeric;
 mod tree;
 
 pub(super) use numeric::{CInteger, CNumber, limits};
-pub(super) use tree::{evaluate, literal_number};
+pub(super) use tree::{evaluate, scalar_constant_number};
 
 #[cfg(test)]
 #[path = "../tests/constant_numbers.rs"]
@@ -15,3 +15,7 @@ mod numbers_test;
 #[cfg(test)]
 #[path = "../tests/constant_conversions.rs"]
 mod conversions_test;
+
+#[cfg(test)]
+#[path = "../tests/constant_infinities.rs"]
+mod infinities_test;

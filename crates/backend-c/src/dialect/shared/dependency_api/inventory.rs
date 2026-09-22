@@ -20,7 +20,7 @@ pub(super) struct Inventory {
 pub(super) struct Constant {
     pub object: CObjectRef,
     pub symbol: CIdentifier,
-    pub value: CLiteral,
+    pub value: CScalarConstantValue,
     pub read_type: CObjectType,
 }
 

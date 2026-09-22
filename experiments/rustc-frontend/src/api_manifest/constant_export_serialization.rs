@@ -13,7 +13,7 @@ impl ApiManifest {
                 text.push(',');
             }
             let proof = binding.dependency();
-            let (ty, value) = constants::scalar(proof.value())?;
+            let (ty, value) = constants::certified_scalar(proof.value())?;
             write!(text,
                 "{{\"module\":{},\"namespace\":\"value\",\"name\":{},\"id\":{},\"owner\":{},\"header\":{},\"symbol\":{},\"type\":{},\"value\":{},\"readonly\":true}}",
                 identity(binding.module()), quote(&binding.name().name), identity(proof.declaration()),

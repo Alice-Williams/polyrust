@@ -48,11 +48,13 @@ impl ApiManifest {
             || self
                 .constant_imports
                 .values()
-                .any(|(_, proof)| matches!(proof.value(), CLiteral::F64(_)))
-            || self
-                .foreign_constants
-                .iter()
-                .any(|binding| matches!(binding.dependency().value(), CLiteral::F64(_)))
+                .any(|(_, proof)| matches!(proof.value().literal(), Some(CLiteral::F64(_))))
+            || self.foreign_constants.iter().any(|binding| {
+                matches!(
+                    binding.dependency().value().literal(),
+                    Some(CLiteral::F64(_))
+                )
+            })
     }
     pub(super) fn has_unit_results(&self) -> bool {
         self.functions.values().any(|function| {

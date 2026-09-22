@@ -12,7 +12,7 @@ impl ApiManifest {
             if position != 0 {
                 text.push(',');
             }
-            let (ty, value) = constants::scalar(proof.value())?;
+            let (ty, value) = constants::certified_scalar(proof.value())?;
             write!(text,
                 "{{\"id\":{},\"owner\":{},\"header\":{},\"symbol\":{},\"type\":{},\"value\":{},\"readonly\":true}}",
                 identity(*id), identity(proof.package_identity().root()),
