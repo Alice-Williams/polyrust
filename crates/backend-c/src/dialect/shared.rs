@@ -317,3 +317,7 @@ mod signed_widening;
 #[cfg(test)]
 #[path = "../tests/shared_binary64.rs"]
 mod binary64;
+
+#[cfg(test)]
+#[path = "../tests/shared_finite_constants.rs"]
+mod finite_constants;

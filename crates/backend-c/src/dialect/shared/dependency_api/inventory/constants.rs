@@ -56,10 +56,10 @@ pub(super) fn collect(
                 ) | (
                     CObjectTypeKind::Scalar(CScalarType::I64),
                     CLiteral::Signed(CSignedLiteral::I64(_))
-                )
+                ) | (CObjectTypeKind::Scalar(CScalarType::F64), CLiteral::F64(_))
             )
         {
-            return Err("C dependency constant lacks an exact bool/i32/i64 literal".into());
+            return Err("C dependency constant lacks an exact bool/i32/i64/f64 literal".into());
         }
         if !symbols.insert(definition.name().clone()) {
             return Err("C dependency public symbols are not distinct".into());

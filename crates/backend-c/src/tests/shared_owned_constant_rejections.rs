@@ -12,6 +12,7 @@ fn mutable_unsigned_and_aggregate_objects_stay_outside_the_profile() {
         scalar(CScalarType::Bool),
         scalar(CScalarType::I32),
         scalar(CScalarType::I64),
+        scalar(CScalarType::F64),
         scalar(CScalarType::U32)
             .with_constness(CConstness::Const)
             .unwrap(),

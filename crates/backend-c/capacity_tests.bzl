@@ -1,8 +1,9 @@
-"""Explicit execution partitions for the expensive checked-C capacity proofs."""
+"""Explicit execution partitions for the expensive checked-C native proofs."""
 
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 CAPACITY_CASES = {
+    "c_finite_constants_native_test": "dialect::shared::finite_constants::native::finite_constants_native_corpus_faults_headers_and_ubsan",
     "c_capacity_calls_test": "dialect::shared::call_native_tests::generated_call_paths_fit_native_frames_and_stack",
     "c_capacity_boundaries_test": "dialect::shared::capacity_policy_tests::actual_ast_boundaries_and_one_over_are_capacity_not_typing_failures",
     "c_capacity_storage_test": "dialect::shared::capacity_policy_tests::many_simultaneous_locals_and_aggregate_copies_have_nonzero_frame_cost",

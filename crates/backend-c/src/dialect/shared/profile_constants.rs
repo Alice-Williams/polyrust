@@ -9,10 +9,14 @@ pub(super) fn object(object: &CObjectRef) -> Result<(), String> {
         || object.ty().constness() != CConstness::Const
         || !matches!(
             object.ty().kind(),
-            CObjectTypeKind::Scalar(CScalarType::Bool | CScalarType::I32 | CScalarType::I64)
+            CObjectTypeKind::Scalar(
+                CScalarType::Bool | CScalarType::I32 | CScalarType::I64 | CScalarType::F64
+            )
         )
     {
-        return Err("C scalar constant requires public-header const bool/i32/i64 storage".into());
+        return Err(
+            "C scalar constant requires public-header const bool/i32/i64/f64 storage".into(),
+        );
     }
     Ok(())
 }
@@ -36,6 +40,9 @@ pub(super) fn initializer(
         ) | (
             CObjectTypeKind::Scalar(CScalarType::I64),
             CValueKind::Literal(CLiteral::Signed(CSignedLiteral::I64(_)))
+        ) | (
+            CObjectTypeKind::Scalar(CScalarType::F64),
+            CValueKind::Literal(CLiteral::F64(_))
         )
     );
     if !matches_type {

@@ -104,7 +104,11 @@ contract as every other target.
   constants and type-alias uses remain excluded; no broader parity is claimed.
   The independent oracle is complete: 24,566 finite patterns plus ten computed
   constants, real native fault controls, all 991 release/lint targets passing
-  and clean independent review. C/Java foundations and source admission remain.
+  and clean independent review. The C constant foundation is complete too:
+  exact finite storage/import certification, 24,576 native bit observations
+  per compiler configuration, mutation-sensitive alias/read tests and all
+  992 release/lint targets passing with clean review. Old output/WIP is
+  unchanged; Java constants and checked source admission remain.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

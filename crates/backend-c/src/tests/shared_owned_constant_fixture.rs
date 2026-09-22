@@ -77,6 +77,33 @@ fn build(
         ),
         ("computed_value", CLiteral::Signed(CSignedLiteral::I32(62))),
     ];
+    build_literals(shape, origins, change, configure, &literals)
+}
+
+pub(super) fn literal_fixture(literals: &[(&str, CLiteral)]) -> Fixture {
+    literal_fixture_with_origins(literals, |_| {})
+}
+
+pub(super) fn literal_fixture_with_origins(
+    literals: &[(&str, CLiteral)],
+    change: impl Fn(&mut portable_codegen::RustSourceOrigin),
+) -> Fixture {
+    build_literals(
+        Shape::ConstantsOnly,
+        ConstantOrigins::RustSource,
+        change,
+        |_, _, _| {},
+        literals,
+    )
+}
+
+fn build_literals(
+    shape: Shape,
+    origins: ConstantOrigins,
+    change: impl Fn(&mut portable_codegen::RustSourceOrigin),
+    configure: impl FnOnce(&mut CRegistry, &CFileRef, Arc<portable_codegen::RustCrateExports>),
+    literals: &[(&str, CLiteral)],
+) -> Fixture {
     let (base, _) = super::package_source_fixture::origins();
     let id = |hash| RustDeclarationId {
         crate_id: base.declaration.crate_id,

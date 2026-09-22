@@ -11,8 +11,7 @@ pub(in crate::ownership) fn evaluate(
     value: &CValue,
 ) -> Result<CNumber, E> {
     match value.kind() {
-        V::Literal(CLiteral::F64(value)) => Ok(CNumber::Double(f64::from_bits(value.to_bits()))),
-        V::Literal(literal) => literal_value(literal).map(CNumber::Integer),
+        V::Literal(literal) => literal_number(literal),
         V::KnownConstant(value) => known(*value).map(CNumber::Integer),
         V::Enumerator(value) => {
             CInteger::checked(CScalarType::Int, i128::from(value.value())).map(CNumber::Integer)
@@ -80,6 +79,13 @@ pub(in crate::ownership) fn evaluate(
         | V::Call(_)
         | V::PointerTest(_)
         | V::Convert { .. } => Err(E::ExpectedNumericConstant),
+    }
+}
+
+pub(in crate::ownership) fn literal_number(literal: &CLiteral) -> Result<CNumber, E> {
+    match literal {
+        CLiteral::F64(value) => Ok(CNumber::Double(f64::from_bits(value.to_bits()))),
+        _ => literal_value(literal).map(CNumber::Integer),
     }
 }
 

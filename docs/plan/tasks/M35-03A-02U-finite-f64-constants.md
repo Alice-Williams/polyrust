@@ -16,7 +16,7 @@ Do not admit NaN/infinity constants or generalize runtime NaN payload semantics.
 ## Ordered checkpoints
 
 1. [02U-01 — Independent constant oracle](M35-03A-02U-01-constant-oracle.md) — complete; 991 release/lint targets pass, independent review clean.
-2. [02U-02 — C constant foundation](M35-03A-02U-02-c-constants.md).
+2. [02U-02 — C constant foundation](M35-03A-02U-02-c-constants.md) — complete; 992 release/lint targets pass, independent review clean.
 3. [02U-03 — Java constant foundation](M35-03A-02U-03-java-constants.md).
 4. [02U-04 — Checked source integration](M35-03A-02U-04-compiler-constants.md).
 

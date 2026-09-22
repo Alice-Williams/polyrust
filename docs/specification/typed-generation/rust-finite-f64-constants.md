@@ -1,6 +1,6 @@
 # Checked Rust finite binary64 constants
 
-- Status: independent oracle complete; target and source admission pending
+- Status: independent oracle and C foundation complete; Java and source admission pending
 - Plan: [02U](../../plan/tasks/M35-03A-02U-finite-f64-constants.md)
 - Targets: [C17](languages/c/rust-finite-f64-constants.md), [Java21](languages/java/rust-finite-f64-constants.md)
 
