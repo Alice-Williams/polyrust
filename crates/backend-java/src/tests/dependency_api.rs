@@ -184,22 +184,33 @@ fn boolean_negation_is_a_closed_dependency_expression() {
 }
 
 #[test]
-fn arithmetic_addition_remains_outside_dependency_admission() {
-    let mut fixture = functions(42);
-    fixture[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
-        ty: int(),
-        precedence: JavaPrecedence::Additive,
-        kind: JavaExprKind::Binary {
-            operator: JavaBinaryOperator::Add,
-            left: Box::new(JavaExpr::literal(int(), JavaLiteral::I32(42))),
-            right: Box::new(JavaExpr::literal(int(), JavaLiteral::I32(1))),
-        },
-    }))]);
-    assert!(
-        JavaDependencyApi::from_certificate(certify(package(7, fixture)))
-            .unwrap_err()
-            .contains("unadmitted expression")
-    );
+fn integer_addition_is_admitted_but_subtraction_remains_outside() {
+    for operator in [JavaBinaryOperator::Add, JavaBinaryOperator::Subtract] {
+        let mut fixture = functions(42);
+        fixture[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
+            ty: int(),
+            precedence: JavaPrecedence::Additive,
+            kind: JavaExprKind::Binary {
+                operator,
+                left: Box::new(JavaExpr::literal(int(), JavaLiteral::I32(42))),
+                right: Box::new(JavaExpr::literal(int(), JavaLiteral::I32(1))),
+            },
+        }))]);
+        let result = JavaDependencyApi::from_certificate(certify(package(7, fixture)));
+        if operator == JavaBinaryOperator::Add {
+            assert_eq!(
+                result
+                    .unwrap()
+                    .function(id(7, 10))
+                    .unwrap()
+                    .signature()
+                    .result,
+                int()
+            );
+        } else {
+            assert!(result.unwrap_err().contains("unadmitted expression"));
+        }
+    }
 }
 
 #[test]

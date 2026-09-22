@@ -1,6 +1,6 @@
 # Rust wrapping addition in Java21
 
-- Status: planned target foundation
+- Status: target foundation implemented; checked Rust-source mapping pending 02Q-04
 - Contract: [shared](../../rust-wrapping-addition.md)
 
 ## Typed lowering
@@ -34,3 +34,9 @@ Rust, including overflow boundaries and deterministic full-width values.
 Detect narrowing, saturating, wrong-operation and operand-dataflow faults.
 The source checkpoint additionally proves actual left-to-right once-only calls
 and its private compiler witness/typed registration contracts.
+
+The target foundation is certified by the focused wrapping-addition tests,
+the direct dependency-reader cross-product and a separately compiled Java21
+producer/consumer oracle over 15,790 input pairs. Five compiled faults distinguish
+saturation, carryless addition, subtraction, narrowing and duplicated dataflow.
+This target admission is not evidence that arbitrary Rust integer + is supported.

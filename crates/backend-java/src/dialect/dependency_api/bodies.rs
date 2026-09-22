@@ -265,6 +265,20 @@ impl Reader<'_> {
                 self.expression(right, depth + 1)?;
             }
             JavaExprKind::Binary {
+                operator: JavaBinaryOperator::Add,
+                left,
+                right,
+            } if matches!(
+                value.ty,
+                JavaType::Primitive(JavaPrimitive::Int | JavaPrimitive::Long)
+            ) && left.ty == value.ty
+                && right.ty == value.ty
+                && value.precedence == JavaPrecedence::Additive =>
+            {
+                self.expression(left, depth + 1)?;
+                self.expression(right, depth + 1)?;
+            }
+            JavaExprKind::Binary {
                 operator,
                 left,
                 right,

@@ -59,7 +59,9 @@ contract as every other target.
   Its independent oracle is complete: 15,790 native Rust cases, 906 passing
   release/lint targets and clean review. Its C target safety foundation is also
   complete: typed guarded normalization, GCC/Zig/UBSan proof, 906 passing targets
-  and clean core review. Java target and checked compiler checkpoints are next.
+  and clean core review. Java's exact primitive addition foundation is complete
+  with 395 passing unit tests, independent native/fault proof, all 906 release/lint
+  targets passing and clean core review. Checked compiler integration is next.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

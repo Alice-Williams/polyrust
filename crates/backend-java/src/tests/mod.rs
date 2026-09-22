@@ -440,6 +440,7 @@ mod constant_exports_native;
 
 mod unit_results;
 
+mod wrapping_addition;
 mod wrapping_negation;
 
 mod binary64;

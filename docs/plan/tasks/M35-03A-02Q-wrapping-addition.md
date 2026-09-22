@@ -9,7 +9,7 @@
 
 1. [02Q-01 — Independent modular oracle](M35-03A-02Q-01-addition-oracle.md) — complete.
 2. [02Q-02 — C target safety foundation](M35-03A-02Q-02-c-addition.md) — complete.
-3. [02Q-03 — Java target foundation](M35-03A-02Q-03-java-addition.md).
+3. [02Q-03 — Java target foundation](M35-03A-02Q-03-java-addition.md) — complete.
 4. [02Q-04 — Checked compiler integration](M35-03A-02Q-04-compiler-addition.md).
 
 ## Contract and completion

@@ -27,7 +27,7 @@ fn admitted(value: &JavaExpr) -> bool {
     .is_ok()
 }
 #[test]
-fn floating_arithmetic_reader_requires_exact_operands_results_and_precedence() {
+fn arithmetic_reader_requires_exact_operands_results_and_precedence() {
     let types = [
         JavaPrimitive::Double,
         JavaPrimitive::Int,
@@ -66,7 +66,9 @@ fn floating_arithmetic_reader_requires_exact_operands_results_and_precedence() {
                         };
                         assert_eq!(
                             admitted(&value),
-                            left == JavaPrimitive::Double
+                            (left == JavaPrimitive::Double
+                                || (matches!(left, JavaPrimitive::Int | JavaPrimitive::Long)
+                                    && operator == JavaBinaryOperator::Add))
                                 && right == left
                                 && result == left
                                 && precedence == expected_precedence,
@@ -76,5 +78,28 @@ fn floating_arithmetic_reader_requires_exact_operands_results_and_precedence() {
                 }
             }
         }
+    }
+}
+
+#[test]
+fn integer_addition_does_not_admit_boxing_or_string_concatenation() {
+    for ty in [
+        JavaType::Boxed(JavaPrimitive::Int),
+        JavaType::Boxed(JavaPrimitive::Long),
+        JavaType::known(crate::ast::JavaKnownType::String),
+    ] {
+        let value = JavaExpr {
+            ty: ty.clone(),
+            precedence: JavaPrecedence::Additive,
+            kind: JavaExprKind::Binary {
+                operator: JavaBinaryOperator::Add,
+                left: Box::new(JavaExpr::local(
+                    ty.clone(),
+                    JavaIdentifier::new("left").unwrap(),
+                )),
+                right: Box::new(JavaExpr::local(ty, JavaIdentifier::new("right").unwrap())),
+            },
+        };
+        assert!(!admitted(&value));
     }
 }
