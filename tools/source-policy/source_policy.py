@@ -35,6 +35,7 @@ FIXTURE_ALLOWLIST = {
     "crates/backend-c/test/trunc_stack_probe.c",
     "crates/backend-c/test/binary64_arithmetic.py",
     "crates/backend-c/test/arithmetic_mutations.py",
+    "crates/backend-c/test/wrapping_addition_native.py",
     "crates/backend-c/test/remainder_native.py",
     "crates/backend-c/test/remainder_stack.py",
     "crates/backend-c/test/remainder_stack_probe.c",
@@ -402,7 +403,7 @@ impl ::portable_codegen::StructuralImportRenderer<CDialect> for Imports {
                      "crates/backend-c/src/trunc_stack_probe.c"]:
         if not target_template_offenders(adjacent, "#include <pthread.h>\n"):
             raise AssertionError("guarded stack fixture exception admitted an adjacent template")
-    for name in ["binary64_arithmetic.py", "arithmetic_mutations.py"]:
+    for name in ["binary64_arithmetic.py", "arithmetic_mutations.py", "wrapping_addition_native.py"]:
         arithmetic_harness = "crates/backend-c/test/" + name
         if target_template_offenders(arithmetic_harness, "import re\n#include <stdint.h>\n"):
             raise AssertionError("test-only arithmetic harness directives were rejected")

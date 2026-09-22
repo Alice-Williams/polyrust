@@ -114,8 +114,9 @@ fn exact_imported_numeric_facts_prove_extreme_subtractions_without_overflow() {
             .check_storage_paths(&input.files)
             .is_ok()
     );
-    // Arithmetic source admission is a later capability, not enabled incidentally.
-    assert!(project_c_package(input.registry, input.files).is_err());
+    // M35-03A-02Q-02 admits range-proved target subtraction. This does not admit
+    // ordinary Rust subtraction at the compiler-source boundary.
+    assert!(certify_resolved_package(&CDialect, linked(&input)).is_ok());
 }
 
 #[test]

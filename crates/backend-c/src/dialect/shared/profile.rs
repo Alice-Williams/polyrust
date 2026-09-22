@@ -1,11 +1,10 @@
 //! Fail-closed grammar admission for the first scalar/record/shared-local profile.
 
 use crate::ast::{
-    CAggregateRef, CBinaryOperator, CBlock, CCallableKind, CConversion, CDeclarationKind,
-    CDefinitionKind, CEffect, CFileItem, CFunctionRef, CInitializer, CInitializerKind, CLinkage,
-    CLiteral, CObjectType, CObjectTypeKind, CPlace, CPlaceKind, CPointerTarget, CReturnType,
-    CScalarType, CSignedLiteral, CSourceFile, CStatement, CStatementKind, CUnaryOperator, CValue,
-    CValueKind,
+    CAggregateRef, CBlock, CCallableKind, CDeclarationKind, CDefinitionKind, CEffect, CFileItem,
+    CFunctionRef, CInitializer, CInitializerKind, CLinkage, CObjectType, CObjectTypeKind, CPlace,
+    CPlaceKind, CPointerTarget, CReturnType, CScalarType, CSourceFile, CStatement, CStatementKind,
+    CValue,
 };
 
 #[path = "profile_constants.rs"]
@@ -14,6 +13,8 @@ mod constants;
 mod inventory;
 #[path = "profile_layout.rs"]
 mod layout;
+#[path = "profile_values.rs"]
+mod values;
 
 #[derive(Clone, Copy)]
 pub(super) enum Node<'a> {
@@ -234,223 +235,7 @@ fn walk<'a>(
                     add(Node::Value(argument));
                 }
             }
-            Node::Value(value) => {
-                add(Node::Type(value.ty()));
-                match value.kind() {
-                    CValueKind::Call(call) => {
-                        match call.callable().kind() {
-                            CCallableKind::Direct(function) => signature(function)?,
-                            CCallableKind::Known(
-                                crate::dialect::CKnownCall::FloatTruncate
-                                | crate::dialect::CKnownCall::FloatRemainder,
-                            ) => {}
-                            _ => {
-                                return Err(
-                                    "C shared call profile requires an admitted target".into()
-                                );
-                            }
-                        }
-                        for argument in call.arguments() {
-                            add(Node::Value(argument));
-                        }
-                    }
-                    CValueKind::Literal(
-                        CLiteral::F64(_)
-                        | CLiteral::Bool(_)
-                        | CLiteral::Signed(
-                            CSignedLiteral::I32(_)
-                            | CSignedLiteral::I64(_)
-                            | CSignedLiteral::Int(_),
-                        ),
-                    ) => {}
-                    CValueKind::Read(place) => add(Node::Place(place)),
-                    CValueKind::AddressOf(place)
-                        if !matches!(place.kind(), CPlaceKind::Global(_)) =>
-                    {
-                        add(Node::Place(place))
-                    }
-                    CValueKind::Unary {
-                        operator: CUnaryOperator::LogicalNot,
-                        operand,
-                    } if matches!(
-                        operand.ty().kind(),
-                        CObjectTypeKind::Scalar(CScalarType::Bool)
-                    ) =>
-                    {
-                        add(Node::Value(operand));
-                    }
-                    CValueKind::Unary {
-                        operator: CUnaryOperator::Negate,
-                        operand,
-                    } if matches!(
-                        operand.ty().kind(),
-                        CObjectTypeKind::Scalar(CScalarType::F64)
-                    ) && value.ty() == operand.ty() =>
-                    {
-                        add(Node::Value(operand));
-                    }
-                    CValueKind::Unary {
-                        operator: CUnaryOperator::BitNot | CUnaryOperator::Negate,
-                        operand,
-                    } if matches!(
-                        operand.ty().kind(),
-                        CObjectTypeKind::Scalar(CScalarType::I32 | CScalarType::I64)
-                    ) && matches!(
-                        (operand.ty().kind(), value.ty().kind()),
-                        (
-                            CObjectTypeKind::Scalar(CScalarType::I32),
-                            CObjectTypeKind::Scalar(CScalarType::Int)
-                        ) | (
-                            CObjectTypeKind::Scalar(CScalarType::I64),
-                            CObjectTypeKind::Scalar(CScalarType::I64)
-                        )
-                    ) =>
-                    {
-                        add(Node::Value(operand));
-                    }
-                    CValueKind::Conditional {
-                        condition,
-                        then_value,
-                        else_value,
-                    } if condition.ty().kind() == &CObjectTypeKind::Scalar(CScalarType::Bool)
-                        && value.ty().kind() == &CObjectTypeKind::Scalar(CScalarType::F64)
-                        && then_value.ty() == value.ty()
-                        && else_value.ty() == value.ty() =>
-                    {
-                        add(Node::Value(condition));
-                        add(Node::Value(then_value));
-                        add(Node::Value(else_value));
-                    }
-                    CValueKind::Conditional {
-                        condition,
-                        then_value,
-                        else_value,
-                    } if matches!(
-                        condition.ty().kind(),
-                        CObjectTypeKind::Scalar(CScalarType::Bool)
-                    ) && [then_value.as_ref(), else_value.as_ref(), value]
-                        .iter()
-                        .all(|child| {
-                            matches!(
-                                child.ty().kind(),
-                                CObjectTypeKind::Scalar(
-                                    CScalarType::I32 | CScalarType::Int | CScalarType::I64
-                                )
-                            )
-                        })
-                        && matches!(
-                            (then_value.ty().kind(), else_value.ty().kind()),
-                            (
-                                CObjectTypeKind::Scalar(CScalarType::I64),
-                                CObjectTypeKind::Scalar(CScalarType::I64)
-                            ) | (
-                                CObjectTypeKind::Scalar(CScalarType::I32 | CScalarType::Int),
-                                CObjectTypeKind::Scalar(CScalarType::I32 | CScalarType::Int)
-                            )
-                        ) =>
-                    {
-                        add(Node::Value(condition));
-                        add(Node::Value(then_value));
-                        add(Node::Value(else_value));
-                    }
-                    CValueKind::Binary {
-                        operator:
-                            CBinaryOperator::BitAnd | CBinaryOperator::BitOr | CBinaryOperator::BitXor,
-                        left,
-                        right,
-                    } if matches!(
-                        left.ty().kind(),
-                        CObjectTypeKind::Scalar(
-                            CScalarType::Bool | CScalarType::I32 | CScalarType::I64
-                        )
-                    ) && left.ty().kind() == right.ty().kind()
-                        && matches!(
-                            (left.ty().kind(), value.ty().kind()),
-                            (
-                                CObjectTypeKind::Scalar(CScalarType::Bool | CScalarType::I32),
-                                CObjectTypeKind::Scalar(CScalarType::Int)
-                            ) | (
-                                CObjectTypeKind::Scalar(CScalarType::I64),
-                                CObjectTypeKind::Scalar(CScalarType::I64)
-                            )
-                        ) =>
-                    {
-                        add(Node::Value(left));
-                        add(Node::Value(right));
-                    }
-                    CValueKind::Binary {
-                        operator:
-                            CBinaryOperator::Add
-                            | CBinaryOperator::Subtract
-                            | CBinaryOperator::Multiply
-                            | CBinaryOperator::Divide,
-                        left,
-                        right,
-                    } if left.ty().kind() == &CObjectTypeKind::Scalar(CScalarType::F64)
-                        && right.ty() == left.ty()
-                        && value.ty() == left.ty() =>
-                    {
-                        add(Node::Value(left));
-                        add(Node::Value(right));
-                    }
-                    CValueKind::Binary {
-                        operator,
-                        left,
-                        right,
-                    } => {
-                        if !matches!(
-                            operator,
-                            CBinaryOperator::Equal
-                                | CBinaryOperator::NotEqual
-                                | CBinaryOperator::Less
-                                | CBinaryOperator::LessEqual
-                                | CBinaryOperator::Greater
-                                | CBinaryOperator::GreaterEqual
-                        ) || left.ty().kind() != right.ty().kind()
-                            || !matches!(
-                                left.ty().kind(),
-                                CObjectTypeKind::Scalar(
-                                    CScalarType::Bool
-                                        | CScalarType::Int
-                                        | CScalarType::I32
-                                        | CScalarType::I64
-                                        | CScalarType::F64
-                                )
-                            )
-                        {
-                            return Err(
-                                "only scalar comparisons are admitted by the first C profile"
-                                    .into(),
-                            );
-                        }
-                        add(Node::Value(left));
-                        add(Node::Value(right));
-                    }
-                    CValueKind::Convert {
-                        conversion:
-                            CConversion::Numeric(
-                                CScalarType::Bool | CScalarType::Int | CScalarType::I32,
-                            ),
-                        operand,
-                    } if matches!(
-                        operand.ty().kind(),
-                        CObjectTypeKind::Scalar(
-                            CScalarType::Bool | CScalarType::Int | CScalarType::I32
-                        )
-                    ) =>
-                    {
-                        add(Node::Value(operand))
-                    }
-                    CValueKind::Convert {
-                        conversion: CConversion::AddConst(ty),
-                        operand,
-                    } => {
-                        add(Node::Type(ty));
-                        add(Node::Value(operand));
-                    }
-                    _ => return Err("C expression is outside the first shared profile".into()),
-                }
-            }
+            Node::Value(value) => values::visit(value, &mut add)?,
             Node::Place(place) => {
                 add(Node::Type(place.ty()));
                 match place.kind() {
@@ -465,6 +250,8 @@ fn walk<'a>(
                 CObjectTypeKind::Scalar(
                     CScalarType::I32
                     | CScalarType::I64
+                    | CScalarType::U32
+                    | CScalarType::U64
                     | CScalarType::Int
                     | CScalarType::Bool
                     | CScalarType::F64,

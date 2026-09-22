@@ -10,6 +10,12 @@ def wrapping_add_oracle_targets(name):
         name: Native/oracle agreement test.
     """
     source = "fixtures/reference_wrapping_add.rs"
+    native.filegroup(
+        name = "wrapping_add_oracle_support",
+        testonly = True,
+        srcs = ["test/wrapping_add_oracle.py"],
+        visibility = ["//crates/backend-c:__pkg__", "//crates/backend-java:__pkg__"],
+    )
     references = []
     for suffix, optimization, checks in [("checked", "0", "yes"), ("optimized", "2", "no")]:
         reference = "wrapping_add_reference_" + suffix

@@ -93,20 +93,26 @@ impl LinkerDialect for CDialect {
         SymbolCatalogue {
             dependency_callables: vec![],
             dependency_values: vec![],
-            types: [CStdType::I32, CStdType::I64, CStdType::Size]
-                .into_iter()
-                .map(|symbol| KnownTypeSpec {
-                    symbol,
-                    name: CIdentifier::new(symbol.spelling()).expect("catalogue identifier"),
-                    alias_stem: symbol.spelling().into(),
-                    qualified_name: None,
-                    origin: SymbolOrigin::StandardLibrary(symbol.header()),
-                    arity: 0,
-                    policy: DependencyPolicy::Import(super::CImportKind::Standard(symbol.header())),
-                    dependency: None,
-                    source: SourceRef::logical(["c", "standard", symbol.spelling()]),
-                })
-                .collect(),
+            types: [
+                CStdType::I32,
+                CStdType::I64,
+                CStdType::U32,
+                CStdType::U64,
+                CStdType::Size,
+            ]
+            .into_iter()
+            .map(|symbol| KnownTypeSpec {
+                symbol,
+                name: CIdentifier::new(symbol.spelling()).expect("catalogue identifier"),
+                alias_stem: symbol.spelling().into(),
+                qualified_name: None,
+                origin: SymbolOrigin::StandardLibrary(symbol.header()),
+                arity: 0,
+                policy: DependencyPolicy::Import(super::CImportKind::Standard(symbol.header())),
+                dependency: None,
+                source: SourceRef::logical(["c", "standard", symbol.spelling()]),
+            })
+            .collect(),
             callables: vec![],
             runtime_callables: vec![],
             fields: vec![],

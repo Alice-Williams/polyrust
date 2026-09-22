@@ -57,8 +57,9 @@ contract as every other target.
   remains the active workstream.
   [Wrapping addition (02Q)](tasks/M35-03A-02Q-wrapping-addition.md) is in progress.
   Its independent oracle is complete: 15,790 native Rust cases, 906 passing
-  release/lint targets and clean review. The C target safety foundation is next,
-  followed by separate Java target and checked compiler checkpoints.
+  release/lint targets and clean review. Its C target safety foundation is also
+  complete: typed guarded normalization, GCC/Zig/UBSan proof, 906 passing targets
+  and clean core review. Java target and checked compiler checkpoints are next.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

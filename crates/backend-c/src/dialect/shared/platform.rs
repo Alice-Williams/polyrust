@@ -9,6 +9,8 @@ pub(super) enum Object {
     Int,
     I32,
     I64,
+    U32,
+    U64,
     F64,
     Size,
     Pointer,
@@ -32,6 +34,8 @@ impl Object {
             Self::Int => CObjectType::scalar(CScalarType::Int),
             Self::I32 => CObjectType::scalar(CScalarType::I32),
             Self::I64 => CObjectType::scalar(CScalarType::I64),
+            Self::U32 => CObjectType::scalar(CScalarType::U32),
+            Self::U64 => CObjectType::scalar(CScalarType::U64),
             Self::F64 => CObjectType::scalar(CScalarType::F64),
             Self::Size => CObjectType::scalar(CScalarType::Size),
             Self::Pointer => CObjectType::pointer(CPointerTarget::Void(CConstness::Unqualified)),
@@ -46,6 +50,8 @@ impl Object {
             CObjectTypeKind::Scalar(CScalarType::Int) => Ok(Self::Int),
             CObjectTypeKind::Scalar(CScalarType::I32) => Ok(Self::I32),
             CObjectTypeKind::Scalar(CScalarType::I64) => Ok(Self::I64),
+            CObjectTypeKind::Scalar(CScalarType::U32) => Ok(Self::U32),
+            CObjectTypeKind::Scalar(CScalarType::U64) => Ok(Self::U64),
             CObjectTypeKind::Scalar(CScalarType::F64) => Ok(Self::F64),
             CObjectTypeKind::Scalar(CScalarType::Size) => Ok(Self::Size),
             CObjectTypeKind::Pointer(CPointerTarget::Void(CConstness::Unqualified)) => {
@@ -57,8 +63,8 @@ impl Object {
     pub(super) const fn bytes(self) -> u64 {
         match self {
             Self::Bool => 1,
-            Self::Int | Self::I32 => 4,
-            Self::I64 | Self::F64 | Self::Size | Self::Pointer => 8,
+            Self::Int | Self::I32 | Self::U32 => 4,
+            Self::I64 | Self::U64 | Self::F64 | Self::Size | Self::Pointer => 8,
         }
     }
 }
@@ -73,6 +79,14 @@ fn required(sources: &[CSourceFile]) -> BTreeSet<Check> {
     ];
     if crate::dialect::dependencies::source_scalars(sources).contains(&CScalarType::I64) {
         objects.push(Object::I64);
+    }
+    for (scalar, object) in [
+        (CScalarType::U32, Object::U32),
+        (CScalarType::U64, Object::U64),
+    ] {
+        if crate::dialect::dependencies::source_scalars(sources).contains(&scalar) {
+            objects.push(object);
+        }
     }
     let floating =
         crate::dialect::dependencies::source_scalars(sources).contains(&CScalarType::F64);

@@ -295,5 +295,9 @@ mod void_local;
 mod wrapping_negation;
 
 #[cfg(test)]
+#[path = "../tests/shared_wrapping_addition.rs"]
+mod wrapping_addition;
+
+#[cfg(test)]
 #[path = "../tests/shared_binary64.rs"]
 mod binary64;

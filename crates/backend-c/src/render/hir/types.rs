@@ -7,6 +7,8 @@ impl Writer<'_> {
         match scalar {
             CScalarType::I32 => self.names.standards[&CStdType::I32].as_str(),
             CScalarType::I64 => self.names.standards[&CStdType::I64].as_str(),
+            CScalarType::U32 => self.names.standards[&CStdType::U32].as_str(),
+            CScalarType::U64 => self.names.standards[&CStdType::U64].as_str(),
             CScalarType::F64 => "double",
             CScalarType::Int => "int",
             CScalarType::Bool => "_Bool",

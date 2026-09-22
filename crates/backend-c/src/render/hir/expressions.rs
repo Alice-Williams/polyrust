@@ -1,7 +1,7 @@
 use super::{CValueBinding, Writer};
 use crate::ast::{
     CBinaryOperator, CCallableKind, CConversion, CInitializer, CInitializerKind, CLiteral, CPlace,
-    CPlaceKind, CSignedLiteral, CUnaryOperator, CValue, CValueKind,
+    CPlaceKind, CSignedLiteral, CUnaryOperator, CUnsignedLiteral, CValue, CValueKind,
 };
 
 impl Writer<'_> {
@@ -17,6 +17,16 @@ impl Writer<'_> {
                 }
             }
             CValueKind::Literal(CLiteral::Bool(value)) => if *value { "1" } else { "0" }.into(),
+            CValueKind::Literal(CLiteral::Unsigned(CUnsignedLiteral::U32(value))) => {
+                format!("(({}) {value}U)", self.scalar(crate::ast::CScalarType::U32))
+            }
+            CValueKind::Literal(CLiteral::Unsigned(CUnsignedLiteral::U64(value))) => {
+                // LP64 uint64_t need not be unsigned long long. Keep exact type.
+                format!(
+                    "(({}) {value}ULL)",
+                    self.scalar(crate::ast::CScalarType::U64)
+                )
+            }
             CValueKind::Literal(CLiteral::Signed(CSignedLiteral::I64(value))) => {
                 let literal = if *value == i64::MIN {
                     "(-9223372036854775807LL - 1LL)".into()

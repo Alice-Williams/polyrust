@@ -1,6 +1,6 @@
 # Rust wrapping addition in C17
 
-- Status: planned target foundation
+- Status: target foundation complete; compiler-source integration is separate
 - Contract: [shared](../../rust-wrapping-addition.md)
 
 ## Typed lowering
@@ -52,3 +52,28 @@ Cover signed extrema, zero, powers/carries and full-width deterministic pairs.
 Verify exact typed AST shape, original callable authority, stack/resource bounds,
 dependency-derived headers and no extra runtime/math-library files or imports.
 No compiler frontend admission change belongs in the target-only checkpoint.
+
+## Implementation structure
+
+The shared profile's iterative package walk delegates scalar expressions to
+profile_values.rs and the narrow new integer categories to
+profile_integer_operations.rs. Both schedule ordinary child nodes back through
+the same bounded walk. Existing numeric flow and range transfer rules remain
+the proof authority; no arithmetic pattern receives a trusted bypass.
+
+U32/U64 are registered standard-library type symbols. Their spellings and
+stdint dependency are resolved through the same typed catalogue as signed
+types. Source-derived size/alignment assertions live in the public header and
+therefore guard implementation and clients through inclusion. A signed
+forwarding consumer need not repeat those unsigned layout queries.
+Public callable signatures retain the earlier signed/Boolean/binary64 inventory;
+source-constant admission is unchanged. Closed-call effect summaries visit unsigned literals
+and complement operands without treating that summary as a numeric certificate.
+Internal scalar types continue to compose under the existing checked local-
+storage rules (for example, a private local address); this does not admit new
+Rust-source constructs, unsigned public signatures or unchecked storage effects.
+
+Target tests are split into construction, shape, recursive-admission and native
+modules. The independently compiled native harness is handwritten test code,
+not a production body template; its source-policy exception is an exact path
+with adjacent-file rejection controls. No production import string is added.

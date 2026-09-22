@@ -101,6 +101,14 @@ fn build(
             }
         }
         let mut standards = BTreeSet::new();
+        for (scalar, standard) in [
+            (crate::ast::CScalarType::U32, CStdType::U32),
+            (crate::ast::CScalarType::U64, CStdType::U64),
+        ] {
+            if dependencies.scalars().contains(&scalar) {
+                standards.insert(standard);
+            }
+        }
         for header in dependencies.headers() {
             standards.extend(match header {
                 CHeader::Stdint

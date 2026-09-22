@@ -2,7 +2,8 @@
 use crate::ast::{
     CBlock, CCall, CCallableKind, CConversion, CFunctionRef, CInitializer, CInitializerKind,
     CLiteral, CObjectType, CObjectTypeKind, CPlace, CPlaceKind, CReturnType, CScalarType,
-    CSignedLiteral, CStatement, CStatementKind, CUnaryOperator, CValue, CValueKind,
+    CSignedLiteral, CStatement, CStatementKind, CUnaryOperator, CUnsignedLiteral, CValue,
+    CValueKind,
 };
 use std::collections::BTreeSet;
 
@@ -99,6 +100,7 @@ pub(super) fn dependencies(
                 CValueKind::Literal(
                     CLiteral::F64(_)
                     | CLiteral::Bool(_)
+                    | CLiteral::Unsigned(CUnsignedLiteral::U32(_) | CUnsignedLiteral::U64(_))
                     | CLiteral::Signed(
                         CSignedLiteral::I32(_) | CSignedLiteral::I64(_) | CSignedLiteral::Int(_),
                     ),
@@ -112,6 +114,16 @@ pub(super) fn dependencies(
                 }
                 CValueKind::Binary { left, right, .. } => {
                     pending.extend([Node::Value(left), Node::Value(right)])
+                }
+                CValueKind::Unary {
+                    operator: CUnaryOperator::BitNot,
+                    operand,
+                } if matches!(
+                    operand.ty().kind(),
+                    CObjectTypeKind::Scalar(CScalarType::U32 | CScalarType::U64)
+                ) =>
+                {
+                    pending.push(Node::Value(operand));
                 }
                 CValueKind::Unary {
                     operator: CUnaryOperator::LogicalNot,

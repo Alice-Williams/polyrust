@@ -18,6 +18,8 @@ pub enum CUnavailable {}
 pub enum CStdType {
     I32,
     I64,
+    U32,
+    U64,
     Size,
 }
 
@@ -26,12 +28,14 @@ impl CStdType {
         match self {
             Self::I32 => "int32_t",
             Self::I64 => "int64_t",
+            Self::U32 => "uint32_t",
+            Self::U64 => "uint64_t",
             Self::Size => "size_t",
         }
     }
     pub(super) const fn header(self) -> crate::dialect::CHeader {
         match self {
-            Self::I32 | Self::I64 => crate::dialect::CHeader::Stdint,
+            Self::I32 | Self::I64 | Self::U32 | Self::U64 => crate::dialect::CHeader::Stdint,
             Self::Size => crate::dialect::CHeader::Stddef,
         }
     }
