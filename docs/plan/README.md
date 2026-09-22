@@ -68,6 +68,11 @@ contract as every other target.
   run, original operand traces and seven compiling value/order faults. Typed
   dataflow, atomic rejection and original API/docs/privacy controls pass; actual
   multi-crate packages are exported. Wider scalar/runtime parity remains open.
+  [Wrapping multiplication (02S)](tasks/M35-03A-02S-wrapping-multiplication.md)
+  has a completed independent oracle: 34,546 exact products match native Rust
+  with checks on/off; all 948 release/lint targets pass and review is clean.
+  C/Java target foundations and checked source admission remain separate planned
+  checkpoints.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

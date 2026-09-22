@@ -91,6 +91,10 @@ checked compiler integration. All 945 release/lint targets pass. Native modular
 truth, measured ordered operands, seven compiling faults, typed dataflow,
 atomic rejection and original API/docs/privacy proof accompany exported packages.
 
+[02S — wrapping signed multiplication](M35-03A-02S-wrapping-multiplication.md)
+starts with an independent product oracle. Target foundations and checked source
+admission follow separately; no multiplication mapping is admitted by the oracle.
+
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing
