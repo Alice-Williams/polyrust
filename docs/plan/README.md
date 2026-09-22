@@ -87,7 +87,10 @@ contract as every other target.
   Its independent oracle is complete: 73,890 exact signed inputs, native Rust
   as/From at both optimization/check settings, three faulty conversion controls,
   all 969 release/lint targets passing and clean whole-scope review. Target
-  foundations and checked source admission remain separate work.
+  foundations and checked source admission remain separate work. The C foundation
+  is complete: exact I32-to-I64 certification, six focused cases, 73,890 native
+  inputs with compiling fault controls, all 969 release/lint targets passing and
+  clean independent review. Java and checked source integration remain pending.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

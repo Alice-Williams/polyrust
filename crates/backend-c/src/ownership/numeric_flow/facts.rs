@@ -15,6 +15,10 @@ mod tests;
 #[path = "../../tests/static_index_extents.rs"]
 mod static_index_tests;
 
+#[cfg(test)]
+#[path = "../../tests/numeric_signed_widening.rs"]
+mod signed_widening_tests;
+
 pub(in crate::ownership) struct NumericFacts<'a> {
     context: ContextFacts<'a>,
     analysis: Analysis<'a>,

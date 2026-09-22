@@ -311,5 +311,9 @@ mod wrapping_subtraction;
 mod wrapping_multiplication;
 
 #[cfg(test)]
+#[path = "../tests/shared_signed_widening.rs"]
+mod signed_widening;
+
+#[cfg(test)]
 #[path = "../tests/shared_binary64.rs"]
 mod binary64;

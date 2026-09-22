@@ -44,6 +44,7 @@ pub(super) fn visit<'a>(value: &'a CValue, add: &mut impl FnMut(Node<'a>)) -> bo
                 | (Some(S::I64), S::U64)
                 | (Some(S::U32), S::I32)
                 | (Some(S::U64), S::I64)
+                | (Some(S::I32), S::I64)
         ) =>
         {
             // Unsigned-to-signed conversions still require range proof.
@@ -72,3 +73,7 @@ mod subtraction_tests;
 #[cfg(test)]
 #[path = "../../tests/shared_wrapping_multiplication_profile.rs"]
 mod multiplication_tests;
+
+#[cfg(test)]
+#[path = "../../tests/shared_signed_widening_profile.rs"]
+mod signed_widening_tests;
