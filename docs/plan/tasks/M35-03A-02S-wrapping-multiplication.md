@@ -1,6 +1,6 @@
 # M35-03A-02S — Wrapping signed-integer multiplication
 
-- Status: in-progress
+- Status: complete
 - Parent: [scalar parity](M35-03A-02-scalar-parity.md)
 - Depends on: [wrapping subtraction](M35-03A-02R-wrapping-subtraction.md)
 - Specification: [shared](../../specification/typed-generation/rust-wrapping-multiplication.md)
@@ -10,7 +10,7 @@
 1. [02S-01 — Independent multiplication oracle](M35-03A-02S-01-multiplication-oracle.md) — complete.
 2. [02S-02 — C target safety foundation](M35-03A-02S-02-c-multiplication.md) — complete.
 3. [02S-03 — Java target foundation](M35-03A-02S-03-java-multiplication.md) — complete.
-4. [02S-04 — Checked compiler integration](M35-03A-02S-04-compiler-multiplication.md).
+4. [02S-04 — Checked compiler integration](M35-03A-02S-04-compiler-multiplication.md) — complete.
 
 ## Contract and completion
 

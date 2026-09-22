@@ -75,8 +75,12 @@ contract as every other target.
   guarded signed reconstruction, six new tests, all 948 release/lint targets
   passing and clean review. Java target certification is complete: 405 Java unit
   tests, five compiling fault controls at both widths, all 948 release/lint
-  targets passing and clean independent review. Checked source admission remains
-  the next separate checkpoint.
+  targets passing and clean independent review. Checked source integration is
+  complete too: all 966 release/lint targets pass, whole-scope review is clean,
+  34,546 Rust/oracle inputs and 69,092 target observations per run agree, and six
+  compiling value/order faults are detected. Typed dataflow, atomic boundaries,
+  original APIs/docs/privacy and actual exported packages accompany the proof.
+  Existing output/WIP is unchanged; wider migration remains incomplete.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

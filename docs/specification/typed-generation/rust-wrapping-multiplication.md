@@ -1,6 +1,6 @@
 # Checked Rust wrapping signed multiplication
 
-- Status: oracle and C/Java foundations complete; source admission planned
+- Status: complete for the stated i32/i64 wrapping-multiplication contract
 - Plan: [02S](../../plan/tasks/M35-03A-02S-wrapping-multiplication.md)
 - Targets: [C17](languages/c/rust-wrapping-multiplication.md), [Java21](languages/java/rust-wrapping-multiplication.md)
 

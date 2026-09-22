@@ -56,6 +56,9 @@ load(":local_constant_targets.bzl", "local_constant_targets")
 load(":metadata_action_targets.bzl", "metadata_action_targets")
 load(":metadata_agreement_targets.bzl", "metadata_agreement_targets")
 load(":metadata_analysis_tests.bzl", "metadata_analysis_tests")
+load(":multiplication_ast_targets.bzl", "multiplication_ast_targets")
+load(":multiplication_contract_targets.bzl", "multiplication_contract_targets")
+load(":multiplication_source_targets.bzl", "multiplication_source_targets")
 load(":nan_ast_targets.bzl", "nan_ast_targets")
 load(":nan_contract_targets.bzl", "nan_contract_targets")
 load(":nan_targets.bzl", "nan_targets")
@@ -852,6 +855,18 @@ subtraction_contract_targets(
 )
 
 subtraction_source_targets(name = "subtraction_source_clippy_test")
+
+multiplication_contract_targets(
+    name = "multiplication_contract_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+multiplication_source_targets(name = "multiplication_source_clippy_test")
+
+multiplication_ast_targets(
+    name = "multiplication_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)
 
 subtraction_ast_targets(
     name = "subtraction_ast_test",

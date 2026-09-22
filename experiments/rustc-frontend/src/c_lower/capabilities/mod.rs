@@ -59,6 +59,7 @@ mod wrapping_addition;
 #[cfg(wrapping_ast_probe)]
 #[path = "../../../test/wrapping_c_ast.rs"]
 mod wrapping_ast;
+mod wrapping_multiplication;
 mod wrapping_negation;
 mod wrapping_subtraction;
 
@@ -171,6 +172,7 @@ pub(crate) use short_circuit_booleans::CShortCircuitBooleans;
 pub(crate) use slots::{Bindings, Builder};
 pub(crate) use unit_effects::CUnitEffects;
 pub(crate) use wrapping_addition::CWrappingAddition;
+pub(crate) use wrapping_multiplication::CWrappingMultiplication;
 pub(crate) use wrapping_negation::CWrappingNegation;
 pub(crate) use wrapping_subtraction::CWrappingSubtraction;
 
@@ -206,6 +208,7 @@ pub(crate) type CBindings = Bindings<
     CFloatingRemainder,
     CWrappingAddition,
     CWrappingSubtraction,
+    CWrappingMultiplication,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -239,6 +242,7 @@ pub(crate) fn c_bindings() -> CBindings {
         .floating_remainder(CFloatingRemainder)
         .wrapping_addition(CWrappingAddition)
         .wrapping_subtraction(CWrappingSubtraction)
+        .wrapping_multiplication(CWrappingMultiplication)
         .build()
 }
 
@@ -303,3 +307,12 @@ mod subtraction_contract;
 #[cfg(subtraction_ast_probe)]
 #[path = "../../../test/subtraction_c_ast.rs"]
 mod subtraction_ast;
+
+#[cfg(multiplication_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/multiplication_contract.rs"]
+mod multiplication_contract;
+
+#[cfg(multiplication_ast_probe)]
+#[path = "../../../test/multiplication_c_ast.rs"]
+mod multiplication_ast;

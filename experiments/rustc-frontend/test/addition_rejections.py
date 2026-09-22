@@ -17,7 +17,7 @@ CASES = {
     "ordinary32": ("pub fn value(a:i32,b:i32)->i32 { a+b }", "only comparison binary operators"),
     "ordinary64": ("pub fn value(a:i64,b:i64)->i64 { a+b }", "only comparison binary operators"),
     "checked_sub": ("pub fn value(a:i32,b:i32)->i32 { a.checked_sub(b).unwrap_or(0) }", "expression mapping is not implemented"),
-    "mul": ("pub fn value(a:i64,b:i64)->i64 { a.wrapping_mul(b) }", "expression mapping is not implemented"),
+    "pow": ("pub fn value(a:i64)->i64 { a.wrapping_pow(2) }", "expression mapping is not implemented"),
     "saturating": ("pub fn value(a:i64,b:i64)->i64 { a.saturating_add(b) }", "expression mapping is not implemented"),
     "checked": ("pub fn value(a:i32,b:i32)->i32 { a.checked_add(b).unwrap_or(0) }", "expression mapping is not implemented"),
     "generic": ("fn identity<T>(v:T)->T {v} pub fn value(a:i64,b:i64)->i64 { identity(a).wrapping_add(b) }", "generic or mismatched direct callee identity"),

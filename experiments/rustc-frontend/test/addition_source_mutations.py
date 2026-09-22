@@ -5,7 +5,9 @@ from short_circuit_mutations import definition
 VARIANTS = ["plain", "traced", "carryless", "wrong_operand", "narrow", "dropped", "duplicated", "reversed"]
 
 def variants(operation):
-    assert operation in ["addition", "subtraction"]
+    assert operation in ["addition", "subtraction", "multiplication"]
+    if operation == "multiplication":
+        return ["plain", "traced", "add", "wrong_operand", "narrow", "dropped", "duplicated", "reversed"]
     return (VARIANTS if operation == "addition" else
             ["plain", "traced", "add", "reverse_values", "wrong_operand", "narrow", "dropped", "duplicated", "reversed"])
 
@@ -33,12 +35,12 @@ def mutate(text, entry, left, right, width, java, variant, operation="addition")
         assert len(matches) == 1
         match, = matches
         old = match.group(1)
-        operator = "+" if operation == "addition" else "-"
+        operator = {"addition": "+", "subtraction": "-", "multiplication": "*"}[operation]
         assert old.count(operator) == 1 and old.count(a2.group(1)) == old.count(b2.group(1)) == 1
         if variant == "carryless":
             changed = old.replace("+", "^")
         elif variant == "add":
-            changed = old.replace("-", "+")
+            changed = old.replace(operator, "+")
         elif variant == "reverse_values":
             replacements = {a2.group(1): b2.group(1), b2.group(1): a2.group(1)}
             pattern = r"\b(?:" + "|".join(map(re.escape, replacements)) + r")\b"

@@ -304,7 +304,20 @@ fn subtraction<'tcx>(
         let _ = (input.left(), input.right(), input.width());
     }
 }
+fn multiplication<'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+) {
+    if let Ok(Some(input)) = MultiplicationInput::discover(tcx, checked, expression) {
+        let _ = input.require_context(tcx, checked);
+        let _ = (input.left(), input.right(), input.width());
+    }
+}
 fn main() {
+    capability::<WrappingMultiplication>();
+    let _ = multiplication;
+    let _ = [MultiplicationWidth::I32, MultiplicationWidth::I64];
     capability::<WrappingSubtraction>();
     let _ = subtraction;
     let _ = [SubtractionWidth::I32, SubtractionWidth::I64];

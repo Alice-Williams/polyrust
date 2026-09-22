@@ -36,6 +36,16 @@ impl<'tcx> Reader<'tcx> {
         if let Some(input) = SubtractionInput::discover(self.tcx, self.checked, value)? {
             return Supports::<WrappingSubtraction>::mapping(&self.mappings).lower(self, input);
         }
+        if let Some(input) = crate::source_capabilities::MultiplicationInput::discover(
+            self.tcx,
+            self.checked,
+            value,
+        )? {
+            return Supports::<crate::source_capabilities::WrappingMultiplication>::mapping(
+                &self.mappings,
+            )
+            .lower(self, input);
+        }
         if !self.checked.expr_adjustments(value).is_empty() {
             let place = self.place(value)?;
             return c(self.expressions().read(place));

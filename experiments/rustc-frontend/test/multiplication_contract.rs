@@ -1,19 +1,19 @@
-//! Each negative changes exactly one unit mapping boundary.
-#[cfg(unit_c)]
-use super::CUnitEffects as Unit;
-#[cfg(unit_java)]
-use super::JavaUnitEffects as Unit;
+//! Each negative changes exactly one wrapping-multiplication mapping boundary.
+#[cfg(multiplication_c)]
+use super::CWrappingMultiplication as Wrapping;
+#[cfg(multiplication_java)]
+use super::JavaWrappingMultiplication as Wrapping;
 use super::*;
-#[cfg(unit_c)]
+#[cfg(multiplication_c)]
 use crate::c_lower::Reader;
-#[cfg(unit_java)]
+#[cfg(multiplication_java)]
 use crate::java_lower::Reader;
-#[cfg(unit_c)]
-type Output = Vec<portable_backend_c::ast::CStatement>;
-#[cfg(unit_java)]
-type Output = Vec<portable_backend_java::ast::JavaStmt>;
+#[cfg(multiplication_c)]
+type Output = portable_backend_c::ast::CValue;
+#[cfg(multiplication_java)]
+type Output = crate::java_lower::Value;
 
-#[cfg(all(unit_missing, unit_c))]
+#[cfg(all(multiplication_missing, multiplication_c))]
 fn missing() {
     Builder::new()
         .literal_values(CLiteralValues)
@@ -35,6 +35,7 @@ fn missing() {
         .public_constants(CPublicConstants)
         .public_constant_reads(CPublicConstantReads)
         .public_constant_imports(CPublicConstantImports)
+        .unit_effects(CUnitEffects)
         .wrapping_negation(CWrappingNegation)
         .floating_negation(CFloatingNegation)
         .floating_nan(CFloatingNaN)
@@ -44,11 +45,10 @@ fn missing() {
         .floating_remainder(CFloatingRemainder)
         .wrapping_addition(CWrappingAddition)
         .wrapping_subtraction(CWrappingSubtraction)
-        .wrapping_multiplication(CWrappingMultiplication)
         .build();
 }
 
-#[cfg(all(unit_missing, unit_java))]
+#[cfg(all(multiplication_missing, multiplication_java))]
 fn missing() {
     Builder::new()
         .literal_values(JavaLiteralValues)
@@ -70,6 +70,7 @@ fn missing() {
         .public_constants(JavaPublicConstants)
         .public_constant_reads(JavaPublicConstantReads)
         .public_constant_imports(JavaPublicConstantImports)
+        .unit_effects(JavaUnitEffects)
         .wrapping_negation(JavaWrappingNegation)
         .floating_negation(JavaFloatingNegation)
         .floating_nan(JavaFloatingNaN)
@@ -79,52 +80,68 @@ fn missing() {
         .floating_remainder(JavaFloatingRemainder)
         .wrapping_addition(JavaWrappingAddition)
         .wrapping_subtraction(JavaWrappingSubtraction)
-        .wrapping_multiplication(JavaWrappingMultiplication)
         .build();
 }
 
-#[cfg(unit_duplicate)]
+#[cfg(multiplication_duplicate)]
 fn duplicate() {
-    Builder::new().unit_effects(Unit).unit_effects(Unit);
+    Builder::new()
+        .wrapping_multiplication(Wrapping)
+        .wrapping_multiplication(Wrapping);
 }
-#[cfg(any(unit_wrong_capability, unit_wrong_context, unit_wrong_output))]
+#[cfg(any(
+    multiplication_wrong_capability,
+    multiplication_wrong_context,
+    multiplication_wrong_output
+))]
 #[derive(Clone, Copy)]
 struct Wrong;
-#[cfg(any(unit_wrong_capability, unit_wrong_context, unit_wrong_output))]
+#[cfg(any(
+    multiplication_wrong_capability,
+    multiplication_wrong_context,
+    multiplication_wrong_output
+))]
 impl Mapping for Wrong {
-    #[cfg(unit_wrong_capability)]
+    #[cfg(multiplication_wrong_capability)]
     type Capability = LiteralValues;
-    #[cfg(not(unit_wrong_capability))]
-    type Capability = UnitEffects;
-    #[cfg(unit_wrong_context)]
+    #[cfg(not(multiplication_wrong_capability))]
+    type Capability = WrappingMultiplication;
+    #[cfg(multiplication_wrong_context)]
     type Context<'tcx> = ();
-    #[cfg(not(unit_wrong_context))]
+    #[cfg(not(multiplication_wrong_context))]
     type Context<'tcx> = Reader<'tcx>;
-    #[cfg(unit_wrong_output)]
+    #[cfg(multiplication_wrong_output)]
     type Output = ();
-    #[cfg(not(unit_wrong_output))]
+    #[cfg(not(multiplication_wrong_output))]
     type Output = Output;
     fn lower<'tcx>(
         &self,
         _: &mut Self::Context<'tcx>,
         _: <Self::Capability as Capability>::Input<'tcx>,
     ) -> Result<Self::Output, String> {
-        Err("deliberately wrong unit mapping".into())
+        Err("deliberately wrong wrapping-multiplication mapping".into())
     }
 }
-#[cfg(any(unit_wrong_capability, unit_wrong_context, unit_wrong_output))]
+#[cfg(any(
+    multiplication_wrong_capability,
+    multiplication_wrong_context,
+    multiplication_wrong_output
+))]
 fn wrong() {
-    Builder::new().unit_effects(Wrong);
+    Builder::new().wrapping_multiplication(Wrong);
 }
-#[cfg(unit_wrong_input)]
+#[cfg(multiplication_wrong_input)]
 fn wrong_input<'tcx>(reader: &mut Reader<'tcx>, expression: &'tcx rustc_hir::Expr<'tcx>) {
     let input = LiteralInput::read(reader.tcx, reader.checked, expression).unwrap();
-    let _ = Unit.lower(reader, input);
+    let _ = Wrapping.lower(reader, input);
 }
-#[cfg(unit_private_input)]
+#[cfg(multiplication_private_input)]
 fn private_input<'tcx>(expression: &'tcx rustc_hir::Expr<'tcx>) {
-    let _ = UnitInput {
-        operation: UnitOperation::Empty,
-        scope: expression.hir_id,
+    let _ = MultiplicationInput {
+        source: expression,
+        left: expression,
+        right: expression,
+        definition: expression.hir_id.owner.def_id.to_def_id(),
+        width: MultiplicationWidth::I32,
     };
 }

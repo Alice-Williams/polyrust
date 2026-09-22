@@ -5,8 +5,8 @@ use super::{
     FunctionSignatures, ImportState, IntegerBitwise, LexicalControl, LiteralValues, LocalConstants,
     Mapping, ObjectTypes, PublicConstantImports, PublicConstantReads, PublicConstants,
     RecordInitializers, ResolvedPlaces, ScalarComparisons, ScalarConstants, SharedBorrows,
-    ShortCircuitBooleans, Supports, UnitEffects, WrappingAddition, WrappingNegation,
-    WrappingSubtraction,
+    ShortCircuitBooleans, Supports, UnitEffects, WrappingAddition, WrappingMultiplication,
+    WrappingNegation, WrappingSubtraction,
 };
 use crate::c_lower::{Reader, package::State};
 use portable_backend_c::ast::CObjectRef;
@@ -62,6 +62,7 @@ pub(crate) struct Bindings<
     AE,
     AF,
     AG,
+    AH,
 > {
     literal_values: L,
     scalar_comparisons: C,
@@ -92,6 +93,7 @@ pub(crate) struct Bindings<
     floating_remainder: AE,
     wrapping_addition: AF,
     wrapping_subtraction: AG,
+    wrapping_multiplication: AH,
 }
 #[expect(
     clippy::type_complexity,
@@ -127,6 +129,7 @@ pub(crate) struct Builder<
     AE = Missing,
     AF = Missing,
     AG = Missing,
+    AH = Missing,
 >(
     Bindings<
         L,
@@ -158,6 +161,7 @@ pub(crate) struct Builder<
         AE,
         AF,
         AG,
+        AH,
     >,
 );
 impl Builder {
@@ -192,6 +196,7 @@ impl Builder {
             floating_remainder: Missing,
             wrapping_addition: Missing,
             wrapping_subtraction: Missing,
+            wrapping_multiplication: Missing,
         })
     }
 }
@@ -207,38 +212,69 @@ macro_rules! register {
     };
 }
 register!(M; literal_values, ReaderMapping<LiteralValues, CValue>;
-    [C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [Missing, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [M, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [Missing, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [M, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 
 register!(M; scalar_comparisons, ReaderMapping<ScalarComparisons, CValue>;
-    [L, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, Missing, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, M, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, Missing, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, M, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 
 register!(M; resolved_places, ReaderMapping<ResolvedPlaces, CPlace>;
-    [L, C, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, Missing, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, M, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, Missing, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, M, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 
 register!(M; shared_borrows, ReaderMapping<SharedBorrows, CValue>;
-    [L, C, P, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, Missing, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, M, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, Missing, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, M, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 
 register!(M; object_types, ReaderMapping<ObjectTypes, CObjectType>;
-    [L, C, P, B, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, Missing, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, M, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, Missing, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, M, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 
 register!(M; record_initializers, ReaderMapping<RecordInitializers, CInitializer>;
-    [L, C, P, B, T, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, Missing, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, M, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, Missing, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, M, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 
 register!(M; lexical_control, ReaderMapping<LexicalControl, CBlock>;
-    [L, C, P, B, T, R, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, Missing, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, M, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, Missing, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, M, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 
 register!(M; entry_signatures, EntryMapping;
-    [L, C, P, B, T, R, S, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, Missing, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, M, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, Missing, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, M, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 
-impl<L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG>
+impl<
+    L,
+    C,
+    P,
+    B,
+    T,
+    R,
+    S,
+    F,
+    D,
+    G,
+    N,
+    H,
+    I,
+    E,
+    K,
+    Q,
+    U,
+    V,
+    W,
+    X,
+    Y,
+    Z,
+    AA,
+    AB,
+    AC,
+    AD,
+    AE,
+    AF,
+    AG,
+    AH,
+>
     Builder<
         L,
         C,
@@ -269,6 +305,7 @@ impl<L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, A
         AE,
         AF,
         AG,
+        AH,
     >
 where
     L: ReaderMapping<LiteralValues, CValue>,
@@ -300,6 +337,7 @@ where
     AE: ReaderMapping<FloatingRemainder, CValue>,
     AF: ReaderMapping<WrappingAddition, CValue>,
     AG: ReaderMapping<WrappingSubtraction, CValue>,
+    AH: ReaderMapping<WrappingMultiplication, CValue>,
 {
     #[expect(
         clippy::type_complexity,
@@ -337,6 +375,7 @@ where
         AE,
         AF,
         AG,
+        AH,
     > {
         self.0
     }
@@ -373,6 +412,7 @@ macro_rules! support {
             AE,
             AF,
             AG,
+            AH,
         > Supports<$capability>
             for Bindings<
                 L,
@@ -404,6 +444,7 @@ macro_rules! support {
                 AE,
                 AF,
                 AG,
+                AH,
             >
         where
             $slot: $bound,
@@ -437,40 +478,40 @@ impl<M> FunctionMapping for M where
 {
 }
 register!(M; direct_calls, ReaderMapping<DirectCalls, CValue>;
-    [L, C, P, B, T, R, S, F, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, Missing, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, M, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, Missing, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, M, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 register!(M; function_signatures, FunctionMapping;
-    [L, C, P, B, T, R, S, F, D, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, Missing, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, M, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, Missing, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, M, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(DirectCalls, D, direct_calls, ReaderMapping<DirectCalls, CValue>);
 support!(FunctionSignatures, G, function_signatures, FunctionMapping);
 register!(M; boolean_negation, ReaderMapping<BooleanNegation, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, G, Missing, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, G, M, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, Missing, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, M, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(BooleanNegation, N, boolean_negation, ReaderMapping<BooleanNegation, CValue>);
 register!(M; short_circuit_booleans, ReaderMapping<ShortCircuitBooleans, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, G, N, Missing, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, G, N, M, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, Missing, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, M, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(ShortCircuitBooleans, H, short_circuit_booleans, ReaderMapping<ShortCircuitBooleans, CValue>);
 
 register!(M; integer_bitwise, ReaderMapping<IntegerBitwise, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, G, N, H, Missing, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, G, N, H, M, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, Missing, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, M, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(IntegerBitwise, I, integer_bitwise, ReaderMapping<IntegerBitwise, CValue>);
 
 register!(M; eager_booleans, ReaderMapping<EagerBooleans, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, G, N, H, I, Missing, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, G, N, H, I, M, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, I, Missing, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, I, M, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(EagerBooleans, E, eager_booleans, ReaderMapping<EagerBooleans, CValue>);
 
 register!(M; scalar_constants, ReaderMapping<ScalarConstants, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, Missing, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, M, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, Missing, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, M, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(ScalarConstants, K, scalar_constants, ReaderMapping<ScalarConstants, CValue>);
 
 register!(M; local_constants, ReaderMapping<LocalConstants, ()>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Missing, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, M, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Missing, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, M, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(LocalConstants, Q, local_constants, ReaderMapping<LocalConstants, ()>);
 
 pub(crate) trait DeclarationMapping:
@@ -483,17 +524,17 @@ impl<M> DeclarationMapping for M where
 }
 
 register!(M; public_constants, DeclarationMapping;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, Missing, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, M, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, Missing, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, M, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(PublicConstants, U, public_constants, DeclarationMapping);
 
 register!(M; public_constant_reads, ReaderMapping<PublicConstantReads, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, Missing, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, M, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, Missing, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, M, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(PublicConstantReads, V, public_constant_reads, ReaderMapping<PublicConstantReads, CValue>);
 
 /// Imports require executable registration against an original producer witness.
@@ -514,10 +555,10 @@ impl<M> ImportMapping for M where
 {
 }
 register!(M; public_constant_imports, ImportMapping;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, Missing, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, M, X, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, Missing, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, M, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(
     PublicConstantImports,
     W,
@@ -526,63 +567,68 @@ support!(
 );
 
 register!(M; unit_effects, ReaderMapping<UnitEffects, Vec<portable_backend_c::ast::CStatement>>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, Missing, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, M, Y, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, Missing, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, M, Y, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(UnitEffects, X, unit_effects, ReaderMapping<UnitEffects, Vec<portable_backend_c::ast::CStatement>>);
 
 register!(M; wrapping_negation, ReaderMapping<WrappingNegation, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Z, AA, AB, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Missing, Z, AA, AB, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, M, Z, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Missing, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, M, Z, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(WrappingNegation, Y, wrapping_negation, ReaderMapping<WrappingNegation, CValue>);
 
 register!(M; floating_negation, ReaderMapping<FloatingNegation, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, AA, AB, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Missing, AA, AB, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, M, AA, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, AA, AB, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Missing, AA, AB, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, M, AA, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(FloatingNegation, Z, floating_negation, ReaderMapping<FloatingNegation, CValue>);
 
 register!(M; floating_nan, ReaderMapping<FloatingNaN, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AB, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, Missing, AB, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, M, AB, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AB, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, Missing, AB, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, M, AB, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(FloatingNaN, AA, floating_nan, ReaderMapping<FloatingNaN, CValue>);
 
 register!(M; floating_absolute, ReaderMapping<FloatingAbsolute, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, Missing, AC, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, M, AC, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, Missing, AC, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, M, AC, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(FloatingAbsolute, AB, floating_absolute, ReaderMapping<FloatingAbsolute, CValue>);
 
 register!(M; floating_truncation, ReaderMapping<FloatingTruncation, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, Missing, AD, AE, AF, AG];
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, M, AD, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, Missing, AD, AE, AF, AG, AH];
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, M, AD, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(FloatingTruncation, AC, floating_truncation, ReaderMapping<FloatingTruncation, CValue>);
 
 register!(M; floating_arithmetic, ReaderMapping<FloatingArithmetic, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, Missing, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, M, AE, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_remainder, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, Missing, AE, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, M, AE, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_remainder, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(FloatingArithmetic, AD, floating_arithmetic, ReaderMapping<FloatingArithmetic, CValue>);
 
 register!(M; floating_remainder, ReaderMapping<FloatingRemainder, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AF, AG]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, Missing, AF, AG]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, M, AF, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, wrapping_addition, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, Missing, AF, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, M, AF, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, wrapping_addition, wrapping_subtraction, wrapping_multiplication]);
 support!(FloatingRemainder, AE, floating_remainder, ReaderMapping<FloatingRemainder, CValue>);
 
 register!(M; wrapping_addition, ReaderMapping<WrappingAddition, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AG]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, Missing, AG]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, M, AG];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_subtraction]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, Missing, AG, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, M, AG, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_subtraction, wrapping_multiplication]);
 support!(WrappingAddition, AF, wrapping_addition, ReaderMapping<WrappingAddition, CValue>);
 
 register!(M; wrapping_subtraction, ReaderMapping<WrappingSubtraction, CValue>;
-    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, Missing]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, M];
-    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition]);
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, Missing, AH]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, M, AH];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_multiplication]);
 support!(WrappingSubtraction, AG, wrapping_subtraction, ReaderMapping<WrappingSubtraction, CValue>);
+
+register!(M; wrapping_multiplication, ReaderMapping<WrappingMultiplication, CValue>;
+    [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, Missing]; [L, C, P, B, T, R, S, F, D, G, N, H, I, E, K, Q, U, V, W, X, Y, Z, AA, AB, AC, AD, AE, AF, AG, M];
+    [literal_values, scalar_comparisons, resolved_places, shared_borrows, object_types, record_initializers, lexical_control, entry_signatures, direct_calls, function_signatures, boolean_negation, short_circuit_booleans, integer_bitwise, eager_booleans, scalar_constants, local_constants, public_constants, public_constant_reads, public_constant_imports, unit_effects, wrapping_negation, floating_negation, floating_nan, floating_absolute, floating_truncation, floating_arithmetic, floating_remainder, wrapping_addition, wrapping_subtraction]);
+support!(WrappingMultiplication, AH, wrapping_multiplication, ReaderMapping<WrappingMultiplication, CValue>);

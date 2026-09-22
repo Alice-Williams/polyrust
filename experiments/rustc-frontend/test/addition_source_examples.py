@@ -6,7 +6,7 @@ from constant_export_scratch import writable_copy
 
 
 def export(java, c, work, operation="addition"):
-    assert operation in ["addition", "subtraction"]
+    assert operation in ["addition", "subtraction", "multiplication"]
     destination = Path(os.environ["TEST_UNDECLARED_OUTPUTS_DIR"]) / ("wrapping-" + operation)
     destination.mkdir()
     writable_copy(java, destination / "java")
@@ -20,12 +20,13 @@ def export(java, c, work, operation="addition"):
     fixtures = Path(__file__).resolve().parent.parent / "fixtures"
     for filename in [operation + "_leaf.rs", operation + "_middle.rs", operation + "_root.rs", "reference_" + operation + "_source.rs"]:
         shutil.copy2(fixtures / filename, sources / filename)
+    cases = 34546 if operation == "multiplication" else 15790
     (destination / "README.md").write_text(
         f"# Checked Rust wrapping {operation}\n\n"
         "Actual three-crate C and Java packages, original Rust, and handwritten external clients. "
         f"No custom runtime or helper package. C uses guarded unsigned normalization; Java uses primitive {operation}.\n\n"
         f"Proof: //experiments/rustc-frontend:{operation}_native_test. "
-        "15,790 native Rust and independent modular-oracle inputs; 31,580 target observations per run. "
+        f"{cases:,} native Rust and independent modular-oracle inputs; {2 * cases:,} target observations per run. "
         "Strict separate GCC14/Zig O0/O2 and Java21 compilation, plus GCC UBSan. "
-        f"Measured native Rust and target operand traces agree. {'Three' if operation == 'addition' else 'Four'} compiling value faults and three "
+        f"Measured native Rust and target operand traces agree. {'Four' if operation == 'subtraction' else 'Three'} compiling value faults and three "
         "value-preserving evaluation faults are detected, alongside exact API/docs/import and external privacy controls.\n")

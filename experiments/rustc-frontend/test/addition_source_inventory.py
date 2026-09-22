@@ -32,7 +32,7 @@ def bundle(directory, java):
 
 
 def inspect(java_dir, c_dir, operation="addition"):
-    assert operation in ["addition", "subtraction"]
+    assert operation in ["addition", "subtraction", "multiplication"]
     root, java = bundle(java_dir, True)
     c_root, c = bundle(c_dir, False)
     assert root == c_root and set(java) == set(c)

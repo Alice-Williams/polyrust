@@ -264,3 +264,20 @@ operand traces, seven compiling value/order faults, typed expanded dataflow and
 atomic rejection. Actual three-crate examples are exported. This remains partial
 WrappingIntegerArithmetic coverage; full_features stays empty and legacy gates
 remain enabled until the wider migration has replacement proof.
+
+## Wrapping signed-multiplication increment
+
+[02S](../../plan/tasks/M35-03A-02S-wrapping-multiplication.md) adds authenticated
+core i32/i64 wrapping_mul through private canonical inputs and executable builder
+bindings. C uses exact-width unsigned multiplication and guarded signed
+reconstruction; Java uses primitive Int/Long Multiply. Original operands are
+evaluated once, left before right, with original source ownership/API/docs intact.
+
+All 966 release/lint targets pass and independent whole-scope review is clean.
+Native proof compares 34,546 Rust/oracle cases and 69,092 target observations per
+run, including measured operand traces and six compiling value/order faults.
+Typed expression/dataflow/forged-witness, compile-negative, atomic publication,
+external privacy and actual package-export evidence pass. All 389 previous
+generated files and 38 unrelated WIP hashes are unchanged. Wrapping-integer
+coverage remains partial, the machine inventory still has no full_features,
+and all legacy gates stay enabled.

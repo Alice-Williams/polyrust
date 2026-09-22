@@ -1,6 +1,6 @@
 # Rust wrapping multiplication in C17
 
-- Status: target foundation complete; compiler-source admission unchanged
+- Status: target foundation and checked compiler-source integration complete
 - Contract: [shared](../../rust-wrapping-multiplication.md)
 
 ## Typed lowering

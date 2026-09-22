@@ -10,9 +10,11 @@ from addition_source_privacy import java_privacy, c_privacy
 from addition_source_examples import export
 from short_circuit_mutations import instrument
 OPERATION = sys.argv[6] if len(sys.argv) == 7 else "addition"
-assert OPERATION in ["addition", "subtraction"] and len(sys.argv) in [6, 7]
+assert OPERATION in ["addition", "subtraction", "multiplication"] and len(sys.argv) in [6, 7]
 if OPERATION == "subtraction":
     from wrapping_sub_oracle import CASES, inputs, result, faulty
+elif OPERATION == "multiplication":
+    from wrapping_mul_oracle import CASES, inputs, result, faulty
 else:
     from wrapping_add_oracle import CASES, inputs, result, faulty
 VARIANTS = variants(OPERATION)
@@ -30,7 +32,10 @@ def expected(variant="plain", copies=2):
         if variant == "wrong_operand":
             return result(left, left, width)
         if variant in ["carryless", "narrow", "add", "reverse_values"]:
-            return faulty(left, right, width, "reverse" if variant == "reverse_values" else variant)
+            fault = "reverse" if variant == "reverse_values" else variant
+            if OPERATION == "multiplication" and fault == "narrow":
+                fault = "narrow_result"
+            return faulty(left, right, width, fault)
         return result(left, right, width)
     return "".join(f"{value(w, a, b)}\n" for w, a, b in CASES for _ in range(copies))
 
@@ -60,6 +65,7 @@ def main():
     assert measured == traces()
     expectations = {variant: expected(variant) for variant in VARIANTS}
     value_faults = (["carryless", "wrong_operand", "narrow"] if OPERATION == "addition" else
+                    ["add", "wrong_operand", "narrow"] if OPERATION == "multiplication" else
                     ["add", "reverse_values", "wrong_operand", "narrow"])
     for variant in value_faults:
         assert expectations[variant] != truth

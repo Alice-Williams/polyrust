@@ -20,7 +20,8 @@ use super::*;
 use super::{
     CFloatingAbsolute as Absolute, CFloatingArithmetic as Arithmetic,
     CFloatingRemainder as Remainder, CFloatingTruncation as Truncation,
-    CWrappingAddition as Addition, CWrappingSubtraction as Subtraction,
+    CWrappingAddition as Addition, CWrappingMultiplication as Multiplication,
+    CWrappingSubtraction as Subtraction,
 };
 #[cfg(public_constant_c)]
 use super::{
@@ -31,7 +32,8 @@ use super::{
 use super::{
     JavaFloatingAbsolute as Absolute, JavaFloatingArithmetic as Arithmetic,
     JavaFloatingRemainder as Remainder, JavaFloatingTruncation as Truncation,
-    JavaWrappingAddition as Addition, JavaWrappingSubtraction as Subtraction,
+    JavaWrappingAddition as Addition, JavaWrappingMultiplication as Multiplication,
+    JavaWrappingSubtraction as Subtraction,
 };
 #[cfg(public_constant_java)]
 use super::{
@@ -126,6 +128,7 @@ fn missing() {
         .floating_remainder(Remainder)
         .wrapping_addition(Addition)
         .wrapping_subtraction(Subtraction)
+        .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute);
     #[cfg(all(public_constant_complete_control, public_constant_declaration))]
     let builder = builder.public_constants(Declarations);

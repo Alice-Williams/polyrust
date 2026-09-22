@@ -32,6 +32,7 @@ mod shared_borrows;
 mod short_circuit_booleans;
 mod unit_effects;
 mod wrapping_addition;
+mod wrapping_multiplication;
 mod wrapping_negation;
 mod wrapping_subtraction;
 
@@ -62,6 +63,9 @@ pub(crate) use short_circuit_booleans::{
 pub(crate) use unit_effects::{UnitEffects, UnitInput, UnitOperation};
 
 pub(crate) use wrapping_addition::{AdditionInput, AdditionWidth, WrappingAddition};
+pub(crate) use wrapping_multiplication::{
+    MultiplicationInput, MultiplicationWidth, WrappingMultiplication,
+};
 pub(crate) use wrapping_negation::{WrappingInput, WrappingNegation, WrappingWidth};
 pub(crate) use wrapping_subtraction::{SubtractionInput, SubtractionWidth, WrappingSubtraction};
 

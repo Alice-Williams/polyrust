@@ -11,7 +11,8 @@ use super::{
 use super::{
     CFloatingAbsolute as Absolute, CFloatingArithmetic as Arithmetic,
     CFloatingRemainder as Remainder, CFloatingTruncation as Truncation,
-    CWrappingAddition as Addition, CWrappingSubtraction as Subtraction,
+    CWrappingAddition as Addition, CWrappingMultiplication as Multiplication,
+    CWrappingSubtraction as Subtraction,
 };
 use super::{CPublicConstantImports, CPublicConstantReads, CPublicConstants};
 
@@ -45,6 +46,7 @@ fn must_not_compile() {
         .floating_remainder(Remainder)
         .wrapping_addition(Addition)
         .wrapping_subtraction(Subtraction)
+        .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -75,6 +77,7 @@ fn must_not_compile() {
         .floating_remainder(Remainder)
         .wrapping_addition(Addition)
         .wrapping_subtraction(Subtraction)
+        .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -105,6 +108,7 @@ fn must_not_compile() {
         .floating_remainder(Remainder)
         .wrapping_addition(Addition)
         .wrapping_subtraction(Subtraction)
+        .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -135,6 +139,7 @@ fn must_not_compile() {
         .floating_remainder(Remainder)
         .wrapping_addition(Addition)
         .wrapping_subtraction(Subtraction)
+        .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -165,6 +170,7 @@ fn must_not_compile() {
         .floating_remainder(Remainder)
         .wrapping_addition(Addition)
         .wrapping_subtraction(Subtraction)
+        .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -195,6 +201,7 @@ fn must_not_compile() {
         .floating_remainder(Remainder)
         .wrapping_addition(Addition)
         .wrapping_subtraction(Subtraction)
+        .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -225,6 +232,7 @@ fn must_not_compile() {
         .floating_remainder(Remainder)
         .wrapping_addition(Addition)
         .wrapping_subtraction(Subtraction)
+        .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -255,6 +263,7 @@ fn must_not_compile() {
         .floating_remainder(Remainder)
         .wrapping_addition(Addition)
         .wrapping_subtraction(Subtraction)
+        .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -285,6 +294,7 @@ fn must_not_compile() {
         .floating_remainder(Remainder)
         .wrapping_addition(Addition)
         .wrapping_subtraction(Subtraction)
+        .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
         .build();
     Builder::new()
@@ -315,6 +325,7 @@ fn must_not_compile() {
         .floating_remainder(Remainder)
         .wrapping_addition(Addition)
         .wrapping_subtraction(Subtraction)
+        .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
         .build();
 }
