@@ -1,6 +1,6 @@
 //! Private inventory matrix isolates the constant contract from earlier verifiers.
 use super::*;
-use crate::ast::{JavaFileItem, JavaMember};
+use crate::ast::{JavaExprKind, JavaFileItem, JavaLiteral, JavaMember, JavaPrimitive, JavaType};
 use crate::tests::{finite_constants as f, source_constant_fixture as c};
 
 #[test]

@@ -55,6 +55,9 @@ impl Reader<'_> {
             .ok_or("source reservation lacks resolved name")?;
         match name {
             JavaResolvedName::Local(name) => self.spelling(name.as_str()),
+            JavaResolvedName::Qualified(crate::dialect::JavaQualifiedName::Type(known)) => {
+                self.spelling(known.qualified_name())
+            }
             JavaResolvedName::DeclaredPath(path)
             | JavaResolvedName::Qualified(crate::dialect::JavaQualifiedName::Dependency(path)) => {
                 self.spelling(&path.package().name())?;
@@ -162,3 +165,7 @@ impl Reader<'_> {
 #[cfg(test)]
 #[path = "../../tests/source_output_bound.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "../../tests/infinite_constant_bounds.rs"]
+mod infinite_tests;

@@ -6,6 +6,8 @@ mod expression_visit;
 pub use blocks::{JavaBlock, JavaLocalFinality};
 mod callable_references;
 mod completion;
+mod constant_values;
+pub use constant_values::JavaScalarConstantValue;
 mod conformance_inventory;
 pub use conformance_inventory::JavaConformanceInventory;
 mod constructor_flow;

@@ -1,9 +1,8 @@
-//! A source constant is an exact registered public static final scalar literal.
+//! A source constant is an exact registered public static final scalar value.
 use super::{Constant, JavaDialect};
 use crate::ast::{
-    JavaDeclaredPath, JavaExprKind, JavaField, JavaIdentifier, JavaLiteral, JavaModifier,
-    JavaPackage, JavaPrimitive, JavaResolvedName, JavaSourceDeclaration, JavaType, JavaVisibility,
-    ResolvedJavaFileItem,
+    JavaDeclaredPath, JavaField, JavaIdentifier, JavaModifier, JavaPackage, JavaResolvedName,
+    JavaScalarConstantValue, JavaSourceDeclaration, JavaVisibility, ResolvedJavaFileItem,
 };
 use portable_codegen::{
     GeneratedOrigin, GeneratedSymbolId, RustDeclarationId, RustSourceNode, RustVisibility,
@@ -31,25 +30,9 @@ pub(super) fn verify(
     let initializer = field
         .initializer
         .as_ref()
-        .ok_or("Java source constant lacks a literal")?;
-    let JavaExprKind::Literal(value) = &initializer.kind else {
-        return Err("Java source constant initializer is not a literal".into());
-    };
-    let literal_agrees = matches!(
-        (&field.ty, value),
-        (
-            JavaType::Primitive(JavaPrimitive::Boolean),
-            JavaLiteral::Boolean(_)
-        ) | (JavaType::Primitive(JavaPrimitive::Int), JavaLiteral::I32(_))
-            | (
-                JavaType::Primitive(JavaPrimitive::Long),
-                JavaLiteral::I64(_)
-            )
-            | (
-                JavaType::Primitive(JavaPrimitive::Double),
-                JavaLiteral::F64(_)
-            )
-    );
+        .ok_or("Java source constant lacks an initializer")?;
+    let value = JavaScalarConstantValue::from_expression(initializer)
+        .ok_or("Java source constant initializer is not an exact scalar constant")?;
     if source.node != RustSourceNode::Declaration
         || source.visibility != RustVisibility::Public
         || !source.externally_reachable
@@ -66,7 +49,7 @@ pub(super) fn verify(
         .iter()
         .all(|modifier| field.modifiers.contains(modifier))
         || initializer.ty != field.ty
-        || !literal_agrees
+        || field.ty != value.ty()
     {
         return Err("Java source constant registration/type/visibility/literal disagrees".into());
     }
@@ -89,7 +72,7 @@ pub(super) fn verify(
         source: source.clone(),
         path: path.clone(),
         ty: field.ty.clone(),
-        value: value.clone(),
+        value,
     })
 }
 
@@ -100,3 +83,7 @@ mod tests;
 #[cfg(test)]
 #[path = "../../../tests/finite_constant_inventory.rs"]
 mod finite_tests;
+
+#[cfg(test)]
+#[path = "../../../tests/infinite_constant_inventory.rs"]
+mod infinite_tests;

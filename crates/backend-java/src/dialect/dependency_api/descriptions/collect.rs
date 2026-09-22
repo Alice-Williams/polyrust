@@ -54,19 +54,16 @@ pub(crate) fn collect<'a>(
                 let symbol = GeneratedSymbolId::Value(
                     field.declared.ok_or("source constant identity missing")?,
                 );
-                let Some(crate::ast::JavaExpr {
-                    kind: crate::ast::JavaExprKind::Literal(value),
-                    ..
-                }) = &field.initializer
-                else {
-                    return Err("source constant literal missing".into());
-                };
+                let source = origin(item, symbol)?;
+                let constant = api
+                    .constant(source.declaration)
+                    .ok_or("source constant inventory missing")?;
                 insert(JavaSourceDescription {
-                    source: origin(item, symbol)?,
+                    source,
                     target: JavaSourceTarget::Declaration(path(item, symbol)?),
                     kind: JavaSourceDescriptionKind::Constant {
                         ty: &field.ty,
-                        value,
+                        value: constant.value(),
                     },
                 })?;
             }

@@ -65,7 +65,7 @@ pub(crate) fn write(
         out.fixed(",\"scalar\":")?;
         out.string(scalar(proof.ty())?)?;
         out.fixed(",\"readonly\":true,\"value\":")?;
-        crate::constants::value(out, proof.value())?;
+        crate::constants::certified_value(out, proof.value())?;
         out.fixed("}")?;
     }
     out.fixed("]")

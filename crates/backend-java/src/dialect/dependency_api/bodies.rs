@@ -228,6 +228,11 @@ impl Reader<'_> {
                 | JavaLiteral::F64(_),
             )
             | JavaExprKind::Value(JavaValueRef::Local(_)) => {}
+            JavaExprKind::Value(JavaValueRef::KnownField(
+                crate::dialect::JavaKnownField::DoublePositiveInfinity
+                | crate::dialect::JavaKnownField::DoubleNegativeInfinity,
+            )) if value.ty == JavaType::primitive(JavaPrimitive::Double)
+                && value.precedence == JavaPrecedence::Primary => {}
             JavaExprKind::Value(JavaValueRef::Dependency(imported))
                 if imported.ty() == &value.ty => {}
             JavaExprKind::Value(JavaValueRef::Generated(GeneratedSymbolId::Value(id)))

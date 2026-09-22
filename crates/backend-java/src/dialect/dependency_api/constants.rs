@@ -1,6 +1,6 @@
 //! Public primitive constant witnesses retain the exact producer certificate.
 use super::{JavaDependencyPackage, inventory::Constant};
-use crate::ast::{JavaDeclaredPath, JavaLiteral, JavaType};
+use crate::ast::{JavaDeclaredPath, JavaScalarConstantValue, JavaType};
 use portable_codegen::{GeneratedValueId, RustDeclarationId, RustSourceOrigin};
 use std::sync::Arc;
 
@@ -22,7 +22,7 @@ pub struct JavaDependencyConstant {
     source: Arc<RustSourceOrigin>,
     path: JavaDeclaredPath,
     ty: JavaType,
-    value: JavaLiteral,
+    value: JavaScalarConstantValue,
 }
 impl JavaDependencyConstant {
     pub(super) fn new(owner: JavaDependencyPackage, value: Constant) -> Self {
@@ -53,7 +53,7 @@ impl JavaDependencyConstant {
     pub fn ty(&self) -> &JavaType {
         &self.ty
     }
-    pub fn value(&self) -> &JavaLiteral {
+    pub fn value(&self) -> &JavaScalarConstantValue {
         &self.value
     }
 }

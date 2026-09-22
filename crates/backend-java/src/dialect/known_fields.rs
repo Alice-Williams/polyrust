@@ -9,6 +9,8 @@ pub enum JavaKnownField {
     IntegerMaxValue,
     LongMinValue,
     LongMaxValue,
+    DoublePositiveInfinity,
+    DoubleNegativeInfinity,
     StandardCharsetsUtf8,
     CodingErrorReport,
 }
@@ -18,6 +20,7 @@ impl JavaKnownField {
         match self {
             Self::IntegerMinValue | Self::IntegerMaxValue => JavaKnownType::Integer,
             Self::LongMinValue | Self::LongMaxValue => JavaKnownType::Long,
+            Self::DoublePositiveInfinity | Self::DoubleNegativeInfinity => JavaKnownType::Double,
             Self::StandardCharsetsUtf8 => JavaKnownType::StandardCharsets,
             Self::CodingErrorReport => JavaKnownType::CodingErrorAction,
         }
@@ -27,6 +30,8 @@ impl JavaKnownField {
         match self {
             Self::IntegerMinValue | Self::LongMinValue => JavaMemberName::MinValue,
             Self::IntegerMaxValue | Self::LongMaxValue => JavaMemberName::MaxValue,
+            Self::DoublePositiveInfinity => JavaMemberName::PositiveInfinity,
+            Self::DoubleNegativeInfinity => JavaMemberName::NegativeInfinity,
             Self::StandardCharsetsUtf8 => JavaMemberName::Utf8,
             Self::CodingErrorReport => JavaMemberName::Report,
         }
@@ -38,6 +43,9 @@ impl JavaKnownField {
                 JavaType::primitive(JavaPrimitive::Int)
             }
             Self::LongMinValue | Self::LongMaxValue => JavaType::primitive(JavaPrimitive::Long),
+            Self::DoublePositiveInfinity | Self::DoubleNegativeInfinity => {
+                JavaType::primitive(JavaPrimitive::Double)
+            }
             Self::StandardCharsetsUtf8 => JavaType::known(JavaKnownType::Charset),
             Self::CodingErrorReport => JavaType::known(JavaKnownType::CodingErrorAction),
         }

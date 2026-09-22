@@ -19,7 +19,7 @@ pub(super) fn read<'tcx>(
         proof.declaration(),
         crate::source_origin::identity(reader.tcx, input.definition())
     );
-    assert_eq!(proof.value(), &literal);
+    assert_eq!(proof.value().literal(), Some(literal));
     assert_eq!(proof.ty(), &expression.ty);
     assert!(!reader.constants.contains_key(&input.definition()));
     let saved = reader

@@ -129,7 +129,11 @@ The independent oracle is complete with all 1,004 release/lint tests passing
 and clean whole-scope/hardening reviews. The C foundation is complete too:
 typed standard constants, exact signed inventory/import facts, native bit and
 compiling-fault proof, all 1,005 release/lint targets passing and clean broad
-review. Existing output/WIP is unchanged. Java and source admission stay pending.
+review. Java foundation is complete too: exact standard fields, typed signed
+inventory and original alias/import authority, native Java21 normal/-Xint proof
+with recompiled fault dependents, all 1,006 release/lint targets passing and
+clean broad review. Existing output/WIP is unchanged. Source admission stays
+pending; neither target foundation widens the compiler's finite constant gate.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

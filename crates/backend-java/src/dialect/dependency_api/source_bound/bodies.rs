@@ -59,6 +59,14 @@ impl Reader<'_> {
                 | JavaLiteral::F64(_),
             )
             | JavaExprKind::Value(JavaValueRef::This) => Ok(()),
+            JavaExprKind::Value(JavaValueRef::KnownField(
+                field @ (crate::dialect::JavaKnownField::DoublePositiveInfinity
+                | crate::dialect::JavaKnownField::DoubleNegativeInfinity),
+            )) => {
+                self.budget.add(1)?;
+                self.spelling(field.member().text())?;
+                self.symbol(TargetSymbolRef::KnownType(field.owner()))
+            }
             JavaExprKind::Value(JavaValueRef::Dependency(imported)) => {
                 self.symbol(TargetSymbolRef::DependencyValue(imported.clone()))
             }

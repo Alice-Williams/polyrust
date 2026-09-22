@@ -14,7 +14,7 @@ fn constant_only_and_mixed_apis_preserve_exact_witnesses_and_source() {
         for (i, expected) in c::values().iter().enumerate() {
             let id = f::id(0x35c, 10 + i as u64);
             let constant = api.constant(id).unwrap();
-            assert_eq!(constant.value(), expected);
+            assert_eq!(constant.value().literal().as_ref(), Some(expected));
             assert_eq!(
                 constant.source().documentation,
                 [format!(" Constant {i} documentation.")]

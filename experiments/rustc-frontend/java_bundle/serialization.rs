@@ -192,7 +192,7 @@ fn declaration(out: &mut impl Sink, description: &JavaSourceDescription<'_>) -> 
             out.fixed(",\"scalar\":")?;
             out.string(scalar(ty)?)?;
             out.fixed(",\"readonly\":true,\"value\":")?;
-            crate::constants::value(out, value)?;
+            crate::constants::certified_value(out, value)?;
         }
         Kind::Record => {}
         Kind::Field { owner, ty } => {

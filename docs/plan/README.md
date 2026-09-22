@@ -129,7 +129,10 @@ contract as every other target.
   inventory/import facts, inferred math.h without libm, native compiling-fault
   proof and all 1,005 release/lint targets passing. Broad independent review is
   clean; all 462 previous output hashes and 38 unrelated WIP hashes are unchanged.
-  Java and checked source admission remain separate next checkpoints.
+  Java foundation is complete too: exact standard-field inventory and aliases,
+  separate native compilation with inlining-sensitive faults, all 1,006
+  release/lint targets passing and clean broad review. Checked Rust-source
+  infinity admission is the next checkpoint; wider migration remains open.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

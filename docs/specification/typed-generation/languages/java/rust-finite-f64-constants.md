@@ -13,7 +13,10 @@ literals or arbitrary initializer expressions.
 
 Use existing structural rendering and ordinary fields; no custom runtime,
 helper catalogue, reflection or boxing. Certification and byte bounds continue
-to account for the entire field and its finite literal.
+to account for the entire field and its finite literal. The shared constant
+inventory now uses JavaScalarConstantValue::F64; its literal projection retains
+exact bits. Infinity is a separate target-foundation variant and remains outside
+this finite source capability.
 
 ## Source lowering and proof
 

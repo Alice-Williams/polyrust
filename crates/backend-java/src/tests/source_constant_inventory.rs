@@ -1,6 +1,9 @@
 //! Exercise the narrow constant gate directly, without an earlier verifier hiding errors.
 use super::*;
-use crate::{ast::JavaFileItem, tests::source_constant_fixture as c};
+use crate::{
+    ast::{JavaExprKind, JavaFileItem, JavaLiteral, JavaPrimitive, JavaType},
+    tests::source_constant_fixture as c,
+};
 use portable_codegen::GeneratedSymbolId;
 
 #[test]

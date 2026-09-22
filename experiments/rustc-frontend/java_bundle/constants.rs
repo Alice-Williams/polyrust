@@ -1,6 +1,16 @@
 //! Exact scalar metadata uses the same reservation and encoding traversal.
 use crate::json::Sink;
-use portable_backend_java::ast::JavaLiteral;
+use portable_backend_java::ast::{JavaLiteral, JavaScalarConstantValue};
+
+pub(crate) fn certified_value(
+    out: &mut impl Sink,
+    constant: &JavaScalarConstantValue,
+) -> Result<(), String> {
+    let literal = constant
+        .literal()
+        .ok_or("nonfinite Java source constants are not admitted yet")?;
+    value(out, &literal)
+}
 
 pub(crate) fn value(out: &mut impl Sink, value: &JavaLiteral) -> Result<(), String> {
     match value {
@@ -16,6 +26,22 @@ pub(crate) fn value(out: &mut impl Sink, value: &JavaLiteral) -> Result<(), Stri
 mod tests {
     use super::*;
     use crate::json::{Encoder, Reservation};
+
+    #[test]
+    fn infinity_inventory_cannot_cross_the_finite_source_manifest_boundary() {
+        for sign in [
+            portable_binary64::Binary64Sign::Positive,
+            portable_binary64::Binary64Sign::Negative,
+        ] {
+            let constant = JavaScalarConstantValue::Infinity(sign);
+            let mut reservation = Reservation::default();
+            assert!(certified_value(&mut reservation, &constant).is_err());
+            assert_eq!(reservation.0.0, 0);
+            let mut encoder = Encoder::new(100);
+            assert!(certified_value(&mut encoder, &constant).is_err());
+            assert_eq!(encoder.finish(), "");
+        }
+    }
 
     #[test]
     fn exact_values_are_lossless_and_fully_reserved() {

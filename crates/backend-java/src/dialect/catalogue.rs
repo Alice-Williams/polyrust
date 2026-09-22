@@ -42,6 +42,8 @@ pub(super) fn java_symbol_catalogue() -> SymbolCatalogue<JavaDialect> {
             JavaKnownField::IntegerMaxValue,
             JavaKnownField::LongMinValue,
             JavaKnownField::LongMaxValue,
+            JavaKnownField::DoublePositiveInfinity,
+            JavaKnownField::DoubleNegativeInfinity,
             JavaKnownField::StandardCharsetsUtf8,
             JavaKnownField::CodingErrorReport,
         ]

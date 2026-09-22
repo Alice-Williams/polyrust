@@ -60,7 +60,7 @@ fn finite_constants_keep_exact_bits_types_docs_and_imported_readers() {
         assert_eq!(owner.functions().len(), if mixed { bits.len() } else { 0 });
         for (index, value) in bits.iter().enumerate() {
             let constant = owner.constant(f::id(0x35c, 10 + index as u64)).unwrap();
-            assert_eq!(constant.value(), &literal(*value));
+            assert_eq!(constant.value().literal(), Some(literal(*value)));
             assert_eq!(constant.ty(), &JavaType::primitive(JavaPrimitive::Double));
             assert_eq!(
                 constant.source().documentation,

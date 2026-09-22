@@ -22,7 +22,7 @@ impl Mapping for JavaPublicConstantReads {
             let (plan, literal) = constants::literal(input.value());
             let proof = imported.constant();
             if proof.declaration() != crate::source_origin::identity(reader.tcx, input.definition())
-                || proof.value() != &literal
+                || proof.value().literal().as_ref() != Some(&literal)
                 || proof.ty() != &plan.java_type()
             {
                 return Err(

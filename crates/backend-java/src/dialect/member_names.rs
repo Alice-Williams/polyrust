@@ -4,6 +4,8 @@
 pub enum JavaMemberName {
     MinValue,
     MaxValue,
+    PositiveInfinity,
+    NegativeInfinity,
     Utf8,
     Report,
     Equals,
@@ -65,6 +67,8 @@ impl JavaMemberName {
         match self {
             Self::MinValue => "MIN_VALUE",
             Self::MaxValue => "MAX_VALUE",
+            Self::PositiveInfinity => "POSITIVE_INFINITY",
+            Self::NegativeInfinity => "NEGATIVE_INFINITY",
             Self::Utf8 => "UTF_8",
             Self::Report => "REPORT",
             Self::Equals => "equals",

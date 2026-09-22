@@ -13,7 +13,7 @@ Use typed standard C/Java constants and preserve original producer authority.
 
 1. [02V-01 — Independent oracle](M35-03A-02V-01-constant-oracle.md) — complete; 1,004 release/lint tests pass and whole-scope/hardening reviews are clean.
 2. [02V-02 — C foundation](M35-03A-02V-02-c-constants.md) — complete; all 1,005 release/lint tests pass and broad independent review is clean.
-3. [02V-03 — Java foundation](M35-03A-02V-03-java-constants.md).
+3. [02V-03 — Java foundation](M35-03A-02V-03-java-constants.md) — complete; all 1,006 release/lint tests pass and broad independent review is clean.
 4. [02V-04 — Checked source integration](M35-03A-02V-04-compiler-constants.md).
 
 Each checkpoint has its own full Linux release/lint gate, fresh independent

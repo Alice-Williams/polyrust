@@ -28,7 +28,7 @@ pub(super) struct Constant {
     pub source: Arc<RustSourceOrigin>,
     pub path: JavaDeclaredPath,
     pub ty: JavaType,
-    pub value: crate::ast::JavaLiteral,
+    pub value: crate::ast::JavaScalarConstantValue,
 }
 pub(super) struct Inventory {
     pub root: RustDeclarationId,

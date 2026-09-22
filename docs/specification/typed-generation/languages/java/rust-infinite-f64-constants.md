@@ -1,6 +1,6 @@
 # Rust signed-infinity constants in Java21
 
-- Status: planned
+- Status: target foundation complete; checked source admission remains disabled
 - Contract: [shared](../../rust-infinite-f64-constants.md)
 
 ## Representation and catalogue
@@ -21,7 +21,9 @@ existing literal values from Infinity(Binary64Sign). Accept only the exact
 typed standard fields for the new branch. Preserve public/static/final,
 original registration, declared type, source identity and owner certificates.
 Reject arbitrary field references, wrong annotations, mutable/nonpublic
-fields, lookalike owners and wrong signs. The renderer remains structural;
+fields and lookalike owners. Both signs are valid values, so this target
+foundation records the sign actually present; comparison to the expected Rust
+compiler value belongs to checked source integration. The renderer remains structural;
 the known-field dependency and byte bounds must be included in certification.
 
 ## Required evidence
@@ -33,3 +35,15 @@ sign loss, finite clamping and zero replacement must compile and be detected.
 Recompile all dependents after producer mutations because javac may inline
 constant fields. Prove resource bounds, original authority and unchanged old
 output bytes before compiler source admission.
+
+The inventory is JavaScalarConstantValue: Boolean, I32, I64, finite F64 and
+Infinity(Binary64Sign). Only exact Primary-precedence known-field expressions
+produce the infinity variant; casts, negations and arbitrary expressions are
+not constant inventory syntax. Existing finite compiler joins and manifest
+serializers use an explicit finite-literal projection which fails for infinity.
+
+Name handling retains the existing conservative rejection of value bindings
+that shadow Double or java in standard-field expressions. Reservation charges
+the actual resolved owner, dot and catalogue member, including fully qualified
+known-type names, and rejects missing names, excessive depth or byte overflow.
+This does not add automatic renaming or broaden the accepted naming profile.

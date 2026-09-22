@@ -1,6 +1,8 @@
 //! Borrowed source metadata. No constructor, declaration or call authority.
 mod collect;
-use crate::ast::{JavaDeclaredPath, JavaIdentifier, JavaLiteral, JavaParameter, JavaType};
+use crate::ast::{
+    JavaDeclaredPath, JavaIdentifier, JavaParameter, JavaScalarConstantValue, JavaType,
+};
 pub(super) use collect::collect;
 use portable_codegen::{RustDeclarationId, RustSourceOrigin};
 
@@ -21,7 +23,7 @@ pub enum JavaSourceDescriptionKind<'a> {
     },
     Constant {
         ty: &'a JavaType,
-        value: &'a JavaLiteral,
+        value: &'a JavaScalarConstantValue,
     },
     Record,
     Field {
