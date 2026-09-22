@@ -7,9 +7,11 @@ import shutil
 
 ROOT, ZIG, ORACLE = [Path(arg).resolve() for arg in sys.argv[1:4]]
 MODE = sys.argv[4] if len(sys.argv) == 5 else "addition"
-assert MODE in ["addition", "subtraction"] and len(sys.argv) in [4, 5]
+assert MODE in ["addition", "subtraction", "multiplication"] and len(sys.argv) in [4, 5]
 sys.path.insert(0, str(ORACLE))
-if MODE == "subtraction":
+if MODE == "multiplication":
+    from wrapping_mul_oracle import CASES, result, faulty
+elif MODE == "subtraction":
     from wrapping_sub_oracle import CASES, result, faulty
 else:
     from wrapping_add_oracle import CASES, result
@@ -50,8 +52,10 @@ def expected(variant):
     values = []
     for width, left, right in CASES:
         value = result(left, left if variant == "wrong-operand" else right, width)
-        if variant in ["wrong-operation", "reversed-operands", "narrow"]:
-            fault = {"wrong-operation": "add", "reversed-operands": "reverse", "narrow": "narrow"}[variant]
+        if variant in ["wrong-operation", "reversed-operands", "narrow", "saturating"]:
+            fault = {"wrong-operation": "add", "reversed-operands": "reverse",
+                     "narrow": "narrow_result" if MODE == "multiplication" else "narrow",
+                     "saturating": "saturating"}[variant]
             value = faulty(left, right, width, fault)
         if variant == "wrong-result" and value < 0:
             value += 1
@@ -64,6 +68,10 @@ def main():
     inputs = "".join(f"{width} {left} {right}\n" for width, left, right in CASES)
     truth = expected("valid")
     variants = ["valid", "boundary-literals", "wrong-operand", "wrong-result"]
+    if MODE == "multiplication":
+        from wrapping_multiplication_faults import prepare
+        variants += ["wrong-operation", "narrow", "saturating"]
+        prepare(ROOT, STEMS[0])
     if MODE == "subtraction":
         variants += ["wrong-operation", "reversed-operands", "narrow"]
         directory = ROOT / "narrow"
@@ -89,6 +97,11 @@ def main():
         }
         wanted = expected(variant)
         assert (wanted == truth) == (variant in ["valid", "boundary-literals"])
+        if MODE == "multiplication" and variant not in ["valid", "boundary-literals"]:
+            for width in [32, 64]:
+                indices = [2 * i for i, case in enumerate(CASES) if case[0] == width]
+                actual_lines, truth_lines = wanted.splitlines(), truth.splitlines()
+                assert any(actual_lines[i] != truth_lines[i] for i in indices), (width, variant)
         (directory / "consumer.c").write_text(CLIENT)
         for compiler in ["gcc-14", ZIG]:
             for optimization in ["0", "2"]:

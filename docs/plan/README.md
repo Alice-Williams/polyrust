@@ -71,8 +71,10 @@ contract as every other target.
   [Wrapping multiplication (02S)](tasks/M35-03A-02S-wrapping-multiplication.md)
   has a completed independent oracle: 34,546 exact products match native Rust
   with checks on/off; all 948 release/lint targets pass and review is clean.
-  C/Java target foundations and checked source admission remain separate planned
-  checkpoints.
+  Its C target foundation is complete too: certified unsigned products and
+  guarded signed reconstruction, six new tests, all 948 release/lint targets
+  passing and clean review. Java foundation and checked source admission remain
+  separate checkpoints.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

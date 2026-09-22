@@ -1,6 +1,6 @@
 # Rust wrapping multiplication in C17
 
-- Status: planned; admission unchanged
+- Status: target foundation complete; compiler-source admission unchanged
 - Contract: [shared](../../rust-wrapping-multiplication.md)
 
 ## Typed lowering
@@ -30,3 +30,8 @@ and MayWrap transfer. Separate strict GCC14/Zig O0/O2 producers/clients, standal
 headers and GCC UBSan agree with the independent oracle. Compiling safe wrong
 operation, saturation, narrowing and disconnected-operand controls must disagree.
 Dependencies derive from typed symbols, without runtime or math-library support.
+
+The completed target proof covers 34,546 pairs, both original owners, strict
+GCC14/Zig O0/O2, standalone headers and UBSan. Six new focused tests and all
+948 release/lint targets pass with clean independent review. Test-only saturation
+and narrowing controls are disposable mutations, not generated runtime support.

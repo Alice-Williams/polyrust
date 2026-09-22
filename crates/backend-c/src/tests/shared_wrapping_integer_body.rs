@@ -5,12 +5,14 @@ use super::*;
 pub(in crate::dialect::shared) enum Operation {
     Add,
     Subtract,
+    Multiply,
 }
 impl Operation {
     fn operator(self) -> CBinaryOperator {
         match self {
             Self::Add => CBinaryOperator::Add,
             Self::Subtract => CBinaryOperator::Subtract,
+            Self::Multiply => CBinaryOperator::Multiply,
         }
     }
 }
@@ -29,7 +31,7 @@ pub(in crate::dialect::shared) enum Variant {
     WrongOperand,
     WrongResult,
     NestedComplement(usize),
-    NestedMultiply,
+    NestedDivide,
     BoundaryLiterals,
     ReversedOperands,
     WrongOperation,
@@ -97,7 +99,7 @@ pub(in crate::dialect::shared) fn build(
     let operator = if matches!(variant, Variant::WrongOperation) {
         match operation {
             Operation::Add => CBinaryOperator::Subtract,
-            Operation::Subtract => CBinaryOperator::Add,
+            Operation::Subtract | Operation::Multiply => CBinaryOperator::Add,
         }
     } else {
         operation.operator()
@@ -133,9 +135,9 @@ pub(in crate::dialect::shared) fn build(
                 right = e.unary(CUnaryOperator::BitNot, right).unwrap();
             }
         }
-        if matches!(variant, Variant::NestedMultiply) {
+        if matches!(variant, Variant::NestedDivide) {
             right = e
-                .binary(CBinaryOperator::Multiply, right, unsigned_literal(1))
+                .binary(CBinaryOperator::Divide, right, unsigned_literal(1))
                 .unwrap();
         }
         e.binary(

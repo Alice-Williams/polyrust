@@ -1,26 +1,26 @@
-//! Unsigned differences require the same independent signed-range proof as sums.
+//! Unsigned products require the same independent signed-range proof as differences.
 use super::wrapping_addition::shape::correct_operation;
 use super::wrapping_integer::{Operation, Variant, api, chain, fixture};
 use super::{dependency_fixture as f, project_c_package};
 use crate::{ast::*, dialect::CStructuralRenderer};
 use portable_codegen::*;
 
-#[path = "shared_wrapping_subtraction_native.rs"]
+#[path = "shared_wrapping_multiplication_native.rs"]
 mod native;
 
 #[test]
-fn wrapping_subtraction_proves_guards_and_rejects_signed_overflow() {
+fn wrapping_multiplication_proves_guards_and_rejects_signed_overflow() {
     for width in [CScalarType::I32, CScalarType::I64] {
         let build = |variant| {
             fixture::build_widths(
                 701,
                 &[],
-                fixture::Body::Arithmetic(Operation::Subtract, variant),
+                fixture::Body::Arithmetic(Operation::Multiply, variant),
                 &[width],
             )
         };
         let source = build(Variant::Valid);
-        assert!(correct_operation(&source, CBinaryOperator::Subtract));
+        assert!(correct_operation(&source, CBinaryOperator::Multiply));
         assert!(!correct_operation(&source, CBinaryOperator::Add));
         assert_eq!(api(&source).functions().count(), 1);
         for variant in [
@@ -38,7 +38,7 @@ fn wrapping_subtraction_proves_guards_and_rejects_signed_overflow() {
                 .registrations()
                 .check_context(&source.files)
                 .unwrap();
-            assert!(!correct_operation(&source, CBinaryOperator::Subtract));
+            assert!(!correct_operation(&source, CBinaryOperator::Multiply));
             assert!(
                 project_c_package(source.registry, source.files).is_err(),
                 "{width:?} {variant:?}"
@@ -48,13 +48,12 @@ fn wrapping_subtraction_proves_guards_and_rejects_signed_overflow() {
             Variant::WrongOperand,
             Variant::WrongResult,
             Variant::WrongOperation,
-            Variant::ReversedOperands,
             Variant::MissingNormalization,
         ] {
             let source = build(variant);
-            api(&source); // Valid C can still compute the wrong modular difference.
+            api(&source); // Valid C can still compute the wrong modular product.
             assert_eq!(
-                correct_operation(&source, CBinaryOperator::Subtract),
+                correct_operation(&source, CBinaryOperator::Multiply),
                 width == CScalarType::I64 && matches!(variant, Variant::MissingNormalization),
                 "{width:?} {variant:?}"
             );
@@ -63,13 +62,13 @@ fn wrapping_subtraction_proves_guards_and_rejects_signed_overflow() {
 }
 
 #[test]
-fn wrapping_subtraction_checks_recursive_children_and_depth() {
+fn wrapping_multiplication_checks_recursive_children_and_depth() {
     for width in [CScalarType::I32, CScalarType::I64] {
         let build = |variant| {
             fixture::build_widths(
                 701,
                 &[],
-                fixture::Body::Arithmetic(Operation::Subtract, variant),
+                fixture::Body::Arithmetic(Operation::Multiply, variant),
                 &[width],
             )
         };
@@ -89,8 +88,8 @@ fn wrapping_subtraction_checks_recursive_children_and_depth() {
 }
 
 #[test]
-fn wrapping_subtraction_keeps_original_authority_and_derived_dependencies() {
-    let owners = chain(Operation::Subtract, Variant::Valid);
+fn wrapping_multiplication_keeps_original_authority_and_derived_dependencies() {
+    let owners = chain(Operation::Multiply, Variant::Valid);
     let foreign = fixture::build(
         703,
         &owners[0].functions().cloned().collect::<Vec<_>>(),
@@ -99,7 +98,7 @@ fn wrapping_subtraction_keeps_original_authority_and_derived_dependencies() {
     let source = fixture::build(
         701,
         &[],
-        fixture::Body::Arithmetic(Operation::Subtract, Variant::Valid),
+        fixture::Body::Arithmetic(Operation::Multiply, Variant::Valid),
     );
     assert!(
         CExpressions::new(source.registry.registrations())

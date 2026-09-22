@@ -12,7 +12,7 @@ fn wrapping_addition_recurses_into_unsigned_children_and_enforces_depth_budget()
         );
         api(&source);
         for (variant, message) in [
-            (Variant::NestedMultiply, "only scalar comparisons"),
+            (Variant::NestedDivide, "only scalar comparisons"),
             (Variant::NestedComplement(128), "verifier budget exceeded"),
         ] {
             let source = fixture::build_widths(

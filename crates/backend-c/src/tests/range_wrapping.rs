@@ -5,6 +5,32 @@ use crate::ast::{CBinaryOperator as B, CScalarType as T, CUnaryOperator as U};
 use crate::ownership::{CSafetyError as E, constants::limits};
 
 #[test]
+fn wrapping_multiplication_keeps_modular_product_loss_out_of_size_evidence() {
+    for (unsigned, maximum) in [
+        (T::U32, i128::from(u32::MAX)),
+        (T::U64, i128::from(u64::MAX)),
+    ] {
+        let wrapped = Range::exact(number(unsigned, maximum))
+            .binary(B::Multiply, Range::exact(number(unsigned, maximum)))
+            .unwrap();
+        // A small, representable result must still retain the overflow loss.
+        assert_eq!(wrapped, CTransfer::MayWrap(interval(unsigned, 1, 1)));
+        assert!(matches!(
+            interval(unsigned, 0, maximum)
+                .binary(B::Multiply, interval(unsigned, 0, maximum))
+                .unwrap(),
+            CTransfer::MayWrap(_)
+        ));
+        assert_eq!(
+            interval(unsigned, 0, maximum / 2)
+                .binary(B::Multiply, interval(unsigned, 2, 2))
+                .unwrap(),
+            CTransfer::NonWrapping(interval(unsigned, 0, maximum - 1))
+        );
+    }
+}
+
+#[test]
 fn wrapping_subtraction_never_turns_unsigned_underflow_into_nonwrapping_evidence() {
     for (unsigned, signed, maximum) in [
         (T::U32, T::I32, i128::from(u32::MAX)),

@@ -307,5 +307,9 @@ mod wrapping_integer;
 mod wrapping_subtraction;
 
 #[cfg(test)]
+#[path = "../tests/shared_wrapping_multiplication.rs"]
+mod wrapping_multiplication;
+
+#[cfg(test)]
 #[path = "../tests/shared_binary64.rs"]
 mod binary64;

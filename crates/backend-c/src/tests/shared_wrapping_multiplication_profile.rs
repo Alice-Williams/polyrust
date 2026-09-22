@@ -3,7 +3,7 @@ use super::*;
 use crate::ast::{CExpressions, CLiteral, CRegistry, CSignedLiteral, CUnsignedLiteral};
 
 #[test]
-fn wrapping_subtraction_profile_keeps_widths_exact_and_visits_both_children() {
+fn wrapping_multiplication_profile_keeps_widths_exact_and_visits_both_children() {
     let registry = CRegistry::new();
     let e = CExpressions::new(&registry);
     let u32 = || {
@@ -16,7 +16,7 @@ fn wrapping_subtraction_profile_keeps_widths_exact_and_visits_both_children() {
     };
     let i32 = || e.literal(CLiteral::Signed(CSignedLiteral::I32(1))).unwrap();
     for operand in [u32(), u64()] {
-        let value = e.binary(B::Subtract, operand.clone(), operand).unwrap();
+        let value = e.binary(B::Multiply, operand.clone(), operand).unwrap();
         let mut children = Vec::new();
         assert!(visit(&value, &mut |node| children.push(node)));
         let CValueKind::Binary { left, right, .. } = value.kind() else {
@@ -28,10 +28,10 @@ fn wrapping_subtraction_profile_keeps_widths_exact_and_visits_both_children() {
         );
     }
     for (operator, left, right) in [
-        (B::Subtract, u32(), u64()),
-        (B::Subtract, u64(), u32()),
-        (B::Subtract, i32(), u32()),
-        (B::Subtract, u32(), i32()),
+        (B::Multiply, u32(), u64()),
+        (B::Multiply, u64(), u32()),
+        (B::Multiply, i32(), u32()),
+        (B::Multiply, u32(), i32()),
         (B::Divide, u32(), u32()),
         (B::Divide, u64(), u64()),
     ] {
