@@ -42,6 +42,7 @@ fn missing() {
         .floating_absolute(CFloatingAbsolute)
         .floating_truncation(CFloatingTruncation)
         .floating_arithmetic(CFloatingArithmetic)
+        .wrapping_addition(CWrappingAddition)
         .build();
 }
 
@@ -74,6 +75,7 @@ fn missing() {
         .floating_absolute(JavaFloatingAbsolute)
         .floating_truncation(JavaFloatingTruncation)
         .floating_arithmetic(JavaFloatingArithmetic)
+        .wrapping_addition(JavaWrappingAddition)
         .build();
 }
 

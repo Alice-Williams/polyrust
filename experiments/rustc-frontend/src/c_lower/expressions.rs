@@ -2,14 +2,14 @@
 use super::{
     Reader, Result, c,
     capabilities::{
-        AbsoluteInput, ArithmeticInput, BitwiseInput, BooleanNegation, BorrowInput, CallInput,
-        ComparisonInput, ConstantInput, DirectCalls, EagerBooleanInput, EagerBooleans,
+        AbsoluteInput, AdditionInput, ArithmeticInput, BitwiseInput, BooleanNegation, BorrowInput,
+        CallInput, ComparisonInput, ConstantInput, DirectCalls, EagerBooleanInput, EagerBooleans,
         FloatingAbsolute, FloatingArithmetic, FloatingInput, FloatingNaN, FloatingNegation,
         FloatingRemainder, FloatingTruncation, IntegerBitwise, LazyBooleanInput, LiteralInput,
         LiteralValues, Mapping, NaNInput, NegationInput, PlaceInput, PublicConstantReadInput,
         PublicConstantReads, RemainderInput, ResolvedPlaces, ScalarComparisons, ScalarConstants,
-        SharedBorrows, ShortCircuitBooleans, Supports, TruncationInput, WrappingInput,
-        WrappingNegation,
+        SharedBorrows, ShortCircuitBooleans, Supports, TruncationInput, WrappingAddition,
+        WrappingInput, WrappingNegation,
     },
 };
 use portable_backend_c::ast::{CPlace, CValue};
@@ -29,6 +29,9 @@ impl<'tcx> Reader<'tcx> {
         }
         if let Some(input) = WrappingInput::discover(self.tcx, self.checked, value)? {
             return Supports::<WrappingNegation>::mapping(&self.mappings).lower(self, input);
+        }
+        if let Some(input) = AdditionInput::discover(self.tcx, self.checked, value)? {
+            return Supports::<WrappingAddition>::mapping(&self.mappings).lower(self, input);
         }
         if !self.checked.expr_adjustments(value).is_empty() {
             let place = self.place(value)?;

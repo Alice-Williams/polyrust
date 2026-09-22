@@ -37,6 +37,13 @@ mod slots;
 #[path = "../../../test/wrapping_contract.rs"]
 mod wrapping_contract;
 
+#[cfg(addition_ast_probe)]
+#[path = "../../../test/addition_java_ast.rs"]
+mod addition_ast;
+#[cfg(addition_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/addition_contract.rs"]
+mod addition_contract;
 mod floating_absolute;
 mod floating_arithmetic;
 mod floating_nan;
@@ -48,6 +55,7 @@ mod floating_truncation;
 #[path = "../../../test/unit_contract.rs"]
 mod unit_contract;
 mod unit_effects;
+mod wrapping_addition;
 #[cfg(wrapping_ast_probe)]
 #[path = "../../../test/wrapping_java_ast.rs"]
 mod wrapping_ast;
@@ -152,6 +160,7 @@ pub(crate) use shared_borrows::JavaSharedBorrows;
 pub(crate) use short_circuit_booleans::JavaShortCircuitBooleans;
 pub(crate) use slots::{Bindings, Builder};
 pub(crate) use unit_effects::JavaUnitEffects;
+pub(crate) use wrapping_addition::JavaWrappingAddition;
 pub(crate) use wrapping_negation::JavaWrappingNegation;
 
 pub(crate) type JavaBindings = Bindings<
@@ -182,6 +191,7 @@ pub(crate) type JavaBindings = Bindings<
     JavaFloatingTruncation,
     JavaFloatingArithmetic,
     JavaFloatingRemainder,
+    JavaWrappingAddition,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -213,6 +223,7 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .floating_truncation(JavaFloatingTruncation)
         .floating_arithmetic(JavaFloatingArithmetic)
         .floating_remainder(JavaFloatingRemainder)
+        .wrapping_addition(JavaWrappingAddition)
         .build()
 }
 

@@ -38,6 +38,9 @@ impl<'tcx> Reader<'tcx> {
             } else if let Some(input) = WrappingInput::discover(reader.tcx, reader.checked, value)?
             {
                 Supports::<WrappingNegation>::mapping(&reader.mappings).lower(reader, input)?
+            } else if let Some(input) = AdditionInput::discover(reader.tcx, reader.checked, value)?
+            {
+                Supports::<WrappingAddition>::mapping(&reader.mappings).lower(reader, input)?
             } else if !reader.checked.expr_adjustments(value).is_empty() {
                 reader.place(value)?.value()
             } else {

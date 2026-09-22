@@ -37,6 +37,13 @@ mod slots;
 #[path = "../../../test/wrapping_contract.rs"]
 mod wrapping_contract;
 
+#[cfg(addition_ast_probe)]
+#[path = "../../../test/addition_c_ast.rs"]
+mod addition_ast;
+#[cfg(addition_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/addition_contract.rs"]
+mod addition_contract;
 mod floating_absolute;
 mod floating_arithmetic;
 mod floating_nan;
@@ -48,6 +55,7 @@ mod floating_truncation;
 #[path = "../../../test/unit_contract.rs"]
 mod unit_contract;
 mod unit_effects;
+mod wrapping_addition;
 #[cfg(wrapping_ast_probe)]
 #[path = "../../../test/wrapping_c_ast.rs"]
 mod wrapping_ast;
@@ -161,6 +169,7 @@ pub(crate) use shared_borrows::CSharedBorrows;
 pub(crate) use short_circuit_booleans::CShortCircuitBooleans;
 pub(crate) use slots::{Bindings, Builder};
 pub(crate) use unit_effects::CUnitEffects;
+pub(crate) use wrapping_addition::CWrappingAddition;
 pub(crate) use wrapping_negation::CWrappingNegation;
 
 pub(crate) use crate::source_capabilities::*;
@@ -193,6 +202,7 @@ pub(crate) type CBindings = Bindings<
     CFloatingTruncation,
     CFloatingArithmetic,
     CFloatingRemainder,
+    CWrappingAddition,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -224,6 +234,7 @@ pub(crate) fn c_bindings() -> CBindings {
         .floating_truncation(CFloatingTruncation)
         .floating_arithmetic(CFloatingArithmetic)
         .floating_remainder(CFloatingRemainder)
+        .wrapping_addition(CWrappingAddition)
         .build()
 }
 

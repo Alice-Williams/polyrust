@@ -284,7 +284,20 @@ fn remainder<'tcx>(
         let _ = (input.left(), input.right());
     }
 }
+fn addition<'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+) {
+    if let Ok(Some(input)) = AdditionInput::discover(tcx, checked, expression) {
+        let _ = input.require_context(tcx, checked);
+        let _ = (input.left(), input.right(), input.width());
+    }
+}
 fn main() {
+    capability::<WrappingAddition>();
+    let _ = addition;
+    let _ = [AdditionWidth::I32, AdditionWidth::I64];
     capability::<FloatingRemainder>();
     let _ = remainder;
     capability::<FloatingArithmetic>();

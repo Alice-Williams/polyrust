@@ -1,6 +1,6 @@
 # Checked Rust wrapping signed addition
 
-- Status: planned
+- Status: implemented and independently reviewed for the stated C/Java source subset
 - Plan: [02Q](../../plan/tasks/M35-03A-02Q-wrapping-addition.md)
 - Targets: [C17](languages/c/rust-wrapping-addition.md), [Java21](languages/java/rust-wrapping-addition.md)
 

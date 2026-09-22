@@ -234,3 +234,18 @@ JavaScript, an independent bit oracle and strict C/Java consumers. Per-input
 native traces and compiling eager/duplicate-call mutations exercise laziness.
 This does not replace the old eight-language example path yet; legacy corpus
 gates remain enabled and full_features remains empty.
+
+## Wrapping signed-addition increment
+
+[02Q](../../plan/tasks/M35-03A-02Q-wrapping-addition.md) adds actual core i32/i64
+wrapping_add through a canonical private compiler witness and executable typed
+builder mappings. C uses certified unsigned arithmetic and guarded signed
+reconstruction; Java uses primitive Int/Long Add. No runtime helper or raw target
+source is introduced. Ordinary Rust + and other integer operations remain closed.
+
+Three original crates yield 31,580 target observations per run against 15,790
+native Rust/independent modular cases. Actual operand traces, compiled value/
+evaluation faults, typed expanded dataflow, exact API/docs/import inventories and
+external privacy controls pass. All 924 release/lint targets pass and two source
+reviews are clean. This is still partial WrappingIntegerArithmetic coverage;
+full_features remains empty and legacy paths stay enabled.

@@ -1,6 +1,6 @@
 # Rust wrapping addition in Java21
 
-- Status: target foundation implemented; checked Rust-source mapping pending 02Q-04
+- Status: target foundation and checked Rust-source mapping complete in 02Q-04
 - Contract: [shared](../../rust-wrapping-addition.md)
 
 ## Typed lowering

@@ -1,6 +1,6 @@
 # Rust wrapping addition in C17
 
-- Status: target foundation complete; compiler-source integration is separate
+- Status: target foundation and checked compiler-source integration complete
 - Contract: [shared](../../rust-wrapping-addition.md)
 
 ## Typed lowering

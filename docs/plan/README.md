@@ -55,13 +55,12 @@ contract as every other target.
   targets and clean independent review. It reuses ordinary Rust operations
   without a new compiler capability or custom runtime; wider scalar parity
   remains the active workstream.
-  [Wrapping addition (02Q)](tasks/M35-03A-02Q-wrapping-addition.md) is in progress.
-  Its independent oracle is complete: 15,790 native Rust cases, 906 passing
-  release/lint targets and clean review. Its C target safety foundation is also
-  complete: typed guarded normalization, GCC/Zig/UBSan proof, 906 passing targets
-  and clean core review. Java's exact primitive addition foundation is complete
-  with 395 passing unit tests, independent native/fault proof, all 906 release/lint
-  targets passing and clean core review. Checked compiler integration is next.
+  [Wrapping addition (02Q)](tasks/M35-03A-02Q-wrapping-addition.md) is complete
+  through checked compiler integration: 15,790 native Rust/oracle cases, 31,580
+  target observations per run, measured operand traces, typed dataflow/atomic
+  controls and actual exported source-owned packages. All 924 release/lint targets
+  pass and two whole-scope source reviews are clean. Remaining scalar arithmetic
+  and the broader parity inventory remain active work, not legacy-removal approval.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

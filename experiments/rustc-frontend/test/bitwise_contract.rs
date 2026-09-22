@@ -36,6 +36,7 @@ use super::{
 use super::{
     CFloatingAbsolute as Absolute, CFloatingArithmetic as Arithmetic,
     CFloatingRemainder as Remainder, CFloatingTruncation as Truncation,
+    CWrappingAddition as Addition,
 };
 #[cfg(bitwise_c)]
 use super::{
@@ -55,6 +56,7 @@ use super::{
 use super::{
     JavaFloatingAbsolute as Absolute, JavaFloatingArithmetic as Arithmetic,
     JavaFloatingRemainder as Remainder, JavaFloatingTruncation as Truncation,
+    JavaWrappingAddition as Addition,
 };
 #[cfg(bitwise_java)]
 use super::{
@@ -98,6 +100,7 @@ fn missing() {
         .floating_truncation(Truncation)
         .floating_arithmetic(Arithmetic)
         .floating_remainder(Remainder)
+        .wrapping_addition(Addition)
         .floating_absolute(Absolute)
         .build();
 }

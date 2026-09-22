@@ -4,6 +4,9 @@ load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load(":absolute_ast_targets.bzl", "absolute_ast_targets")
 load(":absolute_contract_targets.bzl", "absolute_contract_targets")
 load(":absolute_targets.bzl", "absolute_targets")
+load(":addition_ast_targets.bzl", "addition_ast_targets")
+load(":addition_contract_targets.bzl", "addition_contract_targets")
+load(":addition_source_targets.bzl", "addition_source_targets")
 load(":arithmetic_ast_targets.bzl", "arithmetic_ast_targets")
 load(":arithmetic_contract_targets.bzl", "arithmetic_contract_targets")
 load(":arithmetic_oracle_targets.bzl", "arithmetic_oracle_targets")
@@ -821,6 +824,18 @@ negative_zero_targets(name = "negative_zero_source_clippy_test")
 wrapping_add_oracle_targets(name = "wrapping_add_oracle_test")
 
 remainder_source_targets(name = "remainder_source_clippy_test")
+
+addition_contract_targets(
+    name = "addition_contract_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+addition_source_targets(name = "addition_source_clippy_test")
+
+addition_ast_targets(
+    name = "addition_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)
 
 remainder_ast_targets(
     name = "remainder_ast_test",

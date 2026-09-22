@@ -78,6 +78,13 @@ Its dedicated C/Java source proof is additive to the existing eight-language
 corpus until the later cutover; it does not widen frontend admission. All 903
 release/lint targets pass and the independent review is clean.
 
+[02Q — wrapping signed addition](M35-03A-02Q-wrapping-addition.md) is complete:
+independent modular truth, certified C/Java foundations and checked primitive
+source integration. All 924 release/lint targets pass; measured source/target
+operand traces, exact typed dataflow, atomic controls and exported multi-crate
+examples accompany two clean whole-scope source reviews. Other integer operations
+remain separate capabilities, and the legacy runtime is not retired by this step.
+
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing
