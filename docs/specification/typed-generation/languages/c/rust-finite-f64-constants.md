@@ -1,6 +1,6 @@
 # Rust finite binary64 constants in C17
 
-- Status: target foundation complete; source admission pending
+- Status: target foundation and checked source integration complete
 - Contract: [shared](../../rust-finite-f64-constants.md)
 
 ## Target foundation
@@ -21,6 +21,9 @@ be integer constant expressions or usable as array extents.
 The compiler constant variant maps to CLiteral::F64 without host arithmetic.
 Owned, local and imported reads preserve the existing storage/identity rules.
 Original producer comparisons use exact finite bits, including zero sign.
+
+Owned constants, constant imports and constant exports all select binary64
+manifest schema 8, including function-free owners; system linkage selects 9.
 
 Require native GCC14/Zig at O0/O2, strict warnings, standalone headers and UBSan;
 external clients read actual declared objects/functions and compare bits.

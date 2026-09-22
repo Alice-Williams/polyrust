@@ -20,7 +20,8 @@ impl Mapping for JavaLocalConstants {
         let result = match input.value() {
             ScalarConstantValue::Bool(_)
             | ScalarConstantValue::I32(_)
-            | ScalarConstantValue::I64(_) => Ok(()),
+            | ScalarConstantValue::I64(_)
+            | ScalarConstantValue::F64(_) => Ok(()),
         };
         #[cfg(local_constant_ast_probe)]
         super::local_constant_ast::check(_reader, input, &before);

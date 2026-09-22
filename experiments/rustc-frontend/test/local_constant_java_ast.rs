@@ -65,6 +65,9 @@ pub(super) fn check(reader: &Reader<'_>, input: LocalConstantInput<'_>, before: 
         ScalarConstantValue::Bool(_) => assert!(matches!(declared.kind(), ty::Bool)),
         ScalarConstantValue::I32(_) => assert!(matches!(declared.kind(), ty::Int(ty::IntTy::I32))),
         ScalarConstantValue::I64(_) => assert!(matches!(declared.kind(), ty::Int(ty::IntTy::I64))),
+        ScalarConstantValue::F64(_) => {
+            assert!(matches!(declared.kind(), ty::Float(ty::FloatTy::F64)))
+        }
     }
     eprintln!(
         "LOCAL_CONSTANT_AST\tjava\t{:?}\t{:?}",

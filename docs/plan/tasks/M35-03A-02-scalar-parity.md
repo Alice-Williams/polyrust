@@ -114,7 +114,12 @@ is complete with all 991 release/lint targets passing and clean independent
 review. The C target foundation is also complete: exact finite const storage,
 original dependency authority, full native bit corpus and compiling fault
 controls; all 992 release/lint targets pass with clean independent review.
-Java target support and checked compiler-source admission remain pending.
+Java target support and checked compiler-source admission are now complete.
+All 1,001 release/lint targets pass and fresh whole-scope review is clean.
+Native Rust/C/Java bit observations, original owner/type/value authority,
+80 atomic source-rejection controls, exact manifest versions, actual Bazel
+value/sign invalidation and restored cached tests accompany exported packages.
+The broader scalar milestone remains incomplete.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

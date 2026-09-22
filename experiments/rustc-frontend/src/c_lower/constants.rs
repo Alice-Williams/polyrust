@@ -12,6 +12,7 @@ pub(super) fn literal(value: ScalarConstantValue) -> CLiteral {
         ScalarConstantValue::Bool(value) => CLiteral::Bool(value),
         ScalarConstantValue::I32(value) => CLiteral::Signed(CSignedLiteral::I32(value)),
         ScalarConstantValue::I64(value) => CLiteral::Signed(CSignedLiteral::I64(value)),
+        ScalarConstantValue::F64(value) => CLiteral::F64(value),
     }
 }
 

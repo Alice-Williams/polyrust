@@ -20,7 +20,7 @@ target has full replacement evidence for any broad legacy capability family.
 
 | Functionality | Rust-source C | Rust-source Java | Remaining work |
 | --- | --- | --- | --- |
-| Values and comparisons | i32/i64/bool literals and evaluated constant reads, scalar comparison, immutable places, built-in bool negation, lazy/eager operators, signed integer bitwise operations, i32/i64 wrapping negation and finite f64 literals/transport/comparisons | Same source subset | char/unit storage, wider constants, type aliases and remaining integer/float operations: M35-03A-02 |
+| Values and comparisons | i32/i64/bool literals and evaluated constant reads, scalar comparison, immutable places, built-in bool negation, lazy/eager operators, signed integer bitwise operations, i32/i64 wrapping negation and finite f64 literals/constants/transport/comparisons | Same source subset | char/unit storage, nonfinite/wider constants, type aliases and remaining integer/float operations: M35-03A-02 |
 | Functions and modules | Closed scalar/unit-result signatures and value/effect calls, crate-owned headers and implementations | Same signatures/calls with crate-owned Java packages | Wider signatures, methods and migrated consumers: M35-03A-03/06 |
 | Records and control | Closed scalar-field records/shared borrows, local bindings, structured branches | Same source subset | Owned shapes, enums, interfaces, loops and patterns: M35-02 then M35-03A-03 |
 | Text, Unicode and bytes | No general replacement mapping | No general replacement mapping | All legacy operations and explicit encoding/indexing policies: M35-03A-04 |
@@ -281,3 +281,24 @@ external privacy and actual package-export evidence pass. All 389 previous
 generated files and 38 unrelated WIP hashes are unchanged. Wrapping-integer
 coverage remains partial, the machine inventory still has no full_features,
 and all legacy gates stay enabled.
+
+## Finite binary64 constants increment
+
+[02U](../../plan/tasks/M35-03A-02U-finite-f64-constants.md) extends the existing
+constant capabilities with a distinct finite-value witness, checked only after
+rustc confirms f64/eight-byte scalar representation. Both targets retain exact
+bits, including zero sign, through public/private/local/inherent reads,
+original producer certificates, imports and aliases. Descriptive manifests use
+fixed-width hexadecimal bits; they never manufacture dependency authority.
+
+The C/Java target foundations independently cover 24,576 constant observations.
+Checked source integration is complete: its focused native proof passes 34
+original Rust reads and 62 target observations/configuration, with strict
+GCC/Zig O0/O2, UBSan and Java21 normal/interpreted execution. Six compositions,
+three compiling producer-value faults, original docs/privacy/alias inventories,
+typed mapping probes and 80 atomic boundary rejections pass. All 1,001 release/
+lint targets pass, fresh independent review is clean, actual producer value/
+zero-sign changes invalidate affected Bazel outputs and restoration reuses
+cached passing tests. Four actual packages are exported and hash-verified;
+all 423 prior generated files and 38 unrelated WIP hashes remain unchanged.
+This is partial Constants coverage; full_features remains empty.

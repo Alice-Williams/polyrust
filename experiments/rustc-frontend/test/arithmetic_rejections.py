@@ -13,7 +13,7 @@ CASES = {
     "cast": ("pub fn value(a:i64,b:f64)->f64 {(a as f64)+b}", "signed widening supports only an unadjusted i32 operand cast to i64"),
     "assignment": ("pub fn value(mut a:f64,b:f64)->f64 {a+=b;a}", "only plain immutable parameters"),
     "fused": ("pub fn value(a:f64,b:f64)->f64 {a.mul_add(b,-1.0)}", "expression mapping is not implemented"),
-    "constant": ("const A:f64=1.0; pub fn value(b:f64)->f64 {A+b}", "constants support only"),
+    "constant": ("const A:f64=f64::INFINITY; pub fn value(b:f64)->f64 {A+b}", "nonfinite f64 constants"),
     "generic": ("fn identity<T>(v:T)->T {v} pub fn value(a:f64,b:f64)->f64 {identity(a)+b}", "generic or mismatched direct callee identity"),
 }
 

@@ -13,7 +13,7 @@ CASES = {
     "extra_argument": ("trait Fake {fn abs(self, extra:bool)->bool;} impl Fake for bool {fn abs(self, extra:bool)->bool {extra}} pub fn value(v:bool)->bool {v.abs(true)}", "Floating absolute value takes no extra arguments"),
     "other_method": ("pub fn value(v:f64)->f64 {v.floor()}", "expression mapping is not implemented"),
     "cast": ("pub fn value(v:i64)->f64 {(v as f64).abs()}", "signed widening supports only an unadjusted i32 operand cast to i64"),
-    "constant": ("const V:f64=1.0; pub fn value()->f64 {V.abs()}", "constants support only"),
+    "constant": ("const V:f64=f64::INFINITY; pub fn value()->f64 {V.abs()}", "nonfinite f64 constants"),
     "euclidean_remainder": ("pub fn value(v:f64)->f64 {(v.rem_euclid(1.0)).abs()}", "expression mapping is not implemented"),
     "indirect": ("pub fn value(v:f64)->f64 {let f:fn(f64)->f64=f64::abs; f(v)}", "direct calls require resolved ordinary functions"),
     "generic": ("fn forward<T>(v:T)->T {v} pub fn value(v:f64)->f64 {forward(v).abs()}", "generic or mismatched direct callee identity"),

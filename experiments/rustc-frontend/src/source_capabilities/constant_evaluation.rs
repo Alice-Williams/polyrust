@@ -1,5 +1,6 @@
 //! Shared compiler definition admission/evaluation for reads and declarations.
 use super::ScalarConstantValue;
+use portable_binary64::FiniteBinary64;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -31,17 +32,17 @@ pub(super) fn evaluate<'tcx>(
         .map_err(|_| "scalar constant type normalization failed")?;
     if !matches!(
         ty.kind(),
-        ty::Bool | ty::Int(ty::IntTy::I32 | ty::IntTy::I64)
+        ty::Bool | ty::Int(ty::IntTy::I32 | ty::IntTy::I64) | ty::Float(ty::FloatTy::F64)
     ) {
-        return Err("scalar constants support only bool, i32 and i64".into());
+        return Err("scalar constants support only bool, i32, i64 and finite f64".into());
     }
     let evaluated = tcx
         .const_eval_poly(definition)
         .map_err(|_| "compiler could not evaluate scalar constant")?;
     let scalar = evaluated
         .try_to_scalar_int()
-        .ok_or("compiler constant is not a scalar integer")?;
-    // These signed/Boolean decoders assert their input width; guard it first.
+        .ok_or("compiler constant is not scalar bits")?;
+    // Every decoder asserts its input width; check both type and width first.
     let value = match (ty.kind(), scalar.size().bytes()) {
         (ty::Bool, 1) => ScalarConstantValue::Bool(
             scalar
@@ -50,6 +51,10 @@ pub(super) fn evaluate<'tcx>(
         ),
         (ty::Int(ty::IntTy::I32), 4) => ScalarConstantValue::I32(scalar.to_i32()),
         (ty::Int(ty::IntTy::I64), 8) => ScalarConstantValue::I64(scalar.to_i64()),
+        (ty::Float(ty::FloatTy::F64), 8) => ScalarConstantValue::F64(
+            FiniteBinary64::from_bits(scalar.to_u64())
+                .map_err(|_| "nonfinite f64 constants are not implemented")?,
+        ),
         _ => return Err("compiler constant scalar width disagrees with its type".into()),
     };
     Ok((ty, value))

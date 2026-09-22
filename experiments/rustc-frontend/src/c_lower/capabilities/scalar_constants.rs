@@ -17,6 +17,7 @@ impl Mapping for CScalarConstants {
             ScalarConstantValue::I32(value) => CLiteral::Signed(CSignedLiteral::I32(value)),
             ScalarConstantValue::I64(value) => CLiteral::Signed(CSignedLiteral::I64(value)),
             ScalarConstantValue::Bool(value) => CLiteral::Bool(value),
+            ScalarConstantValue::F64(value) => CLiteral::F64(value),
         };
         let value = c(reader.expressions().literal(literal))?;
         #[cfg(constant_ast_probe)]

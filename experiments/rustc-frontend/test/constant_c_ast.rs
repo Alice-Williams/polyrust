@@ -19,6 +19,7 @@ pub(super) fn check<'tcx>(reader: &Reader<'tcx>, input: ConstantInput<'tcx>, val
         ScalarConstantValue::I32(v) => (CScalarType::I32, CLiteral::Signed(CSignedLiteral::I32(v))),
         ScalarConstantValue::I64(v) => (CScalarType::I64, CLiteral::Signed(CSignedLiteral::I64(v))),
         ScalarConstantValue::Bool(v) => (CScalarType::Bool, CLiteral::Bool(v)),
+        ScalarConstantValue::F64(v) => (CScalarType::F64, CLiteral::F64(v)),
     };
     assert_eq!(value.ty().kind(), &CObjectTypeKind::Scalar(scalar));
     assert_eq!(value.kind(), &CValueKind::Literal(literal));

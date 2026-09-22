@@ -111,7 +111,11 @@ contract as every other target.
   unchanged. The Java foundation is complete: exact primitive-double constant
   certification, 24,576 native field observations in normal/interpreted Java21,
   inlining-sensitive mutation proof, all 994 release/lint targets passing and
-  two clean independent reviews. Checked source admission remains next.
+  two clean independent reviews. Checked source admission is now complete:
+  1,001 release/lint targets pass, fresh whole-scope review is clean, and native
+  exact-bit, typed/atomic/API/privacy and actual cache-invalidation proof pass.
+  Four actual C/Java packages are exported; 423 prior output hashes and 38
+  unrelated WIP hashes are unchanged. Wider scalar/runtime parity remains open.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

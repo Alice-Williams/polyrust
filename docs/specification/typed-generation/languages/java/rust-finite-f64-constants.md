@@ -1,6 +1,6 @@
 # Rust finite binary64 constants in Java21
 
-- Status: target foundation complete; source admission pending
+- Status: target foundation and checked source integration complete
 - Contract: [shared](../../rust-finite-f64-constants.md)
 
 ## Target foundation
@@ -20,6 +20,9 @@ to account for the entire field and its finite literal.
 Map the distinct compiler constant variant to TypePlan::F64 and the existing
 finite Java literal. Preserve original declaration/alias bindings and compare
 producer values by bits, not Java numeric equality.
+
+Owned constants, constant imports and constant exports all select binary64
+manifest schema 6, including function-free producers and alias-only owners.
 
 Require separate Java21 compilation with all warnings treated as errors,
 normal and interpreted execution, exact raw-bit observations in external test

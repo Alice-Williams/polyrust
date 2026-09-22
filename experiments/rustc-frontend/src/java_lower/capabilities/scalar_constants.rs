@@ -17,6 +17,7 @@ impl Mapping for JavaScalarConstants {
             ScalarConstantValue::I32(value) => (TypePlan::I32, JavaLiteral::I32(value)),
             ScalarConstantValue::I64(value) => (TypePlan::I64, JavaLiteral::I64(value)),
             ScalarConstantValue::Bool(value) => (TypePlan::Bool, JavaLiteral::Boolean(value)),
+            ScalarConstantValue::F64(value) => (TypePlan::F64, JavaLiteral::F64(value)),
         };
         let value = Value::new(plan.clone(), JavaExpr::literal(plan.java_type(), literal))?;
         #[cfg(constant_ast_probe)]

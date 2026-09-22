@@ -56,6 +56,7 @@ pub(super) fn owner(crate_id: u64, documentation: &str, literal: JavaLiteral) ->
         JavaLiteral::Boolean(_) => JavaPrimitive::Boolean,
         JavaLiteral::I32(_) => JavaPrimitive::Int,
         JavaLiteral::I64(_) => JavaPrimitive::Long,
+        JavaLiteral::F64(_) => JavaPrimitive::Double,
         _ => panic!("scalar fixture"),
     };
     let ty = JavaType::primitive(primitive);

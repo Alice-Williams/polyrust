@@ -110,8 +110,8 @@ not aliases for the complete portable capability catalogue:
 | Source capability | Session-bound input | C output |
 | --- | --- | --- |
 | ObjectTypes | compiler Ty | CObjectType plus registered nominal declarations |
-| LocalConstants | private compiler-derived LocalConstantInput retaining the item statement/DefId and exact bool/i32/i64 value | Unit output; validate the declaration and erase it without runtime storage |
-| ScalarConstants | private evaluated ConstantInput retaining compiler DefId/expression and exact bool/i32/i64 value | Ordinary typed literal CValue, no runtime storage |
+| LocalConstants | private compiler-derived LocalConstantInput retaining the item statement/DefId and exact bool/i32/i64/finite-f64 value | Unit output; validate the declaration and erase it without runtime storage |
+| ScalarConstants | private evaluated ConstantInput retaining compiler DefId/expression and exact bool/i32/i64/finite-f64 value | Ordinary typed literal CValue, no runtime storage |
 | LiteralValues | private checked LiteralInput with typed bool/i32/i64/finite-f64 value and compiler-session lifetime | CValue |
 | ResolvedPlaces | resolved path/field/dereference HIR expression and adjustments | CPlace |
 | SharedBorrows | immutable built-in borrow HIR expression | CValue |

@@ -8,13 +8,13 @@ import sys
 def main():
     root = Path(os.environ["TEST_TMPDIR"]) / "local-constant-rejections"
     root.mkdir()
-    scalar = "scalar constants support only bool, i32 and i64"
+    scalar = "scalar constants support only bool, i32, i64 and finite f64"
     item = "only scalar const item statements are implemented"
     cases = {
         "unused_u32": ("pub fn value()->i32 { const VALUE:u32=4; 0 }", scalar, True),
         "unused_array": ("pub fn value()->i32 { const VALUE:[i32;2]=[1,2]; 0 }", scalar, True),
         "unused_ref": ("pub fn value()->i32 { const VALUE:&i32=&4; 0 }", scalar, True),
-        "unused_f64": ("pub fn value()->i32 { const VALUE:f64=4.0; 0 }", scalar, True),
+        "unused_f32": ("pub fn value()->i32 { const VALUE:f32=4.0; 0 }", scalar, True),
         "borrow": ("pub fn value()->i32 { const VALUE:i32=4; let r=&VALUE; *r }", "only resolved local value paths", True),
         "static": ("pub fn value()->i32 { static VALUE:i32=4; 0 }", item, True),
         "type": ("pub fn value()->i32 { type Value=i32; 0 }", item, True),

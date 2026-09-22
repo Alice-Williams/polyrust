@@ -1,0 +1,41 @@
+//! Observe the actual original multi-crate Rust library, not generated literals.
+fn main() {
+    for value in [
+        root::read_positive_zero(),
+        root::read_negative_zero(),
+        root::read_min_subnormal(),
+        root::read_max_subnormal(),
+        root::read_min_normal(),
+        root::read_max_finite(),
+        root::read_negative_max(),
+        root::read_one_ulp(),
+        root::read_tenth(),
+        root::read_half_integer(),
+        root::read_half_ulp(),
+        root::read_sum(),
+        root::read_third(),
+        root::read_half_normal(),
+        root::read_two_subnormals(),
+        root::read_half_max(),
+        root::read_zero_product(),
+        root::read_indexed(),
+        root::read_forward(),
+        root::read_same_value(),
+        root::read_other_tenth(),
+        root::read_alias(),
+        root::read_own(),
+        root::read_private(),
+        root::read_local(),
+        root::read_unused(),
+        root::read_inherent(),
+        root::read_absolute(),
+        root::read_arithmetic(),
+        root::read_negation(),
+        root::read_nan(),
+        root::read_remainder(),
+        root::read_truncation(),
+        root::read_other_same(),
+    ] {
+        println!("{:016x}", value.to_bits());
+    }
+}

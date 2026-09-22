@@ -16,7 +16,7 @@ impl ApiManifest {
 
     fn encode(&self, bundle: bool) -> Result<String, String> {
         let bound = self.encoded_bound()?;
-        let binary64 = self.has_binary64_signatures();
+        let binary64 = self.has_binary64_metadata();
         let typed_signatures =
             binary64 || self.has_unit_results() || !self.system_libraries.is_empty();
         let foreign: BTreeSet<_> = self

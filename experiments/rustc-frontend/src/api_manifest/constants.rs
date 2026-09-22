@@ -59,7 +59,8 @@ pub(super) fn collect(
     Ok(constants)
 }
 
-/// Numbers are decimal JSON strings: even consumers using doubles lose no bits.
+/// Integers use decimal strings; binary64 uses fixed-width hexadecimal bits.
+/// Neither encoding loses bits in consumers whose JSON numbers are doubles.
 pub(super) fn scalar(value: &CLiteral) -> Result<(&'static str, String), String> {
     match value {
         CLiteral::Bool(value) => Ok(("bool", value.to_string())),
@@ -69,6 +70,10 @@ pub(super) fn scalar(value: &CLiteral) -> Result<(&'static str, String), String>
         CLiteral::Signed(CSignedLiteral::I64(value)) => {
             Ok(("i64", serialization::quote(&value.to_string())))
         }
+        CLiteral::F64(value) => Ok((
+            "f64",
+            serialization::quote(&format!("0x{:016x}", value.to_bits())),
+        )),
         _ => Err("API constant is outside the scalar profile".into()),
     }
 }

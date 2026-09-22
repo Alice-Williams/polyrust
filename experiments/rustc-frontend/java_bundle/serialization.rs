@@ -4,7 +4,7 @@ use crate::{
     projection::{function_result, scalar},
 };
 use portable_backend_java::{
-    ast::JavaDeclaredPath,
+    ast::{JavaDeclaredPath, JavaPrimitive, JavaType},
     dialect::{JavaSourceDescription, JavaSourceDescriptionKind as Kind, JavaSourceTarget},
 };
 use portable_codegen::{
@@ -17,23 +17,22 @@ pub(crate) fn owner(out: &mut impl Sink, manifest: &Manifest<'_>) -> Result<(), 
         matches!(description.kind(), Kind::Function { result, .. }
             if *result == portable_backend_java::ast::JavaType::primitive(portable_backend_java::ast::JavaPrimitive::Void))
     });
-    let binary64 = manifest.declarations.iter().any(|description| {
-        let is_f64 = |ty: &portable_backend_java::ast::JavaType| {
-            matches!(
-                ty,
-                portable_backend_java::ast::JavaType::Primitive(
-                    portable_backend_java::ast::JavaPrimitive::Double
-                )
-            )
-        };
-        match description.kind() {
+    let is_f64 = |ty: &JavaType| matches!(ty, JavaType::Primitive(JavaPrimitive::Double));
+    let binary64 = manifest
+        .declarations
+        .iter()
+        .any(|description| match description.kind() {
             Kind::Function { parameters, result } => {
                 is_f64(result) || parameters.iter().any(|parameter| is_f64(&parameter.ty))
             }
-            Kind::Field { ty, .. } => is_f64(ty),
-            Kind::Record | Kind::Constant { .. } => false,
-        }
-    });
+            Kind::Field { ty, .. } | Kind::Constant { ty, .. } => is_f64(ty),
+            Kind::Record => false,
+        })
+        || imports.values().any(|proof| is_f64(proof.ty()))
+        || manifest
+            .foreign_constants
+            .iter()
+            .any(|binding| is_f64(binding.dependency().ty()));
     out.fixed(if binary64 {
         "{\"schema_version\":6,\"root\":"
     } else if unit_results {

@@ -1,6 +1,6 @@
 # Checked Rust finite binary64 constants
 
-- Status: independent oracle and C/Java foundations complete; source admission pending
+- Status: complete through checked C/Java source admission
 - Plan: [02U](../../plan/tasks/M35-03A-02U-finite-f64-constants.md)
 - Targets: [C17](languages/c/rust-finite-f64-constants.md), [Java21](languages/java/rust-finite-f64-constants.md)
 
@@ -31,6 +31,17 @@ Public constants remain normal source-owned declarations. Imported constants
 must match original declaration, owner certificate, type and exact bits.
 Re-export aliases do not clone storage or manufacture independent authority.
 No generated runtime, custom helper library or third-party dependency.
+
+Descriptive C/Java manifests encode finite constant values with scalar `f64`
+and a string containing `0x` followed by exactly sixteen lowercase hexadecimal
+representation digits. This preserves both zero signs without JSON-number
+rounding. Existing Boolean/integer encodings are unchanged. These descriptions
+do not create or replace opaque original producer certificates.
+
+Any serialized f64 declaration, import or export selects the binary64 metadata
+schema: C version 8 (or version 9 when system linkage is present) and Java
+version 6. This includes constant-only producers and alias-only owners without
+functions. Older Boolean/integer-only packages retain their existing versions.
 
 ## Proof
 

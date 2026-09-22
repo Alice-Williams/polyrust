@@ -23,6 +23,7 @@ pub(super) fn check<'tcx>(
         ScalarConstantValue::I32(v) => (JavaPrimitive::Int, JavaLiteral::I32(v)),
         ScalarConstantValue::I64(v) => (JavaPrimitive::Long, JavaLiteral::I64(v)),
         ScalarConstantValue::Bool(v) => (JavaPrimitive::Boolean, JavaLiteral::Boolean(v)),
+        ScalarConstantValue::F64(v) => (JavaPrimitive::Double, JavaLiteral::F64(v)),
     };
     let expression = value.clone().into_expression();
     assert_eq!(expression.ty, JavaType::primitive(primitive));

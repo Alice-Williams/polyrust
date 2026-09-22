@@ -7,6 +7,7 @@ pub(crate) fn value(out: &mut impl Sink, value: &JavaLiteral) -> Result<(), Stri
         JavaLiteral::Boolean(value) => out.fixed(if *value { "true" } else { "false" }),
         JavaLiteral::I32(value) => out.string(&value.to_string()),
         JavaLiteral::I64(value) => out.string(&value.to_string()),
+        JavaLiteral::F64(value) => out.string(&format!("0x{:016x}", value.to_bits())),
         _ => Err("unsupported Java constant metadata literal".into()),
     }
 }
@@ -42,6 +43,30 @@ mod tests {
             assert_eq!(encoder.finish(), text);
             let mut too_small = Encoder::new(text.len() as u64 - 1);
             assert!(value(&mut too_small, &literal).is_err());
+        }
+    }
+
+    #[test]
+    fn finite_values_preserve_bits_and_sufficient_reservation() {
+        for bits in [
+            0,
+            0x8000_0000_0000_0000,
+            1,
+            0x0010_0000_0000_0000,
+            0x3ff0_0000_0000_0001,
+            0x7fef_ffff_ffff_ffff,
+            0xffef_ffff_ffff_ffff,
+        ] {
+            let literal =
+                JavaLiteral::F64(portable_binary64::FiniteBinary64::from_bits(bits).unwrap());
+            let expected = format!("\"0x{bits:016x}\"");
+            let mut reservation = Reservation::default();
+            value(&mut reservation, &literal).unwrap();
+            assert!(reservation.0.0 >= expected.len() as u64);
+            let mut encoder = Encoder::new(reservation.0.0);
+            value(&mut encoder, &literal).unwrap();
+            assert_eq!(encoder.finish(), expected);
+            assert!(value(&mut Encoder::new(expected.len() as u64 - 1), &literal).is_err());
         }
     }
 

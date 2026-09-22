@@ -1,6 +1,6 @@
 //! Version-seven result metadata preserves the object/result distinction.
 use super::{ApiManifest, import_serialization::scalar, serialization::quote};
-use portable_backend_c::ast::{CFunctionType, CObjectTypeKind, CReturnType, CScalarType};
+use portable_backend_c::ast::{CFunctionType, CLiteral, CObjectTypeKind, CReturnType, CScalarType};
 
 pub(super) fn result(ty: &CReturnType) -> Result<&'static str, String> {
     match ty {
@@ -33,7 +33,7 @@ fn has_binary64(signature: &CFunctionType) -> bool {
 }
 
 impl ApiManifest {
-    pub(super) fn has_binary64_signatures(&self) -> bool {
+    pub(super) fn has_binary64_metadata(&self) -> bool {
         self.functions
             .values()
             .any(|function| has_binary64(function.reference.signature()))
@@ -41,6 +41,18 @@ impl ApiManifest {
                 .imports
                 .values()
                 .any(|(_, proof)| has_binary64(proof.signature()))
+            || self
+                .constants
+                .values()
+                .any(|constant| matches!(constant.value, CLiteral::F64(_)))
+            || self
+                .constant_imports
+                .values()
+                .any(|(_, proof)| matches!(proof.value(), CLiteral::F64(_)))
+            || self
+                .foreign_constants
+                .iter()
+                .any(|binding| matches!(binding.dependency().value(), CLiteral::F64(_)))
     }
     pub(super) fn has_unit_results(&self) -> bool {
         self.functions.values().any(|function| {

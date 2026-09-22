@@ -38,6 +38,9 @@ pub(crate) fn check(
         CLiteral::Signed(CSignedLiteral::I64(v)) => {
             CLiteral::Signed(CSignedLiteral::I64(v.wrapping_add(1)))
         }
+        CLiteral::F64(v) => CLiteral::F64(
+            portable_binary64::FiniteBinary64::from_bits(v.to_bits() ^ (1_u64 << 63)).unwrap(),
+        ),
         _ => panic!("scalar"),
     };
     changed.insert(id, (object.clone(), wrong_value.clone()));
@@ -65,7 +68,12 @@ pub(crate) fn check(
     changed.insert(foreign, moved);
     assert!(reconstruct(&changed).is_err());
     let bundled = manifest.bundle_json().unwrap();
-    assert!(bundled.contains("\"schema_version\":4"));
+    let version = if manifest.has_binary64_metadata() {
+        8
+    } else {
+        4
+    };
+    assert!(bundled.contains(&format!("\"schema_version\":{version}")));
     assert!(bundled.len() <= manifest.bundle_bound().unwrap());
     println!("PUBLIC_CONSTANT_MANIFEST_MUTATIONS\t7");
 }

@@ -10,7 +10,7 @@ def java_bundle_targets(name):
         crate_root = "java_bundle/lib.rs",
         crate_name = "portable_java_bundle",
         edition = "2024",
-        deps = ["//crates/backend-java:portable_backend_java", "//crates/codegen:portable_codegen", "//crates/diagnostics:portable_diagnostics"],
+        deps = ["//crates/backend-java:portable_backend_java", "//crates/binary64:portable_binary64", "//crates/codegen:portable_codegen", "//crates/diagnostics:portable_diagnostics"],
     )
     rust_test(name = name + "_test", crate = ":" + name)
     rust_clippy_test(name = name + "_clippy_test", targets = [":" + name, ":" + name + "_test"])

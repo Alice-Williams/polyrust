@@ -31,7 +31,8 @@ pub(super) fn check(graph: &CheckedGraph) {
             let called_bridge = exports.modules.values().any(|bindings| {
                 bindings.iter().any(|(name, target)|
                 matches!(target, portable_codegen::RustExportTarget::Declaration(id) if *id == path)
-                && (name.name == "read_left" || name.name == "read_right"))
+                && (matches!(name.name.as_str(), "read_left" | "read_right")
+                    || (member.key == "proof.finite.constant.root" && name.name == "read_private")))
             });
             assert_eq!(
                 function.call_height(),
