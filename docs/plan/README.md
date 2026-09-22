@@ -169,6 +169,15 @@ contract as every other target.
   All 501 prior generated hashes and 38 unrelated WIP hashes remain unchanged.
   Character constants, text and the wider runtime migration remain open.
 
+  [Unicode scalar constants (02X)](tasks/M35-03A-02X-character-constants.md)
+  is the next bounded increment: independent named/computed constant truth,
+  separate C/Java target foundations, then checked declarations/reads/imports.
+  The oracle is complete: 4,127 compile-time values at both Rust profiles,
+  four native fault columns, invalid const conversions and strict protocol
+  controls pass. All 1,027 release/lint tests pass and fresh broad review is
+  clean. No character constant source admission is enabled. Target integer
+  inventories must not infer original Rust Char identity.
+
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the
 [experiment specification](../specification/rustc-frontend-proof.md).

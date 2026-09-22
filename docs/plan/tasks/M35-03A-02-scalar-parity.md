@@ -166,6 +166,15 @@ and restored cached success are proved. Real three-owner examples are exported,
 and all 501 previous output hashes and 38 unrelated WIP hashes are unchanged.
 Character constants and wider scalar/runtime parity remain open.
 
+[02X — Unicode scalar constants](M35-03A-02X-character-constants.md) next adds
+independent constant-context truth, separately proved C U32/Java Int constant
+storage, and checked Char declarations/reads/imports. Original source identities
+must remain distinct from target integer facts. Source admission is not yet
+enabled; conversions/text and wider parity remain outside this increment.
+The independent oracle is complete: 4,127 native compile-time observations,
+four actual faulty columns and exact invalid/protocol checks pass at both
+Rust profiles. All 1,027 release/lint tests pass and broad review is clean.
+
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing
