@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 CASES = {
-    "f32": ("pub fn value(a:f32,b:f32)->f32 {a%b}", "signatures support only"),
+    "f32": ("pub fn value(a:f32,b:f32)->f32 {a%b}", "signatures require admitted scalar source types"),
     "i32": ("pub fn value(a:i32,b:i32)->i32 {a%b}", "only comparison binary operators"),
     "i64": ("pub fn value(a:i64,b:i64)->i64 {a%b}", "only comparison binary operators"),
     "borrowed": ("pub fn value(a:f64,b:f64)->f64 {&a%&b}", "unadjusted built-in f64"),

@@ -170,6 +170,12 @@ impl<'tcx> Reader<'tcx> {
                     _ => Err("Java expression mapping is not implemented".into()),
                 }?
             };
+            let expected = reader.ty(reader.checked.expr_ty_adjusted(value))?;
+            if result.plan() != &expected {
+                return Err(
+                    "lowered expression disagrees with its original Rust source type".into(),
+                );
+            }
             #[cfg(java_ast_probe)]
             reader.expression_observations.push((
                 value.hir_id,

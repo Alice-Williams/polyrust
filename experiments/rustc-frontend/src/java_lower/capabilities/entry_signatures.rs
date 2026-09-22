@@ -20,7 +20,10 @@ impl Mapping for JavaEntrySignatures {
                 function: root.to_def_id(),
             },
         )?;
-        if signature.parameters != [TypePlan::I32.java_type()]
+        let source = tcx.fn_sig(root).instantiate_identity().skip_binder();
+        if source.inputs() != [tcx.types.i32]
+            || source.output() != tcx.types.i32
+            || signature.parameters != [TypePlan::I32.java_type()]
             || signature.result != TypePlan::I32.java_type()
             || tcx.hir_body_owned_by(root).params.len() != 1
         {

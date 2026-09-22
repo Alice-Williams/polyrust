@@ -1,5 +1,5 @@
 //! Package authority and resource budgets outlive individual function Readers.
-use super::{Callable, Place, Reader, Result, TypePlan, Value, capabilities, records};
+use super::{Callable, Place, Reader, Result, Value, capabilities, records};
 use portable_backend_java::{
     ast::*,
     dialect::{JavaDialect, JavaImportedCallable},
@@ -122,7 +122,10 @@ impl Reader<'_> {
                 return Err("only plain immutable parameters are implemented".into());
             };
             let spelling = self.fresh()?;
-            let plan = TypePlan::scalar(&ty)?;
+            let plan = self.ty(self.checked.node_type(parameter.pat.hir_id))?;
+            if plan.java_type() != ty {
+                return Err("parameter source type differs from registered Java signature".into());
+            }
             self.bindings.insert(
                 id,
                 Place::resolved(Value::new(

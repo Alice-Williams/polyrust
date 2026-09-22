@@ -20,7 +20,7 @@ target has full replacement evidence for any broad legacy capability family.
 
 | Functionality | Rust-source C | Rust-source Java | Remaining work |
 | --- | --- | --- | --- |
-| Values and comparisons | i32/i64/bool literals and evaluated constant reads, scalar comparison, immutable places, built-in bool negation, lazy/eager operators, signed integer bitwise operations, i32/i64 wrapping negation, finite f64 literals/transport/comparisons and finite/signed-infinity constants | Same source subset | char/unit storage, NaN/wider constants, type aliases and remaining integer/float operations: M35-03A-02 |
+| Values and comparisons | i32/i64/bool literals and evaluated constant reads, full-domain char literal/transport/comparison mappings, immutable places, built-in bool negation, lazy/eager operators, signed integer bitwise operations, i32/i64 wrapping operations, finite f64 literals/transport/comparisons and finite/signed-infinity constants | Same source subset | unit storage, char/NaN/wider constants, type aliases and remaining integer/float operations: M35-03A-02 |
 | Functions and modules | Closed scalar/unit-result signatures and value/effect calls, crate-owned headers and implementations | Same signatures/calls with crate-owned Java packages | Wider signatures, methods and migrated consumers: M35-03A-03/06 |
 | Records and control | Closed scalar-field records/shared borrows, local bindings, structured branches | Same source subset | Owned shapes, enums, interfaces, loops and patterns: M35-02 then M35-03A-03 |
 | Text, Unicode and bytes | No general replacement mapping | No general replacement mapping | All legacy operations and explicit encoding/indexing policies: M35-03A-04 |
@@ -321,3 +321,25 @@ producer stays cached; restoration recovers original hashes and cached native
 success. Actual packages are exported and old generated output/WIP is unchanged.
 NaN constants, f32 and wider storage/constant forms remain rejected. This remains
 partial Constants coverage; full_features stays empty and legacy gates remain.
+
+## Unicode scalar source integration
+
+[02W](../../plan/tasks/M35-03A-02W-character-values.md) adds checked Rust char
+literals, immutable places, scalar signatures/calls/conditionals, six comparisons
+and scalar record fields. C uses U32 and Java uses Int. Typed source facts retain
+Char separately from I32, original function identities and each field's owning
+record; compiler authentication and certified target reconciliation are distinct.
+Foreign calls additionally check the producer's source signature. Foreign callers
+must satisfy the original Unicode scalar domain; target integers alone do not
+prove that precondition. Character constants, casts, methods, direct references
+and general text/encoding operations remain unsupported.
+
+The focused source gates cover 1,116,517 native corpus rows, 19 literal boundaries,
+actual operand traces and compiling value/order faults, 30 atomic type/owner/call
+faults, eight unsupported foreign re-exports and 48 source-boundary cases. Actual
+three-owner C/Java examples are exported to the ignored generated directory.
+All 1,024 release/lint targets pass and fresh broad reviews are clean. Actual
+producer-value changes rebuild seven affected actions, fail old truth and pass
+updated truth; restoration recovers original hashes and cached native success.
+This is partial JavaCharValues coverage, not permission to remove any legacy runtime;
+full_features remains empty.

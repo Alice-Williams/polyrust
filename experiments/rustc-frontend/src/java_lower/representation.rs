@@ -8,6 +8,7 @@ pub(crate) enum TypePlan {
     I32,
     I64,
     Bool,
+    Char,
     F64,
     Record(GeneratedTypeId),
     Shared(Box<TypePlan>),
@@ -17,6 +18,7 @@ impl TypePlan {
     pub(crate) fn java_type(&self) -> JavaType {
         match self {
             Self::I32 => JavaType::primitive(JavaPrimitive::Int),
+            Self::Char => JavaType::primitive(JavaPrimitive::Int),
             Self::I64 => JavaType::primitive(JavaPrimitive::Long),
             Self::Bool => JavaType::primitive(JavaPrimitive::Boolean),
             Self::F64 => JavaType::primitive(JavaPrimitive::Double),
@@ -25,6 +27,8 @@ impl TypePlan {
         }
     }
 
+    /// Target-only classification. Never recover a Rust source type from Int:
+    /// source Char and I32 share that primitive representation.
     pub(crate) fn scalar(ty: &JavaType) -> Result<Self> {
         match ty {
             JavaType::Primitive(JavaPrimitive::Int) => Ok(Self::I32),

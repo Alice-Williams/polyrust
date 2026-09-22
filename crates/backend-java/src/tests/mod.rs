@@ -36,6 +36,7 @@ mod source_dependency_fixture_tests;
 #[path = "source_documentation/fixture.rs"]
 pub(crate) mod source_documentation_fixture;
 mod source_inventory;
+pub(crate) mod source_package_fixture;
 #[path = "source_records/fixture.rs"]
 pub(crate) mod source_record_fixture;
 mod switch_dominance_native;

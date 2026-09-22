@@ -18,6 +18,12 @@ impl Mapping for JavaLiteralValues {
             LiteralValue::I32(value) => (TypePlan::I32, JavaLiteral::I32(value)),
             LiteralValue::I64(value) => (TypePlan::I64, JavaLiteral::I64(value)),
             LiteralValue::Bool(value) => (TypePlan::Bool, JavaLiteral::Boolean(value)),
+            LiteralValue::Char(value) => (
+                TypePlan::Char,
+                JavaLiteral::I32(
+                    i32::try_from(u32::from(value)).map_err(|_| "scalar exceeds Java Int")?,
+                ),
+            ),
             LiteralValue::F64(value) => (TypePlan::F64, JavaLiteral::F64(value)),
         };
         let value = Value::new(plan.clone(), JavaExpr::literal(plan.java_type(), literal))?;

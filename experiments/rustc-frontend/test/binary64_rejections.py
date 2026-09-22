@@ -14,7 +14,7 @@ def main():
     root = Path(os.environ["TEST_TMPDIR"]) / "binary64-rejections"
     root.mkdir()
     cases = {
-        "f32": ("pub fn value(v:f32)->f32 {v}", "signatures support only", True),
+        "f32": ("pub fn value(v:f32)->f32 {v}", "signatures require admitted scalar source types", True),
         "euclidean_remainder": ("pub fn value(v:f64)->f64 {v.rem_euclid(1.0)}", "expression mapping is not implemented", True),
         "integer_negate": ("pub fn value(v:i64)->i64 {-v}", "only negative scalar literals", True),
         "cast": ("pub fn value(v:i64)->f64 {v as f64}", "signed widening supports only an unadjusted i32 operand cast to i64", True),
@@ -26,7 +26,7 @@ def main():
         "mutable": ("pub fn value(v:f64)->f64 {let mut x=v; x=2.0; x}", "only plain immutable bindings", True),
         "mixed": ("pub fn value(a:f64,b:f32)->bool {a==b}", "error[E0308]", False),
         "reference_comparison": ("pub fn value(a:f64,b:f64)->bool {&a == &b}", "overloaded operators", True),
-        "reference_abi": ("pub fn value(v:&f64)->f64 {*v}", "signatures support only", True),
+        "reference_abi": ("pub fn value(v:&f64)->f64 {*v}", "signatures require admitted scalar source types", True),
     }
     for label, (text, diagnostic, valid) in cases.items():
         source = root / (label + ".rs")

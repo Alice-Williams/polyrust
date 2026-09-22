@@ -158,7 +158,16 @@ contract as every other target.
   and normal/interpreted runs pass with four compiling fault controls. All
   1,017 release/lint targets and 427 Java unit cases pass, and fresh broad
   review is clean. Comparison annotations are checked consistently; old output
-  and unrelated WIP remain unchanged. Checked source admission is still pending.
+  and unrelated WIP remain unchanged. Checked source integration is now complete:
+  all 1,024 release/lint targets pass, fresh broad reviews are clean and actual
+  producer-value changes invalidate all seven affected actions. Restoring source
+  recovers original hashes and cached native success. Native proof covers
+  1,116,517 rows and 19 literal boundaries, actual call traces and compiling
+  faults. Typed source identities distinguish Char from I32 and authenticate
+  field owners and dependency signatures; atomic boundaries and original
+  API/docs/privacy checks pass. Actual three-owner examples are exported.
+  All 501 prior generated hashes and 38 unrelated WIP hashes remain unchanged.
+  Character constants, text and the wider runtime migration remain open.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 CASES = {
-    "f32": ("pub fn value(a:f32,b:f32)->f32 {a+b}", "signatures support only"),
+    "f32": ("pub fn value(a:f32,b:f32)->f32 {a+b}", "signatures require admitted scalar source types"),
     "i64": ("pub fn value(a:i64,b:i64)->i64 {a+b}", "only comparison binary operators"),
     "borrowed_add": ("pub fn value(a:f64,b:f64)->f64 {&a+&b}", "unadjusted built-in f64"),
     "overloaded": ("struct Fake {value:f64} impl std::ops::Add for Fake {type Output=f64; fn add(self,rhs:Self)->f64 {self.value+rhs.value}} pub fn value(a:f64,b:f64)->f64 {Fake{value:a}+Fake{value:b}}", "unadjusted built-in f64"),

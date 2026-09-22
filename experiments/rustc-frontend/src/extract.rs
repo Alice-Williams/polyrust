@@ -131,7 +131,7 @@ fn certify(lowered: crate::c_lower::LoweredPackage, mode: Mode) -> Result<Progra
             crate::api_manifest::export_contract::check(&package, &manifest);
             #[cfg(truncation_ast_probe)]
             crate::api_manifest::truncation_contract::check(&package, &manifest);
-            Some(manifest)
+            Some(manifest.with_source_types(&package, lowered.source_types)?)
         }
     };
     Ok(Program { package, manifest })

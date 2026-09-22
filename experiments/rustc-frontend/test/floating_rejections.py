@@ -10,7 +10,7 @@ def main():
     root = Path(os.environ["TEST_TMPDIR"]) / "floating-rejections"
     root.mkdir()
     cases = {
-        "f32": ("pub fn value(v:f32)->f32 {-v}", "signatures support only"),
+        "f32": ("pub fn value(v:f32)->f32 {-v}", "signatures require admitted scalar source types"),
         "reference": ("pub fn value(v:f64)->f64 {-&v}", "floating negation requires an unadjusted built-in f64"),
         "overloaded": ("struct V; impl std::ops::Neg for V {type Output=f64; fn neg(self)->f64 {0.0}} pub fn value()->f64 {-V}", "floating negation requires an unadjusted built-in f64"),
         "method": ("use std::ops::Neg; pub fn value(v:f64)->f64 {v.neg()}", "expression mapping is not implemented"),

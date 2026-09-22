@@ -161,6 +161,23 @@ pub(super) fn lower(
     #[cfg(java_ast_probe)]
     let state = package::assertions::check(tcx, state, &inventory.local);
     let (mut state, body_members) = package::lower_functions(tcx, state, &inventory.local)?;
+    let source_types = crate::source_origin::types::collect(
+        tcx,
+        exports.root,
+        &inventory.local,
+        state.records.keys().copied(),
+    )?;
+    #[cfg(character_source_probe)]
+    let source_types = crate::source_origin::types::probe::inspect(source_types);
+    crate::source_origin::types::authenticate(
+        tcx,
+        &inventory.local,
+        state.records.keys().copied(),
+        &source_types,
+    )?;
+    #[cfg(character_source_probe)]
+    let source_types = crate::source_origin::types::probe::after_authentication(source_types);
+    let source_types = std::sync::Arc::new(source_types);
     let mut members = vec![JavaMember::Constructor(JavaConstructor {
         modifiers: vec![JavaModifier::Private],
         name: name("Generated")?,
@@ -214,7 +231,9 @@ pub(super) fn lower(
         vec![JavaFileItem::Type {
             declared,
             conformances: JavaConformanceInventory::structural().into(),
-            source_package: Some(JavaSourcePackage::new(exports.clone())),
+            source_package: Some(
+                JavaSourcePackage::new(exports.clone()).with_source_types(source_types),
+            ),
             dependencies: imported.bindings,
             declaration: Box::new(declaration),
         }],

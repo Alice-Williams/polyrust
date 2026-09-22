@@ -9,10 +9,11 @@ use std::fmt::Write;
 pub(super) fn scalar(ty: &CObjectType) -> Result<&'static str, String> {
     match ty.kind() {
         CObjectTypeKind::Scalar(CScalarType::I32) => Ok("i32"),
+        CObjectTypeKind::Scalar(CScalarType::U32) => Ok("u32"),
         CObjectTypeKind::Scalar(CScalarType::I64) => Ok("i64"),
         CObjectTypeKind::Scalar(CScalarType::Bool) => Ok("bool"),
         CObjectTypeKind::Scalar(CScalarType::F64) => Ok("f64"),
-        _ => Err("import manifest requires a certified i32/i64/bool/f64 signature".into()),
+        _ => Err("import manifest requires an admitted certified scalar signature".into()),
     }
 }
 

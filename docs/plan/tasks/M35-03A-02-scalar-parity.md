@@ -157,7 +157,14 @@ Java foundation is complete too: full-domain primitive Int transport, exact
 dependency authority, strict separate Java21 normal/interpreted proof and four
 compiling fault controls pass. All 1,017 release/lint targets and 427 Java unit
 cases pass; fresh broad review is clean and existing output/WIP is unchanged.
-Checked Rust-source admission is still pending.
+Checked Rust-source integration is complete too: all 1,024 release/lint targets
+pass and fresh broad reviews are clean. Native proof covers 1,116,517 rows and
+19 literal boundaries, actual ordered calls and compiling value/order faults.
+Original Char/I32, field-owner and dependency-signature joins have atomic fault
+controls; source/API/privacy boundaries pass. Actual producer-value invalidation
+and restored cached success are proved. Real three-owner examples are exported,
+and all 501 previous output hashes and 38 unrelated WIP hashes are unchanged.
+Character constants and wider scalar/runtime parity remain open.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

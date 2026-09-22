@@ -17,8 +17,10 @@ impl ApiManifest {
     fn encode(&self, bundle: bool) -> Result<String, String> {
         let bound = self.encoded_bound()?;
         let binary64 = self.has_binary64_metadata();
-        let typed_signatures =
-            binary64 || self.has_unit_results() || !self.system_libraries.is_empty();
+        let typed_signatures = binary64
+            || self.has_unit_results()
+            || !self.system_libraries.is_empty()
+            || self.has_characters();
         let foreign: BTreeSet<_> = self
             .foreign_constants
             .iter()
@@ -26,7 +28,9 @@ impl ApiManifest {
             .collect();
         let mut text = format!(
             "{{\"schema_version\":{},\"root\":{},\"header\":{},\"implementation\":{},\"modules\":[",
-            if !self.system_libraries.is_empty() {
+            if self.has_characters() {
+                10
+            } else if !self.system_libraries.is_empty() {
                 9
             } else if binary64 {
                 8
@@ -132,6 +136,7 @@ impl ApiManifest {
             }
         }
         self.write_system_libraries(&mut text);
+        self.write_source_types(&mut text);
         text.push_str("}\n");
         if text.len() > bound {
             return Err("API metadata exceeded its byte estimate".into());
@@ -150,6 +155,7 @@ impl ApiManifest {
             }
             Ok(())
         };
+        add(self.source_type_bound()?)?;
         if !self.system_libraries.is_empty() {
             add(32 + self.system_libraries.len() * 16)?;
         }

@@ -21,8 +21,12 @@ impl Mapping for CObjectTypes {
             ty::Int(ty::IntTy::I32) => Ok(CObjectType::scalar(CScalarType::I32)),
             ty::Int(ty::IntTy::I64) => Ok(CObjectType::scalar(CScalarType::I64)),
             ty::Bool => Ok(CObjectType::scalar(CScalarType::Bool)),
+            ty::Char => Ok(CObjectType::scalar(CScalarType::U32)),
             ty::Float(ty::FloatTy::F64) => Ok(CObjectType::scalar(CScalarType::F64)),
             ty::Ref(_, pointee, rustc_hir::Mutability::Not) => {
+                if matches!(pointee.kind(), ty::Char) {
+                    return Err("character references are not implemented".into());
+                }
                 let pointee = c(reader.ty(*pointee)?.with_constness(CConstness::Const))?;
                 Ok(CObjectType::pointer(CPointerTarget::Object(Box::new(
                     pointee,
@@ -69,6 +73,7 @@ impl Mapping for CObjectTypes {
                         field_type.kind(),
                         ty::Int(ty::IntTy::I32 | ty::IntTy::I64)
                             | ty::Bool
+                            | ty::Char
                             | ty::Float(ty::FloatTy::F64)
                     ) {
                         return Err("only scalar record fields are implemented".into());

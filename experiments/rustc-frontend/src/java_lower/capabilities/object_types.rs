@@ -15,8 +15,12 @@ impl Mapping for JavaObjectTypes {
             ty::Int(ty::IntTy::I32) => Ok(TypePlan::I32),
             ty::Int(ty::IntTy::I64) => Ok(TypePlan::I64),
             ty::Bool => Ok(TypePlan::Bool),
+            ty::Char => Ok(TypePlan::Char),
             ty::Float(ty::FloatTy::F64) => Ok(TypePlan::F64),
             ty::Ref(_, referent, rustc_hir::Mutability::Not) => {
+                if matches!(referent.kind(), ty::Char) {
+                    return Err("character references are not implemented".into());
+                }
                 Ok(TypePlan::Shared(Box::new(reader.ty(*referent)?)))
             }
             ty::Adt(definition, arguments)

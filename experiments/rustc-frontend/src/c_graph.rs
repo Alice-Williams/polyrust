@@ -63,6 +63,16 @@ pub(crate) fn lower(sysroot: &str, arguments: &[String]) -> Result<CheckedGraph,
                     .ok_or("foreign call is not in the certified public C API")?;
                 #[cfg(c_graph_wrong_declaration)]
                 let proof = crate::foreign_mutations::declaration(owner, proof);
+                let original = crate::source_origin::types::signature(tcx, definition)?;
+                if dependencies
+                    .get(&definition.krate)
+                    .and_then(|item| item.manifest().source_signature(proof.declaration()))
+                    != Some(&original)
+                {
+                    return Err(
+                        "foreign original Rust signature differs from C source type facts".into(),
+                    );
+                }
                 Ok(proof)
             };
             let constant_lookup = |definition: DefId| {

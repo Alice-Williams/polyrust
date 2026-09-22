@@ -35,6 +35,7 @@ impl Mapping for JavaRecordInitializers {
             .map(|field| field.ty.clone())
             .collect();
         let mut arguments = vec![None; parameters.len()];
+        let source_plans = record.source_plans.clone();
         for field in fields {
             let index = reader.checked.field_index(field.hir_id).as_usize();
             let slot = arguments
@@ -44,7 +45,7 @@ impl Mapping for JavaRecordInitializers {
                 return Err("duplicate record member".into());
             }
             let value = reader.initializer(field.expr)?;
-            if value.plan() != &TypePlan::scalar(&parameters[index])? {
+            if value.plan() != &source_plans[index] {
                 return Err("record initializer type mismatch".into());
             }
             *slot = Some(reader.materialize(value)?.into_expression());

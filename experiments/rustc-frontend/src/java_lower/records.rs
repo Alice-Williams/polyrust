@@ -11,6 +11,7 @@ pub(super) struct Record {
     pub id: GeneratedTypeId,
     pub declaration: JavaTypeDeclaration,
     pub fields: Vec<JavaFieldRef>,
+    pub source_plans: Vec<TypePlan>,
 }
 
 impl<'tcx> Reader<'tcx> {
@@ -49,6 +50,7 @@ impl<'tcx> Reader<'tcx> {
         let mut parameters = Vec::new();
         let mut assignments = Vec::new();
         let mut fields = Vec::new();
+        let mut source_plans = Vec::new();
         for (index, field) in definition.non_enum_variant().fields.iter().enumerate() {
             let field_type = self
                 .tcx
@@ -61,10 +63,12 @@ impl<'tcx> Reader<'tcx> {
                 ty::Int(ty::IntTy::I32) => TypePlan::I32,
                 ty::Int(ty::IntTy::I64) => TypePlan::I64,
                 ty::Bool => TypePlan::Bool,
+                ty::Char => TypePlan::Char,
                 ty::Float(ty::FloatTy::F64) => TypePlan::F64,
                 _ => return Err("only scalar record fields are implemented".into()),
             };
             let ty = plan.java_type();
+            source_plans.push(plan);
             let field_name = name(&format!("f{index}"))?;
             let origin = source_origin::read(
                 self.tcx,
@@ -134,6 +138,7 @@ impl<'tcx> Reader<'tcx> {
                 id,
                 declaration,
                 fields,
+                source_plans,
             },
         );
         Ok(TypePlan::Record(id))

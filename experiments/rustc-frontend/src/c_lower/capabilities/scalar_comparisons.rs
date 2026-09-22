@@ -35,7 +35,10 @@ impl Mapping for CScalarComparisons {
         for operand in [left, right] {
             if !matches!(
                 reader.checked.expr_ty_adjusted(operand).kind(),
-                ty::Int(ty::IntTy::I32 | ty::IntTy::I64) | ty::Bool | ty::Float(ty::FloatTy::F64)
+                ty::Int(ty::IntTy::I32 | ty::IntTy::I64)
+                    | ty::Bool
+                    | ty::Char
+                    | ty::Float(ty::FloatTy::F64)
             ) {
                 return Err("only scalar comparisons are implemented".into());
             }
@@ -49,6 +52,9 @@ impl Mapping for CScalarComparisons {
             hir::BinOpKind::Ge => CBinaryOperator::GreaterEqual,
             _ => return Err("only comparison binary operators are implemented".into()),
         };
+        if reader.checked.expr_ty_adjusted(left) != reader.checked.expr_ty_adjusted(right) {
+            return Err("comparison source operand types differ".into());
+        }
         // Calls on either side materialize into the source-ordered prelude.
         #[cfg(binary64_ast_probe)]
         let start = reader.prelude.len();

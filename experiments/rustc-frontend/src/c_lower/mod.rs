@@ -45,6 +45,7 @@ pub enum Selection {
 
 /// Typed lowering output, not permission to render before target certification.
 pub struct LoweredPackage {
+    pub source_types: portable_codegen::RustSourceTypes,
     pub registry: CFrozenRegistry,
     pub sources: Vec<CSourceFile>,
     pub exports: std::sync::Arc<portable_codegen::RustCrateExports>,

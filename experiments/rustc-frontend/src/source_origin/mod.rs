@@ -6,6 +6,11 @@ mod modules;
     reason = "Metadata-only compiler probes do not select public packages"
 )]
 pub(crate) mod public_api;
+#[allow(
+    dead_code,
+    reason = "Metadata-only compiler probes do not lower or authenticate scalar types"
+)]
+pub(crate) mod types;
 pub(crate) use modules::Cache;
 use portable_codegen::{
     RustDeclarationId, RustSourceLocation, RustSourceNode, RustSourceOrigin, RustVisibility,

@@ -46,7 +46,11 @@ impl Mapping for JavaResolvedPlaces {
                     .get(index)
                     .ok_or("unknown field index")?
                     .clone();
-                let plan = TypePlan::scalar(&record.declaration.record_components[index].ty)?;
+                let plan = record
+                    .source_plans
+                    .get(index)
+                    .ok_or("unknown source field type")?
+                    .clone();
                 Place::resolved(Value::new(
                     plan.clone(),
                     JavaExpr {

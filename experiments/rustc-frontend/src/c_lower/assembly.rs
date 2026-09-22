@@ -212,6 +212,22 @@ pub(crate) fn lower(
     c(state.registry.check_numeric_flow(&files))?;
     c(state.registry.check_index_extents(&files))?;
     c(state.registry.check_storage_paths(&files))?;
+    let source_types = crate::source_origin::types::collect(
+        tcx,
+        exports.root,
+        &inventory.owned,
+        state.records.keys().copied(),
+    )?;
+    #[cfg(character_source_probe)]
+    let source_types = crate::source_origin::types::probe::inspect(source_types);
+    crate::source_origin::types::authenticate(
+        tcx,
+        &inventory.owned,
+        state.records.keys().copied(),
+        &source_types,
+    )?;
+    #[cfg(character_source_probe)]
+    let source_types = crate::source_origin::types::probe::after_authentication(source_types);
     let functions = state
         .functions
         .into_iter()
@@ -233,6 +249,7 @@ pub(crate) fn lower(
         .map(|(id, imported)| (origin::identity(tcx, id), imported))
         .collect();
     Ok(LoweredPackage {
+        source_types,
         constant_imports,
         constants,
         registry: state.registry.freeze(),

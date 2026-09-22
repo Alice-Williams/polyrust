@@ -13,7 +13,7 @@ def main():
     c, java = sys.argv[1:]
     root = Path(os.environ["TEST_TMPDIR"]) / "i64-rejections"
     root.mkdir()
-    signature = "direct-call signatures support only i32, i64, bool and f64"
+    signature = "direct-call signatures require admitted scalar source types"
     cases = {
         "u64": ("pub fn value(v: u64) -> u64 { v }", signature, True),
         "i128": ("pub fn value(v: i128) -> i128 { v }", signature, True),

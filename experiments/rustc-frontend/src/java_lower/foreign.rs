@@ -41,6 +41,12 @@ pub(super) fn register(
         {
             return Err("foreign compiler identity/signature differs from Java certificate".into());
         }
+        let original = crate::source_origin::types::signature(tcx, *definition)?;
+        if function.source_signature() != Some(&original) {
+            return Err(
+                "foreign original Rust signature differs from Java source type facts".into(),
+            );
+        }
         let (next, imported) = scope.import(function);
         scope = next;
         if functions.insert(*definition, imported).is_some() {

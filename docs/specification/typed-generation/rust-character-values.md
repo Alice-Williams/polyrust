@@ -1,6 +1,6 @@
 # Checked Rust Unicode scalar values
 
-- Status: independent oracle and C/Java foundations complete; source admission pending
+- Status: independent oracle, C/Java foundations and checked source integration complete
 - Plan: [02W](../../plan/tasks/M35-03A-02W-character-values.md)
 - Targets: [C17](languages/c/rust-character-values.md), [Java21](languages/java/rust-character-values.md)
 
@@ -55,3 +55,34 @@ byte/UTF-16 truncation, BMP-only filtering, surrogate admission, reversed
 comparisons and UTF-16 lexicographic ordering must be distinguishable.
 Native source/target profiles, typed and compile-negative controls, atomic
 publication, resource limits and actual exported examples complete the proof.
+
+## Original type metadata boundary
+
+Use the existing private LiteralInput and exhaustive LiteralValue::Char(char)
+mapping under Supports<LiteralValues>. Character admission is not a string
+capability flag or a duplicate generic literal subsystem.
+
+RustSourceTypes is bounded descriptive data: an exact crate-root identity,
+declaration-keyed scalar function parameters/results and record-field facts.
+Each RustFieldTypes retains both its scalar kind and its original enclosing
+record declaration. Both target inventories must authenticate that field-owner
+join, including two distinct records with identical scalar field shapes.
+Its scalar enum distinguishes Char, I32, I64, Bool and F64; result kinds
+distinguish Unit from scalar values. It is not a source-analysis certificate.
+Read facts from canonical rustc signatures and field declarations, then
+authenticate them against original compiler queries at package attachment.
+At foreign calls, additionally join the producer declaration's retained source
+signature to the consumer's original rustc signature before target import.
+
+Reconcile these facts with the complete certified target function/field
+inventory. Target-only constructors may describe either Char or I32 over Java
+Int; only the compiler adapter authenticates which source type it actually was.
+No serialized manifest or descriptive facts object grants callable authority.
+Serialize a character-aware schema only when original facts contain Char;
+ordinary pre-character packages retain their exact existing bytes.
+
+The current public package contract supports local declaration aliases and
+named dependency imports, not foreign public function/module re-exports.
+The selected-entry harness remains exactly fn(i32) -> i32, even on Java.
+Direct character references, character constants, casts and methods remain
+explicit rejection boundaries for this increment.

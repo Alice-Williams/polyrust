@@ -219,7 +219,9 @@ pub(crate) mod package_source_fixture;
 mod platform_native_tests;
 
 pub use constant_view::{CDefinedConstant, c_defined_constants};
-pub use definition_view::{CDefinedFunction, c_defined_functions, c_output_byte_bound};
+pub use definition_view::{
+    CDefinedFunction, c_defined_functions, c_defined_members, c_output_byte_bound,
+};
 pub(crate) use dependency_api::CDependencyAuthority;
 pub use dependency_api::{
     CDependencyApi, CDependencyConstant, CDependencyFunction, CDependencyPackage,

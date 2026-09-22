@@ -3,6 +3,30 @@ use super::CDialect;
 use crate::ast::{CDefinitionKind, CFileItem, CFileRef, CFunctionRef, CIdentifier, CLinkage};
 use portable_codegen::RenderReadyPackage;
 
+/// Members borrowed from actual aggregate declarations in this certificate.
+pub fn c_defined_members(
+    package: &RenderReadyPackage<CDialect>,
+) -> impl Iterator<Item = &crate::ast::CMemberRef> {
+    package.ast().files().iter().flat_map(|file| {
+        file.items().iter().flat_map(|unit| {
+            unit.unit
+                .data
+                .source
+                .items()
+                .iter()
+                .flat_map(|item| match item {
+                    CFileItem::Declaration(declaration) => match declaration.kind() {
+                        crate::ast::CDeclarationKind::Aggregate { members, .. } => {
+                            members.as_slice()
+                        }
+                        _ => &[],
+                    },
+                    _ => &[],
+                })
+        })
+    })
+}
+
 /// Conservative checked bound for all generated source/header bytes, before rendering.
 pub fn c_output_byte_bound(package: &RenderReadyPackage<CDialect>) -> Result<u64, String> {
     Ok(super::resources::measure_package(package.ast())?

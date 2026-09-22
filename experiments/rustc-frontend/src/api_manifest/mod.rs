@@ -20,6 +20,7 @@ mod imports;
 #[path = "../../test/c_import_manifest_contract.rs"]
 pub(crate) mod inventory_contract;
 mod serialization;
+mod source_types;
 mod system_libraries;
 #[cfg(truncation_ast_probe)]
 #[path = "../../test/truncation_manifest.rs"]
@@ -47,6 +48,7 @@ struct Function {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ApiManifest {
+    source_types: Option<portable_codegen::RustSourceTypes>,
     exports: Arc<RustCrateExports>,
     system_libraries: BTreeSet<portable_backend_c::dialect::CSystemLibrary>,
     header: CFileRef,
@@ -87,6 +89,7 @@ impl ApiManifest {
                 &constants,
                 &self.constant_imports,
             )?
+            .copy_source_types(api.package(), self.source_types.as_ref())?
         {
             return Err("bundle manifest owner inventory disagrees".into());
         }
@@ -267,6 +270,7 @@ impl ApiManifest {
             })
             .collect();
         let manifest = Self {
+            source_types: None,
             system_libraries: portable_backend_c::dialect::c_system_libraries(package)?,
             foreign_constants,
             used_constant_imports,
@@ -300,6 +304,7 @@ impl ApiManifest {
                 constants,
                 constant_imports,
             )?
+            .copy_source_types(package, self.source_types.as_ref())?
         {
             return Err(
                 "API manifest differs from exact compiler/target import reconstruction".into(),

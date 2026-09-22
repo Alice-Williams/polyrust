@@ -36,7 +36,7 @@ def main():
                    "only resolved local value paths", True),
         "static": ("static VALUE:i32=4; pub fn value()->i32 { VALUE }",
                    "only resolved local value paths", True),
-        "u32": ("const VALUE:u32=4; pub fn value()->u32 { VALUE }", "only i32, i64, bool and f64", True),
+        "u32": ("const VALUE:u32=4; pub fn value()->u32 { VALUE }", "signatures require admitted scalar source types", True),
         "arithmetic": ("const VALUE:i32=7*9; pub fn value()->i32 { VALUE+1 }",
                        "only comparison binary operators", True),
         "overflow": ("const VALUE:i32=i32::MAX+1; pub fn value()->i32 { VALUE }", "error[E0080]", False),

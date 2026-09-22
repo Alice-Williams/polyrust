@@ -9,6 +9,7 @@ mod json;
 mod manifest;
 mod projection;
 mod serialization;
+mod source_types;
 
 pub use bundle::{BundleOutput, PreparedBundle};
 use portable_backend_java::dialect::JavaDependencyApi;

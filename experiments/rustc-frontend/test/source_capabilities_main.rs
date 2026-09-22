@@ -31,6 +31,7 @@ impl Mapping for NumericMapping {
                 LiteralValue::I64(_) => 2,
                 LiteralValue::Bool(_) => 3,
                 LiteralValue::F64(_) => 4,
+                LiteralValue::Char(_) => 5,
             })
     }
 }

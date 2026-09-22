@@ -33,19 +33,28 @@ pub(crate) fn owner(out: &mut impl Sink, manifest: &Manifest<'_>) -> Result<(), 
             .foreign_constants
             .iter()
             .any(|binding| is_f64(binding.dependency().ty()));
-    out.fixed(if binary64 {
-        "{\"schema_version\":6,\"root\":"
-    } else if unit_results {
-        "{\"schema_version\":5,\"root\":"
-    } else if !manifest.foreign_constants.is_empty() {
-        "{\"schema_version\":4,\"root\":"
-    } else if !imports.is_empty() {
-        "{\"schema_version\":3,\"root\":"
-    } else if manifest.owner.api.constants().len() == 0 {
-        "{\"schema_version\":1,\"root\":"
-    } else {
-        "{\"schema_version\":2,\"root\":"
-    })?;
+    out.fixed(
+        if manifest
+            .owner
+            .api
+            .source_types()
+            .is_some_and(portable_codegen::RustSourceTypes::contains_char)
+        {
+            "{\"schema_version\":7,\"root\":"
+        } else if binary64 {
+            "{\"schema_version\":6,\"root\":"
+        } else if unit_results {
+            "{\"schema_version\":5,\"root\":"
+        } else if !manifest.foreign_constants.is_empty() {
+            "{\"schema_version\":4,\"root\":"
+        } else if !imports.is_empty() {
+            "{\"schema_version\":3,\"root\":"
+        } else if manifest.owner.api.constants().len() == 0 {
+            "{\"schema_version\":1,\"root\":"
+        } else {
+            "{\"schema_version\":2,\"root\":"
+        },
+    )?;
     out.id(manifest.owner.api.root())?;
     out.fixed(",\"defining_key\":")?;
     out.string(manifest.owner.key)?;
@@ -108,6 +117,7 @@ pub(crate) fn owner(out: &mut impl Sink, manifest: &Manifest<'_>) -> Result<(), 
     if !manifest.foreign_constants.is_empty() {
         crate::constant_exports::write(out, &manifest.foreign_constants)?;
     }
+    crate::source_types::write(out, manifest.owner.api.source_types())?;
     out.fixed("}\n")
 }
 

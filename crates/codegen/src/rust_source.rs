@@ -6,6 +6,10 @@
 
 mod exports;
 pub use exports::*;
+mod types;
+pub use types::{
+    RustFieldTypes, RustFunctionTypes, RustResultKind, RustScalarKind, RustSourceTypes,
+};
 mod documentation;
 pub use documentation::{CheckedRustDocumentation, RustDocumentationError};
 

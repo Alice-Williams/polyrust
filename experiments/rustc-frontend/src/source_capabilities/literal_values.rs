@@ -12,6 +12,7 @@ pub(crate) enum LiteralValue {
     I32(i32),
     I64(i64),
     Bool(bool),
+    Char(char),
     F64(FiniteBinary64),
 }
 
@@ -62,6 +63,7 @@ impl<'tcx> LiteralInput<'tcx> {
         };
         let value = match (literal.node, checked.expr_ty(expression).kind()) {
             (LitKind::Bool(value), ty::Bool) if !negative => LiteralValue::Bool(value),
+            (LitKind::Char(value), ty::Char) if !negative => LiteralValue::Char(value),
             (LitKind::Int(magnitude, _), ty::Int(kind @ (ty::IntTy::I32 | ty::IntTy::I64))) => {
                 let magnitude =
                     i128::try_from(magnitude.0).map_err(|_| "integer literal overflow")?;

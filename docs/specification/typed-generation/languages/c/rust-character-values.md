@@ -1,6 +1,6 @@
 # Rust Unicode scalar values in C17
 
-- Status: target foundation complete; source admission disabled
+- Status: target foundation and checked source integration complete
 - Contract: [shared](../../rust-character-values.md)
 
 Use CScalarType::U32 and typed unsigned literals for exact scalar numbers.
@@ -26,9 +26,22 @@ The compiler source type remains Char, with Rust char as the value witness.
 Public metadata distinguishes the Unicode-scalar domain from generic U32;
 foreign callers must satisfy that original domain. No raw integer is promoted
 to a checked source char because its target C type happens to match.
+Direct calls retain the resolved Rust DefId and reconcile canonical source
+parameter/result types and arity before constructing a target call. Target
+parameter/result representations are checked separately. Every returned C
+value expression must match the mapping of its original adjusted source type.
 
 Prove exact full-domain transport and ordinal comparison using certified
 packages, GCC14/Zig O0/O2, strict separate compilation/standalone headers and
 GCC UBSan. Mutate actual target nodes/artifacts to narrow or misorder values;
 compiling faults must disagree with independent truth. Prove inferred imports,
 resource accounting and unchanged old bytes before enabling compiler input.
+
+Character-aware API schema 10 retains ordinary target U32 signatures (spelled
+u32), and adds source_types with original function/field declaration identities,
+source scalar kinds and the valid-scalar foreign-input precondition. The typed
+manifest reconciles facts against its exact render-ready C functions and
+aggregate members, including each member's original enclosing record identity,
+rechecking them when reconstructing owner inventory.
+Metadata reservation includes source signatures and fields before publication.
+The renderer and standard-library catalogue remain unchanged.

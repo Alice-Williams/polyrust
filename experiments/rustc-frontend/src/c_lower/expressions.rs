@@ -17,6 +17,15 @@ use rustc_hir as hir;
 
 impl<'tcx> Reader<'tcx> {
     pub(super) fn expr(&mut self, value: &'tcx hir::Expr<'tcx>) -> Result<CValue> {
+        let expected = self.ty(self.checked.expr_ty_adjusted(value))?;
+        let result = self.lower_expression(value)?;
+        if result.ty() != &expected {
+            return Err("C expression representation differs from original source type".into());
+        }
+        Ok(result)
+    }
+
+    fn lower_expression(&mut self, value: &'tcx hir::Expr<'tcx>) -> Result<CValue> {
         self.ty(self.checked.expr_ty(value))?;
         if let Some(input) =
             crate::source_capabilities::WideningInput::discover(self.tcx, self.checked, value)?

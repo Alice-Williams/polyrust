@@ -1,12 +1,11 @@
 //! Explicit crate provenance is independently checked, not inferred from a dummy field.
+use crate::tests::source_package_fixture as fixture;
 use crate::{
     ast::*,
     dialect::{JavaDependencyApi, JavaDialect},
 };
 use portable_codegen::*;
 use std::sync::Arc;
-#[path = "source_package_fixture.rs"]
-mod fixture;
 #[path = "source_package_native.rs"]
 mod native;
 

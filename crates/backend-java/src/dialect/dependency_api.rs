@@ -9,6 +9,7 @@ mod inventory;
 pub use foreign::JavaForeignConstantExport;
 mod records;
 mod source_bound;
+mod source_types;
 pub use descriptions::{JavaSourceDescription, JavaSourceDescriptionKind, JavaSourceTarget};
 
 use super::JavaDialect;
@@ -21,6 +22,7 @@ struct Authority {
     root: RustDeclarationId,
     namespace: JavaPackage,
     dependencies: BTreeMap<u64, JavaDependencyPackage>,
+    source_types: Option<Arc<portable_codegen::RustSourceTypes>>,
 }
 
 /// Opaque owner identity. Address order authenticates only; never render it.
@@ -121,6 +123,14 @@ impl JavaDependencyFunction {
     pub fn call_height(&self) -> usize {
         self.call_height
     }
+    pub fn source_signature(&self) -> Option<&portable_codegen::RustFunctionTypes> {
+        self.owner
+            .0
+            .source_types
+            .as_deref()?
+            .functions()
+            .get(&self.declaration())
+    }
 }
 impl PartialEq for JavaDependencyFunction {
     fn eq(&self, other: &Self) -> bool {
@@ -177,6 +187,7 @@ impl JavaDependencyApi {
 
     pub fn from_certificate(package: RenderReadyPackage<JavaDialect>) -> Result<Self, String> {
         let inventory = inventory::collect(&package)?;
+        let source_types = source_types::read(&package);
         let dependencies = package
             .ast()
             .files()
@@ -194,6 +205,7 @@ impl JavaDependencyApi {
             root: inventory.root,
             namespace: inventory.namespace,
             dependencies,
+            source_types,
         }));
         let functions = inventory
             .functions
@@ -216,12 +228,14 @@ impl JavaDependencyApi {
             .into_iter()
             .map(|(id, value)| (id, JavaDependencyConstant::new(owner.clone(), value)))
             .collect();
-        Ok(Self {
+        let api = Self {
             owner,
             functions,
             constants,
             foreign_constants: inventory.foreign_constants,
-        })
+        };
+        source_types::verify(&api)?;
+        Ok(api)
     }
     pub fn root(&self) -> RustDeclarationId {
         self.owner.root()
@@ -231,6 +245,9 @@ impl JavaDependencyApi {
     }
     pub fn package(&self) -> &RenderReadyPackage<JavaDialect> {
         &self.owner.0.package
+    }
+    pub fn source_types(&self) -> Option<&portable_codegen::RustSourceTypes> {
+        self.owner.0.source_types.as_deref()
     }
     pub fn foreign_constants(&self) -> impl ExactSizeIterator<Item = &JavaForeignConstantExport> {
         self.foreign_constants.iter()

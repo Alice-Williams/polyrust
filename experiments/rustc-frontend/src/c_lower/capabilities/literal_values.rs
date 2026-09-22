@@ -2,7 +2,7 @@
 use super::{LiteralInput, LiteralValues, Mapping};
 use crate::c_lower::{Reader, Result, c};
 use crate::source_capabilities::LiteralValue;
-use portable_backend_c::ast::{CLiteral, CSignedLiteral, CValue};
+use portable_backend_c::ast::{CLiteral, CSignedLiteral, CUnsignedLiteral, CValue};
 
 #[derive(Clone, Copy)]
 pub(crate) struct CLiteralValues;
@@ -18,6 +18,9 @@ impl Mapping for CLiteralValues {
             LiteralValue::I32(value) => CLiteral::Signed(CSignedLiteral::I32(value)),
             LiteralValue::I64(value) => CLiteral::Signed(CSignedLiteral::I64(value)),
             LiteralValue::Bool(value) => CLiteral::Bool(value),
+            LiteralValue::Char(value) => {
+                CLiteral::Unsigned(CUnsignedLiteral::U32(u32::from(value)))
+            }
             LiteralValue::F64(value) => CLiteral::F64(value),
         };
         let value = c(reader.expressions().literal(literal))?;

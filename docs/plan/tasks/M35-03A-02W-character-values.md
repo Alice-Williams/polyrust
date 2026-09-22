@@ -1,6 +1,6 @@
 # M35-03A-02W — Unicode scalar character values
 
-- Status: in-progress
+- Status: complete
 - Parent: [scalar parity](M35-03A-02-scalar-parity.md)
 - Depends on: [signed-infinity constants](M35-03A-02V-infinite-f64-constants.md)
 - Specification: [shared](../../specification/typed-generation/rust-character-values.md)
@@ -14,7 +14,7 @@ Keep its source type distinct from integer types through checked mappings.
 1. [02W-01 — Independent oracle](M35-03A-02W-01-character-oracle.md) — complete; all 1,015 release/lint targets pass and broad independent review is clean.
 2. [02W-02 — C foundation](M35-03A-02W-02-c-characters.md) — complete; all 1,016 release/lint targets pass and fresh broad review is clean.
 3. [02W-03 — Java foundation](M35-03A-02W-03-java-characters.md) — complete; all 1,017 release/lint targets pass and fresh broad review is clean.
-4. [02W-04 — Checked source integration](M35-03A-02W-04-compiler-characters.md).
+4. [02W-04 — Checked source integration](M35-03A-02W-04-compiler-characters.md) — complete; all 1,024 release/lint targets pass, broad reviews and actual cache invalidation/restoration proof are clean.
 
 Each checkpoint requires its own full Linux release/lint gate, independent
 review and commit/push. Preserve old generated output and unrelated WIP.

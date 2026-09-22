@@ -5,9 +5,14 @@ one program using PolyRust's typed, language-neutral programming model, includin
 types, constants, functions, implementations, and tests. PolyRust then validates,
 evaluates, and emits that program as readable source code for several languages.
 
-PolyRust is not an existing-language translator: it does not map arbitrary Rust
-to Python or TypeScript to Go. The common program model is the source of truth and
-grows deliberately as portable functionality is specified and tested.
+The active migration adds a Rust-source frontend: rustc checks the original
+program, then typed language mappings lower its checked HIR into certified
+target ASTs for structural rendering. This currently covers a bounded C/Java
+subset, not arbitrary Rust programs. Unsupported constructs are diagnosed;
+the existing portable model remains available until replacement parity is proved.
+
+See the [runtime migration inventory](docs/specification/typed-generation/runtime-parity-inventory.md)
+and [current plan](docs/plan/README.md) for implemented features and remaining work.
 
 The name is currently a working name and will not define the public API. The
 repository contains the implementation, executable examples, native conformance
@@ -23,7 +28,8 @@ typed target-AST migrations remain separate planned work.
 ## Decision snapshot
 
 - **Product:** one extensible portable code-generation language and toolchain.
-- **Authoring:** write the generator once through a Rust builder API.
+- **Authoring:** checked Rust source for the active C/Java migration; the existing
+  Rust builder API remains the legacy portable path.
 - **Implementation language:** Rust.
 - **Initial authoring interface:** a typed Rust builder API, plus a versioned
   serialized IR for testing and tooling.

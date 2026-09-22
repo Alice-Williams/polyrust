@@ -31,9 +31,12 @@ impl Mapping for CFunctionSignatures {
                 ty::Int(ty::IntTy::I32) => CScalarType::I32,
                 ty::Int(ty::IntTy::I64) => CScalarType::I64,
                 ty::Bool => CScalarType::Bool,
+                ty::Char => CScalarType::U32,
                 ty::Float(ty::FloatTy::F64) => CScalarType::F64,
                 _ => {
-                    return Err("direct-call signatures support only i32, i64, bool and f64".into());
+                    return Err(
+                        "direct-call signatures require admitted scalar source types".into(),
+                    );
                 }
             }))
         };
