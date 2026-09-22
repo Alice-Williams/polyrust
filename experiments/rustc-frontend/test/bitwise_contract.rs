@@ -8,6 +8,8 @@ use super::CLocalConstants as Locals;
 #[cfg(bitwise_c)]
 use super::CScalarConstants as Constants;
 #[cfg(bitwise_c)]
+use super::CSignedWidening as Widening;
+#[cfg(bitwise_c)]
 use super::CUnitEffects as Unit;
 #[cfg(bitwise_c)]
 use super::CWrappingNegation as Wrapping;
@@ -19,6 +21,8 @@ use super::JavaFloatingNegation as Floating;
 use super::JavaLocalConstants as Locals;
 #[cfg(bitwise_java)]
 use super::JavaScalarConstants as Constants;
+#[cfg(bitwise_java)]
+use super::JavaSignedWidening as Widening;
 #[cfg(bitwise_java)]
 use super::JavaUnitEffects as Unit;
 #[cfg(bitwise_java)]
@@ -106,6 +110,7 @@ fn missing() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(Widening)
         .build();
 }
 

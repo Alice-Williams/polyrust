@@ -18,7 +18,7 @@ def main():
         "u64": ("pub fn value(v: u64) -> u64 { v }", signature, True),
         "i128": ("pub fn value(v: i128) -> i128 { v }", signature, True),
         "float": ("pub fn value(v: f32) -> f32 { v }", signature, True),
-        "cast": ("pub fn value(v: i64) -> i64 { (v as i32) as i64 }", "expression mapping is not implemented", True),
+        "cast": ("pub fn value(v: i64) -> i64 { (v as i32) as i64 }", "signed widening supports only an unadjusted i32 operand cast to i64", True),
         "arithmetic": ("pub fn value(v: i64) -> i64 { v + 1 }", "only comparison binary operators", True),
         "negate": ("pub fn value(v: i64) -> i64 { -v }", "only negative scalar literals", True),
         "mutable": ("pub fn value(v: i64) -> i64 { let mut x = v; x = 2; x }", "only plain immutable bindings", True),

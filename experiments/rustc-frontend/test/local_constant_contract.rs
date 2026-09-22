@@ -8,6 +8,8 @@ use super::CIntegerBitwise as IntegerBits;
 #[cfg(local_constant_c)]
 use super::CScalarConstants as ScalarReads;
 #[cfg(local_constant_c)]
+use super::CSignedWidening as Widening;
+#[cfg(local_constant_c)]
 use super::CUnitEffects as Unit;
 #[cfg(local_constant_c)]
 use super::CWrappingNegation as Wrapping;
@@ -19,6 +21,8 @@ use super::JavaFloatingNegation as Floating;
 use super::JavaIntegerBitwise as IntegerBits;
 #[cfg(local_constant_java)]
 use super::JavaScalarConstants as ScalarReads;
+#[cfg(local_constant_java)]
+use super::JavaSignedWidening as Widening;
 #[cfg(local_constant_java)]
 use super::JavaUnitEffects as Unit;
 #[cfg(local_constant_java)]
@@ -103,6 +107,7 @@ fn missing() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(Widening)
         .build();
 }
 

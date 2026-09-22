@@ -10,7 +10,7 @@ CASES = {
     "i64": ("pub fn value(a:i64,b:i64)->i64 {a%b}", "only comparison binary operators"),
     "borrowed": ("pub fn value(a:f64,b:f64)->f64 {&a%&b}", "unadjusted built-in f64"),
     "overloaded": ("struct Fake {value:f64} impl std::ops::Rem for Fake {type Output=f64; fn rem(self,rhs:Self)->f64 {self.value%rhs.value}} pub fn value(a:f64,b:f64)->f64 {Fake{value:a}%Fake{value:b}}", "unadjusted built-in f64"),
-    "cast": ("pub fn value(a:i64,b:f64)->f64 {(a as f64)%b}", "expression mapping is not implemented"),
+    "cast": ("pub fn value(a:i64,b:f64)->f64 {(a as f64)%b}", "signed widening supports only an unadjusted i32 operand cast to i64"),
     "assignment": ("pub fn value(mut a:f64,b:f64)->f64 {a%=b;a}", "only plain immutable parameters"),
     "euclidean": ("pub fn value(a:f64,b:f64)->f64 {a.rem_euclid(b)}", "expression mapping is not implemented"),
     "constant": ("const A:f64=1.0; pub fn value(b:f64)->f64 {A%b}", "constants support only"),

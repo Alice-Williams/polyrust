@@ -1,5 +1,6 @@
 use super::CFloatingNaN as NaN;
 use super::CFloatingNegation as Floating;
+use super::CSignedWidening;
 use super::CUnitEffects as Unit;
 use super::CWrappingNegation as Wrapping;
 use super::{
@@ -48,6 +49,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(CSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -79,6 +81,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(CSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -110,6 +113,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(CSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -141,6 +145,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(CSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -172,6 +177,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(CSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -203,6 +209,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(CSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -234,6 +241,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(CSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -265,6 +273,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(CSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -296,6 +305,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(CSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(CBooleanNegation)
@@ -327,5 +337,6 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(CSignedWidening)
         .build();
 }

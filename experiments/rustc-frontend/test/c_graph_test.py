@@ -170,7 +170,7 @@ for binary, diagnostic in zip(mutations, [
 private = add("private", "pub fn identity(v: i32) -> i32 { dep::hidden(v) }\n",
               [("dep", "leaf")])
 reject(private, "is private")
-external = add("external", "pub fn identity(_v: i32) -> i32 { std::process::id() as i32 }\n")
+external = add("external", "pub fn identity(_v: i32) -> i32 { std::process::id(); 0 }\n")
 reject(external, "no source-authenticated owning C package")
 diverging = add("diverging", "pub fn identity(_v: i32) -> i32 { std::process::abort() }\n")
 reject(diverging, "direct-call compiler adjustments are not implemented")

@@ -12,7 +12,7 @@ CASES = {
     "inherent_lookalike": ("struct Fake {value:bool} impl Fake {fn is_nan(self)->bool {self.value}} pub fn value(v:bool)->bool {Fake {value:v}.is_nan()}", "only the standard primitive is_nan"),
     "extra_argument": ("trait Fake {fn is_nan(self, extra:bool)->bool;} impl Fake for bool {fn is_nan(self, extra:bool)->bool {extra}} pub fn value(v:bool)->bool {v.is_nan(true)}", "NaN classification takes no extra arguments"),
     "other_method": ("pub fn value(v:f64)->bool {v.is_infinite()}", "expression mapping is not implemented"),
-    "cast": ("pub fn value(v:i64)->bool {(v as f64).is_nan()}", "expression mapping is not implemented"),
+    "cast": ("pub fn value(v:i64)->bool {(v as f64).is_nan()}", "signed widening supports only an unadjusted i32 operand cast to i64"),
     "constant": ("const V:f64=1.0; pub fn value()->bool {V.is_nan()}", "constants support only"),
     "euclidean_remainder": ("pub fn value(v:f64)->bool {(v.rem_euclid(1.0)).is_nan()}", "expression mapping is not implemented"),
     "indirect": ("pub fn value(v:f64)->bool {let f:fn(f64)->bool=f64::is_nan; f(v)}", "direct calls require resolved ordinary functions"),

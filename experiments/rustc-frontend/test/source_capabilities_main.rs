@@ -314,7 +314,19 @@ fn multiplication<'tcx>(
         let _ = (input.left(), input.right(), input.width());
     }
 }
+fn widening<'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    checked: &rustc_middle::ty::TypeckResults<'tcx>,
+    expression: &'tcx rustc_hir::Expr<'tcx>,
+) {
+    if let Ok(Some(input)) = WideningInput::discover(tcx, checked, expression) {
+        let _ = input.require_context(tcx, checked);
+        let _ = input.operand();
+    }
+}
 fn main() {
+    capability::<SignedWidening>();
+    let _ = widening;
     capability::<WrappingMultiplication>();
     let _ = multiplication;
     let _ = [MultiplicationWidth::I32, MultiplicationWidth::I64];

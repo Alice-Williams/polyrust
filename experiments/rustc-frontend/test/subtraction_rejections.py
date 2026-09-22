@@ -13,7 +13,7 @@ CASES = {
     "u64": ("pub fn value()->bool { 1u64.wrapping_sub(2)==3 }", "supports only exact i32 and i64"),
     "borrowed32": ("pub fn value(a:i32,b:i32)->i32 { (&a).wrapping_sub(b) }", "unadjusted by-value operands"),
     "borrowed64": ("pub fn value(a:i64,b:i64)->i64 { (&a).wrapping_sub(b) }", "unadjusted by-value operands"),
-    "cast": ("pub fn value(a:i64,b:i32)->i32 { (a as i32).wrapping_sub(b) }", "expression mapping is not implemented"),
+    "cast": ("pub fn value(a:i64,b:i32)->i32 { (a as i32).wrapping_sub(b) }", "signed widening supports only an unadjusted i32 operand cast to i64"),
     "ordinary32": ("pub fn value(a:i32,b:i32)->i32 { a-b }", "only comparison binary operators"),
     "ordinary64": ("pub fn value(a:i64,b:i64)->i64 { a-b }", "only comparison binary operators"),
     "div": ("pub fn value(a:i32,b:i32)->i32 { a.wrapping_div(b) }", "expression mapping is not implemented"),

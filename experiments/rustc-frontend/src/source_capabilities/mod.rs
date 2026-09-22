@@ -30,6 +30,7 @@ mod scalar_comparisons;
 mod scalar_constants;
 mod shared_borrows;
 mod short_circuit_booleans;
+mod signed_widening;
 mod unit_effects;
 mod wrapping_addition;
 mod wrapping_multiplication;
@@ -59,6 +60,7 @@ pub(crate) use shared_borrows::{BorrowInput, SharedBorrows};
 pub(crate) use short_circuit_booleans::{
     LazyBooleanInput, LazyBooleanOperator, ShortCircuitBooleans,
 };
+pub(crate) use signed_widening::{SignedWidening, WideningInput};
 
 pub(crate) use unit_effects::{UnitEffects, UnitInput, UnitOperation};
 

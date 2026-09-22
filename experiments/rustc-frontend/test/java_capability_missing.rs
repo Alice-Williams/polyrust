@@ -1,5 +1,6 @@
 use super::JavaFloatingNaN as NaN;
 use super::JavaFloatingNegation as Floating;
+use super::JavaSignedWidening;
 use super::JavaUnitEffects as Unit;
 use super::JavaWrappingNegation as Wrapping;
 use super::{
@@ -48,6 +49,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(JavaSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -79,6 +81,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(JavaSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -110,6 +113,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(JavaSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -141,6 +145,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(JavaSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -172,6 +177,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(JavaSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -203,6 +209,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(JavaSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -234,6 +241,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(JavaSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -265,6 +273,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(JavaSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -296,6 +305,7 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(JavaSignedWidening)
         .build();
     Builder::new()
         .boolean_negation(JavaBooleanNegation)
@@ -327,5 +337,6 @@ fn must_not_compile() {
         .wrapping_subtraction(Subtraction)
         .wrapping_multiplication(Multiplication)
         .floating_absolute(Absolute)
+        .signed_widening(JavaSignedWidening)
         .build();
 }

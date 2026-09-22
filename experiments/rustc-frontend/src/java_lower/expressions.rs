@@ -27,6 +27,10 @@ impl<'tcx> Reader<'tcx> {
         self.bounded(|reader| {
             reader.ty(reader.checked.expr_ty(value))?;
             let result = if let Some(input) =
+                WideningInput::discover(reader.tcx, reader.checked, value)?
+            {
+                Supports::<SignedWidening>::mapping(&reader.mappings).lower(reader, input)?
+            } else if let Some(input) =
                 TruncationInput::discover(reader.tcx, reader.checked, value)?
             {
                 Supports::<FloatingTruncation>::mapping(&reader.mappings).lower(reader, input)?

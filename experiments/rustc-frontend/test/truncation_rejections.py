@@ -12,7 +12,7 @@ CASES = {
     "inherent_lookalike": ("struct Fake {value:bool} impl Fake {fn trunc(self)->bool {self.value}} pub fn value(v:bool)->bool {Fake {value:v}.trunc()}", "only the standard primitive trunc"),
     "extra_argument": ("trait Fake {fn trunc(self, extra:bool)->bool;} impl Fake for bool {fn trunc(self, extra:bool)->bool {extra}} pub fn value(v:bool)->bool {v.trunc(true)}", "Floating truncation takes no extra arguments"),
     "other_method": ("pub fn value(v:f64)->f64 {v.floor()}", "expression mapping is not implemented"),
-    "cast": ("pub fn value(v:i64)->f64 {(v as f64).trunc()}", "expression mapping is not implemented"),
+    "cast": ("pub fn value(v:i64)->f64 {(v as f64).trunc()}", "signed widening supports only an unadjusted i32 operand cast to i64"),
     "constant": ("const V:f64=1.0; pub fn value()->f64 {V.trunc()}", "constants support only"),
     "euclidean_remainder": ("pub fn value(v:f64)->f64 {(v.rem_euclid(1.0)).trunc()}", "expression mapping is not implemented"),
     "indirect": ("pub fn value(v:f64)->f64 {let f:fn(f64)->f64=f64::trunc; f(v)}", "direct calls require resolved ordinary functions"),

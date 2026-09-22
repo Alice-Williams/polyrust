@@ -45,6 +45,7 @@ fn missing() {
         .floating_remainder(CFloatingRemainder)
         .wrapping_addition(CWrappingAddition)
         .wrapping_multiplication(CWrappingMultiplication)
+        .signed_widening(CSignedWidening)
         .build();
 }
 
@@ -80,6 +81,7 @@ fn missing() {
         .floating_remainder(JavaFloatingRemainder)
         .wrapping_addition(JavaWrappingAddition)
         .wrapping_multiplication(JavaWrappingMultiplication)
+        .signed_widening(JavaSignedWidening)
         .build();
 }
 

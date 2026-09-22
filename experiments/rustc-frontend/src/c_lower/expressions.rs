@@ -18,6 +18,12 @@ use rustc_hir as hir;
 impl<'tcx> Reader<'tcx> {
     pub(super) fn expr(&mut self, value: &'tcx hir::Expr<'tcx>) -> Result<CValue> {
         self.ty(self.checked.expr_ty(value))?;
+        if let Some(input) =
+            crate::source_capabilities::WideningInput::discover(self.tcx, self.checked, value)?
+        {
+            return Supports::<crate::source_capabilities::SignedWidening>::mapping(&self.mappings)
+                .lower(self, input);
+        }
         if let Some(input) = TruncationInput::discover(self.tcx, self.checked, value)? {
             return Supports::<FloatingTruncation>::mapping(&self.mappings).lower(self, input);
         }

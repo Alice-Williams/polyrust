@@ -13,7 +13,7 @@ def main():
         "ref_or": ("pub fn value(a: bool,b: bool) -> bool { a | (&b) }", "eager Boolean input requires", True),
         "ref_xor": ("pub fn value(a: bool,b: bool) -> bool { (&a) ^ (&b) }", "eager Boolean input requires", True),
         "mixed": ("pub fn value(a: bool,b: i32) -> bool { a & b }", "error[E", False),
-        "cast": ("pub fn value(a: bool,b: bool) -> bool { (a as i32 & b as i32) != 0 }", "expression mapping is not implemented", True),
+        "cast": ("pub fn value(a: bool,b: bool) -> bool { (a as i32 & b as i32) != 0 }", "signed widening supports only an unadjusted i32 operand cast to i64", True),
         "block_left": ("pub fn value(a: bool,b: bool) -> bool { ({ a }) & b }", "expression mapping is not implemented", True),
         "block_right": ("pub fn value(a: bool,b: bool) -> bool { a | { b } }", "expression mapping is not implemented", True),
         "write": ("pub fn value(a: bool,b: bool) -> bool { let mut c=a; c &= b; c }", "only plain immutable bindings are implemented", True),

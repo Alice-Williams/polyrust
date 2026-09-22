@@ -31,7 +31,12 @@ mod scalar_comparisons;
 mod scalar_constants;
 mod shared_borrows;
 mod short_circuit_booleans;
+mod signed_widening;
 mod slots;
+#[cfg(widening_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/widening_contract.rs"]
+mod widening_contract;
 #[cfg(wrapping_contract)]
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/wrapping_contract.rs"]
@@ -160,6 +165,7 @@ pub(crate) use scalar_comparisons::JavaScalarComparisons;
 pub(crate) use scalar_constants::JavaScalarConstants;
 pub(crate) use shared_borrows::JavaSharedBorrows;
 pub(crate) use short_circuit_booleans::JavaShortCircuitBooleans;
+pub(crate) use signed_widening::JavaSignedWidening;
 pub(crate) use slots::{Bindings, Builder};
 pub(crate) use unit_effects::JavaUnitEffects;
 pub(crate) use wrapping_addition::JavaWrappingAddition;
@@ -198,6 +204,7 @@ pub(crate) type JavaBindings = Bindings<
     JavaWrappingAddition,
     JavaWrappingSubtraction,
     JavaWrappingMultiplication,
+    JavaSignedWidening,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -232,6 +239,7 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .wrapping_addition(JavaWrappingAddition)
         .wrapping_subtraction(JavaWrappingSubtraction)
         .wrapping_multiplication(JavaWrappingMultiplication)
+        .signed_widening(JavaSignedWidening)
         .build()
 }
 
@@ -242,6 +250,9 @@ mod floating_ast;
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/floating_contract.rs"]
 mod floating_contract;
+#[cfg(widening_ast_probe)]
+#[path = "../../../test/widening_java_ast.rs"]
+mod widening_ast;
 
 #[cfg(nan_contract)]
 #[allow(dead_code, unused_imports)]

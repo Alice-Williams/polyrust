@@ -31,7 +31,12 @@ mod scalar_comparisons;
 mod scalar_constants;
 mod shared_borrows;
 mod short_circuit_booleans;
+mod signed_widening;
 mod slots;
+#[cfg(widening_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/widening_contract.rs"]
+mod widening_contract;
 #[cfg(wrapping_contract)]
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/wrapping_contract.rs"]
@@ -169,6 +174,7 @@ pub(crate) use scalar_comparisons::CScalarComparisons;
 pub(crate) use scalar_constants::CScalarConstants;
 pub(crate) use shared_borrows::CSharedBorrows;
 pub(crate) use short_circuit_booleans::CShortCircuitBooleans;
+pub(crate) use signed_widening::CSignedWidening;
 pub(crate) use slots::{Bindings, Builder};
 pub(crate) use unit_effects::CUnitEffects;
 pub(crate) use wrapping_addition::CWrappingAddition;
@@ -209,6 +215,7 @@ pub(crate) type CBindings = Bindings<
     CWrappingAddition,
     CWrappingSubtraction,
     CWrappingMultiplication,
+    CSignedWidening,
 >;
 
 pub(crate) fn c_bindings() -> CBindings {
@@ -243,6 +250,7 @@ pub(crate) fn c_bindings() -> CBindings {
         .wrapping_addition(CWrappingAddition)
         .wrapping_subtraction(CWrappingSubtraction)
         .wrapping_multiplication(CWrappingMultiplication)
+        .signed_widening(CSignedWidening)
         .build()
 }
 
@@ -253,6 +261,9 @@ mod floating_ast;
 #[allow(dead_code, unused_imports)]
 #[path = "../../../test/floating_contract.rs"]
 mod floating_contract;
+#[cfg(widening_ast_probe)]
+#[path = "../../../test/widening_c_ast.rs"]
+mod widening_ast;
 
 #[cfg(nan_contract)]
 #[allow(dead_code, unused_imports)]

@@ -93,7 +93,11 @@ contract as every other target.
   clean independent review. Java foundation is complete too: seven focused tests,
   14,000 cast annotation combinations, strict native direct/materialized packages,
   all 969 release/lint targets passing and clean review. Both foundations preserve
-  old output bytes; checked source integration remains pending.
+  old output bytes. Checked source integration is complete: all 988 release/lint
+  targets pass and whole-scope review is clean. Native proof covers 73,890
+  original Rust/oracle inputs, measured operand calls, five compiling faults,
+  seven compositions and exact typed/atomic/API/privacy checks. Actual packages
+  are exported, prior output/WIP is unchanged, and wider migration remains open.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

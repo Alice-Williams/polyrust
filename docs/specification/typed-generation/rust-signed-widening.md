@@ -1,6 +1,6 @@
 # Checked Rust lossless signed widening
 
-- Status: independent oracle and C/Java foundations complete; source admission pending
+- Status: complete for exact checked i32-to-i64 casts
 - Plan: [02T](../../plan/tasks/M35-03A-02T-signed-widening.md)
 - Targets: [C17](languages/c/rust-signed-widening.md), [Java21](languages/java/rust-signed-widening.md)
 
@@ -19,8 +19,9 @@ From independently; that does not admit it into translated source.
 SignedWidening has a private canonical HIR Cast witness containing the original
 operand and expression. Original TypeckResults must establish unadjusted i32
 input and i64 output; source spelling alone is not evidence. Revalidate the same
-context and identities at lowering. Resolved primitive type aliases follow the
-existing type contract; this does not add exported alias declarations.
+context and identities at lowering. The existing alias-provenance guard remains
+in force: alias uses are rejected even when they normalize to primitive integers.
+This increment adds neither alias-use provenance nor exported alias declarations.
 
 A consuming builder requires the executable capability mapping. Missing,
 duplicate or incorrectly typed mappings fail compilation. Materialize the
@@ -37,3 +38,13 @@ typed dataflow and hostile witnesses prove original identity. Preserve resource
 bounds, exact APIs/imports/docs, external privacy and atomic rejection. Target
 foundations are independently gated/reviewed before source admission; actual
 generated packages accompany final integration.
+
+## Implementation receipt
+
+[Checked integration](../../plan/tasks/M35-03A-02T-04-compiler-widening.md)
+passes all 988 Linux release/lint targets and fresh independent review.
+Three original crates and seven additional compositions match native Rust and
+independent truth; original operand traces and compiling faults challenge the
+actual generated code. Typed witness/dataflow, source API/docs/privacy and
+atomic boundaries remain enforced. Actual packages are exported. Broader
+IntegerConversions coverage remains partial.

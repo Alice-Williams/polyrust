@@ -98,10 +98,13 @@ review, 34,546 Rust/oracle cases, measured operand traces, six compiling faults,
 typed dataflow, atomic/API/privacy proof and actual exported packages accompany
 the increment. Wider scalar families remain open.
 
-[02T — lossless signed widening](M35-03A-02T-signed-widening.md) is the next
-bounded increment: exact i32-to-i64 casts, starting with independent truth and
-separate target foundations before source admission. Checked narrowing remains
-a distinct future failure/result contract, not an unchecked cast substitute.
+[02T — lossless signed widening](M35-03A-02T-signed-widening.md) is complete
+through independent truth, C/Java foundations and checked i32-to-i64 source
+casts. All 988 release/lint targets pass and whole-scope review is clean.
+Native truth, original once-only operands, five compiling faults, seven
+compositions, typed/atomic/API/privacy proof and actual exported packages
+accompany the increment. Checked narrowing remains a distinct future
+failure/result contract, not an unchecked cast substitute.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

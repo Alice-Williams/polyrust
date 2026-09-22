@@ -1,6 +1,6 @@
 # Rust signed widening in Java21
 
-- Status: target foundation complete; compiler-source admission remains separate
+- Status: target foundation and checked source integration complete
 - Contract: [shared](../../rust-signed-widening.md)
 
 ## Typed lowering
@@ -22,7 +22,14 @@ call-height, depth and source-byte accounting through the cast operand.
 Strict separately compiled Java21 producers/forwarders/clients agree with
 independent signed truth. Compiling zero-extension, premature-narrowing and
 disconnected-result controls must disagree. Source evaluation traces and private
-compiler witness registration are proved later, not inferred from this admission.
+compiler witness registration are proved separately, not inferred from this admission.
+
+The source mapper reauthenticates WideningInput, lowers/materializes the original
+operand once, verifies TypePlan::I32, and constructs TypePlan::I64 with primitive
+Long target/result and Unary precedence. The required SignedWidening builder
+slot supplies this executable mapping. Cast traversal preserves the original
+operand's local/imported callable identities. Test-only typed/dataflow probes
+must leave every production package byte unchanged.
 
 ## Implementation receipt
 
@@ -32,3 +39,9 @@ public controls. Actual direct-call and materialized-local packages agree with
 73,890 inputs under normal/interpreted Java21 and kill three compiling faults.
 All 969 release/lint targets pass, including 412 Java unit cases; review is clean.
 Prior output bytes match. The renderer and compiler-source admission are unchanged.
+
+[02T-04](../../../../plan/tasks/M35-03A-02T-04-compiler-widening.md) subsequently
+adds the checked source mapping. All 988 release/lint targets pass and review is
+clean; strict Java21 normal/interpreted native proof, measured operand calls,
+typed dataflow, original API/privacy and atomic checks pass. Actual packages
+are exported, and previous output bytes remain unchanged.

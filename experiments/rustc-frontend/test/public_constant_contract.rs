@@ -4,6 +4,8 @@ use super::CFloatingNaN as NaN;
 #[cfg(public_constant_c)]
 use super::CFloatingNegation as Floating;
 #[cfg(public_constant_c)]
+use super::CSignedWidening as Widening;
+#[cfg(public_constant_c)]
 use super::CUnitEffects as Unit;
 #[cfg(public_constant_c)]
 use super::CWrappingNegation as Wrapping;
@@ -11,6 +13,8 @@ use super::CWrappingNegation as Wrapping;
 use super::JavaFloatingNaN as NaN;
 #[cfg(public_constant_java)]
 use super::JavaFloatingNegation as Floating;
+#[cfg(public_constant_java)]
+use super::JavaSignedWidening as Widening;
 #[cfg(public_constant_java)]
 use super::JavaUnitEffects as Unit;
 #[cfg(public_constant_java)]
@@ -136,7 +140,7 @@ fn missing() {
     let builder = builder.public_constant_reads(Reads);
     #[cfg(all(public_constant_complete_control, public_constant_import))]
     let builder = builder.public_constant_imports(Imports);
-    builder.build();
+    builder.signed_widening(Widening).build();
 }
 #[cfg(public_constant_duplicate)]
 fn duplicate() {
