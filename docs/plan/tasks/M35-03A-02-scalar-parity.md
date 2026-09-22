@@ -85,6 +85,11 @@ operand traces, exact typed dataflow, atomic controls and exported multi-crate
 examples accompany two clean whole-scope source reviews. Other integer operations
 remain separate capabilities, and the legacy runtime is not retired by this step.
 
+[02R — wrapping signed subtraction](M35-03A-02R-wrapping-subtraction.md) is
+in progress. Its independent oracle is complete with 927 passing release/lint
+targets and clean review. Target foundations and compiler admission remain
+separately gated and reviewed checkpoints.
+
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing

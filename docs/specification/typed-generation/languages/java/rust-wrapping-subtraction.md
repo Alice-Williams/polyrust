@@ -1,0 +1,28 @@
+# Rust wrapping subtraction in Java21
+
+- Status: planned; target/source admission unchanged
+- Contract: [shared](../../rust-wrapping-subtraction.md)
+
+## Typed lowering
+
+Materialize left completely before right into matching primitive Int or Long
+values. Build JavaBinaryOperator::Subtract with Additive precedence and identical
+operand/result types. Java's low-width integer difference matches this explicit
+wrapping operation; see [JLS21 15.18.2](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html#jls-15.18.2).
+Do not enable ordinary checked/panicking Rust subtraction, widen, narrow, box,
+coerce to Double, or invoke Math.subtractExact/custom runtime helpers.
+
+## Certification and proof
+
+The dependency-body traversal admits this exact primitive shape and recursively
+checks both children, including original call/import authority and budgets.
+Mixed widths, boxed/String/Boolean values, wrong result types or precedence and
+unrelated operators remain rejected. Existing Double/Add contracts are unchanged.
+The renderer prints the existing typed operator; no special text generation.
+
+Strict separately compiled Java21 producers/clients must match independent modular
+truth at both widths, including borrow/overflow boundaries and full-width samples.
+Compiled reversal, addition, saturation, narrowing and operand-disconnection faults
+must differ. Preserve depth, call-height, byte-bound, arity and both-child import
+checks. Original once-only source evaluation and compiler witness registration are
+proved in the later source checkpoint, not inferred from this target foundation.

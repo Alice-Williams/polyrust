@@ -103,6 +103,7 @@ load(":unit_targets.bzl", "unit_targets")
 load(":wrapping_add_oracle_targets.bzl", "wrapping_add_oracle_targets")
 load(":wrapping_ast_targets.bzl", "wrapping_ast_targets")
 load(":wrapping_contract_targets.bzl", "wrapping_contract_targets")
+load(":wrapping_sub_oracle_targets.bzl", "wrapping_sub_oracle_targets")
 load(":wrapping_targets.bzl", "wrapping_targets")
 
 COPTS = [
@@ -822,6 +823,8 @@ remainder_oracle_targets(name = "remainder_oracle_support")
 negative_zero_targets(name = "negative_zero_source_clippy_test")
 
 wrapping_add_oracle_targets(name = "wrapping_add_oracle_test")
+
+wrapping_sub_oracle_targets(name = "wrapping_sub_oracle_test")
 
 remainder_source_targets(name = "remainder_source_clippy_test")
 
