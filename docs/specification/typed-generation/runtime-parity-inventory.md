@@ -249,3 +249,18 @@ evaluation faults, typed expanded dataflow, exact API/docs/import inventories an
 external privacy controls pass. All 924 release/lint targets pass and two source
 reviews are clean. This is still partial WrappingIntegerArithmetic coverage;
 full_features remains empty and legacy paths stay enabled.
+
+## Wrapping signed-subtraction increment
+
+[02R](../../plan/tasks/M35-03A-02R-wrapping-subtraction.md) adds actual core
+i32/i64 wrapping_sub through private canonical witnesses and executable builder
+bindings. C uses certified unsigned subtraction and guarded signed reconstruction;
+Java uses primitive Int/Long Subtract. Source operands are materialized once,
+left before right, and original dependency/API/visibility/docs identities remain.
+
+All 945 release/lint targets pass with a clean whole-scope review. Native proof
+checks 15,790 Rust/oracle inputs and 31,580 target observations per run, measured
+operand traces, seven compiling value/order faults, typed expanded dataflow and
+atomic rejection. Actual three-crate examples are exported. This remains partial
+WrappingIntegerArithmetic coverage; full_features stays empty and legacy gates
+remain enabled until the wider migration has replacement proof.

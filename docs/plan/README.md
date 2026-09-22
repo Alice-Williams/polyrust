@@ -61,16 +61,13 @@ contract as every other target.
   controls and actual exported source-owned packages. All 924 release/lint targets
   pass and two whole-scope source reviews are clean. Remaining scalar arithmetic
   and the broader parity inventory remain active work, not legacy-removal approval.
-  [Wrapping subtraction (02R)](tasks/M35-03A-02R-wrapping-subtraction.md) is the
-  next bounded scalar increment. Its independent oracle is complete: 15,790
-  signed differences, two native Rust configurations, five detected fault families,
-  927 passing release/lint targets and clean review. The C target foundation is
-  also complete: exact unsigned subtraction and guarded signed reconstruction,
-  six new tests, native safe-fault controls and all 927 release/lint targets
-  passing. The Java foundation is complete too: exact primitive subtraction,
-  independent native fault controls, all 400 Java unit tests and all 927 release/
-  lint targets passing, with a clean fresh review. Checked Rust source admission
-  is the next separate checkpoint.
+  [Wrapping subtraction (02R)](tasks/M35-03A-02R-wrapping-subtraction.md) is
+  complete through its independent oracle, C/Java foundations and checked source
+  integration. All 945 release/lint targets pass and whole-scope review is clean.
+  Native proof covers 15,790 Rust/oracle inputs, 31,580 target observations per
+  run, original operand traces and seven compiling value/order faults. Typed
+  dataflow, atomic rejection and original API/docs/privacy controls pass; actual
+  multi-crate packages are exported. Wider scalar/runtime parity remains open.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

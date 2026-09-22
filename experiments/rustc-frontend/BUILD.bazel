@@ -94,6 +94,9 @@ load(":short_circuit_targets.bzl", "short_circuit_targets")
 load(":source_capability_targets.bzl", "source_capability_targets")
 load(":source_check_targets.bzl", "source_check_targets")
 load(":source_origin_targets.bzl", "source_origin_targets")
+load(":subtraction_ast_targets.bzl", "subtraction_ast_targets")
+load(":subtraction_contract_targets.bzl", "subtraction_contract_targets")
+load(":subtraction_source_targets.bzl", "subtraction_source_targets")
 load(":truncation_ast_targets.bzl", "truncation_ast_targets")
 load(":truncation_contract_targets.bzl", "truncation_contract_targets")
 load(":truncation_targets.bzl", "truncation_targets")
@@ -837,6 +840,18 @@ addition_source_targets(name = "addition_source_clippy_test")
 
 addition_ast_targets(
     name = "addition_ast_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+subtraction_contract_targets(
+    name = "subtraction_contract_test",
+    c_sources = ADAPTER_SOURCES,
+)
+
+subtraction_source_targets(name = "subtraction_source_clippy_test")
+
+subtraction_ast_targets(
+    name = "subtraction_ast_test",
     c_sources = ADAPTER_SOURCES,
 )
 

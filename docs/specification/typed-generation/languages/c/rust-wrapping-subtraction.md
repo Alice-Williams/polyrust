@@ -1,6 +1,6 @@
 # Rust wrapping subtraction in C17
 
-- Status: target foundation complete; compiler-source admission unchanged
+- Status: target foundation and checked compiler-source integration complete
 - Contract: [shared](../../rust-wrapping-subtraction.md)
 
 ## Typed lowering
@@ -28,7 +28,9 @@ Exact AST/type and malformed guard/conversion tests accompany separate GCC14/Zig
 O0/O2 producer/client compilation, standalone headers and GCC UBSan. Compare every
 corpus result with independent modular truth; detect reversed subtraction, addition,
 narrowing and disconnected operands. Dependencies derive from typed symbols, without
-runtime/math-library support. Source admission follows a separate gated checkpoint.
+runtime/math-library support. The separately gated source checkpoint authenticates
+core primitive identity, materializes original operands in order, checks actual
+typed dataflow and preserves source-owned APIs/docs/privacy across three crates.
 
 ## Test structure
 

@@ -1,19 +1,19 @@
-//! Each negative changes exactly one remainder mapping boundary.
-#[cfg(remainder_c)]
-use super::CFloatingRemainder as Floating;
-#[cfg(remainder_java)]
-use super::JavaFloatingRemainder as Floating;
+//! Each negative changes exactly one wrapping-subtraction mapping boundary.
+#[cfg(subtraction_c)]
+use super::CWrappingSubtraction as Wrapping;
+#[cfg(subtraction_java)]
+use super::JavaWrappingSubtraction as Wrapping;
 use super::*;
-#[cfg(remainder_c)]
+#[cfg(subtraction_c)]
 use crate::c_lower::Reader;
-#[cfg(remainder_java)]
+#[cfg(subtraction_java)]
 use crate::java_lower::Reader;
-#[cfg(remainder_c)]
+#[cfg(subtraction_c)]
 type Output = portable_backend_c::ast::CValue;
-#[cfg(remainder_java)]
+#[cfg(subtraction_java)]
 type Output = crate::java_lower::Value;
 
-#[cfg(all(remainder_missing, remainder_c))]
+#[cfg(all(subtraction_missing, subtraction_c))]
 fn missing() {
     Builder::new()
         .literal_values(CLiteralValues)
@@ -39,15 +39,15 @@ fn missing() {
         .wrapping_negation(CWrappingNegation)
         .floating_negation(CFloatingNegation)
         .floating_nan(CFloatingNaN)
-        .floating_absolute(CFloatingAbsolute)
         .floating_truncation(CFloatingTruncation)
+        .floating_absolute(CFloatingAbsolute)
         .floating_arithmetic(CFloatingArithmetic)
+        .floating_remainder(CFloatingRemainder)
         .wrapping_addition(CWrappingAddition)
-        .wrapping_subtraction(CWrappingSubtraction)
         .build();
 }
 
-#[cfg(all(remainder_missing, remainder_java))]
+#[cfg(all(subtraction_missing, subtraction_java))]
 fn missing() {
     Builder::new()
         .literal_values(JavaLiteralValues)
@@ -73,71 +73,73 @@ fn missing() {
         .wrapping_negation(JavaWrappingNegation)
         .floating_negation(JavaFloatingNegation)
         .floating_nan(JavaFloatingNaN)
-        .floating_absolute(JavaFloatingAbsolute)
         .floating_truncation(JavaFloatingTruncation)
+        .floating_absolute(JavaFloatingAbsolute)
         .floating_arithmetic(JavaFloatingArithmetic)
+        .floating_remainder(JavaFloatingRemainder)
         .wrapping_addition(JavaWrappingAddition)
-        .wrapping_subtraction(JavaWrappingSubtraction)
         .build();
 }
 
-#[cfg(remainder_duplicate)]
+#[cfg(subtraction_duplicate)]
 fn duplicate() {
     Builder::new()
-        .floating_remainder(Floating)
-        .floating_remainder(Floating);
+        .wrapping_subtraction(Wrapping)
+        .wrapping_subtraction(Wrapping);
 }
 #[cfg(any(
-    remainder_wrong_capability,
-    remainder_wrong_context,
-    remainder_wrong_output
+    subtraction_wrong_capability,
+    subtraction_wrong_context,
+    subtraction_wrong_output
 ))]
 #[derive(Clone, Copy)]
 struct Wrong;
 #[cfg(any(
-    remainder_wrong_capability,
-    remainder_wrong_context,
-    remainder_wrong_output
+    subtraction_wrong_capability,
+    subtraction_wrong_context,
+    subtraction_wrong_output
 ))]
 impl Mapping for Wrong {
-    #[cfg(remainder_wrong_capability)]
+    #[cfg(subtraction_wrong_capability)]
     type Capability = LiteralValues;
-    #[cfg(not(remainder_wrong_capability))]
-    type Capability = FloatingRemainder;
-    #[cfg(remainder_wrong_context)]
+    #[cfg(not(subtraction_wrong_capability))]
+    type Capability = WrappingSubtraction;
+    #[cfg(subtraction_wrong_context)]
     type Context<'tcx> = ();
-    #[cfg(not(remainder_wrong_context))]
+    #[cfg(not(subtraction_wrong_context))]
     type Context<'tcx> = Reader<'tcx>;
-    #[cfg(remainder_wrong_output)]
+    #[cfg(subtraction_wrong_output)]
     type Output = ();
-    #[cfg(not(remainder_wrong_output))]
+    #[cfg(not(subtraction_wrong_output))]
     type Output = Output;
     fn lower<'tcx>(
         &self,
         _: &mut Self::Context<'tcx>,
         _: <Self::Capability as Capability>::Input<'tcx>,
     ) -> Result<Self::Output, String> {
-        Err("deliberately wrong remainder-value mapping".into())
+        Err("deliberately wrong wrapping-subtraction mapping".into())
     }
 }
 #[cfg(any(
-    remainder_wrong_capability,
-    remainder_wrong_context,
-    remainder_wrong_output
+    subtraction_wrong_capability,
+    subtraction_wrong_context,
+    subtraction_wrong_output
 ))]
 fn wrong() {
-    Builder::new().floating_remainder(Wrong);
+    Builder::new().wrapping_subtraction(Wrong);
 }
-#[cfg(remainder_wrong_input)]
+#[cfg(subtraction_wrong_input)]
 fn wrong_input<'tcx>(reader: &mut Reader<'tcx>, expression: &'tcx rustc_hir::Expr<'tcx>) {
     let input = LiteralInput::read(reader.tcx, reader.checked, expression).unwrap();
-    let _ = Floating.lower(reader, input);
+    let _ = Wrapping.lower(reader, input);
 }
-#[cfg(remainder_private_input)]
+#[cfg(subtraction_private_input)]
 fn private_input<'tcx>(expression: &'tcx rustc_hir::Expr<'tcx>) {
-    let _ = RemainderInput {
+    let _ = SubtractionInput {
         source: expression,
         left: expression,
         right: expression,
+        definition: expression.hir_id.owner.def_id.to_def_id(),
+        width: SubtractionWidth::I32,
     };
 }

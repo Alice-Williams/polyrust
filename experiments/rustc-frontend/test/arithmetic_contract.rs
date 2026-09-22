@@ -43,6 +43,7 @@ fn missing() {
         .floating_truncation(CFloatingTruncation)
         .floating_remainder(CFloatingRemainder)
         .wrapping_addition(CWrappingAddition)
+        .wrapping_subtraction(CWrappingSubtraction)
         .build();
 }
 
@@ -76,6 +77,7 @@ fn missing() {
         .floating_truncation(JavaFloatingTruncation)
         .floating_remainder(JavaFloatingRemainder)
         .wrapping_addition(JavaWrappingAddition)
+        .wrapping_subtraction(JavaWrappingSubtraction)
         .build();
 }
 

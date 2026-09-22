@@ -5,11 +5,17 @@ import subprocess
 import sys
 from addition_source_inventory import inspect
 from addition_source_consumers import consumer
-from addition_source_mutations import VARIANTS, mutate
+from addition_source_mutations import variants, mutate
 from addition_source_privacy import java_privacy, c_privacy
 from addition_source_examples import export
 from short_circuit_mutations import instrument
-from wrapping_add_oracle import CASES, inputs, result, faulty
+OPERATION = sys.argv[6] if len(sys.argv) == 7 else "addition"
+assert OPERATION in ["addition", "subtraction"] and len(sys.argv) in [6, 7]
+if OPERATION == "subtraction":
+    from wrapping_sub_oracle import CASES, inputs, result, faulty
+else:
+    from wrapping_add_oracle import CASES, inputs, result, faulty
+VARIANTS = variants(OPERATION)
 
 
 def run(command, data=None):
@@ -23,8 +29,8 @@ def expected(variant="plain", copies=2):
     def value(width, left, right):
         if variant == "wrong_operand":
             return result(left, left, width)
-        if variant in ["carryless", "narrow"]:
-            return faulty(left, right, width, variant)
+        if variant in ["carryless", "narrow", "add", "reverse_values"]:
+            return faulty(left, right, width, "reverse" if variant == "reverse_values" else variant)
         return result(left, right, width)
     return "".join(f"{value(w, a, b)}\n" for w, a, b in CASES for _ in range(copies))
 
@@ -42,8 +48,8 @@ def traces(variant="traced", copies=2):
 
 
 def main():
-    java_dir, c_dir, reference, traced_reference, zig = [Path(arg).resolve() for arg in sys.argv[1:]]
-    order, module, java, c, bindings, functions, native, private = inspect(java_dir, c_dir)
+    java_dir, c_dir, reference, traced_reference, zig = [Path(arg).resolve() for arg in sys.argv[1:6]]
+    order, module, java, c, bindings, functions, native, private = inspect(java_dir, c_dir, OPERATION)
     data, truth = inputs(), expected()
     rust = run([reference], data)
     assert rust.stdout == expected(copies=1) and rust.stderr == ""
@@ -53,7 +59,9 @@ def main():
     measured = "".join(traced.stderr[index:index + 2] * 2 for index in range(0, len(traced.stderr), 2))
     assert measured == traces()
     expectations = {variant: expected(variant) for variant in VARIANTS}
-    for variant in ["carryless", "wrong_operand", "narrow"]:
+    value_faults = (["carryless", "wrong_operand", "narrow"] if OPERATION == "addition" else
+                    ["add", "reverse_values", "wrong_operand", "narrow"])
+    for variant in value_faults:
         assert expectations[variant] != truth
         for width in [32, 64]:
             indices = [index for index, case in enumerate(CASES) if case[0] == width]
@@ -62,7 +70,7 @@ def main():
             assert any(actual[2 * index] != correct[2 * index] for index in indices)
     for variant in ["dropped", "duplicated", "reversed"]:
         assert expectations[variant] == truth and traces(variant) != measured
-    work_root = Path(os.environ["TEST_TMPDIR"]) / "addition-source"
+    work_root = Path(os.environ["TEST_TMPDIR"]) / (OPERATION + "-source")
     work_root.mkdir()
     runtimes = [p / "bin" for p in Path(os.environ["RUNFILES_DIR"]).iterdir()
                 if "remotejdk21" in p.name and (p / "bin/javac").is_file()]
@@ -76,7 +84,7 @@ def main():
                 return native[identity]["symbol"]
             path = functions[identity]["target"]["path"]
             return ".".join([path["package"], *path["owners"], path["member"]])
-        calls = {width: [member(owner, "addition" + str(width)) for owner in [module, order[-1]]]
+        calls = {width: [member(owner, OPERATION + str(width)) for owner in [module, order[-1]]]
                  for width in [32, 64]}
         markers = {marker: member(order[0], side + str(width)).split(".")[-1]
                    for width, labels in [(32, "AB"), (64, "CD")]
@@ -91,9 +99,9 @@ def main():
                     text = instrument(text, markers, is_java)
                 if owner == order[1] and variant not in ["plain", "traced"]:
                     for width in [32, 64]:
-                        text = mutate(text, member(module, "addition" + str(width)).split(".")[-1],
+                        text = mutate(text, member(module, OPERATION + str(width)).split(".")[-1],
                                       member(order[0], "left" + str(width)), member(order[0], "right" + str(width)),
-                                      width, is_java, variant)
+                                      width, is_java, variant, OPERATION)
                 location = work / owner.split(":")[0]
                 location.mkdir()
                 source = location / ("Generated.java" if is_java else "generated.c")
@@ -142,9 +150,9 @@ def main():
                 assert output.stderr == traces(variant), (is_java, variant, "ordered original operand evaluation")
                 if variant == "traced":
                     assert output.stderr == measured
-    export(java_dir, c_dir, work_root)
+    export(java_dir, c_dir, work_root, OPERATION)
     print(f"{len(CASES)} Rust cases; {len(CASES) * 2} target observations/run; three source crates; "
-          "GCC/Zig O0/O2, UBSan and strict Java21; six compiling value/trace faults")
+          f"GCC/Zig O0/O2, UBSan and strict Java21; {len(value_faults) + 3} compiling value/trace faults")
 
 
 if __name__ == "__main__":

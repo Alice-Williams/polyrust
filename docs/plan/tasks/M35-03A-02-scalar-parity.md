@@ -86,9 +86,10 @@ examples accompany two clean whole-scope source reviews. Other integer operation
 remain separate capabilities, and the legacy runtime is not retired by this step.
 
 [02R — wrapping signed subtraction](M35-03A-02R-wrapping-subtraction.md) is
-in progress. Its independent oracle is complete with 927 passing release/lint
-targets and clean review. Target foundations and compiler admission remain
-separately gated and reviewed checkpoints.
+complete through independently gated/reviewed oracle, C/Java foundations and
+checked compiler integration. All 945 release/lint targets pass. Native modular
+truth, measured ordered operands, seven compiling faults, typed dataflow,
+atomic rejection and original API/docs/privacy proof accompany exported packages.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

@@ -8,8 +8,8 @@ use super::{
         FloatingRemainder, FloatingTruncation, IntegerBitwise, LazyBooleanInput, LiteralInput,
         LiteralValues, Mapping, NaNInput, NegationInput, PlaceInput, PublicConstantReadInput,
         PublicConstantReads, RemainderInput, ResolvedPlaces, ScalarComparisons, ScalarConstants,
-        SharedBorrows, ShortCircuitBooleans, Supports, TruncationInput, WrappingAddition,
-        WrappingInput, WrappingNegation,
+        SharedBorrows, ShortCircuitBooleans, SubtractionInput, Supports, TruncationInput,
+        WrappingAddition, WrappingInput, WrappingNegation, WrappingSubtraction,
     },
 };
 use portable_backend_c::ast::{CPlace, CValue};
@@ -32,6 +32,9 @@ impl<'tcx> Reader<'tcx> {
         }
         if let Some(input) = AdditionInput::discover(self.tcx, self.checked, value)? {
             return Supports::<WrappingAddition>::mapping(&self.mappings).lower(self, input);
+        }
+        if let Some(input) = SubtractionInput::discover(self.tcx, self.checked, value)? {
+            return Supports::<WrappingSubtraction>::mapping(&self.mappings).lower(self, input);
         }
         if !self.checked.expr_adjustments(value).is_empty() {
             let place = self.place(value)?;

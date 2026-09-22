@@ -187,6 +187,18 @@ impl<'tcx> Visitor<'tcx> for Calls<'tcx> {
                 )
                 .map(|input| input.is_some())
             }
+        })
+        .and_then(|builtin| {
+            if builtin {
+                Ok(true)
+            } else {
+                crate::source_capabilities::SubtractionInput::discover(
+                    self.tcx,
+                    self.checked,
+                    expression,
+                )
+                .map(|input| input.is_some())
+            }
         }) {
             Ok(admitted) => admitted,
             Err(error) => {

@@ -1,6 +1,6 @@
 # Rust wrapping subtraction in Java21
 
-- Status: target foundation complete; compiler-source admission unchanged
+- Status: target foundation and checked compiler-source integration complete
 - Contract: [shared](../../rust-wrapping-subtraction.md)
 
 ## Typed lowering
@@ -25,7 +25,8 @@ truth at both widths, including borrow/overflow boundaries and full-width sample
 Compiled reversal, addition, saturation, narrowing and operand-disconnection faults
 must differ. Preserve depth, call-height, byte-bound, arity and both-child import
 checks. Original once-only source evaluation and compiler witness registration are
-proved in the later source checkpoint, not inferred from this target foundation.
+proved by the separate completed source checkpoint, not inferred from target
+admission. Its three-crate native/dataflow and API/docs/privacy gates stay active.
 
 ## Test organization
 

@@ -60,6 +60,7 @@ mod wrapping_addition;
 #[path = "../../../test/wrapping_java_ast.rs"]
 mod wrapping_ast;
 mod wrapping_negation;
+mod wrapping_subtraction;
 
 #[cfg(local_constant_contract)]
 #[allow(dead_code, unused_imports)]
@@ -162,6 +163,7 @@ pub(crate) use slots::{Bindings, Builder};
 pub(crate) use unit_effects::JavaUnitEffects;
 pub(crate) use wrapping_addition::JavaWrappingAddition;
 pub(crate) use wrapping_negation::JavaWrappingNegation;
+pub(crate) use wrapping_subtraction::JavaWrappingSubtraction;
 
 pub(crate) type JavaBindings = Bindings<
     JavaLiteralValues,
@@ -192,6 +194,7 @@ pub(crate) type JavaBindings = Bindings<
     JavaFloatingArithmetic,
     JavaFloatingRemainder,
     JavaWrappingAddition,
+    JavaWrappingSubtraction,
 >;
 
 pub(crate) fn java_bindings() -> JavaBindings {
@@ -224,6 +227,7 @@ pub(crate) fn java_bindings() -> JavaBindings {
         .floating_arithmetic(JavaFloatingArithmetic)
         .floating_remainder(JavaFloatingRemainder)
         .wrapping_addition(JavaWrappingAddition)
+        .wrapping_subtraction(JavaWrappingSubtraction)
         .build()
 }
 
@@ -279,3 +283,12 @@ mod remainder_contract;
 #[cfg(remainder_ast_probe)]
 #[path = "../../../test/remainder_java_ast.rs"]
 mod remainder_ast;
+
+#[cfg(subtraction_contract)]
+#[allow(dead_code, unused_imports)]
+#[path = "../../../test/subtraction_contract.rs"]
+mod subtraction_contract;
+
+#[cfg(subtraction_ast_probe)]
+#[path = "../../../test/subtraction_java_ast.rs"]
+mod subtraction_ast;

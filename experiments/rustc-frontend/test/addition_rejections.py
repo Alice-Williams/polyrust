@@ -16,7 +16,7 @@ CASES = {
     "cast": ("pub fn value(a:i64,b:i32)->i32 { (a as i32).wrapping_add(b) }", "expression mapping is not implemented"),
     "ordinary32": ("pub fn value(a:i32,b:i32)->i32 { a+b }", "only comparison binary operators"),
     "ordinary64": ("pub fn value(a:i64,b:i64)->i64 { a+b }", "only comparison binary operators"),
-    "sub": ("pub fn value(a:i32,b:i32)->i32 { a.wrapping_sub(b) }", "expression mapping is not implemented"),
+    "checked_sub": ("pub fn value(a:i32,b:i32)->i32 { a.checked_sub(b).unwrap_or(0) }", "expression mapping is not implemented"),
     "mul": ("pub fn value(a:i64,b:i64)->i64 { a.wrapping_mul(b) }", "expression mapping is not implemented"),
     "saturating": ("pub fn value(a:i64,b:i64)->i64 { a.saturating_add(b) }", "expression mapping is not implemented"),
     "checked": ("pub fn value(a:i32,b:i32)->i32 { a.checked_add(b).unwrap_or(0) }", "expression mapping is not implemented"),

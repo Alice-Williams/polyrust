@@ -4,8 +4,14 @@ from short_circuit_mutations import definition
 
 VARIANTS = ["plain", "traced", "carryless", "wrong_operand", "narrow", "dropped", "duplicated", "reversed"]
 
+def variants(operation):
+    assert operation in ["addition", "subtraction"]
+    return (VARIANTS if operation == "addition" else
+            ["plain", "traced", "add", "reverse_values", "wrong_operand", "narrow", "dropped", "duplicated", "reversed"])
 
-def mutate(text, entry, left, right, width, java, variant):
+
+def mutate(text, entry, left, right, width, java, variant, operation="addition"):
+    assert variant in variants(operation)
     _, start, end = definition(text, entry)
     body = text[start:end]
     declarations = list(re.finditer(r"^[ \t]*(?:final )?(?:int|long|int32_t|int64_t)\s+(\w+)\s*=\s*([^;]+);", body, re.MULTILINE))
@@ -21,14 +27,25 @@ def mutate(text, entry, left, right, width, java, variant):
         body = body[:a1.start()] + statement + body[a1.start():]
     elif variant == "reversed":
         body = body[:a0.start()] + body[b0.start():b2.end()] + body[a2.end():b0.start()] + body[a0.start():a2.end()] + body[b2.end():]
-    elif variant in ["carryless", "wrong_operand"]:
+    elif variant in ["carryless", "wrong_operand", "add", "reverse_values"]:
         pattern = r"return\s+([^;]+);" if java else r"uint" + str(width) + r"_t\s+\w+\s*=\s*([^;]+);"
         matches = list(re.finditer(pattern, body))
         assert len(matches) == 1
         match, = matches
         old = match.group(1)
-        assert old.count("+") == 1 and old.count(a2.group(1)) == old.count(b2.group(1)) == 1
-        changed = old.replace("+", "^") if variant == "carryless" else re.sub(r"\b" + re.escape(b2.group(1)) + r"\b", a2.group(1), old)
+        operator = "+" if operation == "addition" else "-"
+        assert old.count(operator) == 1 and old.count(a2.group(1)) == old.count(b2.group(1)) == 1
+        if variant == "carryless":
+            changed = old.replace("+", "^")
+        elif variant == "add":
+            changed = old.replace("-", "+")
+        elif variant == "reverse_values":
+            replacements = {a2.group(1): b2.group(1), b2.group(1): a2.group(1)}
+            pattern = r"\b(?:" + "|".join(map(re.escape, replacements)) + r")\b"
+            changed, count = re.subn(pattern, lambda m: replacements[m[0]], old)
+            assert count == 2
+        else:
+            changed = re.sub(r"\b" + re.escape(b2.group(1)) + r"\b", a2.group(1), old)
         body = body[:match.start(1)] + changed + body[match.end(1):]
         if variant == "wrong_operand" and not java:
             body = body[:b2.end()] + f"\n(void){b2.group(1)};" + body[b2.end():]

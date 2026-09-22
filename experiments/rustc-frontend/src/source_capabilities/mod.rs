@@ -33,6 +33,7 @@ mod short_circuit_booleans;
 mod unit_effects;
 mod wrapping_addition;
 mod wrapping_negation;
+mod wrapping_subtraction;
 
 pub(crate) use boolean_negation::{BooleanNegation, NegationInput};
 pub(crate) use constant_values::ScalarConstantValue;
@@ -62,6 +63,7 @@ pub(crate) use unit_effects::{UnitEffects, UnitInput, UnitOperation};
 
 pub(crate) use wrapping_addition::{AdditionInput, AdditionWidth, WrappingAddition};
 pub(crate) use wrapping_negation::{WrappingInput, WrappingNegation, WrappingWidth};
+pub(crate) use wrapping_subtraction::{SubtractionInput, SubtractionWidth, WrappingSubtraction};
 
 pub(crate) use floating_negation::{FloatingInput, FloatingNegation};
 

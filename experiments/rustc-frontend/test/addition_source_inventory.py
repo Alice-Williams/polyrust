@@ -31,7 +31,8 @@ def bundle(directory, java):
     return index["root"], owners
 
 
-def inspect(java_dir, c_dir):
+def inspect(java_dir, c_dir, operation="addition"):
+    assert operation in ["addition", "subtraction"]
     root, java = bundle(java_dir, True)
     c_root, c = bundle(c_dir, False)
     assert root == c_root and set(java) == set(c)
@@ -51,7 +52,7 @@ def inspect(java_dir, c_dir):
     assert kind == "module"
     wanted = {(leaf, "value", side + str(width)) for width in [32, 64] for side in ["left", "right"]}
     wanted.add((middle, "type", "operations"))
-    wanted.update((owner, "value", "addition" + str(width)) for owner in [module, root] for width in [32, 64])
+    wanted.update((owner, "value", operation + str(width)) for owner in [module, root] for width in [32, 64])
     check_inventory_oracle(bindings, wanted)
     records = [d for api in java.values() for d in api["declarations"]]
     c_records = [d for api in c.values() for d in api["functions"]]
@@ -74,7 +75,7 @@ def inspect(java_dir, c_dir):
         for side in ["left", "right"]:
             signatures[bindings[leaf, "value", side + str(width)][1]] = ([f"i{width}"], f"i{width}")
         for owner in [module, root]:
-            signatures[bindings[owner, "value", "addition" + str(width)][1]] = ([f"i{width}"] * 2, f"i{width}")
+            signatures[bindings[owner, "value", operation + str(width)][1]] = ([f"i{width}"] * 2, f"i{width}")
         hidden, = [identity for identity in private if functions[identity]["result"] == f"i{width}"]
         signatures[hidden] = ([f"i{width}"], f"i{width}")
 
@@ -114,7 +115,7 @@ def inspect(java_dir, c_dir):
             signature(implementation, False)
             reject(lambda: signature(implementation.replace(ty(result) + " " + symbol, "_Bool " + symbol), False))
     for owner, dependency, names in [(middle, leaf, [s + str(w) for w in [32, 64] for s in ["left", "right"]]),
-                                     (root, module, ["addition32", "addition64"])]:
+                                     (root, module, [operation + str(w) for w in [32, 64]])]:
         wanted_ids = Counter(bindings[dependency, "value", name][1] for name in names)
         def imports(rows):
             assert Counter(d["id"] for d in rows) == wanted_ids
@@ -126,15 +127,15 @@ def inspect(java_dir, c_dir):
         reject(lambda: imports(rows[1:]))
         reject(lambda: imports([*rows, rows[0]]))
     docs = {leaf: ["Original signed operand producers and private implementation details."],
-            middle: ["Checked wrapping addition in its original public module."],
+            middle: [f"Checked wrapping {operation} in its original public module."],
             root: ["Public forwarding without copying dependency implementations."],
-            module: ["Addition operations preserve source module identity."]}
+            module: [f"{operation.capitalize()} operations preserve source module identity."]}
     docs.update({identity: [] for identity in private})
     for width in [32, 64]:
         for side in ["left", "right"]:
             docs[bindings[leaf, "value", side + str(width)][1]] = [f"Original {side} signed {width}-bit operand."]
-        docs[bindings[module, "value", "addition" + str(width)][1]] = [f"Exact signed {width}-bit wrapping addition with ordered operands."]
-        docs[bindings[root, "value", "addition" + str(width)][1]] = []
+        docs[bindings[module, "value", operation + str(width)][1]] = [f"Exact signed {width}-bit wrapping {operation} with ordered operands."]
+        docs[bindings[root, "value", operation + str(width)][1]] = []
     for owner in order:
         records = [*java[owner]["modules"], *java[owner]["declarations"]]
         def metadata(rows):
