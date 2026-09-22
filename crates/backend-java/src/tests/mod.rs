@@ -441,6 +441,8 @@ mod constant_exports_native;
 mod unit_results;
 
 mod wrapping_addition;
+mod wrapping_integer;
 mod wrapping_negation;
+mod wrapping_subtraction;
 
 mod binary64;

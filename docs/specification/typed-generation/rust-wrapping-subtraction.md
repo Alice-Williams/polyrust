@@ -1,6 +1,6 @@
 # Checked Rust wrapping signed subtraction
 
-- Status: oracle and C target foundation complete; Java/source admission planned
+- Status: oracle and C/Java target foundations complete; source admission planned
 - Plan: [02R](../../plan/tasks/M35-03A-02R-wrapping-subtraction.md)
 - Targets: [C17](languages/c/rust-wrapping-subtraction.md), [Java21](languages/java/rust-wrapping-subtraction.md)
 

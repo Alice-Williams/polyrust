@@ -184,20 +184,28 @@ fn boolean_negation_is_a_closed_dependency_expression() {
 }
 
 #[test]
-fn integer_addition_is_admitted_but_subtraction_remains_outside() {
+fn integer_addition_and_subtraction_have_exact_width_dependency_certificates() {
     for operator in [JavaBinaryOperator::Add, JavaBinaryOperator::Subtract] {
-        let mut fixture = functions(42);
-        fixture[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
-            ty: int(),
-            precedence: JavaPrecedence::Additive,
-            kind: JavaExprKind::Binary {
-                operator,
-                left: Box::new(JavaExpr::literal(int(), JavaLiteral::I32(42))),
-                right: Box::new(JavaExpr::literal(int(), JavaLiteral::I32(1))),
-            },
-        }))]);
-        let result = JavaDependencyApi::from_certificate(certify(package(7, fixture)));
-        if operator == JavaBinaryOperator::Add {
+        for (ty, left, right) in [
+            (int(), JavaLiteral::I32(42), JavaLiteral::I32(1)),
+            (
+                JavaType::primitive(JavaPrimitive::Long),
+                JavaLiteral::I64(42),
+                JavaLiteral::I64(1),
+            ),
+        ] {
+            let mut fixture = functions(42);
+            fixture[0].result = ty.clone();
+            fixture[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
+                ty: ty.clone(),
+                precedence: JavaPrecedence::Additive,
+                kind: JavaExprKind::Binary {
+                    operator,
+                    left: Box::new(JavaExpr::literal(ty.clone(), left)),
+                    right: Box::new(JavaExpr::literal(ty.clone(), right)),
+                },
+            }))]);
+            let result = JavaDependencyApi::from_certificate(certify(package(7, fixture)));
             assert_eq!(
                 result
                     .unwrap()
@@ -205,10 +213,8 @@ fn integer_addition_is_admitted_but_subtraction_remains_outside() {
                     .unwrap()
                     .signature()
                     .result,
-                int()
+                ty
             );
-        } else {
-            assert!(result.unwrap_err().contains("unadmitted expression"));
         }
     }
 }

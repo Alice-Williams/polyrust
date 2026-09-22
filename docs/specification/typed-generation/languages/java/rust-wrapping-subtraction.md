@@ -1,6 +1,6 @@
 # Rust wrapping subtraction in Java21
 
-- Status: planned; target/source admission unchanged
+- Status: target foundation complete; compiler-source admission unchanged
 - Contract: [shared](../../rust-wrapping-subtraction.md)
 
 ## Typed lowering
@@ -26,3 +26,12 @@ Compiled reversal, addition, saturation, narrowing and operand-disconnection fau
 must differ. Preserve depth, call-height, byte-bound, arity and both-child import
 checks. Original once-only source evaluation and compiler witness registration are
 proved in the later source checkpoint, not inferred from this target foundation.
+
+## Test organization
+
+Addition and subtraction have sibling operation-specific test modules and share
+test-only integer package/dependency fixtures. The shared native harness selects
+an independent subtraction oracle, verifies the rendered operation and compiles
+each producer before its forwarding consumer and external client. Shared test
+fixtures are not compiler witnesses or production lowering functions. Preserve
+existing addition package bytes while giving subtraction its own method names.

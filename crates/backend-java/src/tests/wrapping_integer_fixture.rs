@@ -1,7 +1,7 @@
 use super::*;
 
-pub(super) const WIDTHS: [JavaPrimitive; 2] = [JavaPrimitive::Int, JavaPrimitive::Long];
-pub(super) fn literal(width: JavaPrimitive, value: i32) -> JavaExpr {
+pub(in crate::tests) const WIDTHS: [JavaPrimitive; 2] = [JavaPrimitive::Int, JavaPrimitive::Long];
+pub(in crate::tests) fn literal(width: JavaPrimitive, value: i32) -> JavaExpr {
     JavaExpr::literal(
         JavaType::primitive(width),
         match width {
@@ -11,18 +11,26 @@ pub(super) fn literal(width: JavaPrimitive, value: i32) -> JavaExpr {
         },
     )
 }
-pub(super) fn add(width: JavaPrimitive, left: JavaExpr, right: JavaExpr) -> JavaExpr {
+pub(in crate::tests) fn add(width: JavaPrimitive, left: JavaExpr, right: JavaExpr) -> JavaExpr {
+    binary(JavaBinaryOperator::Add, width, left, right)
+}
+pub(in crate::tests) fn binary(
+    operator: JavaBinaryOperator,
+    width: JavaPrimitive,
+    left: JavaExpr,
+    right: JavaExpr,
+) -> JavaExpr {
     JavaExpr {
         ty: JavaType::primitive(width),
         precedence: JavaPrecedence::Additive,
         kind: JavaExprKind::Binary {
-            operator: JavaBinaryOperator::Add,
+            operator,
             left: Box::new(left),
             right: Box::new(right),
         },
     }
 }
-pub(super) fn function(index: usize, value: JavaExpr) -> f::Function {
+pub(in crate::tests) fn function(index: usize, value: JavaExpr) -> f::Function {
     let ty = JavaType::primitive(WIDTHS[index]);
     f::Function {
         hash: 10 + index as u64,
@@ -40,15 +48,31 @@ pub(super) fn function(index: usize, value: JavaExpr) -> f::Function {
         body: JavaBlock::new(vec![JavaStmt::Return(Some(value))]),
     }
 }
-pub(super) fn chain() -> Vec<JavaDependencyApi> {
+pub(in crate::tests) fn chain() -> Vec<JavaDependencyApi> {
+    chain_with_operator(JavaBinaryOperator::Add)
+}
+pub(in crate::tests) fn chain_with_operator(
+    operator: JavaBinaryOperator,
+) -> Vec<JavaDependencyApi> {
+    let make_function = |index, value| {
+        let mut declaration = function(index, value);
+        let prefix = match operator {
+            JavaBinaryOperator::Add => "addition",
+            JavaBinaryOperator::Subtract => "subtraction",
+            _ => panic!("shared fixture requires an additive integer operation"),
+        };
+        declaration.name = f::name(&format!("{prefix}{index}"));
+        declaration
+    };
     let functions = WIDTHS
         .into_iter()
         .enumerate()
         .map(|(index, width)| {
             let ty = JavaType::primitive(width);
-            function(
+            make_function(
                 index,
-                add(
+                binary(
+                    operator,
                     width,
                     JavaExpr::local(ty.clone(), f::name("left")),
                     JavaExpr::local(ty, f::name("right")),
@@ -67,7 +91,7 @@ pub(super) fn chain() -> Vec<JavaDependencyApi> {
             let ty = JavaType::primitive(WIDTHS[index]);
             let (next, callable) = std::mem::take(&mut scope).import(target);
             scope = next;
-            function(
+            make_function(
                 index,
                 JavaExpr {
                     ty: ty.clone(),
@@ -92,7 +116,7 @@ pub(super) fn chain() -> Vec<JavaDependencyApi> {
     .unwrap();
     vec![producer, consumer]
 }
-pub(super) fn admitted(package: TargetAstPackage<JavaDialect>) -> bool {
+pub(in crate::tests) fn admitted(package: TargetAstPackage<JavaDialect>) -> bool {
     let Ok(verified) = verify_unresolved_package(&JavaDialect, package) else {
         return false;
     };

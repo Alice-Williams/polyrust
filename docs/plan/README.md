@@ -67,7 +67,10 @@ contract as every other target.
   927 passing release/lint targets and clean review. The C target foundation is
   also complete: exact unsigned subtraction and guarded signed reconstruction,
   six new tests, native safe-fault controls and all 927 release/lint targets
-  passing. Java target support and checked source admission remain separate steps.
+  passing. The Java foundation is complete too: exact primitive subtraction,
+  independent native fault controls, all 400 Java unit tests and all 927 release/
+  lint targets passing, with a clean fresh review. Checked Rust source admission
+  is the next separate checkpoint.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

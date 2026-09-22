@@ -1,13 +1,14 @@
+//! Public certification, not just syntax, checks every annotated child.
 use super::*;
 
 fn admitted(index: usize, value: JavaExpr) -> bool {
-    fixture::admitted(f::package(810, vec![fixture::function(index, value)]))
+    fixture::admitted(f::package(820, vec![fixture::function(index, value)]))
 }
 
 #[test]
-fn wrapping_addition_requires_exact_types_and_precedence() {
+fn wrapping_subtraction_requires_exact_types_and_precedence() {
     for (index, width) in fixture::WIDTHS.into_iter().enumerate() {
-        let base = fixture::add(
+        let base = subtract(
             width,
             fixture::literal(width, 1),
             fixture::literal(width, 2),
@@ -36,7 +37,7 @@ fn wrapping_addition_requires_exact_types_and_precedence() {
                 precedence == JavaPrecedence::Additive
             );
         }
-        for other in [
+        let bad_types = [
             JavaPrimitive::Byte,
             JavaPrimitive::Char,
             JavaPrimitive::Int,
@@ -44,41 +45,36 @@ fn wrapping_addition_requires_exact_types_and_precedence() {
             JavaPrimitive::Double,
             JavaPrimitive::Boolean,
             JavaPrimitive::Void,
-        ] {
-            if other == width {
-                continue;
-            }
+        ]
+        .into_iter()
+        .filter(|other| *other != width)
+        .map(JavaType::primitive)
+        .chain([
+            JavaType::Boxed(JavaPrimitive::Int),
+            JavaType::Boxed(JavaPrimitive::Long),
+            JavaType::known(JavaKnownType::String),
+        ]);
+        for other in bad_types {
             for side in 0..3 {
                 let mut value = base.clone();
                 let JavaExprKind::Binary { left, right, .. } = &mut value.kind else {
                     unreachable!()
                 };
                 match side {
-                    0 => left.ty = JavaType::primitive(other),
-                    1 => right.ty = JavaType::primitive(other),
-                    _ => value.ty = JavaType::primitive(other),
+                    0 => left.ty = other.clone(),
+                    1 => right.ty = other.clone(),
+                    _ => value.ty = other.clone(),
                 }
                 assert!(!admitted(index, value), "{width:?} {other:?} side {side}");
             }
-        }
-        for side in 0..3 {
-            let mut value = base.clone();
-            let JavaExprKind::Binary { left, right, .. } = &mut value.kind else {
-                unreachable!()
-            };
-            match side {
-                0 => left.ty = JavaType::Boxed(width),
-                1 => right.ty = JavaType::Boxed(width),
-                _ => value.ty = JavaType::Boxed(width),
-            }
-            assert!(!admitted(index, value));
         }
     }
 }
 
 #[test]
-fn wrapping_addition_does_not_admit_other_integer_arithmetic_or_hidden_casts() {
+fn wrapping_subtraction_recursively_rejects_unadmitted_shapes_and_depth() {
     for (index, width) in fixture::WIDTHS.into_iter().enumerate() {
+        let one = || fixture::literal(width, 1);
         for operator in [
             JavaBinaryOperator::Multiply,
             JavaBinaryOperator::Divide,
@@ -86,32 +82,16 @@ fn wrapping_addition_does_not_admit_other_integer_arithmetic_or_hidden_casts() {
             JavaBinaryOperator::ShiftLeft,
             JavaBinaryOperator::ShiftRight,
         ] {
-            let mut value = fixture::add(
-                width,
-                fixture::literal(width, 1),
-                fixture::literal(width, 2),
-            );
-            value.precedence = match operator {
+            let mut bad = fixture::binary(operator, width, one(), one());
+            bad.precedence = match operator {
                 JavaBinaryOperator::ShiftLeft | JavaBinaryOperator::ShiftRight => {
                     JavaPrecedence::Shift
                 }
                 _ => JavaPrecedence::Multiplicative,
             };
-            let JavaExprKind::Binary {
-                operator: actual, ..
-            } = &mut value.kind
-            else {
-                unreachable!()
-            };
-            *actual = operator;
-            assert!(!admitted(index, value.clone()));
-            for side in [false, true] {
-                let (left, right) = if side {
-                    (value.clone(), fixture::literal(width, 3))
-                } else {
-                    (fixture::literal(width, 3), value.clone())
-                };
-                assert!(!admitted(index, fixture::add(width, left, right)));
+            assert!(!admitted(index, bad.clone()));
+            for (left, right) in [(bad.clone(), one()), (one(), bad)] {
+                assert!(!admitted(index, subtract(width, left, right)));
             }
         }
         let cast = JavaExpr {
@@ -119,28 +99,37 @@ fn wrapping_addition_does_not_admit_other_integer_arithmetic_or_hidden_casts() {
             precedence: JavaPrecedence::Unary,
             kind: JavaExprKind::Cast {
                 target: JavaType::primitive(width),
-                value: Box::new(fixture::literal(width, 1)),
+                value: Box::new(one()),
             },
         };
-        assert!(!admitted(
-            index,
-            fixture::add(width, cast, fixture::literal(width, 1))
-        ));
-        let mut value = fixture::literal(width, 0);
-        for _ in 0..16 {
-            value = fixture::add(width, value, fixture::literal(width, 1));
+        for (left, right) in [(cast.clone(), one()), (one(), cast)] {
+            assert!(!admitted(index, subtract(width, left, right)));
         }
-        assert!(admitted(index, value.clone()));
-        for _ in 0..128 {
-            value = fixture::add(width, value, fixture::literal(width, 1));
+        for side in [false, true] {
+            let mut value = one();
+            for _ in 0..16 {
+                value = if side {
+                    subtract(width, one(), value)
+                } else {
+                    subtract(width, value, one())
+                };
+            }
+            assert!(admitted(index, value.clone()));
+            for _ in 0..128 {
+                value = if side {
+                    subtract(width, one(), value)
+                } else {
+                    subtract(width, value, one())
+                };
+            }
+            assert!(!admitted(index, value));
         }
-        assert!(!admitted(index, value));
     }
 }
 
 #[test]
-fn wrapping_addition_recursively_checks_original_import_authority_and_arity() {
-    let owners = fixture::chain();
+fn wrapping_subtraction_recursively_checks_original_import_authority_and_arity() {
+    let owners = chain();
     for (index, target) in owners[0].functions().cloned().enumerate() {
         let width = fixture::WIDTHS[index];
         for side in [false, true] {
@@ -156,14 +145,11 @@ fn wrapping_addition_recursively_checks_original_import_authority_and_arity() {
                             arguments: vec![fixture::literal(width, 1); arity],
                         },
                     };
-                    let (left, right) = if side {
-                        (call, fixture::literal(width, 0))
-                    } else {
-                        (fixture::literal(width, 0), call)
-                    };
+                    let zero = fixture::literal(width, 0);
+                    let (left, right) = if side { (call, zero) } else { (zero, call) };
                     let package = f::package_with_dependencies(
-                        811,
-                        vec![fixture::function(index, fixture::add(width, left, right))],
+                        821,
+                        vec![fixture::function(index, subtract(width, left, right))],
                         if register {
                             scope.finish()
                         } else {

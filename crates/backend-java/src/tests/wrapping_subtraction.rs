@@ -1,13 +1,21 @@
-//! Exact primitive wrapping addition; target fixtures are not compiler witnesses.
+//! Subtraction reuses integer fixture ownership, never addition's expected values.
 use super::wrapping_integer::*;
 use std::{fs, path::PathBuf, process::Command};
 
-#[path = "wrapping_addition_contracts.rs"]
+#[path = "wrapping_subtraction_contracts.rs"]
 mod contracts;
 
+fn subtract(width: JavaPrimitive, left: JavaExpr, right: JavaExpr) -> JavaExpr {
+    fixture::binary(JavaBinaryOperator::Subtract, width, left, right)
+}
+
+fn chain() -> Vec<JavaDependencyApi> {
+    fixture::chain_with_operator(JavaBinaryOperator::Subtract)
+}
+
 #[test]
-fn wrapping_addition_original_dependencies_and_source_bounds() {
-    for (index, owner) in fixture::chain().iter().enumerate() {
+fn wrapping_subtraction_original_dependencies_and_source_bounds() {
+    for (index, owner) in chain().iter().enumerate() {
         assert_eq!(owner.functions().count(), 2);
         for function in owner.functions() {
             assert_eq!(function.call_height(), index + 1);
@@ -30,9 +38,9 @@ fn wrapping_addition_original_dependencies_and_source_bounds() {
 }
 
 #[test]
-fn wrapping_addition_native_values_and_faults() {
-    let root = PathBuf::from(std::env::var_os("TEST_TMPDIR").unwrap()).join("java-wrapping-add");
-    for (index, owner) in fixture::chain().iter().enumerate() {
+fn wrapping_subtraction_native_values_and_faults() {
+    let root = PathBuf::from(std::env::var_os("TEST_TMPDIR").unwrap()).join("java-wrapping-sub");
+    for (index, owner) in chain().iter().enumerate() {
         for file in render_certified_package(&JavaStructuralRenderer, owner.package())
             .unwrap()
             .files()
@@ -53,6 +61,7 @@ fn wrapping_addition_native_values_and_faults() {
         .arg(crate::tests::source_constants_native::tool("javac"))
         .arg(crate::tests::source_constants_native::tool("java"))
         .arg(runfiles.join("experiments/rustc-frontend/test"))
+        .arg("subtraction")
         .output()
         .unwrap();
     assert!(

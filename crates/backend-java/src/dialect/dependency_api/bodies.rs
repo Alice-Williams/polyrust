@@ -265,7 +265,7 @@ impl Reader<'_> {
                 self.expression(right, depth + 1)?;
             }
             JavaExprKind::Binary {
-                operator: JavaBinaryOperator::Add,
+                operator: JavaBinaryOperator::Add | JavaBinaryOperator::Subtract,
                 left,
                 right,
             } if matches!(

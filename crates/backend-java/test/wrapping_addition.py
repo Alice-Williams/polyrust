@@ -4,9 +4,14 @@ import re
 import subprocess
 import sys
 
-root, javac, java, oracle = [Path(arg).resolve() for arg in sys.argv[1:]]
+root, javac, java, oracle = [Path(arg).resolve() for arg in sys.argv[1:5]]
+mode = sys.argv[5] if len(sys.argv) == 6 else "addition"
+assert mode in ["addition", "subtraction"] and len(sys.argv) in [5, 6]
 sys.path.insert(0, str(oracle))
-from wrapping_add_oracle import CASES, faulty, inputs, result
+if mode == "subtraction":
+    from wrapping_sub_oracle import CASES, faulty, inputs, result
+else:
+    from wrapping_add_oracle import CASES, faulty, inputs, result
 
 
 def run(command, data=None):
@@ -23,6 +28,7 @@ def compile_source(source, classes):
 
 def mutate(text, variant):
     pattern = r"(public static (int|long) addition[01]\(final (?:int|long) left, final (?:int|long) right\)\s*\{)\s*return ([^;]+);\s*\}"
+    pattern = pattern.replace("addition", mode)
     count = 0
 
     def replace(match):
@@ -30,15 +36,18 @@ def mutate(text, variant):
         count += 1
         ty = match.group(2)
         # Assert the real structural renderer produced the intended dataflow.
-        assert re.sub(r"[()\s]", "", match.group(3)) == "left+right", match.group(0)
+        operator = "-" if mode == "subtraction" else "+"
+        assert re.sub(r"[()\s]", "", match.group(3)) == f"left{operator}right", match.group(0)
         if variant == "plain":
             return match.group(0)
         expression = {"carryless": "left ^ right", "subtract": "left - right",
-                      "narrow": f"({'short' if ty == 'int' else 'int'})(left + right)",
-                      "wrong_operand": "left + left"}.get(variant)
+                      "add": "left + right", "reverse": "right - left",
+                      "narrow": f"({'short' if ty == 'int' else 'int'})(left {operator} right)",
+                      "wrong_operand": f"left {operator} left"}.get(variant)
         if variant == "saturating":
             boxed = "Integer" if ty == "int" else "Long"
-            expression = ("java.math.BigInteger.valueOf(left).add(java.math.BigInteger.valueOf(right))"
+            method = "subtract" if mode == "subtraction" else "add"
+            expression = (f"java.math.BigInteger.valueOf(left).{method}(java.math.BigInteger.valueOf(right))"
                           f".max(java.math.BigInteger.valueOf({boxed}.MIN_VALUE))"
                           f".min(java.math.BigInteger.valueOf({boxed}.MAX_VALUE)).{ty}Value()")
         assert expression is not None, variant
@@ -60,18 +69,21 @@ public static void main(String[] args) throws java.io.IOException {
         if (parts[0].equals("32")) {
             int left = Integer.parseInt(parts[1]);
             int right = Integer.parseInt(parts[2]);
-""" + "".join(f"System.out.println(org.polyrust.generated.r{owner:016x}.Generated.addition0(left, right));\n"
+""" + "".join(f"System.out.println(org.polyrust.generated.r{owner:016x}.Generated.{mode}0(left, right));\n"
               for owner in [801, 802]) + """} else {
             long left = Long.parseLong(parts[1]);
             long right = Long.parseLong(parts[2]);
-""" + "".join(f"System.out.println(org.polyrust.generated.r{owner:016x}.Generated.addition1(left, right));\n"
+""" + "".join(f"System.out.println(org.polyrust.generated.r{owner:016x}.Generated.{mode}1(left, right));\n"
               for owner in [801, 802]) + "} } } }\n"
 
 
 def main():
     assert run([javac, "-version"]).stdout.startswith("javac 21.")
     truth = "".join(f"{result(left, right, width)}\n" for width, left, right in CASES for _ in range(2))
-    for variant in ["plain", "saturating", "carryless", "subtract", "narrow", "wrong_operand"]:
+    variants = (["plain", "saturating", "add", "reverse", "narrow", "wrong_operand"]
+                if mode == "subtraction" else
+                ["plain", "saturating", "carryless", "subtract", "narrow", "wrong_operand"])
+    for variant in variants:
         directory = root / variant
         classes = directory / "classes"
         classes.mkdir(parents=True)
@@ -95,9 +107,16 @@ def main():
             wanted = "".join(f"{result(left, left, width) if variant == 'wrong_operand' else faulty(left, right, width, variant)}\n"
                              for width, left, right in CASES for _ in range(2))
             assert wanted != truth, variant
+            for width in [32, 64]:
+                assert any(
+                    (result(left, left, width) if variant == "wrong_operand" else
+                     faulty(left, right, width, variant)) != result(left, right, width)
+                    for actual, left, right in CASES if actual == width
+                ), (variant, width, "fault must be observable at each width")
         output = run([java, "-cp", classes, "Consumer"], inputs())
         assert output.stdout == wanted and output.stderr == "", (variant, "exact modular results")
-    print(f"{len(CASES) * 2} Java21 producer/consumer results per run; five compiled value-fault controls")
+    print(f"{len(CASES) * 2} Java21 {mode} producer/consumer results per run; "
+          "five compiled value-fault controls at each width")
 
 
 if __name__ == "__main__":
