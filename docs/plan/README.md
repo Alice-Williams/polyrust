@@ -182,6 +182,11 @@ contract as every other target.
   profiles and four compiling faults pass. All 1,028 release/lint tests pass
   and fresh whole-scope review is clean. All 530 prior generated hashes and
   38 unrelated WIP hashes remain unchanged; Java/source steps remain separate.
+  Java target proof is complete too: all 4,133 fields/local/imported readers
+  agree with independent truth under normal/interpreted Java21; recompiled
+  mutations, original aliases, readonly fields and exact capacity controls pass.
+  All 1,029 release/lint tests and 436 Java unit cases pass; two fresh broad
+  reviews are clean. Existing output/WIP is unchanged. Source integration is next.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

@@ -5,6 +5,7 @@ mod array_creation_native;
 mod array_erasure_native;
 pub(crate) mod budget_oracle;
 pub(crate) mod capability_fixtures;
+mod character_constants;
 mod characters;
 mod classfile_metrics;
 mod collection_boundaries_native;

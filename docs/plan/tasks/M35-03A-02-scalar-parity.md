@@ -179,6 +179,11 @@ The C foundation is complete: exact target U32 storage/import certificates,
 pass. All 1,028 release/lint targets pass and fresh broad review is clean.
 All 530 previous generated hashes and 38 unrelated WIP hashes are unchanged.
 Java target proof and checked source integration remain separate checkpoints.
+Java target proof is complete: all 4,133 fields/local/imported readers agree
+under strict separate Java21 compilation and normal/-Xint execution, including
+four mutation-sensitive faults and readonly/capacity controls. All 1,029
+release/lint targets and 436 Java unit cases pass; two broad reviews are clean.
+Previous output/WIP is unchanged. Checked source integration remains open.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

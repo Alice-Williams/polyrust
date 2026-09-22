@@ -61,6 +61,7 @@ FIXTURE_ALLOWLIST = {
     "crates/backend-java/test/finite_constants.py",
     "crates/backend-java/test/infinite_constants.py",
     "crates/backend-java/test/characters.py",
+    "crates/backend-java/test/character_constants.py",
     "crates/backend-java/test/arithmetic_mutations.py",
 }
 
@@ -438,7 +439,7 @@ impl ::portable_codegen::StructuralImportRenderer<CDialect> for Imports {
                      "crates/backend-c/src/constants_layout_probe.c"]:
         if not target_template_offenders(adjacent, "#include <stdint.h>\n"):
             raise AssertionError("constants/layout oracle exception admitted an adjacent template")
-    for name in ["binary64_arithmetic.py", "binary64_remainder.py", "arithmetic_mutations.py", "wrapping_addition.py", "signed_widening.py", "finite_constants.py", "infinite_constants.py", "characters.py"]:
+    for name in ["binary64_arithmetic.py", "binary64_remainder.py", "arithmetic_mutations.py", "wrapping_addition.py", "signed_widening.py", "finite_constants.py", "infinite_constants.py", "characters.py", "character_constants.py"]:
         arithmetic_harness = "crates/backend-java/test/" + name
         if target_template_offenders(arithmetic_harness, "import re\n"):
             raise AssertionError("test-only Java arithmetic harness imports were rejected")

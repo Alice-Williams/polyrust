@@ -1,6 +1,6 @@
 # Rust character constants in Java21
 
-- Status: planned
+- Status: target proof complete; checked source admission planned
 - Contract: [shared](../../rust-character-constants.md)
 
 Use existing primitive Int literals and public static final int fields.
@@ -21,3 +21,13 @@ Use strict separate Java21 compilation and normal/-Xint observations of fields,
 local readers and imported readers. Recompile every dependent after producer
 mutations so constant inlining cannot hide a bad mapping. No renderer changes
 or production source admission are implied by this target proof.
+
+The target proof covers all 4,127 independent character-constant inputs plus
+six deliberately non-character Int controls, including both signed extrema.
+Each has a field, a local reader and an imported reader selected from an
+original-owner alias facade. Certify batches of at most 64 values, compile the
+three owners and client separately, and check both JVM execution modes. Actual
+producer mutations exercise byte/code-unit narrowing, replacement and changed
+values after dependent recompilation. Field shape, exact certificate identity,
+long-name/read reservations, JVM name capacity and readonly assignment controls
+must remain active. These tests add no new production capability.

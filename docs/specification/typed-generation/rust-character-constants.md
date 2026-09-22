@@ -1,6 +1,6 @@
 # Checked Rust Unicode scalar constants
 
-- Status: independent oracle complete; target/source admission planned
+- Status: independent oracle and C/Java target foundations complete; source admission planned
 - Plan: [02X](../../plan/tasks/M35-03A-02X-character-constants.md)
 - Prerequisite: [character values](rust-character-values.md)
 - Targets: [C17](languages/c/rust-character-constants.md), [Java21](languages/java/rust-character-constants.md)
