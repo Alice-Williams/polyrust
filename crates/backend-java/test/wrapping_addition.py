@@ -6,9 +6,11 @@ import sys
 
 root, javac, java, oracle = [Path(arg).resolve() for arg in sys.argv[1:5]]
 mode = sys.argv[5] if len(sys.argv) == 6 else "addition"
-assert mode in ["addition", "subtraction"] and len(sys.argv) in [5, 6]
+assert mode in ["addition", "subtraction", "multiplication"] and len(sys.argv) in [5, 6]
 sys.path.insert(0, str(oracle))
-if mode == "subtraction":
+if mode == "multiplication":
+    from wrapping_mul_oracle import CASES, faulty, inputs, result
+elif mode == "subtraction":
     from wrapping_sub_oracle import CASES, faulty, inputs, result
 else:
     from wrapping_add_oracle import CASES, faulty, inputs, result
@@ -36,17 +38,18 @@ def mutate(text, variant):
         count += 1
         ty = match.group(2)
         # Assert the real structural renderer produced the intended dataflow.
-        operator = "-" if mode == "subtraction" else "+"
+        operator = {"addition": "+", "subtraction": "-", "multiplication": "*"}[mode]
         assert re.sub(r"[()\s]", "", match.group(3)) == f"left{operator}right", match.group(0)
         if variant == "plain":
             return match.group(0)
         expression = {"carryless": "left ^ right", "subtract": "left - right",
                       "add": "left + right", "reverse": "right - left",
                       "narrow": f"({'short' if ty == 'int' else 'int'})(left {operator} right)",
+                      "narrow_operands": f"(({ty})({'short' if ty == 'int' else 'int'})left) * (({ty})({'short' if ty == 'int' else 'int'})right)",
                       "wrong_operand": f"left {operator} left"}.get(variant)
         if variant == "saturating":
             boxed = "Integer" if ty == "int" else "Long"
-            method = "subtract" if mode == "subtraction" else "add"
+            method = {"addition": "add", "subtraction": "subtract", "multiplication": "multiply"}[mode]
             expression = (f"java.math.BigInteger.valueOf(left).{method}(java.math.BigInteger.valueOf(right))"
                           f".max(java.math.BigInteger.valueOf({boxed}.MIN_VALUE))"
                           f".min(java.math.BigInteger.valueOf({boxed}.MAX_VALUE)).{ty}Value()")
@@ -83,6 +86,8 @@ def main():
     variants = (["plain", "saturating", "add", "reverse", "narrow", "wrong_operand"]
                 if mode == "subtraction" else
                 ["plain", "saturating", "carryless", "subtract", "narrow", "wrong_operand"])
+    if mode == "multiplication":
+        variants = ["plain", "saturating", "add", "narrow", "narrow_operands", "wrong_operand"]
     for variant in variants:
         directory = root / variant
         classes = directory / "classes"
@@ -104,19 +109,26 @@ def main():
         compile_source(client, classes)
         wanted = truth
         if variant != "plain":
-            wanted = "".join(f"{result(left, left, width) if variant == 'wrong_operand' else faulty(left, right, width, variant)}\n"
+            wanted = "".join(f"{fault_value(left, right, width, variant)}\n"
                              for width, left, right in CASES for _ in range(2))
             assert wanted != truth, variant
             for width in [32, 64]:
                 assert any(
-                    (result(left, left, width) if variant == "wrong_operand" else
-                     faulty(left, right, width, variant)) != result(left, right, width)
+                    fault_value(left, right, width, variant) != result(left, right, width)
                     for actual, left, right in CASES if actual == width
                 ), (variant, width, "fault must be observable at each width")
         output = run([java, "-cp", classes, "Consumer"], inputs())
         assert output.stdout == wanted and output.stderr == "", (variant, "exact modular results")
     print(f"{len(CASES) * 2} Java21 {mode} producer/consumer results per run; "
           "five compiled value-fault controls at each width")
+
+
+def fault_value(left, right, width, variant):
+    if variant == "wrong_operand":
+        return result(left, left, width)
+    if mode == "multiplication" and variant == "narrow":
+        variant = "narrow_result"
+    return faulty(left, right, width, variant)
 
 
 if __name__ == "__main__":

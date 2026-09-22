@@ -265,7 +265,10 @@ impl Reader<'_> {
                 self.expression(right, depth + 1)?;
             }
             JavaExprKind::Binary {
-                operator: JavaBinaryOperator::Add | JavaBinaryOperator::Subtract,
+                operator:
+                    operator @ (JavaBinaryOperator::Add
+                    | JavaBinaryOperator::Subtract
+                    | JavaBinaryOperator::Multiply),
                 left,
                 right,
             } if matches!(
@@ -273,7 +276,11 @@ impl Reader<'_> {
                 JavaType::Primitive(JavaPrimitive::Int | JavaPrimitive::Long)
             ) && left.ty == value.ty
                 && right.ty == value.ty
-                && value.precedence == JavaPrecedence::Additive =>
+                && value.precedence
+                    == match operator {
+                        JavaBinaryOperator::Multiply => JavaPrecedence::Multiplicative,
+                        _ => JavaPrecedence::Additive,
+                    } =>
             {
                 self.expression(left, depth + 1)?;
                 self.expression(right, depth + 1)?;

@@ -442,6 +442,7 @@ mod unit_results;
 
 mod wrapping_addition;
 mod wrapping_integer;
+mod wrapping_multiplication;
 mod wrapping_negation;
 mod wrapping_subtraction;
 

@@ -70,7 +70,9 @@ fn arithmetic_reader_requires_exact_operands_results_and_precedence() {
                                 || (matches!(left, JavaPrimitive::Int | JavaPrimitive::Long)
                                     && matches!(
                                         operator,
-                                        JavaBinaryOperator::Add | JavaBinaryOperator::Subtract
+                                        JavaBinaryOperator::Add
+                                            | JavaBinaryOperator::Subtract
+                                            | JavaBinaryOperator::Multiply
                                     )))
                                 && right == left
                                 && result == left
@@ -85,8 +87,12 @@ fn arithmetic_reader_requires_exact_operands_results_and_precedence() {
 }
 
 #[test]
-fn integer_additive_operations_do_not_admit_boxing_or_strings() {
-    for operator in [JavaBinaryOperator::Add, JavaBinaryOperator::Subtract] {
+fn integer_arithmetic_operations_do_not_admit_boxing_or_strings() {
+    for operator in [
+        JavaBinaryOperator::Add,
+        JavaBinaryOperator::Subtract,
+        JavaBinaryOperator::Multiply,
+    ] {
         for ty in [
             JavaType::Boxed(JavaPrimitive::Int),
             JavaType::Boxed(JavaPrimitive::Long),
@@ -94,7 +100,10 @@ fn integer_additive_operations_do_not_admit_boxing_or_strings() {
         ] {
             let value = JavaExpr {
                 ty: ty.clone(),
-                precedence: JavaPrecedence::Additive,
+                precedence: match operator {
+                    JavaBinaryOperator::Multiply => JavaPrecedence::Multiplicative,
+                    _ => JavaPrecedence::Additive,
+                },
                 kind: JavaExprKind::Binary {
                     operator,
                     left: Box::new(JavaExpr::local(

@@ -73,8 +73,10 @@ contract as every other target.
   with checks on/off; all 948 release/lint targets pass and review is clean.
   Its C target foundation is complete too: certified unsigned products and
   guarded signed reconstruction, six new tests, all 948 release/lint targets
-  passing and clean review. Java foundation and checked source admission remain
-  separate checkpoints.
+  passing and clean review. Java target certification is complete: 405 Java unit
+  tests, five compiling fault controls at both widths, all 948 release/lint
+  targets passing and clean independent review. Checked source admission remains
+  the next separate checkpoint.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

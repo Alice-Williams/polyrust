@@ -9,7 +9,7 @@
 
 1. [02S-01 — Independent multiplication oracle](M35-03A-02S-01-multiplication-oracle.md) — complete.
 2. [02S-02 — C target safety foundation](M35-03A-02S-02-c-multiplication.md) — complete.
-3. [02S-03 — Java target foundation](M35-03A-02S-03-java-multiplication.md).
+3. [02S-03 — Java target foundation](M35-03A-02S-03-java-multiplication.md) — complete.
 4. [02S-04 — Checked compiler integration](M35-03A-02S-04-compiler-multiplication.md).
 
 ## Contract and completion

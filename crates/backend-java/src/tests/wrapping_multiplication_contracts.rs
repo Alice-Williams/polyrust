@@ -6,9 +6,9 @@ fn admitted(index: usize, value: JavaExpr) -> bool {
 }
 
 #[test]
-fn wrapping_subtraction_requires_exact_types_and_precedence() {
+fn wrapping_multiplication_requires_exact_types_and_precedence() {
     for (index, width) in fixture::WIDTHS.into_iter().enumerate() {
-        let base = subtract(
+        let base = multiply(
             width,
             fixture::literal(width, 1),
             fixture::literal(width, 2),
@@ -34,7 +34,7 @@ fn wrapping_subtraction_requires_exact_types_and_precedence() {
             value.precedence = precedence;
             assert_eq!(
                 admitted(index, value),
-                precedence == JavaPrecedence::Additive
+                precedence == JavaPrecedence::Multiplicative
             );
         }
         let bad_types = [
@@ -72,7 +72,7 @@ fn wrapping_subtraction_requires_exact_types_and_precedence() {
 }
 
 #[test]
-fn wrapping_subtraction_recursively_rejects_unadmitted_shapes_and_depth() {
+fn wrapping_multiplication_recursively_rejects_unadmitted_shapes_and_depth() {
     for (index, width) in fixture::WIDTHS.into_iter().enumerate() {
         let one = || fixture::literal(width, 1);
         for operator in [
@@ -90,7 +90,7 @@ fn wrapping_subtraction_recursively_rejects_unadmitted_shapes_and_depth() {
             };
             assert!(!admitted(index, bad.clone()));
             for (left, right) in [(bad.clone(), one()), (one(), bad)] {
-                assert!(!admitted(index, subtract(width, left, right)));
+                assert!(!admitted(index, multiply(width, left, right)));
             }
         }
         let cast = JavaExpr {
@@ -102,23 +102,23 @@ fn wrapping_subtraction_recursively_rejects_unadmitted_shapes_and_depth() {
             },
         };
         for (left, right) in [(cast.clone(), one()), (one(), cast)] {
-            assert!(!admitted(index, subtract(width, left, right)));
+            assert!(!admitted(index, multiply(width, left, right)));
         }
         for side in [false, true] {
             let mut value = one();
             for _ in 0..16 {
                 value = if side {
-                    subtract(width, one(), value)
+                    multiply(width, one(), value)
                 } else {
-                    subtract(width, value, one())
+                    multiply(width, value, one())
                 };
             }
             assert!(admitted(index, value.clone()));
             for _ in 0..128 {
                 value = if side {
-                    subtract(width, one(), value)
+                    multiply(width, one(), value)
                 } else {
-                    subtract(width, value, one())
+                    multiply(width, value, one())
                 };
             }
             assert!(!admitted(index, value));
@@ -127,7 +127,7 @@ fn wrapping_subtraction_recursively_rejects_unadmitted_shapes_and_depth() {
 }
 
 #[test]
-fn wrapping_subtraction_recursively_checks_original_import_authority_and_arity() {
+fn wrapping_multiplication_recursively_checks_original_import_authority_and_arity() {
     let owners = chain();
     for (index, target) in owners[0].functions().cloned().enumerate() {
         let width = fixture::WIDTHS[index];
@@ -148,7 +148,7 @@ fn wrapping_subtraction_recursively_checks_original_import_authority_and_arity()
                     let (left, right) = if side { (call, zero) } else { (zero, call) };
                     let package = f::package_with_dependencies(
                         821,
-                        vec![fixture::function(index, subtract(width, left, right))],
+                        vec![fixture::function(index, multiply(width, left, right))],
                         if register {
                             scope.finish()
                         } else {

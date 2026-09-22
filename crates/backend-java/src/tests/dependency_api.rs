@@ -184,8 +184,12 @@ fn boolean_negation_is_a_closed_dependency_expression() {
 }
 
 #[test]
-fn integer_addition_and_subtraction_have_exact_width_dependency_certificates() {
-    for operator in [JavaBinaryOperator::Add, JavaBinaryOperator::Subtract] {
+fn integer_wrapping_arithmetic_has_exact_width_dependency_certificates() {
+    for operator in [
+        JavaBinaryOperator::Add,
+        JavaBinaryOperator::Subtract,
+        JavaBinaryOperator::Multiply,
+    ] {
         for (ty, left, right) in [
             (int(), JavaLiteral::I32(42), JavaLiteral::I32(1)),
             (
@@ -198,7 +202,10 @@ fn integer_addition_and_subtraction_have_exact_width_dependency_certificates() {
             fixture[0].result = ty.clone();
             fixture[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
                 ty: ty.clone(),
-                precedence: JavaPrecedence::Additive,
+                precedence: match operator {
+                    JavaBinaryOperator::Multiply => JavaPrecedence::Multiplicative,
+                    _ => JavaPrecedence::Additive,
+                },
                 kind: JavaExprKind::Binary {
                     operator,
                     left: Box::new(JavaExpr::literal(ty.clone(), left)),

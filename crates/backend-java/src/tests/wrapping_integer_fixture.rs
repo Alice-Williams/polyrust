@@ -22,7 +22,10 @@ pub(in crate::tests) fn binary(
 ) -> JavaExpr {
     JavaExpr {
         ty: JavaType::primitive(width),
-        precedence: JavaPrecedence::Additive,
+        precedence: match operator {
+            JavaBinaryOperator::Multiply => JavaPrecedence::Multiplicative,
+            _ => JavaPrecedence::Additive,
+        },
         kind: JavaExprKind::Binary {
             operator,
             left: Box::new(left),
@@ -59,7 +62,8 @@ pub(in crate::tests) fn chain_with_operator(
         let prefix = match operator {
             JavaBinaryOperator::Add => "addition",
             JavaBinaryOperator::Subtract => "subtraction",
-            _ => panic!("shared fixture requires an additive integer operation"),
+            JavaBinaryOperator::Multiply => "multiplication",
+            _ => panic!("shared fixture requires a supported integer operation"),
         };
         declaration.name = f::name(&format!("{prefix}{index}"));
         declaration

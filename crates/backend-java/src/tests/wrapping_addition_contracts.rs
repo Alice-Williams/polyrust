@@ -80,7 +80,6 @@ fn wrapping_addition_requires_exact_types_and_precedence() {
 fn wrapping_addition_does_not_admit_other_integer_arithmetic_or_hidden_casts() {
     for (index, width) in fixture::WIDTHS.into_iter().enumerate() {
         for operator in [
-            JavaBinaryOperator::Multiply,
             JavaBinaryOperator::Divide,
             JavaBinaryOperator::Remainder,
             JavaBinaryOperator::ShiftLeft,

@@ -1,6 +1,6 @@
 # Rust wrapping multiplication in Java21
 
-- Status: planned; admission unchanged
+- Status: target foundation complete; compiler-source admission planned
 - Contract: [shared](../../rust-wrapping-multiplication.md)
 
 ## Typed lowering
