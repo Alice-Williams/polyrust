@@ -81,6 +81,13 @@ contract as every other target.
   compiling value/order faults are detected. Typed dataflow, atomic boundaries,
   original APIs/docs/privacy and actual exported packages accompany the proof.
   Existing output/WIP is unchanged; wider migration remains incomplete.
+  [Signed widening (02T)](tasks/M35-03A-02T-signed-widening.md) next addresses
+  exact i32-to-i64 conversion, with independent oracle, C/Java foundations and
+  compiler integration kept as separately gated/reviewed checkpoints.
+  Its independent oracle is complete: 73,890 exact signed inputs, native Rust
+  as/From at both optimization/check settings, three faulty conversion controls,
+  all 969 release/lint targets passing and clean whole-scope review. Target
+  foundations and checked source admission remain separate work.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

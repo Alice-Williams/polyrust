@@ -1,0 +1,27 @@
+# Rust signed widening in C17
+
+- Status: planned; admission unchanged
+- Contract: [shared](../../rust-signed-widening.md)
+
+## Typed lowering
+
+Materialize the original I32 operand once. Construct Numeric(I64) with that exact
+operand and I64 result; render the normal typed conversion. All i32 values are
+representable by i64 under the certified platform. C integer conversion preserves
+a representable value (6.3.1.3 in the
+[C committee draft](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf)).
+Do not route negative values through unsigned types or perform an intermediate
+narrowing conversion. No generated helper, custom runtime or system library.
+
+## Certification and evidence
+
+The shared profile admits only this exact added shape, recursively visiting the
+operand. Numeric flow retains the operand's range and loss provenance; widening
+does not erase earlier wrapping/narrowing evidence or create allocation/index
+proof. Preserve original imports/calls, pinned integer widths and all budgets.
+Reject other conversions except those separately admitted by existing contracts.
+
+Separate native producers/clients, standalone headers, GCC/Zig O0/O2 and GCC
+UBSan agree with independent signed truth. Safe compiling zero-extension,
+premature-narrowing and disconnected-result faults must differ. Compiler-source
+evaluation and witness identity are proved at the later source checkpoint.

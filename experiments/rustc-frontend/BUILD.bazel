@@ -106,6 +106,7 @@ load(":truncation_targets.bzl", "truncation_targets")
 load(":unit_ast_targets.bzl", "unit_ast_targets")
 load(":unit_contract_targets.bzl", "unit_contract_targets")
 load(":unit_targets.bzl", "unit_targets")
+load(":widening_oracle_targets.bzl", "widening_oracle_targets")
 load(":wrapping_add_oracle_targets.bzl", "wrapping_add_oracle_targets")
 load(":wrapping_ast_targets.bzl", "wrapping_ast_targets")
 load(":wrapping_contract_targets.bzl", "wrapping_contract_targets")
@@ -834,6 +835,8 @@ wrapping_add_oracle_targets(name = "wrapping_add_oracle_test")
 wrapping_sub_oracle_targets(name = "wrapping_sub_oracle_test")
 
 wrapping_mul_oracle_targets(name = "wrapping_mul_oracle_test")
+
+widening_oracle_targets(name = "widening_oracle_test")
 
 remainder_source_targets(name = "remainder_source_clippy_test")
 
