@@ -1,6 +1,6 @@
 # Rust signed widening in Java21
 
-- Status: planned; admission unchanged
+- Status: target foundation complete; compiler-source admission remains separate
 - Contract: [shared](../../rust-signed-widening.md)
 
 ## Typed lowering
@@ -23,3 +23,12 @@ Strict separately compiled Java21 producers/forwarders/clients agree with
 independent signed truth. Compiling zero-extension, premature-narrowing and
 disconnected-result controls must disagree. Source evaluation traces and private
 compiler witness registration are proved later, not inferred from this admission.
+
+## Implementation receipt
+
+[02T-03](../../../../plan/tasks/M35-03A-02T-03-java-widening.md) certifies the exact
+cast with seven focused cases, 14,000 private-reader combinations and independent
+public controls. Actual direct-call and materialized-local packages agree with
+73,890 inputs under normal/interpreted Java21 and kill three compiling faults.
+All 969 release/lint targets pass, including 412 Java unit cases; review is clean.
+Prior output bytes match. The renderer and compiler-source admission are unchanged.

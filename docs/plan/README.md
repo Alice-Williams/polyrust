@@ -90,7 +90,10 @@ contract as every other target.
   foundations and checked source admission remain separate work. The C foundation
   is complete: exact I32-to-I64 certification, six focused cases, 73,890 native
   inputs with compiling fault controls, all 969 release/lint targets passing and
-  clean independent review. Java and checked source integration remain pending.
+  clean independent review. Java foundation is complete too: seven focused tests,
+  14,000 cast annotation combinations, strict native direct/materialized packages,
+  all 969 release/lint targets passing and clean review. Both foundations preserve
+  old output bytes; checked source integration remains pending.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

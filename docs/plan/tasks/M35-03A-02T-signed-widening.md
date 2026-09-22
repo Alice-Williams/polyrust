@@ -9,7 +9,7 @@
 
 1. [02T-01 — Independent widening oracle](M35-03A-02T-01-widening-oracle.md) — complete.
 2. [02T-02 — C target foundation](M35-03A-02T-02-c-widening.md) — complete.
-3. [02T-03 — Java target foundation](M35-03A-02T-03-java-widening.md).
+3. [02T-03 — Java target foundation](M35-03A-02T-03-java-widening.md) — complete.
 4. [02T-04 — Checked compiler integration](M35-03A-02T-04-compiler-widening.md).
 
 ## Contract and completion

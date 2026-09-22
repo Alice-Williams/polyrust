@@ -446,4 +446,6 @@ mod wrapping_multiplication;
 mod wrapping_negation;
 mod wrapping_subtraction;
 
+mod signed_widening;
+
 mod binary64;

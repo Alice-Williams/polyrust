@@ -211,6 +211,16 @@ impl Reader<'_> {
             return Err("Java dependency unary expression requires unary precedence".into());
         }
         match &value.kind {
+            JavaExprKind::Cast {
+                target,
+                value: operand,
+            } if *target == JavaType::primitive(JavaPrimitive::Long)
+                && value.ty == *target
+                && operand.ty == JavaType::primitive(JavaPrimitive::Int)
+                && value.precedence == JavaPrecedence::Unary =>
+            {
+                self.expression(operand, depth + 1)?;
+            }
             JavaExprKind::Literal(
                 JavaLiteral::I32(_)
                 | JavaLiteral::I64(_)
@@ -450,3 +460,7 @@ mod bitwise_tests;
 #[cfg(test)]
 #[path = "../../tests/dependency_arithmetic_bodies.rs"]
 mod arithmetic_tests;
+
+#[cfg(test)]
+#[path = "../../tests/dependency_signed_widening.rs"]
+mod signed_widening_tests;

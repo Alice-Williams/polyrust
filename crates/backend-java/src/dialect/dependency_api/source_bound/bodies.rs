@@ -48,6 +48,10 @@ impl Reader<'_> {
     pub(super) fn expression(&mut self, value: &JavaExpr, depth: usize) -> Result<(), String> {
         self.budget.node(depth)?;
         match &value.kind {
+            JavaExprKind::Cast { target, value } => {
+                self.ty(target)?;
+                self.expression(value, depth + 1)
+            }
             JavaExprKind::Literal(
                 JavaLiteral::I32(_)
                 | JavaLiteral::I64(_)

@@ -1,6 +1,6 @@
 # Checked Rust lossless signed widening
 
-- Status: independent oracle and C foundation complete; Java/source admission pending
+- Status: independent oracle and C/Java foundations complete; source admission pending
 - Plan: [02T](../../plan/tasks/M35-03A-02T-signed-widening.md)
 - Targets: [C17](languages/c/rust-signed-widening.md), [Java21](languages/java/rust-signed-widening.md)
 
