@@ -139,6 +139,15 @@ contract as every other target.
   source recovers original hashes and a cached native pass. Existing output/WIP
   is unchanged; NaN constants and wider migration remain open.
 
+  [Unicode scalar values (02W)](tasks/M35-03A-02W-character-values.md) is the next
+  bounded increment: independent full-domain Rust truth, separate C/Java typed
+  foundations, then checked character literal/transport/comparison integration.
+  Source admission remains disabled until those prerequisites are proved.
+  The oracle is complete: every scalar/surrogate, 80 out-of-range inputs,
+  4,453 comparison pairs and seven actual fault families match the independent
+  model at both Rust profiles. All 1,015 release/lint targets pass and broad
+  review is clean. All 501 prior output files and 38 WIP files are unchanged.
+
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the
 [experiment specification](../specification/rustc-frontend-proof.md).

@@ -20,6 +20,7 @@ load(":boolean_negation_targets.bzl", "boolean_negation_contract_targets", "bool
 load(":box_clone_targets.bzl", "box_clone_targets")
 load(":boxed_record_flow_targets.bzl", "boxed_record_flow_targets")
 load(":c_graph_targets.bzl", "c_graph_targets")
+load(":character_oracle_targets.bzl", "character_oracle_targets")
 load(":clone_flow_targets.bzl", "clone_flow_targets")
 load(":conditional_owned_probe_targets.bzl", "conditional_owned_probe_targets")
 load(":constant_ast_targets.bzl", "constant_ast_targets")
@@ -850,6 +851,8 @@ widening_oracle_targets(name = "widening_oracle_test")
 finite_constant_oracle_targets(name = "finite_constant_oracle_test")
 
 infinite_constant_oracle_targets(name = "infinite_constant_oracle_test")
+
+character_oracle_targets(name = "character_oracle_test")
 
 infinite_constant_source_targets(name = "infinite_constant_source_native_test")
 

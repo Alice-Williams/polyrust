@@ -139,6 +139,16 @@ review is clean, and actual producer-sign invalidation/restored cache reuse is
 proven. Real packages are exported; all 462 prior generated output hashes and
 38 unrelated WIP hashes remain unchanged. NaN constants and wider parity stay open.
 
+[02W — Unicode scalar values](M35-03A-02W-character-values.md) next addresses
+Rust char literal/transport/comparison semantics. The independent full-domain
+oracle precedes C U32 and Java Int target foundations and checked source
+integration. No frontend character admission is enabled by the oracle step.
+Character constants, conversions and text behavior remain separate.
+The independent oracle is complete: 1,112,064 scalars, all 2,048 surrogates,
+80 out-of-range inputs and 4,453 comparison pairs match both Rust profiles.
+Seven actual value/admission/order faults are detected. All 1,015 release/lint
+targets pass and broad review is clean; existing output/WIP is unchanged.
+
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing
