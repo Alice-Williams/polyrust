@@ -67,6 +67,7 @@ pub(super) fn scalar(value: &CScalarConstantValue) -> Result<(&'static str, Stri
         CScalarConstantValue::Bool(value) => Ok(("bool", value.to_string())),
         CScalarConstantValue::I32(value) => Ok(("i32", serialization::quote(&value.to_string()))),
         CScalarConstantValue::I64(value) => Ok(("i64", serialization::quote(&value.to_string()))),
+        CScalarConstantValue::U32(value) => Ok(("u32", serialization::quote(&value.to_string()))),
         CScalarConstantValue::F64(value) => Ok((
             "f64",
             serialization::quote(&format!("0x{:016x}", value.to_bits())),

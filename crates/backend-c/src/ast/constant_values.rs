@@ -1,7 +1,7 @@
 //! Closed scalar inventory values, distinct from finite literal syntax.
 use super::{
-    CKnownConstant, CLiteral, CObjectType, CScalarType, CSignedLiteral, CUnaryOperator, CValue,
-    CValueKind,
+    CKnownConstant, CLiteral, CObjectType, CScalarType, CSignedLiteral, CUnaryOperator,
+    CUnsignedLiteral, CValue, CValueKind,
 };
 use portable_binary64::{Binary64Sign, FiniteBinary64};
 
@@ -10,6 +10,7 @@ pub enum CScalarConstantValue {
     Bool(bool),
     I32(i32),
     I64(i64),
+    U32(u32),
     F64(FiniteBinary64),
     Infinity(Binary64Sign),
 }
@@ -20,6 +21,7 @@ impl CScalarConstantValue {
             Self::Bool(_) => CScalarType::Bool,
             Self::I32(_) => CScalarType::I32,
             Self::I64(_) => CScalarType::I64,
+            Self::U32(_) => CScalarType::U32,
             Self::F64(_) | Self::Infinity(_) => CScalarType::F64,
         })
     }
@@ -30,6 +32,7 @@ impl CScalarConstantValue {
             Self::Bool(value) => CLiteral::Bool(value),
             Self::I32(value) => CLiteral::Signed(CSignedLiteral::I32(value)),
             Self::I64(value) => CLiteral::Signed(CSignedLiteral::I64(value)),
+            Self::U32(value) => CLiteral::Unsigned(CUnsignedLiteral::U32(value)),
             Self::F64(value) => CLiteral::F64(value),
             Self::Infinity(_) => return None,
         })
@@ -42,6 +45,9 @@ impl CScalarConstantValue {
             CValueKind::Literal(CLiteral::Bool(value)) => Self::Bool(*value),
             CValueKind::Literal(CLiteral::Signed(CSignedLiteral::I32(value))) => Self::I32(*value),
             CValueKind::Literal(CLiteral::Signed(CSignedLiteral::I64(value))) => Self::I64(*value),
+            CValueKind::Literal(CLiteral::Unsigned(CUnsignedLiteral::U32(value))) => {
+                Self::U32(*value)
+            }
             CValueKind::Literal(CLiteral::F64(value)) => Self::F64(*value),
             CValueKind::KnownConstant(CKnownConstant::DoubleInfinity) => {
                 Self::Infinity(Binary64Sign::Positive)

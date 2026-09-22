@@ -46,7 +46,7 @@ pub(super) fn collect(
         let read_type = definition.read_type();
         if read_type.constness() != CConstness::Unqualified || read_type != definition.value().ty()
         {
-            return Err("C dependency constant lacks an exact bool/i32/i64/f64 value".into());
+            return Err("C dependency constant lacks an exact bool/i32/i64/u32/f64 value".into());
         }
         if !symbols.insert(definition.name().clone()) {
             return Err("C dependency public symbols are not distinct".into());

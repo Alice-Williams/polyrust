@@ -331,3 +331,7 @@ mod infinite_constants;
 #[cfg(test)]
 #[path = "../tests/shared_characters.rs"]
 mod characters;
+
+#[cfg(test)]
+#[path = "../tests/shared_u32_constants.rs"]
+mod u32_constants;

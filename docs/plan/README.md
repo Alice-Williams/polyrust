@@ -177,6 +177,11 @@ contract as every other target.
   controls pass. All 1,027 release/lint tests pass and fresh broad review is
   clean. No character constant source admission is enabled. Target integer
   inventories must not infer original Rust Char identity.
+  The C foundation is complete: exact U32 constant storage/import authority,
+  4,133 native objects/readers through original-owner aliases, five compiler
+  profiles and four compiling faults pass. All 1,028 release/lint tests pass
+  and fresh whole-scope review is clean. All 530 prior generated hashes and
+  38 unrelated WIP hashes remain unchanged; Java/source steps remain separate.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

@@ -6,14 +6,21 @@ use super::{
 use crate::ast::*;
 
 #[test]
-fn mutable_unsigned_and_aggregate_objects_stay_outside_the_profile() {
+fn mutable_other_unsigned_and_aggregate_objects_stay_outside_the_profile() {
     let scalar = CObjectType::scalar;
     let cases = [
         scalar(CScalarType::Bool),
         scalar(CScalarType::I32),
         scalar(CScalarType::I64),
         scalar(CScalarType::F64),
-        scalar(CScalarType::U32)
+        scalar(CScalarType::U32),
+        scalar(CScalarType::U8)
+            .with_constness(CConstness::Const)
+            .unwrap(),
+        scalar(CScalarType::U16)
+            .with_constness(CConstness::Const)
+            .unwrap(),
+        scalar(CScalarType::U64)
             .with_constness(CConstness::Const)
             .unwrap(),
         CObjectType::array(

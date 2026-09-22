@@ -1,6 +1,6 @@
 # Rust character constants in C17
 
-- Status: planned
+- Status: target foundation complete; checked source admission planned
 - Contract: [shared](../../rust-character-constants.md)
 
 Use ordinary const uint32_t objects with existing typed U32 literal nodes.

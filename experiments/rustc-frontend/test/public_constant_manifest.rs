@@ -34,6 +34,7 @@ pub(crate) fn check(
         CScalarConstantValue::Bool(v) => CScalarConstantValue::Bool(!v),
         CScalarConstantValue::I32(v) => CScalarConstantValue::I32(v.wrapping_add(1)),
         CScalarConstantValue::I64(v) => CScalarConstantValue::I64(v.wrapping_add(1)),
+        CScalarConstantValue::U32(v) => CScalarConstantValue::U32(v.wrapping_add(1)),
         CScalarConstantValue::F64(v) => CScalarConstantValue::F64(
             portable_binary64::FiniteBinary64::from_bits(v.to_bits() ^ (1_u64 << 63)).unwrap(),
         ),

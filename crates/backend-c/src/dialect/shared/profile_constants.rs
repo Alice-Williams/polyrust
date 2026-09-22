@@ -10,12 +10,16 @@ pub(super) fn object(object: &CObjectRef) -> Result<(), String> {
         || !matches!(
             object.ty().kind(),
             CObjectTypeKind::Scalar(
-                CScalarType::Bool | CScalarType::I32 | CScalarType::I64 | CScalarType::F64
+                CScalarType::Bool
+                    | CScalarType::I32
+                    | CScalarType::I64
+                    | CScalarType::U32
+                    | CScalarType::F64
             )
         )
     {
         return Err(
-            "C scalar constant requires public-header const bool/i32/i64/f64 storage".into(),
+            "C scalar constant requires public-header const bool/i32/i64/u32/f64 storage".into(),
         );
     }
     Ok(())

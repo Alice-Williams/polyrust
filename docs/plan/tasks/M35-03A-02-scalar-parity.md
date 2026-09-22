@@ -174,6 +174,11 @@ enabled; conversions/text and wider parity remain outside this increment.
 The independent oracle is complete: 4,127 native compile-time observations,
 four actual faulty columns and exact invalid/protocol checks pass at both
 Rust profiles. All 1,027 release/lint tests pass and broad review is clean.
+The C foundation is complete: exact target U32 storage/import certificates,
+4,133 native objects/readers, five compiler profiles and four actual faults
+pass. All 1,028 release/lint targets pass and fresh broad review is clean.
+All 530 previous generated hashes and 38 unrelated WIP hashes are unchanged.
+Java target proof and checked source integration remain separate checkpoints.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
