@@ -86,7 +86,10 @@ pub(super) fn visit<'a>(value: &'a CValue, add: &mut impl FnMut(Node<'a>)) -> Re
             then_value,
             else_value,
         } if condition.ty().kind() == &CObjectTypeKind::Scalar(CScalarType::Bool)
-            && value.ty().kind() == &CObjectTypeKind::Scalar(CScalarType::F64)
+            && matches!(
+                value.ty().kind(),
+                CObjectTypeKind::Scalar(CScalarType::F64 | CScalarType::U32)
+            )
             && then_value.ty() == value.ty()
             && else_value.ty() == value.ty() =>
         {

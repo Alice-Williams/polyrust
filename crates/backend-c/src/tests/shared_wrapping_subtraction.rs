@@ -136,8 +136,7 @@ fn wrapping_subtraction_keeps_original_authority_and_derived_dependencies() {
             }
         }
     }
-    for unsigned in [CScalarType::U32, CScalarType::U64] {
-        let source = f::fixture(701, &[unsigned], &[], &[None]);
-        assert!(project_c_package(source.registry, source.files).is_err());
-    }
+    // U32 is now a public target transport type; U64 remains internal.
+    let source = f::fixture(701, &[CScalarType::U64], &[], &[None]);
+    assert!(project_c_package(source.registry, source.files).is_err());
 }

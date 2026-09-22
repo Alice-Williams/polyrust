@@ -325,3 +325,7 @@ mod finite_constants;
 #[cfg(test)]
 #[path = "../tests/shared_infinite_constants.rs"]
 mod infinite_constants;
+
+#[cfg(test)]
+#[path = "../tests/shared_characters.rs"]
+mod characters;

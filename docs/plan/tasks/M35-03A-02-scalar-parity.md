@@ -148,6 +148,12 @@ The independent oracle is complete: 1,112,064 scalars, all 2,048 surrogates,
 80 out-of-range inputs and 4,453 comparison pairs match both Rust profiles.
 Seven actual value/admission/order faults are detected. All 1,015 release/lint
 targets pass and broad review is clean; existing output/WIP is unchanged.
+The C character foundation is complete: certified full-domain U32 transport,
+six comparisons, original dependency forwarding and private record/helper
+coverage pass with GCC14/Zig O0/O2 and GCC UBSan, including compiling width/order
+faults. All 1,016 release/lint targets pass and fresh broad review is clean;
+501 prior output hashes and 38 unrelated WIP hashes remain unchanged.
+Java foundation and checked Rust-source admission are still pending.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

@@ -155,6 +155,7 @@ rust_test(
     data = [
         "test/arithmetic_mutations.py",
         "test/binary64_arithmetic.py",
+        "test/characters.py",
         "test/finite_constants.py",
         "test/infinite_constants.py",
         "test/remainder_native.py",
@@ -164,6 +165,7 @@ rust_test(
         "test/wrapping_addition_native.py",
         "test/wrapping_multiplication_faults.py",
         "//experiments/rustc-frontend:arithmetic_oracle_support",
+        "//experiments/rustc-frontend:character_oracle_support",
         "//experiments/rustc-frontend:finite_constant_oracle_support",
         "//experiments/rustc-frontend:infinite_constant_oracle_support",
         "//experiments/rustc-frontend:remainder_oracle_support",

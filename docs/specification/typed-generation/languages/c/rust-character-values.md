@@ -1,6 +1,6 @@
 # Rust Unicode scalar values in C17
 
-- Status: planned; source admission disabled
+- Status: target foundation complete; source admission disabled
 - Contract: [shared](../../rust-character-values.md)
 
 Use CScalarType::U32 and typed unsigned literals for exact scalar numbers.
@@ -13,6 +13,14 @@ typed expression/statement nodes. U32 scalar calls need body-derived effect
 evidence, not a caller-supplied purity flag. Numeric and contextual checks
 still reject invalid arithmetic, missing bodies and unproved storage.
 No integer/character conversion or arithmetic source capability is introduced.
+
+The target profile admits U32 in function signatures, scalar record fields
+and same-U32 conditional branches. Dependency API inventories retain U32 as
+an exact signature type. Existing numeric proofs still govern conversions and
+arithmetic; U64 remains excluded from public signatures. The renderer and
+standard-library catalogue do not change. Target certification proves C
+validity/safety, not the narrower Unicode domain: raw U32 values outside that
+domain remain valid target integers, never checked source characters.
 
 The compiler source type remains Char, with Rust char as the value witness.
 Public metadata distinguishes the Unicode-scalar domain from generic U32;

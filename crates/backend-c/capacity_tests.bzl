@@ -3,6 +3,7 @@
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 CAPACITY_CASES = {
+    "c_characters_native_test": "dialect::shared::characters::native::characters_native_full_domain_comparisons_faults_and_headers",
     "c_infinite_constants_native_test": "dialect::shared::infinite_constants::native::infinity_constants_native_faults_headers_and_ubsan",
     "c_finite_constants_native_test": "dialect::shared::finite_constants::native::finite_constants_native_corpus_faults_headers_and_ubsan",
     "c_capacity_calls_test": "dialect::shared::call_native_tests::generated_call_paths_fit_native_frames_and_stack",

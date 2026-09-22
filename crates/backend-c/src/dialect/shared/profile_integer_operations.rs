@@ -1,4 +1,4 @@
-//! Internal exact-width integer categories; no unsigned public source ABI.
+//! Exact-width target operations; U32 transport does not admit Rust u32 source.
 use super::Node;
 use crate::ast::{
     CBinaryOperator as B, CConversion, CObjectTypeKind, CScalarType as S, CUnaryOperator, CValue,

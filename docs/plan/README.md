@@ -147,6 +147,12 @@ contract as every other target.
   4,453 comparison pairs and seven actual fault families match the independent
   model at both Rust profiles. All 1,015 release/lint targets pass and broad
   review is clean. All 501 prior output files and 38 WIP files are unchanged.
+  Its C target foundation is complete too: full-domain certified U32 transport,
+  six comparisons, original dependency forwarding and private record/helper
+  coverage pass under GCC14/Zig O0/O2 and GCC UBSan. Actual compiling width/order
+  faults are detected. All 1,016 release/lint targets pass, fresh broad review
+  is clean and all prior output/WIP hashes remain unchanged. Java certification
+  and checked Rust-source character admission remain separate pending steps.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

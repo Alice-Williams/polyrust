@@ -1,6 +1,6 @@
 # Checked Rust Unicode scalar values
 
-- Status: independent oracle complete; target foundations and source admission pending
+- Status: independent oracle and C foundation complete; Java foundation and source admission pending
 - Plan: [02W](../../plan/tasks/M35-03A-02W-character-values.md)
 - Targets: [C17](languages/c/rust-character-values.md), [Java21](languages/java/rust-character-values.md)
 

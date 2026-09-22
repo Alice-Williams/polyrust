@@ -28,7 +28,11 @@ fn scalar(ty: &CObjectType) -> bool {
     matches!(
         ty.kind(),
         CObjectTypeKind::Scalar(
-            CScalarType::I32 | CScalarType::I64 | CScalarType::Bool | CScalarType::F64
+            CScalarType::I32
+                | CScalarType::I64
+                | CScalarType::U32
+                | CScalarType::Bool
+                | CScalarType::F64
         )
     )
 }
@@ -180,7 +184,7 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
         if exported {
             if !signature(function) || !closed.contains(function) {
                 return Err(
-                    "C dependency function lacks the closed i32/i64/bool-parameter/scalar-or-void-result proof".into(),
+                    "C dependency function lacks the closed admitted-scalar-parameter/scalar-or-void-result proof".into(),
                 );
             }
             if !symbols.insert(definition.name().clone()) {

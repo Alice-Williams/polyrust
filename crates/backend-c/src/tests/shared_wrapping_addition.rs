@@ -63,16 +63,15 @@ fn wrapping_addition_proves_both_signed_casts_and_rejects_unsafe_guards() {
 }
 
 #[test]
-fn wrapping_addition_internal_unsigned_values_do_not_admit_unsigned_source_signatures() {
-    for scalar in [CScalarType::U32, CScalarType::U64] {
-        let source = f::fixture(701, &[scalar], &[], &[None]);
-        let errors = project_c_package(source.registry, source.files).unwrap_err();
-        assert!(
-            errors
-                .iter()
-                .any(|error| error.message.contains("scalar parameters"))
-        );
-    }
+fn wrapping_addition_internal_unsigned_values_do_not_admit_u64_target_signatures() {
+    // U32 target transport is admitted for characters, not Rust unsigned source.
+    let source = f::fixture(701, &[CScalarType::U64], &[], &[None]);
+    let errors = project_c_package(source.registry, source.files).unwrap_err();
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.message.contains("scalar parameters"))
+    );
 }
 
 fn chain(variant: Variant) -> Vec<CDependencyApi> {

@@ -34,6 +34,7 @@ fn scalar(ty: &CObjectType) -> bool {
         CObjectTypeKind::Scalar(
             CScalarType::I32
                 | CScalarType::I64
+                | CScalarType::U32
                 | CScalarType::Int
                 | CScalarType::Bool
                 | CScalarType::F64

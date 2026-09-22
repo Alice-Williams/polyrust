@@ -9,6 +9,9 @@ mod truncation_tests;
 #[path = "../tests/scalar_call_boundaries.rs"]
 mod boundary_tests;
 #[cfg(test)]
+#[path = "../tests/scalar_call_characters.rs"]
+mod character_tests;
+#[cfg(test)]
 #[path = "../tests/scalar_call_fixture.rs"]
 mod fixture;
 #[cfg(test)]
