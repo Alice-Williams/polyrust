@@ -1,6 +1,6 @@
 # Rust Unicode scalar values in Java21
 
-- Status: planned; source admission disabled
+- Status: target foundation complete; source admission disabled
 - Contract: [shared](../../rust-character-values.md)
 
 Use JavaPrimitive::Int with exact typed integer literals for scalar numbers.
@@ -25,3 +25,10 @@ warnings, normal and -Xint runs, every scalar and all comparison pairs.
 Detect actual narrowing and wrong-order faults. Prove typed source identity,
 resource accounting and exact dependency/owner preservation before source
 admission. This is partial character value parity, not Unicode text support.
+
+The target foundation reuses existing primitive Int admission and structural
+rendering. It does not add a validation/conversion function. Surrogate rejection
+is proved by the independent Rust char oracle and later checked source input,
+not by claiming a Java int has fewer bit patterns. Native fault copies may use
+Character/String solely to demonstrate incorrect UTF-16 semantics; correctly
+generated packages may not acquire those dependencies or representations.

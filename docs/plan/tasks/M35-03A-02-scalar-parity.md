@@ -153,7 +153,11 @@ six comparisons, original dependency forwarding and private record/helper
 coverage pass with GCC14/Zig O0/O2 and GCC UBSan, including compiling width/order
 faults. All 1,016 release/lint targets pass and fresh broad review is clean;
 501 prior output hashes and 38 unrelated WIP hashes remain unchanged.
-Java foundation and checked Rust-source admission are still pending.
+Java foundation is complete too: full-domain primitive Int transport, exact
+dependency authority, strict separate Java21 normal/interpreted proof and four
+compiling fault controls pass. All 1,017 release/lint targets and 427 Java unit
+cases pass; fresh broad review is clean and existing output/WIP is unchanged.
+Checked Rust-source admission is still pending.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

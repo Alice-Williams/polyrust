@@ -3,6 +3,7 @@
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 NATIVE_CASES = {
+    "java_characters_native_test": "tests::characters::native::characters_native_full_domain_and_compiling_faults",
     "java_finite_constants_native_test": "tests::finite_constants::native::finite_constants_native_corpus_and_inlining_sensitive_faults",
     "java_infinite_constants_native_test": "tests::infinite_constants::native::infinity_constants_native_aliases_and_inlining_sensitive_faults",
 }

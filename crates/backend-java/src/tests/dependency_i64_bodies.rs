@@ -36,7 +36,12 @@ fn dependency_comparisons_require_equal_widths_and_boolean_results_locally() {
                         } else {
                             long
                         },
-                        precedence: JavaPrecedence::Primary,
+                        precedence: match operator {
+                            JavaBinaryOperator::Equal | JavaBinaryOperator::NotEqual => {
+                                JavaPrecedence::Equality
+                            }
+                            _ => JavaPrecedence::Relational,
+                        },
                         kind: JavaExprKind::Binary {
                             operator,
                             left: Box::new(left),

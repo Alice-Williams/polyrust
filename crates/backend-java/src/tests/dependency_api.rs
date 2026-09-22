@@ -31,7 +31,12 @@ fn mixed_width_comparisons_reject_before_java_dependency_certification() {
                 fixture[0].result = boolean();
                 fixture[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
                     ty: boolean(),
-                    precedence: JavaPrecedence::Primary,
+                    precedence: match operator {
+                        JavaBinaryOperator::Equal | JavaBinaryOperator::NotEqual => {
+                            JavaPrecedence::Equality
+                        }
+                        _ => JavaPrecedence::Relational,
+                    },
                     kind: JavaExprKind::Binary {
                         operator,
                         left: Box::new(left),

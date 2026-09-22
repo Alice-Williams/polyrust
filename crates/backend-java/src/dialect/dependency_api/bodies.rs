@@ -339,7 +339,14 @@ impl Reader<'_> {
                     | JavaBinaryOperator::GreaterEqual
             ) && scalar(&left.ty)
                 && left.ty == right.ty
-                && value.ty == JavaType::primitive(JavaPrimitive::Boolean) =>
+                && value.ty == JavaType::primitive(JavaPrimitive::Boolean)
+                && value.precedence
+                    == match operator {
+                        JavaBinaryOperator::Equal | JavaBinaryOperator::NotEqual => {
+                            JavaPrecedence::Equality
+                        }
+                        _ => JavaPrecedence::Relational,
+                    } =>
             {
                 self.expression(left, depth + 1)?;
                 self.expression(right, depth + 1)?;

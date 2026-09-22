@@ -153,6 +153,12 @@ contract as every other target.
   faults are detected. All 1,016 release/lint targets pass, fresh broad review
   is clean and all prior output/WIP hashes remain unchanged. Java certification
   and checked Rust-source character admission remain separate pending steps.
+  Java target certification is now complete too: primitive Int full-domain
+  storage, original dependency forwarding, strict separate Java21 compilation
+  and normal/interpreted runs pass with four compiling fault controls. All
+  1,017 release/lint targets and 427 Java unit cases pass, and fresh broad
+  review is clean. Comparison annotations are checked consistently; old output
+  and unrelated WIP remain unchanged. Checked source admission is still pending.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the
