@@ -11,6 +11,7 @@ mod dependency_api;
 mod dependency_inventory;
 mod dependency_legacy;
 pub(crate) mod documentation_fixture;
+pub(crate) mod finite_constants;
 mod mapping_coverage;
 mod mapping_short_circuit;
 pub(crate) mod match_dispatch;

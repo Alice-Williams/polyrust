@@ -1,6 +1,7 @@
 load("@rules_java//java:defs.bzl", "java_library", "java_test")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_doc_test", "rust_library", "rust_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load(":native_tests.bzl", "NATIVE_CASES", "native_test_suite")
 load(":test/rust_compiler_files.bzl", "rust_compiler_files")
 
 exports_files(["Cargo.toml"])
@@ -128,11 +129,15 @@ rust_doc_test(
 )
 
 rust_test(
-    name = "portable_backend_java_test",
+    name = "portable_backend_java_unit_test",
     # The suite runs hundreds of javac/java positive and mutation controls.
     # Hosted runners exceed the default five-minute medium-test budget.
     size = "large",
     srcs = glob(["src/**/*.rs"]),
+    args = [arg for case in NATIVE_CASES.values() for arg in [
+        "--skip",
+        case,
+    ]],
     compile_data = ["//crates/build:testdata/registration.poly.json"],
     crate_name = "portable_backend_java",
     crate_root = "src/lib.rs",
@@ -140,9 +145,11 @@ rust_test(
         "test/arithmetic_mutations.py",
         "test/binary64_arithmetic.py",
         "test/binary64_remainder.py",
+        "test/finite_constants.py",
         "test/signed_widening.py",
         "test/wrapping_addition.py",
         "//experiments/rustc-frontend:arithmetic_oracle_support",
+        "//experiments/rustc-frontend:finite_constant_oracle_support",
         "//experiments/rustc-frontend:remainder_oracle_support",
         "//experiments/rustc-frontend:widening_oracle_support",
         "//experiments/rustc-frontend:wrapping_add_oracle_support",
@@ -164,12 +171,17 @@ rust_test(
     ],
 )
 
+native_test_suite(
+    name = "portable_backend_java_test",
+    unit = ":portable_backend_java_unit_test",
+)
+
 sh_test(
     name = "cargo_oracle_environment_test",
     srcs = ["test/cargo_oracle_environment_test.sh"],
-    args = ["$(location :portable_backend_java_test)"],
+    args = ["$(location :portable_backend_java_unit_test)"],
     data = [
-        ":portable_backend_java_test",
+        ":portable_backend_java_unit_test",
         "@bazel_tools//tools/jdk:current_java_runtime",
     ],
     visibility = ["//visibility:public"],

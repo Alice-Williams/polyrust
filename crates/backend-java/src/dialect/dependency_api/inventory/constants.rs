@@ -45,6 +45,10 @@ pub(super) fn verify(
                 JavaType::Primitive(JavaPrimitive::Long),
                 JavaLiteral::I64(_)
             )
+            | (
+                JavaType::Primitive(JavaPrimitive::Double),
+                JavaLiteral::F64(_)
+            )
     );
     if source.node != RustSourceNode::Declaration
         || source.visibility != RustVisibility::Public
@@ -92,3 +96,7 @@ pub(super) fn verify(
 #[cfg(test)]
 #[path = "../../../tests/source_constant_inventory.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "../../../tests/finite_constant_inventory.rs"]
+mod finite_tests;

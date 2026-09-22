@@ -1,6 +1,6 @@
 # Rust finite binary64 constants in Java21
 
-- Status: planned
+- Status: target foundation complete; source admission pending
 - Contract: [shared](../../rust-finite-f64-constants.md)
 
 ## Target foundation

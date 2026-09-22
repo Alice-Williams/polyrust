@@ -24,6 +24,7 @@ pub fn ty(value: &JavaLiteral) -> JavaType {
         JavaLiteral::Boolean(_) => JavaPrimitive::Boolean,
         JavaLiteral::I32(_) => JavaPrimitive::Int,
         JavaLiteral::I64(_) => JavaPrimitive::Long,
+        JavaLiteral::F64(_) => JavaPrimitive::Double,
         _ => panic!("fixture scalar"),
     })
 }
@@ -43,10 +44,20 @@ impl Fixture {
     pub fn configured(
         mixed: bool,
         edit: impl FnOnce(&mut RustCrateExports),
+        registration: impl FnMut(usize, &mut GeneratedValue<JavaDialect>),
+    ) -> Self {
+        Self::configured_values(mixed, values(), edit, registration)
+    }
+    pub fn with_values(mixed: bool, values: Vec<JavaLiteral>) -> Self {
+        Self::configured_values(mixed, values, |_| {}, |_, _| {})
+    }
+    pub fn configured_values(
+        mixed: bool,
+        values: Vec<JavaLiteral>,
+        edit: impl FnOnce(&mut RustCrateExports),
         mut registration: impl FnMut(usize, &mut GeneratedValue<JavaDialect>),
     ) -> Self {
         let crate_id = 0x35c;
-        let values = values();
         // Reuse only the metadata fixture: replace its method declarations with
         // separately registered values below, never reuse its certificate.
         let functions = values

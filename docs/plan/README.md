@@ -108,7 +108,10 @@ contract as every other target.
   exact finite storage/import certification, 24,576 native bit observations
   per compiler configuration, mutation-sensitive alias/read tests and all
   992 release/lint targets passing with clean review. Old output/WIP is
-  unchanged; Java constants and checked source admission remain.
+  unchanged. The Java foundation is complete: exact primitive-double constant
+  certification, 24,576 native field observations in normal/interpreted Java21,
+  inlining-sensitive mutation proof, all 994 release/lint targets passing and
+  two clean independent reviews. Checked source admission remains next.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the
