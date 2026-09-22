@@ -117,6 +117,15 @@ contract as every other target.
   Four actual C/Java packages are exported; 423 prior output hashes and 38
   unrelated WIP hashes are unchanged. Wider scalar/runtime parity remains open.
 
+  [Signed-infinity constants (02V)](tasks/M35-03A-02V-infinite-f64-constants.md)
+  is the next bounded increment. Its independent oracle, typed standard C/Java
+  constant foundations and checked compiler integration remain separate gates.
+  NaN constants stay unsupported; finite witnesses are not widened.
+  The independent oracle is complete: 20 native computed constants, 24,934
+  classification patterns, actual value faults and independently observed
+  predicates pass at both Rust settings. All 1,004 release/lint targets pass,
+  whole-scope/hardening reviews are clean and existing output/WIP is unchanged.
+
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the
 [experiment specification](../specification/rustc-frontend-proof.md).

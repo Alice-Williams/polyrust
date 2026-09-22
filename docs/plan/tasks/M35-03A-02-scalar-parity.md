@@ -121,6 +121,13 @@ Native Rust/C/Java bit observations, original owner/type/value authority,
 value/sign invalidation and restored cached tests accompany exported packages.
 The broader scalar milestone remains incomplete.
 
+[02V — signed-infinity constants](M35-03A-02V-infinite-f64-constants.md) next
+extends the distinct constant domain to two exact signed values using typed
+standard C/Java constants. Oracle, target foundations and source admission
+are separately gated; NaN constants remain outside this increment.
+The independent oracle is complete with all 1,004 release/lint tests passing
+and clean whole-scope/hardening reviews. Target and source admission stay pending.
+
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and
 floating arithmetic/inspection to the Rust-source C and Java mappings. Existing
