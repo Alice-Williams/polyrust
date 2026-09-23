@@ -8,7 +8,11 @@ use crate::ast::{
 #[path = "profile_integer_operations.rs"]
 mod integer;
 
-pub(super) fn visit<'a>(value: &'a CValue, add: &mut impl FnMut(Node<'a>)) -> Result<(), String> {
+pub(super) fn visit<'a>(
+    value: &'a CValue,
+    registry: Option<&crate::ast::CRegistry>,
+    add: &mut impl FnMut(Node<'a>),
+) -> Result<(), String> {
     add(Node::Type(value.ty()));
     if integer::visit(value, add) {
         return Ok(());
@@ -17,7 +21,7 @@ pub(super) fn visit<'a>(value: &'a CValue, add: &mut impl FnMut(Node<'a>)) -> Re
         CValueKind::KnownConstant(crate::ast::CKnownConstant::DoubleInfinity) => {}
         CValueKind::Call(call) => {
             match call.callable().kind() {
-                CCallableKind::Direct(function) => signature(function)?,
+                CCallableKind::Direct(function) => signature(function, registry)?,
                 CCallableKind::Known(
                     crate::dialect::CKnownCall::FloatTruncate
                     | crate::dialect::CKnownCall::FloatRemainder,

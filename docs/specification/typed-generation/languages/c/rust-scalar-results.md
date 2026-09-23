@@ -1,6 +1,6 @@
 # Rust scalar results in C17
 
-- Status: planned
+- Status: private transport complete; public ABI remains planned
 - Contract: [shared](../../rust-scalar-results.md)
 
 Use a source-derived complete struct with a typed Boolean success tag and I32
@@ -20,3 +20,13 @@ opaque error witness; it evaluates only the selected arm. Foreign C callers
 must use the published nominal type. Fully initialized representation does not
 authorize observing an inactive payload in the source model. Prove standalone
 headers, native ABI/copies/returns and original dependency ownership.
+
+## Private transport boundary
+
+Before public ABI support, the certified profile may pass/return this exact
+unqualified two-field layout only through internal functions in its defining
+implementation file. The complete declaration must precede signatures. Layout
+recognition uses registered nominal/member types, never spelling. The closed
+call-effect analysis can include these pointer-free values, but still derives
+effects from actual bodies and their acyclic callees. This does not certify Rust
+variant identity or make all same-layout source types interchangeable.

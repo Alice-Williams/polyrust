@@ -30,22 +30,33 @@ fn scalar(ty: &CObjectType) -> bool {
     )
 }
 
-fn signature(function: &CFunctionRef) -> bool {
+fn signature(function: &CFunctionRef, registry: Option<&crate::ast::CRegistry>) -> bool {
+    let admitted =
+        |ty: &CObjectType| scalar(ty) || super::super::value_transport::scalar_result(registry, ty);
     (match function.signature().return_type() {
         CReturnType::Void => true,
-        CReturnType::Value(value) => scalar(value.declared_type()),
+        CReturnType::Value(value) => admitted(value.declared_type()),
     }) && function
         .signature()
         .parameters()
         .iter()
-        .all(|p| scalar(p.declared_type()))
+        .all(|p| admitted(p.declared_type()))
 }
 
+#[cfg(test)]
 pub(super) fn dependencies(
     function: &CFunctionRef,
     body: &CBlock,
 ) -> Option<BTreeSet<CFunctionRef>> {
-    if !signature(function) {
+    dependencies_registered(function, body, None)
+}
+
+pub(super) fn dependencies_registered(
+    function: &CFunctionRef,
+    body: &CBlock,
+    registry: Option<&crate::ast::CRegistry>,
+) -> Option<BTreeSet<CFunctionRef>> {
+    if !signature(function, registry) {
         return None;
     }
     let mut pending = vec![Node::Block(body)];
@@ -179,7 +190,7 @@ pub(super) fn dependencies(
             },
             Node::Call(call) => {
                 match call.callable().kind() {
-                    CCallableKind::Direct(callee) if signature(callee) => {
+                    CCallableKind::Direct(callee) if signature(callee, registry) => {
                         edges.insert(callee.as_ref().clone());
                     }
                     // No generated-storage effect; arguments still retain every edge.

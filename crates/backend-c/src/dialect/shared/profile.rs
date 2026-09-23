@@ -133,9 +133,16 @@ fn walk<'a>(
                 }
                 CDeclarationKind::FunctionPrototype {
                     function,
-                    linkage: CLinkage::External | CLinkage::Internal,
+                    linkage: linkage @ (CLinkage::External | CLinkage::Internal),
                 } => {
-                    signature(function)?;
+                    signature(
+                        function,
+                        if *linkage == CLinkage::Internal {
+                            registry
+                        } else {
+                            None
+                        },
+                    )?;
                 }
                 CDeclarationKind::ObjectDeclaration(object) => {
                     constants::object(object)?;
@@ -146,11 +153,18 @@ fn walk<'a>(
             Node::Item(CFileItem::Definition(definition)) => match definition.kind() {
                 CDefinitionKind::Function {
                     function,
-                    linkage: CLinkage::External | CLinkage::Internal,
+                    linkage: linkage @ (CLinkage::External | CLinkage::Internal),
                     body,
                     ..
                 } => {
-                    signature(function)?;
+                    signature(
+                        function,
+                        if *linkage == CLinkage::Internal {
+                            registry
+                        } else {
+                            None
+                        },
+                    )?;
                     functions += 1;
                     add(Node::Block(body));
                 }
@@ -228,7 +242,7 @@ fn walk<'a>(
                 let CCallableKind::Direct(function) = call.callable().kind() else {
                     return Err("C shared effect profile requires resolved direct calls".into());
                 };
-                signature(function)?;
+                signature(function, registry)?;
                 if !matches!(function.signature().return_type(), CReturnType::Void) {
                     return Err("C effect call requires a void result".into());
                 }
@@ -236,7 +250,7 @@ fn walk<'a>(
                     add(Node::Value(argument));
                 }
             }
-            Node::Value(value) => values::visit(value, &mut add)?,
+            Node::Value(value) => values::visit(value, registry, &mut add)?,
             Node::Place(place) => {
                 add(Node::Type(place.ty()));
                 match place.kind() {
@@ -272,17 +286,27 @@ fn walk<'a>(
     Ok(())
 }
 
-fn signature(function: &CFunctionRef) -> Result<(), String> {
+fn signature(
+    function: &CFunctionRef,
+    registry: Option<&crate::ast::CRegistry>,
+) -> Result<(), String> {
+    let admitted = |ty: &CObjectType| {
+        scalar(ty)
+            || (matches!(ty.kind(), CObjectTypeKind::Struct(record)
+            if record.file() == function.file()
+                && matches!(record.file().key().role, crate::ast::CFileRole::GeneratedSource | crate::ast::CFileRole::TestSource))
+                && crate::ownership::value_transport::scalar_result(registry, ty))
+    };
     let admitted_result = match function.signature().return_type() {
         CReturnType::Void => true,
-        CReturnType::Value(result) => scalar(result.declared_type()),
+        CReturnType::Value(result) => admitted(result.declared_type()),
     };
     if !admitted_result
         || function
             .signature()
             .parameters()
             .iter()
-            .any(|parameter| !scalar(parameter.declared_type()))
+            .any(|parameter| !admitted(parameter.declared_type()))
     {
         return Err(
             "first C shared profile admits scalar parameters and scalar/void returns".into(),

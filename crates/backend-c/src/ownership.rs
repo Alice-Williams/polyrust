@@ -12,6 +12,7 @@ mod ranges;
 mod scalar_calls;
 mod sequencing;
 mod storage;
+pub(crate) mod value_transport;
 
 pub use errors::CSafetyError;
 

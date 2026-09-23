@@ -111,6 +111,25 @@ impl Inventory {
     }
 
     fn prototype(&mut self, function: &CFunctionRef) -> Result<(), String> {
+        let result = match function.signature().return_type() {
+            crate::ast::CReturnType::Void => None,
+            crate::ast::CReturnType::Value(value) => Some(value.declared_type()),
+        };
+        for ty in result.into_iter().chain(
+            function
+                .signature()
+                .parameters()
+                .iter()
+                .map(|parameter| parameter.declared_type()),
+        ) {
+            if let CObjectTypeKind::Struct(record) = ty.kind()
+                && !self.records.contains(record)
+            {
+                return Err(
+                    "strict C profile requires record declarations before signatures".into(),
+                );
+            }
+        }
         if self.imports.contains(function) {
             return Err("C dependency prototypes belong to their certified public header".into());
         }

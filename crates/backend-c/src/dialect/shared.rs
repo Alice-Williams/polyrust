@@ -335,3 +335,10 @@ mod characters;
 #[cfg(test)]
 #[path = "../tests/shared_u32_constants.rs"]
 mod u32_constants;
+
+#[cfg(test)]
+#[path = "../tests/shared_private_results.rs"]
+mod private_result_tests;
+#[cfg(test)]
+#[path = "../tests/shared_result_fixture.rs"]
+mod result_fixture;

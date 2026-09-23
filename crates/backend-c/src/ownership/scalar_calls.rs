@@ -45,7 +45,7 @@ impl ScalarCalls {
 
     #[cfg(test)]
     pub(super) fn derive(files: &[CSourceFile]) -> Self {
-        Self::with_seeds(files, BTreeSet::new())
+        Self::with_seeds(files, BTreeSet::new(), None)
     }
 
     pub(super) fn derive_registered(
@@ -59,16 +59,20 @@ impl ScalarCalls {
             registry.imported_function(function)?;
             seeds.insert(function.clone());
         }
-        Ok(Self::with_seeds(files, seeds))
+        Ok(Self::with_seeds(files, seeds, Some(registry)))
     }
 
-    fn with_seeds(files: &[CSourceFile], seeds: BTreeSet<CFunctionRef>) -> Self {
+    fn with_seeds(
+        files: &[CSourceFile],
+        seeds: BTreeSet<CFunctionRef>,
+        registry: Option<&crate::ast::CRegistry>,
+    ) -> Self {
         let mut candidates = BTreeMap::new();
         for file in files {
             for item in file.items() {
                 if let CFileItem::Definition(definition) = item
                     && let CDefinitionKind::Function { function, body, .. } = definition.kind()
-                    && let Some(edges) = shape::dependencies(function, body)
+                    && let Some(edges) = shape::dependencies_registered(function, body, registry)
                 {
                     candidates.insert(function.clone(), edges);
                 }
