@@ -1,6 +1,6 @@
 # M35-03A-05A — No-heap fallible scalar foundation
 
-- Status: planned
+- Status: in-progress
 - Parent: [collections/results](M35-03A-05-collection-parity.md)
 - Depends on: completed scalar values, unit results, calls and structured branches
 
@@ -12,6 +12,17 @@ failure value; making them depend on the entire collection phase creates a
 cycle. No-heap result work may precede completion of 03A-02 and 03A-03.
 
 ## Contract
+
+Ordered, separately gated checkpoints:
+
+1. [05A-01 — Compiler result identity](M35-03A-05A-01-result-identity.md).
+2. [05A-02 — C result transport](M35-03A-05A-02-c-results.md).
+3. [05A-03 — Java result transport](M35-03A-05A-03-java-results.md).
+4. [05A-04 — Checked result integration](M35-03A-05A-04-compiler-results.md).
+
+Specification: [shared](../../specification/typed-generation/rust-scalar-results.md),
+[C17](../../specification/typed-generation/languages/c/rust-scalar-results.md),
+[Java21](../../specification/typed-generation/languages/java/rust-scalar-results.md).
 
 Before implementation, split target and compiler work into separately specified
 tasks. Define typed source variant/payload identities and a closed initial
