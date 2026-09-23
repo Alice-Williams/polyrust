@@ -27,6 +27,15 @@ The implementation steps must be split into smaller operation-specific tasks
 before enabling each mapping. This umbrella is not permission to combine
 unrelated capability changes in one commit or remove unfinished proof checks.
 
+### Refined dependency order
+
+The numbered families above are not an all-or-nothing dependency chain.
+No-heap [fallible scalar results](M35-03A-05A-scalar-results.md) must precede
+checked arithmetic, shifts and narrowing within 03A-02. They do not require
+String/Vec, full nominal parity or owned heap mappings. Oracle preparation
+may proceed independently; target/source admission waits for its actual
+dependencies. Heap-bearing nominal/text/collection features still require M35-02.
+
 ## Definition of done
 
 Every supported legacy C/Java feature has a documented and tested replacement;

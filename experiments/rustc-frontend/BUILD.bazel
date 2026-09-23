@@ -73,6 +73,7 @@ load(":multiplication_source_targets.bzl", "multiplication_source_targets")
 load(":nan_ast_targets.bzl", "nan_ast_targets")
 load(":nan_contract_targets.bzl", "nan_contract_targets")
 load(":nan_targets.bzl", "nan_targets")
+load(":narrowing_oracle_targets.bzl", "narrowing_oracle_targets")
 load(":negative_zero_targets.bzl", "negative_zero_targets")
 load(":nested_correspondence_targets.bzl", "nested_correspondence_targets")
 load(":nested_owned_probe_targets.bzl", "nested_owned_probe_targets")
@@ -856,6 +857,8 @@ wrapping_sub_oracle_targets(name = "wrapping_sub_oracle_test")
 wrapping_mul_oracle_targets(name = "wrapping_mul_oracle_test")
 
 widening_oracle_targets(name = "widening_oracle_test")
+
+narrowing_oracle_targets(name = "narrowing_oracle_test")
 
 finite_constant_oracle_targets(name = "finite_constant_oracle_test")
 

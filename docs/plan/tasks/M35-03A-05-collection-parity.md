@@ -4,6 +4,11 @@
 - Parent: [M35-03A](M35-03A-runtime-free-parity.md)
 - Depends on: M35-02, M35-03A-03 and M35-03A-04
 
+The full collection milestone retains these dependencies. Its prerequisite
+[05A — No-heap fallible scalar foundation](M35-03A-05A-scalar-results.md) does
+not require heap/text or full scalar parity and runs earlier to support checked
+numeric operations. This exception is bounded, not early collection admission.
+
 ## Contract
 
 Replace runtime-backed list/byte conversions, copying, indexing, appending,

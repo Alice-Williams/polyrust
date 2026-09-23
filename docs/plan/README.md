@@ -198,6 +198,15 @@ M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the
 [experiment specification](../specification/rustc-frontend-proof.md).
 
+[Checked narrowing (02Y)](tasks/M35-03A-02Y-checked-narrowing.md) is the next
+bounded scalar increment. Its independent oracle starts first; target/source
+admission waits for [no-heap result support (05A)](tasks/M35-03A-05A-scalar-results.md).
+This removes the circular dependency between completing all scalar operations
+and later implementing the result values those operations require.
+The independent narrowing oracle is complete: 74,389 exact inputs at both Rust
+profiles, six executable faulty conversions, all 1,036 release/lint tests and
+clean GPT-6-Sol extra-high review. No target/source admission follows from it.
+
 The Rust-source path now has a normative [C HIR lowering specification](../specification/typed-generation/languages/c/rust-hir-lowering.md).
 It reuses checked compiler HIR, documentation attributes and the existing C
 AST/certification types; it does not force Rust semantics through the legacy

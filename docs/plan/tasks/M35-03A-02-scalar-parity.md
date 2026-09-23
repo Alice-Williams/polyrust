@@ -200,6 +200,11 @@ per operation; register real typed lowering functions, never support markers.
 
 ## Definition of done and tests
 
+Fallible operations must not block forever on this umbrella's own completion.
+The [no-heap result prerequisite](M35-03A-05A-scalar-results.md) runs before
+checked arithmetic/shifts/narrowing. [02Y — Checked narrowing](M35-03A-02Y-checked-narrowing.md)
+starts with independent truth; target/source admission waits for that prerequisite.
+
 - Separate operation-specific implementation tasks before enabling support.
 - Native Rust/C/Java agree on boundaries, overflow/division/shift/conversion
   failures, short-circuit evaluation, NaN, infinities, negative zero and bits.
