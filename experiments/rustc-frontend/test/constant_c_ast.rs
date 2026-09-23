@@ -25,6 +25,10 @@ pub(super) fn check<'tcx>(reader: &Reader<'tcx>, input: ConstantInput<'tcx>, val
             Some(CLiteral::Signed(CSignedLiteral::I64(v))),
         ),
         ScalarConstantValue::Bool(v) => (CScalarType::Bool, Some(CLiteral::Bool(v))),
+        ScalarConstantValue::Char(v) => (
+            CScalarType::U32,
+            Some(CLiteral::Unsigned(CUnsignedLiteral::U32(u32::from(v)))),
+        ),
         ScalarConstantValue::F64(v) => (CScalarType::F64, Some(CLiteral::F64(v))),
         ScalarConstantValue::Infinity(sign) => {
             match (sign, value.kind()) {

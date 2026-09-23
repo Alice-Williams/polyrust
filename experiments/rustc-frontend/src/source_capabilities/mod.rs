@@ -38,6 +38,7 @@ mod wrapping_negation;
 mod wrapping_subtraction;
 
 pub(crate) use boolean_negation::{BooleanNegation, NegationInput};
+pub(crate) use constant_evaluation::original_value as original_constant_value;
 pub(crate) use constant_values::ScalarConstantValue;
 pub(crate) use contracts::{Capability, Mapping, Supports};
 pub(crate) use direct_calls::{CallInput, DirectCalls};

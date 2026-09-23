@@ -10,6 +10,9 @@ extern crate rustc_span;
 
 #[path = "../src/inputs.rs"]
 mod inputs;
+#[allow(dead_code, reason = "Metadata-only probes do not lower scalar values")]
+#[path = "source_constant_facts_support.rs"]
+mod source_capabilities;
 #[path = "../src/source_origin/mod.rs"]
 mod source_origin;
 mod source_origin_assertions;

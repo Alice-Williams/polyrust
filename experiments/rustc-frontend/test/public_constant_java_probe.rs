@@ -36,6 +36,10 @@ pub(super) fn check(tcx: TyCtxt<'_>, certificate: &RenderReadyPackage<JavaDialec
                     ScalarConstantValue::I64(v) => {
                         (JavaPrimitive::Long, JavaScalarConstantValue::I64(v))
                     }
+                    ScalarConstantValue::Char(v) => (
+                        JavaPrimitive::Int,
+                        JavaScalarConstantValue::I32(u32::from(v) as i32),
+                    ),
                     ScalarConstantValue::F64(v) => {
                         (JavaPrimitive::Double, JavaScalarConstantValue::F64(v))
                     }

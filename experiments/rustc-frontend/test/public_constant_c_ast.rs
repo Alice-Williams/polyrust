@@ -38,6 +38,9 @@ pub(super) fn read<'tcx>(
     reader.constants.insert(input.definition(), saved.clone());
     reader.constants.get_mut(&input.definition()).unwrap().1 = match input.value() {
         super::ScalarConstantValue::Bool(v) => super::ScalarConstantValue::Bool(!v),
+        super::ScalarConstantValue::Char(v) => {
+            super::ScalarConstantValue::Char(char::from_u32(u32::from(v) ^ 1).unwrap())
+        }
         super::ScalarConstantValue::I32(v) => super::ScalarConstantValue::I32(v.wrapping_add(1)),
         super::ScalarConstantValue::I64(v) => super::ScalarConstantValue::I64(v.wrapping_add(1)),
         super::ScalarConstantValue::F64(v) => super::ScalarConstantValue::F64(

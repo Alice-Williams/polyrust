@@ -6,7 +6,7 @@ import sys
 
 
 def main():
-    scalar = "scalar constants support only bool, i32, i64 and non-NaN f64"
+    scalar = "scalar constants support only bool, char, i32, i64 and non-NaN f64"
     nonfinite = "NaN f64 constants are not implemented"
     cases = {
         "positive_payload_nan": ("pub const V:f64=f64::from_bits(0x7ff8000000000001);", nonfinite),

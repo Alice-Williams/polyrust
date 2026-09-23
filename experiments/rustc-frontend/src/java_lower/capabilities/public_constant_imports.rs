@@ -25,6 +25,11 @@ impl Mapping for JavaPublicConstantImports {
         let value = crate::source_capabilities::import_mutations::value(value);
         let (plan, expected) = constants::value(value);
         let id = crate::source_origin::identity(input.tcx(), input.definition());
+        if state.proof.source_value() != Some(value.original()) {
+            return Err(
+                "foreign compiler identity/type/value differs: original Rust value differs from Java source constant facts".into(),
+            );
+        }
         if state.proof.declaration() != id
             || state.proof.package_identity().root().crate_id != id.crate_id
             || state.proof.ty() != &plan.java_type()

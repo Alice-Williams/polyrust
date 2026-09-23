@@ -28,6 +28,10 @@ pub(super) fn check<'tcx>(
             JavaPrimitive::Long,
             JavaExprKind::Literal(JavaLiteral::I64(v)),
         ),
+        ScalarConstantValue::Char(v) => (
+            JavaPrimitive::Int,
+            JavaExprKind::Literal(JavaLiteral::I32(u32::from(v) as i32)),
+        ),
         ScalarConstantValue::Bool(v) => (
             JavaPrimitive::Boolean,
             JavaExprKind::Literal(JavaLiteral::Boolean(v)),

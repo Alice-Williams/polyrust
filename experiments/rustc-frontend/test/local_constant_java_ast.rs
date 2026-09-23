@@ -63,6 +63,7 @@ pub(super) fn check(reader: &Reader<'_>, input: LocalConstantInput<'_>, before: 
         .expect("checked scalar constant type");
     match input.value() {
         ScalarConstantValue::Bool(_) => assert!(matches!(declared.kind(), ty::Bool)),
+        ScalarConstantValue::Char(_) => assert!(matches!(declared.kind(), ty::Char)),
         ScalarConstantValue::I32(_) => assert!(matches!(declared.kind(), ty::Int(ty::IntTy::I32))),
         ScalarConstantValue::I64(_) => assert!(matches!(declared.kind(), ty::Int(ty::IntTy::I64))),
         ScalarConstantValue::F64(_) | ScalarConstantValue::Infinity(_) => {

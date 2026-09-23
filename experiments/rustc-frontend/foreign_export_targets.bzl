@@ -12,19 +12,22 @@ def foreign_export_targets(name):
     sources = [
         "src/inputs.rs",
         "test/foreign_exports_main.rs",
+        "test/source_constant_facts_support.rs",
+        "src/source_capabilities/constant_values.rs",
+        "src/source_capabilities/constant_evaluation.rs",
     ] + native.glob(["src/source_origin/**/*.rs"])
     compiler_adapter(
         name = "foreign_export_probe",
         srcs = sources,
         crate_root = "test/foreign_exports_main.rs",
-        deps = ["//crates/codegen:portable_codegen"],
+        deps = ["//crates/codegen:portable_codegen", "//crates/binary64:portable_binary64"],
     )
     compiler_adapter(
         name = "foreign_export_mismatch_probe",
         srcs = sources + ["test/export_definition_mismatch.rs"],
         crate_root = "test/foreign_exports_main.rs",
         rustc_cfg = "export_definition_mismatch",
-        deps = ["//crates/codegen:portable_codegen"],
+        deps = ["//crates/codegen:portable_codegen", "//crates/binary64:portable_binary64"],
     )
     compiler_adapter_compile_fail_test(
         name = "foreign_export_private_test",
@@ -32,7 +35,7 @@ def foreign_export_targets(name):
         crate_root = "test/foreign_exports_main.rs",
         rustc_cfg = "foreign_export_private",
         expected_error = "error[E0451]",
-        deps = ["//crates/codegen:portable_codegen"],
+        deps = ["//crates/codegen:portable_codegen", "//crates/binary64:portable_binary64"],
     )
     sh_test(
         name = name,

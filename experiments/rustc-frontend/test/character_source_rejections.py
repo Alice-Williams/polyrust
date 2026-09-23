@@ -13,8 +13,14 @@ def main():
     root = Path(os.environ["TEST_TMPDIR"]) / "character-rejections"
     root.mkdir()
     cases = {
-        "constant": ("pub const V:char='x';", "scalar constants support", True),
-        "private_constant": ("const V:char='x'; pub fn value()->char{V}", "scalar constants support", True),
+        "trait_constant": ("struct S; trait T{const V:char;} impl T for S{const V:char='x';} pub fn value()->char{<S as T>::V}", "scalar constants require nongeneric", True),
+        "concrete_generic_constant": ("struct S<const N:usize>; impl S<1>{const V:char='x';} pub fn value()->char{S::<1>::V}", "scalar constants require nongeneric nominal", True),
+        "constant_type_alias": ("type C=char; pub const V:C='x';", "Rust type alias uses require an unimplemented provenance mapping", True),
+        "local_constant_type_alias": ("type C=char; pub fn value()->char{const V:C='x'; V}", "Rust type alias uses require an unimplemented provenance mapping", True),
+        "invalid_constant_surrogate": ("pub const V:char=char::from_u32(0xd800).unwrap();", "error[E0080]", True),
+        "invalid_constant_above_maximum": ("pub const V:char=char::from_u32(0x110000).unwrap();", "error[E0080]", True),
+        "borrowed_constant": ("pub const V:&char=&'x';", "scalar constants support", True),
+        "generic_constant": ("struct S<const N:usize>; impl<const N:usize>S<N>{const V:char='x';} pub fn value()->char{S::<1>::V}", "scalar constants require nongeneric", True),
         "cast_from_char": ("pub fn value(v:char)->i64{v as i64}", "signed widening supports only", True),
         "cast_to_char": ("pub fn value()->char{65u8 as char}", "signed widening supports only", True),
         "method": ("pub fn value(v:char)->bool{v.is_ascii()}", "not implemented", True),
@@ -52,11 +58,11 @@ def main():
                 result = subprocess.run([adapter, source, output, *(["--package"] if package else [])],
                                         capture_output=True, text=True, timeout=90)
                 assert result.returncode != 0 and diagnostic in result.stderr, (language, label, result.stderr)
-                if label not in ["surrogate", "above_maximum", "multiple"]:
+                if label not in ["surrogate", "above_maximum", "multiple", "invalid_constant_surrogate", "invalid_constant_above_maximum"]:
                     assert "error[E" not in result.stderr, (label, result.stderr)
                 assert files(work) == before and output.exists() == existing
     print(f"{len(cases) * 4} atomic character boundaries; positive source controls; "
-          "constants/casts/methods/refs/entry shapes rejected; invalid literals rejected by rustc")
+          "unsupported constant forms/casts/methods/refs/entry shapes rejected; invalid scalars rejected by rustc")
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ mod imports;
 #[path = "../../test/c_import_manifest_contract.rs"]
 pub(crate) mod inventory_contract;
 mod serialization;
+mod source_constant_values;
 mod source_types;
 mod system_libraries;
 #[cfg(truncation_ast_probe)]

@@ -1,5 +1,5 @@
 //! Descriptive original source types, never reconstructed from a target primitive.
-use super::RustDeclarationId;
+use super::{RustConstantValue, RustDeclarationId};
 use std::collections::BTreeMap;
 
 /// Char is a Unicode scalar; it is not interchangeable with I32 or a UTF-16 unit.
@@ -69,6 +69,7 @@ pub struct RustSourceTypes {
     root: RustDeclarationId,
     functions: BTreeMap<RustDeclarationId, RustFunctionTypes>,
     fields: BTreeMap<RustDeclarationId, RustFieldTypes>,
+    constants: BTreeMap<RustDeclarationId, RustConstantValue>,
 }
 
 impl RustSourceTypes {
@@ -108,7 +109,49 @@ impl RustSourceTypes {
             root,
             functions,
             fields,
+            constants: BTreeMap::new(),
         })
+    }
+
+    /// Attach exactly the emitted original constants, not folded private reads.
+    /// Ownership/budgets are checked; callers must still authenticate source facts.
+    pub fn with_constants(
+        mut self,
+        constants: BTreeMap<RustDeclarationId, RustConstantValue>,
+    ) -> Result<Self, String> {
+        if constants.len() > 100_000 {
+            return Err("source constant inventory exceeds declaration budget".into());
+        }
+        if constants.keys().any(|id| {
+            id.crate_id != self.root.crate_id
+                || *id == self.root
+                || self.functions.contains_key(id)
+                || self.fields.contains_key(id)
+        }) || self
+            .fields
+            .values()
+            .any(|field| constants.contains_key(&field.owner))
+        {
+            return Err(
+                "source constant inventory has a foreign or conflicting declaration".into(),
+            );
+        }
+        let mut count = self
+            .fields
+            .len()
+            .checked_add(constants.len())
+            .ok_or("source constant inventory count overflow")?;
+        for function in self.functions.values() {
+            count = count
+                .checked_add(function.parameters.len())
+                .and_then(|count| count.checked_add(1))
+                .ok_or("source constant inventory count overflow")?;
+        }
+        if count > 100_000 {
+            return Err("source constant inventory exceeds scalar budget".into());
+        }
+        self.constants = constants;
+        Ok(self)
     }
 
     pub fn root(&self) -> RustDeclarationId {
@@ -120,6 +163,9 @@ impl RustSourceTypes {
     pub fn fields(&self) -> &BTreeMap<RustDeclarationId, RustFieldTypes> {
         &self.fields
     }
+    pub fn constants(&self) -> &BTreeMap<RustDeclarationId, RustConstantValue> {
+        &self.constants
+    }
     pub fn contains_char(&self) -> bool {
         self.functions
             .values()
@@ -128,8 +174,16 @@ impl RustSourceTypes {
                 .fields
                 .values()
                 .any(|field| field.kind == RustScalarKind::Char)
+            || self
+                .constants
+                .values()
+                .any(|value| value.kind() == RustScalarKind::Char)
     }
 }
+
+#[cfg(test)]
+#[path = "constant_types_tests.rs"]
+mod constant_tests;
 
 #[cfg(test)]
 mod tests {

@@ -56,6 +56,16 @@ impl JavaDependencyConstant {
     pub fn value(&self) -> &JavaScalarConstantValue {
         &self.value
     }
+    /// Original facts attached to this exact certificate, not inferred from Int.
+    pub fn source_value(&self) -> Option<portable_codegen::RustConstantValue> {
+        self.owner
+            .0
+            .source_types
+            .as_ref()?
+            .constants()
+            .get(&self.declaration())
+            .copied()
+    }
 }
 impl PartialEq for JavaDependencyConstant {
     fn eq(&self, other: &Self) -> bool {

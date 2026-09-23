@@ -23,6 +23,10 @@ pub(super) fn value(input: ScalarConstantValue) -> (super::TypePlan, JavaScalarC
         ScalarConstantValue::I64(value) => {
             (super::TypePlan::I64, JavaScalarConstantValue::I64(value))
         }
+        ScalarConstantValue::Char(value) => (
+            super::TypePlan::Char,
+            JavaScalarConstantValue::I32(u32::from(value) as i32),
+        ),
         ScalarConstantValue::F64(value) => {
             (super::TypePlan::F64, JavaScalarConstantValue::F64(value))
         }

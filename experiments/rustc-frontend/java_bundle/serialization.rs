@@ -33,13 +33,12 @@ pub(crate) fn owner(out: &mut impl Sink, manifest: &Manifest<'_>) -> Result<(), 
             .foreign_constants
             .iter()
             .any(|binding| is_f64(binding.dependency().ty()));
+    let source_types = manifest.owner.api.source_types();
+    let characters = source_types.is_some_and(portable_codegen::RustSourceTypes::contains_char);
     out.fixed(
-        if manifest
-            .owner
-            .api
-            .source_types()
-            .is_some_and(portable_codegen::RustSourceTypes::contains_char)
-        {
+        if characters && source_types.is_some_and(|types| !types.constants().is_empty()) {
+            "{\"schema_version\":8,\"root\":"
+        } else if characters {
             "{\"schema_version\":7,\"root\":"
         } else if binary64 {
             "{\"schema_version\":6,\"root\":"

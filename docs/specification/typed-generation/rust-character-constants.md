@@ -1,6 +1,6 @@
 # Checked Rust Unicode scalar constants
 
-- Status: independent oracle and C/Java target foundations complete; source admission planned
+- Status: independent oracle, target foundations and checked source integration complete
 - Plan: [02X](../../plan/tasks/M35-03A-02X-character-constants.md)
 - Prerequisite: [character values](rust-character-values.md)
 - Targets: [C17](languages/c/rust-character-constants.md), [Java21](languages/java/rust-character-constants.md)
@@ -29,11 +29,26 @@ declaration set, kind and value with certified target constants. At dependency
 reads join the producer's retained source facts with the consumer's original
 compiler declaration before granting a typed import.
 
+RustSourceTypes carries an exact emitted-public-constant map keyed by original
+RustDeclarationId. RustConstantValue is a closed descriptive enum: Bool(bool),
+I32(i32), I64(i64), F64Bits(u64), Char(char). The variant determines source kind;
+there is no independently mutable kind/value pair. Floating bits preserve exact
+representation without a new dependency; constructing descriptive facts does
+not admit NaN constants or authenticate source analysis. Character values use
+Rust char so an invalid Unicode scalar cannot inhabit that variant safely.
+with_constants checks ownership, cross-inventory/field-owner collisions and
+combined scalar budgets. Private/local/inherent folded constants are excluded
+when no target declaration is emitted. Both adapters recollect and authenticate
+the complete inventory from rustc before target reconciliation. Reconciliation
+and foreign joins compare exact original values as well as source kinds.
+
 Constant-only character crates must expose the character-aware metadata even
 without character functions or record fields. Public aliases retain original
 definition/owner identity, docs and visibility. Serialized descriptions cannot
 manufacture dependency authority. Reserve metadata/output resources before
 publication and preserve old non-character package bytes.
+Omit the serialized constant source-facts section when its inventory is empty
+so previously generated character-value packages also retain identical bytes.
 
 ## Evidence boundary
 

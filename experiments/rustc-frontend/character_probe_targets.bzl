@@ -15,7 +15,7 @@ def character_probe_targets(name, c_sources):
         compiler_adapter(
             name = "character_" + language + "_probe",
             crate_root = "src/main.rs" if language == "c" else "src/java_main.rs",
-            srcs = (c_sources if language == "c" else java_graph_sources()) + ["test/character_type_probe.rs"],
+            srcs = (c_sources if language == "c" else java_graph_sources()) + ["test/character_type_probe.rs", "test/character_constant_type_probe.rs"],
             rustc_cfgs = ["character_source_probe"] + (["java_graph"] if language == "java" else []),
             directory_publisher = ":directory_publisher",
             deps = [

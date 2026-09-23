@@ -32,9 +32,12 @@ pub(super) fn evaluate<'tcx>(
         .map_err(|_| "scalar constant type normalization failed")?;
     if !matches!(
         ty.kind(),
-        ty::Bool | ty::Int(ty::IntTy::I32 | ty::IntTy::I64) | ty::Float(ty::FloatTy::F64)
+        ty::Bool
+            | ty::Char
+            | ty::Int(ty::IntTy::I32 | ty::IntTy::I64)
+            | ty::Float(ty::FloatTy::F64)
     ) {
-        return Err("scalar constants support only bool, i32, i64 and non-NaN f64".into());
+        return Err("scalar constants support only bool, char, i32, i64 and non-NaN f64".into());
     }
     let evaluated = tcx
         .const_eval_poly(definition)
@@ -51,6 +54,9 @@ pub(super) fn evaluate<'tcx>(
         ),
         (ty::Int(ty::IntTy::I32), 4) => ScalarConstantValue::I32(scalar.to_i32()),
         (ty::Int(ty::IntTy::I64), 8) => ScalarConstantValue::I64(scalar.to_i64()),
+        (ty::Char, 4) => ScalarConstantValue::Char(
+            char::from_u32(scalar.to_u32()).ok_or("invalid compiler character scalar")?,
+        ),
         (ty::Float(ty::FloatTy::F64), 8) => match FiniteBinary64::from_bits(scalar.to_u64()) {
             Ok(value) => ScalarConstantValue::F64(value),
             Err(NonFiniteBinary64::Infinity(sign)) => ScalarConstantValue::Infinity(sign),
@@ -61,6 +67,14 @@ pub(super) fn evaluate<'tcx>(
         _ => return Err("compiler constant scalar width disagrees with its type".into()),
     };
     Ok((ty, value))
+}
+
+/// Descriptive original facts are recollected from checked compiler definitions.
+pub(crate) fn original_value(
+    tcx: TyCtxt<'_>,
+    definition: DefId,
+) -> Result<portable_codegen::RustConstantValue, String> {
+    evaluate(tcx, definition).map(|(_, value)| value.original())
 }
 
 /// A concrete impl can have no parameters but still instantiate generic self

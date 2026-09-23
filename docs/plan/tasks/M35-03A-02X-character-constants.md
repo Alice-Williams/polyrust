@@ -1,6 +1,6 @@
 # M35-03A-02X — Unicode scalar constants
 
-- Status: in-progress
+- Status: complete
 - Parent: [scalar parity](M35-03A-02-scalar-parity.md)
 - Depends on: [character values](M35-03A-02W-character-values.md)
 - Specification: [shared](../../specification/typed-generation/rust-character-constants.md)
@@ -15,10 +15,15 @@ constants. Do not infer source Char from a Java Int or C U32 certificate.
 1. [02X-01 — Independent constant oracle](M35-03A-02X-01-constant-oracle.md) — complete; 4,127 compile-time observations, all 1,027 release/lint tests and clean broad review.
 2. [02X-02 — C constant foundation](M35-03A-02X-02-c-constants.md) — complete; 4,133 native objects/imported readers, all 1,028 release/lint tests and clean broad review.
 3. [02X-03 — Java constant foundation](M35-03A-02X-03-java-constants.md) — complete; 4,133 native fields/local/imported readers, all 1,029 release/lint tests and two clean broad reviews.
-4. [02X-04 — Checked source integration](M35-03A-02X-04-compiler-constants.md).
+4. [02X-04 — Checked source integration](M35-03A-02X-04-compiler-constants.md) — complete; original-kind/value/import authentication, 18 native Rust reads/profile, 43 target observations/configuration, 1,033 passing release/lint tests and clean GPT-6-Sol extra-high reviews.
 
 Each checkpoint needs separate full Linux Bazel release/lint, fresh broad
 review, preservation evidence and commit/push. No production source admission
 is enabled by the oracle or target foundations. Existing legacy gates remain.
 Character conversions, methods, references, text, generic/trait constants and
 type-alias admission are outside this increment.
+
+Checked source integration also proves producer-value cache invalidation,
+updated-truth native success and restored cached success. All 530 preceding
+generated-file hashes and 45 unrelated WIP hashes are preserved. Real C/Java
+source packages and clients are exported locally; wider migration remains open.

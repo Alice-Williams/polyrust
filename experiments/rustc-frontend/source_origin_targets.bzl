@@ -16,8 +16,11 @@ def source_origin_targets(name):
             "src/inputs.rs",
             "test/source_origin_main.rs",
             "test/source_origin_assertions.rs",
+            "test/source_constant_facts_support.rs",
+            "src/source_capabilities/constant_values.rs",
+            "src/source_capabilities/constant_evaluation.rs",
         ] + native.glob(["src/source_origin/**/*.rs"]),
-        deps = ["//crates/codegen:portable_codegen"],
+        deps = ["//crates/codegen:portable_codegen", "//crates/binary64:portable_binary64"],
     )
     sh_test(
         name = name,

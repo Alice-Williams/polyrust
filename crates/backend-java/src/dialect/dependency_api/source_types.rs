@@ -43,7 +43,7 @@ fn verify_inventory(
     if types.root() != root {
         return Err("Java source type facts belong to another owner".into());
     }
-    let (mut functions, mut fields) = (0, 0);
+    let (mut functions, mut fields, mut constants) = (0, 0, 0);
     for description in descriptions {
         let id = description.source().declaration;
         match description.kind() {
@@ -82,10 +82,27 @@ fn verify_inventory(
                 }
                 fields += 1;
             }
-            JavaSourceDescriptionKind::Record | JavaSourceDescriptionKind::Constant { .. } => {}
+            JavaSourceDescriptionKind::Constant { ty, value } => {
+                let original = types
+                    .constants()
+                    .get(&id)
+                    .ok_or("Java source constant facts are missing")?;
+                if scalar(original.kind()) != *ty
+                    || !super::source_constant_values::matches(*original, value)
+                {
+                    return Err(
+                        "Java source constant facts disagree with target value or type".into(),
+                    );
+                }
+                constants += 1;
+            }
+            JavaSourceDescriptionKind::Record => {}
         }
     }
-    if functions != types.functions().len() || fields != types.fields().len() {
+    if functions != types.functions().len()
+        || fields != types.fields().len()
+        || constants != types.constants().len()
+    {
         return Err("Java source type facts include unknown declarations".into());
     }
     Ok(())

@@ -8,7 +8,7 @@ import sys
 def main():
     root = Path(os.environ["TEST_TMPDIR"]) / "local-constant-rejections"
     root.mkdir()
-    scalar = "scalar constants support only bool, i32, i64 and non-NaN f64"
+    scalar = "scalar constants support only bool, char, i32, i64 and non-NaN f64"
     item = "only scalar const item statements are implemented"
     cases = {
         "unused_u32": ("pub fn value()->i32 { const VALUE:u32=4; 0 }", scalar, True),

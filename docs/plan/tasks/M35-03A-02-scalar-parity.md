@@ -183,7 +183,14 @@ Java target proof is complete: all 4,133 fields/local/imported readers agree
 under strict separate Java21 compilation and normal/-Xint execution, including
 four mutation-sensitive faults and readonly/capacity controls. All 1,029
 release/lint targets and 436 Java unit cases pass; two broad reviews are clean.
-Previous output/WIP is unchanged. Checked source integration remains open.
+Previous output/WIP is unchanged. Checked source integration is now complete:
+original Char facts remain distinct from target integer certificates, with
+18 original Rust reads/profile, 43 target observations/configuration, atomic
+source/import controls and four compiling value faults. All 1,033 release/lint
+targets pass and fresh GPT-6-Sol extra-high reviews are clean. Actual producer
+invalidation, updated-truth success and restored cached success are proven.
+Real packages are exported; all 530 preceding output hashes and 45 unrelated
+WIP hashes remain unchanged. Character conversions/text and wider parity remain open.
 
 Add remaining f64/char/unit values, constants/aliases, Boolean operations,
 integer checked/wrapping/bitwise/shift/conversion operations, comparisons and

@@ -186,7 +186,13 @@ contract as every other target.
   agree with independent truth under normal/interpreted Java21; recompiled
   mutations, original aliases, readonly fields and exact capacity controls pass.
   All 1,029 release/lint tests and 436 Java unit cases pass; two fresh broad
-  reviews are clean. Existing output/WIP is unchanged. Source integration is next.
+  reviews are clean. Existing output/WIP is unchanged. Checked source integration
+  is complete too: original Char/value/owner joins, constant-only producers,
+  aliases and private/local/inherent reads pass native and atomic controls.
+  All 1,033 release/lint targets pass and fresh GPT-6-Sol extra-high reviews are
+  clean. Producer-value invalidation and restored cached success are proven;
+  real packages are exported, with all 530 preceding output hashes and 45
+  unrelated WIP hashes unchanged. Conversions/text and wider parity remain open.
 
 M35 takes priority over unfinished M34A-11 ownership analysis. Existing C work
 is preserved pending the integration decision. See the

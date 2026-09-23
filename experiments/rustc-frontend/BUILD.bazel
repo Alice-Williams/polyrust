@@ -21,6 +21,7 @@ load(":box_clone_targets.bzl", "box_clone_targets")
 load(":boxed_record_flow_targets.bzl", "boxed_record_flow_targets")
 load(":c_graph_targets.bzl", "c_graph_targets")
 load(":character_constant_oracle_targets.bzl", "character_constant_oracle_targets")
+load(":character_constant_source_targets.bzl", "character_constant_source_targets")
 load(":character_oracle_targets.bzl", "character_oracle_targets")
 load(":character_probe_targets.bzl", "character_probe_targets")
 load(":character_source_targets.bzl", "character_source_targets")
@@ -867,6 +868,8 @@ character_constant_oracle_targets(name = "character_constant_oracle_test")
 character_source_targets(name = "character_source_rust_test")
 
 infinite_constant_source_targets(name = "infinite_constant_source_native_test")
+
+character_constant_source_targets(name = "character_constant_source_native_test")
 
 infinite_constant_probe_targets(
     name = "infinite_constant_source_ast_test",

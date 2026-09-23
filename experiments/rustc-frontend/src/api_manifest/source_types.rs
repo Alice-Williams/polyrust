@@ -30,6 +30,17 @@ impl ApiManifest {
         self.source_types.as_ref()?.functions().get(&id)
     }
 
+    #[allow(
+        dead_code,
+        reason = "Standalone manifest probes do not resolve imports"
+    )]
+    pub(crate) fn source_constant(
+        &self,
+        id: RustDeclarationId,
+    ) -> Option<portable_codegen::RustConstantValue> {
+        self.source_types.as_ref()?.constants().get(&id).copied()
+    }
+
     pub(super) fn copy_source_types(
         mut self,
         package: &RenderReadyPackage<CDialect>,
@@ -48,6 +59,18 @@ impl ApiManifest {
     ) -> Result<Self, String> {
         if types.root() != self.exports.root || types.functions().len() != self.functions.len() {
             return Err("C source type owner or function inventory differs".into());
+        }
+        if types.constants().len() != self.constants.len() {
+            return Err("C source constant inventory differs".into());
+        }
+        for (id, constant) in &self.constants {
+            let original = types
+                .constants()
+                .get(id)
+                .ok_or("C source constant facts missing")?;
+            if !super::source_constant_values::matches(*original, &constant.value) {
+                return Err("C source constant facts disagree with target value or type".into());
+            }
         }
         for (id, function) in &self.functions {
             let original = types
@@ -133,6 +156,13 @@ impl ApiManifest {
             .len()
             .checked_mul(160)
             .and_then(|bytes| bound.checked_add(bytes))
+            .and_then(|bytes| {
+                types
+                    .constants()
+                    .len()
+                    .checked_mul(192)
+                    .and_then(|constants| bytes.checked_add(constants))
+            })
             .ok_or_else(|| "C source field metadata overflow".into())
     }
 
@@ -178,6 +208,24 @@ impl ApiManifest {
             )
             .unwrap();
         }
-        text.push_str("]}");
+        text.push(']');
+        if !types.constants().is_empty() {
+            text.push_str(",\"constants\":[");
+            for (index, (id, value)) in types.constants().iter().enumerate() {
+                if index != 0 {
+                    text.push(',');
+                }
+                write!(
+                    text,
+                    "{{\"id\":{},\"scalar\":{},\"value\":{}}}",
+                    identity(*id),
+                    quote(value.kind().spelling()),
+                    super::source_constant_values::encoded_value(*value)
+                )
+                .unwrap();
+            }
+            text.push(']');
+        }
+        text.push('}');
     }
 }

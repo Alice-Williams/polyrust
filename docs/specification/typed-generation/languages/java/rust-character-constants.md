@@ -1,6 +1,6 @@
 # Rust character constants in Java21
 
-- Status: target proof complete; checked source admission planned
+- Status: target proof and checked source integration complete
 - Contract: [shared](../../rust-character-constants.md)
 
 Use existing primitive Int literals and public static final int fields.
@@ -31,3 +31,14 @@ producer mutations exercise byte/code-unit narrowing, replacement and changed
 values after dependent recompilation. Field shape, exact certificate identity,
 long-name/read reservations, JVM name capacity and readonly assignment controls
 must remain active. These tests add no new production capability.
+
+The compiler-authenticated RustConstantValue map is reconciled against every
+owned certified field. Char(c) maps to I32(u32::from(c) as i32), retaining the
+separate Char source variant and TypePlan::Char. JavaDependencyConstant exposes
+the exact retained source value from its immutable owning certificate, not a
+value inferred from Java Int syntax. Import lowering compares it with the
+consumer's compiler-evaluated source value; same-valued Char/I32 substitution
+must fail even though target field types and integer literals match.
+Use owner schema 8 when character-aware source facts include constants; retain
+schema 7 for existing character-value owners with no constant facts. Other
+schema selections and output bytes remain unchanged.

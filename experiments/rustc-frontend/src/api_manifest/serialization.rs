@@ -28,7 +28,14 @@ impl ApiManifest {
             .collect();
         let mut text = format!(
             "{{\"schema_version\":{},\"root\":{},\"header\":{},\"implementation\":{},\"modules\":[",
-            if self.has_characters() {
+            if self.has_characters()
+                && self
+                    .source_types
+                    .as_ref()
+                    .is_some_and(|types| !types.constants().is_empty())
+            {
+                11
+            } else if self.has_characters() {
                 10
             } else if !self.system_libraries.is_empty() {
                 9

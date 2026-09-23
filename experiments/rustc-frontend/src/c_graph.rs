@@ -41,8 +41,10 @@ pub(crate) fn check(sysroot: &str, arguments: &[String]) -> Result<usize, String
 
 pub(crate) fn lower(sysroot: &str, arguments: &[String]) -> Result<CheckedGraph, String> {
     let graph = crate::metadata_cli::parse(arguments)?;
-    let checked =
-        crate::source_check::check::<CheckedCrate>(&graph, sysroot, |_, tcx, dependencies| {
+    let checked = crate::source_check::check::<CheckedCrate>(
+        &graph,
+        sysroot,
+        |_, tcx, dependencies| {
             let function_lookup = |definition: DefId| {
                 let owner = dependencies
                     .get(&definition.krate)
@@ -108,6 +110,17 @@ pub(crate) fn lower(sysroot: &str, arguments: &[String]) -> Result<CheckedGraph,
                         .cloned()
                         .ok_or("constant mutation requires a public declaration")?
                 };
+                let original =
+                    crate::source_capabilities::original_constant_value(tcx, definition)?;
+                if dependencies
+                    .get(&definition.krate)
+                    .and_then(|item| item.manifest().source_constant(proof.declaration()))
+                    != Some(original)
+                {
+                    return Err(
+                        "foreign compiler identity/type/value differs: original Rust value differs from C source constant facts".into(),
+                    );
+                }
                 Ok(proof)
             };
             let lookup = crate::c_lower::ForeignLookup {
@@ -125,7 +138,8 @@ pub(crate) fn lower(sysroot: &str, arguments: &[String]) -> Result<CheckedGraph,
                 return Err("checked C package differs from its compiler source owner".into());
             }
             Ok(CheckedCrate { api, manifest })
-        })?;
+        },
+    )?;
     let root = checked
         .get(graph.root_key())
         .ok_or("checked root missing")?

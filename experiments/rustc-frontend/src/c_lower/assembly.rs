@@ -217,6 +217,7 @@ pub(crate) fn lower(
         exports.root,
         &inventory.owned,
         state.records.keys().copied(),
+        state.constants.keys().copied(),
     )?;
     #[cfg(character_source_probe)]
     let source_types = crate::source_origin::types::probe::inspect(source_types);
@@ -224,6 +225,7 @@ pub(crate) fn lower(
         tcx,
         &inventory.owned,
         state.records.keys().copied(),
+        state.constants.keys().copied(),
         &source_types,
     )?;
     #[cfg(character_source_probe)]

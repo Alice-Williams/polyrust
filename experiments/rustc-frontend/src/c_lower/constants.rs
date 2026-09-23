@@ -12,6 +12,7 @@ pub(super) fn value(input: ScalarConstantValue) -> CScalarConstantValue {
         ScalarConstantValue::Bool(value) => CScalarConstantValue::Bool(value),
         ScalarConstantValue::I32(value) => CScalarConstantValue::I32(value),
         ScalarConstantValue::I64(value) => CScalarConstantValue::I64(value),
+        ScalarConstantValue::Char(value) => CScalarConstantValue::U32(u32::from(value)),
         ScalarConstantValue::F64(value) => CScalarConstantValue::F64(value),
         ScalarConstantValue::Infinity(sign) => CScalarConstantValue::Infinity(sign),
     }
@@ -28,6 +29,9 @@ pub(super) fn expression(registry: &CRegistry, input: ScalarConstantValue) -> Re
             c(expressions.literal(CLiteral::Signed(CSignedLiteral::I64(value))))
         }
         ScalarConstantValue::F64(value) => c(expressions.literal(CLiteral::F64(value))),
+        ScalarConstantValue::Char(value) => {
+            c(expressions.literal(CLiteral::Unsigned(CUnsignedLiteral::U32(u32::from(value)))))
+        }
         ScalarConstantValue::Infinity(sign) => {
             let value = expressions.known_constant(CKnownConstant::DoubleInfinity);
             match sign {

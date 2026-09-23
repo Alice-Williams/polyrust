@@ -5,6 +5,7 @@ use super::ScalarConstantValue;
 pub(crate) fn value(original: ScalarConstantValue) -> ScalarConstantValue {
     match original {
         ScalarConstantValue::Bool(v) => ScalarConstantValue::I32(i32::from(v)),
+        ScalarConstantValue::Char(v) => ScalarConstantValue::I32(u32::from(v) as i32),
         ScalarConstantValue::I32(_)
         | ScalarConstantValue::I64(_)
         | ScalarConstantValue::F64(_)
@@ -15,6 +16,9 @@ pub(crate) fn value(original: ScalarConstantValue) -> ScalarConstantValue {
 pub(crate) fn value(original: ScalarConstantValue) -> ScalarConstantValue {
     match original {
         ScalarConstantValue::Bool(v) => ScalarConstantValue::Bool(!v),
+        ScalarConstantValue::Char(v) => {
+            ScalarConstantValue::Char(char::from_u32(u32::from(v) ^ 1).unwrap())
+        }
         ScalarConstantValue::I32(v) => ScalarConstantValue::I32(v.wrapping_add(1)),
         ScalarConstantValue::I64(v) => ScalarConstantValue::I64(v.wrapping_add(1)),
         ScalarConstantValue::F64(v) => ScalarConstantValue::F64(

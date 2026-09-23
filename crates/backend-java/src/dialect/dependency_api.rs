@@ -9,6 +9,7 @@ mod inventory;
 pub use foreign::JavaForeignConstantExport;
 mod records;
 mod source_bound;
+mod source_constant_values;
 mod source_types;
 pub use descriptions::{JavaSourceDescription, JavaSourceDescriptionKind, JavaSourceTarget};
 

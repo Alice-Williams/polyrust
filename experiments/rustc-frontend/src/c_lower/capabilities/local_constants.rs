@@ -22,6 +22,7 @@ impl Mapping for CLocalConstants {
             | ScalarConstantValue::I32(_)
             | ScalarConstantValue::I64(_)
             | ScalarConstantValue::F64(_)
+            | ScalarConstantValue::Char(_)
             | ScalarConstantValue::Infinity(_) => Ok(()),
         };
         #[cfg(local_constant_ast_probe)]

@@ -4,7 +4,16 @@ use portable_codegen::{
 };
 use std::collections::BTreeMap;
 
+#[path = "character_constant_type_probe.rs"]
+mod constants;
+
 pub(crate) fn inspect(original: RustSourceTypes) -> RustSourceTypes {
+    if std::env::var_os("POLYRUST_CHARACTER_CONSTANT_FAULT").is_some() {
+        return constants::change(original, false);
+    }
+    if !original.constants().is_empty() || !original.contains_char() {
+        return original;
+    }
     assert!(original.contains_char());
     eprintln!(
         "CHAR_SOURCE_TYPES\t{:016x}\t{}\t{}",
@@ -76,6 +85,9 @@ fn swapped_field_owners(original: RustSourceTypes) -> RustSourceTypes {
 /// must fail target reconciliation; Java's Int-compatible function type fault
 /// must pass target representation checks and fail the consumer's source join.
 pub(crate) fn after_authentication(original: RustSourceTypes) -> RustSourceTypes {
+    if std::env::var_os("POLYRUST_CHARACTER_CONSTANT_FAULT").is_some() {
+        return constants::change(original, true);
+    }
     match std::env::var("POLYRUST_CHARACTER_FAULT").as_deref() {
         Ok("target_field_owner") => swapped_field_owners(original),
         Ok("target_function_kind") => {

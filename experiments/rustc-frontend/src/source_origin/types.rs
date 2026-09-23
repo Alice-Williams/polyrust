@@ -54,6 +54,7 @@ pub(crate) fn collect(
     root: RustDeclarationId,
     functions: &[LocalDefId],
     records: impl IntoIterator<Item = DefId>,
+    constants: impl IntoIterator<Item = DefId>,
 ) -> Result<RustSourceTypes> {
     if root != identity(tcx, CRATE_DEF_ID.to_def_id()) {
         return Err("source type inventory belongs to another compiler owner".into());
@@ -93,7 +94,20 @@ pub(crate) fn collect(
             }
         }
     }
-    RustSourceTypes::new(root, function_types, fields)
+    let mut constant_values = BTreeMap::new();
+    for definition in constants {
+        if !definition.is_local() {
+            return Err("source constant facts require an original local declaration".into());
+        }
+        let value = crate::source_capabilities::original_constant_value(tcx, definition)?;
+        if constant_values
+            .insert(identity(tcx, definition), value)
+            .is_some()
+        {
+            return Err("duplicate original constant declaration".into());
+        }
+    }
+    RustSourceTypes::new(root, function_types, fields)?.with_constants(constant_values)
 }
 
 /// Reconcile descriptive facts at attachment, using original compiler queries,
@@ -102,6 +116,7 @@ pub(crate) fn authenticate(
     tcx: TyCtxt<'_>,
     functions: &[LocalDefId],
     records: impl IntoIterator<Item = DefId>,
+    constants: impl IntoIterator<Item = DefId>,
     facts: &RustSourceTypes,
 ) -> Result<()> {
     let expected = collect(
@@ -109,6 +124,7 @@ pub(crate) fn authenticate(
         identity(tcx, CRATE_DEF_ID.to_def_id()),
         functions,
         records,
+        constants,
     )?;
     if &expected != facts {
         return Err("source type facts differ from original compiler declarations".into());
