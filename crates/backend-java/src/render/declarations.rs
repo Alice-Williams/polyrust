@@ -78,7 +78,7 @@ pub(super) fn render_type_with_extra(
         JavaDeclarationKind::Enum => {
             let constants = enum_constants.join(",\n");
             Ok(format!(
-                "{indent}{visibility}{declaration_modifiers}enum {declaration_name} {{\n{constants};\n{members}{indent}}}\n"
+                "{indent}{visibility}{declaration_modifiers}enum {declaration_name}{heritage} {{\n{constants};\n{members}{indent}}}\n"
             ))
         }
         JavaDeclarationKind::Interface => Ok(format!(

@@ -256,6 +256,28 @@ Its canonical facade has exactly the selected public family, success constructor
 and six error constants, with no unrelated members or source exports.
 Check the explicit descriptor instead of fabricating JavaSourcePackage roots.
 
+The local six-state family witness is a separate API from the earlier local
+payload-free record-family witness; neither is silently reinterpreted. Its
+descriptive value selection uses six named GeneratedValueId roles, not an
+ordinal array or untyped lookup string. Certification retains original synthesized
+adapter registrations for those values. The selected enum owns exactly the six
+distinct public constants EMPTY, INVALID_DIGIT, POS_OVERFLOW, NEG_OVERFLOW, ZERO
+and NOT_A_POWER_OF_TWO, with their fixed semantic-role bindings. Names alone do
+not authenticate them: the exact registration, owning enum type and selected
+declaration/member must agree. Local declaration order does not encode state.
+Canonical owner publication additionally fixes declaration order and all names.
+
+The Java syntax layer admits constant-only enums as final sealed-interface
+implementors, with the actual implements edge and complete permits inventory.
+Generated adapter coercions may use such an enum only with its exact synthesized
+empty sealed interface. Existing checked-Core conformance requirements remain
+unchanged. The family profile reuses the exact canonical success constructor
+check and rejects old empty error records, foreign/duplicate/swapped constants,
+extra enum members, altered constructors and changed conformance.
+An opaque local-family witness proves target structure only; canonical ownership,
+original consumer-scoped dependency authority and compiler instance evidence are
+separate later gates.
+
 The existing dependency authority retains this alternative owner profile.
 Nominal roles, constructors, accessors, producer/export/consumer signature
 phases and frozen membership stay unchanged in meaning. Update root-keyed

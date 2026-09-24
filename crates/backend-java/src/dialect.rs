@@ -43,9 +43,11 @@ pub use referenced_members::{
     JavaReferencedConstructor, JavaReferencedMemberName, JavaReferencedMethod,
 };
 mod documentation;
+mod error_result;
 mod file_checks;
 mod linker;
 mod scalar_result;
+pub use error_result::{JavaErrorKindValues, JavaErrorResultFamily};
 mod source_package;
 mod source_registration;
 pub use scalar_result::{JavaScalarResultFamily, JavaScalarResultTypes};

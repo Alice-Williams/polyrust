@@ -54,6 +54,7 @@ pub(super) fn verify_sealed_permits(
                 candidate.kind,
                 JavaDeclarationKind::FinalClass
                     | JavaDeclarationKind::Record
+                    | JavaDeclarationKind::Enum
                     | JavaDeclarationKind::UninhabitedEnum(_)
             ) && matches!(
                 candidate.heritage,
@@ -102,6 +103,7 @@ fn collect_generated_implementors(
             declaration.kind,
             JavaDeclarationKind::FinalClass
                 | JavaDeclarationKind::Record
+                | JavaDeclarationKind::Enum
                 | JavaDeclarationKind::UninhabitedEnum(_)
         )
         && matches!(

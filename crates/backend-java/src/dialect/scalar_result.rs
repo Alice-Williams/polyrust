@@ -1,5 +1,5 @@
 //! A bounded local Result representation is narrower than valid Java syntax.
-mod check;
+pub(super) mod check;
 
 use super::JavaDialect;
 use crate::ast::{JavaIdentifier, JavaSynthesizedField, JavaSynthesizedFieldRole};

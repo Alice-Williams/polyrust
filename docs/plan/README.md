@@ -293,6 +293,16 @@ reviews are clean; ten actual generated C files are exported locally. The 530
 recorded outputs and 45 protected WIP hashes remain unchanged. Java type owners,
 atomic compiler graph publication and Rust Result lowering remain separate gates.
 
+[Java's six-state local family](tasks/M35-03A-05A-04C-01-java-error-family.md)
+is now complete: the exact sealed Outcome, immutable Success and six-constant
+Error enum preserve each selected error kind without ordinal-based transport.
+All 1,057 release/lint targets, 16,406 native observations and compiling
+wrong-kind/payload controls pass; two independent reviews are clean. The actual
+generated example is exported locally, and all 530 recorded prior outputs and
+45 protected WIP hashes remain unchanged. Canonical Java type ownership and
+original imports are the next separate checkpoints; Rust Result admission stays
+closed.
+
 The Rust-source path now has a normative [C HIR lowering specification](../specification/typed-generation/languages/c/rust-hir-lowering.md).
 It reuses checked compiler HIR, documentation attributes and the existing C
 AST/certification types; it does not force Rust semantics through the legacy

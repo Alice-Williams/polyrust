@@ -129,6 +129,21 @@ rust_doc_test(
 )
 
 rust_test(
+    name = "java_error_family_test",
+    size = "large",
+    srcs = glob(["test/error_family/*.rs"]),
+    crate_root = "test/error_family/main.rs",
+    data = ["@bazel_tools//tools/jdk:current_java_runtime"],
+    edition = "2024",
+    visibility = ["//:__pkg__"],
+    deps = [
+        ":portable_backend_java",
+        "//crates/codegen:portable_codegen",
+        "//crates/diagnostics:portable_diagnostics",
+    ],
+)
+
+rust_test(
     name = "portable_backend_java_unit_test",
     # The suite runs hundreds of javac/java positive and mutation controls.
     # Hosted runners exceed the default five-minute medium-test budget.

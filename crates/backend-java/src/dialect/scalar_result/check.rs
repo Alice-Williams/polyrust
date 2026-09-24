@@ -13,6 +13,14 @@ pub(super) fn family(
     package: &RenderReadyPackage<JavaDialect>,
     types: JavaScalarResultTypes,
 ) -> Result<JavaIdentifier, String> {
+    checked_family(package, types, None)
+}
+
+pub(in crate::dialect) fn checked_family(
+    package: &RenderReadyPackage<JavaDialect>,
+    types: JavaScalarResultTypes,
+    error_kinds: Option<super::super::error_result::JavaErrorKindValues>,
+) -> Result<JavaIdentifier, String> {
     if types.interface == types.success
         || types.interface == types.error
         || types.success == types.error
@@ -65,7 +73,6 @@ pub(super) fn family(
             );
         }
         let success_constructor = variant(success, &interface_type, interface.visibility)?;
-        let error_constructor = variant(error, &interface_type, interface.visibility)?;
         let [component] = success.record_components.as_slice() else {
             return Err(
                 "Java scalar-result success requires exactly one primitive-int payload".into(),
@@ -77,13 +84,33 @@ pub(super) fn family(
         };
         if component.origin != JavaRecordComponentOrigin::Synthesized(field)
             || component.ty != int()
-            || !error.record_components.is_empty()
-            || !error_constructor.parameters.is_empty()
-            || !error_constructor.body.statements.is_empty()
         {
             return Err("Java scalar-result variant payload inventory disagrees".into());
         }
         canonical_success(success_constructor, field, &component.name)?;
+        if let Some(kinds) = error_kinds {
+            if interface.visibility != JavaVisibility::Public
+                || declaration.visibility != JavaVisibility::Public
+            {
+                return Err(
+                    "Java error-kind family must have public enclosing and selected types".into(),
+                );
+            }
+            super::super::error_result::check::error_variant(
+                error,
+                &interface_type,
+                kinds,
+                &item.source_inventory,
+            )?;
+        } else {
+            let error_constructor = variant(error, &interface_type, interface.visibility)?;
+            if !error.record_components.is_empty()
+                || !error_constructor.parameters.is_empty()
+                || !error_constructor.body.statements.is_empty()
+            {
+                return Err("Java scalar-result variant payload inventory disagrees".into());
+            }
+        }
         return Ok(component.name.clone());
     }
     Err(

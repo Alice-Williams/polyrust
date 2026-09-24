@@ -81,6 +81,8 @@ impl JavaSourceInventory {
                         SynthesisReason::PackageEntryPoint | SynthesisReason::InterfaceAdapter
                     )
                 ))
+                || matches!(&value, JavaSourceDeclaration::Value(value)
+                    if value.origin == GeneratedOrigin::Synthesized(SynthesisReason::InterfaceAdapter))
             {
                 declarations.insert(symbol, value);
             }

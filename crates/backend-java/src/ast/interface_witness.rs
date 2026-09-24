@@ -50,7 +50,8 @@ impl JavaInterfaceWitness {
     }
 
     /// Descriptive local adapter edge, not checked Core conformance authority.
-    /// Verification requires the exact synthesized record/empty sealed interface
+    /// Verification requires the exact synthesized record or constant-only enum
+    /// and empty sealed interface
     /// declarations and their actual implements edge in this package.
     pub fn for_generated_adapter(record: GeneratedTypeId, interface: GeneratedTypeId) -> Self {
         Self {
@@ -91,8 +92,10 @@ impl JavaInterfaceWitness {
                         })
                     }),
                     Origin::GeneratedAdapter => {
-                        declaration.kind == JavaDeclarationKind::Record
-                            && declaration.type_parameters.is_empty()
+                        matches!(
+                            declaration.kind,
+                            JavaDeclarationKind::Record | JavaDeclarationKind::Enum
+                        ) && declaration.type_parameters.is_empty()
                             && interface.as_ref().is_some_and(|interface| {
                                 interface.kind == JavaDeclarationKind::SealedInterface
                                     && interface.type_parameters.is_empty()
