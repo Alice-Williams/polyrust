@@ -105,10 +105,13 @@ pub(super) fn catalogue(
         .dependency_packages()
         .map(|owner| {
             owner
-                .map(|owner| owner.root().crate_id)
+                .map(|owner| owner.source_root().map(|root| root.crate_id))
                 .map_err(|error| diagnostic(error.to_string()))
         })
-        .collect::<Result<_, _>>()?;
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .flatten()
+        .collect();
     for entry in registry.inventory() {
         if let crate::ast::CGeneratedOrigin::RustSource(origin) = &entry.key.origin
             && (dependency_crates.contains(&origin.declaration.crate_id)

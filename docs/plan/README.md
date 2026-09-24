@@ -278,8 +278,14 @@ structural self-header imports and measured zero executable contribution. Seven
 dedicated cases include standalone strict GCC/Zig O0/O2 compilation; all 886
 selected C unit cases and all 1,052 release/lint targets pass, with two clean
 independent reviews. All 530 recorded outputs and 45 protected files are unchanged.
-Type dependency publication remains explicitly closed until 04B-02; six-state
-transport, Java type owners and compiler Result lowering remain separate gates.
+[Typed C dependency ownership](tasks/M35-03A-05A-04B-02-c-owner-imports.md)
+is also complete: canonical and source owners have distinct typed identities;
+original certificate authority and unused imports survive relays and diamonds.
+Nine dependency cases and two direct compiler manifest controls pass with all
+1,054 release/lint targets and two clean independent reviews. All 530 recorded
+outputs and 45 protected WIP files remain unchanged. Canonical compiler manifest
+publication explicitly rejects until 04D; native six-state transport, Java type
+owners and Rust Result lowering remain separate gates.
 
 The Rust-source path now has a normative [C HIR lowering specification](../specification/typed-generation/languages/c/rust-hir-lowering.md).
 It reuses checked compiler HIR, documentation attributes and the existing C

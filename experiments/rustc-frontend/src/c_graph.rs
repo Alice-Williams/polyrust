@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 #[derive(Clone)]
 pub(crate) struct CheckedCrate {
     api: CDependencyApi,
+    source_root: RustDeclarationId,
     manifest: crate::api_manifest::ApiManifest,
 }
 
@@ -52,7 +53,9 @@ pub(crate) fn lower(sysroot: &str, arguments: &[String]) -> Result<CheckedGraph,
                     .ok_or("foreign call has no source-authenticated owning C package")?;
                 #[cfg(c_graph_wrong_owner)]
                 let owner = crate::foreign_mutations::owner(owner, dependencies);
-                if owner.root().crate_id != tcx.stable_crate_id(definition.krate).as_u64() {
+                if owner.source_root().map(|root| root.crate_id)
+                    != Some(tcx.stable_crate_id(definition.krate).as_u64())
+                {
                     return Err("foreign C certificate belongs to the wrong compiler crate".into());
                 }
                 let hash = tcx.def_path_hash(definition);
@@ -82,7 +85,9 @@ pub(crate) fn lower(sysroot: &str, arguments: &[String]) -> Result<CheckedGraph,
                     .get(&definition.krate)
                     .map(|item| item.api())
                     .ok_or("foreign constant has no source-authenticated owning C package")?;
-                if owner.root().crate_id != tcx.stable_crate_id(definition.krate).as_u64() {
+                if owner.source_root().map(|root| root.crate_id)
+                    != Some(tcx.stable_crate_id(definition.krate).as_u64())
+                {
                     return Err("foreign C constant belongs to the wrong compiler crate".into());
                 }
                 let id = crate::source_origin::identity(tcx, definition);
@@ -93,7 +98,7 @@ pub(crate) fn lower(sysroot: &str, arguments: &[String]) -> Result<CheckedGraph,
                 #[cfg(constant_import_wrong_owner)]
                 let proof = dependencies
                     .values()
-                    .filter(|other| other.api().root().crate_id != id.crate_id)
+                    .filter(|other| other.source_root.crate_id != id.crate_id)
                     .find_map(|other| other.api().constants().next().cloned())
                     .unwrap_or(proof);
                 #[cfg(constant_import_wrong_declaration)]
@@ -134,21 +139,36 @@ pub(crate) fn lower(sysroot: &str, arguments: &[String]) -> Result<CheckedGraph,
             // Check-mode validates the descriptive bundle inventory too, but never publishes it.
             manifest.bundle_json()?;
             let api = CDependencyApi::from_certificate(program.package)?;
-            if api.root().crate_id != tcx.stable_crate_id(LOCAL_CRATE).as_u64() {
+            if api
+                .dependencies()?
+                .iter()
+                .any(|owner| owner.source_root().is_none())
+            {
+                return Err(
+                    "C source graph does not yet support canonical type dependencies".into(),
+                );
+            }
+            let source_root = api
+                .source_root()
+                .ok_or("C source graph does not yet support canonical type owners")?;
+            if source_root.crate_id != tcx.stable_crate_id(LOCAL_CRATE).as_u64() {
                 return Err("checked C package differs from its compiler source owner".into());
             }
-            Ok(CheckedCrate { api, manifest })
+            Ok(CheckedCrate {
+                api,
+                manifest,
+                source_root,
+            })
         },
     )?;
     let root = checked
         .get(graph.root_key())
         .ok_or("checked root missing")?
-        .api
-        .root();
+        .source_root;
     let count = checked.len();
     let crates: BTreeMap<_, _> = checked
         .into_values()
-        .map(|item| (item.api.root(), item))
+        .map(|item| (item.source_root, item))
         .collect();
     if crates.len() != count {
         return Err("duplicate checked C owner".into());

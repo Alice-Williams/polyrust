@@ -81,6 +81,6 @@ fn unsupported_or_unwitnessed_export_graphs_reject_before_shared_linking() {
 fn selected_source_identity_cannot_import_itself_without_owned_declarations() {
     let producer = producer(Shape::ConstantsOnly);
     let values: Vec<_> = producer.constants().cloned().collect();
-    let fixture = configured(producer.root().crate_id, &values, |_, _| {});
+    let fixture = configured(producer.source_root().unwrap().crate_id, &values, |_, _| {});
     assert!(project_c_package(fixture.registry, fixture.files).is_err());
 }

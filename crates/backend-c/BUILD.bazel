@@ -214,6 +214,28 @@ rust_test(
     ],
 )
 
+rust_test(
+    name = "c_canonical_dependencies_test",
+    srcs = glob(["test/canonical_dependencies/*.rs"]),
+    crate_root = "test/canonical_dependencies/main.rs",
+    edition = "2024",
+    visibility = ["//:__pkg__"],
+    deps = [
+        ":portable_backend_c",
+        "//crates/codegen:portable_codegen",
+    ],
+)
+
+filegroup(
+    name = "canonical_dependency_fixtures",
+    testonly = True,
+    srcs = [
+        "test/canonical_dependencies/fixture.rs",
+        "test/canonical_dependencies/source.rs",
+    ],
+    visibility = ["//experiments/rustc-frontend:__pkg__"],
+)
+
 rust_binary(
     name = "generate_v0_fixture",
     srcs = ["examples/generate_v0.rs"],

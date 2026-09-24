@@ -76,21 +76,30 @@ pub(super) fn verify(package: &LinkedTargetPackage<CDialect>) -> Result<(), Stri
     let mut budget = Budget::default();
     let mut pending = VecDeque::new();
     enqueue(consumer, &mut pending, &mut budget)?;
-    let mut owners = BTreeMap::<u64, CDependencyPackage>::new();
+    let mut owners = BTreeMap::new();
+    let mut source_owners = BTreeMap::<u64, CDependencyPackage>::new();
     let mut headers = BTreeMap::new();
     let mut symbols = BTreeSet::<CIdentifier>::new();
     let mut tags = BTreeSet::<CIdentifier>::new();
     while let Some(owner) = pending.pop_front() {
-        let crate_id = owner.root().crate_id;
-        if owned_crates.contains(&crate_id) {
-            return Err(
-                "consumer crate identity appears in its transitive dependency closure".into(),
-            );
-        }
-        if let Some(previous) = owners.get(&crate_id) {
-            if previous != &owner {
+        if let Some(root) = owner.source_root() {
+            if owned_crates.contains(&root.crate_id) {
+                return Err(
+                    "consumer crate identity appears in its transitive dependency closure".into(),
+                );
+            }
+            if let Some(previous) = source_owners.insert(root.crate_id, owner.clone())
+                && previous != owner
+            {
                 return Err(
                     "transitive dependencies contain different certificates for one crate".into(),
+                );
+            }
+        }
+        if let Some(previous) = owners.get(&owner.owner()) {
+            if previous != &owner {
+                return Err(
+                    "transitive dependencies contain different certificates for one owner".into(),
                 );
             }
             continue;
@@ -130,7 +139,7 @@ pub(super) fn verify(package: &LinkedTargetPackage<CDialect>) -> Result<(), Stri
             return Err("C dependency stack evidence differs from its original certificate".into());
         }
         enqueue(registry(original)?, &mut pending, &mut budget)?;
-        owners.insert(crate_id, owner);
+        owners.insert(owner.owner(), owner);
     }
     Ok(())
 }

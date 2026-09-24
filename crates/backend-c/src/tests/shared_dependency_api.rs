@@ -32,7 +32,7 @@ fn public_dependency_retains_exact_certificate_references_and_resource_evidence(
             let expected = resources::measure_package(package.ast()).unwrap();
             let api = CDependencyApi::from_certificate(package.clone()).unwrap();
             assert_eq!(api.package(), &package);
-            assert_eq!(api.root(), origins().0.crate_exports.root);
+            assert_eq!(api.source_root().unwrap(), origins().0.crate_exports.root);
             assert_eq!(api.public_header().file(), fixture.public.file());
             assert_eq!(api.functions().count(), 1);
             let function = api.function(origins().0.declaration).unwrap();

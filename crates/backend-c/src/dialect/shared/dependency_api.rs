@@ -6,9 +6,9 @@ mod inventory;
 mod structs;
 mod system_libraries;
 use super::{CDialect, CGeneratedHeader, resources};
-use crate::ast::{CFileRef, CFunctionRef, CFunctionType, CIdentifier};
+use crate::ast::{CCanonicalTypeProfile, CFileRef, CFunctionRef, CFunctionType, CIdentifier};
 pub use constants::CDependencyConstant;
-use portable_codegen::{RenderReadyPackage, RustDeclarationId};
+use portable_codegen::{RenderReadyPackage, RustDeclarationId, TargetPackageOwner};
 use std::{collections::BTreeMap, sync::Arc};
 pub use structs::CDependencyStruct;
 
@@ -19,7 +19,7 @@ mod tests;
 #[derive(Clone, Debug)]
 struct Authority {
     package: RenderReadyPackage<CDialect>,
-    root: RustDeclarationId,
+    owner: TargetPackageOwner<CCanonicalTypeProfile>,
     header: CGeneratedHeader,
     implementation: CFileRef,
     stack_bound_bytes: u64,
@@ -58,7 +58,7 @@ impl Ord for CDependencyAuthority {
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CDependencyPackage {
-    root: RustDeclarationId,
+    owner: TargetPackageOwner<CCanonicalTypeProfile>,
     header: CGeneratedHeader,
     authority: CDependencyAuthority,
 }
@@ -93,8 +93,23 @@ impl CDependencyPackage {
         &self.authority.0.system_libraries
     }
 
-    pub fn root(&self) -> RustDeclarationId {
-        self.root
+    pub fn owner(&self) -> TargetPackageOwner<CCanonicalTypeProfile> {
+        self.owner
+    }
+    pub fn source_root(&self) -> Option<RustDeclarationId> {
+        match self.owner {
+            TargetPackageOwner::SourceCrate(root) => Some(root),
+            TargetPackageOwner::CanonicalInstance { .. } => None,
+        }
+    }
+
+    /// Descriptive keys never replace exact certificate authority. Source crate
+    /// IDs also remain exclusive even if a forged root hash differs.
+    pub(crate) fn conflicts_with(&self, other: &Self) -> bool {
+        self != other
+            && (self.owner == other.owner
+                || matches!((self.source_root(), other.source_root()),
+                    (Some(left), Some(right)) if left.crate_id == right.crate_id))
     }
     pub fn public_header(&self) -> &CGeneratedHeader {
         &self.header
@@ -120,7 +135,7 @@ pub struct CDependencyFunction {
 impl CDependencyFunction {
     pub fn package_identity(&self) -> CDependencyPackage {
         CDependencyPackage {
-            root: self.authority.root,
+            owner: self.authority.owner,
             header: self.authority.header.clone(),
             authority: self.authority(),
         }
@@ -232,7 +247,7 @@ impl CDependencyApi {
         let authority = Arc::new(Authority {
             package,
             system_libraries,
-            root: inventory.root,
+            owner: inventory.owner,
             header: inventory.header,
             implementation: inventory.implementation,
             stack_bound_bytes: measured.total.frame_bound,
@@ -286,8 +301,15 @@ impl CDependencyApi {
         &self.authority.system_libraries
     }
 
-    pub fn root(&self) -> RustDeclarationId {
-        self.authority.root
+    pub fn owner(&self) -> TargetPackageOwner<CCanonicalTypeProfile> {
+        self.authority.owner
+    }
+
+    pub fn source_root(&self) -> Option<RustDeclarationId> {
+        match self.owner() {
+            TargetPackageOwner::SourceCrate(root) => Some(root),
+            TargetPackageOwner::CanonicalInstance { .. } => None,
+        }
     }
 
     pub fn public_header(&self) -> &CGeneratedHeader {
@@ -298,6 +320,12 @@ impl CDependencyApi {
     /// Reading it does not manufacture dependency witnesses for private functions.
     pub fn package(&self) -> &RenderReadyPackage<CDialect> {
         &self.authority.package
+    }
+
+    /// Original direct owners, including registered but unused imports. This is
+    /// not the narrower public signature inventory returned by `structs()`.
+    pub fn dependencies(&self) -> Result<Vec<CDependencyPackage>, String> {
+        c_dependency_packages(self.package())
     }
 
     pub fn functions(&self) -> impl Iterator<Item = &CDependencyFunction> {
@@ -338,4 +366,23 @@ pub fn c_system_libraries(
     package: &RenderReadyPackage<CDialect>,
 ) -> Result<std::collections::BTreeSet<crate::dialect::CSystemLibrary>, String> {
     system_libraries::collect(package)
+}
+
+/// Original direct certificate owners, including unused registered imports.
+/// Unlike exported signatures, this is a complete dependency closure edge list.
+pub fn c_dependency_packages(
+    package: &RenderReadyPackage<CDialect>,
+) -> Result<Vec<CDependencyPackage>, String> {
+    let registry = package
+        .ast()
+        .files()
+        .first()
+        .and_then(|file| file.items().first())
+        .map(|item| item.unit.projection.registry.registrations())
+        .ok_or("C dependency inventory lacks original registry authority")?;
+    registry
+        .dependency_packages()
+        .collect::<Result<std::collections::BTreeSet<_>, _>>()
+        .map(|owners| owners.into_iter().collect())
+        .map_err(|error| error.to_string())
 }

@@ -39,7 +39,10 @@ fn constants_only_and_mixed_producers_keep_exact_values_types_and_files() {
             assert_eq!(value.public_header(), api.public_header());
             assert_eq!(definition.linkage(), CLinkage::External);
             assert_eq!(value.package_identity().certificate(), &package);
-            assert_eq!(value.package_identity().root(), api.root());
+            assert_eq!(
+                value.package_identity().source_root().unwrap(),
+                api.source_root().unwrap()
+            );
             symbols.insert(value.symbol().clone());
         }
         symbols.extend(api.functions().map(|function| function.symbol().clone()));
@@ -59,7 +62,7 @@ fn constants_only_and_mixed_producers_keep_exact_values_types_and_files() {
             })
             .is_none()
         );
-        assert!(api.constant(api.root()).is_none());
+        assert!(api.constant(api.source_root().unwrap()).is_none());
         let retained = api.constants().next().unwrap().clone();
         drop(api);
         assert_eq!(retained.package_identity().certificate(), &package);

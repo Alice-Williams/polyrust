@@ -17,7 +17,7 @@ source-owner profile or add runtime code.
 ## Checkpoints
 
 1. [04B-01 — strict descriptor and certificate](M35-03A-05A-04B-01-c-owner-certificate.md) — complete; all 1,052 release/lint targets and two independent reviews pass.
-2. [04B-02 — typed dependency ownership](M35-03A-05A-04B-02-c-owner-imports.md).
+2. [04B-02 — typed dependency ownership](M35-03A-05A-04B-02-c-owner-imports.md) — complete; full typed owners, exact authority and unused closure edges, nine dependency cases and two manifest controls, all 1,054 release/lint targets and two clean reviews.
 3. [04B-03 — native and boundary proof](M35-03A-05A-04B-03-c-owner-proof.md).
 
 Each receives an independent release/lint gate, review and commit. Compiler bundle

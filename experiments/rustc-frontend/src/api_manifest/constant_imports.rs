@@ -25,7 +25,11 @@ pub(super) fn collect(
             || origin.declaration != id
             || origin.node != RustSourceNode::Declaration
             || !origin.externally_reachable
-            || proof.package_identity().root().crate_id != id.crate_id
+            || proof
+                .package_identity()
+                .source_root()
+                .map(|root| root.crate_id)
+                != Some(id.crate_id)
             || object.file() != proof.public_header().file()
             || expected.get(&id) != Some(&(object.clone(), proof.clone()))
         {

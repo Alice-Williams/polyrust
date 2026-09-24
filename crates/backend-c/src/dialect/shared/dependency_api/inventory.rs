@@ -1,16 +1,17 @@
 //! Reconstruct dependency API membership from the immutable certificate.
+mod canonical;
 mod constants;
 pub(super) mod structs;
 use super::super::{CDialect, CGeneratedHeader, c_defined_constants, c_defined_functions};
 use crate::ast::*;
 use portable_codegen::{
     RenderReadyPackage, RustDeclarationId, RustExportNamespace, RustExportTarget, RustSourceNode,
-    RustVisibility,
+    RustVisibility, TargetPackageOwner,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(super) struct Inventory {
-    pub root: RustDeclarationId,
+    pub owner: TargetPackageOwner<CCanonicalTypeProfile>,
     pub header: CGeneratedHeader,
     pub implementation: CFileRef,
     pub functions: BTreeMap<RustDeclarationId, (CFunctionRef, CIdentifier)>,
@@ -57,6 +58,9 @@ fn signature(registry: &CRegistry, function: &CFunctionRef) -> bool {
 }
 
 pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventory, String> {
+    if let Some(inventory) = canonical::collect(package)? {
+        return Ok(inventory);
+    }
     let files = package.ast().files();
     if files.len() != 2 {
         return Err("C dependency API requires a certified public header/source pair".into());
@@ -72,16 +76,6 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
     let structs = structs::collect(package)?;
     let implementation = file(CFileRole::GeneratedSource)?;
     let projection = &implementation.items()[0].unit.projection;
-    if projection
-        .registry
-        .registrations()
-        .canonical_type_package()
-        .is_some()
-    {
-        return Err(
-            "C canonical type dependency publication requires the explicit owner API".into(),
-        );
-    }
     let header = CGeneratedHeader::resolve(
         projection.registry.registrations(),
         implementation.module(),
@@ -241,7 +235,7 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
     Ok(Inventory {
         structs,
         foreign_structs,
-        root,
+        owner: TargetPackageOwner::SourceCrate(root),
         header,
         implementation: implementation.module().clone(),
         functions,

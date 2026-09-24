@@ -17,7 +17,7 @@ impl ApiManifest {
             write!(text,
                 "{{\"module\":{},\"namespace\":\"value\",\"name\":{},\"id\":{},\"owner\":{},\"header\":{},\"symbol\":{},\"type\":{},\"value\":{},\"readonly\":true}}",
                 identity(binding.module()), quote(&binding.name().name), identity(proof.declaration()),
-                identity(proof.package_identity().root()), quote(proof.public_header().include_path()),
+                identity(proof.package_identity().source_root().ok_or("C source inventory does not yet support canonical type owners")?), quote(proof.public_header().include_path()),
                 quote(proof.symbol().as_str()), quote(ty), value).unwrap();
         }
         text.push(']');

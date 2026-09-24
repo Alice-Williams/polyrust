@@ -39,8 +39,12 @@ fn view_reports_each_registration_once_and_retains_its_exact_certificate() {
                 imported.dependency().signature()
             );
             assert_eq!(
-                imported.dependency().package_identity().root(),
-                owner.root()
+                imported
+                    .dependency()
+                    .package_identity()
+                    .source_root()
+                    .unwrap(),
+                owner.source_root().unwrap()
             );
         }
         let definitions: Vec<_> = c_defined_functions(&package)

@@ -20,6 +20,7 @@ load(":boolean_negation_targets.bzl", "boolean_negation_contract_targets", "bool
 load(":box_clone_targets.bzl", "box_clone_targets")
 load(":boxed_record_flow_targets.bzl", "boxed_record_flow_targets")
 load(":c_graph_targets.bzl", "c_graph_targets")
+load(":canonical_owner_manifest_targets.bzl", "canonical_owner_manifest_targets")
 load(":character_constant_oracle_targets.bzl", "character_constant_oracle_targets")
 load(":character_constant_source_targets.bzl", "character_constant_source_targets")
 load(":character_oracle_targets.bzl", "character_oracle_targets")
@@ -954,3 +955,5 @@ remainder_contract_targets(
     name = "remainder_contract_test",
     c_sources = ADAPTER_SOURCES,
 )
+
+canonical_owner_manifest_targets()

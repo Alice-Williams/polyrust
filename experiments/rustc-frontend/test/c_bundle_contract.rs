@@ -24,7 +24,11 @@ pub(super) fn check(graph: &CheckedGraph) {
         .values()
         .flat_map(|member| portable_backend_c::dialect::c_imported_constants(member.api.package()))
     {
-        let owner = imported.dependency().package_identity().root();
+        let owner = imported
+            .dependency()
+            .package_identity()
+            .source_root()
+            .unwrap();
         let mut missing = graph.clone();
         missing.crates.remove(&owner);
         assert!(preflight(&missing).is_err());
@@ -45,7 +49,11 @@ pub(super) fn check(graph: &CheckedGraph) {
     else {
         return;
     };
-    let owner = imported.dependency().package_identity().root();
+    let owner = imported
+        .dependency()
+        .package_identity()
+        .source_root()
+        .unwrap();
     let mut missing_owner = graph.clone();
     missing_owner.crates.remove(&owner);
     assert!(preflight(&missing_owner).is_err());

@@ -58,7 +58,12 @@ fn shared_value_certificate_diamonds_pass_but_alternative_authorities_reject() {
 fn consumer_cannot_impersonate_the_source_crate_of_an_unused_value_import() {
     let owner = producer(Shape::ConstantsOnly);
     let values: Vec<_> = owner.constants().cloned().collect();
-    let input = fixture(owner.root().crate_id, &values, None, Usage::Unused);
+    let input = fixture(
+        owner.source_root().unwrap().crate_id,
+        &values,
+        None,
+        Usage::Unused,
+    );
     let ast = project_c_package(input.registry, input.files).unwrap();
     let checked = verify_unresolved_package(&CDialect, ast).unwrap();
     let result = TargetLinker::new(CDialect).link_ast(&checked).unwrap_err();

@@ -8,7 +8,7 @@ pub(crate) fn owner<'a>(
     dependencies
         .values()
         .map(|item| item.api())
-        .find(|candidate| candidate.root() != expected.root())
+        .find(|candidate| candidate.source_root().unwrap() != expected.source_root().unwrap())
         .expect("owner mutation fixture requires two distinct checked owners")
 }
 

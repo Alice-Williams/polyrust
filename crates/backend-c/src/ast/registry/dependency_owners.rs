@@ -30,7 +30,7 @@ impl CRegistry {
         for old in self.dependency_packages() {
             let old = old?;
             if old != *owner
-                && (old.root().crate_id == owner.root().crate_id
+                && (old.conflicts_with(owner)
                     || old.public_header().include_path() == owner.public_header().include_path())
             {
                 return Err(CRegistryError::DuplicateRegistration);
@@ -84,8 +84,7 @@ impl CRegistry {
                     old_key == key
                         || old_declaration == declaration
                         || old_symbol == symbol
-                        || (old_owner.root().crate_id == owner.root().crate_id
-                            && old_owner != *owner)
+                        || old_owner.conflicts_with(owner)
                         || (old_owner.public_header().include_path()
                             == owner.public_header().include_path()
                             && old_owner != *owner)

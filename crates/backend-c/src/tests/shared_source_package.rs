@@ -86,7 +86,7 @@ fn explicit_constant_and_mixed_packages_render_exactly_like_inferred_packages() 
         let explicit = explicit(shape);
         let source = explicit.registry.registrations().source_package().unwrap();
         let api = CDependencyApi::from_certificate(certify(&explicit)).unwrap();
-        assert_eq!(api.root(), source.exports().root);
+        assert_eq!(api.source_root().unwrap(), source.exports().root);
         assert_eq!(api.public_header().file(), source.header());
         assert_eq!(
             render(&explicit),

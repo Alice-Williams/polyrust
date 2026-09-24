@@ -64,7 +64,7 @@ impl Callbacks for Probe {
             let dependency =
                 portable_backend_c::dialect::CDependencyApi::from_certificate(certified.clone())
                     .unwrap();
-            assert_eq!(dependency.root(), lowered.exports.root);
+            assert_eq!(dependency.source_root().unwrap(), lowered.exports.root);
             let public_ids = lowered
                 .exports
                 .modules

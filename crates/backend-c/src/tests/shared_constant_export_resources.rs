@@ -21,7 +21,7 @@ fn zero_owned_facade_cannot_appear_in_its_original_producers_dependency_closure(
     let values: Vec<_> = producer.constants().cloned().collect();
     let positive = facade(72, &values);
     certify(&positive);
-    let cyclic = facade(dependency.root().crate_id, &values);
+    let cyclic = facade(dependency.source_root().unwrap().crate_id, &values);
     assert!(cyclic.registry.registrations().inventory().is_empty());
     let error = certify_resolved_package(&CDialect, linked(&cyclic)).unwrap_err();
     assert!(

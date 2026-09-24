@@ -15,7 +15,7 @@ impl ApiManifest {
             let (ty, value) = constants::certified_scalar(proof.value())?;
             write!(text,
                 "{{\"id\":{},\"owner\":{},\"header\":{},\"symbol\":{},\"type\":{},\"value\":{},\"readonly\":true}}",
-                identity(*id), identity(proof.package_identity().root()),
+                identity(*id), identity(proof.package_identity().source_root().ok_or("C source inventory does not yet support canonical type owners")?),
                 quote(proof.public_header().include_path()), quote(proof.symbol().as_str()),
                 quote(ty), value).unwrap();
         }

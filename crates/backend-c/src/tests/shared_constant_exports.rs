@@ -23,13 +23,13 @@ fn alias_only_api_retains_original_producers_without_owned_definitions() {
         values.len() - 1
     );
     let api = CDependencyApi::from_certificate(certify(&fixture)).unwrap();
-    assert_eq!(api.root().crate_id, 90);
+    assert_eq!(api.source_root().unwrap().crate_id, 90);
     assert_eq!(api.constants().count(), 0);
     assert_eq!(api.functions().count(), 0);
     let exports: BTreeMap<_, _> = api
         .foreign_constants()
         .map(|binding| {
-            assert_eq!(binding.module(), api.root());
+            assert_eq!(binding.module(), api.source_root().unwrap());
             assert_eq!(binding.name().namespace, RustExportNamespace::Value);
             assert!(api.constant(binding.dependency().declaration()).is_none());
             (binding.name().name.clone(), binding.dependency().clone())
@@ -39,7 +39,10 @@ fn alias_only_api_retains_original_producers_without_owned_definitions() {
     drop(producer);
     for (index, value) in values.iter().enumerate() {
         assert_eq!(&exports[&format!("alias_{index}")], value);
-        assert_ne!(value.package_identity().root(), api.root());
+        assert_ne!(
+            value.package_identity().source_root().unwrap(),
+            api.source_root().unwrap()
+        );
     }
 }
 

@@ -60,7 +60,7 @@ impl CDependencyStruct {
     }
     pub fn package_identity(&self) -> CDependencyPackage {
         CDependencyPackage {
-            root: self.authority.root,
+            owner: self.authority.owner,
             header: self.authority.header.clone(),
             authority: CDependencyAuthority(self.authority.clone()),
         }

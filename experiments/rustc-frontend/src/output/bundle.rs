@@ -24,7 +24,7 @@ pub(crate) fn preflight(graph: &CheckedGraph) -> Result<(BTreeSet<String>, u64),
     let mut budget = super::bundle_budget::BundleBudget::new(count)?;
     for (root, member) in graph.crates() {
         let api = member.api();
-        if *root != api.root() {
+        if Some(*root) != api.source_root() {
             return Err("bundle owner identity disagrees".into());
         }
         member.manifest().verify_owner(api)?;
@@ -53,7 +53,12 @@ pub(crate) fn preflight(graph: &CheckedGraph) -> Result<(BTreeSet<String>, u64),
             let proof = imported.dependency();
             let owner = graph
                 .crates()
-                .get(&proof.package_identity().root())
+                .get(
+                    &proof
+                        .package_identity()
+                        .source_root()
+                        .ok_or("C source inventory does not yet support canonical type owners")?,
+                )
                 .ok_or("bundle is missing an imported owner")?;
             if owner.api().function(proof.declaration()) != Some(proof) {
                 return Err("bundle import differs from exact member certificate".into());
@@ -63,7 +68,12 @@ pub(crate) fn preflight(graph: &CheckedGraph) -> Result<(BTreeSet<String>, u64),
             let proof = imported.dependency();
             let owner = graph
                 .crates()
-                .get(&proof.package_identity().root())
+                .get(
+                    &proof
+                        .package_identity()
+                        .source_root()
+                        .ok_or("C source inventory does not yet support canonical type owners")?,
+                )
                 .ok_or("bundle is missing a constant imported owner")?;
             if owner.api().constant(proof.declaration()) != Some(proof) {
                 return Err("bundle constant import differs from exact member certificate".into());

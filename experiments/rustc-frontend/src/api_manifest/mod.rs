@@ -68,8 +68,17 @@ impl ApiManifest {
         &self,
         api: &portable_backend_c::dialect::CDependencyApi,
     ) -> Result<(), String> {
-        if self.exports.root != api.root() {
+        if Some(self.exports.root) != api.source_root() {
             return Err("bundle manifest owner disagrees".into());
+        }
+        if api
+            .dependencies()?
+            .iter()
+            .any(|owner| owner.source_root().is_none())
+        {
+            return Err(
+                "C source manifest does not yet support canonical type dependencies".into(),
+            );
         }
         let expected = self
             .functions
@@ -143,6 +152,17 @@ impl ApiManifest {
         expected_constants: &constants::ExpectedConstants,
         constant_imports: &constant_imports::Expected,
     ) -> Result<Self, String> {
+        if portable_backend_c::dialect::c_canonical_type_package(package).is_some() {
+            return Err("C source manifest does not support canonical type owners".into());
+        }
+        if portable_backend_c::dialect::c_dependency_packages(package)?
+            .iter()
+            .any(|owner| owner.source_root().is_none())
+        {
+            return Err(
+                "C source manifest does not yet support canonical type dependencies".into(),
+            );
+        }
         if constant_imports.keys().any(|id| {
             expected.contains_key(id)
                 || imported.contains_key(id)

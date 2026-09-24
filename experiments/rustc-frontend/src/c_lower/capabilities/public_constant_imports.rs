@@ -25,7 +25,12 @@ impl Mapping for CPublicConstantImports {
         let expected = constants::value(value);
         let id = crate::source_origin::identity(input.tcx(), input.definition());
         if state.proof.declaration() != id
-            || state.proof.package_identity().root().crate_id != id.crate_id
+            || state
+                .proof
+                .package_identity()
+                .source_root()
+                .map(|root| root.crate_id)
+                != Some(id.crate_id)
             || state.proof.read_type() != &expected.ty()
             || state.proof.value() != &expected
         {

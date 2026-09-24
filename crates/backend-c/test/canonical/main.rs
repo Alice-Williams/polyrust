@@ -68,8 +68,9 @@ fn exact_owner_survives_certification_and_has_only_structural_imports() {
                 assert_eq!(text.matches("#include \"").count(), 1);
             }
         }
-        let error = CDependencyApi::from_certificate(certificate).unwrap_err();
-        assert!(error.contains("canonical type"), "{error:?}");
+        let api = CDependencyApi::from_certificate(certificate).unwrap();
+        assert_eq!(api.owner(), descriptor.owner());
+        assert_eq!(api.source_root(), None);
     }
 }
 
