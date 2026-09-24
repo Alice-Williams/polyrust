@@ -54,6 +54,7 @@ load(":i64_targets.bzl", "i64_targets")
 load(":infinite_constant_oracle_targets.bzl", "infinite_constant_oracle_targets")
 load(":infinite_constant_probe_targets.bzl", "infinite_constant_probe_targets")
 load(":infinite_constant_source_targets.bzl", "infinite_constant_source_targets")
+load(":instance_graph_targets.bzl", "instance_graph_targets")
 load(":java_ast_targets.bzl", "java_ast_targets")
 load(":java_bundle_targets.bzl", "java_bundle_targets")
 load(":java_contract_targets.bzl", "java_contract_targets")
@@ -862,6 +863,8 @@ widening_oracle_targets(name = "widening_oracle_test")
 narrowing_oracle_targets(name = "narrowing_oracle_test")
 
 scalar_result_identity_targets(name = "scalar_result_identity_test")
+
+instance_graph_targets(name = "instance_graph_test")
 
 finite_constant_oracle_targets(name = "finite_constant_oracle_test")
 

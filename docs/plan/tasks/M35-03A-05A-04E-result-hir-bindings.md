@@ -11,6 +11,9 @@ Open only the specified Result<I32, standard narrowing-error> source domain,
 using checked compiler-session instance/variant/field facts and frozen target
 owner bindings. Support signatures, moves/copies, local bindings, Ok construction,
 forward/reconstruct an existing Err, returns and exhaustive two-arm matches.
+Forward the full original error-kind value using the 04A-03 witness and version-2
+target profiles, never recreate a payload-free or default error. Public input
+values need not originate from the narrowing operation used to identify the type.
 
 Evaluate the scrutinee exactly once and only the selected arm. Error creation
 in a native Rust test driver does not admit narrowing in translated code.

@@ -7,6 +7,12 @@
 
 ## Closed source semantics
 
+Before compiler source admission, the
+[version-2 canonical-owner contract](rust-canonical-type-owners.md) supersedes
+payload-free target assumptions: pinned Rust 1.98 TryFromIntError contains an
+IntErrorKind. Preserve that original value across public forwarding and Err
+reconstruction. Earlier target-only proofs are not full Rust error-state parity.
+
 Initial instance: core Result<i32, core::num::TryFromIntError>. Success carries
 an exact I32; error carries the original opaque standard error identity.
 Success(0) differs from error. Error formatting, equality, layout inspection

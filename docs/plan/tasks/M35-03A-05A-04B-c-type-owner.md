@@ -8,7 +8,9 @@
 ## Contract
 
 Add an explicit type-only owner profile for the existing certified scalar Result
-layout. Reuse typed declarations, members, header imports and original dependency
+layout, with version-2 error-kind semantics from 04A-03: its I32 member is active
+under both tags, and Err stores the original checked kind code. Reuse typed
+declarations, members, header imports and original dependency
 authority. Do not forge a Rust source root/export inventory, broaden the ordinary
 source-owner profile or add runtime code.
 
@@ -30,7 +32,7 @@ publication remains 04D; Result HIR source admission remains 04E.
 3. Generate ordinary header/source packages with deterministic paths/guards;
    enforce actual identifier, file, owner and output-byte limits.
 4. Compile independent producers against one original type owner, then a native
-   cross-producer consumer with GCC and Zig. Cover success/error, zero/extrema,
+   cross-producer consumer with GCC and Zig. Cover success/every error kind, zero/extrema,
    original tag/member ownership and standalone headers.
 5. Reject competing certificates, wrong profile/instance, forged source roots,
    missing imports, duplicated foreign declarations and unsupported helpers.

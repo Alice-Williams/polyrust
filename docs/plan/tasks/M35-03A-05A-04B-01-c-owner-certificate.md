@@ -17,6 +17,10 @@ registered members, a deterministic header/source pair and required platform
 assertions. No executable/global/helper inventory. The source companion derives
 its own header dependency structurally. Keep ordinary source profile checks intact.
 
+Use the closed version-2 descriptor: the I32 field represents the success value
+or original error-kind code according to the tag. This descriptor cannot claim
+compiler-state authentication; 04A-03 supplies that distinct source witness.
+
 ## Definition of done and tests
 
 - Worst-case naming/header guards and exact file/role/layout/profile are checked.

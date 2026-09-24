@@ -3,6 +3,17 @@
 - Status: certified target transport/import/execution proof complete; compiler source admission planned
 - Contract: [shared](../../rust-scalar-results.md)
 
+## Versioned scope
+
+The existing empty-error family below is target-only transport/evaluation
+evidence. It cannot losslessly carry pinned Rust 1.98 TryFromIntError state.
+Rust-source integration requires the
+[version-2 canonical owner](../../rust-canonical-type-owners.md#java21-specification)
+with immutable original error-kind storage, checked construction/access and
+separate profile/version identity. Preserve every kind, not just overflow.
+
+## Existing target-only profile
+
 Use an ordinary source-derived sealed result interface with an immutable
 success record carrying primitive int and a payload-free error implementation.
 Register the exact permits/implements, constructors, fields and dependencies

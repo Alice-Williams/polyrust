@@ -8,13 +8,16 @@
 ## Contract
 
 Add an explicit type-owner namespace and closed publication profile for the
-existing sealed Result family. Keep exact original authority and consumer scopes,
+sealed Result family with a six-constant immutable Error enum (version 2), not the
+earlier payload-free Error record. Keep exact original authority and consumer scopes,
 not a fake JavaSourcePackage or a copied family in each producer.
 
 ## Implementation and definition of done
 
 1. Retain the typed descriptor in the certificate and validate exact family-only
-   facade, canonical constructors, public permits and private payload storage.
+   facade, success canonical constructor, public permits and six Error constants.
+   Exclude custom enum bodies, fields and methods; keep foreign null rejection.
+   Bind the full 04A-03 error-kind inventory; test kind collapse and substitution.
 2. Extend owner indexing, namespace conflict/closure checks and manifest/bundle
    inventories with the owner enum. No unchecked fallback or name-only import.
 3. Preserve producer/export/consumer signature phases and constructor/accessor

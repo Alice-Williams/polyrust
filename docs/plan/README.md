@@ -260,7 +260,12 @@ separates real source roots, descriptive instance facts and generated type owner
 Its [identity foundation](tasks/M35-03A-05A-04A-01-instance-model.md) is complete:
 all 1,043 release/lint targets pass, two independent reviews are clean, and 530
 recorded generated files are unchanged. The independently gated
-[compiler graph proof](tasks/M35-03A-05A-04A-02-instance-probe.md) is in progress.
+[compiler graph proof](tasks/M35-03A-05A-04A-02-instance-probe.md) is complete:
+all 1,047 release/lint targets pass with clean exact-tree review.
+The pinned compiler revealed that TryFromIntError now carries state. A separate
+[original-error-state proof](tasks/M35-03A-05A-04A-03-error-state.md) therefore
+precedes target integration; payload-free target proofs are not lossless Rust
+error transport. No source admission has been opened on that assumption.
 C and Java type-only certificates, atomic graph integration and checked
 Result HIR bindings follow as 04B–04E; this is not yet source Result admission.
 

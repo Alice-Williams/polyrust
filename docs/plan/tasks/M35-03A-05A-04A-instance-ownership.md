@@ -22,10 +22,12 @@ same-graph contract; independent processes must recheck a merged graph.
 ## Checkpoints
 
 1. [04A-01 — descriptive identity foundation](M35-03A-05A-04A-01-instance-model.md) — complete; 1,043-target release/lint gate and independent reviews pass.
-2. [04A-02 — authenticated graph observation](M35-03A-05A-04A-02-instance-probe.md) — in progress; separate compiler proof, not yet verified.
+2. [04A-02 — authenticated graph observation](M35-03A-05A-04A-02-instance-probe.md) — complete; 1,047-target release/lint gate and exact-tree review pass.
+3. [04A-03 — original error state](M35-03A-05A-04A-03-error-state.md) — planned;
+   required after the pinned compiler exposed a nonzero error payload.
 
-Each checkpoint receives its own release/lint gate, review and commit. Neither
-alone completes this parent or opens compiler Result admission.
+Each checkpoint receives its own release/lint gate, review and commit. No
+checkpoint alone completes this parent or opens compiler Result admission.
 
 ## Implementation and definition of done
 

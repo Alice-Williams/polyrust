@@ -4,6 +4,17 @@
   compiler source admission remains planned
 - Contract: [shared](../../rust-scalar-results.md)
 
+## Versioned scope
+
+The transport/evaluation experiments below use a payload-free error abstraction.
+They remain closed target-only evidence. Rust-source integration instead requires
+the [version-2 canonical owner](../../rust-canonical-type-owners.md#c17-specification):
+the I32 member stores an authenticated error-kind code under Err, not zero or an
+ignored value. The source instance is unchanged; its target profile and names
+change explicitly. All error states must survive copying and reconstruction.
+
+## Existing target-only profile
+
 Use a source-derived complete struct with a typed Boolean success tag and I32
 payload. Initialize both fields on every construction; canonical error
 construction sets the unused payload to zero. Any error-tagged payload is

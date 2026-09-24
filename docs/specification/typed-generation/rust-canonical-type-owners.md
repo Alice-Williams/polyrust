@@ -1,9 +1,29 @@
 # Canonical Rust instance ownership across target packages
 
 - Status: normative design; descriptive identity foundation implemented;
-  compiler graph proof and target integration pending; Result admission closed
+  nominal compiler graph proof complete; full error-state proof and target
+  integration pending; Result admission closed
 - Parent: [scalar results](rust-scalar-results.md)
 - Integration prerequisite: [05A-04](../../plan/tasks/M35-03A-05A-04-compiler-results.md)
+
+## Pinned error-state correction
+
+The observation experiment reports a one-byte TryFromIntError in pinned Rust
+1.98. The [official core source](https://doc.rust-lang.org/src/core/num/error.rs.html)
+defines a wrapper around IntErrorKind, not a unit value. Preserve the complete
+original error kind, even while source inspection/equality remains unsupported.
+An observational quotient could collapse these values within a restricted
+variant-only language, but this design chooses lossless public value transport
+for future capability extension. No Rust-ABI byte compatibility is promised.
+
+The earlier payload-free C/Java target experiments remain valid for their
+documented restricted observations; they do not certify this source mapping.
+Before 04B–04E, 04A-03 must authenticate all six original fieldless kinds and
+bind a closed target code map. A public incoming error need not originate from
+i64-to-i32 narrowing. Keep the source instance key; version both target profiles
+as 2. No error-bit erasure, unsafe Rust transmutation or unstable input-language
+escape is authorized. Nominal observation alone accepts the data-carrying error
+and issues no target certificate; payload-free profile admission must reject it.
 
 ## Problem and selected ownership rule
 
@@ -93,16 +113,16 @@ compiler-authenticated core crate. The success argument is exactly I32. Encode
 that shared crate identity as c, Result's local definition hash as r, and the
 error's local definition hash as e, each exactly 16 lowercase hexadecimal digits.
 
-- C17 representation version 1: basename
-  polyrust_t1_c<c>_r<r>_i32_e<e>, with .h/.c companions. All owned symbols derive
+- C17 representation version 2: basename
+  polyrust_t2_c<c>_r<r>_i32_e<e>, with .h/.c companions. All owned symbols derive
   from this checked basename and closed member-role suffixes.
-- Java21 representation version 1: namespace
-  org.polyrust.generated.t1.c<c>.r<r>.i32.e<e>, with Generated.java and its ordinary
+- Java21 representation version 2: namespace
+  org.polyrust.generated.t2.c<c>.r<r>.i32.e<e>, with Generated.java and its ordinary
   Outcome/Success/Error nested declarations.
 
 Angle-bracket metavariables denote the exact hex fields, not literal characters.
 All represented argument identities are recoverable from this encoding; version
-1 implies the fixed profile and zero error type arguments. Key validation rejects
+2 implies the fixed profile and zero error type arguments. Key validation rejects
 cross-core pairs rather than dropping a different error crate ID from the name.
 The representation version is a closed backend-owned enum, not a caller string.
 Test worst-case identifier/path/header-guard reservations and source/type-owner
@@ -137,7 +157,7 @@ it grants no construction authority on its own.
 
 The initial opaque error can be bound only under the authenticated Err pattern
 and forwarded into Err reconstruction. Its original nominal witness is retained
-even though the admitted observation carries no runtime payload bits. This does
+and its full authenticated error-kind value must survive that operation. This does
 not admit standalone error parameters/returns, arbitrary construction, equality
 or formatting; those require a separately specified representation and tests.
 
@@ -167,6 +187,10 @@ and its independent reconstruction, before RenderReadyPackage certification.
 Recognize the strict profile before platform assertion installation. It admits
 exactly one public Bool/I32 scalar-result struct with its two original registered
 members, the canonical header/source pair, and required platform static asserts.
+In version 2 the I32 member carries success bits under Ok or the exact checked
+error-kind code under Err; it is not an inactive field to clear or ignore. Typed
+lowering distinguishes these meanings. A strict native-boundary policy rejects
+invalid error codes before treating a foreign value as an admitted Rust value.
 It admits no function, global value, foreign export or executable helper. The
 implementation companion structurally requires its own public header.
 
@@ -181,10 +205,18 @@ identity. Source documentation/export logic must not impersonate a core crate.
 
 ## Java21 specification
 
-Retain the existing sealed interface, immutable int success record and empty
-error record. A generated type-owner namespace is distinct from RustCrate(u64).
-Its canonical facade has exactly the selected public family and necessary
-canonical constructor, with no unrelated methods, constants or source exports.
+Retain the existing sealed interface and immutable int success record. Version 2
+uses a six-constant Error enum implementing that interface, with one constant
+per authenticated error-kind role. This excludes invalid integer error codes by
+construction while retaining the existing foreign-null rejection policy. Err
+forwarding/reconstruction preserves the same immutable enum value. It does not
+grant source enum inspection or expose ordinal-based mappings. The family
+verifier authenticates the exact complete constant inventory and implements
+edge; no per-constant class body, extra field or custom method is admitted.
+The existing empty error record cannot supply this proof. A generated type-owner
+namespace is distinct from RustCrate(u64).
+Its canonical facade has exactly the selected public family, success constructor
+and six error constants, with no unrelated members or source exports.
 Check the explicit descriptor instead of fabricating JavaSourcePackage roots.
 
 The existing dependency authority retains this alternative owner profile.

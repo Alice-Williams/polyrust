@@ -13,11 +13,13 @@ def scalar_result_identity_targets(name):
         "src/inputs.rs",
         "test/scalar_result_identity/main.rs",
         "test/scalar_result_identity/shape.rs",
+        "test/instance_graph/corrupt.rs",
     ]
     compiler_adapter(
         name = "scalar_result_identity_probe",
         srcs = sources,
         crate_root = "test/scalar_result_identity/main.rs",
+        deps = ["//crates/codegen:portable_codegen"],
     )
     compiler_adapter_compile_fail_test(
         name = "scalar_result_identity_private_test",
@@ -25,6 +27,7 @@ def scalar_result_identity_targets(name):
         crate_root = "test/scalar_result_identity/main.rs",
         rustc_cfg = "scalar_result_forge",
         expected_error = "error[E0451]",
+        deps = ["//crates/codegen:portable_codegen"],
     )
     adapter_format_test(name = "scalar_result_identity_format_test", srcs = sources)
     sh_test(
