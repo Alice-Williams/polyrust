@@ -77,7 +77,9 @@ impl JavaSourceInventory {
             })?;
             if matches!(value.origin(), GeneratedOrigin::RustSource(_))
                 || matches!(&value, JavaSourceDeclaration::Type(value) if matches!(
-                    value.origin, GeneratedOrigin::Synthesized(SynthesisReason::PackageEntryPoint)
+                    value.origin, GeneratedOrigin::Synthesized(
+                        SynthesisReason::PackageEntryPoint | SynthesisReason::InterfaceAdapter
+                    )
                 ))
             {
                 declarations.insert(symbol, value);

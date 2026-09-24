@@ -232,6 +232,14 @@ release/lint targets with clean independent review. The Java unit suite passes
 446 cases; existing outputs and 45 unrelated WIP files are unchanged. This is
 the component foundation, not a complete Java Result family or Rust admission.
 
+[Closed local Java Result families](tasks/M35-03A-05A-03A-02-java-local-families.md)
+are now complete too: exact sealed variants, canonical immutable payloads,
+authenticated generated upcasts, guarded observations and strict native boundary
+proof pass all 1,041 release/lint targets and independent review. The Java unit
+suite passes 459 cases; prior outputs and 45 unrelated WIP files are unchanged.
+This closes local target transport only. Original nominal imports, measured
+selected-arm fault proof and Rust source admission remain separate open work.
+
 The Rust-source path now has a normative [C HIR lowering specification](../specification/typed-generation/languages/c/rust-hir-lowering.md).
 It reuses checked compiler HIR, documentation attributes and the existing C
 AST/certification types; it does not force Rust semantics through the legacy

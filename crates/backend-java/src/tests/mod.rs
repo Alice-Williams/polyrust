@@ -24,6 +24,7 @@ mod nested_payload_matches;
 mod portable_expectation_nan;
 mod resource_encoding_native;
 mod resources_native;
+mod scalar_result_families;
 mod source_constant_bounds;
 mod source_constant_consumer_bounds;
 pub(crate) mod source_constant_consumer_fixture;

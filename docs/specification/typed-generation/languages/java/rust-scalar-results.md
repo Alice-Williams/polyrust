@@ -1,6 +1,6 @@
 # Rust scalar results in Java21
 
-- Status: typed component foundation complete; complete family/imports still planned
+- Status: local component/family foundation complete; imports and source admission planned
 - Contract: [shared](../../rust-scalar-results.md)
 
 Use an ordinary source-derived sealed result interface with an immutable
@@ -60,6 +60,32 @@ checks. This role is descriptive storage metadata, not source provenance or a
 certificate of a complete closed Result family. The family verifier must still
 check the entire declaration set, canonical constructors and absence of custom
 accessor implementations before claiming Result observations.
+
+`JavaScalarResultFamily` is the narrower local declaration proof. It is derived
+only from an immutable `RenderReadyPackage<JavaDialect>` and a descriptive
+selection of three generated type identities; the proof retains that original
+certificate. The same top-level nest must contain an empty sealed interface,
+one single-int success record and one zero-field error record. Their identities
+must be distinct, their synthesized adapter origins exact, and their
+permits/implements inventory complete. The variants have only canonical
+constructors with matching explicit visibility; success assigns the final input
+directly and error has no initialization. Custom accessors or extra members are
+valid in general Java but cannot acquire this narrower proof.
+
+Generated adapter coercions are separate from checked Core implementation
+witnesses. They authenticate the source record, destination empty sealed
+interface, actual local implements edge and both synthesized adapter origins.
+The renderer retains the checked reference upcast to preserve the interface's
+static type in pattern contexts. This is not an unchecked payload cast. Normal
+lexical checks continue to reject a success-pattern binding used outside its
+guard. Public reference entry points reject foreign null through the typed JDK
+non-null operation, not by treating it as a Result error variant.
+
+This family proof covers declarations, not arbitrary facade-method semantics or
+Rust source equivalence. All uses retain ordinary Java syntax/scope verification;
+the compiler lowering and the later bounded dependency-body profile must impose
+the source operation/evaluation contract. Local family proofs do not export
+nominal dependency handles or bypass the existing source-facade verifier.
 
 Use separately compiled original producer/relay/consumer packages under strict
 Java21 compilation and normal/interpreted execution. Pristine value controls and

@@ -1,6 +1,6 @@
 # M35-03A-05A-03A — Local Java scalar-result declarations
 
-- Status: in-progress
+- Status: complete
 - Parent: [Java result transport](M35-03A-05A-03-java-results.md)
 - Depends on: [C result transport](M35-03A-05A-02-c-results.md)
 - Specification: [Java21](../../specification/typed-generation/languages/java/rust-scalar-results.md)
@@ -11,8 +11,17 @@ The first independently gated prerequisite is
 [03A-01 synthesized component identity](M35-03A-05A-03A-01-java-components.md).
 It is complete with all 1,041 release/lint targets and independent review passing.
 It establishes component references, not a closed Result family or source
-admission. This parent remains open until the complete family and all tests below
-are implemented.
+admission. The closed-family checkpoint below completes this local parent.
+
+The remaining local work was completed in
+[03A-02 closed families](M35-03A-05A-03A-02-java-local-families.md): exact family
+certification, generated interface conversion, guarded observations and native
+boundary/resource evidence. All 1,041 release/lint tests pass, including 459 Java
+unit cases and the separate native partitions; independent broad GPT-6-SOL
+review is clean. Both review-requested boundary tests were added. Existing
+generated outputs and 45 unrelated WIP files are unchanged. This does not widen
+dependency publication or admit Rust Result source programs; 03B/03C and 05A-04
+remain open.
 
 Build one ordinary sealed interface and two immutable variants through the
 existing typed Java declaration tree. The success record stores one primitive

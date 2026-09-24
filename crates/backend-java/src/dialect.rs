@@ -34,8 +34,10 @@ pub use dependency_scope::{
 mod documentation;
 mod file_checks;
 mod linker;
+mod scalar_result;
 mod source_package;
 mod source_registration;
+pub use scalar_result::{JavaScalarResultFamily, JavaScalarResultTypes};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct JavaDialect;

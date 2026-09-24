@@ -2,6 +2,41 @@ use super::*;
 use crate::tests::source_dependency_fixture::*;
 
 #[test]
+fn synthesized_adapter_inventory_has_exact_and_one_over_metadata_limits() {
+    use crate::ast::*;
+    use crate::dialect::JavaDialect;
+    use portable_codegen::*;
+    let mut builder = TargetAstBuilder::new(JavaDialect);
+    let owner = builder.generated_type(GeneratedType {
+        name: "Family".into(),
+        kind: JavaDeclarationKind::SealedInterface,
+        visibility: JavaVisibility::Public,
+        origin: GeneratedOrigin::Synthesized(SynthesisReason::InterfaceAdapter),
+        source: crate::tests::source_record_fixture::source(),
+    });
+    // Projection-only metadata fixture, not a Java syntax certificate.
+    let reference = package(7, functions(42));
+    let mut item = reference.files().next().unwrap().items()[0].clone();
+    let JavaFileItem::Type { declared, .. } = &mut item else {
+        unreachable!()
+    };
+    *declared = vec![GeneratedSymbolId::Type(owner)];
+    let inventory = JavaSourceInventory::derive(&builder.build(), &item).unwrap();
+    assert_eq!(inventory.iter().len(), 1);
+    check([&inventory], 1, 0, 6).unwrap();
+    assert!(
+        check([&inventory], 0, 0, 6)
+            .unwrap_err()
+            .contains("declaration")
+    );
+    assert!(
+        check([&inventory], 1, 0, 5)
+            .unwrap_err()
+            .contains("name byte")
+    );
+}
+
+#[test]
 fn source_inventory_exact_and_one_over_limits() {
     let ready = certify(package(7, functions(42)));
     let inventory = &ready.ast().files()[0].items()[0].source_inventory;

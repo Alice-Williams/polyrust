@@ -7,16 +7,26 @@ use super::field_metadata::find_type_declaration;
 use super::invocations::generated_type_implements;
 use super::types::{JavaType, JavaTypeName};
 use crate::dialect::JavaDialect;
-use portable_codegen::{AstViolation, GeneratedTypeId, TargetAstContext};
+use portable_codegen::{
+    AstViolation, GeneratedOrigin, GeneratedTypeId, SynthesisReason, TargetAstContext,
+};
 use portable_core_ir::{CoreImplementationId, CoreImplementationMethodId, CoreProgram};
 use portable_diagnostics::DiagnosticCode;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct JavaInterfaceWitness {
-    implementation: CoreImplementationId,
+    origin: Origin,
     record: GeneratedTypeId,
     interface: GeneratedTypeId,
-    methods: Vec<CoreImplementationMethodId>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Origin {
+    Core {
+        implementation: CoreImplementationId,
+        methods: Vec<CoreImplementationMethodId>,
+    },
+    GeneratedAdapter,
 }
 
 impl JavaInterfaceWitness {
@@ -30,10 +40,23 @@ impl JavaInterfaceWitness {
             .implementation(implementation)
             .expect("verified conformance");
         Self {
-            implementation,
+            origin: Origin::Core {
+                implementation,
+                methods: conformance.methods.clone(),
+            },
             record,
             interface,
-            methods: conformance.methods.clone(),
+        }
+    }
+
+    /// Descriptive local adapter edge, not checked Core conformance authority.
+    /// Verification requires the exact synthesized record/empty sealed interface
+    /// declarations and their actual implements edge in this package.
+    pub fn for_generated_adapter(record: GeneratedTypeId, interface: GeneratedTypeId) -> Self {
+        Self {
+            origin: Origin::GeneratedAdapter,
+            record,
+            interface,
         }
     }
 
@@ -50,31 +73,54 @@ impl JavaInterfaceWitness {
         let valid = source == &record_type
             && target == &interface_type
             && generated_type_implements(self.record, self.interface, context)
-            && interface.is_some_and(|declaration| {
+            && interface.as_ref().is_some_and(|declaration| {
                 matches!(
                     declaration.kind,
                     JavaDeclarationKind::Interface | JavaDeclarationKind::SealedInterface
                 )
             })
-            && record.is_some_and(|declaration| {
-                self.methods.iter().all(|expected| {
-                    declaration.members.iter().any(|member| {
-                        matches!(member, JavaMember::Method(JavaMethod {
+            && record
+                .as_ref()
+                .is_some_and(|declaration| match &self.origin {
+                    Origin::Core { methods, .. } => methods.iter().all(|expected| {
+                        declaration.members.iter().any(|member| {
+                            matches!(member, JavaMember::Method(JavaMethod {
                             declared: JavaMethodDeclaration::Implementation { method, .. },
                             ..
                         }) if method == expected)
-                    })
-                })
-            });
+                        })
+                    }),
+                    Origin::GeneratedAdapter => {
+                        declaration.kind == JavaDeclarationKind::Record
+                            && declaration.type_parameters.is_empty()
+                            && interface.as_ref().is_some_and(|interface| {
+                                interface.kind == JavaDeclarationKind::SealedInterface
+                                    && interface.type_parameters.is_empty()
+                                    && interface.members.is_empty()
+                            })
+                            && [self.record, self.interface].into_iter().all(|id| {
+                                context.generated_type(id).is_some_and(|registered| {
+                                    registered.origin
+                                        == GeneratedOrigin::Synthesized(
+                                            SynthesisReason::InterfaceAdapter,
+                                        )
+                                })
+                            })
+                    }
+                });
         if valid {
             vec![]
         } else {
+            let conformance = match &self.origin {
+                Origin::Core { implementation, .. } => format!("{implementation:?}"),
+                Origin::GeneratedAdapter => format!(
+                    "generated adapter {:?} -> {:?}",
+                    self.record, self.interface
+                ),
+            };
             vec![AstViolation::new(
                 DiagnosticCode::UnresolvedReference,
-                format!(
-                    "Java interface coercion disagrees with conformance {:?}",
-                    self.implementation
-                ),
+                format!("Java interface coercion disagrees with conformance {conformance}"),
             )]
         }
     }
