@@ -256,6 +256,16 @@ Its canonical facade has exactly the selected public family, success constructor
 and six error constants, with no unrelated members or source exports.
 Check the explicit descriptor instead of fabricating JavaSourcePackage roots.
 
+The version-2 Generated facade is public and final with a private, empty,
+parameterless constructor. Its remaining members are Outcome, Success and Error
+in that order. Outcome permits Success then Error; Error constants follow the
+six semantic roles listed above. Success has exactly its canonical public
+constructor, assigning its final int value input once. Require one public Main
+compilation unit and one public group, with no artifacts or dependency inventory.
+The immutable metadata discriminates source-crate from canonical-instance owners;
+the canonical branch retains the original fifteen source identities and exact
+local type/value selections. This description does not authenticate rustc input.
+
 The local six-state family witness is a separate API from the earlier local
 payload-free record-family witness; neither is silently reinterpreted. Its
 descriptive value selection uses six named GeneratedValueId roles, not an

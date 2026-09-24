@@ -60,7 +60,8 @@ pub(super) fn package(tcx: TyCtxt<'_>, package: &TargetAstPackage<JavaDialect>) 
     let [
         JavaFileItem::Type {
             declaration,
-            source_package: Some(source_package),
+            package_metadata:
+                Some(portable_backend_java::ast::JavaPackageMetadata::Source(source_package)),
             ..
         },
     ] = file.items()

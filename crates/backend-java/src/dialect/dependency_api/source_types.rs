@@ -12,7 +12,7 @@ pub(super) fn read(package: &RenderReadyPackage<JavaDialect>) -> Option<Arc<Rust
         .flat_map(|file| file.items())
         .find_map(|item| match &item.item {
             JavaFileItem::Type {
-                source_package: Some(source),
+                package_metadata: Some(crate::ast::JavaPackageMetadata::Source(source)),
                 ..
             } => source.source_types().cloned(),
             _ => None,

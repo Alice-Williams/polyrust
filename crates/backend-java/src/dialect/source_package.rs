@@ -21,7 +21,7 @@ fn explicit(
     for file in package.files() {
         for item in file.items() {
             let JavaFileItem::Type {
-                source_package: Some(source),
+                package_metadata: Some(crate::ast::JavaPackageMetadata::Source(source)),
                 declaration,
                 ..
             } = item
@@ -90,7 +90,7 @@ pub(super) fn metadata<'a>(
     // Metadata budgets and coherence run before selecting foreign witnesses.
     for item in package.files().flat_map(|file| file.items()) {
         if let JavaFileItem::Type {
-            source_package: Some(source),
+            package_metadata: Some(crate::ast::JavaPackageMetadata::Source(source)),
             dependencies,
             ..
         } = item

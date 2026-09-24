@@ -12,7 +12,7 @@ pub(super) fn verify(package: &TargetAstPackage<JavaDialect>) -> Vec<AstViolatio
     let module = package.files().next().map(|file| *file.module());
     let origins = origins(package);
     let mut seen = BTreeSet::new();
-    let mut violations = Vec::new();
+    let mut violations = super::canonical_package::verify(package);
     let checked = super::source_package::metadata(package, origins.inspect(|origin| {
         let crate_id = origin.declaration.crate_id;
         if module != Some(JavaPackage::RustCrate(crate_id)) {

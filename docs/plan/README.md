@@ -299,9 +299,17 @@ Error enum preserve each selected error kind without ordinal-based transport.
 All 1,057 release/lint targets, 16,406 native observations and compiling
 wrong-kind/payload controls pass; two independent reviews are clean. The actual
 generated example is exported locally, and all 530 recorded prior outputs and
-45 protected WIP hashes remain unchanged. Canonical Java type ownership and
-original imports are the next separate checkpoints; Rust Result admission stays
-closed.
+45 protected WIP hashes remain unchanged.
+
+[Java canonical type ownership](tasks/M35-03A-05A-04C-02-java-owner-certificate.md)
+is also complete: the immutable descriptor preserves all original source facts
+and exact local roles, under a fixed version-2 namespace and family-only facade.
+Eight public owner cases, all 485 Java unit cases, separate native partitions and
+all 1,058 release/lint targets pass; independent reviews are clean. Actual maximum
+and normal owner sources are exported, measured classfiles fit their reservations,
+and reordered registrations preserve bytes. The 530 baseline outputs and 45 WIP
+hashes remain unchanged. Original Java imports and cross-producer proof follow;
+compiler graph publication and Rust Result admission remain closed.
 
 The Rust-source path now has a normative [C HIR lowering specification](../specification/typed-generation/languages/c/rust-hir-lowering.md).
 It reuses checked compiler HIR, documentation attributes and the existing C

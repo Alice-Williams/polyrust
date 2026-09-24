@@ -114,12 +114,12 @@ impl JavaFileItem {
         match self {
             Self::Type {
                 declaration,
-                source_package,
+                package_metadata,
                 dependencies,
                 ..
             } => {
                 declaration.symbols(&mut symbols);
-                if let Some(source) = source_package {
+                if let Some(super::JavaPackageMetadata::Source(source)) = package_metadata {
                     symbols.extend(
                         crate::dialect::constant_exports::references(
                             source.exports(),

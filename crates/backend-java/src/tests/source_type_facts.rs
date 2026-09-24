@@ -168,10 +168,14 @@ fn api_retains_facts_from_exact_certificate_and_rejects_a_wrong_representation()
     let attach = |types: RustSourceTypes| {
         let package = rebuild(package.clone(), |file| {
             for item in &mut file.items {
-                if let JavaFileItem::Type { source_package, .. } = item {
-                    *source_package = Some(
+                if let JavaFileItem::Type {
+                    package_metadata, ..
+                } = item
+                {
+                    *package_metadata = Some(
                         JavaSourcePackage::new(exports.clone())
-                            .with_source_types(Arc::new(types.clone())),
+                            .with_source_types(Arc::new(types.clone()))
+                            .into(),
                     );
                 }
             }

@@ -150,7 +150,7 @@ impl Fixture {
             vec![JavaFileItem::Type {
                 declared,
                 conformances: JavaConformanceInventory::structural().into(),
-                source_package: Some(JavaSourcePackage::new(graph)),
+                package_metadata: Some(JavaSourcePackage::new(graph).into()),
                 dependencies: self.dependencies,
                 declaration: Box::new(JavaTypeDeclaration {
                     declared: Some(facade),

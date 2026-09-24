@@ -15,6 +15,8 @@
 2. [04C-02 — strict type-owner certificate](M35-03A-05A-04C-02-java-owner-certificate.md):
    closed versioned namespace, full original facts and exact family-only facade
    retained in the immutable certificate. Source-only dependency APIs still reject.
+   Complete: all 1,058 release/lint targets, eight strict owner cases, measured
+   four-classfile budgets, exact/one-over metadata counts and clean reviews.
 3. [04C-03 — original typed imports](M35-03A-05A-04C-03-java-owner-imports.md):
    full owner keys, original enum-constant/family/member authority, consumer-scoped
    signatures and complete unused/diamond closure accounting.

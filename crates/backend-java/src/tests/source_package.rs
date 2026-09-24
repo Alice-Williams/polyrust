@@ -16,7 +16,7 @@ fn empty_facade_retains_explicit_graph_and_module_docs_without_api_authority() {
     assert_eq!(item.source_inventory.iter().len(), 1); // Synthesized facade only.
     assert_eq!(item.documentation.iter().count(), 2);
     let JavaFileItem::Type {
-        source_package: Some(source),
+        package_metadata: Some(crate::ast::JavaPackageMetadata::Source(source)),
         declaration,
         ..
     } = &item.item
@@ -107,7 +107,7 @@ fn malformed_explicit_package_is_rejected_before_linking() {
             Fault::Duplicate => file.items.push(file.items[0].clone()),
             _ => {
                 let JavaFileItem::Type {
-                    source_package,
+                    package_metadata,
                     declaration,
                     ..
                 } = &mut file.items[0]
@@ -125,7 +125,7 @@ fn malformed_explicit_package_is_rejected_before_linking() {
                         } else {
                             graph.module_ancestries.clear();
                         }
-                        *source_package = Some(JavaSourcePackage::new(Arc::new(graph)));
+                        *package_metadata = Some(JavaSourcePackage::new(Arc::new(graph)).into());
                     }
                     _ => unreachable!(),
                 }

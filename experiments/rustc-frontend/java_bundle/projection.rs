@@ -15,7 +15,8 @@ pub(crate) fn exports(
     for file in api.package().ast().files() {
         for item in file.items() {
             if let JavaFileItem::Type {
-                source_package: Some(source),
+                package_metadata:
+                    Some(portable_backend_java::ast::JavaPackageMetadata::Source(source)),
                 ..
             } = &item.item
             {

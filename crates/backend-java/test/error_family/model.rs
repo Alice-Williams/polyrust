@@ -154,7 +154,7 @@ pub fn finish(
         vec![JavaFileItem::Type {
             declared,
             conformances: JavaConformanceInventory::structural().into(),
-            source_package: None,
+            package_metadata: None,
             dependencies: Default::default(),
             declaration: facade.into(),
         }],

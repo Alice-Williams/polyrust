@@ -53,7 +53,7 @@ mod call_builders;
 pub(crate) fn shell_item() -> JavaFileItem {
     JavaFileItem::Type {
         conformances: crate::ast::JavaConformanceInventory::structural().into(),
-        source_package: None,
+        package_metadata: None,
         dependencies: Default::default(),
         declared: vec![],
         declaration: Box::new(JavaTypeDeclaration {

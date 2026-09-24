@@ -64,7 +64,7 @@ pub(super) fn add_consumer(
     assert!(matches!(declaration.members[0], JavaMember::Method(_)));
     let mut items = vec![JavaFileItem::Type {
         conformances: JavaConformanceInventory::structural().into(),
-        source_package: None,
+        package_metadata: None,
         dependencies: Default::default(),
         declared: vec![],
         declaration: Box::new(declaration),
@@ -74,7 +74,7 @@ pub(super) fn add_consumer(
         occupied.name = JavaIdentifier::new(format!("OracleEnumConsumer${index}")).unwrap();
         items.push(JavaFileItem::Type {
             conformances: JavaConformanceInventory::structural().into(),
-            source_package: None,
+            package_metadata: None,
             dependencies: Default::default(),
             declared: vec![],
             declaration: Box::new(occupied),

@@ -73,7 +73,7 @@ fn fixture(
         vec![JavaFileItem::Type {
             declared: vec![GeneratedSymbolId::Type(id)],
             conformances: JavaConformanceInventory::structural().into(),
-            source_package: None,
+            package_metadata: None,
             dependencies: Default::default(),
             declaration: Box::new(JavaTypeDeclaration {
                 declared: Some(id),
@@ -354,7 +354,7 @@ fn ordinary_java_registration_rules_are_not_bypassed_by_source_metadata() {
         vec![JavaFileItem::Type {
             declared: vec![GeneratedSymbolId::Type(duplicate)],
             conformances: JavaConformanceInventory::structural().into(),
-            source_package: None,
+            package_metadata: None,
             dependencies: Default::default(),
             declaration: Box::new(JavaTypeDeclaration {
                 declared: Some(duplicate),

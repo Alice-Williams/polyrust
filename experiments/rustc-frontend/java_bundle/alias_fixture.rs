@@ -151,7 +151,7 @@ pub(super) fn owner(
         vec![JavaFileItem::Type {
             declared,
             conformances: JavaConformanceInventory::structural().into(),
-            source_package: Some(JavaSourcePackage::new(graph)),
+            package_metadata: Some(JavaSourcePackage::new(graph).into()),
             dependencies: scope.finish(),
             declaration: Box::new(JavaTypeDeclaration {
                 declared: Some(facade),

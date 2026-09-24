@@ -81,7 +81,7 @@ pub fn empty_with_origin(reason: SynthesisReason) -> TargetAstPackage<JavaDialec
         vec![JavaFileItem::Type {
             declared: vec![GeneratedSymbolId::Type(id)],
             conformances: JavaConformanceInventory::structural().into(),
-            source_package: Some(JavaSourcePackage::new(graph())),
+            package_metadata: Some(JavaSourcePackage::new(graph()).into()),
             dependencies: Default::default(),
             declaration: Box::new(JavaTypeDeclaration {
                 declared: Some(id),
@@ -167,10 +167,13 @@ pub fn attach(
     exports: Arc<RustCrateExports>,
 ) -> TargetAstPackage<JavaDialect> {
     rebuild(package, |file| {
-        let JavaFileItem::Type { source_package, .. } = &mut file.items[0] else {
+        let JavaFileItem::Type {
+            package_metadata, ..
+        } = &mut file.items[0]
+        else {
             panic!("facade")
         };
-        *source_package = Some(JavaSourcePackage::new(exports.clone()));
+        *package_metadata = Some(JavaSourcePackage::new(exports.clone()).into());
     })
 }
 

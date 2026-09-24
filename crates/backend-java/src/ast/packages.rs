@@ -10,6 +10,10 @@ mod tests;
 pub enum JavaPackage {
     Generated,
     RustCrate(u64),
+    CanonicalInstance {
+        instance: portable_codegen::RustCanonicalInstanceKey,
+        profile: super::JavaCanonicalTypeProfile,
+    },
 }
 
 impl JavaPackage {
@@ -17,6 +21,9 @@ impl JavaPackage {
         match self {
             Self::Generated => Cow::Borrowed("org.polyrust.generated"),
             Self::RustCrate(id) => Cow::Owned(format!("org.polyrust.generated.r{id:016x}")),
+            Self::CanonicalInstance { instance, profile } => {
+                Cow::Owned(profile.namespace(instance))
+            }
         }
     }
 

@@ -152,15 +152,18 @@ fn collect_results_with_budget(
         return Err("Java dependency facade identity or shape disagrees".into());
     }
     let JavaFileItem::Type {
-        source_package,
+        package_metadata,
         dependencies,
         ..
     } = &item.item
     else {
         unreachable!()
     };
-    let exports = match source_package {
-        Some(source) => source.exports(),
+    let exports = match package_metadata {
+        Some(crate::ast::JavaPackageMetadata::Source(source)) => source.exports(),
+        Some(crate::ast::JavaPackageMetadata::Canonical(_)) => {
+            return Err("Java source dependency API cannot publish a canonical type owner".into());
+        }
         None => {
             &item
                 .source_inventory
@@ -173,7 +176,7 @@ fn collect_results_with_budget(
                 .crate_exports
         }
     };
-    let selected = if source_package.is_some() {
+    let selected = if package_metadata.is_some() {
         super::super::constant_exports::collect(exports, dependencies)?
     } else {
         super::super::constant_exports::Selection::default()
@@ -184,7 +187,7 @@ fn collect_results_with_budget(
     let public = public_bindings(
         exports,
         &selected,
-        source_package.is_some() && !result_families.is_empty(),
+        package_metadata.is_some() && !result_families.is_empty(),
     )?;
     let mut agreement = Agreement::new(exports);
     let mut expected = BTreeSet::from([GeneratedSymbolId::Type(facade_id)]);

@@ -139,7 +139,7 @@ fn independently_frozen_scopes_in_one_original_package_are_rejected() {
                 vec![JavaFileItem::Type {
                     declared: vec![],
                     conformances: JavaConformanceInventory::structural().into(),
-                    source_package: None,
+                    package_metadata: None,
                     dependencies,
                     declaration: Box::new(facade.clone()),
                 }],

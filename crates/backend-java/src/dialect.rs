@@ -48,7 +48,9 @@ mod file_checks;
 mod linker;
 mod scalar_result;
 pub use error_result::{JavaErrorKindValues, JavaErrorResultFamily};
+mod canonical_package;
 mod source_package;
+pub use canonical_package::java_canonical_type_package;
 mod source_registration;
 pub use scalar_result::{JavaScalarResultFamily, JavaScalarResultTypes};
 

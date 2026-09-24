@@ -2,6 +2,54 @@ use super::*;
 use crate::tests::source_dependency_fixture::*;
 
 #[test]
+fn canonical_owner_inventory_charges_six_constants_and_four_types() {
+    let ready = crate::tests::canonical_owner_resources::package();
+    let inventory = &ready.ast().files()[0].items()[0].source_inventory;
+    assert_eq!(inventory.iter().len(), 10);
+    let bytes = [
+        "Generated",
+        "Outcome",
+        "Success",
+        "Error",
+        "EMPTY",
+        "INVALID_DIGIT",
+        "POS_OVERFLOW",
+        "NEG_OVERFLOW",
+        "ZERO",
+        "NOT_A_POWER_OF_TWO",
+    ]
+    .iter()
+    .map(|name| name.len())
+    .sum();
+    check([inventory], 10, 0, bytes).unwrap();
+    assert!(
+        check([inventory], 9, 0, bytes)
+            .unwrap_err()
+            .contains("declaration")
+    );
+    assert!(
+        check([inventory], 10, 0, bytes - 1)
+            .unwrap_err()
+            .contains("name byte")
+    );
+    let exact = || std::iter::repeat_n(inventory, MAX_DECLARATIONS / 10);
+    check(exact(), MAX_DECLARATIONS, MAX_PARAMETERS, MAX_NAME_BYTES).unwrap();
+    let extra = certify(package(9, vec![]));
+    let extra = &extra.ast().files()[0].items()[0].source_inventory;
+    assert_eq!(extra.iter().len(), 1);
+    assert!(
+        check(
+            exact().chain([extra]),
+            MAX_DECLARATIONS,
+            MAX_PARAMETERS,
+            MAX_NAME_BYTES
+        )
+        .unwrap_err()
+        .contains("declaration")
+    );
+}
+
+#[test]
 fn result_owner_inventory_charges_all_six_adapter_types_and_the_facade() {
     let api = crate::tests::result_imports::fixture::owner();
     let inventory = &api.package().ast().files()[0].items()[0].source_inventory;

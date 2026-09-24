@@ -5,6 +5,11 @@
 #![forbid(unsafe_code)]
 #![cfg_attr(not(test), deny(clippy::wildcard_imports))]
 
+// Share public-API fixtures with private resource oracles without exposing
+// reservation internals in the production API.
+#[cfg(test)]
+extern crate self as portable_backend_java;
+
 pub mod ast;
 pub mod capabilities;
 pub mod dialect;

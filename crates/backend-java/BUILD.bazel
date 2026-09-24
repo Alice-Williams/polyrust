@@ -129,6 +129,24 @@ rust_doc_test(
 )
 
 rust_test(
+    name = "java_canonical_type_owner_test",
+    size = "large",
+    srcs = glob(["test/canonical/*.rs"]) + [
+        "test/error_family/fixture.rs",
+        "test/error_family/model.rs",
+    ],
+    crate_root = "test/canonical/main.rs",
+    data = ["@bazel_tools//tools/jdk:current_java_runtime"],
+    edition = "2024",
+    visibility = ["//:__pkg__"],
+    deps = [
+        ":portable_backend_java",
+        "//crates/codegen:portable_codegen",
+        "//crates/diagnostics:portable_diagnostics",
+    ],
+)
+
+rust_test(
     name = "java_error_family_test",
     size = "large",
     srcs = glob(["test/error_family/*.rs"]),
@@ -148,7 +166,12 @@ rust_test(
     # The suite runs hundreds of javac/java positive and mutation controls.
     # Hosted runners exceed the default five-minute medium-test budget.
     size = "large",
-    srcs = glob(["src/**/*.rs"]),
+    srcs = glob(["src/**/*.rs"]) + [
+        "test/canonical/fixture.rs",
+        "test/canonical/native.rs",
+        "test/error_family/fixture.rs",
+        "test/error_family/model.rs",
+    ],
     args = [arg for case in NATIVE_CASES.values() for arg in [
         "--skip",
         case,

@@ -340,7 +340,7 @@ pub fn add_file(
         vec![JavaFileItem::Type {
             declared,
             conformances: JavaConformanceInventory::structural().into(),
-            source_package: None,
+            package_metadata: None,
             dependencies: Default::default(),
             declaration: Box::new(declaration),
         }],
