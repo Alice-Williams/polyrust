@@ -73,6 +73,32 @@ pub(in crate::dialect) fn catalogue(
                 }
             }
             for value in item.symbols() {
+                match &value {
+                    TargetSymbolRef::KnownConstructor(
+                        crate::dialect::JavaReferencedConstructor::Dependency(value),
+                    ) if !dependencies.contains_result_constructor(value) => {
+                        return Err(error(
+                            "Java dependency constructor is absent from its original consumer scope",
+                        ));
+                    }
+                    TargetSymbolRef::KnownMethod(
+                        crate::dialect::JavaReferencedMethod::Dependency(value),
+                    ) if !dependencies.contains_result_accessor(value) => {
+                        return Err(error(
+                            "Java dependency accessor is absent from its original consumer scope",
+                        ));
+                    }
+                    _ => {}
+                }
+                if let TargetSymbolRef::KnownType(crate::dialect::JavaReferencedType::Dependency(
+                    ref ty,
+                )) = value
+                    && !dependencies.contains_result_type(ty)
+                {
+                    return Err(error(
+                        "Java dependency type is absent from its original consumer scope",
+                    ));
+                }
                 if let TargetSymbolRef::DependencyValue(value) = value
                     && !dependencies.contains_value(&value)
                 {
@@ -107,6 +133,16 @@ pub(in crate::dialect) fn catalogue(
     let mut catalogue = JavaDialect.symbol_catalogue();
     let mut pending = Vec::new();
     if let Some(scope) = scope {
+        catalogue
+            .constructors
+            .extend(scope.result_constructors().map(|value| value.spec()));
+        catalogue
+            .methods
+            .extend(scope.result_accessors().map(|value| value.spec()));
+        for ty in scope.result_types() {
+            pending.push(ty.original().family().package_identity());
+            catalogue.types.push(ty.spec());
+        }
         for value in scope.values() {
             pending.push(value.constant().package_identity());
             catalogue.dependency_values.push(value.spec());

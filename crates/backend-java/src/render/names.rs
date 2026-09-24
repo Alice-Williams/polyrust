@@ -24,6 +24,9 @@ pub(super) fn render_java_type(
         }
         .to_owned()),
         JavaType::Reference(JavaTypeName::Known(value)) => resolved_type_name(names, *value),
+        JavaType::Reference(JavaTypeName::Imported(value)) => {
+            resolved_name(names, &TargetSymbolRef::KnownType(value.clone().into()))
+        }
         JavaType::Reference(JavaTypeName::Generated(value)) => resolved_name(
             names,
             &TargetSymbolRef::Generated(GeneratedSymbolId::Type(*value)),
@@ -33,6 +36,9 @@ pub(super) fn render_java_type(
         }
         JavaType::Generic { raw, arguments } => {
             let raw = match raw {
+                JavaTypeName::Imported(value) => {
+                    resolved_name(names, &TargetSymbolRef::KnownType(value.clone().into()))?
+                }
                 JavaTypeName::Known(value) => resolved_type_name(names, *value)?,
                 JavaTypeName::Generated(value) => resolved_name(
                     names,
@@ -65,7 +71,7 @@ pub(super) fn resolved_type_name(
     names: &std::collections::BTreeMap<TargetSymbolRef<JavaDialect>, JavaResolvedName>,
     value: JavaKnownType,
 ) -> Result<String, Vec<Diagnostic>> {
-    resolved_name(names, &TargetSymbolRef::KnownType(value))
+    resolved_name(names, &TargetSymbolRef::KnownType(value.into()))
 }
 
 pub(super) fn resolved_name(

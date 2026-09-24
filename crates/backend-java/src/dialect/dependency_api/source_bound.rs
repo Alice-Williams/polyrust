@@ -1,6 +1,7 @@
 //! Source reservation for the closed owner subset, independent of text emission.
 mod bodies;
 mod budget;
+mod results;
 
 use super::{JavaDependencyApi, JavaDialect};
 use crate::ast::{
@@ -15,9 +16,6 @@ pub(super) fn measure(api: &JavaDependencyApi) -> Result<u64, String> {
     let [file] = api.package().ast().files() else {
         return Err("source reservation requires one owner file".into());
     };
-    if !file.imports().is_empty() {
-        return Err("source reservation requires a dependency-free owning file".into());
-    }
     let [item] = file.items() else {
         return Err("source reservation requires one facade".into());
     };
@@ -27,9 +25,14 @@ pub(super) fn measure(api: &JavaDependencyApi) -> Result<u64, String> {
     let mut reader = Reader {
         budget: Budget::new(),
         names: &item.names,
+        result_types: api.owner.0.result_types.keys().copied().collect(),
     };
     reader.budget.node(0)?; // Header, package keyword, separators and final LF.
     reader.spelling(&file.module().name())?;
+    for import in file.imports() {
+        reader.budget.node(0)?;
+        reader.spelling(import.kind().qualified_name())?;
+    }
     // The admitted owner renders each attachment at most once. Comments are
     // already escaped by the documentation projection; charge presentation,
     // not the smaller original Rust text. Saturation is rejected by the budget.
@@ -43,6 +46,7 @@ pub(super) fn measure(api: &JavaDependencyApi) -> Result<u64, String> {
 struct Reader<'a> {
     budget: Budget,
     names: &'a BTreeMap<TargetSymbolRef<JavaDialect>, JavaResolvedName>,
+    result_types: std::collections::BTreeSet<portable_codegen::GeneratedTypeId>,
 }
 impl Reader<'_> {
     fn spelling(&mut self, spelling: &str) -> Result<(), String> {
@@ -72,6 +76,9 @@ impl Reader<'_> {
     }
     fn ty(&mut self, ty: &JavaType) -> Result<(), String> {
         match ty {
+            JavaType::Reference(JavaTypeName::Imported(value)) => {
+                self.symbol(TargetSymbolRef::KnownType(value.clone().into()))
+            }
             JavaType::Primitive(
                 JavaPrimitive::Int
                 | JavaPrimitive::Long
@@ -94,15 +101,29 @@ impl Reader<'_> {
     }
     fn declaration(&mut self, value: &JavaTypeDeclaration, depth: usize) -> Result<(), String> {
         self.budget.node(depth)?;
-        if !matches!(
-            value.kind,
-            JavaDeclarationKind::FinalClass | JavaDeclarationKind::Record
-        ) || !value.modifiers.is_empty()
-            || !value.type_parameters.is_empty()
-            || value.heritage != JavaHeritage::None
-            || !value.permits.is_empty()
+        let selected_result = value
+            .declared
+            .is_some_and(|id| self.result_types.contains(&id));
+        if !selected_result
+            && (!matches!(
+                value.kind,
+                JavaDeclarationKind::FinalClass | JavaDeclarationKind::Record
+            ) || !value.modifiers.is_empty()
+                || !value.type_parameters.is_empty()
+                || value.heritage != JavaHeritage::None
+                || !value.permits.is_empty())
         {
             return Err("source reservation encountered an unsupported declaration".into());
+        }
+        if selected_result {
+            if let JavaHeritage::Interfaces(interfaces) = &value.heritage {
+                for ty in interfaces {
+                    self.ty(ty)?;
+                }
+            }
+            for ty in &value.permits {
+                self.ty(ty)?;
+            }
         }
         self.symbol(TargetSymbolRef::Generated(GeneratedSymbolId::Type(
             value

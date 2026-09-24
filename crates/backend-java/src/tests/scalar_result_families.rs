@@ -1,8 +1,8 @@
 //! Closed representation proofs are deliberately narrower than Java syntax.
 mod expressions;
-mod fixture;
+pub(crate) mod fixture;
 mod native;
-mod publication;
+pub(crate) mod publication;
 mod syntax;
 use crate::ast::*;
 use crate::dialect::{JavaDialect, JavaScalarResultFamily};

@@ -102,7 +102,7 @@ pub(super) fn known_type_spec(value: JavaKnownType) -> KnownTypeSpec<JavaDialect
         )
     };
     KnownTypeSpec {
-        symbol: value,
+        symbol: value.into(),
         name: JavaIdentifier::from_portable(value.simple_name()),
         alias_stem: value.simple_name().to_owned(),
         qualified_name,
@@ -135,7 +135,7 @@ fn known_callable_spec(value: JavaKnownCallable) -> KnownCallableSpec<JavaDialec
     };
     KnownCallableSpec {
         symbol: value,
-        owner: Some(value.owner()),
+        owner: Some(value.owner().into()),
         name: JavaIdentifier::from_portable(value.name()),
         alias_stem: value.name().to_owned(),
         qualified_name: Some(JavaQualifiedName::Callable(value)),
@@ -148,7 +148,7 @@ fn known_callable_spec(value: JavaKnownCallable) -> KnownCallableSpec<JavaDialec
         visibility: JavaVisibility::Public,
         policy: DependencyPolicy::Member {
             owner: JavaQualifiedName::Type(value.owner()),
-            member,
+            member: member.into(),
         },
         dependency: None,
         source: symbol_source("callable", value.qualified_name()),
@@ -173,7 +173,7 @@ fn runtime_callable_spec(value: JavaRuntimeCallable) -> RuntimeCallableSpec<Java
 fn known_field_spec(value: JavaKnownField) -> KnownFieldSpec<JavaDialect> {
     KnownFieldSpec {
         symbol: value,
-        owner: value.owner(),
+        owner: value.owner().into(),
         name: JavaIdentifier::from_portable(value.member().text()),
         origin: if value.owner().implicit() {
             SymbolOrigin::LanguagePrelude(JavaPreludeSymbol::JavaLang)
@@ -183,7 +183,7 @@ fn known_field_spec(value: JavaKnownField) -> KnownFieldSpec<JavaDialect> {
         ty: TypePattern::Exact(JavaDialect.registered_type(&value.ty())),
         policy: DependencyPolicy::Member {
             owner: JavaQualifiedName::Type(value.owner()),
-            member: value.member(),
+            member: value.member().into(),
         },
         dependency: None,
         source: symbol_source("field", value.member().text()),
@@ -203,8 +203,8 @@ fn known_constructor_spec(value: JavaKnownConstructor) -> KnownConstructorSpec<J
     };
     let owner_type = value.owner();
     KnownConstructorSpec {
-        symbol: value,
-        owner: owner_type,
+        symbol: value.into(),
+        owner: owner_type.into(),
         name: JavaIdentifier::from_portable(owner_type.simple_name()),
         alias_stem: owner_type.simple_name().to_owned(),
         qualified_name: Some(JavaQualifiedName::Type(owner_type)),
@@ -236,8 +236,8 @@ fn known_constructor_spec(value: JavaKnownConstructor) -> KnownConstructorSpec<J
 fn known_method_spec(value: JavaKnownMethod) -> KnownMethodSpec<JavaDialect> {
     let signature = value.signature();
     KnownMethodSpec {
-        symbol: value,
-        owner: value.owner(),
+        symbol: value.into(),
+        owner: value.owner().into(),
         name: JavaIdentifier::from_portable(value.name().text()),
         origin: if value.owner().implicit() {
             SymbolOrigin::LanguagePrelude(JavaPreludeSymbol::JavaLang)
@@ -248,14 +248,14 @@ fn known_method_spec(value: JavaKnownMethod) -> KnownMethodSpec<JavaDialect> {
         visibility: JavaVisibility::Public,
         policy: DependencyPolicy::Member {
             owner: JavaQualifiedName::Type(value.owner()),
-            member: value.name(),
+            member: value.name().into(),
         },
         dependency: None,
         source: symbol_source("method", value.name().text()),
     }
 }
 
-fn callable_pattern(
+pub(super) fn callable_pattern(
     signature: &TargetCallableSignature<JavaDialect>,
 ) -> CallablePattern<JavaDialect> {
     CallablePattern {

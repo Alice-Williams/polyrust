@@ -5,7 +5,7 @@ use std::{fs, path::PathBuf, process::Command};
 
 fn probe(producer: &JavaDependencyApi, mutation: usize) -> JavaDependencyApi {
     let first = producer.functions().next().unwrap().clone();
-    let (scope, imported) = JavaDependencyScope::new().import(first);
+    let (scope, imported) = JavaDependencyScope::new().import(first).unwrap();
     let input = JavaExpr::local(double(), f::name("input"));
     let call = |value| JavaExpr {
         ty: double(),

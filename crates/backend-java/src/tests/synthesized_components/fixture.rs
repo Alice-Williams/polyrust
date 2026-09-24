@@ -44,14 +44,14 @@ pub fn accessor(receiver: JavaExpr, owner: GeneratedTypeId) -> JavaExpr {
             callable: JavaCallableRef::Member {
                 owner: ty(owner),
                 name: name("value"),
-                signature: JavaMethodSignature {
+                signature: Box::new(JavaMethodSignature {
                     receiver: Some(ty(owner)),
                     parameters: vec![],
                     result: int(),
                     checked_exceptions: vec![],
                     nullable_result: false,
                     pure: true,
-                },
+                }),
                 origin: JavaMemberOrigin::SynthesizedField(field_id(owner)),
             },
             receiver: Some(Box::new(receiver)),

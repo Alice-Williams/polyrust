@@ -28,7 +28,7 @@ fn consumer(owner: &JavaDependencyApi) -> (TargetAstPackage<JavaDialect>, Vec<Ja
     let mut scope = JavaDependencyScope::new();
     let mut values = vec![];
     for constant in owner.constants() {
-        let (next, imported) = scope.import_constant(constant.clone());
+        let (next, imported) = scope.import_constant(constant.clone()).unwrap();
         scope = next;
         values.push(imported);
     }
@@ -101,7 +101,9 @@ fn signed_zero_and_lookalike_producers_cannot_replace_exact_authority() {
         let mut changed = catalogue.clone();
         changed.dependency_values[0].owner = other.package_identity().clone();
         assert!(changed.verify(&JavaDialect).is_err());
-        let (foreign_scope, _) = JavaDependencyScope::new().import_constant(after.clone());
+        let (foreign_scope, _) = JavaDependencyScope::new()
+            .import_constant(after.clone())
+            .unwrap();
         assert!(
             c::admit(imports::consumer(
                 0x924,

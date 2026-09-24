@@ -37,7 +37,7 @@ fn packages(values: &[i32]) -> Vec<JavaDependencyApi> {
             })
             .unwrap();
         assert_eq!(export.dependency(), constant);
-        let (next, read) = scope.import_constant(export.dependency().clone());
+        let (next, read) = scope.import_constant(export.dependency().clone()).unwrap();
         scope = next;
         reads.push(read);
     }
@@ -125,12 +125,16 @@ fn int_constant_lookalikes_cannot_replace_exact_import_authority() {
         assert_eq!(before.value() == after.value(), value == 0x10ffff);
         assert_ne!(before, after);
         assert_ne!(before.package_identity(), after.package_identity());
-        let (scope, read) = JavaDependencyScope::new().import_constant(before.clone());
+        let (scope, read) = JavaDependencyScope::new()
+            .import_constant(before.clone())
+            .unwrap();
         let draft = imports::consumer(0x926, scope.finish(), std::slice::from_ref(&read), None);
         let mut catalogue = JavaDialect.package_symbol_catalogue(&draft).unwrap();
         catalogue.dependency_values[0].owner = other.package_identity().clone();
         assert!(catalogue.verify(&JavaDialect).is_err());
-        let (foreign, _) = JavaDependencyScope::new().import_constant(after.clone());
+        let (foreign, _) = JavaDependencyScope::new()
+            .import_constant(after.clone())
+            .unwrap();
         assert!(c::admit(imports::consumer(0x926, foreign.finish(), &[read], None)).is_err());
     }
 }

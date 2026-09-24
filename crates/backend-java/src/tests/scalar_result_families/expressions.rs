@@ -97,7 +97,7 @@ pub fn read_payload(owner: GeneratedTypeId, spelling: &str) -> JavaExpr {
             callable: JavaCallableRef::Member {
                 owner: owner_type.clone(),
                 name: name("value"),
-                signature,
+                signature: Box::new(signature),
                 origin: JavaMemberOrigin::SynthesizedField(payload(owner)),
             },
             receiver: Some(Box::new(local(owner_type, spelling))),

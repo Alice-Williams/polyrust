@@ -41,7 +41,13 @@ fn wide_literals_have_a_real_source_reservation() {
         )))]);
         let api =
             JavaDependencyApi::from_certificate(f::certify(f::package(7, functions))).unwrap();
-        assert_eq!(api.function(f::id(7, 10)).unwrap().signature().result, long);
+        assert_eq!(
+            api.function(f::id(7, 10))
+                .unwrap()
+                .declaration_signature()
+                .result,
+            long
+        );
         within(&api);
     }
 }
@@ -125,8 +131,9 @@ fn each_repeated_foreign_call_reserves_its_qualified_path() {
     within(&owner);
     let mut previous = 0;
     for count in [1, 32, 256] {
-        let (scope, callable) =
-            JavaDependencyScope::new().import(owner.function(f::id(7, 10)).unwrap().clone());
+        let (scope, callable) = JavaDependencyScope::new()
+            .import(owner.function(f::id(7, 10)).unwrap().clone())
+            .unwrap();
         let mut functions = f::functions(0);
         let mut statements = Vec::new();
         for index in 0..count {
@@ -164,6 +171,7 @@ fn each_repeated_foreign_call_reserves_its_qualified_path() {
 fn unmeasured_shapes_do_not_receive_a_small_fallback() {
     let names = BTreeMap::new();
     let mut reader = Reader {
+        result_types: Default::default(),
         budget: Budget::new(),
         names: &names,
     };

@@ -41,7 +41,9 @@ impl Mapping for JavaPublicConstantImports {
             );
         }
         let scope = std::mem::replace(&mut state.scope, JavaDependencyScope::new());
-        let (scope, value) = scope.import_constant(state.proof.clone());
+        let (scope, value) = scope
+            .import_constant(state.proof.clone())
+            .map_err(|errors| format!("{errors:?}"))?;
         state.scope = scope;
         Ok(value)
     }

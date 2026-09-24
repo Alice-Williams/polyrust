@@ -54,7 +54,7 @@ fn nested_arithmetic_cannot_hide_unregistered_or_wrong_arity_imports() {
     let owner = owners[1].functions().next().unwrap().clone();
     for register in [false, true] {
         for arity in [1, 2, 3] {
-            let (scope, callable) = JavaDependencyScope::new().import(owner.clone());
+            let (scope, callable) = JavaDependencyScope::new().import(owner.clone()).unwrap();
             let expression = fixture::binary(
                 JavaBinaryOperator::Add,
                 fixture::literal(0),

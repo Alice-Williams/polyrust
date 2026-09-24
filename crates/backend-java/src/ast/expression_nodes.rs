@@ -14,6 +14,7 @@ use portable_core_ir::CoreFieldId;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JavaConstructorRef {
+    Dependency(crate::dialect::JavaImportedResultConstructor),
     Known {
         constructor: crate::dialect::JavaKnownConstructor,
         owner: JavaType,

@@ -63,12 +63,14 @@ impl Fixture {
         let mut scope = JavaDependencyScope::new();
         let mut values = vec![];
         for constant in owner.constants() {
-            let (next, value) = scope.import_constant(constant.clone());
+            let (next, value) = scope.import_constant(constant.clone()).unwrap();
             scope = next;
             values.push(value);
         }
         let callable = if mixed {
-            let (next, callable) = scope.import(owner.function(f::id(0x35c, 110)).unwrap().clone());
+            let (next, callable) = scope
+                .import(owner.function(f::id(0x35c, 110)).unwrap().clone())
+                .unwrap();
             scope = next;
             Some(callable)
         } else {

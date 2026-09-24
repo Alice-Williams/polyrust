@@ -1,9 +1,12 @@
 //! The dependency reader enforces its exact cast contract independently of AST checks.
 use super::*;
+use crate::ast::{JavaBinaryOperator, JavaLiteral, JavaPrecedence};
 
 fn admitted(value: &JavaExpr) -> bool {
     let mut budget = Budget::new();
     Reader {
+        results: &Default::default(),
+        nonnull_results: BTreeSet::new(),
         methods: &BTreeMap::new(),
         records: &BTreeMap::new(),
         constants: &BTreeMap::new(),
@@ -104,6 +107,8 @@ fn signed_widening_reader_visits_the_original_operand_and_charges_each_node() {
     for remaining in [1, 2] {
         let mut budget = Budget { remaining };
         let success = Reader {
+            results: &Default::default(),
+            nonnull_results: BTreeSet::new(),
             methods: &BTreeMap::new(),
             records: &BTreeMap::new(),
             constants: &BTreeMap::new(),

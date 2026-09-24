@@ -126,13 +126,14 @@ pub enum JavaCallableRef {
     Member {
         owner: JavaType,
         name: JavaIdentifier,
-        signature: JavaMethodSignature,
+        signature: Box<JavaMethodSignature>,
         origin: JavaMemberOrigin,
     },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JavaMemberOrigin {
+    Dependency(crate::dialect::JavaImportedResultAccessor),
     SynthesizedField(super::synthesized_fields::JavaSynthesizedField),
     Known(crate::dialect::JavaKnownMethod),
     GeneratedField(CoreFieldId),

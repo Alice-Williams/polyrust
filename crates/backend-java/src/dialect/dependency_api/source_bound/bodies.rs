@@ -47,6 +47,9 @@ impl Reader<'_> {
     }
     pub(super) fn expression(&mut self, value: &JavaExpr, depth: usize) -> Result<(), String> {
         self.budget.node(depth)?;
+        if self.result_expression(value, depth)? {
+            return Ok(());
+        }
         match &value.kind {
             JavaExprKind::Cast { target, value } => {
                 self.ty(target)?;
@@ -65,7 +68,7 @@ impl Reader<'_> {
             )) => {
                 self.budget.add(1)?;
                 self.spelling(field.member().text())?;
-                self.symbol(TargetSymbolRef::KnownType(field.owner()))
+                self.symbol(TargetSymbolRef::KnownType(field.owner().into()))
             }
             JavaExprKind::Value(JavaValueRef::Dependency(imported)) => {
                 self.symbol(TargetSymbolRef::DependencyValue(imported.clone()))
@@ -138,7 +141,7 @@ impl Reader<'_> {
                         // Match structural emission: resolved owner plus catalogue member.
                         self.budget.add(1)?;
                         self.spelling(callable.name())?;
-                        TargetSymbolRef::KnownType(callable.owner())
+                        TargetSymbolRef::KnownType(callable.owner().into())
                     }
                     _ => return Err("source reservation encountered an unsupported call".into()),
                 };
@@ -154,7 +157,8 @@ impl Reader<'_> {
             }
             JavaExprKind::Field {
                 receiver,
-                field: JavaFieldRef::RustSource { name, .. },
+                field:
+                    JavaFieldRef::RustSource { name, .. } | JavaFieldRef::Synthesized { name, .. },
             } => {
                 self.spelling(name.as_str())?;
                 self.expression(receiver, depth + 1)

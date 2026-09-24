@@ -154,6 +154,10 @@ impl Checker<'_> {
                 arguments,
             } => {
                 let parameters = match constructor {
+                    JavaConstructorRef::Dependency(value) => {
+                        self.ty(&value.owner().ty());
+                        value.parameters()
+                    }
                     JavaConstructorRef::Known {
                         owner, parameters, ..
                     } => {

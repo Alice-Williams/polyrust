@@ -68,6 +68,12 @@ pub(crate) fn collect<'a>(
                 })?;
             }
             JavaMember::NestedType(record) => {
+                if record
+                    .declared
+                    .is_some_and(|id| api.package_identity().is_result_type(id))
+                {
+                    continue; // Synthesized transport declarations are not Rust source identities.
+                }
                 let symbol = GeneratedSymbolId::Type(
                     record.declared.ok_or("source record identity missing")?,
                 );

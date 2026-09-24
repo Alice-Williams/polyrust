@@ -7,8 +7,8 @@ use super::render_diagnostic;
 use super::statements::render_block;
 use super::syntax::{binary_operator, render_literal, unary_operator};
 use crate::ast::{
-    JavaCallableRef, JavaConstructorRef, JavaExpr, JavaExprKind, JavaFieldRef, JavaResolvedName,
-    JavaType, JavaUnaryOperator, JavaValueRef,
+    JavaCallableRef, JavaConstructorRef, JavaExpr, JavaExprKind, JavaFieldRef, JavaMemberOrigin,
+    JavaResolvedName, JavaType, JavaUnaryOperator, JavaValueRef,
 };
 use crate::dialect::JavaDialect;
 use portable_codegen::{GeneratedSymbolId, LinkedFile, TargetSymbolRef};
@@ -125,14 +125,39 @@ pub(super) fn render_expr(
                         )?
                     )
                 }
-                JavaCallableRef::Member { name, .. } => {
+                JavaCallableRef::Member { name, origin, .. } => {
                     let receiver = receiver.as_deref().ok_or_else(|| {
                         vec![render_diagnostic(
                             file,
                             "member call is missing its receiver",
                         )]
                     })?;
-                    format!("{}.{}", render_expr(receiver, names, file)?, name.as_str())
+                    let member = match origin {
+                        JavaMemberOrigin::Dependency(value) => {
+                            match names.get(&TargetSymbolRef::KnownMethod(value.clone().into())) {
+                                Some(JavaResolvedName::Member { member, .. }) => member.text(),
+                                None
+                                | Some(
+                                    JavaResolvedName::Local(_)
+                                    | JavaResolvedName::DeclaredPath(_)
+                                    | JavaResolvedName::Qualified(_)
+                                    | JavaResolvedName::GeneratedMember { .. },
+                                ) => {
+                                    return Err(vec![render_diagnostic(
+                                        file,
+                                        "member call has no linker-owned member spelling",
+                                    )]);
+                                }
+                            }
+                        }
+                        JavaMemberOrigin::Known(_)
+                        | JavaMemberOrigin::SynthesizedField(_)
+                        | JavaMemberOrigin::GeneratedField(_)
+                        | JavaMemberOrigin::GeneratedVariant
+                        | JavaMemberOrigin::Runtime(_)
+                        | JavaMemberOrigin::GeneratedImplementation(_) => name.as_str(),
+                    };
+                    format!("{}.{}", render_expr(receiver, names, file)?, member)
                 }
             };
             let arguments = arguments
@@ -147,11 +172,17 @@ pub(super) fn render_expr(
             arguments,
         } => {
             let target = match constructor {
+                JavaConstructorRef::Dependency(value) => resolved_name(
+                    names,
+                    &TargetSymbolRef::KnownConstructor(value.clone().into()),
+                )?,
                 JavaConstructorRef::Known {
                     constructor, owner, ..
                 } => {
-                    let _catalogue_name =
-                        resolved_name(names, &TargetSymbolRef::KnownConstructor(*constructor))?;
+                    let _catalogue_name = resolved_name(
+                        names,
+                        &TargetSymbolRef::KnownConstructor((*constructor).into()),
+                    )?;
                     render_java_type(owner, names)?
                 }
                 JavaConstructorRef::Generated { owner, .. } => resolved_name(

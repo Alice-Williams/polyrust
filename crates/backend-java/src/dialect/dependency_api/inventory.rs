@@ -36,6 +36,8 @@ pub(super) struct Inventory {
     pub functions: BTreeMap<RustDeclarationId, Function>,
     pub constants: BTreeMap<RustDeclarationId, Constant>,
     pub foreign_constants: Vec<super::JavaForeignConstantExport>,
+    pub result_families:
+        BTreeMap<portable_codegen::GeneratedTypeId, Arc<super::result_layout::ResultLayout>>,
 }
 
 pub(super) fn scalar(ty: &JavaType) -> bool {
@@ -65,14 +67,38 @@ pub(super) fn signature(method: &JavaMethod) -> JavaMethodSignature {
     }
 }
 
-pub(super) fn collect(package: &RenderReadyPackage<JavaDialect>) -> Result<Inventory, String> {
-    collect_with_budget(package, &mut bodies::Budget::new())
+pub(super) fn collect_with_results(
+    package: &RenderReadyPackage<JavaDialect>,
+    selections: &[super::super::JavaScalarResultTypes],
+) -> Result<Inventory, String> {
+    collect_results_with_budget(package, selections, &mut bodies::Budget::new())
 }
 
+#[cfg(test)]
 pub(super) fn collect_with_budget(
     package: &RenderReadyPackage<JavaDialect>,
     budget: &mut bodies::Budget,
 ) -> Result<Inventory, String> {
+    collect_results_with_budget(package, &[], budget)
+}
+
+fn collect_results_with_budget(
+    package: &RenderReadyPackage<JavaDialect>,
+    selections: &[super::super::JavaScalarResultTypes],
+    budget: &mut bodies::Budget,
+) -> Result<Inventory, String> {
+    let result_families = super::result_layout::collect(package, selections)?;
+    let result_profile = super::result_profile::ResultProfile::new(&result_families);
+    let selected_types = result_families
+        .values()
+        .flat_map(|layout| {
+            [
+                layout.types.interface,
+                layout.types.success,
+                layout.types.error,
+            ]
+        })
+        .collect::<BTreeSet<_>>();
     let [file] = package.ast().files() else {
         return Err("Java dependency API requires exactly one owning compilation unit".into());
     };
@@ -155,7 +181,11 @@ pub(super) fn collect_with_budget(
     if exports.root.crate_id != crate_id {
         return Err("Java dependency export owner disagrees".into());
     }
-    let public = public_bindings(exports, &selected)?;
+    let public = public_bindings(
+        exports,
+        &selected,
+        source_package.is_some() && !result_families.is_empty(),
+    )?;
     let mut agreement = Agreement::new(exports);
     let mut expected = BTreeSet::from([GeneratedSymbolId::Type(facade_id)]);
     for (_, value) in item.source_inventory.iter() {
@@ -184,6 +214,19 @@ pub(super) fn collect_with_budget(
                 constructors += 1;
             }
             JavaMember::NestedType(record) => {
+                if record
+                    .declared
+                    .is_some_and(|id| selected_types.contains(&id))
+                {
+                    budget.charge(0)?;
+                    let id = record.declared.expect("selected declaration");
+                    if !expected.insert(GeneratedSymbolId::Type(id)) {
+                        return Err(
+                            "Java dependency duplicates a selected result declaration".into()
+                        );
+                    }
+                    continue;
+                }
                 let id = records::verify(record, &item.source_inventory, &mut agreement, budget)?;
                 if !expected.insert(GeneratedSymbolId::Type(id))
                     || nominal.insert(id, record).is_some()
@@ -240,11 +283,12 @@ pub(super) fn collect_with_budget(
                     || !method.annotations.is_empty()
                     || !method.type_parameters.is_empty()
                     || !(scalar(&method.return_type)
+                        || result_profile.role(&method.return_type).is_some()
                         || method.return_type == JavaType::primitive(JavaPrimitive::Void))
-                    || method
-                        .parameters
-                        .iter()
-                        .any(|value| !scalar(&value.ty) || !value.final_parameter)
+                    || method.parameters.iter().any(|value| {
+                        !(scalar(&value.ty) || result_profile.role(&value.ty).is_some())
+                            || !value.final_parameter
+                    })
                     || registration.signature != JavaDialect.coarse_signature(&signature)
                     || registration.name != method.name.as_str()
                     || method.body.is_none()
@@ -308,11 +352,13 @@ pub(super) fn collect_with_budget(
     {
         return Err("Java dependency API omits a compiler public binding".into());
     }
-    let heights = bodies::verify(&methods, &nominal, &constant_types, budget)?;
+    let heights =
+        bodies::verify_with_results(&methods, &nominal, &constant_types, &result_profile, budget)?;
     for function in functions.values_mut() {
         function.call_height = heights[&function.generated];
     }
     Ok(Inventory {
+        result_families,
         root: exports.root,
         namespace: *file.module(),
         functions,
@@ -330,6 +376,7 @@ pub(super) fn collect_with_budget(
 fn public_bindings(
     exports: &RustCrateExports,
     selected: &super::super::constant_exports::Selection,
+    has_selected_families: bool,
 ) -> Result<BTreeSet<RustDeclarationId>, String> {
     let mut public = BTreeSet::new();
     for (module, bindings) in &exports.modules {
@@ -360,7 +407,7 @@ fn public_bindings(
             }
         }
     }
-    if public.is_empty() && selected.foreign.is_empty() {
+    if public.is_empty() && selected.foreign.is_empty() && !has_selected_families {
         return Err("Java dependency API has no public function/constant bindings".into());
     }
     Ok(public)

@@ -260,6 +260,10 @@ fn java_type_pattern_dominates(
     }
     match (earlier, later) {
         (
+            JavaType::Reference(JavaTypeName::Imported(expected)),
+            JavaType::Reference(JavaTypeName::Imported(actual)),
+        ) => actual.implements(expected),
+        (
             JavaType::Reference(JavaTypeName::Generated(expected)),
             JavaType::Reference(JavaTypeName::Generated(actual)),
         ) => generated_type_implements(*actual, *expected, context),

@@ -22,7 +22,8 @@ fn every_foreign_constant_read_reserves_its_qualified_name() {
         producer.field(0).name = name;
         let producer = c::admit(producer.finish()).unwrap();
         let (scope, value) = JavaDependencyScope::new()
-            .import_constant(producer.constants().next().unwrap().clone());
+            .import_constant(producer.constants().next().unwrap().clone())
+            .unwrap();
         let read = f::read(&value);
         let statements = (0..32)
             .map(|i| JavaStmt::Local {

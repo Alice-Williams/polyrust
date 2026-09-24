@@ -93,7 +93,7 @@ pub(in crate::tests) fn chain_with_operator(
         .enumerate()
         .map(|(index, target)| {
             let ty = JavaType::primitive(WIDTHS[index]);
-            let (next, callable) = std::mem::take(&mut scope).import(target);
+            let (next, callable) = std::mem::take(&mut scope).import(target).unwrap();
             scope = next;
             make_function(
                 index,

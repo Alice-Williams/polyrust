@@ -110,6 +110,7 @@ pub(super) fn verify(
                     JavaFieldRef::Known(_) => None,
                 };
                 let same_nest = match private_owner {
+                    Some(JavaTypeName::Imported(_)) => false,
                     Some(JavaTypeName::Generated(owner)) => {
                         local.contains(&GeneratedSymbolId::Type(owner))
                     }

@@ -26,9 +26,9 @@ fn all_source_functions_are_described_but_private_functions_are_not_importable()
             assert_eq!(path, public.path());
             assert_eq!(
                 parameters.iter().map(|p| p.ty.clone()).collect::<Vec<_>>(),
-                public.signature().parameters
+                public.declaration_signature().parameters
             );
-            assert_eq!(result, &public.signature().result);
+            assert_eq!(result, &public.declaration_signature().result);
         } else {
             assert_eq!(item.source().declaration, f::id(7, 13));
             assert!(!item.source().externally_reachable);

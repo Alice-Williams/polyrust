@@ -132,11 +132,17 @@ fn unused_values_preserve_transitive_owner_conflicts_and_crate_boundaries() {
     let fixture = f::Fixture::new(false);
     let bridge = c::admit(fixture.draft(false)).unwrap();
     assert_eq!(bridge.dependencies().len(), 1);
-    let (scope, callable) =
-        JavaDependencyScope::new().import(bridge.functions().next().unwrap().clone());
+    let (scope, _) = JavaDependencyScope::new()
+        .import(bridge.functions().next().unwrap().clone())
+        .unwrap();
     let other = c::api(false);
-    let (scope, _) = scope.import_constant(other.constants().next().unwrap().clone());
-    assert!(c::admit(f::consumer(0x501, scope.finish(), &[], Some(&callable))).is_err());
+    assert!(
+        scope
+            .import_constant(other.constants().next().unwrap().clone())
+            .unwrap_err()
+            .iter()
+            .any(|error| error.message.contains("conflicting owner certificates"))
+    );
     // A consumer must not impersonate the source namespace of an unused owner.
     assert!(c::admit(f::consumer(0x35c, fixture.bindings, &[], None)).is_err());
 }
@@ -144,9 +150,12 @@ fn unused_values_preserve_transitive_owner_conflicts_and_crate_boundaries() {
 fn same_authority_diamonds_preserve_constant_only_owners_and_real_calls() {
     let fixture = f::Fixture::new(false);
     let bridge = c::admit(fixture.draft(true)).unwrap();
-    let (scope, callable) =
-        JavaDependencyScope::new().import(bridge.functions().next().unwrap().clone());
-    let (scope, value) = scope.import_constant(fixture.owner.constants().next().unwrap().clone());
+    let (scope, callable) = JavaDependencyScope::new()
+        .import(bridge.functions().next().unwrap().clone())
+        .unwrap();
+    let (scope, value) = scope
+        .import_constant(fixture.owner.constants().next().unwrap().clone())
+        .unwrap();
     let api = c::admit(f::consumer(
         0x501,
         scope.finish(),
@@ -170,15 +179,17 @@ fn duplicate_value_imports_are_coherent_in_either_registration_order() {
         let mut values = vec![];
         let function = owner.functions().next().unwrap().clone();
         if reverse {
-            scope = scope.import(function.clone()).0;
+            scope = scope.import(function.clone()).unwrap().0;
         }
         for _ in 0..3 {
-            let (next, value) = scope.import_constant(owner.constants().next().unwrap().clone());
+            let (next, value) = scope
+                .import_constant(owner.constants().next().unwrap().clone())
+                .unwrap();
             scope = next;
             values.push(value);
         }
         if !reverse {
-            scope = scope.import(function).0;
+            scope = scope.import(function).unwrap().0;
         }
         assert_eq!(values[0], values[1]);
         let bindings = scope.finish();

@@ -95,7 +95,7 @@ fn decoder_decode_call() -> (JavaExpr, Vec<JavaParameter>) {
                 callable: JavaCallableRef::Member {
                     owner: decoder.clone(),
                     name: JavaIdentifier::from_portable("decode"),
-                    signature,
+                    signature: Box::new(signature),
                     origin: JavaMemberOrigin::Known(crate::dialect::JavaKnownMethod::DecoderDecode),
                 },
                 receiver: Some(Box::new(JavaExpr::local(

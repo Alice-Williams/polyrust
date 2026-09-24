@@ -51,7 +51,7 @@ fn imported_call_height_includes_the_complete_owner_path() {
     let owner = JavaDependencyApi::from_certificate(f::certify(package)).unwrap();
     let last = owner.function(f::id(7, 136)).unwrap();
     assert_eq!(last.call_height(), 127);
-    let (scope, callable) = JavaDependencyScope::new().import(last.clone());
+    let (scope, callable) = JavaDependencyScope::new().import(last.clone()).unwrap();
     let exact =
         JavaDependencyApi::from_certificate(f::certify(consumer(8, scope.finish(), &callable)))
             .unwrap();
@@ -72,7 +72,7 @@ fn imported_call_height_includes_the_complete_owner_path() {
     assert_eq!(super::super::verification::MAX_OWNERS, 1024);
     let last = exact.function(f::id(8, 10)).unwrap();
     assert_eq!(last.call_height(), 128);
-    let (scope, callable) = JavaDependencyScope::new().import(last.clone());
+    let (scope, callable) = JavaDependencyScope::new().import(last.clone()).unwrap();
     let one_over = f::certify(consumer(9, scope.finish(), &callable));
     assert!(
         JavaDependencyApi::from_certificate(one_over)
@@ -85,25 +85,34 @@ fn imported_call_height_includes_the_complete_owner_path() {
 fn transitive_owner_conflicts_and_source_cycles_cannot_hide_behind_an_import() {
     let leaf = owner(7, 42);
     let replacement = owner(7, 99);
-    let (scope, callable) =
-        JavaDependencyScope::new().import(leaf.function(f::id(7, 10)).unwrap().clone());
+    let (scope, callable) = JavaDependencyScope::new()
+        .import(leaf.function(f::id(7, 10)).unwrap().clone())
+        .unwrap();
     let middle =
         JavaDependencyApi::from_certificate(f::certify(consumer(8, scope.finish(), &callable)))
             .unwrap();
-    let (scope, callable) =
-        JavaDependencyScope::new().import(middle.function(f::id(8, 10)).unwrap().clone());
+    let (scope, callable) = JavaDependencyScope::new()
+        .import(middle.function(f::id(8, 10)).unwrap().clone())
+        .unwrap();
     let bindings = scope.finish();
     // The immediate owner is 8, but it requires the original certificate for 7.
     rejected(consumer(7, bindings.clone(), &callable));
     f::certify(consumer(9, bindings, &callable));
-    let (scope, callable) =
-        JavaDependencyScope::new().import(middle.function(f::id(8, 10)).unwrap().clone());
-    let (scope, _) = scope.import(replacement.function(f::id(7, 11)).unwrap().clone());
-    rejected(consumer(9, scope.finish(), &callable));
+    let (scope, _) = JavaDependencyScope::new()
+        .import(middle.function(f::id(8, 10)).unwrap().clone())
+        .unwrap();
+    assert!(
+        scope
+            .import(replacement.function(f::id(7, 11)).unwrap().clone())
+            .is_err()
+    );
     // An exact shared leaf in a diamond is allowed; no repeated proof needed.
-    let (scope, callable) =
-        JavaDependencyScope::new().import(middle.function(f::id(8, 10)).unwrap().clone());
-    let (scope, _) = scope.import(leaf.function(f::id(7, 11)).unwrap().clone());
+    let (scope, callable) = JavaDependencyScope::new()
+        .import(middle.function(f::id(8, 10)).unwrap().clone())
+        .unwrap();
+    let (scope, _) = scope
+        .import(leaf.function(f::id(7, 11)).unwrap().clone())
+        .unwrap();
     f::certify(consumer(9, scope.finish(), &callable));
 }
 
@@ -114,6 +123,7 @@ fn independently_frozen_scopes_in_one_original_package_are_rejected() {
         .map(|_| {
             JavaDependencyScope::new()
                 .import(api.function(f::id(7, 10)).unwrap().clone())
+                .unwrap()
                 .0
                 .finish()
         })
@@ -149,8 +159,9 @@ fn independently_frozen_scopes_in_one_original_package_are_rejected() {
 #[test]
 fn dependency_qualification_cannot_be_shadowed_by_a_local() {
     let api = owner(7, 42);
-    let (scope, callable) =
-        JavaDependencyScope::new().import(api.function(f::id(7, 10)).unwrap().clone());
+    let (scope, callable) = JavaDependencyScope::new()
+        .import(api.function(f::id(7, 10)).unwrap().clone())
+        .unwrap();
     let mut functions = f::functions(0);
     functions.truncate(1);
     functions[0].body = JavaBlock::new(vec![
@@ -170,14 +181,18 @@ fn entirely_unused_owner_closures_still_reject_conflicts_and_overlap() {
     let leaf = owner(7, 42);
     let replacement = owner(7, 99);
     let safe = owner(6, 1);
-    let (scope, callable) =
-        JavaDependencyScope::new().import(leaf.function(f::id(7, 10)).unwrap().clone());
+    let (scope, callable) = JavaDependencyScope::new()
+        .import(leaf.function(f::id(7, 10)).unwrap().clone())
+        .unwrap();
     let middle =
         JavaDependencyApi::from_certificate(f::certify(consumer(8, scope.finish(), &callable)))
             .unwrap();
-    let (scope, safe_call) =
-        JavaDependencyScope::new().import(safe.function(f::id(6, 10)).unwrap().clone());
-    let (scope, _) = scope.import(middle.function(f::id(8, 10)).unwrap().clone());
+    let (scope, safe_call) = JavaDependencyScope::new()
+        .import(safe.function(f::id(6, 10)).unwrap().clone())
+        .unwrap();
+    let (scope, _) = scope
+        .import(middle.function(f::id(8, 10)).unwrap().clone())
+        .unwrap();
     let bindings = scope.finish();
     rejected(consumer(7, bindings.clone(), &safe_call));
     let valid =
@@ -189,11 +204,17 @@ fn entirely_unused_owner_closures_still_reject_conflicts_and_overlap() {
             .collect::<Vec<_>>(),
         [6, 8]
     );
-    let (scope, safe_call) =
-        JavaDependencyScope::new().import(safe.function(f::id(6, 10)).unwrap().clone());
-    let (scope, _) = scope.import(middle.function(f::id(8, 10)).unwrap().clone());
-    let (scope, _) = scope.import(replacement.function(f::id(7, 11)).unwrap().clone());
-    rejected(consumer(9, scope.finish(), &safe_call));
+    let (scope, _) = JavaDependencyScope::new()
+        .import(safe.function(f::id(6, 10)).unwrap().clone())
+        .unwrap();
+    let (scope, _) = scope
+        .import(middle.function(f::id(8, 10)).unwrap().clone())
+        .unwrap();
+    assert!(
+        scope
+            .import(replacement.function(f::id(7, 11)).unwrap().clone())
+            .is_err()
+    );
     // Debug must not recursively expand retained certificates/graphs.
     assert!(format!("{:?}", middle.package_identity()).len() < 256);
     assert!(format!("{:?}", middle.function(f::id(8, 10)).unwrap()).len() < 1024);

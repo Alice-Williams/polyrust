@@ -107,17 +107,26 @@ fn absent_wrong_kind_and_conflicting_export_witnesses_reject() {
                 );
                 fixture.dependencies = JavaDependencyScope::new()
                     .import(function)
+                    .unwrap()
                     .0
                     .import_constant(value.clone())
+                    .unwrap()
                     .0
                     .finish();
             }
             5 => {
                 let independent = c::api(false);
-                fixture.dependencies = f::imports([
-                    value.clone(),
-                    independent.constants().next().unwrap().clone(),
-                ]);
+                let (scope, _) = JavaDependencyScope::new()
+                    .import_constant(value.clone())
+                    .unwrap();
+                assert!(
+                    scope
+                        .import_constant(independent.constants().next().unwrap().clone())
+                        .unwrap_err()
+                        .iter()
+                        .any(|error| error.message.contains("conflicting owner certificates"))
+                );
+                continue;
             }
             6 => {
                 fixture.graph.modules.get_mut(&root).unwrap().insert(
@@ -159,12 +168,16 @@ fn zero_owned_closure_rejects_transitive_self_and_independent_certificate_confli
             .is_err()
     );
     let independent = c::api(false);
-    let mut fixture = f::Fixture::new(0x612, std::slice::from_ref(&middle_value), false);
-    fixture.dependencies = f::imports([
-        middle_value.clone(),
-        independent.constants().next().unwrap().clone(),
-    ]);
-    assert!(c::admit(fixture.finish()).is_err());
+    let (scope, _) = JavaDependencyScope::new()
+        .import_constant(middle_value.clone())
+        .unwrap();
+    assert!(
+        scope
+            .import_constant(independent.constants().next().unwrap().clone())
+            .unwrap_err()
+            .iter()
+            .any(|error| error.message.contains("conflicting owner certificates"))
+    );
     let mut diamond = f::Fixture::new(0x613, std::slice::from_ref(&middle_value), false);
     diamond.dependencies = f::imports([middle_value, values[0].clone()]);
     c::admit(diamond.finish()).unwrap();

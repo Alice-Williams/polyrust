@@ -56,9 +56,12 @@ fn rejected(package: TargetAstPackage<JavaDialect>) {
 fn exact_owner_scope_and_signature_produce_qualified_calls_without_imports() {
     let first = owner(7, 42);
     let unused = owner(8, 99);
-    let (scope, callable) =
-        JavaDependencyScope::new().import(first.function(f::id(7, 10)).unwrap().clone());
-    let (scope, _) = scope.import(unused.function(f::id(8, 10)).unwrap().clone());
+    let (scope, callable) = JavaDependencyScope::new()
+        .import(first.function(f::id(7, 10)).unwrap().clone())
+        .unwrap();
+    let (scope, _) = scope
+        .import(unused.function(f::id(8, 10)).unwrap().clone())
+        .unwrap();
     let bindings = scope.finish();
     assert!(bindings.contains(&callable));
     let package = f::certify(consumer(9, bindings, &callable));
@@ -101,9 +104,9 @@ fn exact_owner_scope_and_signature_produce_qualified_calls_without_imports() {
 fn empty_and_wrong_scopes_cannot_authorize_a_matching_owner_function() {
     let api = owner(7, 42);
     let function = api.function(f::id(7, 10)).unwrap().clone();
-    let (scope, callable) = JavaDependencyScope::new().import(function.clone());
+    let (scope, callable) = JavaDependencyScope::new().import(function.clone()).unwrap();
     let expected = scope.finish();
-    let (other, other_callable) = JavaDependencyScope::new().import(function);
+    let (other, other_callable) = JavaDependencyScope::new().import(function).unwrap();
     let other = other.finish();
     assert_ne!(expected, other);
     assert_ne!(callable, other_callable);
@@ -117,12 +120,17 @@ fn empty_and_wrong_scopes_cannot_authorize_a_matching_owner_function() {
 fn conflicting_owner_certificates_and_consumer_overlap_reject_even_unused() {
     let first = owner(7, 42);
     let replacement = owner(7, 99);
-    let (scope, callable) =
-        JavaDependencyScope::new().import(first.function(f::id(7, 10)).unwrap().clone());
-    let (scope, _) = scope.import(replacement.function(f::id(7, 11)).unwrap().clone());
-    rejected(consumer(9, scope.finish(), &callable));
-    let (scope, callable) =
-        JavaDependencyScope::new().import(first.function(f::id(7, 10)).unwrap().clone());
+    let (scope, _) = JavaDependencyScope::new()
+        .import(first.function(f::id(7, 10)).unwrap().clone())
+        .unwrap();
+    assert!(
+        scope
+            .import(replacement.function(f::id(7, 11)).unwrap().clone())
+            .is_err()
+    );
+    let (scope, callable) = JavaDependencyScope::new()
+        .import(first.function(f::id(7, 10)).unwrap().clone())
+        .unwrap();
     rejected(consumer(7, scope.finish(), &callable));
 }
 
@@ -130,9 +138,12 @@ fn conflicting_owner_certificates_and_consumer_overlap_reject_even_unused() {
 fn identical_member_names_in_distinct_owners_keep_distinct_typed_references() {
     let first = owner(7, 42);
     let second = owner(8, 99);
-    let (scope, left) =
-        JavaDependencyScope::new().import(first.function(f::id(7, 10)).unwrap().clone());
-    let (scope, right) = scope.import(second.function(f::id(8, 10)).unwrap().clone());
+    let (scope, left) = JavaDependencyScope::new()
+        .import(first.function(f::id(7, 10)).unwrap().clone())
+        .unwrap();
+    let (scope, right) = scope
+        .import(second.function(f::id(8, 10)).unwrap().clone())
+        .unwrap();
     let mut functions = f::functions(0);
     functions.truncate(1);
     functions[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(JavaExpr {
@@ -162,8 +173,9 @@ fn identical_member_names_in_distinct_owners_keep_distinct_typed_references() {
 #[test]
 fn owner_signature_controls_argument_types_and_result_even_for_valid_handles() {
     let api = owner(7, 42);
-    let (scope, callable) =
-        JavaDependencyScope::new().import(api.function(f::id(7, 10)).unwrap().clone());
+    let (scope, callable) = JavaDependencyScope::new()
+        .import(api.function(f::id(7, 10)).unwrap().clone())
+        .unwrap();
     for bad_result in [false, true] {
         let mut functions = f::functions(0);
         functions.truncate(1);
@@ -182,6 +194,9 @@ fn owner_signature_controls_argument_types_and_result_even_for_valid_handles() {
         functions[0].body = JavaBlock::new(vec![JavaStmt::Return(Some(value))]);
         let bindings = JavaDependencyBindings(Some(Arc::new(Frozen {
             values: BTreeSet::new(),
+            result_types: BTreeSet::new(),
+            result_constructors: BTreeSet::new(),
+            result_accessors: BTreeSet::new(),
             identity: scope.identity.clone(),
             functions: scope.functions.clone(),
         })));
@@ -193,10 +208,12 @@ fn owner_signature_controls_argument_types_and_result_even_for_valid_handles() {
 fn owner_substitution_with_equal_source_ids_is_not_an_imported_handle() {
     let original = owner(7, 42);
     let replacement = owner(7, 99);
-    let (scope, callable) =
-        JavaDependencyScope::new().import(original.function(f::id(7, 10)).unwrap().clone());
+    let (scope, callable) = JavaDependencyScope::new()
+        .import(original.function(f::id(7, 10)).unwrap().clone())
+        .unwrap();
     let substituted = JavaImportedCallable {
         scope: callable.scope.clone(),
+        signature: callable.signature.clone(),
         function: Arc::new(replacement.function(f::id(7, 10)).unwrap().clone()),
     };
     rejected(consumer(9, scope.finish(), &substituted));

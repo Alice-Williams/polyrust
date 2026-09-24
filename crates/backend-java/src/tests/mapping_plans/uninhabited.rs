@@ -48,7 +48,7 @@ fn uninhabited_method_construction_is_fully_owned() {
             invocation: JavaInvocationKind::Instance,
             receiver: Some(TargetTypeRef::Generated(interface)),
             parameters: vec![],
-            return_type: TargetTypeRef::Known(JavaKnownType::String),
+            return_type: TargetTypeRef::Known(JavaKnownType::String.into()),
         },
         origin: GeneratedOrigin::Synthesized(SynthesisReason::TestHarness),
         source,

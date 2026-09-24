@@ -150,8 +150,8 @@ pub(super) fn imported(
     function: JavaDependencyFunction,
     arguments: Vec<JavaExpr>,
 ) -> (JavaExpr, JavaDependencyBindings) {
-    let result = function.signature().result.clone();
-    let (scope, callable) = JavaDependencyScope::new().import(function);
+    let result = function.declaration_signature().result.clone();
+    let (scope, callable) = JavaDependencyScope::new().import(function).unwrap();
     (
         JavaExpr {
             ty: result,

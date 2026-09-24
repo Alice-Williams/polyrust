@@ -39,7 +39,7 @@ impl TargetDialect for JavaDialect {
 
 impl TypedAstDialect for JavaDialect {
     type PrimitiveType = JavaPrimitive;
-    type KnownType = JavaKnownType;
+    type KnownType = super::JavaReferencedType;
     type RuntimeType = JavaRuntimeType;
     type ConstructedType = JavaConstructedType;
     type KnownCallable = JavaKnownCallable;
@@ -180,16 +180,24 @@ impl JavaDialect {
     pub fn registered_type(&self, ty: &JavaType) -> TargetTypeRef<Self> {
         match ty {
             JavaType::Primitive(value) => TargetTypeRef::Primitive(*value),
-            JavaType::Boxed(value) => TargetTypeRef::Known(match value {
-                JavaPrimitive::Boolean => JavaKnownType::Boolean,
-                JavaPrimitive::Byte => JavaKnownType::Byte,
-                JavaPrimitive::Char => JavaKnownType::Character,
-                JavaPrimitive::Int => JavaKnownType::Integer,
-                JavaPrimitive::Long => JavaKnownType::Long,
-                JavaPrimitive::Double => JavaKnownType::Double,
-                JavaPrimitive::Void => JavaKnownType::Object,
-            }),
-            JavaType::Reference(JavaTypeName::Known(value)) => TargetTypeRef::Known(*value),
+            JavaType::Boxed(value) => TargetTypeRef::Known(
+                (match value {
+                    JavaPrimitive::Boolean => JavaKnownType::Boolean,
+                    JavaPrimitive::Byte => JavaKnownType::Byte,
+                    JavaPrimitive::Char => JavaKnownType::Character,
+                    JavaPrimitive::Int => JavaKnownType::Integer,
+                    JavaPrimitive::Long => JavaKnownType::Long,
+                    JavaPrimitive::Double => JavaKnownType::Double,
+                    JavaPrimitive::Void => JavaKnownType::Object,
+                })
+                .into(),
+            ),
+            JavaType::Reference(JavaTypeName::Known(value)) => {
+                TargetTypeRef::Known((*value).into())
+            }
+            JavaType::Reference(JavaTypeName::Imported(value)) => {
+                TargetTypeRef::Known(value.clone().into())
+            }
             JavaType::Reference(JavaTypeName::Generated(value)) => TargetTypeRef::Generated(*value),
             JavaType::Array { .. }
             | JavaType::Generic { .. }

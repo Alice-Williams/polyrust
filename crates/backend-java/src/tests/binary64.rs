@@ -71,7 +71,7 @@ pub(super) fn chain(bits: &[u64]) -> Vec<JavaDependencyApi> {
     let mut scope = JavaDependencyScope::new();
     let mut declarations = functions(bits);
     for (function, declaration) in first.functions().zip(&mut declarations) {
-        let (next, callable) = scope.import(function.clone());
+        let (next, callable) = scope.import(function.clone()).unwrap();
         scope = next;
         let arguments = declaration
             .parameters

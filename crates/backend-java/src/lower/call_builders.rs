@@ -113,7 +113,7 @@ pub(crate) fn member_call(
             callable: JavaCallableRef::Member {
                 owner: receiver.ty.clone(),
                 name: identifier(name),
-                signature,
+                signature: Box::new(signature),
                 origin,
             },
             receiver: Some(Box::new(receiver)),

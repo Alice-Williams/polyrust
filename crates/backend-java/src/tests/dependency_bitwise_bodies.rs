@@ -1,6 +1,7 @@
 //! Private dependency-body checks independently enforce exact bitwise types.
 use super::*;
 use crate::ast::JavaPrecedence;
+use crate::ast::{JavaBinaryOperator, JavaLiteral, JavaUnaryOperator};
 
 fn literal(ty: JavaPrimitive) -> JavaExpr {
     let literal = match ty {
@@ -14,6 +15,8 @@ fn literal(ty: JavaPrimitive) -> JavaExpr {
 fn admitted(value: JavaExpr) -> bool {
     let mut budget = Budget::new();
     Reader {
+        results: &Default::default(),
+        nonnull_results: BTreeSet::new(),
         methods: &BTreeMap::new(),
         records: &BTreeMap::new(),
         constants: &BTreeMap::new(),

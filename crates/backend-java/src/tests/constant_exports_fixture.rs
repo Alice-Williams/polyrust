@@ -15,7 +15,7 @@ pub fn imports(values: impl IntoIterator<Item = JavaDependencyConstant>) -> Java
     values
         .into_iter()
         .fold(JavaDependencyScope::new(), |scope, value| {
-            scope.import_constant(value).0
+            scope.import_constant(value).unwrap().0
         })
         .finish()
 }

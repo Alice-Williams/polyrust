@@ -66,7 +66,7 @@ pub(super) fn owner(
                 RustExportTarget::Declaration(value.declaration()),
             );
         }
-        let (next, value) = scope.import_constant(value.clone());
+        let (next, value) = scope.import_constant(value.clone()).unwrap();
         scope = next;
         imported.push(value);
     }

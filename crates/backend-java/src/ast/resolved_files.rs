@@ -40,7 +40,7 @@ pub enum JavaResolvedName {
     },
     Member {
         owner: crate::dialect::JavaQualifiedName,
-        member: crate::dialect::JavaMemberName,
+        member: crate::dialect::JavaReferencedMemberName,
     },
 }
 

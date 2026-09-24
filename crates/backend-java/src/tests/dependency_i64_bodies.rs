@@ -1,6 +1,7 @@
 //! Direct private-gate controls, independent of earlier AST certification.
 use super::*;
 use crate::ast::JavaPrecedence;
+use crate::ast::{JavaBinaryOperator, JavaLiteral};
 
 #[test]
 fn dependency_comparisons_require_equal_widths_and_boolean_results_locally() {
@@ -50,6 +51,8 @@ fn dependency_comparisons_require_equal_widths_and_boolean_results_locally() {
                     };
                     let mut budget = Budget::new();
                     let mut reader = Reader {
+                        results: &Default::default(),
+                        nonnull_results: BTreeSet::new(),
                         methods: &BTreeMap::new(),
                         records: &BTreeMap::new(),
                         constants: &BTreeMap::new(),

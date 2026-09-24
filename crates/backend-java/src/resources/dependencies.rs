@@ -8,6 +8,9 @@ use portable_diagnostics::Diagnostic;
 use std::collections::BTreeSet;
 
 #[cfg(test)]
+#[path = "../tests/result_import_resources.rs"]
+mod result_tests;
+#[cfg(test)]
 #[path = "../tests/dependency_resources.rs"]
 mod tests;
 #[cfg(test)]
@@ -53,6 +56,27 @@ fn check(package: &LinkedTargetPackage<JavaDialect>, limits: &Limits) -> Vec<Dia
                             TargetSymbolRef::DependencyValue(value.clone()),
                             value.constant().package_identity(),
                             value.constant().path(),
+                        )
+                    }))
+                    .chain(dependencies.result_constructors().map(|value| {
+                        (
+                            TargetSymbolRef::KnownConstructor(value.clone().into()),
+                            value.owner().original().family().package_identity(),
+                            value.owner().path(),
+                        )
+                    }))
+                    .chain(dependencies.result_accessors().map(|value| {
+                        (
+                            TargetSymbolRef::KnownMethod(value.clone().into()),
+                            value.owner().original().family().package_identity(),
+                            value.path(),
+                        )
+                    }))
+                    .chain(dependencies.result_types().map(|ty| {
+                        (
+                            TargetSymbolRef::KnownType(ty.clone().into()),
+                            ty.original().family().package_identity(),
+                            ty.path(),
                         )
                     }));
                 for (symbol, owner, path) in references {

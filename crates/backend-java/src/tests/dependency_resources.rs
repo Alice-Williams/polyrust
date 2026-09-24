@@ -29,7 +29,7 @@ fn used_and_unused_registrations_consume_exact_shared_limits() {
         .unwrap();
     let mut imported = None;
     for function in functions {
-        let (next, callable) = scope.import(function.clone());
+        let (next, callable) = scope.import(function.clone()).unwrap();
         scope = next;
         imported.get_or_insert(callable);
     }

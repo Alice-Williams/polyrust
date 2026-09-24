@@ -74,7 +74,7 @@ fn matches_chunks(chunks: &[String], value: &JavaExpr) -> bool {
     let middle = chunks.len() / 2;
     *owner == string
         && name.as_str() == method.name().text()
-        && *signature == method.signature()
+        && **signature == method.signature()
         && *origin == JavaMemberOrigin::Known(method)
         && matches_chunks(&chunks[..middle], receiver)
         && matches_chunks(&chunks[middle..], argument)

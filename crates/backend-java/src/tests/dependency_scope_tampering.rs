@@ -6,8 +6,9 @@ use portable_codegen::{DependencySpelling, LinkerDialect, TargetTypeRef};
 fn java_dependency_catalogue_changes_cannot_replace_the_opaque_witness() {
     let owner = owner(7, 42);
     let replacement = super::owner(8, 99);
-    let (scope, callable) =
-        JavaDependencyScope::new().import(owner.function(f::id(7, 10)).unwrap().clone());
+    let (scope, callable) = JavaDependencyScope::new()
+        .import(owner.function(f::id(7, 10)).unwrap().clone())
+        .unwrap();
     let package = consumer(9, scope.finish(), &callable);
     let catalogue = JavaDialect.package_symbol_catalogue(&package).unwrap();
     catalogue.verify(&JavaDialect).unwrap();
@@ -33,8 +34,9 @@ fn java_dependency_catalogue_changes_cannot_replace_the_opaque_witness() {
 fn resolved_dependency_paths_and_local_aliases_fail_independent_java_verification() {
     let owner = owner(7, 42);
     let replacement = super::owner(8, 99);
-    let (scope, callable) =
-        JavaDependencyScope::new().import(owner.function(f::id(7, 10)).unwrap().clone());
+    let (scope, callable) = JavaDependencyScope::new()
+        .import(owner.function(f::id(7, 10)).unwrap().clone())
+        .unwrap();
     let ready = f::certify(consumer(9, scope.finish(), &callable));
     let item = &ready.ast().files()[0].items()[0];
     assert!(JavaDialect.verify_resolved_file_item(item).is_empty());

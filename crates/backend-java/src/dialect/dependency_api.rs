@@ -8,10 +8,19 @@ mod foreign;
 mod inventory;
 pub use foreign::JavaForeignConstantExport;
 mod records;
+mod result_layout;
+mod result_profile;
+mod result_types;
+pub use result_types::{
+    JavaDependencyResultAccessor, JavaDependencyResultConstructor, JavaDependencyResultFamily,
+    JavaDependencyResultType, JavaResultTypeRole,
+};
+mod signatures;
 mod source_bound;
 mod source_constant_values;
 mod source_types;
 pub use descriptions::{JavaSourceDescription, JavaSourceDescriptionKind, JavaSourceTarget};
+pub use signatures::{JavaDependencySignature, JavaDependencyType};
 
 use super::JavaDialect;
 use crate::ast::{JavaDeclaredPath, JavaMethodSignature, JavaPackage};
@@ -24,6 +33,11 @@ struct Authority {
     namespace: JavaPackage,
     dependencies: BTreeMap<u64, JavaDependencyPackage>,
     source_types: Option<Arc<portable_codegen::RustSourceTypes>>,
+    result_families: BTreeMap<portable_codegen::GeneratedTypeId, Arc<result_layout::ResultLayout>>,
+    result_types: BTreeMap<
+        portable_codegen::GeneratedTypeId,
+        (Arc<result_layout::ResultLayout>, JavaResultTypeRole),
+    >,
 }
 
 /// Opaque owner identity. Address order authenticates only; never render it.
@@ -47,6 +61,9 @@ impl std::fmt::Debug for JavaDependencyPackage {
 }
 
 impl JavaDependencyPackage {
+    pub(crate) fn is_result_type(&self, id: portable_codegen::GeneratedTypeId) -> bool {
+        self.0.result_types.contains_key(&id)
+    }
     pub fn root(&self) -> RustDeclarationId {
         self.0.root
     }
@@ -90,6 +107,7 @@ pub struct JavaDependencyFunction {
     source: Arc<RustSourceOrigin>,
     path: JavaDeclaredPath,
     signature: JavaMethodSignature,
+    exported_signature: JavaDependencySignature,
     call_height: usize,
 }
 
@@ -118,8 +136,12 @@ impl JavaDependencyFunction {
     pub fn path(&self) -> &JavaDeclaredPath {
         &self.path
     }
-    pub fn signature(&self) -> &JavaMethodSignature {
+    /// Descriptive producer-local signature; do not insert it into a consumer AST.
+    pub fn declaration_signature(&self) -> &JavaMethodSignature {
         &self.signature
+    }
+    pub fn exported_signature(&self) -> &JavaDependencySignature {
+        &self.exported_signature
     }
     pub fn call_height(&self) -> usize {
         self.call_height
@@ -187,7 +209,15 @@ impl JavaDependencyApi {
     }
 
     pub fn from_certificate(package: RenderReadyPackage<JavaDialect>) -> Result<Self, String> {
-        let inventory = inventory::collect(&package)?;
+        Self::from_certificate_with_results(package, &[])
+    }
+    /// Select complete original result families; publication still verifies the
+    /// canonical owner inventory, admitted bodies and exact exported signatures.
+    pub fn from_certificate_with_results(
+        package: RenderReadyPackage<JavaDialect>,
+        selections: &[super::JavaScalarResultTypes],
+    ) -> Result<Self, String> {
+        let inventory = inventory::collect_with_results(&package, selections)?;
         let source_types = source_types::read(&package);
         let dependencies = package
             .ast()
@@ -202,28 +232,53 @@ impl JavaDependencyApi {
             .map(|owner| (owner.root().crate_id, owner.clone()))
             .collect();
         let owner = JavaDependencyPackage(Arc::new(Authority {
+            result_types: inventory
+                .result_families
+                .values()
+                .flat_map(|layout| {
+                    [
+                        (
+                            layout.types.interface,
+                            (layout.clone(), JavaResultTypeRole::Interface),
+                        ),
+                        (
+                            layout.types.success,
+                            (layout.clone(), JavaResultTypeRole::Success),
+                        ),
+                        (
+                            layout.types.error,
+                            (layout.clone(), JavaResultTypeRole::Error),
+                        ),
+                    ]
+                })
+                .collect(),
             package,
             root: inventory.root,
             namespace: inventory.namespace,
             dependencies,
             source_types,
+            result_families: inventory.result_families,
         }));
         let functions = inventory
             .functions
             .into_iter()
             .map(|(id, function)| {
-                (
+                Ok((
                     id,
                     JavaDependencyFunction {
+                        exported_signature: JavaDependencySignature::project(
+                            &owner,
+                            &function.signature,
+                        )?,
                         owner: owner.clone(),
                         source: function.source,
                         path: function.path,
                         signature: function.signature,
                         call_height: function.call_height,
                     },
-                )
+                ))
             })
-            .collect();
+            .collect::<Result<BTreeMap<_, _>, String>>()?;
         let constants = inventory
             .constants
             .into_iter()
@@ -236,6 +291,20 @@ impl JavaDependencyApi {
             foreign_constants: inventory.foreign_constants,
         };
         source_types::verify(&api)?;
+        if !selections.is_empty()
+            || api
+                .package()
+                .ast()
+                .files()
+                .iter()
+                .flat_map(|file| file.items())
+                .any(|item| {
+                    matches!(&item.item, crate::ast::JavaFileItem::Type { dependencies, .. }
+                if dependencies.result_types().next().is_some())
+                })
+        {
+            api.source_byte_bound()?;
+        }
         Ok(api)
     }
     pub fn root(&self) -> RustDeclarationId {

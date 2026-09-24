@@ -1,4 +1,5 @@
 use super::*;
+use crate::ast::JavaLiteral;
 use crate::ast::{
     JavaMethodDeclaration, JavaMethodSignature, JavaModifier, JavaPrecedence, JavaVisibility,
 };
@@ -34,6 +35,8 @@ fn mutable_bool_body_admission_restores_lexical_scope_and_rejects_parameter_writ
     let records = BTreeMap::new();
     let mut budget = Budget::new();
     let mut reader = Reader {
+        results: &Default::default(),
+        nonnull_results: BTreeSet::new(),
         methods: &methods,
         records: &records,
         constants: &BTreeMap::new(),
@@ -113,6 +116,8 @@ fn body_budget_and_depth_charge_exact_and_one_over() {
     let records = BTreeMap::new();
     let mut budget = Budget { remaining: 1 };
     let mut reader = Reader {
+        results: &Default::default(),
+        nonnull_results: BTreeSet::new(),
         methods: &methods,
         records: &records,
         constants: &BTreeMap::new(),
@@ -170,6 +175,8 @@ fn actual_function_inventory_and_expression_depth_boundaries() {
     };
     let mut budget = Budget::new();
     let mut reader = Reader {
+        results: &Default::default(),
+        nonnull_results: BTreeSet::new(),
         methods: &methods,
         records: &records,
         constants: &BTreeMap::new(),

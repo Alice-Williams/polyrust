@@ -52,6 +52,11 @@ impl JavaCallableRef {
             } => {
                 let owner_matches = signature.receiver.as_ref() == Some(owner);
                 let catalogue_matches = match origin {
+                    JavaMemberOrigin::Dependency(method) => {
+                        name == method.name()
+                            && owner == &method.owner().ty()
+                            && signature.as_ref() == &method.signature()
+                    }
                     JavaMemberOrigin::SynthesizedField(field) => {
                         portable_member_metadata_matches(signature)
                             && owner == &JavaType::Reference(JavaTypeName::Generated(field.owner))
@@ -63,7 +68,9 @@ impl JavaCallableRef {
                                 context,
                             )
                     }
-                    JavaMemberOrigin::Known(method) => method.accepts(signature),
+                    JavaMemberOrigin::Known(method) => {
+                        name.as_str() == method.name().text() && method.accepts(signature)
+                    }
                     JavaMemberOrigin::GeneratedField(field) => {
                         portable_member_metadata_matches(signature)
                             && generated_accessor_matches(owner, *field, name, signature, context)
@@ -83,7 +90,7 @@ impl JavaCallableRef {
                     }
                     JavaMemberOrigin::GeneratedVariant => false,
                 };
-                (owner_matches && catalogue_matches).then(|| signature.clone())
+                (owner_matches && catalogue_matches).then(|| signature.as_ref().clone())
             }
         }
     }
@@ -99,6 +106,7 @@ impl JavaConstructorRef {
         context: &TargetAstContext<'_, JavaDialect>,
     ) -> Option<(JavaType, Vec<JavaType>)> {
         match self {
+            Self::Dependency(value) => Some((value.owner().ty(), value.parameters().to_vec())),
             Self::Known {
                 constructor,
                 owner,

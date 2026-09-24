@@ -49,7 +49,7 @@ fn call(
     function: JavaDependencyFunction,
     arguments: Vec<JavaExpr>,
 ) -> JavaExpr {
-    let (next, callable) = std::mem::take(scope).import(function);
+    let (next, callable) = std::mem::take(scope).import(function).unwrap();
     *scope = next;
     JavaExpr {
         ty: double(),

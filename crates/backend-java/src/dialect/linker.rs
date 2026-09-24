@@ -5,10 +5,7 @@ use super::catalogue::java_symbol_catalogue;
 use super::file_checks::{
     declares_reserved_runtime_type, verify_composed_java_file, verify_java_file_identity,
 };
-use super::known_constructors::JavaKnownConstructor;
 use super::known_fields::JavaKnownField;
-use super::known_methods::JavaKnownMethod;
-use super::member_names::JavaMemberName;
 use super::runtime_helpers::{JavaHelperCapability, JavaRuntimeHelper};
 use super::{
     JavaDialect, JavaExternalPackage, JavaGeneratedContainer, JavaImportKind, JavaNameKey,
@@ -30,8 +27,8 @@ impl LinkerDialect for JavaDialect {
     type DependencyCallable = super::JavaImportedCallable;
     type DependencyPackage = super::JavaDependencyPackage;
     type KnownField = JavaKnownField;
-    type KnownConstructor = JavaKnownConstructor;
-    type KnownMethod = JavaKnownMethod;
+    type KnownConstructor = super::JavaReferencedConstructor;
+    type KnownMethod = super::JavaReferencedMethod;
     type PreludeSymbol = JavaPreludeSymbol;
     type StandardLibrary = JavaStandardLibrary;
     type ExternalPackage = JavaExternalPackage;
@@ -40,7 +37,7 @@ impl LinkerDialect for JavaDialect {
     type HelperCapability = JavaHelperCapability;
     type Identifier = JavaIdentifier;
     type QualifiedName = JavaQualifiedName;
-    type MemberName = JavaMemberName;
+    type MemberName = super::JavaReferencedMemberName;
     type Namespace = JavaNamespace;
     type NameKey = JavaNameKey;
     type ImportKind = JavaImportKind;
@@ -180,10 +177,10 @@ impl LinkerDialect for JavaDialect {
                 vec![TargetSymbolRef::KnownCallable(*callable)]
             }
             JavaArenaExpression::KnownConstructor { constructor, .. } => {
-                vec![TargetSymbolRef::KnownConstructor(*constructor)]
+                vec![TargetSymbolRef::KnownConstructor(constructor.clone())]
             }
             JavaArenaExpression::KnownMethod { method, .. } => {
-                vec![TargetSymbolRef::KnownMethod(*method)]
+                vec![TargetSymbolRef::KnownMethod(method.clone())]
             }
         }
     }
@@ -274,7 +271,7 @@ impl LinkerDialect for JavaDialect {
                 ResolvedReference::Qualified(value) => JavaResolvedName::Qualified(value.clone()),
                 ResolvedReference::Member { owner, member } => JavaResolvedName::Member {
                     owner: owner.clone(),
-                    member: *member,
+                    member: member.clone(),
                 },
             };
             names.insert(symbol, name);
@@ -291,6 +288,22 @@ impl LinkerDialect for JavaDialect {
         let expected = item.item.symbols().into_iter().collect::<BTreeSet<_>>();
         let actual = item.names.keys().cloned().collect::<BTreeSet<_>>();
         let dependencies_match = item.names.iter().all(|(symbol, name)| match symbol {
+            TargetSymbolRef::KnownConstructor(super::JavaReferencedConstructor::Dependency(
+                value,
+            )) => {
+                matches!(name, JavaResolvedName::Qualified(JavaQualifiedName::Dependency(path))
+                    if path == value.owner().path())
+            }
+            TargetSymbolRef::KnownMethod(super::JavaReferencedMethod::Dependency(value)) => {
+                matches!(name, JavaResolvedName::Member {
+                    owner: JavaQualifiedName::Dependency(path),
+                    member: super::JavaReferencedMemberName::Dependency(member)
+                } if path == value.owner().path() && member == value)
+            }
+            TargetSymbolRef::KnownType(super::JavaReferencedType::Dependency(ty)) => {
+                matches!(name, JavaResolvedName::Qualified(JavaQualifiedName::Dependency(path))
+                    if path == ty.path())
+            }
             TargetSymbolRef::DependencyValue(value) => {
                 matches!(name, JavaResolvedName::Qualified(JavaQualifiedName::Dependency(path))
                     if path == value.constant().path())

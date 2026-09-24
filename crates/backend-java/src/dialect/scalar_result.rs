@@ -32,7 +32,7 @@ impl JavaScalarResultFamily {
         package: RenderReadyPackage<JavaDialect>,
         types: JavaScalarResultTypes,
     ) -> Result<Self, String> {
-        let payload_name = check::family(&package, types)?;
+        let payload_name = Self::checked_payload_name(&package, types)?;
         Ok(Self {
             package: Arc::new(package),
             types,
@@ -41,6 +41,12 @@ impl JavaScalarResultFamily {
     }
     pub fn package(&self) -> &RenderReadyPackage<JavaDialect> {
         &self.package
+    }
+    pub(in crate::dialect) fn checked_payload_name(
+        package: &RenderReadyPackage<JavaDialect>,
+        types: JavaScalarResultTypes,
+    ) -> Result<JavaIdentifier, String> {
+        check::family(package, types)
     }
     pub fn types(&self) -> JavaScalarResultTypes {
         self.types

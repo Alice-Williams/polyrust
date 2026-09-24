@@ -318,7 +318,7 @@ fn verified_java_mutation_corpus_compiles_under_hermetic_java_21() {
             callable: JavaCallableRef::Member {
                 owner: string.clone(),
                 name: JavaIdentifier::from_portable(JavaKnownMethod::StringLength.name().text()),
-                signature: JavaKnownMethod::StringLength.signature(),
+                signature: Box::new(JavaKnownMethod::StringLength.signature()),
                 origin: JavaMemberOrigin::Known(JavaKnownMethod::StringLength),
             },
             receiver: Some(Box::new(JavaExpr::literal(

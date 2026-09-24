@@ -148,11 +148,22 @@ impl Fixture {
     }
 
     pub fn with_interface_origin(origin: GeneratedOrigin<JavaDialect>) -> Self {
+        Self::with_layout(origin, JavaVisibility::Public)
+    }
+
+    pub fn with_facade_visibility(visibility: JavaVisibility) -> Self {
+        Self::with_layout(
+            GeneratedOrigin::Synthesized(SynthesisReason::InterfaceAdapter),
+            visibility,
+        )
+    }
+
+    fn with_layout(origin: GeneratedOrigin<JavaDialect>, visibility: JavaVisibility) -> Self {
         let mut builder = TargetAstBuilder::new(JavaDialect);
         let id = builder.generated_type(GeneratedType {
             name: "ResultFixture".into(),
             kind: JavaDeclarationKind::FinalClass,
-            visibility: JavaVisibility::Public,
+            visibility,
             origin: GeneratedOrigin::Synthesized(SynthesisReason::TestHarness),
             source: source(),
         });
@@ -164,6 +175,7 @@ impl Fixture {
             family,
             other,
         };
+        fixture.facade.visibility = visibility;
         fixture.add_methods();
         fixture
     }

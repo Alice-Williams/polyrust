@@ -159,6 +159,7 @@ fn reference(name: &JavaTypeName, names: &Names) -> Encoding {
     // Dots and binary-name '$' separators each occupy one byte. Identifiers
     // are ASCII by construction; missing identities are rejected by linking.
     let size = match name {
+        JavaTypeName::Imported(value) => value.path().encoded_len(),
         JavaTypeName::Known(value) => value.qualified_name().len(),
         JavaTypeName::Generated(id) => names.get(id).copied().unwrap_or(0),
     }

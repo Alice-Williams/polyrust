@@ -25,11 +25,22 @@ mod declaration_paths;
 mod dependency_api;
 pub use dependency_api::{
     JavaDependencyApi, JavaDependencyConstant, JavaDependencyFunction, JavaDependencyPackage,
-    JavaForeignConstantExport, JavaSourceDescription, JavaSourceDescriptionKind, JavaSourceTarget,
+    JavaDependencyResultAccessor, JavaDependencyResultConstructor, JavaDependencyResultFamily,
+    JavaDependencyResultType, JavaDependencySignature, JavaDependencyType,
+    JavaForeignConstantExport, JavaResultTypeRole, JavaSourceDescription,
+    JavaSourceDescriptionKind, JavaSourceTarget,
 };
 mod dependency_scope;
 pub use dependency_scope::{
-    JavaDependencyBindings, JavaDependencyScope, JavaImportedCallable, JavaImportedValue,
+    JavaDependencyBindings, JavaDependencyScope, JavaImportedCallable, JavaImportedResultType,
+    JavaImportedValue,
+};
+mod referenced_types;
+pub use referenced_types::JavaReferencedType;
+mod referenced_members;
+pub use dependency_scope::{JavaImportedResultAccessor, JavaImportedResultConstructor};
+pub use referenced_members::{
+    JavaReferencedConstructor, JavaReferencedMemberName, JavaReferencedMethod,
 };
 mod documentation;
 mod file_checks;

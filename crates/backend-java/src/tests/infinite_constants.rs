@@ -47,7 +47,7 @@ fn packages() -> Vec<JavaDependencyApi> {
     let mut scope = JavaDependencyScope::new();
     let mut reads = vec![];
     for value in selected {
-        let (next, read) = scope.import_constant(value);
+        let (next, read) = scope.import_constant(value).unwrap();
         scope = next;
         reads.push(read);
     }
@@ -122,7 +122,7 @@ fn infinities_keep_exact_primitive_values_descriptions_dependencies_and_alias_au
             Binary64Sign::Negative
         })
         .symbols(&mut symbols);
-        assert!(symbols.contains(&TargetSymbolRef::KnownType(JavaKnownType::Double)));
+        assert!(symbols.contains(&TargetSymbolRef::KnownType(JavaKnownType::Double.into())));
         assert!(symbols.contains(&TargetSymbolRef::KnownField(field)));
     }
 }
@@ -138,8 +138,12 @@ fn infinity_lookalike_producers_never_replace_import_authority() {
         let before = owner.constants().next().unwrap();
         let after = other.constants().next().unwrap();
         assert_ne!(before, after);
-        let (scope, _) = JavaDependencyScope::new().import_constant(after.clone());
-        let (_, read) = JavaDependencyScope::new().import_constant(before.clone());
+        let (scope, _) = JavaDependencyScope::new()
+            .import_constant(after.clone())
+            .unwrap();
+        let (_, read) = JavaDependencyScope::new()
+            .import_constant(before.clone())
+            .unwrap();
         assert!(c::admit(imports::consumer(0x926, scope.finish(), &[read], None)).is_err());
     }
 }

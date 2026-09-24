@@ -91,15 +91,18 @@ fn generated_constant_consumers_match_truth_and_reject_compiling_reference_mutan
 fn generated_constant_diamond_executes_real_intermediate_call() {
     let fixture = f::Fixture::new(false);
     let bridge = c::admit(fixture.draft(true)).unwrap();
-    let (scope, callable) =
-        JavaDependencyScope::new().import(bridge.function(source::id(0x500, 27)).unwrap().clone());
-    let (scope, value) = scope.import_constant(
-        fixture
-            .owner
-            .constant(source::id(0x35c, 16))
-            .unwrap()
-            .clone(),
-    );
+    let (scope, callable) = JavaDependencyScope::new()
+        .import(bridge.function(source::id(0x500, 27)).unwrap().clone())
+        .unwrap();
+    let (scope, value) = scope
+        .import_constant(
+            fixture
+                .owner
+                .constant(source::id(0x35c, 16))
+                .unwrap()
+                .clone(),
+        )
+        .unwrap();
     let root_api = c::admit(f::consumer(
         0x501,
         scope.finish(),

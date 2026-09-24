@@ -93,7 +93,7 @@ pub(super) fn owner(crate_id: u64, dependencies: Option<&JavaDependencyApi>) -> 
     for (index, mode) in Selection::ALL.into_iter().enumerate() {
         let input = JavaExpr::local(double(), f::name("input"));
         let operand = if let Some(function) = imports.get(index) {
-            let (next, callable) = scope.import((*function).clone());
+            let (next, callable) = scope.import((*function).clone()).unwrap();
             scope = next;
             JavaExpr {
                 ty: double(),

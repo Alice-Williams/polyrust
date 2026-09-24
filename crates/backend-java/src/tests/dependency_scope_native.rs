@@ -67,7 +67,7 @@ fn generated_consumer(
     let mut scope = JavaDependencyScope::new();
     let mut imports = BTreeMap::new();
     for function in functions {
-        let (next, callable) = scope.import(function.clone());
+        let (next, callable) = scope.import(function.clone()).unwrap();
         scope = next;
         imports.insert(function.declaration(), callable);
     }

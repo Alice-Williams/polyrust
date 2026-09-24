@@ -44,8 +44,9 @@ fn chain() -> Vec<JavaDependencyApi> {
     for (id, scalar) in [(71, false), (72, false), (73, true)] {
         let mut bindings = JavaDependencyBindings::default();
         let effect = owners.last().map(|owner: &JavaDependencyApi| {
-            let (scope, callable) =
-                JavaDependencyScope::new().import(owner.functions().next().unwrap().clone());
+            let (scope, callable) = JavaDependencyScope::new()
+                .import(owner.functions().next().unwrap().clone())
+                .unwrap();
             bindings = scope.finish();
             call(&callable)
         });
@@ -71,7 +72,7 @@ fn unit_results_preserve_call_heights_and_real_void_types() {
     let owners = chain();
     for (index, owner) in owners.iter().enumerate() {
         let function = owner.functions().next().unwrap();
-        assert_eq!(function.signature().result == void(), index < 2);
+        assert_eq!(function.declaration_signature().result == void(), index < 2);
         assert_eq!(function.call_height(), index + 1);
         let output = render_certified_package(&JavaStructuralRenderer, owner.package()).unwrap();
         assert_eq!(output.files().len(), 1);
@@ -102,8 +103,9 @@ fn unit_results_preserve_call_heights_and_real_void_types() {
 #[test]
 fn unit_results_conditionals_without_else_retain_calls_and_source_bound() {
     let owner = chain().remove(0);
-    let (scope, callable) =
-        JavaDependencyScope::new().import(owner.functions().next().unwrap().clone());
+    let (scope, callable) = JavaDependencyScope::new()
+        .import(owner.functions().next().unwrap().clone())
+        .unwrap();
     let mut methods = functions(false, None);
     methods[0].body.statements.insert(
         0,
@@ -164,10 +166,10 @@ fn unit_results_reject_value_returns_void_values_and_invalid_storage() {
 fn unit_results_require_original_scope_and_exact_call_arguments() {
     let owner = chain().remove(0);
     let function = owner.functions().next().unwrap().clone();
-    let (scope, callable) = JavaDependencyScope::new().import(function.clone());
+    let (scope, callable) = JavaDependencyScope::new().import(function.clone()).unwrap();
     let bindings = scope.finish();
     rejected(f::package(72, functions(false, Some(call(&callable)))));
-    let (other, _) = JavaDependencyScope::new().import(function);
+    let (other, _) = JavaDependencyScope::new().import(function).unwrap();
     rejected(f::package_with_dependencies(
         72,
         functions(false, Some(call(&callable))),
@@ -203,8 +205,9 @@ fn unit_results_catalogue_rejects_changed_results_and_recertified_owners() {
         JavaDependencyApi::from_certificate(f::certify(f::package(71, functions(false, None))))
             .unwrap();
     assert_ne!(original.package_identity(), replacement.package_identity());
-    let (scope, callable) =
-        JavaDependencyScope::new().import(original.functions().next().unwrap().clone());
+    let (scope, callable) = JavaDependencyScope::new()
+        .import(original.functions().next().unwrap().clone())
+        .unwrap();
     let package =
         f::package_with_dependencies(74, functions(false, Some(call(&callable))), scope.finish());
     let catalogue = JavaDialect.package_symbol_catalogue(&package).unwrap();

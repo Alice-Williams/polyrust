@@ -52,6 +52,13 @@ fn invocation_types_match_in_context(
         || matches!(
             (expected, actual),
             (
+                JavaType::Reference(JavaTypeName::Imported(expected)),
+                JavaType::Reference(JavaTypeName::Imported(actual)),
+            ) if actual.implements(expected)
+        )
+        || matches!(
+            (expected, actual),
+            (
                 JavaType::Reference(JavaTypeName::Generated(expected_interface)),
                 JavaType::Reference(JavaTypeName::Generated(actual_type)),
             ) if generated_type_implements(*actual_type, *expected_interface, context)

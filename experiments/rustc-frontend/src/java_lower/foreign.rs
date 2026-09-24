@@ -37,7 +37,7 @@ pub(super) fn register(
         #[cfg(java_graph_wrong_signature)]
         let expected = crate::java_graph::mutations::signature(expected);
         if function.declaration() != crate::source_origin::identity(tcx, *definition)
-            || function.signature() != &expected
+            || function.declaration_signature() != &expected
         {
             return Err("foreign compiler identity/signature differs from Java certificate".into());
         }
@@ -47,7 +47,9 @@ pub(super) fn register(
                 "foreign original Rust signature differs from Java source type facts".into(),
             );
         }
-        let (next, imported) = scope.import(function);
+        let (next, imported) = scope
+            .import(function)
+            .map_err(|errors| format!("{errors:?}"))?;
         scope = next;
         if functions.insert(*definition, imported).is_some() {
             return Err("duplicate Java foreign declaration registration".into());

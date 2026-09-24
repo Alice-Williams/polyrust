@@ -72,6 +72,10 @@ pub(super) fn expression(value: &JavaExpr) -> Code {
             arguments,
         } => {
             let parameters = match constructor {
+                JavaConstructorRef::Dependency(value) => {
+                    code.ty(&value.owner().ty());
+                    value.parameters()
+                }
                 JavaConstructorRef::Known {
                     owner, parameters, ..
                 } => {

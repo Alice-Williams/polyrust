@@ -63,7 +63,7 @@ impl JavaExpr {
                 }
                 JavaValueRef::KnownField(value) => {
                     symbols.insert(TargetSymbolRef::KnownField(*value));
-                    symbols.insert(TargetSymbolRef::KnownType(value.owner()));
+                    symbols.insert(TargetSymbolRef::KnownType(value.owner().into()));
                 }
                 JavaValueRef::Local(_) | JavaValueRef::This => {}
             },
@@ -92,7 +92,7 @@ impl JavaExpr {
                     }
                     JavaCallableRef::Known { callable, .. } => {
                         symbols.insert(TargetSymbolRef::KnownCallable(*callable));
-                        symbols.insert(TargetSymbolRef::KnownType(callable.owner()));
+                        symbols.insert(TargetSymbolRef::KnownType(callable.owner().into()));
                     }
                     JavaCallableRef::Runtime { callable, .. } => {
                         symbols.insert(TargetSymbolRef::RuntimeCallable(*callable));
@@ -111,7 +111,11 @@ impl JavaExpr {
                     JavaCallableRef::Member { owner, origin, .. } => {
                         owner.symbols(symbols);
                         if let JavaMemberOrigin::Known(value) = origin {
-                            symbols.insert(TargetSymbolRef::KnownMethod(*value));
+                            symbols.insert(TargetSymbolRef::KnownMethod((*value).into()));
+                        }
+                        if let JavaMemberOrigin::Dependency(value) = origin {
+                            symbols.insert(TargetSymbolRef::KnownMethod(value.clone().into()));
+                            value.owner().ty().symbols(symbols);
                         }
                     }
                 }
@@ -127,12 +131,19 @@ impl JavaExpr {
                 arguments,
             } => {
                 match constructor {
+                    JavaConstructorRef::Dependency(value) => {
+                        symbols.insert(TargetSymbolRef::KnownConstructor(value.clone().into()));
+                        value.owner().ty().symbols(symbols);
+                        for ty in value.parameters() {
+                            ty.symbols(symbols);
+                        }
+                    }
                     JavaConstructorRef::Known {
                         constructor,
                         owner,
                         parameters,
                     } => {
-                        symbols.insert(TargetSymbolRef::KnownConstructor(*constructor));
+                        symbols.insert(TargetSymbolRef::KnownConstructor((*constructor).into()));
                         owner.symbols(symbols);
                         for parameter in parameters {
                             parameter.symbols(symbols);
@@ -159,7 +170,7 @@ impl JavaExpr {
                 match field {
                     JavaFieldRef::Known(value) => {
                         symbols.insert(TargetSymbolRef::KnownField(*value));
-                        symbols.insert(TargetSymbolRef::KnownType(value.owner()));
+                        symbols.insert(TargetSymbolRef::KnownType(value.owner().into()));
                     }
                     JavaFieldRef::Structural { ty, .. } => ty.symbols(symbols),
                     JavaFieldRef::Synthesized { field, ty, .. } => {

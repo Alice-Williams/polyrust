@@ -20,10 +20,11 @@ fn infinity_bound_charges_short_and_qualified_owners_and_rejects_missing_names()
             (Binary64Sign::Negative, "NEGATIVE_INFINITY"),
         ] {
             let names = BTreeMap::from([(
-                TargetSymbolRef::KnownType(JavaKnownType::Double),
+                TargetSymbolRef::KnownType(JavaKnownType::Double.into()),
                 name.clone(),
             )]);
             let mut reader = Reader {
+                result_types: Default::default(),
                 budget: Budget::new(),
                 names: &names,
             };
@@ -33,6 +34,7 @@ fn infinity_bound_charges_short_and_qualified_owners_and_rejects_missing_names()
                 256 + (width + 1 + member.len()) as u64
             );
             let mut reader = Reader {
+                result_types: Default::default(),
                 budget: Budget::new(),
                 names: &names,
             };
@@ -42,6 +44,7 @@ fn infinity_bound_charges_short_and_qualified_owners_and_rejects_missing_names()
     }
     let names = BTreeMap::new();
     let mut reader = Reader {
+        result_types: Default::default(),
         budget: Budget::new(),
         names: &names,
     };

@@ -21,7 +21,7 @@ pub(super) fn owner(crate_id: u64, dependencies: Option<&JavaDependencyApi>) -> 
     for index in 0..2 {
         let input = JavaExpr::local(double(), f::name("input"));
         let operand = if let Some(function) = imports.get(index) {
-            let (next, callable) = scope.import((*function).clone());
+            let (next, callable) = scope.import((*function).clone()).unwrap();
             scope = next;
             JavaExpr {
                 ty: double(),

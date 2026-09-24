@@ -86,7 +86,7 @@ fn comparison_signatures_remain_exact_and_boolean() {
     let owner = comparisons();
     assert_eq!(owner.functions().count(), 6);
     for function in owner.functions() {
-        assert_eq!(function.signature().parameters, [double()]);
-        assert_eq!(function.signature().result, f::boolean());
+        assert_eq!(function.declaration_signature().parameters, [double()]);
+        assert_eq!(function.declaration_signature().result, f::boolean());
     }
 }

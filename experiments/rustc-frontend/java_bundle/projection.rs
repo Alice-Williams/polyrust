@@ -85,11 +85,11 @@ pub(crate) fn project(owner: Owner<'_>) -> Result<Manifest<'_>, String> {
                         .ok_or("public Java function missing")?;
                     if (!std::ptr::eq(function.source(), source) && function.source() != source)
                         || description.target() != JavaSourceTarget::Declaration(function.path())
-                        || &function.signature().result != result
+                        || &function.declaration_signature().result != result
                         || !parameters
                             .iter()
                             .map(|p| &p.ty)
-                            .eq(function.signature().parameters.iter())
+                            .eq(function.declaration_signature().parameters.iter())
                     {
                         return Err("Java function description differs from owner witness".into());
                     }

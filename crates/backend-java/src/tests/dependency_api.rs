@@ -77,7 +77,7 @@ fn long_signatures_remain_distinct_and_long_mutation_is_not_admitted() {
         name("p0"),
     )))]);
     let api = JavaDependencyApi::from_certificate(certify(package(7, fixture))).unwrap();
-    let signature = api.function(id(7, 11)).unwrap().signature();
+    let signature = api.function(id(7, 11)).unwrap().declaration_signature();
     assert_eq!(
         signature.parameters,
         [long.clone(), boolean(), int(), boolean()]
@@ -183,7 +183,10 @@ fn boolean_negation_is_a_closed_dependency_expression() {
     }))]);
     let api = JavaDependencyApi::from_certificate(certify(package(7, fixture))).unwrap();
     assert_eq!(
-        api.function(id(7, 12)).unwrap().signature().result,
+        api.function(id(7, 12))
+            .unwrap()
+            .declaration_signature()
+            .result,
         boolean()
     );
 }
@@ -223,7 +226,7 @@ fn integer_wrapping_arithmetic_has_exact_width_dependency_certificates() {
                     .unwrap()
                     .function(id(7, 10))
                     .unwrap()
-                    .signature()
+                    .declaration_signature()
                     .result,
                 ty
             );
@@ -251,7 +254,13 @@ fn integer_complement_has_full_dependency_certificates_for_both_widths() {
             },
         }))]);
         let api = JavaDependencyApi::from_certificate(certify(package(7, fixture))).unwrap();
-        assert_eq!(api.function(id(7, 10)).unwrap().signature().result, ty);
+        assert_eq!(
+            api.function(id(7, 10))
+                .unwrap()
+                .declaration_signature()
+                .result,
+            ty
+        );
     }
 }
 
@@ -289,8 +298,8 @@ fn dependency_api_exposes_exact_public_scalars_aliases_and_docs_only() {
     assert!(api.function(id(8, 10)).is_none());
     for (hash, arity, result) in [(10, 0, int()), (11, 4, int()), (12, 1, boolean())] {
         let function = api.function(id(7, hash)).unwrap();
-        assert_eq!(function.signature().parameters.len(), arity);
-        assert_eq!(function.signature().result, result);
+        assert_eq!(function.declaration_signature().parameters.len(), arity);
+        assert_eq!(function.declaration_signature().result, result);
         assert_eq!(function.package_identity(), api.package_identity());
         assert_eq!(function.path().package(), JavaPackage::RustCrate(7));
         assert_eq!(function.path().owners(), [name("Generated")]);

@@ -14,6 +14,18 @@ fn scalar_result_canonical_source_facade_cannot_publish_public_nominal_signature
         crate::tests::source_dependency_fixture::functions(42),
     );
     JavaDependencyApi::from_certificate(certify(scalar)).unwrap();
+    let (certificate, _) = canonical_source_fixture();
+    let error = JavaDependencyApi::from_certificate(certificate).unwrap_err();
+    assert_eq!(
+        error,
+        "Java dependency callable visibility/signature/declaration inventory disagrees"
+    );
+}
+
+pub(crate) fn canonical_source_fixture() -> (
+    RenderReadyPackage<JavaDialect>,
+    crate::dialect::JavaScalarResultTypes,
+) {
     let mut builder = TargetAstBuilder::new(JavaDialect);
     let facade = builder.generated_type(GeneratedType {
         name: "Generated".into(),
@@ -86,9 +98,5 @@ fn scalar_result_canonical_source_facade_cannot_publish_public_nominal_signature
     add_file(&mut builder, "Generated", declared, declaration);
     let certificate = certify(builder.build());
     JavaScalarResultFamily::from_certificate(certificate.clone(), types).unwrap();
-    let error = JavaDependencyApi::from_certificate(certificate).unwrap_err();
-    assert_eq!(
-        error,
-        "Java dependency callable visibility/signature/declaration inventory disagrees"
-    );
+    (certificate, types)
 }

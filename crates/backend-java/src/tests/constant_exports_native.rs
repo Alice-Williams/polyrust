@@ -49,7 +49,7 @@ fn independent_alias_facades_compile_without_storage_and_keep_exact_producer_val
     let mut scope = JavaDependencyScope::new();
     let mut reads = Vec::new();
     for constant in selected {
-        let (next, value) = scope.import_constant(constant);
+        let (next, value) = scope.import_constant(constant).unwrap();
         scope = next;
         reads.push(value);
     }

@@ -62,6 +62,7 @@ pub use interface_witness::JavaInterfaceWitness;
 mod instanceof;
 mod invocations;
 mod known_type_arity;
+mod known_types;
 mod lexical_blocks;
 mod lexical_expressions;
 mod lexical_scope;

@@ -49,6 +49,7 @@ pub(super) fn verify_contextual_type(
 ) -> Vec<AstViolation> {
     let mut violations = Vec::new();
     match ty {
+        JavaType::Reference(JavaTypeName::Imported(_)) => {}
         JavaType::Reference(JavaTypeName::Known(known)) => {
             if known.generic_arity() != 0 {
                 violations.push(type_error(
@@ -70,6 +71,7 @@ pub(super) fn verify_contextual_type(
         }
         JavaType::Generic { raw, arguments } => {
             let expected = match raw {
+                JavaTypeName::Imported(_) => Some(0),
                 JavaTypeName::Known(known) => Some(usize::from(known.generic_arity())),
                 JavaTypeName::Generated(_) => find_type_declaration(ty, context)
                     .map(|declaration| declaration.type_parameters.len()),
@@ -153,8 +155,8 @@ pub(super) fn verify_expression_type_context(
                 JavaCallableRef::Known { signature, .. }
                 | JavaCallableRef::Runtime { signature, .. }
                 | JavaCallableRef::Generated { signature, .. }
-                | JavaCallableRef::Interface { signature, .. }
-                | JavaCallableRef::Member { signature, .. } => signature,
+                | JavaCallableRef::Interface { signature, .. } => signature,
+                JavaCallableRef::Member { signature, .. } => signature.as_ref(),
             };
             if let JavaCallableRef::Member { owner, .. } = callable {
                 violations.extend(verify_contextual_type(owner, variables, context));
@@ -182,6 +184,16 @@ pub(super) fn verify_expression_type_context(
             arguments,
         } => {
             match constructor {
+                JavaConstructorRef::Dependency(value) => {
+                    violations.extend(verify_contextual_type(
+                        &value.owner().ty(),
+                        variables,
+                        context,
+                    ));
+                    for ty in value.parameters() {
+                        violations.extend(verify_contextual_type(ty, variables, context));
+                    }
+                }
                 JavaConstructorRef::Known {
                     owner, parameters, ..
                 } => {

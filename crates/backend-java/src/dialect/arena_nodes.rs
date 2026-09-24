@@ -2,8 +2,7 @@
 
 use super::JavaDialect;
 use super::known_callables::JavaKnownCallable;
-use super::known_constructors::JavaKnownConstructor;
-use super::known_methods::JavaKnownMethod;
+use super::{JavaReferencedConstructor, JavaReferencedMethod};
 use portable_codegen::{
     AstViolation, TargetAstContext, TargetExprId, TargetExpressionNode, TargetStatementNode,
     TargetTypeRef,
@@ -16,11 +15,11 @@ pub enum JavaArenaExpression {
         arguments: Vec<TargetExprId>,
     },
     KnownConstructor {
-        constructor: JavaKnownConstructor,
+        constructor: JavaReferencedConstructor,
         arguments: Vec<TargetExprId>,
     },
     KnownMethod {
-        method: JavaKnownMethod,
+        method: JavaReferencedMethod,
         receiver: TargetExprId,
         arguments: Vec<TargetExprId>,
     },

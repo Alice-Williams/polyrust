@@ -73,13 +73,17 @@ impl JavaDependencyScope {
     pub fn import_constant(
         mut self,
         constant: JavaDependencyConstant,
-    ) -> (Self, JavaImportedValue) {
+    ) -> Result<(Self, JavaImportedValue), Vec<portable_diagnostics::Diagnostic>> {
         let value = JavaImportedValue {
             scope: self.identity.clone(),
             constant: Arc::new(constant),
         };
-        self.values.insert(value.clone());
-        (self, value)
+        let added = self.values.insert(value.clone());
+        self.verify_registration(
+            value.constant().package_identity(),
+            added.then(|| value.constant().path().encoded_len()),
+        )?;
+        Ok((self, value))
     }
 }
 impl JavaDependencyBindings {

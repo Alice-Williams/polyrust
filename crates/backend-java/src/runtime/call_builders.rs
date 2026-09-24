@@ -65,7 +65,7 @@ pub(super) fn known_method_call(
             callable: JavaCallableRef::Member {
                 owner: receiver.ty.clone(),
                 name: identifier(method.name().text()),
-                signature,
+                signature: Box::new(signature),
                 origin: JavaMemberOrigin::Known(method),
             },
             receiver: Some(Box::new(receiver)),
@@ -204,7 +204,7 @@ pub(super) fn member_call(
             callable: JavaCallableRef::Member {
                 owner: receiver.ty.clone(),
                 name: identifier(member.name()),
-                signature,
+                signature: Box::new(signature),
                 origin: JavaMemberOrigin::Runtime(member),
             },
             receiver: Some(Box::new(receiver)),

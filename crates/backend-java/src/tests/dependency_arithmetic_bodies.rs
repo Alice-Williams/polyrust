@@ -1,5 +1,6 @@
 //! The dependency reader itself must reject malformed arithmetic annotations.
 use super::*;
+use crate::ast::{JavaBinaryOperator, JavaLiteral, JavaPrecedence};
 fn literal(ty: JavaPrimitive) -> JavaExpr {
     let payload = match ty {
         JavaPrimitive::Double => {
@@ -15,6 +16,8 @@ fn literal(ty: JavaPrimitive) -> JavaExpr {
 fn admitted(value: &JavaExpr) -> bool {
     let mut budget = Budget::new();
     Reader {
+        results: &Default::default(),
+        nonnull_results: BTreeSet::new(),
         methods: &BTreeMap::new(),
         records: &BTreeMap::new(),
         constants: &BTreeMap::new(),

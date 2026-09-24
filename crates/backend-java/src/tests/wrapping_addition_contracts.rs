@@ -145,7 +145,8 @@ fn wrapping_addition_recursively_checks_original_import_authority_and_arity() {
         for side in [false, true] {
             for register in [false, true] {
                 for arity in [1, 2, 3] {
-                    let (scope, callable) = JavaDependencyScope::new().import(target.clone());
+                    let (scope, callable) =
+                        JavaDependencyScope::new().import(target.clone()).unwrap();
                     let call = JavaExpr {
                         ty: JavaType::primitive(width),
                         precedence: JavaPrecedence::Primary,

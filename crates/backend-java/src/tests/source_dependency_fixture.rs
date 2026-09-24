@@ -118,7 +118,7 @@ pub fn package_with_dependencies(
     package_configured(crate_id, functions, |_| {}, |_, _, _| {}, dependencies)
 }
 
-fn package_configured(
+pub(crate) fn package_configured(
     crate_id: u64,
     functions: Vec<Function>,
     exports_edit: impl FnOnce(&mut RustCrateExports),

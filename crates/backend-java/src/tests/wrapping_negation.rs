@@ -69,7 +69,7 @@ pub(super) fn chain_with_operator(operator: JavaUnaryOperator) -> Vec<JavaDepend
     let mut scope = JavaDependencyScope::new();
     let mut calls = vec![];
     for function in first.functions() {
-        let (next, callable) = scope.import(function.clone());
+        let (next, callable) = scope.import(function.clone()).unwrap();
         scope = next;
         calls.push(callable);
     }
