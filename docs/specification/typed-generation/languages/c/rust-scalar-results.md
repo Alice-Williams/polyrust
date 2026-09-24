@@ -1,6 +1,7 @@
 # Rust scalar results in C17
 
-- Status: private transport and owned public ABI complete; nominal imports in progress
+- Status: bounded target transport and selected-arm execution proof complete;
+  compiler source admission remains planned
 - Contract: [shared](../../rust-scalar-results.md)
 
 Use a source-derived complete struct with a typed Boolean success tag and I32
@@ -95,3 +96,27 @@ producer/relay/consumer packages with strict GCC/Zig compilation, mixed objects,
 both optimization levels, same-compiler UBSan, type-only construction/member
 access and compiling tag/payload faults. This target contract does not yet admit
 Rust Result source operations or establish source variant identity.
+
+## Selected-arm execution evidence
+
+The target transport proof includes an imported constructor materialized once
+and distinguishable helper calls in the success/error arms. Test-only native
+observers attach to exact certified definitions, while pristine copies execute
+without instrumentation. The renderer does not emit observer infrastructure.
+
+Correct traces contain one constructor event followed by only the selected
+helper. Value-preserving eager-arm, repeated-constructor and reversed-order
+fixtures must compile and fail the trace oracle across both tags, zero and
+signed boundary payloads under GCC14/Zig O0/O2 and UBSan. Count every tested row,
+including deliberately repeated edge rows; failures cannot depend on an invalid
+AST, compiler error, value mismatch or sanitizer diagnostic.
+
+Keep each call at an admitted full-expression boundary. Reordering fixtures use
+ordinary branch-local direct-call initializers, not new assignment or nested-call
+permissions. Measure pristine consumer frames and compose certified imported
+constructor costs; do not claim observer-modified frames are production frames.
+Original producer frame evidence remains a separate existing native test.
+
+This target evidence does not establish which standard-library source instance
+owns a synthesized result type. Canonical source placement and cross-crate
+instance reconciliation remain mandatory before compiler admission.

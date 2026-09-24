@@ -3,6 +3,7 @@
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 CAPACITY_CASES = {
+    "c_result_branch_native_test": "dialect::shared::result_branch_native_tests::selected_arm_native_traces_detect_value_preserving_execution_faults",
     "c_nominal_imports_native_test": "dialect::shared::nominal_native_tests::nominal_producer_relay_consumer_native_abi_and_faults",
     "c_u32_constants_native_test": "dialect::shared::u32_constants::native::u32_constants_native_corpus_imports_faults_headers_and_ubsan",
     "c_characters_native_test": "dialect::shared::characters::native::characters_native_full_domain_comparisons_faults_and_headers",

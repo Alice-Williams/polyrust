@@ -212,9 +212,18 @@ transport and [owned C public headers/ABI](tasks/M35-03A-05A-02B-01-c-result-hea
 The latter includes typed field-owner scopes, standalone headers, mixed GCC/Zig
 objects, compiling fault controls and measured resource bounds. All 1,039
 release/lint targets pass and fresh GPT-6-SOL review is clean. Existing generated
-outputs and unrelated WIP are preserved. Certified C nominal imports, Java
-result transport and checked Rust Result admission remain open; this does not
-complete general result parity or authorize legacy removal.
+outputs and unrelated WIP are preserved.
+[Certified C nominal imports](tasks/M35-03A-05A-02B-02-c-result-imports.md) are
+complete too: original type/member authority, exact public signature selection,
+whole-header closure, foreign read versus owned declaration permissions and
+separate native producer/relay/consumer proof pass all 1,040 release/lint targets
+and independent review. Existing outputs and 45 unrelated WIP files are unchanged.
+[Selected-arm execution](tasks/M35-03A-05A-02C-c-result-branches.md) is the final
+C transport checkpoint and is complete: native values, measured call traces,
+12 value-preserving faulty runs, frame accounting, independent review and all
+1,041 release/lint targets pass. Java result transport and checked
+Rust Result admission remain open. This does not complete general result parity
+or authorize legacy removal.
 
 The Rust-source path now has a normative [C HIR lowering specification](../specification/typed-generation/languages/c/rust-hir-lowering.md).
 It reuses checked compiler HIR, documentation attributes and the existing C

@@ -1,6 +1,6 @@
 # M35-03A-05A-02 — Certified C scalar-result transport
 
-- Status: in-progress
+- Status: complete
 - Parent: [05A](M35-03A-05A-scalar-results.md)
 - Depends on: [identity probe](M35-03A-05A-01-result-identity.md)
 - Specification: [C17](../../specification/typed-generation/languages/c/rust-scalar-results.md)
@@ -32,3 +32,11 @@ owner/dependency facts and unsupported pointer/union/nested/heap layouts;
 reject before rendering. Bound recursion, metadata, frames and output. Native
 faults must expose swapped tags, lost payloads and eager inactive-arm effects.
 Full Linux release/lint, fresh review and separate commit; no compiler admission.
+
+## Completion
+
+02A, 02B and 02C are complete. Their combined evidence includes exact public
+nominal imports and measured value-preserving execution-order faults. All 1,041
+Linux release/lint targets pass at the 02C checkpoint, independent review is
+clean, and existing output/WIP is unchanged. This closes the bounded C target
+transport foundation; it does not admit Rust Result syntax or retire legacy code.

@@ -365,3 +365,10 @@ mod nominal_native_tests;
 #[cfg(test)]
 #[path = "../tests/shared_nominal_producer.rs"]
 mod nominal_producer;
+
+#[cfg(test)]
+#[path = "../tests/shared_result_branch_fixture.rs"]
+mod result_branch_fixture;
+#[cfg(test)]
+#[path = "../tests/shared_result_branch_native.rs"]
+mod result_branch_native_tests;

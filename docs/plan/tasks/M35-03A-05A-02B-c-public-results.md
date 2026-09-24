@@ -1,6 +1,6 @@
 # M35-03A-05A-02B — C public scalar-result nominal ABI
 
-- Status: in-progress
+- Status: complete
 - Parent: [C results](M35-03A-05A-02-c-results.md)
 - Depends on: [private transport](M35-03A-05A-02A-c-private-results.md)
 - Specification: [C17](../../specification/typed-generation/languages/c/rust-scalar-results.md)
@@ -11,8 +11,9 @@
 2. [02B-02: certified nominal imports](M35-03A-05A-02B-02-c-result-imports.md) — complete.
 
 The final inactive-arm execution evidence promised below is tracked by
-[02C](M35-03A-05A-02C-c-result-branches.md). Keep this parent in progress until
-that proof passes; correct return values alone do not establish call traces.
+[02C](M35-03A-05A-02C-c-result-branches.md), now complete. Its measured native
+traces and all 1,041 release/lint targets pass with clean independent review;
+correct return values alone were not treated as execution evidence.
 
 The first step must reject dependency API publication for every header carrying
 an aggregate, even when the selected function is scalar. Otherwise merely
