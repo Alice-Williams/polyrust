@@ -236,6 +236,39 @@ filegroup(
     visibility = ["//experiments/rustc-frontend:__pkg__"],
 )
 
+rust_test(
+    name = "c_canonical_native_test",
+    size = "large",
+    srcs = [
+        "test/canonical_dependencies/fixture.rs",
+    ] + glob(["test/canonical_native/*.rs"]),
+    crate_root = "test/canonical_native/main.rs",
+    data = ["//tools/c:zig_native_oracle"],
+    edition = "2024",
+    visibility = ["//:__pkg__"],
+    deps = [
+        ":portable_backend_c",
+        "//crates/codegen:portable_codegen",
+    ],
+)
+
+rust_test(
+    name = "c_canonical_owner_boundary_test",
+    size = "large",
+    srcs = [
+        "test/canonical_boundaries.rs",
+        "test/canonical_dependencies/fixture.rs",
+        "test/canonical_dependencies/source.rs",
+    ],
+    crate_root = "test/canonical_boundaries.rs",
+    edition = "2024",
+    visibility = ["//:__pkg__"],
+    deps = [
+        ":portable_backend_c",
+        "//crates/codegen:portable_codegen",
+    ],
+)
+
 rust_binary(
     name = "generate_v0_fixture",
     srcs = ["examples/generate_v0.rs"],

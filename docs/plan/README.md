@@ -284,8 +284,14 @@ original certificate authority and unused imports survive relays and diamonds.
 Nine dependency cases and two direct compiler manifest controls pass with all
 1,054 release/lint targets and two clean independent reviews. All 530 recorded
 outputs and 45 protected WIP files remain unchanged. Canonical compiler manifest
-publication explicitly rejects until 04D; native six-state transport, Java type
-owners and Rust Result lowering remain separate gates.
+publication explicitly rejects until 04D.
+[C canonical-owner native proof](tasks/M35-03A-05A-04B-03-c-owner-proof.md) now
+closes the C type-owner foundation: two generated cross-producer directions,
+65,624 native state checks, 48 compiling fault controls and the actual
+1,024/1,025 owner boundary pass. All 1,056 release/lint targets and two independent
+reviews are clean; ten actual generated C files are exported locally. The 530
+recorded outputs and 45 protected WIP hashes remain unchanged. Java type owners,
+atomic compiler graph publication and Rust Result lowering remain separate gates.
 
 The Rust-source path now has a normative [C HIR lowering specification](../specification/typed-generation/languages/c/rust-hir-lowering.md).
 It reuses checked compiler HIR, documentation attributes and the existing C

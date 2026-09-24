@@ -23,6 +23,8 @@ rust_clippy_test(
     targets = [
         "//experiments/rustc-frontend:c_canonical_owner_manifest_test",
         "//crates/backend-c:c_canonical_dependencies_test",
+        "//crates/backend-c:c_canonical_native_test",
+        "//crates/backend-c:c_canonical_owner_boundary_test",
         "//crates/backend-c:c_canonical_type_owner_test",
         "//crates/backend-c:portable_backend_c",
         "//crates/backend-c:portable_backend_c_unit_test",
@@ -112,6 +114,8 @@ rustfmt_test(
     targets = [
         "//experiments/rustc-frontend:c_canonical_owner_manifest_test",
         "//crates/backend-c:c_canonical_dependencies_test",
+        "//crates/backend-c:c_canonical_native_test",
+        "//crates/backend-c:c_canonical_owner_boundary_test",
         "//crates/backend-c:c_canonical_type_owner_test",
         "//crates/backend-c:portable_backend_c",
         "//crates/backend-c:portable_backend_c_unit_test",
@@ -229,6 +233,10 @@ test_suite(
         "//crates/backend-c:abi_shapes_sanitizer_test",
         "//crates/backend-c:c_abi_model_probe_test",
         "//crates/backend-c:c_abi_model_unoptimized_probe_test",
+        "//crates/backend-c:c_canonical_dependencies_test",
+        "//crates/backend-c:c_canonical_native_test",
+        "//crates/backend-c:c_canonical_owner_boundary_test",
+        "//crates/backend-c:c_canonical_type_owner_test",
         "//crates/backend-c:c_constants_layout_probe_test",
         "//crates/backend-c:c_constants_layout_unoptimized_probe_test",
         "//crates/backend-c:c_gcc_abi_model_probe_test",
