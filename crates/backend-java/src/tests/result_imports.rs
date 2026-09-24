@@ -1,9 +1,11 @@
 //! Publication and type/member-only uses of original certified closed families.
 mod adversarial;
+mod boundaries;
 pub(crate) mod fixture;
 mod methods;
 mod native;
 mod signatures;
+pub(crate) mod trace;
 use crate::{ast::*, dialect::*, tests::source_dependency_fixture as source};
 use fixture::*;
 

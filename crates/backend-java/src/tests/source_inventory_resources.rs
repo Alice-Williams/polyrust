@@ -2,6 +2,70 @@ use super::*;
 use crate::tests::source_dependency_fixture::*;
 
 #[test]
+fn result_owner_inventory_charges_all_six_adapter_types_and_the_facade() {
+    let api = crate::tests::result_imports::fixture::owner();
+    let inventory = &api.package().ast().files()[0].items()[0].source_inventory;
+    assert_eq!(inventory.iter().len(), 7);
+    let bytes = [
+        "Generated",
+        "Outcome",
+        "Success",
+        "Error",
+        "OtherOutcome",
+        "OtherSuccess",
+        "OtherError",
+    ]
+    .iter()
+    .map(|name| name.len())
+    .sum();
+    check([inventory], 7, 0, bytes).unwrap();
+    assert!(
+        check([inventory], 6, 0, bytes)
+            .unwrap_err()
+            .contains("declaration")
+    );
+    assert!(
+        check([inventory], 7, 0, bytes - 1)
+            .unwrap_err()
+            .contains("name byte")
+    );
+}
+
+#[test]
+fn result_owner_inventory_reaches_the_production_declaration_boundary() {
+    let api = crate::tests::result_imports::fixture::owner();
+    let family = &api.package().ast().files()[0].items()[0].source_inventory;
+    let remainder = certify(package(8, functions(42)));
+    let remainder = &remainder.ast().files()[0].items()[0].source_inventory;
+    let extra = certify(package(9, vec![]));
+    let extra = &extra.ast().files()[0].items()[0].source_inventory;
+    assert_eq!(
+        (
+            family.iter().len(),
+            remainder.iter().len(),
+            extra.iter().len()
+        ),
+        (7, 5, 1)
+    );
+    let copies = MAX_DECLARATIONS / 7;
+    assert_eq!(copies * 7 + 5, MAX_DECLARATIONS);
+    // Exercise the production streaming counter with authenticated inventories;
+    // repeated inputs are charged, not silently deduplicated by owner identity.
+    let exact = || std::iter::repeat_n(family, copies).chain([remainder]);
+    check(exact(), MAX_DECLARATIONS, MAX_PARAMETERS, MAX_NAME_BYTES).unwrap();
+    assert!(
+        check(
+            exact().chain([extra]),
+            MAX_DECLARATIONS,
+            MAX_PARAMETERS,
+            MAX_NAME_BYTES
+        )
+        .unwrap_err()
+        .contains("declaration limit")
+    );
+}
+
+#[test]
 fn synthesized_adapter_inventory_has_exact_and_one_over_metadata_limits() {
     use crate::ast::*;
     use crate::dialect::JavaDialect;

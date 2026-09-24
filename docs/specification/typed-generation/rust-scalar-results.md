@@ -1,7 +1,7 @@
 # Checked Rust no-heap scalar results
 
-- Status: compiler identity experiment and C target transport/proof complete;
-  Java transport and compiler admission planned
+- Status: compiler identity experiment and C/Java target transport/proof complete;
+  compiler source admission planned
 - Plan: [05A](../../plan/tasks/M35-03A-05A-scalar-results.md)
 - Targets: [C17](languages/c/rust-scalar-results.md), [Java21](languages/java/rust-scalar-results.md)
 

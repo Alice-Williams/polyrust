@@ -1,6 +1,6 @@
 # Rust scalar results in Java21
 
-- Status: local component/family foundation complete; imports and source admission planned
+- Status: certified target transport/import/execution proof complete; compiler source admission planned
 - Contract: [shared](../../rust-scalar-results.md)
 
 Use an ordinary source-derived sealed result interface with an immutable

@@ -189,3 +189,7 @@ pub(super) fn verify_owners(
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "../../tests/result_closure_limits.rs"]
+mod result_tests;

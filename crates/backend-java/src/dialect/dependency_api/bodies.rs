@@ -310,3 +310,7 @@ mod arithmetic_tests;
 #[cfg(test)]
 #[path = "../../tests/dependency_signed_widening.rs"]
 mod signed_widening_tests;
+
+#[cfg(test)]
+#[path = "../../tests/result_body_limits.rs"]
+mod result_tests;

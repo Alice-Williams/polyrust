@@ -237,8 +237,23 @@ are now complete too: exact sealed variants, canonical immutable payloads,
 authenticated generated upcasts, guarded observations and strict native boundary
 proof pass all 1,041 release/lint targets and independent review. The Java unit
 suite passes 459 cases; prior outputs and 45 unrelated WIP files are unchanged.
-This closes local target transport only. Original nominal imports, measured
-selected-arm fault proof and Rust source admission remain separate open work.
+This closes local target transport only.
+
+[Original Java nominal imports](tasks/M35-03A-05A-03B-java-result-imports.md)
+are complete: authenticated family/type/member authority, distinct producer,
+exported and consumer signatures, atomic bounded registration and strict native
+producer/relay/consumer proof pass all 1,041 release/lint targets and independent
+GPT-6-SOL review. The Java unit suite passes 476 cases; existing outputs and 45
+unrelated WIP files are unchanged. Measured selected-arm fault proof and Rust
+source admission remain separate open work, not completed migration parity.
+
+[Java selected-arm proof](tasks/M35-03A-05A-03C-java-result-proof.md) is complete:
+24,864 native observations, compiling value-preserving fault controls and actual
+resource boundaries pass all 1,042 release/lint targets with clean independent
+review. The ordinary Java suite passes 483 cases and five native partitions.
+This closes Java target Result transport. Checked Rust Result source admission,
+including canonical ownership across independent producers, remains the next
+integration step; broader capability parity and legacy removal remain open.
 
 The Rust-source path now has a normative [C HIR lowering specification](../specification/typed-generation/languages/c/rust-hir-lowering.md).
 It reuses checked compiler HIR, documentation attributes and the existing C

@@ -7,6 +7,7 @@ NATIVE_CASES = {
     "java_characters_native_test": "tests::characters::native::characters_native_full_domain_and_compiling_faults",
     "java_finite_constants_native_test": "tests::finite_constants::native::finite_constants_native_corpus_and_inlining_sensitive_faults",
     "java_infinite_constants_native_test": "tests::infinite_constants::native::infinity_constants_native_aliases_and_inlining_sensitive_faults",
+    "java_result_branches_native_test": "tests::result_imports::trace::result_branches_native_measured_effects_detect_compiling_value_preserving_faults",
 }
 
 def native_test_suite(name, unit):
