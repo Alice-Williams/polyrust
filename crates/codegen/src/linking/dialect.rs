@@ -63,6 +63,16 @@ pub trait LinkerDialect:
     fn callable_namespace(&self) -> Self::Namespace;
     fn member_namespace(&self) -> Self::Namespace;
     fn value_namespace(&self) -> Self::Namespace;
+    /// Recover aggregate ownership from the original typed package. Allocation
+    /// and post-link certification both reconstruct this scope; linked names
+    /// or caller-authored strings are not ownership authority.
+    fn generated_value_owner(
+        &self,
+        _package: &TargetAstPackage<Self>,
+        _value: GeneratedValueId,
+    ) -> Result<Option<GeneratedTypeId>, AstViolation> {
+        Ok(None)
+    }
     fn known_call_expression(
         &self,
         callable: Self::KnownCallable,

@@ -259,6 +259,16 @@ original checked AST and its reference-derived helper closure. Comparing only
 linked names against other linked names is insufficient: coordinated changes to
 bindings and references must not replace original declaration authority.
 
+Language plugins may derive a generated value's owning type through
+`generated_value_owner(original_package, value_id)`. The default remains
+package scope. An owner must identify an existing generated type; allocation
+uses `BindingScope::Type(owner)` and post-link verification recomputes it from
+the original AST. This separates aggregate fields from ordinary package names
+without inventing strings or trusting linked scope metadata. A public field is
+externally referencable but not therefore a package-scope declaration. Tests
+must reject absent owners and forged scopes, while accepting identical field
+spellings belonging to distinct types.
+
 Fixed-import certified dependency names reserve the callable namespace across
 the whole package, including unused registered witnesses. They must be distinct
 from other fixed-import names and owned package-scope bindings under the

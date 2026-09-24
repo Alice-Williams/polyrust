@@ -3,6 +3,18 @@ use super::call_native_tests::Probe;
 use std::{collections::BTreeMap, fs, path::Path, process::Command};
 
 pub(super) fn check(directory: &Path, object: &Path, probe: &Probe, graph: &[Vec<usize>]) {
+    let external: Vec<_> = (0..probe.names.len()).map(|index| index == 0).collect();
+    check_linkage(directory, object, probe, graph, &external);
+}
+
+pub(super) fn check_linkage(
+    directory: &Path,
+    object: &Path,
+    probe: &Probe,
+    graph: &[Vec<usize>],
+    external: &[bool],
+) {
+    assert_eq!(external.len(), probe.names.len());
     let mut actual = BTreeMap::new();
     let mut derivatives = BTreeMap::new();
     for entry in fs::read_dir(directory).unwrap() {
@@ -93,7 +105,7 @@ pub(super) fn check(directory: &Path, object: &Path, probe: &Probe, graph: &[Vec
     for (index, name) in probe.names.iter().enumerate() {
         assert_eq!(
             symbols.get(name.as_str()).copied(),
-            Some(if index == 0 { "T" } else { "t" }),
+            Some(if external[index] { "T" } else { "t" }),
             "wrong native linkage for {name}"
         );
     }

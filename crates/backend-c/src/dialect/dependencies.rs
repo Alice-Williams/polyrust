@@ -16,8 +16,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::{CHeader, CSystemLibrary};
 use crate::ast::{
-    CContextError, CEnumRef, CFileItem, CFileRef, CFrozenRegistry, CFunctionRef, CObjectRef,
-    CScalarType, CSourceFile, CStructRef, CTypedefRef, CUnionRef,
+    CContextError, CEnumRef, CFileItem, CFileRef, CFrozenRegistry, CFunctionRef, CMemberRef,
+    CObjectRef, CScalarType, CSourceFile, CStructRef, CTypedefRef, CUnionRef,
 };
 
 /// C17 has separate tag and ordinary namespaces. Never key these by spelling.
@@ -46,6 +46,7 @@ pub struct CFileDependencies {
     aliases: BTreeSet<CTypedefRef>,
     functions: BTreeSet<CFunctionRef>,
     objects: BTreeSet<CObjectRef>,
+    members: BTreeSet<CMemberRef>,
 }
 
 impl CFileDependencies {
@@ -59,6 +60,7 @@ impl CFileDependencies {
             aliases: BTreeSet::new(),
             functions: BTreeSet::new(),
             objects: BTreeSet::new(),
+            members: BTreeSet::new(),
         }
     }
 
@@ -85,6 +87,9 @@ impl CFileDependencies {
     }
     pub fn objects(&self) -> &BTreeSet<CObjectRef> {
         &self.objects
+    }
+    pub fn members(&self) -> &BTreeSet<CMemberRef> {
+        &self.members
     }
 
     fn tag(&mut self, tag: CTagDependency, requirement: CTypeRequirement) {

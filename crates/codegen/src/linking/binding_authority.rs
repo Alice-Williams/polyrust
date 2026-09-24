@@ -1,6 +1,21 @@
 //! Reconstruct allocation from original AST authority, not linked spellings.
 use super::*;
 
+pub(super) fn value_scope<D: LinkerDialect>(
+    dialect: &D,
+    package: &TargetAstPackage<D>,
+    value: GeneratedValueId,
+) -> Result<BindingScope, AstViolation> {
+    match dialect.generated_value_owner(package, value)? {
+        Some(owner) if package.generated_type(owner).is_some() => Ok(BindingScope::Type(owner)),
+        Some(_) => Err(AstViolation::new(
+            DiagnosticCode::InterfaceNonconformance,
+            "generated value scope refers to an absent owning type",
+        )),
+        None => Ok(BindingScope::Package),
+    }
+}
+
 pub(super) fn verify<D: LinkerDialect>(
     package: &LinkedTargetPackage<D>,
     diagnostics: &mut Vec<Diagnostic>,

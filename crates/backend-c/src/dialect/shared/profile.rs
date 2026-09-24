@@ -119,37 +119,51 @@ fn walk<'a>(
         let mut add = |child| pending.push((source, child, depth + 1));
         match node {
             Node::Item(CFileItem::Comment(_)) => {}
-            Node::Item(CFileItem::Declaration(declaration)) => match declaration.kind() {
-                CDeclarationKind::Aggregate {
-                    owner: CAggregateRef::Struct(_),
-                    members,
-                } => {
-                    for member in members {
-                        if !scalar(member.ty()) {
-                            return Err("first C profile requires scalar record fields".into());
+            Node::Item(CFileItem::Declaration(declaration)) => {
+                match declaration.kind() {
+                    CDeclarationKind::Aggregate {
+                        owner: CAggregateRef::Struct(record),
+                        members,
+                    } => {
+                        if source.identity().key().role
+                            == crate::ast::CFileRole::GeneratedPublicHeader
+                            && !crate::ownership::value_transport::scalar_result(
+                                registry,
+                                &CObjectType::structure(record.clone()),
+                            )
+                        {
+                            return Err("C public record requires the exact registered scalar-result layout".into());
                         }
-                        add(Node::Type(member.ty()));
+                        for member in members {
+                            if !scalar(member.ty()) {
+                                return Err("first C profile requires scalar record fields".into());
+                            }
+                            add(Node::Type(member.ty()));
+                        }
                     }
-                }
-                CDeclarationKind::FunctionPrototype {
-                    function,
-                    linkage: linkage @ (CLinkage::External | CLinkage::Internal),
-                } => {
-                    signature(
+                    CDeclarationKind::FunctionPrototype {
                         function,
-                        if *linkage == CLinkage::Internal {
-                            registry
-                        } else {
-                            None
-                        },
-                    )?;
+                        linkage: linkage @ (CLinkage::External | CLinkage::Internal),
+                    } => {
+                        signature(
+                            function,
+                            if *linkage == CLinkage::Internal
+                                || function.file().key().role
+                                    == crate::ast::CFileRole::GeneratedPublicHeader
+                            {
+                                registry
+                            } else {
+                                None
+                            },
+                        )?;
+                    }
+                    CDeclarationKind::ObjectDeclaration(object) => {
+                        constants::object(object)?;
+                        add(Node::Type(object.ty()));
+                    }
+                    _ => return Err("C declaration is outside the first shared profile".into()),
                 }
-                CDeclarationKind::ObjectDeclaration(object) => {
-                    constants::object(object)?;
-                    add(Node::Type(object.ty()));
-                }
-                _ => return Err("C declaration is outside the first shared profile".into()),
-            },
+            }
             Node::Item(CFileItem::Definition(definition)) => match definition.kind() {
                 CDefinitionKind::Function {
                     function,
@@ -159,7 +173,10 @@ fn walk<'a>(
                 } => {
                     signature(
                         function,
-                        if *linkage == CLinkage::Internal {
+                        if *linkage == CLinkage::Internal
+                            || function.file().key().role
+                                == crate::ast::CFileRole::GeneratedPublicHeader
+                        {
                             registry
                         } else {
                             None
@@ -293,8 +310,11 @@ fn signature(
     let admitted = |ty: &CObjectType| {
         scalar(ty)
             || (matches!(ty.kind(), CObjectTypeKind::Struct(record)
-            if record.file() == function.file()
+            if (record.file() == function.file()
                 && matches!(record.file().key().role, crate::ast::CFileRole::GeneratedSource | crate::ast::CFileRole::TestSource))
+                || (record.file().key().role == crate::ast::CFileRole::GeneratedPublicHeader
+                    && (function.file() == record.file()
+                        || function.file().key().role == crate::ast::CFileRole::GeneratedSource)))
                 && crate::ownership::value_transport::scalar_result(registry, ty))
     };
     let admitted_result = match function.signature().return_type() {

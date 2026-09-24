@@ -62,6 +62,16 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
             .ok_or("C dependency API lacks an owning public package file")
     };
     let header = file(CFileRole::GeneratedPublicHeader)?;
+    if header.items().iter().any(|unit| {
+        unit.unit.data.source.items().iter().any(|item| {
+            matches!(item, CFileItem::Declaration(declaration)
+            if matches!(declaration.kind(), CDeclarationKind::Aggregate { .. }))
+        })
+    }) {
+        // Even scalar imports include every tag declared by the owning header.
+        // Do not introduce unchecked aggregate names through the old API path.
+        return Err("C aggregate-bearing headers require certified nominal imports".into());
+    }
     let implementation = file(CFileRole::GeneratedSource)?;
     let projection = &implementation.items()[0].unit.projection;
     let header = CGeneratedHeader::resolve(

@@ -106,6 +106,14 @@ pub(super) fn project(
                 .ok_or("C used global object has no binding")?,
         ));
     }
+    for member in dependencies.members() {
+        used.insert(Symbol::Value(
+            *bindings
+                .values
+                .get(&CValueBinding::Member(member.clone()))
+                .ok_or("C used member has no exact registered binding")?,
+        ));
+    }
     let mut selected = select(bindings, &used)?;
     for function in dependencies.functions() {
         if let Some(import) = bindings.imports.get(function) {

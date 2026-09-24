@@ -47,7 +47,13 @@ pub(super) fn register(
             let id = builder.generated_type(GeneratedType {
                 name: record.key().name.as_str().into(),
                 kind: CSharedTypeKind::Struct,
-                visibility: CVisibility::Private,
+                visibility: if record.file().key().role
+                    == crate::ast::CFileRole::GeneratedPublicHeader
+                {
+                    CVisibility::Exported
+                } else {
+                    CVisibility::Private
+                },
                 origin: origin(record.key()),
                 source: location(record.key()),
             });
@@ -85,7 +91,10 @@ pub(super) fn register(
         let id = builder.value(GeneratedValue {
             name: value.key().name.as_str().into(),
             ty: bindings.ty(value.ty()),
-            visibility: if matches!(value, CValueBinding::Global(_)) {
+            visibility: if matches!(value, CValueBinding::Global(_))
+                || matches!(&value, CValueBinding::Member(member)
+                    if matches!(member.owner(), crate::ast::CAggregateRef::Struct(record)
+                        if record.file().key().role == crate::ast::CFileRole::GeneratedPublicHeader)) {
                 CVisibility::Exported
             } else {
                 CVisibility::Private

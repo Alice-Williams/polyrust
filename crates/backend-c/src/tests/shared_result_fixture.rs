@@ -16,25 +16,91 @@ pub(super) enum Mutation {
 }
 
 pub(super) fn fixture(mode: Mutation) -> (CFrozenRegistry, CSourceFile) {
+    let (registry, mut files) = build(mode, None, false);
+    (registry, files.pop().unwrap())
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum PublicApi {
+    ResultSignatures,
+    ScalarOnly,
+}
+
+pub(super) fn public_fixture(
+    mode: Mutation,
+    api: PublicApi,
+) -> (CFrozenRegistry, Vec<CSourceFile>) {
+    build(mode, Some(api), false)
+}
+
+pub(super) fn public_collision_fixture() -> (CFrozenRegistry, Vec<CSourceFile>) {
+    build(Mutation::None, Some(PublicApi::ResultSignatures), true)
+}
+
+fn build(
+    mode: Mutation,
+    api: Option<PublicApi>,
+    collisions: bool,
+) -> (CFrozenRegistry, Vec<CSourceFile>) {
+    let key = |name: &str| {
+        let mut key = key(name);
+        if api.is_some() {
+            key.origin = CGeneratedOrigin::Synthesized(CSynthesisReason::OwnershipAdapter);
+        }
+        key
+    };
     let mut r = CRegistry::new();
     let file = r
         .register_file(CFileKey {
             path: RelativeOutputPath::new("result.c").unwrap(),
-            role: CFileRole::TestSource,
+            role: if api.is_some() {
+                CFileRole::GeneratedSource
+            } else {
+                CFileRole::TestSource
+            },
         })
         .unwrap();
+    let header = api.map(|_| {
+        r.register_file(CFileKey {
+            path: RelativeOutputPath::new("polyrust_result.h").unwrap(),
+            role: CFileRole::GeneratedPublicHeader,
+        })
+        .unwrap()
+    });
+    let public =
+        |index| index == 3 || (matches!(api, Some(PublicApi::ResultSignatures)) && index != 1);
     let i32_ty = CObjectType::scalar(CScalarType::I32);
     let bool_ty = CObjectType::scalar(CScalarType::Bool);
-    let record = r.declare_struct(&file, key("result")).unwrap();
+    let record = r
+        .declare_struct(header.as_ref().unwrap_or(&file), key("result"))
+        .unwrap();
     let owner = CAggregateRef::Struct(record.clone());
     let tag = r
         .register_member(&owner, key("success"), bool_ty.clone())
         .unwrap();
     let payload = r
-        .register_member(&owner, key("payload"), i32_ty.clone())
+        .register_member(
+            &owner,
+            key(if collisions { "entry" } else { "payload" }),
+            i32_ty.clone(),
+        )
         .unwrap();
     r.define_aggregate(&owner, vec![tag.clone(), payload.clone()])
         .unwrap();
+    let second = collisions.then(|| {
+        let record = r
+            .declare_struct(header.as_ref().unwrap(), key("other_result"))
+            .unwrap();
+        let owner = CAggregateRef::Struct(record);
+        let tag = r
+            .register_member(&owner, key("success"), bool_ty.clone())
+            .unwrap();
+        let payload = r
+            .register_member(&owner, key("entry"), i32_ty.clone())
+            .unwrap();
+        r.define_aggregate(&owner, vec![tag, payload]).unwrap();
+        owner
+    });
     let ty = CObjectType::structure(record);
     let signatures = [
         (
@@ -50,12 +116,23 @@ pub(super) fn fixture(mode: Mutation) -> (CFrozenRegistry, CSourceFile) {
             vec![bool_ty.clone(), i32_ty.clone(), bool_ty],
         ),
     ];
+    let origins = api.map(|_| public_origins(&public));
     let functions: Vec<_> = signatures
         .iter()
-        .map(|(name, result, params)| {
+        .enumerate()
+        .map(|(index, (name, result, params))| {
+            let mut function_key = key(name);
+            if let Some(origins) = &origins {
+                function_key.origin =
+                    CGeneratedOrigin::RustSource(std::sync::Arc::new(origins[index].clone()));
+            }
             r.register_function(
-                &file,
-                key(name),
+                if public(index) {
+                    header.as_ref().unwrap_or(&file)
+                } else {
+                    &file
+                },
+                function_key,
                 CFunctionType::new(
                     CReturnType::Value(CReturnValue::new(result.clone()).unwrap()),
                     params
@@ -68,24 +145,45 @@ pub(super) fn fixture(mode: Mutation) -> (CFrozenRegistry, CSourceFile) {
         })
         .collect();
     let linkage = |index| {
-        if index == 3 || matches!(mode, Mutation::Public) {
+        if public(index) || matches!(mode, Mutation::Public) {
             CLinkage::External
         } else {
             CLinkage::Internal
         }
     };
-    let d = CDeclarations::new(&r, file.clone()).unwrap();
+    let d = CDeclarations::new(&r, header.as_ref().unwrap_or(&file).clone()).unwrap();
     let aggregate = CFileItem::Declaration(d.aggregate(owner).unwrap());
-    let mut items = vec![aggregate.clone()];
+    let mut items = vec![];
+    let mut header_items = vec![];
+    if header.is_some() {
+        header_items.push(aggregate.clone());
+        if let Some(owner) = second {
+            header_items.push(CFileItem::Declaration(d.aggregate(owner).unwrap()));
+        }
+    } else {
+        items.push(aggregate.clone());
+    }
     for (index, function) in functions.iter().enumerate() {
-        items.push(CFileItem::Declaration(
-            d.function_prototype(function.clone(), linkage(index))
+        let prototype = CFileItem::Declaration(
+            CDeclarations::new(&r, function.file().clone())
+                .unwrap()
+                .function_prototype(function.clone(), linkage(index))
                 .unwrap(),
-        ));
+        );
+        if header.as_ref() == Some(function.file()) {
+            header_items.push(prototype);
+        } else {
+            items.push(prototype);
+        }
     }
     if matches!(mode, Mutation::LateDeclaration) {
-        items.remove(0);
-        items.push(aggregate);
+        let declarations = if header.is_some() {
+            &mut header_items
+        } else {
+            &mut items
+        };
+        declarations.remove(0);
+        declarations.push(aggregate);
     }
     for (index, function) in functions.iter().enumerate() {
         let scope = r.register_scope(function, None, key("body")).unwrap();
@@ -271,5 +369,58 @@ pub(super) fn fixture(mode: Mutation) -> (CFrozenRegistry, CSourceFile) {
         .unwrap()
         .source_file(items)
         .unwrap();
-    (r.freeze(), source)
+    let mut files = vec![];
+    if let Some(header) = header {
+        files.push(
+            CDeclarations::new(&r, header)
+                .unwrap()
+                .source_file(header_items)
+                .unwrap(),
+        );
+    }
+    files.push(source);
+    (r.freeze(), files)
+}
+
+fn public_origins(public: &impl Fn(usize) -> bool) -> Vec<portable_codegen::RustSourceOrigin> {
+    use portable_codegen::*;
+    use std::{collections::BTreeMap, sync::Arc};
+    let (source, helper) = super::package_source_fixture::origins();
+    let mut exports = (*source.crate_exports).clone();
+    let mut entries = BTreeMap::new();
+    for (index, name) in ["construct", "forward", "inspect", "entry"]
+        .iter()
+        .enumerate()
+    {
+        if public(index) {
+            entries.insert(
+                RustExportName {
+                    namespace: RustExportNamespace::Value,
+                    name: (*name).into(),
+                },
+                RustExportTarget::Declaration(RustDeclarationId {
+                    crate_id: source.declaration.crate_id,
+                    definition_path_hash: 3 + index as u64,
+                }),
+            );
+        }
+    }
+    exports.modules.insert(exports.root, entries);
+    let exports = Arc::new(exports);
+    (0..4)
+        .map(|index| RustSourceOrigin {
+            declaration: RustDeclarationId {
+                crate_id: source.declaration.crate_id,
+                definition_path_hash: 3 + index,
+            },
+            externally_reachable: public(index as usize),
+            visibility: if public(index as usize) {
+                RustVisibility::Public
+            } else {
+                helper.visibility
+            },
+            crate_exports: exports.clone(),
+            ..source.clone()
+        })
+        .collect()
 }

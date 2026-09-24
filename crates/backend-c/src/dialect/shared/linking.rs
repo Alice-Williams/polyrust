@@ -186,6 +186,13 @@ impl LinkerDialect for CDialect {
     fn value_namespace(&self) -> CNamespace {
         CNamespace::Ordinary
     }
+    fn generated_value_owner(
+        &self,
+        package: &TargetAstPackage<Self>,
+        value: portable_codegen::GeneratedValueId,
+    ) -> Result<Option<portable_codegen::GeneratedTypeId>, AstViolation> {
+        super::value_scope::owner(package, value)
+    }
     fn known_call_expression(
         &self,
         value: CUnavailable,

@@ -71,6 +71,10 @@ fn check_pair(header: &CSourceFile, implementation: &CSourceFile) -> Result<(), 
     for item in header.items() {
         match item {
             CFileItem::Declaration(declaration) => match declaration.kind() {
+                CDeclarationKind::Aggregate {
+                    owner: CAggregateRef::Struct(record),
+                    ..
+                } if record.file() == header.identity() => {}
                 CDeclarationKind::FunctionPrototype {
                     function,
                     linkage: CLinkage::External,

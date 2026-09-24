@@ -70,6 +70,7 @@ impl CFileDependencies {
             CInitializerKind::Struct { owner, members } => {
                 self.aggregate(&CAggregateRef::Struct(owner.clone()));
                 for (member, value) in members {
+                    self.members.insert(member.clone());
                     self.object_type(member.ty(), CTypeRequirement::Complete);
                     self.initializer(value);
                 }
@@ -80,6 +81,7 @@ impl CFileDependencies {
                 value,
             } => {
                 self.aggregate(&CAggregateRef::Union(owner.clone()));
+                self.members.insert(member.clone());
                 self.object_type(member.ty(), CTypeRequirement::Complete);
                 self.initializer(value);
             }

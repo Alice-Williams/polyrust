@@ -52,6 +52,7 @@ mod source_package_tests;
 #[path = "../render/hir.rs"]
 mod spelling;
 mod unit_bindings;
+mod value_scope;
 mod vocabulary;
 
 #[cfg(test)]
@@ -342,3 +343,7 @@ mod private_result_tests;
 #[cfg(test)]
 #[path = "../tests/shared_result_fixture.rs"]
 mod result_fixture;
+
+#[cfg(test)]
+#[path = "../tests/shared_public_results.rs"]
+mod public_result_tests;

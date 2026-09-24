@@ -207,6 +207,15 @@ The independent narrowing oracle is complete: 74,389 exact inputs at both Rust
 profiles, six executable faulty conversions, all 1,036 release/lint tests and
 clean GPT-6-Sol extra-high review. No target/source admission follows from it.
 
+No-heap result work has completed the compiler identity probe, private C
+transport and [owned C public headers/ABI](tasks/M35-03A-05A-02B-01-c-result-headers.md).
+The latter includes typed field-owner scopes, standalone headers, mixed GCC/Zig
+objects, compiling fault controls and measured resource bounds. All 1,039
+release/lint targets pass and fresh GPT-6-SOL review is clean. Existing generated
+outputs and unrelated WIP are preserved. Certified C nominal imports, Java
+result transport and checked Rust Result admission remain open; this does not
+complete general result parity or authorize legacy removal.
+
 The Rust-source path now has a normative [C HIR lowering specification](../specification/typed-generation/languages/c/rust-hir-lowering.md).
 It reuses checked compiler HIR, documentation attributes and the existing C
 AST/certification types; it does not force Rust semantics through the legacy

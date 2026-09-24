@@ -89,6 +89,7 @@ impl CFileDependencies {
                 self.object_type(object.ty(), CTypeRequirement::Declaration);
             }
             CPlaceKind::Member { base, member } => {
+                self.members.insert(member.clone());
                 self.place(base);
                 self.aggregate(member.owner());
                 self.object_type(member.ty(), CTypeRequirement::Declaration);
