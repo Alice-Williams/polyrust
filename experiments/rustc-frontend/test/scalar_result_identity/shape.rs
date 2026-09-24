@@ -1,11 +1,15 @@
 //! Observation-only compiler identities. No target certificate can be issued here.
 use portable_codegen::{
-    RustCanonicalInstanceFacts, RustCanonicalInstanceKey, RustDeclarationId, RustResultVariantFacts,
+    RustCanonicalErrorKindFacts, RustCanonicalInstanceFacts, RustCanonicalInstanceKey,
+    RustDeclarationId, RustResultVariantFacts,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::sym;
+
+#[path = "error_shape.rs"]
+mod error_shape;
 
 pub(super) struct ResultShape<'tcx> {
     value: Ty<'tcx>,
@@ -13,6 +17,7 @@ pub(super) struct ResultShape<'tcx> {
     err: DefId,
     facts: RustCanonicalInstanceFacts,
     error_bytes: u64,
+    error_facts: RustCanonicalErrorKindFacts,
 }
 
 impl<'tcx> ResultShape<'tcx> {
@@ -151,6 +156,9 @@ impl<'tcx> ResultShape<'tcx> {
             },
         )
         .map_err(|error| format!("instance facts: {error:?}"))?;
+        let error_facts = error_shape::observe(tcx, error, facts)?;
+        #[cfg(instance_graph_bad_error_facts)]
+        let error_facts = error_corrupt::facts(error_facts);
         #[cfg(instance_graph_bad_facts)]
         let facts = corrupt::facts(facts);
         Ok(Self {
@@ -159,6 +167,7 @@ impl<'tcx> ResultShape<'tcx> {
             err,
             facts,
             error_bytes,
+            error_facts,
         })
     }
 
@@ -168,10 +177,16 @@ impl<'tcx> ResultShape<'tcx> {
             && self.err == other.err
             && self.facts() == other.facts()
             && self.error_bytes == other.error_bytes
+            && self.error_facts == other.error_facts
     }
 
     pub(super) fn facts(&self) -> RustCanonicalInstanceFacts {
         self.facts
+    }
+
+    #[cfg(any(instance_graph_probe, scalar_result_forge))]
+    pub(super) fn error_facts(&self) -> RustCanonicalErrorKindFacts {
+        self.error_facts
     }
 
     #[cfg(not(instance_graph_probe))]
@@ -195,6 +210,10 @@ impl<'tcx> ResultShape<'tcx> {
 #[cfg(instance_graph_bad_facts)]
 #[path = "../instance_graph/corrupt.rs"]
 mod corrupt;
+
+#[cfg(instance_graph_bad_error_facts)]
+#[path = "../instance_graph/error_corrupt.rs"]
+mod error_corrupt;
 
 pub(super) fn identity(tcx: TyCtxt<'_>, definition: DefId) -> RustDeclarationId {
     let hash = tcx.def_path_hash(definition);

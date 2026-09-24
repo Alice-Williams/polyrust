@@ -13,7 +13,9 @@ def scalar_result_identity_targets(name):
         "src/inputs.rs",
         "test/scalar_result_identity/main.rs",
         "test/scalar_result_identity/shape.rs",
+        "test/scalar_result_identity/error_shape.rs",
         "test/instance_graph/corrupt.rs",
+        "test/instance_graph/error_corrupt.rs",
     ]
     compiler_adapter(
         name = "scalar_result_identity_probe",

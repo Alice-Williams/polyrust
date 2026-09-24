@@ -1,6 +1,6 @@
 # M35-03A-05A-04A — Checked instance identity and placement plan
 
-- Status: in-progress
+- Status: complete
 - Parent: [compiler results](M35-03A-05A-04-compiler-results.md)
 - Depends on: [Java transport proof](M35-03A-05A-03C-java-result-proof.md)
 - Specification: [canonical owners](../../specification/typed-generation/rust-canonical-type-owners.md)
@@ -23,11 +23,13 @@ same-graph contract; independent processes must recheck a merged graph.
 
 1. [04A-01 — descriptive identity foundation](M35-03A-05A-04A-01-instance-model.md) — complete; 1,043-target release/lint gate and independent reviews pass.
 2. [04A-02 — authenticated graph observation](M35-03A-05A-04A-02-instance-probe.md) — complete; 1,047-target release/lint gate and exact-tree review pass.
-3. [04A-03 — original error state](M35-03A-05A-04A-03-error-state.md) — planned;
-   required after the pinned compiler exposed a nonzero error payload.
+3. [04A-03 — original error state](M35-03A-05A-04A-03-error-state.md) — complete;
+   all 1,051 release/lint targets and two independent exact-tree reviews pass.
 
 Each checkpoint receives its own release/lint gate, review and commit. No
 checkpoint alone completes this parent or opens compiler Result admission.
+All three are now complete. This closes the identity/observation prerequisite,
+not target ownership or compiler Result lowering; 04B–04E remain separate gates.
 
 ## Implementation and definition of done
 

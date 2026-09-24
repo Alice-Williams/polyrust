@@ -1,8 +1,12 @@
 //! Bounded source-instance descriptions. These are metadata, never certificates.
 
+mod error_kinds;
 mod facts;
 mod owner;
 
+pub use error_kinds::{
+    RustCanonicalErrorKindFacts, RustIntegerErrorKind, RustIntegerErrorVariants,
+};
 pub use facts::{RustCanonicalInstanceFacts, RustResultVariantFacts};
 pub use owner::TargetPackageOwner;
 
@@ -26,6 +30,9 @@ pub enum RustInstanceDefinitionRole {
     Err,
     OkPayload,
     ErrPayload,
+    ErrorWrapperField,
+    ErrorKind,
+    ErrorKindVariant(RustIntegerErrorKind),
 }
 
 /// A descriptive inconsistency, not a compiler diagnostic or validity proof.

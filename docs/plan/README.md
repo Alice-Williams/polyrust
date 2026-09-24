@@ -264,8 +264,11 @@ recorded generated files are unchanged. The independently gated
 all 1,047 release/lint targets pass with clean exact-tree review.
 The pinned compiler revealed that TryFromIntError now carries state. A separate
 [original-error-state proof](tasks/M35-03A-05A-04A-03-error-state.md) therefore
-precedes target integration; payload-free target proofs are not lossless Rust
-error transport. No source admission has been opened on that assumption.
+is complete: fifteen original identities, six explicit transport codes, native
+reachable-state and mutation proof, all 1,051 release/lint targets and two clean
+independent reviews. All 530 prior output files and 45 protected WIP files are
+unchanged. Payload-free target proofs are not lossless Rust error transport.
+No source admission has been opened on that assumption.
 C and Java type-only certificates, atomic graph integration and checked
 Result HIR bindings follow as 04B–04E; this is not yet source Result admission.
 

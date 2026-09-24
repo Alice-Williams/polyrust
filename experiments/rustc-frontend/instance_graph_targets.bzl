@@ -14,8 +14,11 @@ def instance_graph_targets(name):
         "test/instance_graph/interner.rs",
         "test/instance_graph/controls.rs",
         "test/instance_graph/audit.rs",
+        "test/instance_graph/error_audit.rs",
+        "test/instance_graph/error_corrupt.rs",
         "test/instance_graph/corrupt.rs",
         "test/scalar_result_identity/shape.rs",
+        "test/scalar_result_identity/error_shape.rs",
         "src/compiler_dependencies.rs",
         "src/inputs.rs",
         "src/metadata_cli.rs",
@@ -32,6 +35,8 @@ def instance_graph_targets(name):
         ("controls", ["instance_graph_probe", "instance_graph_controls"]),
         ("late_conflict", ["instance_graph_probe", "instance_graph_late_conflict"]),
         ("bad_facts", ["instance_graph_probe", "instance_graph_bad_facts"]),
+        ("bad_error_facts", ["instance_graph_probe", "instance_graph_bad_error_facts"]),
+        ("error_shape_fault", ["instance_graph_probe", "instance_graph_error_shape_fault"]),
         ("payload_free", ["instance_graph_probe", "instance_graph_payload_free"]),
         ("payload_free_unit", ["instance_graph_probe", "instance_graph_payload_free", "instance_graph_payload_free_unit"]),
     ]:
@@ -64,6 +69,8 @@ def instance_graph_targets(name):
             "$(rootpath :instance_graph_bad_facts)",
             "$(rootpath :instance_graph_payload_free)",
             "$(rootpath :instance_graph_payload_free_unit)",
+            "$(rootpath :instance_graph_bad_error_facts)",
+            "$(rootpath :instance_graph_error_shape_fault)",
         ],
         data = [
             "test/instance_graph_test.py",
@@ -74,5 +81,7 @@ def instance_graph_targets(name):
             ":instance_graph_bad_facts",
             ":instance_graph_payload_free",
             ":instance_graph_payload_free_unit",
+            ":instance_graph_bad_error_facts",
+            ":instance_graph_error_shape_fault",
         ],
     )

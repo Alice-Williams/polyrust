@@ -1,7 +1,7 @@
 # Canonical Rust instance ownership across target packages
 
 - Status: normative design; descriptive identity foundation implemented;
-  nominal compiler graph proof complete; full error-state proof and target
+  nominal compiler graph and full error-state proofs complete; target
   integration pending; Result admission closed
 - Parent: [scalar results](rust-scalar-results.md)
 - Integration prerequisite: [05A-04](../../plan/tasks/M35-03A-05A-04-compiler-results.md)
@@ -24,6 +24,43 @@ i64-to-i32 narrowing. Keep the source instance key; version both target profiles
 as 2. No error-bit erasure, unsafe Rust transmutation or unstable input-language
 escape is authorized. Nominal observation alone accepts the data-carrying error
 and issues no target certificate; payload-free profile admission must reject it.
+
+## Error-state identity and transport codes
+
+RustCanonicalErrorKindFacts joins the seven original instance roles to the
+original error wrapper field, its normalized enum definition, and six named
+variant definitions. Its constructor checks all fifteen IDs for same-crate and
+pairwise-distinct consistency. Like instance facts, it is descriptive metadata,
+not a compiler witness. A private compiler observation authenticates the exact
+standard wrapper, one non-public original field, its same-core public enum,
+six fieldless original variants, Copy/no-drop and one-byte pinned layouts.
+The pinned variant order, names and discriminants must match the closed profile;
+changed inventories, payloads or layouts fail before interning.
+
+The explicit version-2 codes are:
+
+| Original kind | Transport code |
+| --- | --- |
+| Empty | 0 |
+| InvalidDigit | 1 |
+| PosOverflow | 2 |
+| NegOverflow | 3 |
+| Zero | 4 |
+| NotAPowerOfTwo | 5 |
+
+These are typed semantic-role bindings, not memory copies, target enum ordinals
+or a promise of Rust ABI stability. Reconcile all original error-state facts on
+every instance encounter, not only the source type key or byte size. Independent
+field/variant queries audit the handoff; eight wrong-role mutations and changed
+inventory/layout/discriminant observations must reject before graph output.
+
+Native safe Rust drivers currently create three states: positive overflow,
+negative overflow and NonZero's zero error. Eq tests preserve their distinct
+values; a separate pinned std Debug observation validates their semantic labels.
+That Debug output is a test oracle, never a wire format or admitted source
+operation. All six codes have a separate typed code-boundary fixture; native
+C/Java six-state transport proof remains 04B/04C. Do not claim the other three
+states were produced through safe public Rust constructors in this checkpoint.
 
 ## Problem and selected ownership rule
 

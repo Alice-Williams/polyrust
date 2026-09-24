@@ -13,6 +13,8 @@ extern crate rustc_span;
 #[path = "../test/instance_graph/audit.rs"]
 mod audit;
 mod compiler_dependencies;
+#[path = "../test/instance_graph/error_audit.rs"]
+mod error_audit;
 mod inputs;
 #[path = "../test/instance_graph/interner.rs"]
 mod interner;
@@ -61,6 +63,8 @@ fn observe(tcx: TyCtxt<'_>, interner: &mut Interner) -> Result<CheckedCrate, Str
         let output = shape::ResultShape::observe(tcx, signature.output())?;
         audit::verify(tcx, signature.inputs()[0], input.facts())?;
         audit::verify(tcx, signature.output(), output.facts())?;
+        error_audit::verify(tcx, signature.inputs()[0], input.error_facts())?;
+        error_audit::verify(tcx, signature.output(), output.error_facts())?;
         if !input.same_instance(&output) {
             return Err("result instance changed across signature".into());
         }
@@ -108,7 +112,7 @@ fn run(arguments: &[String]) -> Result<Vec<String>, String> {
     }
     let mut lines: Vec<_> = frozen
         .owners()
-        .map(|(_, observation)| format!("INSTANCE {:?}", observation.facts()))
+        .map(|(_, observation)| format!("INSTANCE {:?}", observation.error_facts()))
         .collect();
     lines.push(format!(
         "CHECKED {} CRATES {} USES; no target output published",
@@ -120,7 +124,7 @@ fn run(arguments: &[String]) -> Result<Vec<String>, String> {
 
 #[cfg(instance_graph_forge)]
 #[allow(dead_code)]
-fn forge(interner: &mut Interner, facts: portable_codegen::RustCanonicalInstanceFacts) {
+fn forge(interner: &mut Interner, facts: portable_codegen::RustCanonicalErrorKindFacts) {
     let _ = interner.intern_facts(facts);
 }
 

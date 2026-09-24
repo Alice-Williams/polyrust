@@ -114,5 +114,8 @@ fn forged(tcx: TyCtxt<'_>, variant: rustc_hir::def_id::DefId) -> shape::ResultSh
             .unwrap()
             .facts(),
         error_bytes: 1,
+        error_facts: shape::ResultShape::observe(tcx, tcx.types.i32)
+            .unwrap()
+            .error_facts(),
     }
 }

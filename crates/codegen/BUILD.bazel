@@ -217,6 +217,15 @@ rust_test(
     deps = [":portable_codegen"],
 )
 
+rust_test(
+    name = "rust_error_kind_identity_test",
+    srcs = ["tests/rust_error_kind_identity.rs"],
+    crate_root = "tests/rust_error_kind_identity.rs",
+    edition = "2024",
+    visibility = ["//:__pkg__"],
+    deps = [":portable_codegen"],
+)
+
 rust_doc_test(
     name = "typed_pipeline_compile_fail_test",
     crate = ":portable_codegen",

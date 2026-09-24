@@ -7,7 +7,8 @@ import sys
 
 
 def main():
-    emitter, probe, controls, late_conflict, bad_facts, payload_free, payload_free_unit = [str(Path(arg).resolve()) for arg in sys.argv[1:]]
+    (emitter, probe, controls, late_conflict, bad_facts, payload_free,
+     payload_free_unit, bad_error_facts, error_shape_fault) = [str(Path(arg).resolve()) for arg in sys.argv[1:]]
     work = Path(os.environ["TEST_TMPDIR"]) / "instance-graph"
     work.mkdir()
     scratch = work / "scratch"
@@ -92,6 +93,21 @@ def main():
         os.environ["POLYRUST_INSTANCE_FAULT"] = role
         reject(bad_facts, root, [root, left, right], f"compiler instance role mismatch: {role}")
     del os.environ["POLYRUST_INSTANCE_FAULT"]
+    for role in ["WrapperField", "Kind", "Empty", "InvalidDigit", "PosOverflow",
+                 "NegOverflow", "Zero", "NotAPowerOfTwo"]:
+        os.environ["POLYRUST_ERROR_STATE_FAULT"] = role
+        reject(bad_error_facts, root, [root, left, right], f"compiler error-state role mismatch: {role}")
+    del os.environ["POLYRUST_ERROR_STATE_FAULT"]
+    for role, error in [
+        ("WrapperFields", "standard error wrapper inventory changed"),
+        ("VariantCount", "standard error kind inventory changed"),
+        ("PayloadCount", "standard error kind variant mapping changed"),
+        ("Discriminant", "standard error kind variant mapping changed"),
+        ("Layout", "standard error state layout changed"),
+    ]:
+        os.environ["POLYRUST_ERROR_SHAPE_FAULT"] = role
+        reject(error_shape_fault, root, [root, left, right], error)
+    del os.environ["POLYRUST_ERROR_SHAPE_FAULT"]
 
     # Change actual deterministic dependency-first order, not just CLI order.
     reversed_left = dict(left, key="z.left.key")
