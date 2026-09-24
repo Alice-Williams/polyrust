@@ -1,6 +1,6 @@
 # M35-03A-05A-04B — Certified C canonical type owner
 
-- Status: planned
+- Status: in-progress
 - Parent: [compiler results](M35-03A-05A-04-compiler-results.md)
 - Depends on: [identity and placement](M35-03A-05A-04A-instance-ownership.md)
 - Specification: [C canonical owners](../../specification/typed-generation/rust-canonical-type-owners.md#c17-specification)
@@ -16,7 +16,7 @@ source-owner profile or add runtime code.
 
 ## Checkpoints
 
-1. [04B-01 — strict descriptor and certificate](M35-03A-05A-04B-01-c-owner-certificate.md).
+1. [04B-01 — strict descriptor and certificate](M35-03A-05A-04B-01-c-owner-certificate.md) — complete; all 1,052 release/lint targets and two independent reviews pass.
 2. [04B-02 — typed dependency ownership](M35-03A-05A-04B-02-c-owner-imports.md).
 3. [04B-03 — native and boundary proof](M35-03A-05A-04B-03-c-owner-proof.md).
 

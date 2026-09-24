@@ -82,6 +82,10 @@ fn walk<'a>(
     if let Some(registry) = registry {
         super::source_package::check(registry, sources)?;
     }
+    let canonical_type = registry
+        .map(|registry| super::canonical_package::check(registry, sources))
+        .transpose()?
+        .unwrap_or(false);
     let layout = layout::Layout::new(sources)?;
     let exports = registry
         .map(super::constant_exports::collect)
@@ -296,7 +300,7 @@ fn walk<'a>(
             },
         }
     }
-    if functions == 0 && objects == 0 && !has_foreign_exports {
+    if functions == 0 && objects == 0 && !has_foreign_exports && !canonical_type {
         return Err("C shared profile requires a function or scalar constant definition".into());
     }
     inventory.finish()?;

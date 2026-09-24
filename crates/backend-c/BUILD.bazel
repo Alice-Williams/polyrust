@@ -201,6 +201,19 @@ rust_doc_test(
     crate = ":portable_backend_c",
 )
 
+rust_test(
+    name = "c_canonical_type_owner_test",
+    srcs = glob(["test/canonical/*.rs"]),
+    crate_root = "test/canonical/main.rs",
+    data = ["//tools/c:zig_native_oracle"],
+    edition = "2024",
+    visibility = ["//:__pkg__"],
+    deps = [
+        ":portable_backend_c",
+        "//crates/codegen:portable_codegen",
+    ],
+)
+
 rust_binary(
     name = "generate_v0_fixture",
     srcs = ["examples/generate_v0.rs"],

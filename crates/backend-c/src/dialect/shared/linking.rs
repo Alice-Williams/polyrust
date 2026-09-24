@@ -278,11 +278,11 @@ impl LinkerDialect for CDialect {
             return vec![];
         };
         let registry = unit.projection.registry.registrations();
-        match registry.source_package() {
-            Some(package) if file.module().key().role == crate::ast::CFileRole::GeneratedSource => {
+        match registry.package_header() {
+            Some(header) if file.module().key().role == crate::ast::CFileRole::GeneratedSource => {
                 vec![portable_codegen::TargetFileRequirement::new(
-                    package.header().clone(),
-                    package.header().key().path.clone(),
+                    header.clone(),
+                    header.key().path.clone(),
                 )]
             }
             _ => vec![],

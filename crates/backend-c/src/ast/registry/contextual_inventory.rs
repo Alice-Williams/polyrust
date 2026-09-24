@@ -32,7 +32,7 @@ pub(crate) enum CRegistered<'a> {
 }
 
 impl CRegistry {
-    pub(in crate::ast) fn registered_files(&self) -> impl Iterator<Item = &CFileRef> {
+    pub(crate) fn registered_files(&self) -> impl Iterator<Item = &CFileRef> {
         self.files.iter()
     }
 

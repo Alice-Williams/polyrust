@@ -1,5 +1,5 @@
 //! Selected source crate metadata, independent of owned declarations.
-use super::{CFileRef, CFileRole, CRegistry, CRegistryError};
+use super::{CFileRef, CFileRole, CPackageRegistration, CRegistry, CRegistryError};
 use portable_codegen::RustCrateExports;
 use std::sync::Arc;
 
@@ -38,17 +38,20 @@ impl CRegistry {
         if header.key().role != CFileRole::GeneratedPublicHeader {
             return Err(CRegistryError::WrongOwner);
         }
-        if self.source_package.is_some() {
+        if self.package_registration.is_some() {
             return Err(CRegistryError::DuplicateRegistration);
         }
-        self.source_package = Some(CSourcePackage {
+        self.package_registration = Some(CPackageRegistration::Source(CSourcePackage {
             header: header.clone(),
             exports,
-        });
+        }));
         Ok(())
     }
 
     pub fn source_package(&self) -> Option<&CSourcePackage> {
-        self.source_package.as_ref()
+        match &self.package_registration {
+            Some(CPackageRegistration::Source(package)) => Some(package),
+            _ => None,
+        }
     }
 }

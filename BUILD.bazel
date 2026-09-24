@@ -21,6 +21,7 @@ filegroup(
 rust_clippy_test(
     name = "rust_clippy_test",
     targets = [
+        "//crates/backend-c:c_canonical_type_owner_test",
         "//crates/backend-c:portable_backend_c",
         "//crates/backend-c:portable_backend_c_unit_test",
         "//crates/backend-cpp:portable_backend_cpp",
@@ -107,6 +108,7 @@ rust_clippy_test(
 rustfmt_test(
     name = "rustfmt_test",
     targets = [
+        "//crates/backend-c:c_canonical_type_owner_test",
         "//crates/backend-c:portable_backend_c",
         "//crates/backend-c:portable_backend_c_unit_test",
         "//crates/backend-cpp:portable_backend_cpp",

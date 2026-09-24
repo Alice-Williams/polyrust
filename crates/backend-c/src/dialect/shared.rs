@@ -1,6 +1,8 @@
 //! Checked projection of the existing C tree into the shared phase machinery.
 
 mod bindings;
+mod canonical_package;
+pub use canonical_package::c_canonical_type_package;
 #[cfg(test)]
 #[path = "../tests/shared_constant_export_fixture.rs"]
 mod constant_export_fixture;

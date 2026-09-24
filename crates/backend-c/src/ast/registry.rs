@@ -17,6 +17,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod allocations;
 mod buffer_counts;
+mod canonical_package;
 mod contextual_inventory;
 mod contracts;
 mod control;
@@ -41,6 +42,7 @@ mod type_membership;
 
 pub use allocations::{CAllocationRef, CAllocationShape, CAllocatorSource};
 pub use buffer_counts::CBufferCountRef;
+pub use canonical_package::{CCanonicalTypePackage, CCanonicalTypeProfile, CCanonicalTypeRole};
 pub use contracts::{CCallableContractOrigin, CCallableContractRef, CMemberBinding};
 pub use control::{CCleanupExitRef, CLoopRef, CSwitchRef};
 pub use files::{CFileKey, CFileRef, CFileRole};
@@ -112,13 +114,19 @@ impl std::fmt::Display for CRegistryError {
 }
 impl std::error::Error for CRegistryError {}
 
+#[derive(Debug, PartialEq, Eq)]
+enum CPackageRegistration {
+    Source(CSourcePackage),
+    Canonical(Box<CCanonicalTypePackage>),
+}
+
 /// This mutable registration builder is intentionally not Clone: cloning a
 /// scope and then diverging its authoritative inventory would weaken identity.
 #[derive(Debug, PartialEq, Eq)]
 pub struct CRegistry {
     scope: RegistryScope,
     files: BTreeSet<CFileRef>,
-    source_package: Option<CSourcePackage>,
+    package_registration: Option<CPackageRegistration>,
     structs: BTreeMap<CStructRef, Option<Vec<CMemberRef>>>,
     struct_imports: BTreeMap<CStructRef, crate::dialect::CDependencyStruct>,
     unions: BTreeMap<CUnionRef, Option<Vec<CMemberRef>>>,
@@ -159,7 +167,7 @@ impl CRegistry {
         Self {
             scope: RegistryScope::new(),
             files: BTreeSet::new(),
-            source_package: None,
+            package_registration: None,
             structs: BTreeMap::new(),
             struct_imports: BTreeMap::new(),
             unions: BTreeMap::new(),

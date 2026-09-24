@@ -77,13 +77,14 @@ pub use literals::{CLiteral, CNullPointer, CSignedLiteral, CUnsignedLiteral};
 pub use operator_signatures::{CBinaryOperator, COperatorError, CUnaryOperator};
 pub use registry::{
     CAggregateRef, CAllocationRef, CAllocationShape, CAllocatorSource, CBufferCountRef,
-    CCallableContractOrigin, CCallableContractRef, CCleanupExitRef, CDeclarationKey, CEnumRef,
-    CEnumeratorRef, CFileKey, CFileRef, CFileRole, CFrozenRegistry, CFunctionRef, CGeneratedOrigin,
-    CInterfaceAdapterRef, CInterfaceTableRef, CInterfaceWitnessRef, CLocalRef, CLoopRef,
-    CMemberBinding, CMemberOwnership, CMemberOwnershipRef, CMemberRef, CObjectRef, COwnerSlotRef,
-    CParameterRef, CRegistrationKind, CRegistrationOwner, CRegistrationSummary, CRegistry,
-    CRegistryError, CScopeRef, CSourcePackage, CStructRef, CSwitchRef, CSynthesisReason,
-    CTypedefRef, CUnionRef, CWitnessMethod,
+    CCallableContractOrigin, CCallableContractRef, CCanonicalTypePackage, CCanonicalTypeProfile,
+    CCanonicalTypeRole, CCleanupExitRef, CDeclarationKey, CEnumRef, CEnumeratorRef, CFileKey,
+    CFileRef, CFileRole, CFrozenRegistry, CFunctionRef, CGeneratedOrigin, CInterfaceAdapterRef,
+    CInterfaceTableRef, CInterfaceWitnessRef, CLocalRef, CLoopRef, CMemberBinding,
+    CMemberOwnership, CMemberOwnershipRef, CMemberRef, CObjectRef, COwnerSlotRef, CParameterRef,
+    CRegistrationKind, CRegistrationOwner, CRegistrationSummary, CRegistry, CRegistryError,
+    CScopeRef, CSourcePackage, CStructRef, CSwitchRef, CSynthesisReason, CTypedefRef, CUnionRef,
+    CWitnessMethod,
 };
 pub use scalar_representation::{CIntegerWidth, CScalarRepresentation};
 pub use signatures::{CFunctionType, CParameterType, CReturnType, CReturnValue};

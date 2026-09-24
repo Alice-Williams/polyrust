@@ -72,6 +72,16 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
     let structs = structs::collect(package)?;
     let implementation = file(CFileRole::GeneratedSource)?;
     let projection = &implementation.items()[0].unit.projection;
+    if projection
+        .registry
+        .registrations()
+        .canonical_type_package()
+        .is_some()
+    {
+        return Err(
+            "C canonical type dependency publication requires the explicit owner API".into(),
+        );
+    }
     let header = CGeneratedHeader::resolve(
         projection.registry.registrations(),
         implementation.module(),

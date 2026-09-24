@@ -6,6 +6,9 @@ use std::collections::BTreeMap;
 
 #[path = "call_paths.rs"]
 mod call_paths;
+#[cfg(test)]
+#[path = "../tests/shared_canonical_measurements.rs"]
+mod canonical_measurements;
 #[path = "dependencies.rs"]
 mod dependencies;
 #[cfg(test)]
@@ -188,6 +191,31 @@ pub(super) fn resolved(
             source.clone(),
         )]
     })?;
+    let type_only = package
+        .files()
+        .iter()
+        .flat_map(|file| file.items())
+        .next()
+        .is_some_and(|unit| {
+            unit.unit
+                .projection
+                .registry
+                .registrations()
+                .canonical_type_package()
+                .is_some()
+        });
+    if type_only
+        && (measured.total.frame_bound != 0
+            || !measured.total.function_frames.is_empty()
+            || measured.total.automatic_bytes != 0
+            || measured.total.automatic_objects != 0)
+    {
+        return Err(vec![Diagnostic::error(
+            DiagnosticCode::TargetResourceLimit,
+            "C canonical type owner has nonzero measured executable storage",
+            source,
+        )]);
+    }
     let mut errors: Vec<_> = policy::check(&measured.total, source)
         .iter()
         .map(policy::CResourceError::diagnostic)
