@@ -52,6 +52,17 @@ impl JavaCallableRef {
             } => {
                 let owner_matches = signature.receiver.as_ref() == Some(owner);
                 let catalogue_matches = match origin {
+                    JavaMemberOrigin::SynthesizedField(field) => {
+                        portable_member_metadata_matches(signature)
+                            && owner == &JavaType::Reference(JavaTypeName::Generated(field.owner))
+                            && signature.parameters.is_empty()
+                            && super::synthesized_fields::matches(
+                                *field,
+                                name,
+                                &signature.result,
+                                context,
+                            )
+                    }
                     JavaMemberOrigin::Known(method) => method.accepts(signature),
                     JavaMemberOrigin::GeneratedField(field) => {
                         portable_member_metadata_matches(signature)
@@ -113,7 +124,9 @@ impl JavaFieldRef {
         match self {
             Self::Known(value) => value.ty(),
             Self::Structural { ty, .. } => ty.clone(),
-            Self::Generated { ty, .. } | Self::RustSource { ty, .. } => ty.clone(),
+            Self::Generated { ty, .. }
+            | Self::RustSource { ty, .. }
+            | Self::Synthesized { ty, .. } => ty.clone(),
         }
     }
 }

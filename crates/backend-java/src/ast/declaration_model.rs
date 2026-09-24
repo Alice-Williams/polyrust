@@ -151,6 +151,7 @@ pub enum JavaRecordComponentOrigin {
     Core(CoreFieldId),
     Runtime(JavaRuntimeMember),
     RustSource(super::source_fields::JavaSourceFieldOrigin),
+    Synthesized(super::synthesized_fields::JavaSynthesizedField),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

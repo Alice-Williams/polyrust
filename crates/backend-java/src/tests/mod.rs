@@ -41,6 +41,7 @@ pub(crate) mod source_package_fixture;
 #[path = "source_records/fixture.rs"]
 pub(crate) mod source_record_fixture;
 mod switch_dominance_native;
+mod synthesized_components;
 mod totality_empty_interfaces;
 mod totality_interfaces;
 mod totality_names;

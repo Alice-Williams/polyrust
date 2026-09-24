@@ -38,6 +38,9 @@ pub(super) fn verify(
     let mut violations = Vec::new();
     for component in &declaration.record_components {
         let valid = match (&component.origin, owner) {
+            (JavaRecordComponentOrigin::Synthesized(field), _) => {
+                super::synthesized_fields::valid_component(*field, component, declaration, context)
+            }
             (JavaRecordComponentOrigin::RustSource(field), Some(owner)) => {
                 declaration.kind == JavaDeclarationKind::Record
                     && field.owner == owner.declaration
@@ -56,7 +59,7 @@ pub(super) fn verify(
         };
         if !valid {
             violations.push(AstViolation::new(DiagnosticCode::InvalidStructure,
-                "Java RustSource record component must retain its registered source nominal owner and module/export identity"));
+                "Java record component must retain its registered source nominal owner and module/export identity, or exact synthesized owner/role/type"));
         }
     }
     violations

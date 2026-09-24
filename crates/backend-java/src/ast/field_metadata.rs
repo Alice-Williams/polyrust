@@ -29,7 +29,12 @@ pub(super) fn structural_field_metadata(
     }
     let declaration = find_type_declaration(owner, context)?;
     if declaration.kind == super::JavaDeclarationKind::Record
-        && declaration
+        && (declaration.record_components.iter().any(|component| {
+            matches!(
+                component.origin,
+                super::JavaRecordComponentOrigin::Synthesized(_)
+            )
+        }) || declaration
             .declared
             .and_then(|id| context.generated_type(id))
             .is_some_and(|value| {
@@ -37,9 +42,9 @@ pub(super) fn structural_field_metadata(
                     value.origin,
                     portable_codegen::GeneratedOrigin::RustSource(_)
                 )
-            })
+            }))
     {
-        // Source record access must carry the Rust field declaration identity.
+        // Source and synthesized records require their explicit field identity.
         // A matching name/type is not an alternative source mapping authority.
         return None;
     }

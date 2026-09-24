@@ -225,6 +225,13 @@ C transport checkpoint and is complete: native values, measured call traces,
 Rust Result admission remain open. This does not complete general result parity
 or authorize legacy removal.
 
+[Java synthesized components](tasks/M35-03A-05A-03A-01-java-components.md) are
+complete: exact owner/role/type field and accessor references, final assignment,
+privacy, closed dependency publication and JVM accounting pass all 1,041
+release/lint targets with clean independent review. The Java unit suite passes
+446 cases; existing outputs and 45 unrelated WIP files are unchanged. This is
+the component foundation, not a complete Java Result family or Rust admission.
+
 The Rust-source path now has a normative [C HIR lowering specification](../specification/typed-generation/languages/c/rust-hir-lowering.md).
 It reuses checked compiler HIR, documentation attributes and the existing C
 AST/certification types; it does not force Rust semantics through the legacy

@@ -102,7 +102,8 @@ pub(super) fn expression(value: &JavaExpr) -> Code {
                 JavaFieldRef::Known(_) => {}
                 JavaFieldRef::Structural { ty, .. }
                 | JavaFieldRef::Generated { ty, .. }
-                | JavaFieldRef::RustSource { ty, .. } => code.ty(ty),
+                | JavaFieldRef::RustSource { ty, .. }
+                | JavaFieldRef::Synthesized { ty, .. } => code.ty(ty),
             }
         }
         JavaExprKind::Cast { target, value }

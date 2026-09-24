@@ -21,6 +21,7 @@ pub(super) fn owner(
         }
         (None, JavaRecordComponentOrigin::RustSource(_))
         | (Some(_) | None, JavaRecordComponentOrigin::Core(_))
+        | (Some(_) | None, JavaRecordComponentOrigin::Synthesized(_))
         | (Some(_) | None, JavaRecordComponentOrigin::Runtime(_)) => None,
     }
 }

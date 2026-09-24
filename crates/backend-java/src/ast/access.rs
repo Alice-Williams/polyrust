@@ -86,6 +86,9 @@ pub(super) fn verify(
         super::expression_visit::member(member, &mut |value| {
             if let JavaExprKind::Field { receiver, field } = &value.kind {
                 let private_owner = match field {
+                    JavaFieldRef::Synthesized { field, .. } => {
+                        Some(JavaTypeName::Generated(field.owner))
+                    }
                     JavaFieldRef::Generated { owner, .. }
                     | JavaFieldRef::RustSource { owner, .. } => {
                         Some(JavaTypeName::Generated(*owner))

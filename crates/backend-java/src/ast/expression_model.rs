@@ -133,6 +133,7 @@ pub enum JavaCallableRef {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JavaMemberOrigin {
+    SynthesizedField(super::synthesized_fields::JavaSynthesizedField),
     Known(crate::dialect::JavaKnownMethod),
     GeneratedField(CoreFieldId),
     GeneratedVariant,

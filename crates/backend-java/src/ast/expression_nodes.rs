@@ -27,6 +27,11 @@ pub enum JavaConstructorRef {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JavaFieldRef {
+    Synthesized {
+        field: super::synthesized_fields::JavaSynthesizedField,
+        name: JavaIdentifier,
+        ty: JavaType,
+    },
     Known(crate::dialect::JavaKnownField),
     Structural {
         name: JavaIdentifier,

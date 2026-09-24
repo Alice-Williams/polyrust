@@ -190,9 +190,9 @@ pub(super) fn render_expr(
             let field = match field {
                 JavaFieldRef::Known(value) => value.member().text(),
                 JavaFieldRef::Structural { name, .. } => name.as_str(),
-                JavaFieldRef::Generated { name, .. } | JavaFieldRef::RustSource { name, .. } => {
-                    name.as_str()
-                }
+                JavaFieldRef::Generated { name, .. }
+                | JavaFieldRef::RustSource { name, .. }
+                | JavaFieldRef::Synthesized { name, .. } => name.as_str(),
             };
             Ok(format!("{receiver}.{field}"))
         }

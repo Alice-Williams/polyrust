@@ -265,6 +265,7 @@ pub(super) fn runtime_record_equality_method(
                                 match &component.origin {
                                     JavaRecordComponentOrigin::Runtime(member) => *member,
                                     JavaRecordComponentOrigin::Core(_)
+                                    | JavaRecordComponentOrigin::Synthesized(_)
                                     | JavaRecordComponentOrigin::RustSource(_) => unreachable!(
                                         "runtime semantic records have runtime components"
                                     ),
@@ -280,6 +281,7 @@ pub(super) fn runtime_record_equality_method(
                                 match &component.origin {
                                     JavaRecordComponentOrigin::Runtime(member) => *member,
                                     JavaRecordComponentOrigin::Core(_)
+                                    | JavaRecordComponentOrigin::Synthesized(_)
                                     | JavaRecordComponentOrigin::RustSource(_) => unreachable!(
                                         "runtime semantic records have runtime components"
                                     ),

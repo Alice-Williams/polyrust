@@ -183,7 +183,8 @@ impl Checker<'_> {
                     JavaFieldRef::Known(_) => {}
                     JavaFieldRef::Structural { name, ty }
                     | JavaFieldRef::Generated { name, ty, .. }
-                    | JavaFieldRef::RustSource { name, ty, .. } => {
+                    | JavaFieldRef::RustSource { name, ty, .. }
+                    | JavaFieldRef::Synthesized { name, ty, .. } => {
                         self.name(name);
                         self.ty(ty);
                     }

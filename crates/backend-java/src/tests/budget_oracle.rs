@@ -46,6 +46,10 @@ pub(crate) fn collect(package: &LinkedTargetPackage<JavaDialect>) -> Vec<ClassBu
 
 pub(crate) fn verify(classes: &Path, budgets: &[ClassBudget]) {
     let directory = classes.join("org/polyrust/generated");
+    verify_directory(&directory, budgets);
+}
+
+pub(crate) fn verify_directory(directory: &Path, budgets: &[ClassBudget]) {
     let mut checked = 0usize;
     for entry in std::fs::read_dir(directory).expect("read compiler output") {
         let path = entry.unwrap().path();

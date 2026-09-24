@@ -41,6 +41,8 @@ mod field_metadata;
 mod field_registration;
 pub(crate) mod source_fields;
 pub use source_fields::JavaSourceFieldOrigin;
+mod synthesized_fields;
+pub use synthesized_fields::{JavaSynthesizedField, JavaSynthesizedFieldRole};
 mod file_model;
 pub use file_model::JavaFileItem;
 mod array_creation;

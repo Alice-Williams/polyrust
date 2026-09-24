@@ -165,6 +165,16 @@ pub(super) fn verify_assignment_target(
         },
         JavaExprKind::Field { receiver, field } => {
             let metadata = match (field, context) {
+                (JavaFieldRef::Synthesized { field, name, ty }, Some(context))
+                    if receiver.ty == JavaType::Reference(JavaTypeName::Generated(field.owner))
+                        && super::synthesized_fields::matches(*field, name, ty, context) =>
+                {
+                    Some(JavaFieldMetadata {
+                        ty: ty.clone(),
+                        final_field: true,
+                        blank_final: true,
+                    })
+                }
                 (JavaFieldRef::Known(_), _) => Some(JavaFieldMetadata {
                     ty: field.ty(),
                     final_field: true,

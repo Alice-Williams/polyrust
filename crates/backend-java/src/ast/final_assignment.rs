@@ -58,6 +58,7 @@ pub(super) fn assigned_blank_final<'a>(
     }
     let name = match field {
         JavaFieldRef::Structural { name, .. }
+        | JavaFieldRef::Synthesized { name, .. }
         | JavaFieldRef::Generated { name, .. }
         | JavaFieldRef::RustSource { name, .. } => name,
         JavaFieldRef::Known(_) => return None,
@@ -107,6 +108,7 @@ pub(super) fn collect_blank_final_reads(
                 if matches!(receiver.kind, JavaExprKind::Value(JavaValueRef::This)) {
                     let name = match field {
                         JavaFieldRef::Structural { name, .. }
+                        | JavaFieldRef::Synthesized { name, .. }
                         | JavaFieldRef::Generated { name, .. }
                         | JavaFieldRef::RustSource { name, .. } => Some(name),
                         JavaFieldRef::Known(_) => None,
