@@ -7,8 +7,10 @@
 mod exports;
 pub use exports::*;
 mod constant_values;
+mod instances;
 mod types;
 pub use constant_values::RustConstantValue;
+pub use instances::*;
 pub use types::{
     RustFieldTypes, RustFunctionTypes, RustResultKind, RustScalarKind, RustSourceTypes,
 };

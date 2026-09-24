@@ -255,6 +255,15 @@ This closes Java target Result transport. Checked Rust Result source admission,
 including canonical ownership across independent producers, remains the next
 integration step; broader capability parity and legacy removal remain open.
 
+[Canonical instance ownership](tasks/M35-03A-05A-04A-instance-ownership.md)
+separates real source roots, descriptive instance facts and generated type owners.
+Its [identity foundation](tasks/M35-03A-05A-04A-01-instance-model.md) is complete:
+all 1,043 release/lint targets pass, two independent reviews are clean, and 530
+recorded generated files are unchanged. The independently gated
+[compiler graph proof](tasks/M35-03A-05A-04A-02-instance-probe.md) is in progress.
+C and Java type-only certificates, atomic graph integration and checked
+Result HIR bindings follow as 04B–04E; this is not yet source Result admission.
+
 The Rust-source path now has a normative [C HIR lowering specification](../specification/typed-generation/languages/c/rust-hir-lowering.md).
 It reuses checked compiler HIR, documentation attributes and the existing C
 AST/certification types; it does not force Rust semantics through the legacy
