@@ -138,6 +138,8 @@ rust_library(
 
 rust_test(
     name = "portable_backend_c_unit_test",
+    # Hundreds of native compiler/oracle cases exceed the hosted medium timeout.
+    size = "large",
     srcs = glob(["src/**/*.rs"]),
     args = ["--exact"] + [arg for case in CAPACITY_CASES.values() for arg in [
         "--skip",
