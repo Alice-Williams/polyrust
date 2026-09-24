@@ -32,7 +32,9 @@ mod import_view;
 pub use constant_import_view::{
     CImportedConstant, c_imported_constants, c_used_imported_constants,
 };
+mod imported_types;
 mod imported_values;
+pub use imported_types::CImportedMember;
 mod linking;
 mod nodes;
 mod package;
@@ -226,7 +228,7 @@ pub use definition_view::{
 pub(crate) use dependency_api::CDependencyAuthority;
 pub use dependency_api::{
     CDependencyApi, CDependencyConstant, CDependencyFunction, CDependencyPackage,
-    CForeignConstantExport, c_system_libraries,
+    CDependencyStruct, CForeignConstantExport, c_system_libraries,
 };
 pub use dependency_symbols::CImportedCallable;
 pub use file_imports::{CGeneratedHeader, CHeaderGuard, CImportKind};
@@ -237,8 +239,8 @@ pub use package::CProjectedUnit;
 pub use projection::project_c_package;
 pub use spelling::CStructuralRenderer;
 pub use vocabulary::{
-    CDialect, CFileGrammar, CInvocation, CNamespace, CPrimitiveType, CSharedTypeKind, CStdType,
-    CUnavailable, CVisibility,
+    CDialect, CFileGrammar, CInvocation, CNamespace, CPrimitiveType, CReferencedType,
+    CSharedTypeKind, CStdType, CUnavailable, CVisibility,
 };
 
 use portable_codegen::{
@@ -347,3 +349,19 @@ mod result_fixture;
 #[cfg(test)]
 #[path = "../tests/shared_public_results.rs"]
 mod public_result_tests;
+
+#[cfg(test)]
+#[path = "../tests/shared_nominal_closure.rs"]
+mod nominal_closure_tests;
+#[cfg(test)]
+#[path = "../tests/shared_nominal_fixture.rs"]
+mod nominal_fixture;
+#[cfg(test)]
+#[path = "../tests/shared_nominal_imports.rs"]
+mod nominal_import_tests;
+#[cfg(test)]
+#[path = "../tests/shared_nominal_native.rs"]
+mod nominal_native_tests;
+#[cfg(test)]
+#[path = "../tests/shared_nominal_producer.rs"]
+mod nominal_producer;

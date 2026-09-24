@@ -89,7 +89,7 @@ impl CRegistry {
         ty: CObjectType,
         binding: CMemberBinding,
     ) -> Result<CMemberRef, CRegistryError> {
-        self.check_aggregate(owner)?;
+        self.check_owned_aggregate(owner)?;
         self.check_type(&ty)?;
         ty.require_storable()
             .map_err(CRegistryError::InvalidObjectType)?;
@@ -118,7 +118,7 @@ impl CRegistry {
         owner: &CAggregateRef,
         members: Vec<CMemberRef>,
     ) -> Result<(), CRegistryError> {
-        self.check_aggregate(owner)?;
+        self.check_owned_aggregate(owner)?;
         if self.members(owner)?.is_some() {
             return Err(CRegistryError::AlreadyDefined);
         }

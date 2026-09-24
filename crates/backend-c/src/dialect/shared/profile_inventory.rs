@@ -24,6 +24,12 @@ impl Inventory {
     pub(super) fn with_registry(registry: Option<&crate::ast::CRegistry>) -> Result<Self, String> {
         let mut result = Self::default();
         if let Some(registry) = registry {
+            for (record, _) in registry.imported_structs() {
+                registry
+                    .imported_struct(record)
+                    .map_err(|error| error.to_string())?;
+                result.records.insert(record.clone());
+            }
             for (function, _) in registry.imported_functions() {
                 registry
                     .imported_function(function)

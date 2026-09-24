@@ -17,6 +17,33 @@ impl CRegistry {
                 self.imported_constant(object)
                     .map(|proof| proof.package_identity())
             }))
+            .chain(self.struct_imports.keys().map(|record| {
+                self.imported_struct(record)
+                    .map(|proof| proof.package_identity())
+            }))
+    }
+
+    pub(super) fn check_dependency_owner(
+        &self,
+        owner: &CDependencyPackage,
+    ) -> Result<(), CRegistryError> {
+        for old in self.dependency_packages() {
+            let old = old?;
+            if old != *owner
+                && (old.root().crate_id == owner.root().crate_id
+                    || old.public_header().include_path() == owner.public_header().include_path())
+            {
+                return Err(CRegistryError::DuplicateRegistration);
+            }
+        }
+        if self.files.iter().any(|file| {
+            owner
+                .public_header()
+                .conflicts_with_output_path(&file.key().path)
+        }) {
+            return Err(CRegistryError::DuplicateRegistration);
+        }
+        Ok(())
     }
 
     pub(super) fn check_dependency_registration(
@@ -26,6 +53,7 @@ impl CRegistry {
         symbol: &CIdentifier,
         owner: &CDependencyPackage,
     ) -> Result<(), CRegistryError> {
+        self.check_dependency_owner(owner)?;
         let old = self
             .imports
             .iter()

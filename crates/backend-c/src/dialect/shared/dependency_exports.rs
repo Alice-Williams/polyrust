@@ -61,3 +61,20 @@ pub(super) fn owned_names(unit: &CResolvedUnit) -> Result<BTreeSet<CIdentifier>,
     }
     Ok(names)
 }
+
+/// C tags are separate from ordinary function/constant names and member scopes.
+pub(super) fn owned_tags(unit: &CResolvedUnit) -> Result<BTreeSet<CIdentifier>, AstViolation> {
+    unit.unit
+        .data
+        .bindings
+        .types
+        .keys()
+        .map(|record| {
+            unit.spelling
+                .types
+                .get(record)
+                .cloned()
+                .ok_or_else(|| violation("owned C tag lacks its resolved spelling"))
+        })
+        .collect()
+}

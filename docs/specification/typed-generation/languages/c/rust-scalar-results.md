@@ -1,6 +1,6 @@
 # Rust scalar results in C17
 
-- Status: private transport and owned public ABI complete; imports planned
+- Status: private transport and owned public ABI complete; nominal imports in progress
 - Contract: [shared](../../rust-scalar-results.md)
 
 Use a source-derived complete struct with a typed Boolean success tag and I32
@@ -48,8 +48,50 @@ ordinary function. No textual owner prefix or renderer-side name repair is
 permitted. This extension leaves existing source-private spelling allocation
 unchanged.
 
-Until nominal import certification is implemented, any package whose header
-contains an aggregate is rejected by CDependencyApi publication. This applies
-even to imports of scalar functions from that package: including the header
-would also introduce its tag namespace. Native C consumers can still use the
-certified header/source directly under the documented C17 platform contract.
+## Certified nominal import boundary
+
+`CDependencyApi` enumerates opaque `CDependencyStruct` witnesses from the actual
+owned public declarations in its immutable certificate. Each witness retains
+the original `CStructRef`, ordered members, resolved type/member names and
+defining header authority. A consumer explicitly registers that witness before
+registering a function whose signature uses it. Registration retains the original
+nominal identity; no consumer-owned surrogate or same-layout substitution exists.
+Registration and subsequent membership reads independently reconstruct the
+exported layout and spellings from the original certificate. Cached summaries
+alone cannot authorize altered names, members or owners.
+
+Imported layouts are readable but not owned. They cannot be extended, redefined,
+forward-declared or emitted as local aggregate declarations. Failed registration
+must not mutate any registry inventory. Missing type witnesses, wrong member
+owners and independently certified lookalikes reject before rendering.
+
+The C plugin uses the shared catalogue rather than a parallel import framework:
+
+- `CReferencedType::Standard` carries standard typedefs in the ordinary namespace.
+- `CReferencedType::Certified` carries nominal witnesses in the tag namespace,
+  with certificate-derived `KnownTypeSpec` and `FixedImport` of the original header.
+- `CImportedMember` carries the typed original owner/member pair. Its
+  `KnownFieldSpec` uses `DependencyPolicy::Member`; field references select the
+  owner type as well, without creating free-standing ordinary imports.
+
+Structural uses determine each file's selected references and includes. The
+renderer receives exact resolved names and performs no string lookup, field
+renaming or layout reconstruction. A relay publishes original foreign witnesses
+needed by its public signatures, not copied definitions or invented alias headers.
+Private and unused foreign registrations are not part of the published type API;
+they remain in the immutable package registry for safety and resource checks.
+
+Dependency reconciliation covers the entire direct/transitive header closure,
+including unused tags introduced by scalar-only APIs and type-only imports.
+Reconstruct public tags from declarations, preserve separate C namespaces, and
+reject conflicts in one namespace, conflicting certificates for one crate,
+output/header collisions and source-identity cycles. Existing bounded traversal,
+layout and frame policy remain mandatory. Foreign call costs compose from the
+original certified package; imported type registration does not copy its frames
+into the consumer's owned function inventory.
+
+Before the import checkpoint is complete, prove independently certified
+producer/relay/consumer packages with strict GCC/Zig compilation, mixed objects,
+both optimization levels, same-compiler UBSan, type-only construction/member
+access and compiling tag/payload faults. This target contract does not yet admit
+Rust Result source operations or establish source variant identity.

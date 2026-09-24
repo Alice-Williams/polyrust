@@ -314,7 +314,8 @@ fn signature(
                 && matches!(record.file().key().role, crate::ast::CFileRole::GeneratedSource | crate::ast::CFileRole::TestSource))
                 || (record.file().key().role == crate::ast::CFileRole::GeneratedPublicHeader
                     && (function.file() == record.file()
-                        || function.file().key().role == crate::ast::CFileRole::GeneratedSource)))
+                        || function.file().key().role == crate::ast::CFileRole::GeneratedSource
+                        || registry.is_some_and(|registry| registry.imported_struct(record).is_ok()))))
                 && crate::ownership::value_transport::scalar_result(registry, ty))
     };
     let admitted_result = match function.signature().return_type() {

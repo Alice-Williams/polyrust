@@ -23,6 +23,13 @@ pub enum CStdType {
     Size,
 }
 
+/// Language-owned references distinguish standard typedefs from certified tags.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum CReferencedType {
+    Standard(CStdType),
+    Certified(super::CDependencyStruct),
+}
+
 impl CStdType {
     pub(super) const fn spelling(self) -> &'static str {
         match self {

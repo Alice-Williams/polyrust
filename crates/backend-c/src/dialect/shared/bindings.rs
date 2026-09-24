@@ -15,6 +15,8 @@ use std::collections::BTreeMap;
 pub(super) struct CBindings {
     pub imports: BTreeMap<CFunctionRef, super::CImportedCallable>,
     pub imported_values: BTreeMap<CObjectRef, super::CImportedValue>,
+    pub imported_types: BTreeMap<CStructRef, super::CDependencyStruct>,
+    pub imported_members: BTreeMap<CMemberRef, super::CImportedMember>,
     pub types: BTreeMap<CStructRef, GeneratedTypeId>,
     pub functions: BTreeMap<CFunctionRef, GeneratedCallableId>,
     pub values: BTreeMap<CValueBinding, GeneratedValueId>,
@@ -51,6 +53,25 @@ impl CValueBinding {
 }
 
 impl CBindings {
+    pub(super) fn with_imported_types(registry: &crate::ast::CRegistry) -> Result<Self, String> {
+        let mut bindings = Self::default();
+        for (record, _) in registry.imported_structs() {
+            let proof = registry
+                .imported_struct(record)
+                .map_err(|e| e.to_string())?;
+            bindings
+                .imported_types
+                .insert(record.clone(), proof.clone());
+            for member in proof.members() {
+                bindings.imported_members.insert(
+                    member.clone(),
+                    super::CImportedMember::new(proof.clone(), member.clone())
+                        .map_err(|e| e.message)?,
+                );
+            }
+        }
+        Ok(bindings)
+    }
     pub fn symbols(&self) -> Vec<GeneratedSymbolId> {
         self.reverse_types
             .keys()
@@ -75,14 +96,27 @@ impl CBindings {
             return TargetTypeRef::Constructed(ty.clone());
         }
         match ty.kind() {
-            CObjectTypeKind::Scalar(CScalarType::I32) => TargetTypeRef::Known(CStdType::I32),
-            CObjectTypeKind::Scalar(CScalarType::I64) => TargetTypeRef::Known(CStdType::I64),
-            CObjectTypeKind::Scalar(CScalarType::U32) => TargetTypeRef::Known(CStdType::U32),
-            CObjectTypeKind::Scalar(CScalarType::U64) => TargetTypeRef::Known(CStdType::U64),
+            CObjectTypeKind::Scalar(CScalarType::I32) => {
+                TargetTypeRef::Known(super::CReferencedType::Standard(CStdType::I32))
+            }
+            CObjectTypeKind::Scalar(CScalarType::I64) => {
+                TargetTypeRef::Known(super::CReferencedType::Standard(CStdType::I64))
+            }
+            CObjectTypeKind::Scalar(CScalarType::U32) => {
+                TargetTypeRef::Known(super::CReferencedType::Standard(CStdType::U32))
+            }
+            CObjectTypeKind::Scalar(CScalarType::U64) => {
+                TargetTypeRef::Known(super::CReferencedType::Standard(CStdType::U64))
+            }
             CObjectTypeKind::Scalar(value) => {
                 TargetTypeRef::Primitive(super::CPrimitiveType::Scalar(*value))
             }
-            CObjectTypeKind::Struct(value) => TargetTypeRef::Generated(self.types[value]),
+            CObjectTypeKind::Struct(value) => match self.imported_types.get(value) {
+                Some(proof) => {
+                    TargetTypeRef::Known(super::CReferencedType::Certified(proof.clone()))
+                }
+                None => TargetTypeRef::Generated(self.types[value]),
+            },
             // The exact qualified pointer tree and registered pointee are kept,
             // not encoded in a string or replaced by an opaque erased pointer.
             _ => TargetTypeRef::Constructed(ty.clone()),

@@ -67,6 +67,9 @@ pub(super) fn project(
         let CTagDependency::Struct(record) = tag else {
             return Err("C unit references an unsupported aggregate category".into());
         };
+        if bindings.imported_types.contains_key(record) {
+            continue;
+        }
         used.insert(Symbol::Type(
             *bindings
                 .types
@@ -107,6 +110,9 @@ pub(super) fn project(
         ));
     }
     for member in dependencies.members() {
+        if bindings.imported_members.contains_key(member) {
+            continue;
+        }
         used.insert(Symbol::Value(
             *bindings
                 .values
@@ -115,6 +121,25 @@ pub(super) fn project(
         ));
     }
     let mut selected = select(bindings, &used)?;
+    for tag in dependencies.tags().keys() {
+        if let CTagDependency::Struct(record) = tag
+            && let Some(proof) = bindings.imported_types.get(record)
+        {
+            selected
+                .imported_types
+                .insert(record.clone(), proof.clone());
+        }
+    }
+    for member in dependencies.members() {
+        if let Some(proof) = bindings.imported_members.get(member) {
+            selected
+                .imported_types
+                .insert(proof.owner().record().clone(), proof.owner().clone());
+            selected
+                .imported_members
+                .insert(member.clone(), proof.clone());
+        }
+    }
     for function in dependencies.functions() {
         if let Some(import) = bindings.imports.get(function) {
             selected.imports.insert(function.clone(), import.clone());

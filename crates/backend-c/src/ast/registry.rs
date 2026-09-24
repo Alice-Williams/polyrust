@@ -25,6 +25,7 @@ mod files;
 mod frozen;
 mod identity;
 mod imported_constants;
+mod imported_structs;
 mod imports;
 mod interfaces;
 mod inventory;
@@ -119,6 +120,7 @@ pub struct CRegistry {
     files: BTreeSet<CFileRef>,
     source_package: Option<CSourcePackage>,
     structs: BTreeMap<CStructRef, Option<Vec<CMemberRef>>>,
+    struct_imports: BTreeMap<CStructRef, crate::dialect::CDependencyStruct>,
     unions: BTreeMap<CUnionRef, Option<Vec<CMemberRef>>>,
     enums: BTreeMap<CEnumRef, Option<Vec<CEnumeratorRef>>>,
     typedefs: BTreeSet<CTypedefRef>,
@@ -159,6 +161,7 @@ impl CRegistry {
             files: BTreeSet::new(),
             source_package: None,
             structs: BTreeMap::new(),
+            struct_imports: BTreeMap::new(),
             unions: BTreeMap::new(),
             enums: BTreeMap::new(),
             typedefs: BTreeSet::new(),
@@ -198,6 +201,11 @@ impl CRegistry {
                         .values()
                         .map(|proof| proof.public_header()),
                 )
+                .chain(
+                    self.struct_imports
+                        .values()
+                        .map(|proof| proof.public_header()),
+                )
                 .any(|header| header.conflicts_with_output_path(&value.key.path))
         {
             return Err(CRegistryError::DuplicateRegistration);
@@ -228,6 +236,18 @@ impl CRegistry {
     }
 
     pub fn check_aggregate(&self, owner: &CAggregateRef) -> Result<(), CRegistryError> {
+        if let CAggregateRef::Struct(record) = owner
+            && self.struct_imports.contains_key(record)
+        {
+            return self.imported_struct(record).map(|_| ());
+        }
+        self.check_owned_aggregate(owner)
+    }
+
+    pub(crate) fn check_owned_aggregate(
+        &self,
+        owner: &CAggregateRef,
+    ) -> Result<(), CRegistryError> {
         match owner {
             CAggregateRef::Struct(value) => {
                 self.check_scope(&value.identity.scope)?;
@@ -250,6 +270,13 @@ impl CRegistry {
 
     pub fn members(&self, owner: &CAggregateRef) -> Result<Option<&[CMemberRef]>, CRegistryError> {
         self.check_aggregate(owner)?;
+        if let CAggregateRef::Struct(record) = owner
+            && self.struct_imports.contains_key(record)
+        {
+            return self
+                .imported_struct(record)
+                .map(|proof| Some(proof.members()));
+        }
         let members = match owner {
             CAggregateRef::Struct(value) => &self.structs[value],
             CAggregateRef::Union(value) => &self.unions[value],
@@ -263,6 +290,18 @@ impl CRegistry {
         member: &CMemberRef,
     ) -> Result<(), CRegistryError> {
         self.check_aggregate(owner)?;
+        if let CAggregateRef::Struct(record) = owner
+            && self.struct_imports.contains_key(record)
+        {
+            if member.owner != *owner {
+                return Err(CRegistryError::WrongOwner);
+            }
+            return if self.imported_struct(record)?.members().contains(member) {
+                Ok(())
+            } else {
+                Err(CRegistryError::UnregisteredReference)
+            };
+        }
         self.check_scope(&member.identity.scope)?;
         if member.owner != *owner {
             return Err(CRegistryError::WrongOwner);

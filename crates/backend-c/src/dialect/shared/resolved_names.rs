@@ -27,11 +27,26 @@ impl CResolvedNames {
                 "generated C declaration must have a local linker binding",
             )),
         };
-        let types = bindings
+        let mut types: BTreeMap<_, _> = bindings
             .types
             .iter()
             .map(|(key, id)| Ok((key.clone(), local(GeneratedSymbolId::Type(*id))?)))
             .collect::<Result<_, AstViolation>>()?;
+        for (record, proof) in &bindings.imported_types {
+            let Some(ResolvedReference::Imported { binding, .. }) = names.get(
+                &TargetSymbolRef::KnownType(super::CReferencedType::Certified(proof.clone())),
+            ) else {
+                return Err(violation(
+                    "C dependency type must have its original imported binding",
+                ));
+            };
+            if binding != proof.symbol() || types.insert(record.clone(), binding.clone()).is_some()
+            {
+                return Err(violation(
+                    "C dependency type cannot be renamed or redefine an owned type",
+                ));
+            }
+        }
         let mut functions: BTreeMap<_, _> = bindings
             .functions
             .iter()
@@ -83,8 +98,31 @@ impl CResolvedNames {
             }
         }
         let mut standards = BTreeMap::new();
+        for (member, proof) in &bindings.imported_members {
+            let Some(ResolvedReference::Member {
+                owner,
+                member: spelling,
+            }) = names.get(&TargetSymbolRef::KnownField(proof.clone()))
+            else {
+                return Err(violation(
+                    "C dependency field requires a typed owner/member reference",
+                ));
+            };
+            if owner != proof.owner()
+                || proof.member() != member
+                || owner.member_name(member) != Some(spelling)
+                || !types.contains_key(owner.record())
+                || values
+                    .insert(CValueBinding::Member(member.clone()), spelling.clone())
+                    .is_some()
+            {
+                return Err(violation(
+                    "C dependency field spelling or original owner disagrees",
+                ));
+            }
+        }
         for (symbol, resolved) in names {
-            if let TargetSymbolRef::KnownType(kind) = symbol {
+            if let TargetSymbolRef::KnownType(super::CReferencedType::Standard(kind)) = symbol {
                 let ResolvedReference::Imported { binding, .. } = resolved else {
                     return Err(violation("C standard typedef must have an import binding"));
                 };

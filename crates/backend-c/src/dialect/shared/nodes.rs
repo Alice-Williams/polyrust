@@ -1,7 +1,7 @@
 //! A typed compilation-unit payload, never source text or a second C AST.
 
 use super::{
-    CDialect, CFileGrammar, CInvocation, CPrimitiveType, CProjectedUnit, CSharedTypeKind, CStdType,
+    CDialect, CFileGrammar, CInvocation, CPrimitiveType, CProjectedUnit, CSharedTypeKind,
     CUnavailable, CVisibility, projection, violation,
 };
 use crate::ast::{CFileRef, CFileRole, CObjectType, CSynthesisReason};
@@ -49,7 +49,7 @@ impl TargetFileItemNode<CDialect> for CProjectedUnit {
 
 impl TypedAstDialect for CDialect {
     type PrimitiveType = CPrimitiveType;
-    type KnownType = CStdType;
+    type KnownType = super::CReferencedType;
     type RuntimeType = CUnavailable;
     type ConstructedType = CObjectType;
     type KnownCallable = CUnavailable;

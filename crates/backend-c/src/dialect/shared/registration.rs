@@ -18,7 +18,7 @@ pub(super) fn register(
     registrations: &CRegistry,
     sources: &[CSourceFile],
 ) -> Result<CBindings, String> {
-    let mut bindings = CBindings::default();
+    let mut bindings = CBindings::with_imported_types(registrations)?;
     let visibility: std::collections::BTreeMap<_, _> = sources
         .iter()
         .flat_map(|source| source.items())

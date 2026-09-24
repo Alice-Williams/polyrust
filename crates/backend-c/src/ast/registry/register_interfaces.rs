@@ -20,8 +20,8 @@ impl CRegistry {
         record: &CStructRef,
         methods: Vec<CWitnessMethod>,
     ) -> Result<CInterfaceWitnessRef, CRegistryError> {
-        self.check_aggregate(&CAggregateRef::Struct(interface.clone()))?;
-        self.check_aggregate(&CAggregateRef::Struct(record.clone()))?;
+        self.check_owned_aggregate(&CAggregateRef::Struct(interface.clone()))?;
+        self.check_owned_aggregate(&CAggregateRef::Struct(record.clone()))?;
         let mut interface_methods = BTreeSet::new();
         let mut implementation_methods = BTreeSet::new();
         for method in &methods {

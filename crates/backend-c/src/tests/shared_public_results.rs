@@ -1,4 +1,4 @@
-//! Owned public result types, field identities and the deliberately closed import boundary.
+//! Owned public result types, field identities and certified import witnesses.
 use super::{
     CDependencyApi, CDialect, CStructuralRenderer, project_c_package,
     result_fixture::{Mutation, PublicApi, public_fixture},
@@ -6,7 +6,7 @@ use super::{
 use portable_codegen::*;
 
 #[path = "shared_public_results_native.rs"]
-mod native;
+pub(super) mod native;
 #[path = "shared_public_result_scopes.rs"]
 mod scopes;
 
@@ -74,15 +74,17 @@ fn public_result_header_owns_types_fields_prototypes_and_dynamic_imports() {
 }
 
 #[test]
-fn public_result_cannot_publish_unchecked_nominal_dependency_metadata() {
+fn public_result_publishes_exact_certificate_owned_nominal_witnesses() {
     for api in [PublicApi::ResultSignatures, PublicApi::ScalarOnly] {
         let certified =
             certify_resolved_package(&CDialect, linked(Mutation::None, api).unwrap()).unwrap();
-        let error = CDependencyApi::from_certificate(certified).unwrap_err();
-        assert!(
-            format!("{error:?}")
-                .contains("aggregate-bearing headers require certified nominal imports")
-        );
+        let api = CDependencyApi::from_certificate(certified).unwrap();
+        let proofs: Vec<_> = api.structs().collect();
+        assert_eq!(proofs.len(), 1);
+        assert_eq!(proofs[0].record().file(), api.public_header().file());
+        assert_eq!(proofs[0].members().len(), 2);
+        assert_eq!(api.structure(proofs[0].record()), Some(proofs[0]));
+        proofs[0].authenticate().unwrap();
     }
 }
 

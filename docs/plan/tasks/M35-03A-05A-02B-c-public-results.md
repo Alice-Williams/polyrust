@@ -8,7 +8,11 @@
 ## Contract
 
 1. [02B-01: owned public header/ABI](M35-03A-05A-02B-01-c-result-headers.md) — complete.
-2. [02B-02: certified nominal imports](M35-03A-05A-02B-02-c-result-imports.md).
+2. [02B-02: certified nominal imports](M35-03A-05A-02B-02-c-result-imports.md) — complete.
+
+The final inactive-arm execution evidence promised below is tracked by
+[02C](M35-03A-05A-02C-c-result-branches.md). Keep this parent in progress until
+that proof passes; correct return values alone do not establish call traces.
 
 The first step must reject dependency API publication for every header carrying
 an aggregate, even when the selected function is scalar. Otherwise merely

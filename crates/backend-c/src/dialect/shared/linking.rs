@@ -40,12 +40,30 @@ impl CProjectedUnit {
                     .cloned()
                     .map(TargetSymbolRef::DependencyValue),
             )
+            .chain(self.data.standards.iter().copied().map(|standard| {
+                TargetSymbolRef::KnownType(super::CReferencedType::Standard(standard))
+            }))
             .chain(
                 self.data
-                    .standards
-                    .iter()
-                    .copied()
-                    .map(TargetSymbolRef::KnownType),
+                    .bindings
+                    .imported_types
+                    .values()
+                    .cloned()
+                    .collect::<BTreeSet<_>>()
+                    .into_iter()
+                    .map(|proof| {
+                        TargetSymbolRef::KnownType(super::CReferencedType::Certified(proof))
+                    }),
+            )
+            .chain(
+                self.data
+                    .bindings
+                    .imported_members
+                    .values()
+                    .cloned()
+                    .collect::<BTreeSet<_>>()
+                    .into_iter()
+                    .map(TargetSymbolRef::KnownField),
             )
             .collect()
     }
@@ -55,7 +73,7 @@ impl LinkerDialect for CDialect {
     type DependencyValue = super::CImportedValue;
     type DependencyCallable = super::CImportedCallable;
     type DependencyPackage = super::CDependencyPackage;
-    type KnownField = CUnavailable;
+    type KnownField = super::CImportedMember;
     type KnownConstructor = CUnavailable;
     type KnownMethod = CUnavailable;
     type PreludeSymbol = CUnavailable;
@@ -65,8 +83,8 @@ impl LinkerDialect for CDialect {
     type HelperId = CUnavailable;
     type HelperCapability = CUnavailable;
     type Identifier = CIdentifier;
-    type QualifiedName = CUnavailable;
-    type MemberName = CUnavailable;
+    type QualifiedName = super::CDependencyStruct;
+    type MemberName = CIdentifier;
     type Namespace = CNamespace;
     type NameKey = String;
     type ImportKind = super::CImportKind;
@@ -102,7 +120,7 @@ impl LinkerDialect for CDialect {
             ]
             .into_iter()
             .map(|symbol| KnownTypeSpec {
-                symbol,
+                symbol: super::CReferencedType::Standard(symbol),
                 name: CIdentifier::new(symbol.spelling()).expect("catalogue identifier"),
                 alias_stem: symbol.spelling().into(),
                 qualified_name: None,
@@ -174,8 +192,11 @@ impl LinkerDialect for CDialect {
     fn type_namespace(&self, _: &CSharedTypeKind) -> CNamespace {
         CNamespace::Tag
     }
-    fn type_namespace_from_known(&self, _: &CStdType) -> CNamespace {
-        CNamespace::Ordinary
+    fn type_namespace_from_known(&self, ty: &super::CReferencedType) -> CNamespace {
+        match ty {
+            super::CReferencedType::Standard(_) => CNamespace::Ordinary,
+            super::CReferencedType::Certified(_) => CNamespace::Tag,
+        }
     }
     fn callable_namespace(&self) -> CNamespace {
         CNamespace::Ordinary
@@ -334,7 +355,7 @@ impl LinkerDialect for CDialect {
             return vec![violation("C resolved unit lacks its exact typed name map")];
         }
         for (symbol, name) in &item.names {
-            if let TargetSymbolRef::KnownType(standard) = symbol
+            if let TargetSymbolRef::KnownType(super::CReferencedType::Standard(standard)) = symbol
                 && !matches!(name, ResolvedReference::Imported { binding, .. } if binding.as_str() == standard.spelling())
             {
                 return vec![violation("C standard typedef cannot be import-aliased")];

@@ -64,7 +64,11 @@ pub(super) fn verify(package: &LinkedTargetPackage<CDialect>) -> Result<(), Stri
         }
     }
     let mut owned_names = BTreeSet::new();
+    let mut owned_tags = BTreeSet::new();
     for unit in package.files().iter().flat_map(|file| file.items()) {
+        owned_tags.extend(
+            super::super::dependency_exports::owned_tags(unit).map_err(|error| error.message)?,
+        );
         owned_names.extend(
             super::super::dependency_exports::owned_names(unit).map_err(|error| error.message)?,
         );
@@ -75,6 +79,7 @@ pub(super) fn verify(package: &LinkedTargetPackage<CDialect>) -> Result<(), Stri
     let mut owners = BTreeMap::<u64, CDependencyPackage>::new();
     let mut headers = BTreeMap::new();
     let mut symbols = BTreeSet::<CIdentifier>::new();
+    let mut tags = BTreeSet::<CIdentifier>::new();
     while let Some(owner) = pending.pop_front() {
         let crate_id = owner.root().crate_id;
         if owned_crates.contains(&crate_id) {
@@ -104,6 +109,11 @@ pub(super) fn verify(package: &LinkedTargetPackage<CDialect>) -> Result<(), Stri
         for name in owner.public_symbols() {
             if owned_names.contains(name) || !symbols.insert(name.clone()) {
                 return Err("transitive dependency complete public symbols collide".into());
+            }
+        }
+        for name in owner.public_tags()? {
+            if owned_tags.contains(&name) || !tags.insert(name) {
+                return Err("transitive dependency complete public tags collide".into());
             }
         }
         let original = owner.certificate().ast();

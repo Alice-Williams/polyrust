@@ -3,12 +3,14 @@ mod constants;
 mod foreign;
 pub use foreign::CForeignConstantExport;
 mod inventory;
+mod structs;
 mod system_libraries;
 use super::{CDialect, CGeneratedHeader, resources};
 use crate::ast::{CFileRef, CFunctionRef, CFunctionType, CIdentifier};
 pub use constants::CDependencyConstant;
 use portable_codegen::{RenderReadyPackage, RustDeclarationId};
 use std::{collections::BTreeMap, sync::Arc};
+pub use structs::CDependencyStruct;
 
 #[cfg(test)]
 #[path = "../../tests/shared_dependency_api.rs"]
@@ -62,6 +64,12 @@ pub struct CDependencyPackage {
 }
 
 impl CDependencyPackage {
+    pub(super) fn public_tags(&self) -> Result<Vec<CIdentifier>, String> {
+        Ok(inventory::structs::collect(&self.authority.0.package)?
+            .into_values()
+            .map(|export| export.symbol)
+            .collect())
+    }
     pub(super) fn certificate(&self) -> &RenderReadyPackage<CDialect> {
         &self.authority.0.package
     }
@@ -213,6 +221,7 @@ pub struct CDependencyApi {
     functions: BTreeMap<RustDeclarationId, CDependencyFunction>,
     constants: BTreeMap<RustDeclarationId, CDependencyConstant>,
     foreign_constants: Vec<CForeignConstantExport>,
+    structs: BTreeMap<crate::ast::CStructRef, CDependencyStruct>,
 }
 
 impl CDependencyApi {
@@ -253,11 +262,22 @@ impl CDependencyApi {
                 )
             })
             .collect();
+        let mut structs: BTreeMap<_, _> = inventory
+            .structs
+            .into_iter()
+            .map(|(record, export)| (record, CDependencyStruct::new(authority.clone(), export)))
+            .collect();
+        for proof in inventory.foreign_structs {
+            if structs.insert(proof.record().clone(), proof).is_some() {
+                return Err("C dependency type inventory contains conflicting owners".into());
+            }
+        }
         Ok(Self {
             authority,
             functions,
             constants,
             foreign_constants: inventory.foreign_constants,
+            structs,
         })
     }
 
@@ -282,6 +302,16 @@ impl CDependencyApi {
 
     pub fn functions(&self) -> impl Iterator<Item = &CDependencyFunction> {
         self.functions.values()
+    }
+
+    /// Owned public-header types plus original foreign witnesses required by
+    /// public signatures. Private/unused imports do not widen the published API.
+    pub fn structs(&self) -> impl Iterator<Item = &CDependencyStruct> {
+        self.structs.values()
+    }
+
+    pub fn structure(&self, record: &crate::ast::CStructRef) -> Option<&CDependencyStruct> {
+        self.structs.get(record)
     }
 
     pub fn function(&self, declaration: RustDeclarationId) -> Option<&CDependencyFunction> {

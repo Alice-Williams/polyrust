@@ -1,5 +1,6 @@
 //! Reconstruct dependency API membership from the immutable certificate.
 mod constants;
+pub(super) mod structs;
 use super::super::{CDialect, CGeneratedHeader, c_defined_constants, c_defined_functions};
 use crate::ast::*;
 use portable_codegen::{
@@ -15,6 +16,8 @@ pub(super) struct Inventory {
     pub functions: BTreeMap<RustDeclarationId, (CFunctionRef, CIdentifier)>,
     pub constants: BTreeMap<RustDeclarationId, Constant>,
     pub foreign_constants: Vec<super::CForeignConstantExport>,
+    pub structs: BTreeMap<CStructRef, super::structs::StructExport>,
+    pub foreign_structs: Vec<super::CDependencyStruct>,
 }
 
 pub(super) struct Constant {
@@ -37,17 +40,20 @@ fn scalar(ty: &CObjectType) -> bool {
     )
 }
 
-fn signature(function: &CFunctionRef) -> bool {
+fn signature(registry: &CRegistry, function: &CFunctionRef) -> bool {
+    let admitted = |ty: &CObjectType| {
+        scalar(ty) || crate::ownership::value_transport::scalar_result(Some(registry), ty)
+    };
     let result = match function.signature().return_type() {
         CReturnType::Void => true,
-        CReturnType::Value(value) => scalar(value.declared_type()),
+        CReturnType::Value(value) => admitted(value.declared_type()),
     };
     result
         && function
             .signature()
             .parameters()
             .iter()
-            .all(|value| scalar(value.declared_type()))
+            .all(|value| admitted(value.declared_type()))
 }
 
 pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventory, String> {
@@ -62,16 +68,8 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
             .ok_or("C dependency API lacks an owning public package file")
     };
     let header = file(CFileRole::GeneratedPublicHeader)?;
-    if header.items().iter().any(|unit| {
-        unit.unit.data.source.items().iter().any(|item| {
-            matches!(item, CFileItem::Declaration(declaration)
-            if matches!(declaration.kind(), CDeclarationKind::Aggregate { .. }))
-        })
-    }) {
-        // Even scalar imports include every tag declared by the owning header.
-        // Do not introduce unchecked aggregate names through the old API path.
-        return Err("C aggregate-bearing headers require certified nominal imports".into());
-    }
+    // Collect every public tag, including those unused by exported signatures.
+    let structs = structs::collect(package)?;
     let implementation = file(CFileRole::GeneratedSource)?;
     let projection = &implementation.items()[0].unit.projection;
     let header = CGeneratedHeader::resolve(
@@ -192,7 +190,9 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
             return Err("C dependency function/provenance/file/linkage inventory disagrees".into());
         }
         if exported {
-            if !signature(function) || !closed.contains(function) {
+            if !signature(projection.registry.registrations(), function)
+                || !closed.contains(function)
+            {
                 return Err(
                     "C dependency function lacks the closed admitted-scalar-parameter/scalar-or-void-result proof".into(),
                 );
@@ -223,7 +223,14 @@ pub(super) fn collect(package: &RenderReadyPackage<CDialect>) -> Result<Inventor
     {
         return Err("C dependency API omits a compiler public binding".into());
     }
+    let foreign_structs = structs::imported_for_signatures(
+        projection.registry.registrations(),
+        functions.values().map(|(function, _)| function),
+        &structs,
+    )?;
     Ok(Inventory {
+        structs,
+        foreign_structs,
         root,
         header,
         implementation: implementation.module().clone(),

@@ -40,7 +40,7 @@ impl<'a> CDeclarations<'a> {
     }
 
     pub fn forward_tag(&self, owner: CAggregateRef) -> Result<CDeclaration, E> {
-        self.registry.check_aggregate(&owner)?;
+        self.registry.check_owned_aggregate(&owner)?;
         Ok(self.declaration(D::ForwardTag(owner)))
     }
 
@@ -52,6 +52,7 @@ impl<'a> CDeclarations<'a> {
     }
 
     pub fn aggregate(&self, owner: CAggregateRef) -> Result<CDeclaration, E> {
+        self.registry.check_owned_aggregate(&owner)?;
         let members = self
             .registry
             .members(&owner)?

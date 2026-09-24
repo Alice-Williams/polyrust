@@ -6,7 +6,7 @@ use std::{
     process::Command,
 };
 
-pub(super) fn run(command: &mut Command) {
+pub(in crate::dialect::shared) fn run(command: &mut Command) {
     let output = command.output().unwrap();
     assert!(
         output.status.success(),
@@ -15,7 +15,7 @@ pub(super) fn run(command: &mut Command) {
     );
 }
 
-pub(super) fn compile(
+pub(in crate::dialect::shared) fn compile(
     compiler: &Path,
     source: &Path,
     object: &Path,

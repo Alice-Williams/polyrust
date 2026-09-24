@@ -11,9 +11,10 @@ Ordered checkpoints:
 
 1. [02A: private value transport](M35-03A-05A-02A-c-private-results.md).
 2. [02B: public nominal ABI](M35-03A-05A-02B-c-public-results.md).
+3. [02C: measured selected-arm execution](M35-03A-05A-02C-c-result-branches.md).
 
 02A establishes target-level layout/call safety, not source Result identity.
-02B must complete before claiming this parent or compiler result admission.
+02B and 02C must complete before claiming this parent or compiler result admission.
 
 Extend the certified C public signature/dependency profile narrowly for a
 source-derived complete result struct passed/returned by value. Do not simply

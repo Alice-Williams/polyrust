@@ -27,20 +27,10 @@ pub(super) fn collect(
         libraries.extend(dependency.libraries().iter().copied());
     }
     let registry = projection.registry.registrations();
-    for (_, imported) in registry.imported_functions() {
+    for owner in registry.dependency_packages() {
         libraries.extend(
-            imported
-                .package_identity()
-                .system_libraries()
-                .iter()
-                .copied(),
-        );
-    }
-    // A constant-only import still links the original producer translation unit.
-    for (_, imported) in registry.imported_constants() {
-        libraries.extend(
-            imported
-                .package_identity()
+            owner
+                .map_err(|e| e.to_string())?
                 .system_libraries()
                 .iter()
                 .copied(),

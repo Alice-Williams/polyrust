@@ -22,6 +22,7 @@ mod tests;
 pub struct CImportedCallable {
     function: CFunctionRef,
     dependency: CDependencyFunction,
+    types: std::collections::BTreeMap<crate::ast::CStructRef, super::CDependencyStruct>,
 }
 
 impl CImportedCallable {
@@ -33,7 +34,30 @@ impl CImportedCallable {
             .imported_function(function)
             .map_err(|error| error.to_string())?
             .clone();
+        let mut types = std::collections::BTreeMap::new();
+        let result = match function.signature().return_type() {
+            crate::ast::CReturnType::Void => None,
+            crate::ast::CReturnType::Value(value) => Some(value.declared_type()),
+        };
+        for ty in result.into_iter().chain(
+            function
+                .signature()
+                .parameters()
+                .iter()
+                .map(|p| p.declared_type()),
+        ) {
+            if let crate::ast::CObjectTypeKind::Struct(record) = ty.kind() {
+                types.insert(
+                    record.clone(),
+                    registry
+                        .imported_struct(record)
+                        .map_err(|e| e.to_string())?
+                        .clone(),
+                );
+            }
+        }
         Ok(Self {
+            types,
             function: function.clone(),
             dependency,
         })
@@ -52,7 +76,11 @@ impl CImportedCallable {
             symbol: self.clone(),
             owner: owner.clone(),
             name: self.dependency.symbol().clone(),
-            signature: CBindings::default().signature(&self.function),
+            signature: CBindings {
+                imported_types: self.types.clone(),
+                ..CBindings::default()
+            }
+            .signature(&self.function),
             spelling: DependencySpelling::FixedImport(super::CImportKind::Dependency(owner)),
             source: SourceRef::logical([
                 "c",
@@ -92,6 +120,7 @@ pub(super) fn catalogue(
         }
     }
     let mut catalogue = CDialect.symbol_catalogue();
+    super::imported_types::extend(&mut catalogue, registry).map_err(diagnostic)?;
     for (function, _) in registry.imported_functions() {
         catalogue.dependency_callables.push(
             CImportedCallable::from_registry(registry, function)
